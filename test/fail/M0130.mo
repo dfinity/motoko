@@ -1,0 +1,3 @@
+actor {
+  system let foo = ()
+}

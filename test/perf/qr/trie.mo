@@ -3,7 +3,7 @@
 = `Trie` -- Functional map
 */
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import P "prelude";
 import Option "option";
 import Hash "hash";
@@ -99,7 +99,7 @@ public type Key<K> = {
 };
 
 /* Equality function for two `Key<K>`s, in terms of equality of `K`'s. */
-public func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
+public func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) {
   func (key1:Key<K>, key2:Key<K>) : Bool =
     label profile_trie_keyEq : Bool
   (Hash.hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
@@ -150,27 +150,27 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
                  //and
                  ((k.hash & mask) == bits)
                  or
-                 { Prim.debugPrint "\nmalformed hash!:\n";
-                   Prim.debugPrintInt (Prim.word32ToNat(k.hash));
+                 (do { Prim.debugPrint "\nmalformed hash!:\n";
+                   Prim.debugPrintInt (Prim.nat32ToNat(k.hash));
                    Prim.debugPrint "\n (key hash) != (path bits): \n";
-                   Prim.debugPrintInt (Prim.word32ToNat(bits));
-                   Prim.debugPrint "\nmask  : "; Prim.debugPrintInt (Prim.word32ToNat(mask));
+                   Prim.debugPrintInt (Prim.nat32ToNat(bits));
+                   Prim.debugPrint "\nmask  : "; Prim.debugPrintInt (Prim.nat32ToNat(mask));
                    Prim.debugPrint "\n";
-                   false }
+                   false })
                }
              ) or
-           { Prim.debugPrint "one or more hashes are malformed"; false }
+           (do { Prim.debugPrint "one or more hashes are malformed"; false })
            )
          };
     case (#branch b) {
            let bitpos1 = switch bitpos {
-           case null  (Prim.natToWord32(0));
-           case (?bp) (Prim.natToWord32(Prim.word32ToNat(bp) + 1))
+           case null  (Prim.natToNat32(0));
+           case (?bp) (Prim.natToNat32(Prim.nat32ToNat(bp) + 1))
            };
-           let mask1 = mask | (Prim.natToWord32(1) << bitpos1);
-           let bits1 = bits | (Prim.natToWord32(1) << bitpos1);
+           let mask1 = mask | (Prim.natToNat32(1) << bitpos1);
+           let bits1 = bits | (Prim.natToNat32(1) << bitpos1);
            let sum = count<K,V>(b.left) + count<K,V>(b.right);
-           (b.count == sum or { Prim.debugPrint "malformed count"; false })
+           (b.count == sum or (do { Prim.debugPrint "malformed count"; false }))
            and
            rec(b.left,  ?bitpos1, bits,  mask1)
            and
@@ -477,7 +477,7 @@ public func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool) : Trie<K,V>
                  AssocList.disj<Key<K>,V,V,V>(
                    l1.keyvals, l2.keyvals,
                    key_eq,
-                   func (x:?V, y:?V):V = {
+                   func (x:?V, y:?V):V {
                      switch (x, y) {
                      case (null, null) { P.unreachable() };
                      case (null, ?v) v;
@@ -523,7 +523,7 @@ public func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Tr
                lf(
                  AssocList.disjDisjoint<Key<K>,V,V,V>(
                    l1.keyvals, l2.keyvals,
-                   func (x:?V, y:?V):V = {
+                   func (x:?V, y:?V):V {
                      switch (x, y) {
                      case (null, ?v) v;
                      case (?v, null) v;
@@ -1205,7 +1205,7 @@ public func disj<K,V,W,X>(
                List.mapFilter<(Key<K>,V),(Key<K>,W)>(
                  l.keyvals,
                  // retain key and hash, but update key's value using f:
-                 func ((k:Key<K>,v:V)):?(Key<K>,W) = {
+                 func ((k:Key<K>,v:V)):?(Key<K>,W) {
                    switch (f(k.key,v)) {
                    case (null) null;
                    case (?w) (?({key=k.key; hash=k.hash}, w));
@@ -1316,7 +1316,7 @@ public func disj<K,V,W,X>(
     case (null)   { insert<K2,V>(#empty, k2, k2_eq, v) };
     case (?inner) { insert<K2,V>(inner, k2, k2_eq, v) };
     };
-    let (updated_outer, _) = { insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner) };
+    let (updated_outer, _) = insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner);
     updated_outer;
   };
 
@@ -1351,7 +1351,7 @@ public func disj<K,V,W,X>(
            insert<K2,Trie<K3,V>>( inner1, k2, k2_eq, updated_inner2 )
          };
     };
-    let (updated_outer, _) = { insert<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq, updated_inner1) };
+    let (updated_outer, _) = insert<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq, updated_inner1);
     updated_outer;
   };
 
@@ -1401,9 +1401,7 @@ public func disj<K,V,W,X>(
          };
     case (?inner) {
            let (updated_inner, ov) = remove<K2,V>(inner, k2, k2_eq);
-           let (updated_outer, _) = {
-             insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner)
-           };
+           let (updated_outer, _) = insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner);
            (updated_outer, ov)
          };
     }
@@ -1429,9 +1427,7 @@ public func disj<K,V,W,X>(
          };
     case (?inner) {
            let (updated_inner, ov) = remove2D<K2,K3,V>(inner, k2, k2_eq, k3, k3_eq);
-           let (updated_outer, _) = {
-             insert<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq, updated_inner)
-           };
+           let (updated_outer, _) = insert<K1,Trie2D<K2,K3,V>>(t, k1, k1_eq, updated_inner);
            (updated_outer, ov)
          };
     }

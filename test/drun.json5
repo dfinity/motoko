@@ -1,0 +1,6 @@
+{
+  metrics: {
+    exporter: { file: "/dev/fd/222" }
+  },
+}
+

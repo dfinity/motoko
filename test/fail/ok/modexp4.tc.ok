@@ -1,2 +1,0 @@
-modexp4.mo:2.1-10.2: type error, local class type U is contained in object or actor type
-  module {type T = U; f : ???; h : ???}

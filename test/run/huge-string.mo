@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 /*
 This uses repeated self-concatenation to build a huge string
@@ -19,7 +19,7 @@ for (i in range(1,n)) {
   s := s # s;
 };
 let after = Prim.rts_heap_size();
-assert(after-before < 2_000);
+assert(+after-before < 2_000);
 
 //SKIP run
 //SKIP run-low

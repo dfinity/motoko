@@ -5,7 +5,7 @@ module X = {
   module Y = {
     public type U = U -> U;
   };
-  public type T = Y.U; // bad public field because Y.U private and unavoidable
+  public type T = Y.U; // ok public field even though Y private and U "unavoidable"
   public func h():T { h() }; // ditto
 };
 

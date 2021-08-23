@@ -2,8 +2,7 @@ open Idllib
 open Printf
 
 let name = "didc"
-let version = "0.1"
-let banner = "Interface Description Language (IDL) " ^ version ^ " interpreter"
+let banner = "Candid compiler " ^ Source_id.banner
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 
@@ -23,14 +22,14 @@ let set_mode m () =
 
 let out_file = ref ""
 
-let argspec = Arg.align
+let argspec =
 [
-  "--js", Arg.Unit (set_mode Js), " output Javascript binding";
+  "--js", Arg.Unit (set_mode Js), " output JavaScript binding";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--pp", Arg.Unit (set_mode PrettyPrint), " Pretty print did file";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
-  "-o", Arg.Set_string out_file, " output file";
+  "-o", Arg.Set_string out_file, "<file>  output file";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
 ]
@@ -58,15 +57,15 @@ let process_file file : unit =
      Buffer.add_string buf "\n";
      Buffer.output_buffer oc buf;
      close_out oc
-     
+
 let print_exn exn =
   Printf.printf "%!";
   Printf.eprintf "Internal error, %s\n" (Printexc.to_string exn);
   Printexc.print_backtrace stderr;
   Printf.eprintf "%!"
-       
+
 let () =
-  (* 
+  (*
   Sys.catch_break true; - enable to get stacktrace on interrupt
   (useful for debugging infinite loops)
   *)

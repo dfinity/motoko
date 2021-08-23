@@ -18,7 +18,7 @@ func odd(n : Nat) : Bool {
 
 // There should be a bunch of calls to known functions here, but
 // no indirect calls
-// CHECK: func $start
+// CHECK: func $init
 // CHECK: call $even
 // CHECK: call $even
 // CHECK: call $even

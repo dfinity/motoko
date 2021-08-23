@@ -1,0 +1,6 @@
+actor-class-non-shared.mo:1.15-1.25: type error [M0034], shared constructor has non-shared parameter type
+  () -> ()
+type
+  () -> ()
+is or contains non-shared type
+  () -> ()

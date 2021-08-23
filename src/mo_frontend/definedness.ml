@@ -33,10 +33,12 @@ let set_unions = List.fold_left S.union S.empty
 (* A set of free variables *)
 type f = usage_info M.t
 
+(* The analsys result of a recursive group, before tying the knot *)
+type group = (Source.region * S.t * S.t * S.t) list
+
 (* Operations: Union and removal *)
 let (++) : f -> f -> f = M.union (fun _ u1 u2 -> Some (join u1 u2))
 let unions f xs = List.fold_left (++) M.empty (List.map f xs)
-let (//) x y = M.remove y x
 
 (* A combined set of free variables and defined variables,
    e.g. in patterns and declaration *)
@@ -86,12 +88,8 @@ let rec exp msgs e : f = match e.it with
   | RetE e              -> eagerify (exp msgs e)
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, sort_pat, tp, p, t, _, e) ->
-    (match sort_pat.it with
-     | Type.Local ->
-       delayify (exp msgs e /// pat msgs p)
-     | Type.Shared (_, p1) ->
-      delayify ((exp msgs e /// pat msgs p) /// pat msgs p1))
+  | FuncE (_, sp, tp, p, t, _, e) ->
+      delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _ | ActorUrlE _
   | PrimE _ | ImportE _ -> M.empty
@@ -101,15 +99,15 @@ let rec exp msgs e : f = match e.it with
   | ShowE (_, e)        -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjE (s, efs)       ->
+  | ObjBlockE (s, dfs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
-    (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
-    exp_fields msgs efs
+    group msgs (dec_fields msgs dfs)
+  | ObjE efs            -> exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
   | IdxE (e1, e2)       -> exps msgs [e1; e2]
-  | BlockE ds           -> decs msgs ds
+  | BlockE ds           -> group msgs (decs msgs ds)
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
   | OrE (e1, e2)        -> exps msgs [e1; e2]
@@ -127,9 +125,15 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
+  | DoOptE e            -> exp msgs e
+  | BangE e             -> exp msgs e
   | TagE (_, e)         -> exp msgs e
+  | IgnoreE e           -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
+
+and exp_fields msgs efs : f = unions (exp_field msgs) efs
+and exp_field msgs ef : f = exp msgs ef.it.exp
 
 and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
@@ -148,31 +152,45 @@ and pats msgs ps : fd = union_binders (pat msgs) ps
 
 and pat_fields msgs pfs = union_binders (fun (pf : pat_field) -> pat msgs pf.it.pat) pfs
 
+and shared_pat msgs shared_pat =
+  match shared_pat.it with
+  | Type.Local ->
+    (M.empty, S.empty)
+  | Type.Shared (_, p1) ->
+    pat msgs p1
+
 and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 
 and cases msgs cs : f = unions (case msgs) cs
 
-and exp_fields msgs efs : f =
-  decs msgs (List.map (fun ef -> ef.it.dec) efs)
+and dec_fields msgs dfs =
+  decs msgs (List.map (fun df -> df.it.dec) dfs)
 
 and dec msgs d = match d.it with
-  | ExpD e | IgnoreD e -> (exp msgs e, S.empty)
+  | ExpD e -> (exp msgs e, S.empty)
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (i, tp, p, t, s, i', efs) ->
-    (M.empty, S.singleton i.it) +++ delayify (exp_fields msgs efs /// pat msgs p // i'.it)
+  | ClassD (csp, i, tp, p, t, s, i', dfs) ->
+    (M.empty, S.singleton i.it) +++ delayify (
+      group msgs (dec_fields msgs dfs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
+    )
 
-and decs msgs decs : f =
+(* The class self binding is treated as defined at the very end of the group *)
+and class_self at i : group = [(at, S.singleton i.it, S.empty, S.empty)]
+
+and decs msgs decs : group =
   (* Annotate the declarations with the analysis results *)
-  let decs' = List.map (fun d ->
+  List.map (fun d ->
     let (f, defs) = dec msgs d in
     (d.at, defs, eager_vars f, delayed_vars f)
-  ) decs in
+  ) decs
+
+and group msgs (grp : group) : f =
   (* Create a map from declared variable to their definition point *)
-  let defWhen = M.disjoint_unions (List.mapi (fun i (_, defs, _, _) -> map_of_set i defs) decs') in
+  let defWhen = M.disjoint_unions (List.mapi (fun i (_, defs, _, _) -> map_of_set i defs) grp) in
   (* Calculate the relation R *)
-  let r = NameRel.unions (List.map (fun (_, defs, _, delayed) -> NameRel.cross defs delayed) decs') in
+  let r = NameRel.unions (List.map (fun (_, defs, _, delayed) -> NameRel.cross defs delayed) grp) in
   (* Check for errors *)
   List.iteri (fun i (at, _, eager, _) ->
     NameRel.iter (fun x y ->
@@ -182,34 +200,40 @@ and decs msgs decs : f =
            defined after j *)
         if j < i
         then () (* all izz well *)
-        else Diag.(add_msg msgs
-          { sev = Error; at; cat = "definedness";
-            text = Printf.sprintf "cannot use %s before %s has been defined" x y
-          })
+        else
+          Diag.add_msg
+            msgs
+            (Diag.error_message
+               at
+               "M0016"
+               "definedness"
+               (Printf.sprintf "cannot use %s before %s has been defined" x y))
       | None ->
         (* External variable, ok for now *)
         ()
     ) (NameRel.restricted_rtcl eager r)
-  ) decs';
+  ) grp;
   (* Now calculate the analysis result: Eager is everything that is eager, or
      used by eager things *)
   let e = set_unions (List.map (fun (_,_,eager,_) ->
     NameRel.range (NameRel.restricted_rtcl eager r)
-  ) decs') in
+  ) grp) in
   (* Everything else is lazy *)
-  let d = S.diff (set_unions (List.map (fun (_,_,_,delayed) -> delayed) decs')) e in
+  let d = S.diff (set_unions (List.map (fun (_,_,_,delayed) -> delayed) grp)) e in
   (* And remove whats defined here  *)
   M.disjoint_union (map_of_set Eager e) (map_of_set Delayed d) |>
     M.filter (fun v _ -> M.mem v defWhen = false)
 
 let check_prog prog =
   Diag.with_message_store (fun msgs ->
-    ignore (decs msgs prog.it);
+    ignore (group msgs (decs msgs prog.it));
     Some ()
   )
 
 let check_lib lib =
   Diag.with_message_store (fun msgs ->
-    ignore (exp msgs lib.it);
+    let (imp_ds, ds) = CompUnit.decs_of_lib lib in
+    ignore (group msgs (decs msgs (imp_ds @ ds)));
     Some ()
   )
+

@@ -1,1 +1,1 @@
-issue-875.mo:1.15-1.16: type error, cannot infer type of forward variable t
+issue-875.mo:1.15-1.16: type error [M0055], cannot infer type of forward variable t

@@ -30,8 +30,7 @@ isHealthy e = do
   pure $ res == ExitSuccess
 
 addCompilerArgs Reference = ("-no-system-api" :)
-addCompilerArgs (WasmTime DontPrint) = ("-no-system-api" :)
-addCompilerArgs (WasmTime WASI) = ("-wasi-system-api" :)
+addCompilerArgs (WasmTime _) = ("-wasi-system-api" :)
 addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
@@ -40,6 +39,11 @@ addEmbedderArgs Drun = ("--extra-batches" :) . ("10" :)
 
 embedderInvocation :: Embedder -> [Text] -> [Text]
 embedderInvocation e args = embedderCommand e : addEmbedderArgs e args
+
+embedderMassageResult Reference res = res
+embedderMassageResult (WasmTime DontPrint) (stat, _, stderr) = (stat, "", stderr)
+embedderMassageResult (WasmTime _) res = res
+embedderMassageResult Drun res = res
 
 invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
 invokeEmbedder embedder wasm = go embedder
@@ -57,18 +61,20 @@ invokeEmbedder embedder wasm = go embedder
             let Right c = toText control
             procs "mkfifo" [c] empty
             consumer <- forkShell $ inshell (Data.Text.unwords $ embedderInvocation embedder [c]) empty
-            let install = unsafeTextToLine $ format ("install ic:2A012B "%s%" 0x") w
+            let create = unsafeTextToLine $ format "create"
+            let install = unsafeTextToLine $ format ("install rwlgt-iiaaa-aaaaa-aaaaa-cai "%s%" 0x") w
 
-            pipe (fileArg control) (pure install
-                                   <|> "ingress ic:2A012B do 0x4449444c0000")
+            pipe (fileArg control) (pure create <|> pure install
+                                   <|> "ingress rwlgt-iiaaa-aaaaa-aaaaa-cai go 0x4449444c0000")
             lns <- wait consumer
-            view lns
+            -- view lns
             let errors = grep (has "Err: " <|> has "Reject: ") lns
             linesToText . reverse <$> fold errors revconcating >>= liftIO <$> writeIORef fuzz
 
           (ExitSuccess, "",) <$> readIORef fuzz
 
-        go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
+        go _ = embedderMassageResult embedder
+               <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
         -- forkShell :: Show a => Shell a -> Shell (Async (Shell a))
         forkShell shell = do a <- fork (fold shell revconcating)
                              pure (select . reverse <$> a)

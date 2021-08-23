@@ -1,12 +1,12 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query fun(0x4449444c0000)
-← completed: 0x4449444c026e016a017c010100010000
-→ query fun2(0x4449444c026e016a017c0000010000)
-← completed: 0x4449444c0000
-→ query fun3(0x4449444c0000)
-← completed: 0x4449444c036a00010101016e026a017c01020001000101022a010366756e
-→ query fun4(0x4449444c0000)
-← completed: 0x4449444c016a0000010201000101022a01066f6e65776179
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query fun()
+← replied: (null)
+→ query fun2(null)
+← replied: ()
+→ query fun3()
+← replied: (func "cvccv-qqaaq-aaaaa-aaaaa-c"."fun")
+→ query fun4()
+← replied: (func "cvccv-qqaaq-aaaaa-aaaaa-c"."oneway")

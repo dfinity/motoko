@@ -1,0 +1,8 @@
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+debug.print: canister_reject:ball
+debug.print: canister_error:canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at error-codes.mo:10.33-10.50"
+← replied: ()

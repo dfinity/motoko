@@ -1,7 +1,12 @@
 losing precision
-
-Error: failed to process main module `_out/outrange-int64-lower.wasm`
+Error: failed to run main module `_out/outrange-int64-lower.wasm`
 
 Caused by:
-    0: Instantiation failed during setup
-    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: Int->Int64
+         1: intToInt64
+         2: init
+         3: _start
+       

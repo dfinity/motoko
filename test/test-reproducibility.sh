@@ -6,12 +6,10 @@
 
 # It needs the tool reprotest to be installed
 
-MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
-
 files="*/*.mo"
 
 reprotest --source-pattern "*/*.mo" \
   --vary=-fileordering,-user_group,-domain_host \
-  "for file in */*.mo; do ${MOC} -c --map \$file 2> \$(basename \$file).stderr || true ; done" \
+  "for file in */*.mo; do moc -c --map \$file 2> \$(basename \$file).stderr || true ; done" \
   '*.wasm *.map *.stderr'
 

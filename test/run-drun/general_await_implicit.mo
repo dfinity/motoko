@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 actor Await {
 
@@ -48,14 +48,14 @@ actor Await {
     for (i in os.keys()) {
       os[i] := ? (Request(i));
     };
-    let res = Prim.Array_init<Int>(os.len(),-1);
+    let res = Prim.Array_init<Int>(os.size(),-1);
     for (i in os.keys()) {
       switch (os[i]) {
         case (? a) res[i] := await a;
         case null (assert false);
       };
     };
-    Prim.Array_tabulate<Int>(res.len(),func i { res[i] })
+    Prim.Array_tabulate<Int>(res.size(),func i { res[i] })
   };
 
   // Recursive parallel waiting

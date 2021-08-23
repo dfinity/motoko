@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 Prim.debugPrint ("main actor creating a");
 actor a {
   public func foo() {
@@ -21,6 +21,5 @@ actor a {
 };
 
 a.foo(); //OR-CALL ingress foo "DIDL\x00\x00"
-// certainly won’t work on drun
 //SKIP comp
 //SKIP comp-ref

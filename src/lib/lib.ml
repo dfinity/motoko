@@ -1,3 +1,17 @@
+module Format =
+struct
+  let with_str_formatter f x =
+    let b = Buffer.create 16 in
+    let ppf = Format.formatter_of_buffer b in
+    Format.pp_set_geometry ppf ~max_indent:2 ~margin:(1000000010-1); (* hack to output all on one line *)
+    Format.fprintf ppf "@[%a@]" f x;
+    Format.pp_print_flush ppf ();
+    Buffer.contents b
+
+  let display pp ppf x =
+    Format.fprintf ppf "@\n@[<v 2>  %a@]" pp x
+end
+
 module Fun =
 struct
   let curry f x y = f (x, y)
@@ -53,6 +67,9 @@ struct
     let outer crc b =
       List.fold_right inner [0;1;2;3;4;5;6;7] (Char.code b lxor crc) land 0xFF in
     Seq.fold_left outer 0 (String.to_seq bs)
+
+  let crc32 (bs : string) : int32 =
+    Optint.(to_int32 (Checkseum.Crc32.digest_string bs 0 (String.length bs) zero))
 end
 
 module Hex =
@@ -91,6 +108,47 @@ struct
   let hex_of_bytes bytes : string =
     let open Stdlib.String in
     of_seq (Stdlib.Seq.flat_map (fun c -> to_seq (hex_of_char c)) (to_seq bytes))
+end
+
+module Base32 =
+struct
+  let decode input =
+    let len = String.length input in
+    let buf = Buffer.create (len / 2) in
+    let rec evac = function
+      | v, b when b >= 8 ->
+        let b' = b - 8 in
+        Buffer.add_uint8 buf (v lsr b');
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb in
+    let b32 a = function
+      | v when v >= 'A' && v <= 'Z' -> a lsl 5 lor (Char.code v - 65)
+      | v when v >= '2' && v <= '7' -> a lsl 5 lor (Char.code v - 24)
+      | '=' -> a
+      | _ -> raise (Invalid_argument "Char out of base32 alphabet") in
+      let pump (v, b) c = evac (b32 v c, b + 5) in
+    try
+      ignore (Seq.fold_left pump (0, 0) (String.to_seq input));
+      Ok (Buffer.contents buf)
+    with Invalid_argument s -> Error s
+
+  let encode input =
+    let len = String.length input in
+    let buf = Buffer.create (len * 2) in
+    let b32 = function
+      | v when v <= 25 -> 65 + v
+      | v -> 24 + v in
+    let rec evac = function
+      | v, b when b >= 5 ->
+        let b' = b - 5 in
+        Buffer.add_uint8 buf (b32 (v lsr b'));
+        evac (v land (1 lsl b' - 1), b')
+      | vb -> vb
+    in
+    let pump (v, b) c = evac (v lsl 8 lor (Char.code c land 0xFF), b + 8) in
+    let v, b = Seq.fold_left pump (0, 0) (String.to_seq input) in
+    if b > 0 then ignore (evac (v lsl 4, b + 4));
+    Buffer.contents buf
 end
 
 module String =
@@ -147,35 +205,18 @@ struct
     else
       None
 
-  let lightweight_escaped str =
-    let n = ref 0 in
-    for i = 0 to String.length str - 1 do
-      n := !n +
-             (match str.[i] with
-              | '\"' | '\'' | '\\' | '\n' | '\r' | '\b' | '\t' -> 2
-              | _ -> 1)
+  let lightweight_escaped s =
+    let buf = Buffer.create (String.length s) in
+    for i = 0 to String.length s - 1 do
+      match s.[i] with
+      | '\"' | '\'' | '\\' as c ->
+        Buffer.add_char buf '\\'; Buffer.add_char buf c
+      | '\n' -> Buffer.add_string buf "\\n"
+      | '\r' -> Buffer.add_string buf "\\r"
+      | '\t' -> Buffer.add_string buf "\\t"
+      | c -> Buffer.add_char buf c
     done;
-    if !n = String.length str then str else begin
-        let s' = Bytes.create !n in
-        n := 0;
-        for i = 0 to String.length str -1 do
-          begin match str.[i] with
-          | ('\"' | '\'' | '\\') as c ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n c
-          | '\n' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'n'
-          | '\r' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'r'
-          | '\b' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'b'
-          | '\t' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'
-          | c -> Bytes.set s' !n c
-          end;
-          n := !n + 1
-        done;
-        Bytes.unsafe_to_string s'
-      end
+    Buffer.contents buf
 end
 
 module List =
@@ -186,9 +227,6 @@ struct
   let rec make n x = make' n x []
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
-
-  let concat_map f xs =
-    List.concat (List.map f xs)
 
   let rec table n f = table' n f []
   and table' n f xs =
@@ -228,12 +266,9 @@ struct
     | _::xs -> last xs
     | [] -> failwith "last"
 
-  let rec first_opt f = function
+  let last_opt = function
     | [] -> None
-    | x::xs ->
-       match f x with
-       | None -> first_opt f xs
-       | some -> some
+    | xs -> Some (last xs)
 
   let rec split_last = function
     | [x] -> [], x
@@ -334,6 +369,14 @@ struct
       match f x.(i) y.(i) with
       | 0 -> compare' f x y (i + 1)
       | n -> n
+
+  let for_all2 p xs ys =
+    if Array.length xs <> Array.length ys then failwith "for_all2"
+    else
+      let rec go i =
+        i = Array.length xs || (p xs.(i) ys.(i) && go (i + 1))
+      in
+      go 0
 end
 
 module Array32 =
@@ -391,6 +434,15 @@ struct
     match o with
     | Some y -> y
     | None -> x
+
+  module Syntax =
+  struct
+    let (let+) x f = Option.map f x
+    let (and+) x y = match x, y with
+      | Some x, Some y -> Some (x, y)
+      | _  -> None
+    let (let*) = Option.bind
+  end
 end
 
 module Promise =
@@ -405,11 +457,77 @@ struct
   let is_fulfilled p = !p <> None
   let value_opt p = !p
   let value p = match !p with Some x -> x | None -> raise Promise
+  let lazy_value p f =
+    begin
+      if not (is_fulfilled p) then
+      let x = f () in
+      (* Evaluating f might have actually fulfilled this. We assume f to be pure
+         (or at least be idempotent), and do not try to update it again.
+      *)
+      if not (is_fulfilled p) then fulfill p x
+    end;
+    value p
+end
+
+module AllocOnUse =
+struct
+  (*
+  A slighty more elaborate form of a promise: It describes something that can
+  be allocated, defined, and used (e.g. a Wasm function with a function id). It
+  will only be allocated if it is both defined and used. Cyclic use is supported,
+  e.g. the code that defines the thing will already be able to use it.
+
+  Beware: Calling def twice is allowed, the second one will be ignored.
+
+  Re `… Lazy.t` vs. `unit -> …`:
+  We use `… Lazy.t` for thunks that will be called exactly once (e.g. producing the
+  definition), but `unit -> …` for functions called many times with different
+  results (e.g. allocation)
+  *)
+
+  type ('a, 'b) alloc = unit -> ('a * ('b -> unit))
+
+  type ('a, 'b) t' =
+    | UnUsedUnDef of ('a, 'b) alloc
+    | UsedUnDef of 'a * ('b -> unit)
+    | UnUsedDef of ('a, 'b) alloc * ('b Lazy.t)
+    | UsedDef of 'a
+  type ('a, 'b) t = ('a, 'b) t' ref
+
+  let make : ('a, 'b) alloc -> ('a, 'b) t =
+    fun alloc -> ref (UnUsedUnDef alloc)
+
+  let def : ('a, 'b) t -> ('b Lazy.t) -> unit =
+    fun r mk -> match !r with
+      | UnUsedUnDef alloc ->
+        r := UnUsedDef (alloc, mk)
+      | UsedUnDef (a, fill) ->
+        r := UsedDef a;
+        fill (Lazy.force mk);
+      | UnUsedDef _ | UsedDef _ ->
+        ()
+
+  let use : ('a, 'b) t -> 'a =
+    fun r -> match !r with
+      | UnUsedUnDef alloc ->
+        let (a, fill) = alloc () in
+        r := UsedUnDef (a, fill);
+        a
+      | UsedUnDef (a, fill) ->
+        a
+      | UnUsedDef (alloc, mk) ->
+        let (a, fill) = alloc () in
+        r := UsedDef a;
+        fill (Lazy.force mk);
+        a
+      | UsedDef a ->
+        a
 end
 
 module FilePath =
 struct
   let normalise file_path =
+    if file_path = "" then "" else
     let has_trailing_slash =
       Stdlib.Option.is_some (String.chop_suffix "/" file_path) in
     let has_leading_slash = not (Filename.is_relative file_path) in
@@ -447,10 +565,31 @@ struct
     (* We can't just check for prefixing on the string because
        /path/tosomething is not a subpath of /path/to*)
     else List.is_prefix (=) (segments base) (segments path)
+
+  (* TODO: this function does not belong here *)
+  (* When opening is successful, but there is a case mismatch (because the file
+     system is case insensitive), generate a warning. *)
+  let open_in path : in_channel * string list =
+    let ic = Stdlib.open_in path in
+    let dir, base = Filename.(dirname path, basename path) in
+    (* TODO: we could check dir too, but it's hairier *)
+    let files = Sys.readdir dir in
+    if not (Array.exists (fun name -> name = base) files) then
+      begin
+        let open Stdlib.String in
+        let lbase = lowercase_ascii base in
+        if Array.exists (fun name -> lowercase_ascii name = lbase) files then
+          let message = Printf.sprintf "file %s has been located with a name of different case" base in
+          ic, [message]
+        else
+          let message = Printf.sprintf "file %s has been located with a different name" base in
+          ic, [message]
+      end
+    else ic, []
 end
 
 
-[@@@warning "-60"]
+[@@@warning "-60-32"]
 module Test =
 struct
 (* need to put tests in this file because
@@ -474,6 +613,10 @@ struct
   let %test "crc8 empty" = CRC.crc8 "" = 0x00
   let %test "crc8 0000" = CRC.crc8 "\x00\x00" = 0x00
 
+  let%test "Base32.decode empty" = Base32.decode "" = Ok ""
+  let%test "Base32.decode 0000000000" = Base32.decode "AAAAAAA" = Ok "\x00\x00\x00\x00"
+  let%test "Base32.decode 000000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
+  let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
   (* FilePath tests *)
   let normalise_test_case input expected =

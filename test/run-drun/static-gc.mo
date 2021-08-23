@@ -2,7 +2,7 @@
 // (This uses messages to trigger GC. If we don’t run GC after message, other ways need to be found.)
 
 actor a {
-  var x = ("Foo", "Bar");
+  flexible var x = ("Foo", "Bar");
 
   public func foo1() {
     ignore [1,2,3,4,5];

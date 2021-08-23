@@ -1,33 +1,38 @@
-pretty_scoped.mo:2.1-2.38: type error, cannot implicitly instantiate function of type
+pretty_scoped.mo:2.1-2.38: type error [M0098], cannot implicitly instantiate function of type
   <A>(A -> async ()) -> ()
 to argument of type
   ()
 to produce result of type
   ()
-no instantiation of A makes () <: A -> async () and () <: ()
-pretty_scoped.mo:4.1-4.45: type error, cannot implicitly instantiate function of type
+because no instantiation of A/10 makes
+  ()  <:  A/10 -> async ()
+pretty_scoped.mo:4.1-4.45: type error [M0098], cannot implicitly instantiate function of type
   <A, B>((A, B) -> async ()) -> ()
 to argument of type
   ()
 to produce result of type
   ()
-no instantiation of A, B makes () <: (A, B) -> async () and () <: ()
-pretty_scoped.mo:6.1-6.50: type error, cannot implicitly instantiate function of type
+because no instantiation of A/12, B/1 makes
+  ()  <:  (A/12, B/1) -> async ()
+pretty_scoped.mo:6.1-6.50: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>((A, B, C) -> async ()) -> ()
 to argument of type
   ()
 to produce result of type
   ()
-no instantiation of A, B, C makes () <: (A, B, C) -> async () and () <: ()
-pretty_scoped.mo:8.1-8.55: type error, cannot implicitly instantiate function of type
+because no instantiation of A/14, B/3, C/1 makes
+  ()  <:  (A/14, B/3, C/1) -> async ()
+pretty_scoped.mo:8.1-8.55: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(<D>(A, B, C, D) -> async ()) -> ()
 to argument of type
   ()
 to produce result of type
   ()
-no instantiation of A, B, C makes () <: <D>(A, B, C, D) -> async () and () <: ()
-pretty_scoped.mo:10.1-10.69: type error, cannot implicitly instantiate function of type
+because no instantiation of A/16, B/5, C/3 makes
+  ()  <:  <D>(A/16, B/5, C/3, D) -> async ()
+pretty_scoped.mo:10.1-10.69: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(<D <: C, E <: D>(A, B, C, D, E) -> async ()) -> ()
 to argument of type
   ()
-no instantiation of A, B, C makes () <: <D <: C, E <: D>(A, B, C, D, E) -> async () and () <: Any
+because no instantiation of A/18, B/7, C/5 makes
+  ()  <:  <D <: C/5, E <: D>(A/18, B/7, C/5, D, E) -> async ()

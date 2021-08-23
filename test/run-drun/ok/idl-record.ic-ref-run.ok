@@ -1,16 +1,18 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query pair(0x4449444c016c020071017c010004486579212a)
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query pair(record {"Hey!"; +42})
 debug.print: ok: +42
-← completed: 0x4449444c0000
-→ query record(0x4449444c016c02b99adecb0171f1fee18d037c010004486579212a)
+← replied: ()
+→ query record(record {bhned_q = "Hey!"; value = +42})
 debug.print: ok: Hey!
-← completed: 0x4449444c0000
-→ query record1(0x4449444c016c03b99adecb0171f1fee18d037c88be8c890477010004486579212a19)
+← replied: ()
+→ query record1(record {bhned_q = "Hey!"; value = +42; byte = (25 : int8)})
 debug.print: ok: +25
-← completed: 0x4449444c0000
-→ query record2(0x4449444c016c03b99adecb0171f1fee18d037c88be8c89047702007704486579212a1819)
+← replied: ()
+→ query record2(record {bhned_q = "Hey!"; value = +42; byte = (24 : int8)},…
 debug.print: ok:  Hey! +25
-← completed: 0x4449444c00017719
+← replied: ((25 : int8))
+→ query record3(record {bhned_q = "Hey!"; value = +42})
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: did not find field extra in record"

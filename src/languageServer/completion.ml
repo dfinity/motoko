@@ -9,6 +9,9 @@ let string_of_list f xs =
 let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
+let markup_content s =
+  Lsp_t.{ markup_content_kind = "markdown"; markup_content_value = s }
+
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
   let comp = DI.name_of_ide_decl d in
   match d with
@@ -21,8 +24,8 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
-            Some (Pretty.string_of_typ value.DI.typ);
-          completion_item_detail = None;
+            Option.map markup_content value.DI.doc_comment;
+          completion_item_detail = Some (Pretty.string_of_typ value.DI.typ);
         }
   | DI.TypeDecl ty ->
       let con = ty.DI.typ in
@@ -35,8 +38,9 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
+            Option.map markup_content ty.DI.doc_comment;
+          completion_item_detail =
             Some (Printf.sprintf "type %s%s" ty.DI.name params);
-          completion_item_detail = None;
         }
 
 let import_relative_to_project_root root module_path dependency =
@@ -58,40 +62,36 @@ let find_completion_prefix file line column : (string * string) option =
   (* The LSP sends 0 based line numbers *)
   let line = line + 1 in
   let lexbuf = Lexing.from_string file in
-  let next () = Lexer.token Lexer.Normal lexbuf in
+  let tokenizer, _ = Lexer.tokenizer Lexer.mode lexbuf in
+  let next () =
+    let t, start, end_ = tokenizer () in
+    (t, Lexer.convert_pos start, Lexer.convert_pos end_)
+  in
   let pos_eq_cursor pos = pos.line = line && pos.column = column in
   let pos_past_cursor pos =
     pos.line > line || (pos.line = line && pos.column > column)
   in
-  let rec loop = function
-    | _ when pos_past_cursor (Lexer.region lexbuf).right -> None
+  let rec loop (tkn, start, end_) =
+    match tkn with
+    | _ when pos_past_cursor end_ -> None
     | Parser.ID ident -> (
-        let next_token_end = (Lexer.region lexbuf).right in
-        if pos_eq_cursor next_token_end then Some ("", ident)
+        if pos_eq_cursor end_ then Some ("", ident)
         else
           match next () with
-          | Parser.DOT -> (
-              let next_token = next () in
-              let next_token_start = (Lexer.region lexbuf).left in
-              if
-                pos_eq_cursor next_token_start
-                || pos_past_cursor next_token_start
-              then Some (ident, "")
+          | Parser.DOT, _, _ -> (
+              let ((tkn, start, end_) as next_token) = next () in
+              if pos_eq_cursor start || pos_past_cursor start then
+                Some (ident, "")
               else
-                match next_token with
+                match tkn with
                 | Parser.EOF -> Some (ident, "")
                 | Parser.ID prefix ->
-                    let next_token_start = (Lexer.region lexbuf).left in
-                    let next_token_end = (Lexer.region lexbuf).right in
-                    if
-                      pos_eq_cursor next_token_start
-                      || pos_past_cursor next_token_start
-                    then Some (ident, "")
-                    else if pos_eq_cursor next_token_end then
-                      Some (ident, prefix)
-                    else loop (Parser.ID prefix)
-                | tkn -> loop tkn )
-          | tkn -> loop tkn )
+                    if pos_eq_cursor start || pos_past_cursor start then
+                      Some (ident, "")
+                    else if pos_eq_cursor end_ then Some (ident, prefix)
+                    else loop next_token
+                | _ -> loop next_token)
+          | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ())
   in
@@ -160,7 +160,7 @@ let completions index project_root file_path file_contents line column =
               |> List.map item_of_ide_decl
           | None ->
               (* The matching import references a module we haven't loaded *)
-              [] )
+              [])
       (* We only try to add imports for capital aliases. Once we've got
        *  proper scoping information this can be improved *)
       | None when is_capital alias ->
@@ -172,7 +172,7 @@ let completions index project_root file_path file_contents line column =
               index
           in
           let completions =
-            Lib.List.concat_map
+            List.concat_map
               (fun (p, ds) ->
                 if p = Filename.basename file_path then
                   (* Self-imports are not allowed *)
@@ -180,18 +180,23 @@ let completions index project_root file_path file_contents line column =
                 else
                   List.map
                     (fun d ->
+                      let item = item_of_ide_decl d in
                       Lsp_t.
                         {
-                          (item_of_ide_decl d) with
+                          item with
                           completion_item_additionalTextEdits =
                             Some [ import_edit p ];
-                          completion_item_detail = Some p;
+                          completion_item_detail =
+                            Option.map
+                              (fun ty ->
+                                Printf.sprintf "%s (import from \"%s\")" ty p)
+                              item.completion_item_detail;
                         })
                     ds)
               possible_imports
           in
           completions
-      | None -> [] )
+      | None -> [])
 
 let completion_handler index project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in

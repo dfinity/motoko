@@ -1,8 +1,8 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query fun(0x4449444c0001680103caffee)
-← completed: 0x4449444c0001680103caffee
-→ query fun2(0x4449444c016e680100010103caffee)
-← completed: 0x4449444c016e680100010103caffee
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query fun(principal "w7x7r-cok77-xa")
+← replied: (principal "w7x7r-cok77-xa")
+→ query fun2(opt principal "w7x7r-cok77-xa")
+← replied: (opt principal "w7x7r-cok77-xa")

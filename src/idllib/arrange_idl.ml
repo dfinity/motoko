@@ -51,13 +51,15 @@ and typ t = match t.it with
   | PrimT p             -> "PrimT" $$ [Atom (string_of_prim p)]
   | RecordT ts        -> "RecordT" $$ List.map typ_field ts
   | VecT t       -> "VecT" $$ [typ t]
+  | BlobT -> Atom "BlobT"
   | OptT t              -> "OptT" $$ [typ t]
   | VariantT cts        -> "VariantT" $$ List.map typ_field cts
   | FuncT (ms, s, t) -> "FuncT" $$ List.map typ s @ List.map typ t @ List.map mode ms
   | ServT ts -> "ServT" $$ List.map typ_meth ts
+  | ClassT (ts, t) -> "ClassT" $$ List.map typ ts @ [typ t]
   | PrincipalT -> Atom "PrincipalT"
   | PreT -> Atom "PreT"
-                        
+
 and dec d = match d.it with
   | TypD (x, t) ->
      "TypD" $$ [id x] @ [typ t]
@@ -68,7 +70,7 @@ and actor a = match a with
   | None -> Atom "NoActor"
   | Some t -> 
      "Actor" $$ [typ t]
-    
+
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 
@@ -81,6 +83,8 @@ let quote ppf s =
   pp_open_hbox ppf ();
   str ppf "\""; str ppf (Lib.String.lightweight_escaped s); str ppf "\"";
   pp_close_box ppf ()
+let text ppf s =
+  if Escape.needs_candid_quote s then quote ppf s else str ppf s
 
 let rec pp_typ ppf t =
   pp_open_hovbox ppf 1;
@@ -89,6 +93,7 @@ let rec pp_typ ppf t =
   | PrimT p -> str ppf (string_of_prim p)
   | OptT t -> kwd ppf "opt"; pp_typ ppf t
   | VecT t -> kwd ppf "vec"; pp_typ ppf t
+  | BlobT -> str ppf "blob"
   | RecordT fs -> pp_fields ppf "record" fs
   | VariantT fs -> pp_fields ppf "variant" fs
   | FuncT (ms,s,t) ->
@@ -102,27 +107,33 @@ let rec pp_typ ppf t =
      str ppf "}";
      pp_close_box ppf ()
   | PrincipalT -> str ppf "principal"
+  | ClassT _ -> assert false
   | PreT -> assert false);
   pp_close_box ppf ()
 and pp_fields ppf name fs =
+  let is_variant = name = "variant" in
   if List.length fs > 1 then
     pp_open_vbox ppf 2
   else
     pp_open_hovbox ppf 2;
   str ppf (name ^ " {");
-  List.iter (fun f -> pp_print_cut ppf (); pp_field ppf f; str ppf ";") fs;
+  List.iter (fun f -> pp_print_cut ppf (); pp_field ppf is_variant f; str ppf ";") fs;
   pp_print_break ppf 0 (-2);
   str ppf "}";
   pp_close_box ppf ()
-and pp_field ppf f =
+and pp_field ppf is_variant f =
+  let hide_type = is_variant && f.it.typ.it = PrimT Null in
   pp_open_hovbox ppf 1;
   (match f.it.label.it with
-  | Id n -> str ppf (Lib.Uint32.to_string n); kwd ppf ":"
   | Named name ->
-     quote ppf name;
-     kwd ppf ":"
-  | Unnamed _ -> ());
-  pp_typ ppf f.it.typ;
+     text ppf name;
+     if not hide_type then
+       (kwd ppf ":"; pp_typ ppf f.it.typ)
+  | Id n ->
+     str ppf (Lib.Uint32.to_string n);
+     if not hide_type then
+       (kwd ppf ":"; pp_typ ppf f.it.typ)
+  | Unnamed _ -> pp_typ ppf f.it.typ);
   pp_close_box ppf ()
 
 and pp_func ppf (ms,s,t) =
@@ -143,7 +154,7 @@ and pp_args ppf fs =
 
 and pp_meth ppf m =
   pp_open_hovbox ppf 1;
-  quote ppf m.it.var.it;
+  text ppf m.it.var.it;
   kwd ppf ":";
   (match m.it.meth.it with
    | FuncT (ms,s,t) -> pp_func ppf (ms,s,t)
@@ -194,9 +205,17 @@ let pp_actor ppf actor =
      kwd ppf ":";
      str ppf x.it;
      pp_close_box ppf ()
+  | Some {it=ClassT(args, t); _} ->
+     pp_open_hbox ppf ();
+     kwd ppf "service";
+     kwd ppf ":";
+     pp_args ppf args;
+     str ppf " -> ";
+     pp_typ ppf t;
+     pp_close_box ppf ()
   | _ -> assert false);
   pp_print_cut ppf ()
-  
+
 let pp_prog ppf prog =
   pp_open_vbox ppf 0;
   List.iter (fun d ->

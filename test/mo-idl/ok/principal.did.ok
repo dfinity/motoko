@@ -1,3 +1,3 @@
 service : {
-  "getCaller": () -> (principal, nat32);
+  getCaller: () -> (principal, blob);
 }

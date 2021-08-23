@@ -96,7 +96,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
                    keq: (K,K)->Bool)
     : AssocList<K,V>
   {
-    func rec(al1:AssocList<K,V>) : AssocList<K,V> = {
+    func rec(al1:AssocList<K,V>) : AssocList<K,V> {
       switch al1 {
         case (null) null;
         case (?((k, v1), tl)) {
@@ -157,10 +157,10 @@ public type AssocList<K,V> = List.List<(K,V)>;
                      vbin:(?V,?W)->X)
     : AssocList<K,X>
   {
-    func rec1(al1:AssocList<K,V>) : AssocList<K,X> = {
+    func rec1(al1:AssocList<K,V>) : AssocList<K,X> {
       switch al1 {
         case (null) {
-               func rec2(al2:AssocList<K,W>) : AssocList<K,X> = {
+               func rec2(al2:AssocList<K,W>) : AssocList<K,X> {
                  switch al2 {
                  case (null) null;
                  case (?((k, v2), tl)) {
@@ -199,7 +199,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
                      vbin:(V,W)->X)
     : AssocList<K,X>
   {
-    func rec(al1:AssocList<K,V>) : AssocList<K,X> = {
+    func rec(al1:AssocList<K,V>) : AssocList<K,X> {
       switch al1 {
         case (null) { null };
         case (?((k, v1), tl)) {
@@ -223,7 +223,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
                    cons:(K,V,X)->X)
     : X
   {
-    func rec(al:AssocList<K,V>) : X = {
+    func rec(al:AssocList<K,V>) : X {
       switch al {
       case null nil;
       case (?((k,v),t)) { cons(k, v, rec(t)) };

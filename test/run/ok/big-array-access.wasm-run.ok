@@ -1,0 +1,13 @@
+Array index out of bounds
+Error: failed to run main module `_out/big-array-access.wasm`
+
+Caused by:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: rts_trap
+         1: bigint_to_word32_trap_with
+         2: Array.idx_bigint
+         3: init
+         4: _start
+       

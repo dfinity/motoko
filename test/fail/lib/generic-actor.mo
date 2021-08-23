@@ -1,0 +1,1 @@
+actor class C<T>(){};

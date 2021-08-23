@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <title>Motoko test suite runner</title>
+ </head>
+ <body>
+  <h1>Motoko test suite runner</h1>
+  <script src="browser-debug.js"></script>
+  <select onChange="loadTest()" id="test">
+    <option value="none">Select test…</option>
+  </select>
+  <button onClick="loadTest()" title="Load wasm from disk">Reload</button>
+  <button onClick="runWasmModule()" title="Do not load" >Rerun</button>
+  <button onClick="updateHexDump()" title="Updates the hex dump view">Dump memory</button>
+  <br/>
+  Tip: Open debugger before loading the test!
+  <br/>
+  Use 'show($v)' to decode the raw value of Motoko identifier 'v' currently in scope as Wasm
+  local 'v'.
+  <br/>
+  You can use 'show($v)' from both the "Console" and "Watch" window.
+  <br/>
+  <textarea cols="80" rows="25" id="output" readonly="">(Output will appear here.)</textarea>
+  <textarea cols="80" rows="25" id="memory" readonly="">(Memory content will appear here, when you request it. Cannot be used while debugging, unfortunately.)</textarea>
+ </body>
+</html>

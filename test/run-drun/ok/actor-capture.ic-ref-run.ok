@@ -1,0 +1,4 @@
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob "DIDL\00\01q\05Hello"; kca_xin = blob "\…
+← replied: ()

@@ -1,0 +1,26 @@
+name: "build"
+on: push
+jobs:
+  tests:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v13
+
+    # We are using the ic-hs-test cachix cache that is also used by
+    # dfinity/ic-hs. This is partly laziness (on need to set up a separate
+    # cache), but also to get the ic-ref-test binary without rebuilding
+    - uses: cachix/cachix-action@v10
+      with:
+        name: ic-hs-test
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    # until https://github.com/cachix/cachix-action/issues/86 is fixed:
+    - run: cachix watch-store ic-hs-test &
+
+    - name: "nix-build"
+      run: nix-build --max-jobs 4 -A all-systems-go

@@ -1,3 +1,6 @@
-(** Starts the language server against the given entry point.
- ** The flag enables debug messages *)
-val start : string -> bool -> 'a
+val start :
+  string (** The entry point *) ->
+  bool (** Log debug messages to ls.log? *) ->
+  int option
+  (** Listen on the given port rather than communicating via stdin/out? *) ->
+  'a

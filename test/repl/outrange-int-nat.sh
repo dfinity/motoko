@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests that the repl Int* and Nat* types properly trap
-${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -i <<__END__
-import Prim "mo:prim";
+moc -i <<__END__
+import Prim "mo:⛔";
 Prim.intToInt8 0x7F;
 Prim.intToInt8 0x80;
 Prim.intToInt8 (-0x80);

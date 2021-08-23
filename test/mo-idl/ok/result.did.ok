@@ -1,29 +1,29 @@
-type Result_2 = 
+type Result_1 = 
  variant {
-   "err": text;
-   "ok": nat;
+   err: text;
+   ok: nat;
  };
 type Result3 = 
  variant {
-   "err": Result2;
-   "ok": null;
+   err: Result2;
+   ok;
  };
-type Result2_2 = 
+type Result2_1 = 
  variant {
-   "err": Result_2;
-   "ok": nat;
+   err: Result_1;
+   ok: nat;
  };
 type Result2 = 
  variant {
-   "err": Result;
-   "ok": null;
+   err: Result;
+   ok;
  };
 type Result = 
  variant {
-   "err": text;
-   "ok": null;
+   err: text;
+   ok;
  };
 service : {
-  "f": (opt nat) -> (Result_2);
-  "g": (Result3) -> (Result2_2);
+  f: (opt nat) -> (Result_1);
+  g: (Result3) -> (Result2_1);
 }

@@ -1,8 +1,8 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query foo(0x4449444c0000)
-← completed: 0x4449444c01690001000105c0fefed00d
-→ query bar(0x4449444c0000)
-← completed: 0x4449444c0169000100010dc0fefed00dcafebabedeadbeef
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query foo()
+← replied: (service "bfozs-kwa73-7nadi")
+→ query bar()
+← replied: (service "lsoqw-g6a73-7nado-k725l-5xvnx-3xq")

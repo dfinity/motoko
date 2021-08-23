@@ -12,6 +12,7 @@ let obj_sort s = match s with
   | Object -> Atom "Object"
   | Actor -> Atom "Actor"
   | Module -> Atom "Module"
+  | Memory -> Atom "Memory"
 
 let func_sort s = match s with
   | Local -> "Local"
@@ -31,10 +32,6 @@ let prim p = match p with
   | Int16 -> Atom "Int16"
   | Int32 -> Atom "Int32"
   | Int64 -> Atom "Int64"
-  | Word8 -> Atom "Word8"
-  | Word16 -> Atom "Word16"
-  | Word32 -> Atom "Word32"
-  | Word64 -> Atom "Word64"
   | Float -> Atom "Float"
   | Char -> Atom "Char"
   | Text -> Atom "Text"

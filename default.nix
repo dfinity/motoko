@@ -1,41 +1,57 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
+
+  # version to embed in the release. Used by `.github/workflows/release.yml`
+  releaseVersion ? null,
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-let subpath = p: import ./nix/gitSource.nix p; in
+let subpath = import ./nix/gitSource.nix; in
 
-let dfinity-src =
-  let env = builtins.getEnv "DFINITY_SRC"; in
-  if env != "" then env else nixpkgs.sources.dfinity; in
-let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
-let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
-
-let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
-let ic-ref = ic-ref-pkgs.ic-ref; in
+let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
+let ic-ref-run =
+  # copy out the binary, to remove dependencies on the libraries
+  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
+      mkdir -p $out/bin
+      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
+  ''; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  llvmBuildInputs = [
-    nixpkgs.clang # for native building
-    nixpkgs.clang_9 # for wasm building
-    nixpkgs.lld_9 # for wasm building
+  rtsBuildInputs = with nixpkgs; [
+    # pulls in clang (wrapped) and clang-10 (unwrapped)
+    llvmPackages_10.clang
+    # pulls in wasm-ld
+    llvmPackages_10.lld
+    llvmPackages_10.bintools
+    rustc-nightly
+    cargo-nightly
+    xargo
+    wasmtime
+    rust-bindgen
+    rustfmt
   ];
 
-  # When compiling natively, we want to use `clang` (which is a nixpkgs
-  # provided wrapper that sets various include paths etc).
-  # But for some reason it does not handle building for Wasm well, so
-  # there we use plain clang-9. There is no stdlib there anyways.
   llvmEnv = ''
-    export CLANG="clang"
-    export WASM_CLANG="clang-9"
+    # When compiling to wasm, we want to have more control over the flags,
+    # so we do not use the nix-provided wrapper in clang
+    export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
+    # because we use the unwrapped clang, we have to pass in some flags/paths
+    # that otherwise the wrapped clang would take care for us
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_10.clang-unwrapped.lib}"
+
+    # When compiling natively, we want to use `clang` (which is a nixpkgs
+    # provided wrapper that sets various include paths etc).
+    # But for some reason it does not handle building for Wasm well, so
+    # there we use plain clang-10. There is no stdlib there anyways.
+    export CLANG="${nixpkgs.clang_10}/bin/clang"
   '';
 in
 
@@ -55,6 +71,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
     pkgs.ocamlPackages.wasm
@@ -62,46 +79,66 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
+    pkgs.ocamlPackages.obelisk
+    pkgs.ocamlPackages.uucp
+    pkgs.perl
+    pkgs.removeReferencesTo
   ]; in
 
-let darwin_standalone =
-  let common = import nixpkgs.sources.common { inherit (nixpkgs) system; }; in
-  common.lib.standaloneRust; in
-
-let ocaml_exe = name: bin:
+let ocaml_exe = name: bin: rts:
   let
     profile =
       if is_static
       then "release-static"
       else "release";
-
-    drv = staticpkgs.stdenv.mkDerivation {
+  in
+    staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if is_static then "allowedRequisites" else null} = [];
+      allowedRequisites = [];
 
       src = subpath ./src;
 
       buildInputs = commonBuildInputs staticpkgs;
 
+      MOTOKO_RELEASE = releaseVersion;
+
+      # we only need to include the wasm statically when building moc, not
+      # other binaries
       buildPhase = ''
+        patchShebangs .
+      '' + nixpkgs.lib.optionalString (rts != null)''
+        ./rts/gen.sh ${rts}/rts
+      '' + ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
       '';
 
       installPhase = ''
         mkdir -p $out/bin
         cp --verbose --dereference ${bin} $out/bin
+      '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
+        # there are references to darwin system libraries
+        # in the binaries. But curiously, we can remove them
+        # an the binaries still work. They are essentially static otherwise.
+        remove-references-to \
+          -t ${nixpkgs.darwin.Libsystem} \
+          -t ${nixpkgs.darwin.CF} \
+          -t ${nixpkgs.libiconv} \
+          $out/bin/*
+      '' + ''
+        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # Let's remove that, too
+        remove-references-to \
+          -t ${staticpkgs.ocamlPackages.menhir} \
+          $out/bin/*
+        # sanity check
+        $out/bin/* --help >/dev/null
       '';
     };
-  in
-    # Make standalone on darwin (nothing to do on linux, is static)
-    if nixpkgs.stdenv.isDarwin
-    then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
-    else drv;
 
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";
@@ -114,168 +151,242 @@ let ocaml_exe = name: bin:
 in
 
 rec {
-  rts = stdenv.mkDerivation {
-    name = "moc-rts";
+  rts =
+    let
+      # We run this on motoko-rts-tests, to get the union of all
+      # dependencies
+      rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
+        name = "motoko-rts-deps";
+        src = subpath ./rts;
+        sourceRoot = "rts/motoko-rts-tests";
+        sha256 = "0sy7jglz9pxw2lz0qjyplchcfn78d7789sd93xwybisamjynlniy";
+        copyLockfile = true;
+      };
+    in
 
-    src = subpath ./rts;
-    nativeBuildInputs = [ nixpkgs.makeWrapper ];
+    stdenv.mkDerivation {
+      name = "moc-rts";
 
-    buildInputs = llvmBuildInputs;
+      src = subpath ./rts;
+      nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo ];
 
-    preBuild = ''
-      ${llvmEnv}
-      export TOMMATHSRC=${nixpkgs.sources.libtommath}
-      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
-      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-    '';
+      buildInputs = rtsBuildInputs;
 
-    doCheck = true;
+      preBuild = ''
+        export XARGO_HOME=$PWD/xargo-home
+        export CARGO_HOME=$PWD/cargo-home
 
-    checkPhase = ''
-      ./test_rts
-    '';
+        # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
+        mkdir -p $CARGO_HOME
+        echo "Using vendored sources from ${rustDeps}"
+        unpackFile ${rustDeps}
+        cat > $CARGO_HOME/config <<__END__
+          [source."crates-io"]
+          "replace-with" = "vendored-sources"
 
-    installPhase = ''
-      mkdir -p $out/rts
-      cp mo-rts.wasm $out/rts
-    '';
-  };
+          [source."vendored-sources"]
+          "directory" = "$(stripHash ${rustDeps})"
+        __END__
 
-  moc-bin = ocaml_exe "moc-bin" "moc";
-  mo-ld = ocaml_exe "mo-ld" "mo-ld";
-  mo-ide = ocaml_exe "mo-ide" "mo-ide";
-  didc = ocaml_exe "didc" "didc";
-  deser = ocaml_exe "deser" "deser";
+        ${llvmEnv}
+        export TOMMATHSRC=${nixpkgs.sources.libtommath}
+        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
 
-  moc = nixpkgs.symlinkJoin {
-    name = "moc";
-    paths = [ moc-bin rts ];
-    buildInputs = [ nixpkgs.makeWrapper ];
-    postBuild = ''
-      wrapProgram $out/bin/moc \
-        --set-default MOC_RTS "$out/rts/mo-rts.wasm"
-    '';
-  };
+      '';
+
+      doCheck = true;
+
+      checkPhase = ''
+	make test
+      '';
+
+      installPhase = ''
+        mkdir -p $out/rts
+        cp mo-rts.wasm $out/rts
+        cp mo-rts-debug.wasm $out/rts
+      '';
+
+      # This needs to be self-contained. Remove mention of
+      # nix path in debug message.
+      preFixup = ''
+        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+      '';
+      allowedRequisites = [];
+    };
+
+  moc = ocaml_exe "moc" "moc" rts;
+  mo-ld = ocaml_exe "mo-ld" "mo-ld" null;
+  mo-ide = ocaml_exe "mo-ide" "mo-ide" null;
+  mo-doc = ocaml_exe "mo-doc" "mo-doc" null;
+  didc = ocaml_exe "didc" "didc" null;
+  deser = ocaml_exe "deser" "deser" null;
+  candid-tests = ocaml_exe "candid-tests" "candid-tests" null;
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-ref;
+  inherit ic-ref-run;
 
-  tests =
-    let testDerivationArgs = {
+  tests = let
+    testDerivationArgs = {
       # by default, an empty source directory. how to best get an empty directory?
       src = builtins.path { name = "empty"; path = ./nix; filter = p: t: false; };
       phases = "unpackPhase checkPhase installPhase";
       doCheck = true;
       installPhase = "touch $out";
-    }; in
-    let testDerivation = args:
-      stdenv.mkDerivation (testDerivationArgs // args); in
-    let ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
+    };
+
+    testDerivation = args:
+      stdenv.mkDerivation (testDerivationArgs // args);
+
+    ocamlTestDerivation = args:
+      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
 
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
-    let test_subdir = dir: deps:
+    # so include from test/ only the common files, plus everything in test/${dir}/
+    test_src = dir:
+      with nixpkgs.lib;
+      cleanSourceWith {
+        filter = path: type:
+          let relPath = removePrefix (toString ./test + "/") (toString path); in
+          type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+        src = subpath ./test;
+        name = "test-${dir}-src";
+      };
+
+    test_subdir = dir: deps:
       testDerivation {
-        name = "test-${dir}";
-        # include from test/ only the common files, plus everything in test/${dir}/
-        src =
-          with nixpkgs.lib;
-          cleanSourceWith {
-            filter = path: type:
-              let relPath = removePrefix (toString ./test + "/") (toString path); in
-              type != "directory" || hasPrefix "${dir}/" "${relPath}/";
-            src = subpath ./test;
-            name = "test-${dir}-src";
-        };
+        src = test_src dir;
         buildInputs =
           deps ++
-          [ nixpkgs.wabt
-            nixpkgs.bash
-            nixpkgs.perl
-            nixpkgs.getconf
-            nixpkgs.moreutils
-            nixpkgs.nodejs-10_x
-            filecheck
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
+          [ filecheck
             wasmtime
-            nixpkgs.sources.esm
           ] ++
-          llvmBuildInputs;
+          rtsBuildInputs;
 
         checkPhase = ''
             patchShebangs .
             ${llvmEnv}
-            export MOC=moc
-            export MO_LD=mo-ld
-            export DIDC=didc
-            export DESER=deser
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
-            # run this once to work around self-unpacking-race-condition
-            type -p drun && drun --version
             make -C ${dir}
           '';
-      }; in
+      };
 
-    let perf_subdir = dir: deps:
+    # Run a variant with sanity checking on
+    snty_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks";
+      });
+
+    compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      });
+
+    perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
-          export PERF_OUT=$out
+          mkdir -p $out
+          export PERF_OUT=$out/stats.csv
         '' + args.checkPhase + ''
-          if ! grep -q ^gas/ $out
+          # export stats to hydra
+          mkdir -p $out/nix-support
+          tr '/;' '_\t' < $out/stats.csv > $out/nix-support/hydra-metrics
+
+          # sanity check
+          if ! grep -q ^gas/ $out/stats.csv
           then
             echo "perf stats do not include gas. change in drun output format?" >&2
             exit 1
           fi
         '';
-      }); in
+      });
 
-    let qc = testDerivation {
-      name = "test-qc";
-      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
+    qc = testDerivation {
+      buildInputs =
+        [ moc wasmtime haskellPackages.qc-motoko nixpkgs.drun ];
       checkPhase = ''
+	export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
       '';
-    }; in
+    };
 
-    let lsp = testDerivation {
-      name = "test-lsp";
+    lsp = testDerivation {
       src = subpath ./test/lsp-int-test-project;
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
+	export LANG=C.utf8 # for haskell
         lsp-int ${mo-ide}/bin/mo-ide .
       '';
-    }; in
+    };
 
-    let unit-tests = ocamlTestDerivation {
-      name = "unit-tests";
+    unit = ocamlTestDerivation {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
       '';
       installPhase = ''
         touch $out
       '';
-    }; in
-
-    { run       = test_subdir "run"       [ moc ] ;
-      run-drun  = test_subdir "run-drun"  [ moc drun ic-ref ];
-      perf      = perf_subdir "perf"      [ moc drun ];
-      fail      = test_subdir "fail"      [ moc ];
-      repl      = test_subdir "repl"      [ moc ];
-      ld        = test_subdir "ld"        [ mo-ld ];
-      idl       = test_subdir "idl"       [ didc ];
-      mo-idl    = test_subdir "mo-idl"    [ moc didc ];
-      trap      = test_subdir "trap"      [ moc ];
-      run-deser = test_subdir "run-deser" [ deser ];
-      inherit qc lsp unit-tests;
     };
+
+    candid = testDerivation {
+      buildInputs = [ moc wasmtime candid-tests ];
+      checkPhase = ''
+        candid-tests -i ${nixpkgs.sources.candid}/test
+      '';
+    };
+
+    profiling-graphs = testDerivation {
+      src = test_src "perf";
+      buildInputs =
+        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+        [ moc nixpkgs.drun ];
+      checkPhase = ''
+        patchShebangs .
+        type -p moc && moc --version
+        type -p drun && drun --version
+        ./profile-report.sh
+      '';
+      installPhase = ''
+        mv _profile $out;
+        mkdir -p $out/nix-support
+        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+      '';
+    };
+
+
+    fix_names = builtins.mapAttrs (name: deriv:
+      deriv.overrideAttrs (_old: { name = "test-${name}"; })
+    );
+
+  in fix_names ({
+      run        = test_subdir "run"        [ moc ] ;
+      run-dbg    = snty_subdir "run"        [ moc ] ;
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      fail       = test_subdir "fail"       [ moc ];
+      repl       = test_subdir "repl"       [ moc ];
+      ld         = test_subdir "ld"         [ mo-ld ];
+      idl        = test_subdir "idl"        [ didc ];
+      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      trap       = test_subdir "trap"       [ moc ];
+      run-deser  = test_subdir "run-deser"  [ deser ];
+      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      inherit qc lsp unit candid profiling-graphs;
+    }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
     name = "samples";
@@ -283,7 +394,6 @@ rec {
     buildInputs = [ moc ];
     buildPhase = ''
       patchShebangs .
-      export MOC=moc
       make all
     '';
     installPhase = ''
@@ -291,76 +401,77 @@ rec {
     '';
   };
 
-  js = stdenv.mkDerivation {
-    name = "moc.js";
+  js =
+    let mk = n:
+      stdenv.mkDerivation {
+        name = "${n}.js";
+        src = subpath ./src;
+        buildInputs = commonBuildInputs nixpkgs ++ [
+          nixpkgs.ocamlPackages.js_of_ocaml
+          nixpkgs.ocamlPackages.js_of_ocaml-ppx
+          nixpkgs.nodejs-10_x
+        ];
+        buildPhase = ''
+          patchShebangs .
+          '' + nixpkgs.lib.optionalString (rts != null)''
+          ./rts/gen.sh ${rts}/rts/
+          '' + ''
+          make DUNE_OPTS="--profile=release" ${n}.js
+        '';
+        installPhase = ''
+          mkdir -p $out
+          mkdir -p $out/bin
+          cp --verbose --dereference ${n}.js $out/bin
+        '';
+        doInstallCheck = true;
+        test = ./test + "/test-${n}.js";
+        installCheckPhase = ''
+          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
+        '';
+      };
+    in
+    {
+      moc = mk "moc";
+      moc_interpreter = mk "moc_interpreter";
+      didc = mk "didc";
+      recurseForDerivations = true;
+    };
 
-    src = subpath ./src;
+  inherit (nixpkgs) wabt wasmtime wasm;
 
-    buildInputs = commonBuildInputs nixpkgs ++ [
-      nixpkgs.ocamlPackages.js_of_ocaml
-      nixpkgs.ocamlPackages.js_of_ocaml-ppx
-      nixpkgs.nodejs-10_x
-    ];
-
-    buildPhase = ''
-      make moc.js
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      cp -v moc.js $out
-      cp -vr ${rts}/rts $out
-    '';
-
-    doInstallCheck = true;
-
-    installCheckPhase = ''
-      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
-    '';
-  };
-
-  inherit drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
-  wabt = nixpkgs.wabt;
-  wasmtime = nixpkgs.wasmtime;
-  wasm = nixpkgs.wasm;
+  inherit (nixpkgs) xargo;
 
-  users-guide = stdenv.mkDerivation {
-    name = "users-guide";
-    src = subpath ./guide;
-    buildInputs =
-      with nixpkgs;
-      let tex = texlive.combine {
-        inherit (texlive) scheme-small xetex newunicodechar;
-      }; in
-      [ pandoc tex bash ];
+  # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
+  inherit (nixpkgs) gitMinimal;
 
-    NIX_FONTCONFIG_FILE =
-      with nixpkgs;
-      nixpkgs.makeFontsConf { fontDirectories = [ gyre-fonts inconsolata unifont lmodern lmmath ]; };
+  docs = stdenv.mkDerivation {
+    name = "docs";
+    src = subpath ./doc;
+    buildInputs = with nixpkgs; [ pandoc bash antora gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
+      # Make this a git repo, to please antora
+      git -C .. init
+      git add .
+      git config user.name "Nobody"
+      git config user.email "nobody@example.com"
+      git commit -m 'Dummy commit for antora'
+      export HOME=$PWD
+      export MOC_JS=${js.moc}/bin/moc.js
+      export MOTOKO_BASE=${base-src}
       make
     '';
 
     installPhase = ''
       mkdir -p $out
-      mv * $out/
-      rm $out/Makefile
+      mv overview-slides.html $out/
+      mv build/site/* $out/
       mkdir -p $out/nix-support
-      echo "report guide $out index.html" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
-  stdlib = stdenv.mkDerivation {
-    name = "stdlib";
-    src = subpath ./stdlib/src;
-    phases = "unpackPhase installPhase";
-    installPhase = ''
-      mkdir -p $out
-      cp ./*.mo $out
+      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
+      echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -372,13 +483,36 @@ rec {
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
     checkPhase = ''
-      ocamlformat --check languageServer/*.{ml,mli}
+      ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
     '';
   };
 
-  stdlib-tests = stdenv.mkDerivation {
-    name = "stdlib-tests";
-    src = subpath ./stdlib/test;
+  check-rts-formatting = stdenv.mkDerivation {
+    name = "check-rts-formatting";
+    buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
+    src = subpath ./rts;
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    checkPhase = ''
+      cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
+      cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
+    '';
+    installPhase = "touch $out";
+  };
+
+  base-src = stdenv.mkDerivation {
+    name = "base-src";
+    phases = "unpackPhase installPhase";
+    src = nixpkgs.sources.motoko-base + "/src";
+    installPhase = ''
+      mkdir -p $out
+      cp -rv * $out
+    '';
+  };
+
+  base-tests = stdenv.mkDerivation {
+    name = "base-tests";
+    src = nixpkgs.sources.motoko-base;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     installPhase = "touch $out";
@@ -387,65 +521,43 @@ rec {
       moc
     ];
     checkPhase = ''
-      make MOC=moc STDLIB=${stdlib}
+      make MOC=moc VESSEL_PKGS="--package matchers ${nixpkgs.sources.motoko-matchers}/src" -C test
     '';
   };
 
-  examples =
-    let example_subdir = dir: stdenv.mkDerivation {
-      name = dir;
-      src = subpath "./stdlib/examples/${dir}";
-      phases = "unpackPhase checkPhase installPhase";
-      doCheck = true;
-      installPhase = "touch $out";
-      buildInputs = [
-        nixpkgs.bash
-        moc
-        nixpkgs.wasmtime
-      ];
-      checkPhase = ''
-        make MOC=moc STDLIB=${stdlib}
-      '';
-    }; in
-    {
-      actorspec        = example_subdir "actorspec";
-      rx               = example_subdir "rx";
-      produce-exchange = example_subdir "produce-exchange";
-    };
-
-
-  stdlib-doc = stdenv.mkDerivation {
-    name = "stdlib-doc";
-    src = subpath ./stdlib/doc;
-    outputs = [ "out" "adocs" ];
-    buildInputs = with nixpkgs;
-      [ bash perl asciidoctor html-proofer ];
-    buildPhase = ''
-      patchShebangs .
-      make STDLIB=${stdlib}
-    '';
-
+  guide-examples-tc =  stdenv.mkDerivation {
+    name = "guid-examples-tc";
+    src = subpath doc/modules/language-guide/examples;
+    phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
-    # These ones are needed for htmlproofer
-    LOCALE_ARCHIVE = nixpkgs.lib.optionalString nixpkgs.stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
-    LANG = "en_US.UTF-8";
-    LC_TYPE = "en_US.UTF-8";
-    LANGUAGE = "en_US.UTF-8";
+    MOTOKO_BASE = base-src;
+    installPhase = "touch $out";
+    checkInputs = [
+      moc
+    ];
     checkPhase = ''
-      htmlproofer --disable-external _out/
+      patchShebangs .
+      ./check.sh
     '';
+  };
 
+  base-doc = stdenv.mkDerivation {
+    name = "base-doc";
+    src = nixpkgs.sources.motoko-base;
+    phases = "unpackPhase buildPhase installPhase";
+    doCheck = true;
+    buildInputs = [ mo-doc ];
+    buildPhase = ''
+      mo-doc
+    '';
     installPhase = ''
       mkdir -p $out
-      mv _out/* $out/
+      cp -rv docs/* $out/
+
       mkdir -p $out/nix-support
       echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
-
-      mkdir -p $adocs
-      mv _build/*.adoc $adocs/
     '';
   };
-  stdlib-adocs = stdlib-doc.adocs;
 
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
@@ -456,61 +568,113 @@ rec {
       touch $out
     '';
 
+  # Checks that doc/modules/language-guide/examples/grammar.txt is up-to-date
+  check-grammar = stdenv.mkDerivation {
+      name = "check-grammar";
+      src = subpath ./src/gen-grammar;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
+      buildPhase = ''
+        patchShebangs .
+        ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
+        echo "If the following fails, please run:"
+        echo "nix-shell --command 'make -C src grammar'"
+        diff -r -U 3 ${./doc/modules/language-guide/examples/grammar.txt} expected
+        echo "ok, all good"
+      '';
+      installPhase = ''
+        touch $out
+      '';
+    };
+
+  check-error-codes = stdenv.mkDerivation {
+      name = "check-error-codes";
+      src = subpath ./test;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.python3 ];
+      buildPhase = ''
+      patchShebangs .
+      ./check-error-codes.py ${./src/lang_utils/error_codes.ml}
+      '';
+      installPhase = ''
+        touch $out
+      '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
       moc
       mo-ide
-      js
+      mo-doc
       didc
       deser
       samples
       rts
-      stdlib
-      stdlib-tests
-      stdlib-doc
-      stdlib-adocs
-      users-guide
-      ic-ref
+      base-src
+      base-tests
+      base-doc
+      docs
+      ic-ref-run
       shell
       check-formatting
+      check-rts-formatting
       check-generated
-    ] ++ builtins.attrValues tests
-      ++ builtins.attrValues examples;
+      check-grammar
+      check-error-codes
+    ] ++
+    builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
+    builtins.attrValues js;
   };
 
-  shell = nixpkgs.mkShell {
+  shell = stdenv.mkDerivation {
+    name = "motoko-shell";
+
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
     # both, while not actually building `moc`
     #
-
-    buildInputs =
-      let dont_build = [ moc mo-ld didc deser ]; in
+    propagatedBuildInputs =
+      let dont_build = [ moc mo-ld didc deser candid-tests ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
-        js.buildInputs ++
-        users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
-        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
+        js.moc.buildInputs ++
+        docs.buildInputs ++
+        builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
+        [ nixpkgs.ncurses
+          nixpkgs.ocamlPackages.merlin
+          nixpkgs.ocamlformat
+          nixpkgs.ocamlPackages.utop
+          nixpkgs.niv
+        ]
       ));
 
-    shellHook = llvmEnv;
+    shellHook = llvmEnv + ''
+      # Include our wrappers in the PATH
+      export PATH="${toString ./bin}:$PATH"
+      # some cleanup of environment variables otherwise set by nix-shell
+      # that would be confusing in interactive use
+      unset XDG_DATA_DIRS
+    '';
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
-    NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
-    LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    MOTOKO_BASE = base-src;
+    CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell
-    phases = ["dummyBuildPhase"];
-    dummyBuildPhase = ''
-      touch $out
+    # Also mention the dependencies in the output, so that after `nix-build -A
+    # shell` (or just `nix-build`) they are guaranteed to be present in the
+    # local nix store.
+    phases = ["installPhase" "fixupPhase"];
+    installPhase = ''
+      mkdir $out
     '';
     preferLocalBuild = true;
     allowSubstitutes = true;

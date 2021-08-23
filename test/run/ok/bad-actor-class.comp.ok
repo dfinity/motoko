@@ -1,0 +1,2 @@
+bad-actor-class.mo:1.1-1.18: type error [M0138], actor classes are not supported
+  (This is a limitation of the current version and flag -wasi-system-api.)

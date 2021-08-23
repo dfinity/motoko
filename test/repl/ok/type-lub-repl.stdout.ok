@@ -1,4 +1,4 @@
-Motoko 0.1 interpreter
+Motoko compiler (source XXX)
 > [null, ?42, ?(-25)] : [(?Int)]
 > [null, null] : [Null]
 > [{a = 42}, {b = 42}] : [{}]
@@ -10,18 +10,15 @@ Motoko 0.1 interpreter
 > [func, func] : [([Nat] -> Int)]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A>[Nat] -> Int)]
+> [func, func] : [(<A>([Nat]) -> Int)]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A>[Nat] -> Int)]
+> [func, func] : [(<A>([Nat]) -> Int)]
 > 3 : Int
 > -42 : Int
 > [func, func] : [(<A, B>([A], B) -> A)]
-> [func, func] : [(<A <: Nat, B <: Nat>([A], B) -> A)]
-> 1 : Nat
-> 11 : Nat
 >   [func, func] : [({#bar} -> ())]
-> > >   [[42], [25], [77]] : [[Any]]
+> > >   [[42], [25], [77]] : [Any]
 >   [42, 77, [1, 2, 3]] : [Any]
 > [77, [1, 2, 3], 42] : [Any]
 > [func, func] : [(Nat -> Int)]

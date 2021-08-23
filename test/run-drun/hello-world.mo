@@ -1,2 +1,2 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 Prim.debugPrint("Hello World!");

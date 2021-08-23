@@ -1,4 +1,4 @@
-Motoko 0.1 interpreter
+Motoko compiler (source XXX)
 -- Parsing stdin:
 > -- Parsing lib/empty.mo:
 -- Checking empty.mo:

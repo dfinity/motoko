@@ -1,0 +1,2 @@
+M0070.mo:1.1-1.5: type error [M0070], expected object type, but expression produces type
+  Bool

@@ -1,94 +1,94 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query any(0x4449444c00027f7103466f6f)
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query any(null, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027e710103466f6f)
+← replied: ()
+→ query any(true, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027d718080800803466f6f)
+← replied: ()
+→ query any(16777216, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027c718080800803466f6f)
+← replied: ()
+→ query any(+16777216, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027b71ab03466f6f)
+← replied: ()
+→ query any((171 : nat8), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027a71abcd03466f6f)
+← replied: ()
+→ query any((52651 : nat16), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027971deadbeef03466f6f)
+← replied: ()
+→ query any((4022250974 : nat32), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027871deadbeefcaffee6603466f6f)
+← replied: ()
+→ query any((7417146883396513246 : nat64), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027771ab03466f6f)
+← replied: ()
+→ query any((-85 : int8), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027671abcd03466f6f)
+← replied: ()
+→ query any((-12885 : int16), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027571deadbeef03466f6f)
+← replied: ()
+→ query any((-272716322 : int32), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027471deadbeefcaffee6603466f6f)
+← replied: ()
+→ query any((7417146883396513246 : int64), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027371deadbeef03466f6f)
+← replied: ()
+→ query any((-1.1802469e29 : float32), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c00027271deadbeefcaffee6603466f6f)
+← replied: ()
+→ query any((6.7440016273455695e187 : float64), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c0002717103466f6f03466f6f)
+← replied: ()
+→ query any("Foo", "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c0002707103466f6f)
+← replied: ()
+→ query any((null : reserved), "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
+← replied: ()
 → query any(0x4449444c000268710003466f6f)
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c000268710104deadbeef03466f6f)
+← replied: ()
+→ query any(principal "psokg-ww6vw-7o6", "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016e710200710003466f6f)
+← replied: ()
+→ query any(null, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016e710200710103466f6f03466f6f)
+← replied: ()
+→ query any(opt "Foo", "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016d710200710003466f6f)
+← replied: ()
+→ query any(vec {}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016d710200710103466f6f03466f6f)
+← replied: ()
+→ query any(vec {"Foo"}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016d71020071020003466f6f03466f6f)
+← replied: ()
+→ query any(vec {""; "Foo"}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016c0002007103466f6f)
+← replied: ()
+→ query any(record {}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016c01800175020071deadbeef03466f6f)
+← replied: ()
+→ query any(record {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016c02007180017502007101a0deadbeef03466f6f)
+← replied: ()
+→ query any(record {0 = "☃"; dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016b0180017502007100deadbeef03466f6f)
+← replied: ()
+→ query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016b0200718001750200710001a003466f6f)
+← replied: ()
+→ query any(variant {0 = "☃"}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
-→ query any(0x4449444c016b02007180017502007101deadbeef03466f6f)
+← replied: ()
+→ query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: 0x4449444c0000
+← replied: ()
 → query any(0x4449444c016602abcd0200710400deadbeef03466f6f)
 debug.print: ok: Foo
-← completed: 0x4449444c0000
+← replied: ()

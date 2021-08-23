@@ -46,14 +46,13 @@ struct
       (* `input_line` does not consume the trailing \r, so we need to trim it off here *)
       |> String.trim
       |> int_of_string
-      (* The protocol terminates the content length header with two \r\n s. Our `input_line`
-         call consumed the first, but we still need to eat the second one, so we add 2 to
-         the length of the message *)
-      |> ( + ) 2
     in
+    (* The protocol terminates the content length header with two \r\n s. Our `input_line`
+       call consumed the first, but we still need to eat the second one *)
+    ignore (input_line Channels.in_channel);
 
     let buffer = Buffer.create num in
-    Buffer.add_channel buffer stdin num;
+    Buffer.add_channel buffer Channels.in_channel num;
     let raw = String.trim (Buffer.contents buffer) in
     let msg =
       try Some (Lsp_j.incoming_message_of_string raw) with _ -> None

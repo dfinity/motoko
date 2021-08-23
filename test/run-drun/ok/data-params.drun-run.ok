@@ -1,47 +1,39 @@
-ingress System
-debug.print: 0
-debug.print: +1
-debug.print: +3
-debug.print: +6
-debug.print: +10
-debug.print: +1_010
-debug.print: +1_021
-debug.print: +6_021
-debug.print: +6_045
-debug.print: +6_091
-debug.print: +1_006_091
-debug.print: +1_006_105
-debug.print: +1_006_136
-debug.print: +1_006_171
-debug.print: +1_006_191
-debug.print: +1_006_211
-debug.print: +1_006_211
-debug.print: Foo1: 
-debug.print: +1_006_211
-debug.print: μεταγράψτε: 
-debug.print: +1_006_211
-debug.print: Foo2: 
-debug.print: +1_006_211
-debug.print: +10_000_001_006_211
-debug.print: +20_000_001_006_211
-debug.print: +1_006_211
-debug.print: +1_006_221
-debug.print: +1_006_211
-debug.print: +1_006_221
-debug.print: +1_006_231
-debug.print: +1_006_221
-debug.print: +1_267_650_600_228_229_401_496_704_211_597
-debug.print: +2_535_301_200_456_458_802_993_407_416_973
-debug.print: +1_006_221
-debug.print: +1_074_748_045
-debug.print: +2_148_489_868
-debug.print: +2_148_489_868
-debug.print: +2_148_489_869
-debug.print: +2_148_489_911
-debug.print: +2_148_489_869
-debug.print: +4_295_973_516
-debug.print: 42.000000
-debug.print: +4_295_973_558
-debug.print: 4295973600.000000
-debug.print: 42.000000
-ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: ("sendn", 0)
+debug.print: ("sendn", 1)
+debug.print: ("sendn", 2)
+debug.print: ("sendn", 3)
+debug.print: ("sendn", 4)
+debug.print: ("sendn", 1_000)
+debug.print: ("sendnn", 5, 6)
+debug.print: ("sendnn", 2_000, 3_000)
+debug.print: ("sendnested", 7, 8, 9)
+debug.print: ("sendarray", [10, 11, 12, 13])
+debug.print: ("sendopt", null)
+debug.print: ("sendopt", ?14)
+debug.print: ("sendrecord", {x = 15; y = 16})
+debug.print: ("sendrecord", {x = 17; y = 18})
+debug.print: ("sendVariant", #foo(20))
+debug.print: ("sendVariant", #bar(20))
+debug.print: ("sendLabeled", "Foo1: ")
+debug.print: ("sendLabeled", "μεταγράψτε: ")
+debug.print: ("sendLabeledOpt", ?"Foo2: ")
+debug.print: ("sendn", 10_000_000_000_000)
+debug.print: ("sendi", +10_000_000_000_000)
+debug.print: ("sendi", -20_000_000_000_000)
+debug.print: ("sendnats", 1, 2, 3, 4)
+debug.print: ("sendints", +1, +2, +3, +4)
+debug.print: ("sendints", -1, -2, -3, -4)
+debug.print: ("sendn", 1_267_650_600_228_229_401_496_703_205_376)
+debug.print: ("sendi", +1_267_650_600_228_229_401_496_703_205_376)
+debug.print: ("sendi", -2_535_301_200_456_458_802_993_406_410_752)
+debug.print: ("sendi", +1_073_741_824)
+debug.print: ("sendi", +1_073_741_823)
+debug.print: ("sendi", 0)
+debug.print: ("sendi", +1)
+debug.print: ("sendi", +42)
+debug.print: ("sendi", -42)
+debug.print: ("sendn", 2_147_483_647)
+debug.print: ("sendfloat", 42.000000)
+ingress Completed: Reply: 0x4449444c0000

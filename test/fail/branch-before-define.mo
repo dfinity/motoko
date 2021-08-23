@@ -1,7 +1,8 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 func f():() -> Int {
-  { label exit : (() -> Int) {
+  do {
+    label exit : (() -> Int) {
       func g() : Int = x; // reference x
       break exit (func() : Int{ g(); }); // early exit omits definition of x
       let x:Int = 666;

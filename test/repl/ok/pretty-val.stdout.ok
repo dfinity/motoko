@@ -1,0 +1,470 @@
+Motoko compiler (source XXX)
+> let Prim : module {...}
+>   let a_small : [var Text] = ["hello", "hello", "hello", "hello", "hello"]
+> let a_large :
+  [var Text] =
+  ["hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+   "hello", "hello", "hello", "hello"]
+>   let a_small : [Nat] = [0, 1, 2, 3, 4]
+> let a_large :
+  [Nat] =
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+   21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+   39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+   57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
+   75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92,
+   93, 94, 95, 96, 97, 98, 99]
+>   let a : <T>(T, T) -> [T] = func
+> let a1 : [{#A; #B}] = [#A, #B]
+> let a2 : [[{#A; #B}]] = [[#A, #B], [#A, #B]]
+> let a3 : [[[{#A; #B}]]] = [[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]]
+> let a4 :
+  [[[[{#A; #B}]]]] =
+  [[[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]],
+   [[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]]]
+> let a5 :
+  [[[[[{#A; #B}]]]]] =
+  [[[[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]],
+    [[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]]],
+   [[[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]],
+    [[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]]]]
+>   let r : <T, U>(T, U) -> {A : T; B : U} = func
+> let r1 : {A : {#A}; B : {#B}} = {A = #A; B = #B}
+> let r2 :
+  {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}} =
+  {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+> let r3 :
+  {
+    A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+    B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+  } =
+  {
+    A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+    B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+  }
+> let r4 :
+  {
+    A :
+      {
+        A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+        B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+      };
+    B :
+      {
+        A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+        B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+      }
+  } =
+  {
+    A =
+      {
+        A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+        B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+      };
+    B =
+      {
+        A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+        B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+      }
+  }
+> let r5 :
+  {
+    A :
+      {
+        A :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          };
+        B :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          }
+      };
+    B :
+      {
+        A :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          };
+        B :
+          {
+            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
+            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
+          }
+      }
+  } =
+  {
+    A =
+      {
+        A =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          };
+        B =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          }
+      };
+    B =
+      {
+        A =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          };
+        B =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          }
+      }
+  }
+>     let m : <T, U>(T, U) -> module {A : T; B : U} = func
+> let m1 : module {...}
+> let m2 : module {...}
+> let m3 : module {...}
+> let m4 : module {...}
+> let m5 : module {...}
+>   let f : <T, U>(T -> U) -> (U -> T) -> T -> U = func
+> let f1 : ({#B} -> {#A}) -> {#A} -> {#B} = func
+> let f2 :
+  (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
+  func
+> let f3 :
+  ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+    (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
+  func
+> let f4 :
+  (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+     (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+    ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+      (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
+  func
+> let f5 :
+  ((((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+      (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+     ((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+       (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+    (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
+       (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+      ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
+        (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
+  func
+>   let p : <T, U>(T, U) -> (T, U) = func
+> let p1 : ({#A}, {#B}) = (#A, #B)
+> let p2 : (({#A}, {#B}), ({#A}, {#B})) = ((#A, #B), (#A, #B))
+> let p3 :
+  ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))) =
+  (((#A, #B), (#A, #B)), ((#A, #B), (#A, #B)))
+> let p4 :
+  (((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
+   ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B})))) =
+  ((((#A, #B), (#A, #B)), ((#A, #B), (#A, #B))),
+   (((#A, #B), (#A, #B)), ((#A, #B), (#A, #B))))
+> let p5 :
+  ((((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
+    ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B})))),
+   (((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
+    ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))))) =
+  (((((#A, #B), (#A, #B)), ((#A, #B), (#A, #B))),
+    (((#A, #B), (#A, #B)), ((#A, #B), (#A, #B)))),
+   ((((#A, #B), (#A, #B)), ((#A, #B), (#A, #B))),
+    (((#A, #B), (#A, #B)), ((#A, #B), (#A, #B)))))
+>   let v : <T, U>(T, U) -> {#A : T; #B : U} = func
+> let v1 : {#A : {#Foo}; #B : {#Bar}} = #A(#Foo)
+> let v2 :
+  {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}} =
+  #A(#A(#Foo))
+> let v3 :
+  {
+    #A : {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
+    #B : {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
+  } =
+  #A(#A(#A(#Foo)))
+> let v4 :
+  {
+    #A :
+      {
+        #A :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
+        #B :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
+      };
+    #B :
+      {
+        #A :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
+        #B :
+          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
+      }
+  } =
+  #A(#A(#A(#A(#Foo))))
+> let v5 :
+  {
+    #A :
+      {
+        #A :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          };
+        #B :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          }
+      };
+    #B :
+      {
+        #A :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          };
+        #B :
+          {
+            #A :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              };
+            #B :
+              {
+                #A : {#A : {#Foo}; #B : {#Bar}};
+                #B : {#A : {#Foo}; #B : {#Bar}}
+              }
+          }
+      }
+  } =
+  #A(#A(#A(#A(#A(#Foo)))))
+>   let o : <T, U>(T) -> ?T = func
+> let o1 : ?Nat = ?666
+> let o2 : ?(?Nat) = ?(?666)
+> let o3 : ?(?(?Nat)) = ?(?(?666))
+> let o4 : ?(?(?(?Nat))) = ?(?(?(?666)))
+> let o5 : ?(?(?(?(?Nat)))) = ?(?(?(?(?666))))
+>         type c<T, U> = {type List<T> = ?(T, List<T>); A : T; B : U}
+let c : <T, U>(T, U) -> c<T, U> = func
+> let c1 :
+  {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}} =
+  {A = #A; B = #B}
+> let c2 :
+  {
+    type List<T> = ?(T, List<T>);
+    A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+    B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+  } =
+  {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+> let c3 :
+  {
+    type List<T> = ?(T, List<T>);
+    A :
+      {
+        type List<T> = ?(T, List<T>);
+        A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+        B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+      };
+    B :
+      {
+        type List<T> = ?(T, List<T>);
+        A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+        B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+      }
+  } =
+  {
+    A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+    B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+  }
+> let c4 :
+  {
+    type List<T> = ?(T, List<T>);
+    A :
+      {
+        type List<T> = ?(T, List<T>);
+        A :
+          {
+            type List<T> = ?(T, List<T>);
+            A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+            B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+          };
+        B :
+          {
+            type List<T> = ?(T, List<T>);
+            A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+            B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+          }
+      };
+    B :
+      {
+        type List<T> = ?(T, List<T>);
+        A :
+          {
+            type List<T> = ?(T, List<T>);
+            A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+            B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+          };
+        B :
+          {
+            type List<T> = ?(T, List<T>);
+            A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+            B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+          }
+      }
+  } =
+  {
+    A =
+      {
+        A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+        B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+      };
+    B =
+      {
+        A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+        B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+      }
+  }
+> let c5 :
+  {
+    type List<T> = ?(T, List<T>);
+    A :
+      {
+        type List<T> = ?(T, List<T>);
+        A :
+          {
+            type List<T> = ?(T, List<T>);
+            A :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              };
+            B :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              }
+          };
+        B :
+          {
+            type List<T> = ?(T, List<T>);
+            A :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              };
+            B :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              }
+          }
+      };
+    B :
+      {
+        type List<T> = ?(T, List<T>);
+        A :
+          {
+            type List<T> = ?(T, List<T>);
+            A :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              };
+            B :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              }
+          };
+        B :
+          {
+            type List<T> = ?(T, List<T>);
+            A :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              };
+            B :
+              {
+                type List<T> = ?(T, List<T>);
+                A : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}};
+                B : {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}}
+              }
+          }
+      }
+  } =
+  {
+    A =
+      {
+        A =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          };
+        B =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          }
+      };
+    B =
+      {
+        A =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          };
+        B =
+          {
+            A = {A = {A = #A; B = #B}; B = {A = #A; B = #B}};
+            B = {A = {A = #A; B = #B}; B = {A = #A; B = #B}}
+          }
+      }
+  }
+>   

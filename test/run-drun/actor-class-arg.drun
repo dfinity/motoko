@@ -1,0 +1,25 @@
+# test zero argument class, passing unit
+install $ID actor-class-arg/actor-class-arg-unit.mo "DIDL\x00\x00"
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID echo "DIDL\x00\x00"
+
+# test zero argument class, passing empty for unit arg
+reinstall $ID actor-class-arg/actor-class-arg-unit.mo ""
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID echo "DIDL\x00\x00"
+
+# test one argument class
+reinstall $ID actor-class-arg/actor-class-arg.mo "DIDL\x00\x01\x71\x05Hello"
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID echo "DIDL\x00\x00"
+
+# test two argument class
+reinstall $ID actor-class-arg/actor-class-arg-two.mo "DIDL\x00\x02\x71\x71\x05Hello\x05World"
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID echo "DIDL\x00\x00"
+
+# test non-shared two argument class
+reinstall $ID actor-class-arg/actor-class-arg-nonshared.mo "DIDL\x00\x02\x71\x71\x05Hello\x05World"
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID echo "DIDL\x00\x00"
+

@@ -1,22 +1,24 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update c1(0x4449444c0000)
-← completed: 0x4449444c0000
-→ update c2(0x4449444c0000)
-← completed: 0x4449444c0000
-→ update c3(0x4449444c0000)
-← completed: 0x4449444c0000
-→ update c4(0x4449444c0000)
-← completed: 0x4449444c0000
-→ query c6(0x4449444c0000)
-← completed: 0x4449444c0000
-→ update c7(0x4449444c0000)
-← completed: 0x4449444c0001680103caffee
-→ query c8(0x4449444c0000)
-← completed: 0x4449444c00017989f8efb7
-→ query c9(0x4449444c0000)
-← completed: 0x4449444c00017d03
-→ query c10(0x4449444c0000)
-← completed: 0x4449444c016e7b010001ca
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update c1()
+← replied: ()
+→ update c2()
+← replied: ()
+→ update c3()
+← replied: ()
+→ update c4()
+← replied: ()
+→ query c6()
+← replied: ()
+→ update c7()
+← replied: (principal "w7x7r-cok77-xa")
+→ query c8()
+← replied: (principal "cvccv-qqaaq-aaaaa-aaaaa-c")
+→ query c9()
+← replied: ((3085957257 : nat32))
+→ query c10()
+← replied: (3)
+→ query c11()
+← replied: (opt (202 : nat8))

@@ -1,6 +1,6 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update test(0x4449444c0000)
-← completed: 0x4449444c0000
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update test()
+← replied: ()

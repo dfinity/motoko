@@ -1,3 +1,4 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 debug.print: via `debugPrint`:
 debug.print: hello world!
 debug.print: 
@@ -227,4 +228,4 @@ debug.print: П
 debug.print: 
 debug.print: 🙈
 debug.print: 
-ingress System
+ingress Completed: Reply: 0x4449444c0000

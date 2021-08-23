@@ -1,13 +1,13 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
-  public func go() {
+  public func go() : async () {
     let o = object {
       public var x = await { async { 1 } };
       let a = Prim.debugPrintNat(x);
       // private b = (x := await { async (x + 1) });
       let b = (x := x + 1);
       let c = Prim.debugPrintNat(x);
-      public func foo() = { x := x + 1 };
+      public func foo() { x := x + 1 };
       let e = foo();
       let f = Prim.debugPrintNat(x);
     };

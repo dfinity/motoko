@@ -13,8 +13,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_XORASSIGN -> XORASSIGN
       | T_WHILE -> WHILE
       | T_VAR -> VAR
-      | T_USHROP -> USHROP
-      | T_USHRASSIGN -> USHRASSIGN
+      | T_SHROP -> SHROP
+      | T_SHRASSIGN -> SHRASSIGN
       | T_UNDERSCORE -> UNDERSCORE
       | T_TYPE -> TYPE
       | T_TRY -> TRY
@@ -23,13 +23,13 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SWITCH -> SWITCH
       | T_SUBOP -> SUBOP
       | T_SUB -> SUB
-      | T_SSHROP -> SSHROP
-      | T_SSHRASSIGN -> SSHRASSIGN
       | T_SHLOP -> SHLOP
       | T_SHLASSIGN -> SHLASSIGN
       | T_SHARED -> SHARED
       | T_SEMICOLON_EOL -> SEMICOLON_EOL
       | T_SEMICOLON -> SEMICOLON
+      | T_STABLE -> STABLE
+      | T_SYSTEM -> SYSTEM
       | T_RPAR -> RPAR
       | T_ROTROP -> ROTROP
       | T_ROTRASSIGN -> ROTRASSIGN
@@ -39,6 +39,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_RCURLY -> RCURLY
       | T_RBRACKET -> RBRACKET
       | T_QUEST -> QUEST
+      | T_BANG -> BANG
       | T_QUERY -> QUERY
       | T_PUBLIC -> PUBLIC
       | T_PRIVATE -> PRIVATE
@@ -80,6 +81,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_GEOP -> GEOP
       | T_FUNC -> FUNC
       | T_FOR -> FOR
+      | T_FLEXIBLE -> FLEXIBLE
       | T_FLOAT -> FLOAT "<float>"
       | T_EQOP -> EQOP
       | T_EQ -> EQ
@@ -87,8 +89,10 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_ELSE -> ELSE
       | T_DOT_NUM -> DOT_NUM "<num>"
       | T_DOT -> DOT
+      | T_DO -> DO
       | T_DIVOP -> DIVOP
       | T_DIVASSIGN -> DIVASSIGN
+      | T_DISALLOWED -> DISALLOWED
       | T_DEBUG_SHOW -> DEBUG_SHOW
       | T_DEBUG -> DEBUG
       | T_CONTINUE -> CONTINUE
@@ -111,3 +115,11 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_AND -> AND
       | T_ADDOP -> ADDOP
       | T_ACTOR -> ACTOR
+      | T_WRAPADDOP -> WRAPADDOP
+      | T_WRAPSUBOP -> WRAPSUBOP
+      | T_WRAPMULOP -> WRAPMULOP
+      | T_WRAPPOWOP -> WRAPPOWOP
+      | T_WRAPADDASSIGN -> WRAPADDASSIGN
+      | T_WRAPSUBASSIGN -> WRAPSUBASSIGN
+      | T_WRAPMULASSIGN -> WRAPMULASSIGN
+      | T_WRAPPOWASSIGN -> WRAPPOWASSIGN

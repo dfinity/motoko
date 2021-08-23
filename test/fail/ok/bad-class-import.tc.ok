@@ -1,0 +1,1 @@
+lib/anon_class.mo:1.1-1.18: type error [M0143], bad import: imported actor class cannot be anonymous

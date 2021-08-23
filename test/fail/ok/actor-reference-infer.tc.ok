@@ -1,1 +1,1 @@
-actor-reference-infer.mo:3.9-3.32: type error, no type can be inferred for actor reference
+actor-reference-infer.mo:3.9-3.34: type error [M0058], no type can be inferred for actor reference

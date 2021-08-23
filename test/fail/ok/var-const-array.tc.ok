@@ -1,2 +1,2 @@
-var-const-array.mo:1.21-1.23: type error, immutable array expression cannot produce expected type
+var-const-array.mo:1.21-1.23: type error [M0091], immutable array expression cannot produce expected type
   [var Nat]

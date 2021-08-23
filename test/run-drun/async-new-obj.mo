@@ -1,6 +1,6 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
-  public func go() {
+  public func go() : async () {
     /* Test asynchronous construction of an object */
 
     let a = async {
@@ -61,6 +61,11 @@ actor a {
       Prim.debugPrint (a#b);
     };
 
+    await a;
+    await b;
+    await c;
+    await d;
+    await e;
     ()
   };
 };

@@ -1,0 +1,44 @@
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob "DIDL\00\00"; kca_xin = blob "\00asm\01\…
+debug.print: hello
+← replied: ()
+→ query check(1)
+← replied: ()
+→ update echo()
+debug.print: hello
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+debug.print: hello
+← replied: ()
+→ query check(1)
+← replied: ()
+→ update echo()
+debug.print: hello
+← replied: ()
+→ update install_code(record {arg = blob "DIDL\00\01q\05Hello"; kca_xin = blob "\…
+debug.print: Hello
+← replied: ()
+→ query check(1)
+← replied: ()
+→ update echo()
+debug.print: Hello
+← replied: ()
+→ update install_code(record {arg = blob "DIDL\00\02qq\05Hello\05World"; kca_xin …
+debug.print: Hello
+← replied: ()
+→ query check(1)
+← replied: ()
+→ update echo()
+debug.print: Hello
+debug.print: World
+← replied: ()
+→ update install_code(record {arg = blob "DIDL\00\02qq\05Hello\05World"; kca_xin …
+debug.print: Hello
+← replied: ()
+→ query check(1)
+← replied: ()
+→ update echo()
+debug.print: Hello
+debug.print: World
+← replied: ()

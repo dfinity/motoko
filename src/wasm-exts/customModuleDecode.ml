@@ -6,10 +6,18 @@ The changes are:
  * Support for additional custom sections
 
 The code is otherwise as untouched as possible, so that we can relatively
-easily apply diffs froim the original code (possibly manually).
+easily apply diffs from the original code (possibly manually).
 *)
 
-open Wasm
+module Error = Wasm.Error
+module Source = Wasm.Source
+module I32 = Wasm.I32
+module I64 = Wasm.I64
+module F32 = Wasm.F32
+module F64 = Wasm.F64
+module I32_convert = Wasm.I32_convert
+module I64_convert = Wasm.I64_convert
+module Utf8 = Wasm.Utf8
 open CustomModule
 
 (* Decoding stream *)
@@ -40,7 +48,7 @@ let get_string n s = let i = pos s in skip n s; String.sub s.bytes i n
 
 (* Errors *)
 
-module Code = Wasm.Error.Make ()
+module Code = Error.Make ()
 exception Code = Code.Error
 
 let string_of_byte b = Printf.sprintf "%02x" b
@@ -112,6 +120,7 @@ let vu1 s = Int64.to_int (vuN 1 s)
 let vu32 s = Int64.to_int32 (vuN 32 s)
 let vs7 s = Int64.to_int (vsN 7 s)
 let vs32 s = Int64.to_int32 (vsN 32 s)
+let vs33 s = I32_convert.wrap_i64 (vsN 33 s)
 let vs64 s = vsN 64 s
 let f32 s = F32.of_bits (u32 s)
 let f64 s = F64.of_bits (u64 s)
@@ -131,7 +140,7 @@ let vec f s = let n = len32 s in list f n s
 let name s =
   let pos = pos s in
   try Utf8.decode (string s) with Utf8.Utf8 ->
-    error s pos "invalid UTF-8 encoding"
+    error s pos "malformed UTF-8 encoding"
 
 let sized f s =
   let size = len32 s in
@@ -143,7 +152,7 @@ let sized f s =
 
 (* Types *)
 
-open Types
+open Wasm.Types
 
 let value_type s =
   match vs7 s with
@@ -151,25 +160,21 @@ let value_type s =
   | -0x02 -> I64Type
   | -0x03 -> F32Type
   | -0x04 -> F64Type
-  | _ -> error s (pos s - 1) "invalid value type"
+  | _ -> error s (pos s - 1) "malformed value type"
 
 let elem_type s =
   match vs7 s with
   | -0x10 -> FuncRefType
-  | _ -> error s (pos s - 1) "invalid element type"
+  | _ -> error s (pos s - 1) "malformed element type"
 
-let stack_type s =
-  match peek s with
-  | Some 0x40 -> skip 1 s; []
-  | _ -> [value_type s]
-
+let stack_type s = vec value_type s
 let func_type s =
   match vs7 s with
   | -0x20 ->
-    let ins = vec value_type s in
-    let out = vec value_type s in
+    let ins = stack_type s in
+    let out = stack_type s in
     FuncType (ins, out)
-  | _ -> error s (pos s - 1) "invalid function type"
+  | _ -> error s (pos s - 1) "malformed function type"
 
 let limits vu s =
   let has_max = bool s in
@@ -190,7 +195,7 @@ let mutability s =
   match u8 s with
   | 0 -> Immutable
   | 1 -> Mutable
-  | _ -> error s (pos s - 1) "invalid mutability"
+  | _ -> error s (pos s - 1) "malformed mutability"
 
 let global_type s =
   let t = value_type s in
@@ -210,9 +215,28 @@ let end_ s = expect 0x0b s "END opcode expected"
 
 let memop s =
   let align = vu32 s in
-  require (I32.le_u align 32l) s (pos s - 1) "invalid memop flags";
+  require (I32.le_u align 32l) s (pos s - 1) "malformed memop flags";
   let offset = vu32 s in
   Int32.to_int align, offset
+
+let block_type s =
+  match peek s with
+  | Some 0x40 -> skip 1 s; ValBlockType None
+  | Some b when b land 0xc0 = 0x40 -> ValBlockType (Some (value_type s))
+  | _ -> VarBlockType (at vs33 s)
+
+let math_prefix s =
+  let pos = pos s in
+  match op s with
+  | 0x00 -> i32_trunc_sat_f32_s
+  | 0x01 -> i32_trunc_sat_f32_u
+  | 0x02 -> i32_trunc_sat_f64_s
+  | 0x03 -> i32_trunc_sat_f64_u
+  | 0x04 -> i64_trunc_sat_f32_s
+  | 0x05 -> i64_trunc_sat_f32_u
+  | 0x06 -> i64_trunc_sat_f64_s
+  | 0x07 -> i64_trunc_sat_f64_u
+  | b -> illegal s pos b
 
 let rec instr s =
   let pos = pos s in
@@ -221,17 +245,17 @@ let rec instr s =
   | 0x01 -> nop
 
   | 0x02 ->
-    let bt = stack_type s in
+    let bt = block_type s in
     let es' = instr_block s in
     end_ s;
     block bt es'
   | 0x03 ->
-    let bt = stack_type s in
+    let bt = block_type s in
     let es' = instr_block s in
     end_ s;
     loop bt es'
   | 0x04 ->
-    let bt = stack_type s in
+    let bt = block_type s in
     let es1 = instr_block s in
     if peek s = Some 0x05 then begin
       expect 0x05 s "ELSE or END opcode expected";
@@ -446,6 +470,14 @@ let rec instr s =
   | 0xbe -> f32_reinterpret_i32
   | 0xbf -> f64_reinterpret_i64
 
+  | 0xc0 -> i32_extend8_s
+  | 0xc1 -> i32_extend16_s
+  | 0xc2 -> i64_extend8_s
+  | 0xc3 -> i64_extend16_s
+  | 0xc4 -> i64_extend32_s
+
+  | 0xfc -> math_prefix s
+
   | b -> illegal s pos b
 
 and instr_block s = List.rev (instr_block' s [])
@@ -481,7 +513,7 @@ let id s =
     | 9 -> `ElemSection
     | 10 -> `CodeSection
     | 11 -> `DataSection
-    | _ -> error s (pos s) "invalid section id"
+    | _ -> error s (pos s) "malformed section id"
     ) bo
 
 let section_with_size tag f default s =
@@ -509,7 +541,7 @@ let import_desc s =
   | 0x01 -> TableImport (table_type s)
   | 0x02 -> MemoryImport (memory_type s)
   | 0x03 -> GlobalImport (global_type s)
-  | _ -> error s (pos s - 1) "invalid import kind"
+  | _ -> error s (pos s - 1) "malformed import kind"
 
 let import s =
   let module_name = name s in
@@ -566,7 +598,7 @@ let export_desc s =
   | 0x01 -> TableExport (at var s)
   | 0x02 -> MemoryExport (at var s)
   | 0x03 -> GlobalExport (at var s)
-  | _ -> error s (pos s - 1) "invalid export kind"
+  | _ -> error s (pos s - 1) "malformed export kind"
 
 let export s =
   let name = name s in
@@ -694,7 +726,18 @@ let name_section_subsection (ns : name_section) s =
   | 2 -> (* local names *)
     let loc_names = sized (fun _ -> indirect_name_map) s in
     { ns with locals_names = ns.locals_names @ loc_names }
-  | i -> error s (pos s) "unknown name section subsection id"
+
+  (* We ignore additional name subsections for now, despite newer
+     LLVM seemingly producing them.
+
+     We should check if these sections are indeed as spec'ed in
+     https://github.com/WebAssembly/extended-name-section/blob/master/proposals/extended-name-section/Overview.md
+     and implement them, for better debugging.
+  *)
+  | 7 ->
+    let _global_names = sized (fun _ -> name_map) s in
+    ns
+  | i -> error s (pos s) (Printf.sprintf "unknown name section subsection id %d" i)
 
 let name_section_content p_end s =
   repeat_until p_end s empty_name_section name_section_subsection
@@ -704,9 +747,27 @@ let is_name n = (n = Utf8.decode "name")
 let name_section s =
   custom_section is_name name_section_content empty_name_section s
 
+(* motoko section *)
+
+let motoko_section_subsection (ms : motoko_section) s =
+  match u8 s with
+  | 0 -> (* module name *)
+    let labels = sized (fun _ -> vec string) s in
+    { labels = ms.labels @ labels }
+  | i -> error s (pos s) (Printf.sprintf "unknown motoko section subsection id %d" i)
+
+let motoko_section_content p_end s =
+  repeat_until p_end s empty_motoko_section motoko_section_subsection
+
+let is_motoko n = (n = Utf8.decode "motoko")
+
+let motoko_section s =
+  custom_section is_motoko motoko_section_content empty_motoko_section s
+
+
 (* Other custom sections *)
 
-let is_unknown n = not (is_dylink n || is_name n) 
+let is_unknown n = not (is_dylink n || is_name n)
 
 let skip_custom sec_end s =
   skip (sec_end - pos s) s;
@@ -723,7 +784,7 @@ let module_ s =
   let magic = u32 s in
   require (magic = 0x6d736100l) s 0 "magic header not detected";
   let version = u32 s in
-  require (version = Encode.version) s 4 "unknown binary version";
+  require (version = Wasm.Encode.version) s 4 "unknown binary version";
   let dylink = dylink_section s in
   iterate skip_custom_section s;
   let types = type_section s in
@@ -750,6 +811,8 @@ let module_ s =
   iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
+  let motoko = motoko_section s in
+  iterate skip_custom_section s;
   require (pos s = len s) s (len s) "junk after last section";
   require (List.length func_types = List.length func_bodies)
     s (len s) "function and code section have inconsistent lengths";
@@ -761,6 +824,8 @@ let module_ s =
      {types; tables; memories; globals; funcs; imports; exports; elems; data; start};
     dylink;
     name;
+    motoko;
+    source_mapping_url = None;
   }
 
 

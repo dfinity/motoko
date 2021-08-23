@@ -1,7 +1,8 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
-  public func go() {
-    { var i = 0;
+  public func go() : async () {
+    do {
+      var i = 0;
       var j = 0;
       while (j <= 2) {
        Prim.debugPrintNat(j);
@@ -13,7 +14,7 @@ actor a {
     };
 
 
-    {
+    do {
       var i = 0;
       var j = 0;
       while (await async (j <= 2)) {
@@ -25,7 +26,7 @@ actor a {
       assert(i == 3);
     };
 
-    {
+    do {
       var i = 0;
       var j = 0;
       while (j <= 2) {
@@ -37,7 +38,7 @@ actor a {
       assert(i == 3);
     };
 
-    {
+    do {
       var i = 0;
       var j = 0;
       label l

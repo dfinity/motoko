@@ -22,7 +22,7 @@
 
 * Nat and Int compile to heap-allocated big nums; unboxed for small numbers <= 31 bit.
 
-* Word8/16 compile to unboxed scalars; Word32/64 are boxed.
+* Nat8/16 compile to unboxed scalars; Nat32/64 are boxed.
   - May unbox locally.
 
 * Characters are scalars (unicode code points).

@@ -2,7 +2,7 @@
    with custom sections that we are interested in
 *)
 
-open Wasm.Ast
+open Ast
 
 type name_section = {
   module_ : string option;
@@ -24,6 +24,14 @@ type dylink_section = {
   needed_dynlibs : string list;
 }
 
+type motoko_section = {
+  labels : string list;
+}
+
+let empty_motoko_section = {
+    labels = []
+  };
+
 type extended_module = {
   (* The non-custom sections *)
   module_ : module_';
@@ -31,4 +39,8 @@ type extended_module = {
   name : name_section;
   (* dylib section *)
   dylink : dylink_section option;
-  }
+  (* motoko section *)
+  motoko : motoko_section;
+  (* source map section *)
+  source_mapping_url : string option;
+}

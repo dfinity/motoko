@@ -1,6 +1,0 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query foon(0x4449444c0001720000000000000840)
-← completed: 0x4449444c0001720000000000001840

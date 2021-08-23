@@ -1,6 +1,6 @@
 //MOC-FLAG  --actor-idl idl-mo
 
-import imported "ic:00";
+import imported "ic:aaaaa-aa";
 /*
 type node = {head : Nat; tail : list};
 type list = ?node;
@@ -14,14 +14,13 @@ type field = shared {_1291438163_ : Nat8; test : tree} -> async {};
 */
 
 type expected = actor {
-  _2669435454_ : shared () -> async ();
   field : shared {_1291438163_ : Nat8; test : Nat16} -> async {};
   fieldnat : shared {_2_ : Int; _50_ : Nat} -> async {_0_ : Int};
   //o : shared o -> async o;
   oneway : shared Nat8 -> ();
-  query_ : shared query [Nat8] -> async [Nat8];
+  query_ : shared query Blob -> async Blob;
   //service : t;
-  tuple : shared ((Int, [Nat8], Text)) -> async {_0_ : Int; _1_ : Nat8};
+  tuple : shared ((Int, Blob, Text)) -> async {_0_ : Int; _1_ : Nat8};
   variant : shared {#A; #B; #C; #D : Float} -> async ()
 };
 

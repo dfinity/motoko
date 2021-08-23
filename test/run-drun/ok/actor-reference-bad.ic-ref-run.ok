@@ -1,0 +1,17 @@
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+debug.print: "bfozs-kwa73-7nadi":
+debug.print: "":
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
+debug.print: "BFOZS-KWA73-7NADI":
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+debug.print: "bfozskwa737nadi":
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+debug.print: "vpgq":
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: RTS error: blob_of_principal: principal too short"
+debug.print: "5h74t-uga73-7nadi":
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: RTS error: blob_of_principal: invalid principal"
+← replied: ()

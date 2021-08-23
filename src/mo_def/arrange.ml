@@ -20,7 +20,8 @@ let rec exp e = match e.it with
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs
+  | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
+  | ObjE efs            -> "ObjE"      $$ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
@@ -28,7 +29,7 @@ let rec exp e = match e.it with
   | FuncE (x, sp, tp, p, t, sugar, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
-      sort_pat sp;
+      shared_pat sp;
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
@@ -56,11 +57,14 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
+  | DoOptE e            -> "DoOptE"    $$ [exp e]
+  | BangE e             -> "BangE"   $$ [exp e]
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+  | IgnoreE e           -> "IgnoreE" $$ [exp e]
 
 and inst inst = match inst.it with
   | None -> []
@@ -83,23 +87,20 @@ and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
   | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
   | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
-  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_pretty_string n) ]
-  | Nat8Lit n     -> "Nat8Lit"   $$ [ Atom (Value.Nat8.to_pretty_string n) ]
-  | Nat16Lit n    -> "Nat16Lit"  $$ [ Atom (Value.Nat16.to_pretty_string n) ]
-  | Nat32Lit n    -> "Nat32Lit"  $$ [ Atom (Value.Nat32.to_pretty_string n) ]
-  | Nat64Lit n    -> "Nat64Lit"  $$ [ Atom (Value.Nat64.to_pretty_string n) ]
-  | IntLit i      -> "IntLit"    $$ [ Atom (Value.Int.to_pretty_string i) ]
-  | Int8Lit i     -> "Int8Lit"   $$ [ Atom (Value.Int_8.to_pretty_string i) ]
-  | Int16Lit i    -> "Int16Lit"  $$ [ Atom (Value.Int_16.to_pretty_string i) ]
-  | Int32Lit i    -> "Int32Lit"  $$ [ Atom (Value.Int_32.to_pretty_string i) ]
-  | Int64Lit i    -> "Int64Lit"  $$ [ Atom (Value.Int_64.to_pretty_string i) ]
-  | Word8Lit w    -> "Word8Lit"  $$ [ Atom (Value.Word8.to_pretty_string w) ]
-  | Word16Lit w   -> "Word16Lit" $$ [ Atom (Value.Word16.to_pretty_string w) ]
-  | Word32Lit w   -> "Word32Lit" $$ [ Atom (Value.Word32.to_pretty_string w) ]
-  | Word64Lit w   -> "Word64Lit" $$ [ Atom (Value.Word64.to_pretty_string w) ]
-  | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_pretty_string f) ]
+  | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
+  | Nat8Lit n     -> "Nat8Lit"   $$ [ Atom (Numerics.Nat8.to_pretty_string n) ]
+  | Nat16Lit n    -> "Nat16Lit"  $$ [ Atom (Numerics.Nat16.to_pretty_string n) ]
+  | Nat32Lit n    -> "Nat32Lit"  $$ [ Atom (Numerics.Nat32.to_pretty_string n) ]
+  | Nat64Lit n    -> "Nat64Lit"  $$ [ Atom (Numerics.Nat64.to_pretty_string n) ]
+  | IntLit i      -> "IntLit"    $$ [ Atom (Numerics.Int.to_pretty_string i) ]
+  | Int8Lit i     -> "Int8Lit"   $$ [ Atom (Numerics.Int_8.to_pretty_string i) ]
+  | Int16Lit i    -> "Int16Lit"  $$ [ Atom (Numerics.Int_16.to_pretty_string i) ]
+  | Int32Lit i    -> "Int32Lit"  $$ [ Atom (Numerics.Int_32.to_pretty_string i) ]
+  | Int64Lit i    -> "Int64Lit"  $$ [ Atom (Numerics.Int_64.to_pretty_string i) ]
+  | FloatLit f    -> "FloatLit"  $$ [ Atom (Numerics.Float.to_pretty_string f) ]
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
+  | BlobLit b     -> "BlobLit"   $$ [ Atom b ]
   | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
@@ -112,9 +113,9 @@ and obj_sort s = match s.it with
   | Type.Object -> Atom "Object"
   | Type.Actor -> Atom "Actor"
   | Type.Module -> Atom "Module"
+  | Type.Memory -> Atom "Memory"
 
-
-and sort_pat sp = match sp.it with
+and shared_pat sp = match sp.it with
   | Type.Local -> Atom "Local"
   | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
   | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
@@ -129,11 +130,25 @@ and mut m = match m.it with
   | Var   -> Atom "Var"
 
 and vis v = match v.it with
-  | Public  -> Atom "Public"
+  | Public None -> Atom "Public"
+  | Public (Some m) -> "Public" $$ [Atom m]
   | Private -> Atom "Private"
+  | System -> Atom "System"
+
+and stab s_opt = match s_opt with
+  | None -> Atom "(Flexible)"
+  | Some s ->
+    (match s.it with
+    | Flexible -> Atom "Flexible"
+    | Stable -> Atom "Stable")
 
 and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
+
+and typ_item ((id, ty) : typ_item) =
+  match id with
+  | None -> [typ ty]
+  | Some { it;_ } -> [Atom it; typ ty]
 
 and typ_tag (tt : typ_tag)
   = tt.it.tag.it $$ [typ tt.it.typ]
@@ -141,8 +156,11 @@ and typ_tag (tt : typ_tag)
 and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
+and dec_field (df : dec_field)
+  = "DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab]
+
 and exp_field (ef : exp_field)
-  = "Field" $$ [dec ef.it.dec; vis ef.it.vis]
+  = "ExpField" $$ [mut ef.it.mut; id ef.it.id; exp ef.it.exp]
 
 and operator_type t = Atom (Type.string_of_typ t)
 
@@ -151,29 +169,29 @@ and path p = match p.it with
   | DotH (p,i) -> "DotH" $$ [path p; id i]
 
 and typ t = match t.it with
-  | PathT (p, ts)       -> "PathT" $$ [path p] @ List.map typ ts
-  | PrimT p             -> "PrimT" $$ [Atom p]
-  | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
-  | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
-  | OptT t              -> "OptT" $$ [typ t]
-  | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
-  | TupT ts             -> "TupT" $$ List.map typ ts
+  | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
+  | PrimT p -> "PrimT" $$ [Atom p]
+  | ObjT (s, ts) -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
+  | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
+  | OptT t -> "OptT" $$ [typ t]
+  | VariantT cts -> "VariantT" $$ List.map typ_tag cts
+  | TupT ts -> "TupT" $$ List.concat_map typ_item ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT (t1, t2)     -> "AsyncT" $$ [typ t1; typ t2]
-  | ParT t              -> "ParT" $$ [typ t]
+  | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | ParT t -> "ParT" $$ [typ t]
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
-  | IgnoreD e -> "IgnoreD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (x, tp, p, rt, s, i', efs) ->
-    "ClassD" $$ id x :: List.map typ_bind tp @ [
+  | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
+    "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
       obj_sort s; id i'
-    ] @ List.map exp_field efs
+    ] @ List.map dec_field dfs
 
-and prog prog = "BlockE"  $$ List.map dec prog.it
+and prog prog = "Prog" $$ List.map dec prog.it

@@ -1,0 +1,13 @@
+= M0154
+
+You are using a field (typically a module field) that has a deprecation annotation
+attached to its definition, e.g.
+
+  module SomeModule {
+
+    /// @deprecated The foo function is deprecated and will be removed next release
+    public func foo() {}
+
+  }
+
+The warning should include an explanation provided by the author of that code.

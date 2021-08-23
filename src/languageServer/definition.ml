@@ -19,7 +19,7 @@ let range_of_region (at : Source.region) : Lsp.range =
 let find_named :
     string -> string * DI.ide_decl list -> (string * Source.region) option =
  fun name (path, decls) ->
-  Lib.List.first_opt
+  List.find_map
     (function
       | DI.ValueDecl value ->
           if String.equal value.DI.name name then value.DI.definition else None
@@ -28,36 +28,34 @@ let find_named :
     decls
   |> Option.map (fun x -> (path, x))
 
-let opt_bind f = function Some x -> f x | None -> None
-
 let definition_handler index position file_contents project_root file_path =
-  let result =
-    let open Source_file in
-    Option.bind
-      (Source_file.identifier_at_pos project_root file_path file_contents
-         position) (function
+  let open Source_file in
+  let location =
+    let open Lib.Option.Syntax in
+    let* ident =
+      Source_file.identifier_at_pos project_root file_path file_contents
+        position
+    in
+    let* path, region =
+      match ident with
       | Alias _ -> None
       | Unresolved _ -> None
       | Resolved resolved ->
-          DI.lookup_module project_root resolved.path index
-          |> opt_bind (find_named resolved.ident)
+          let* module_ = DI.lookup_module project_root resolved.path index in
+          find_named resolved.ident module_
       | Ident ident ->
-          Lib.FilePath.relative_to project_root file_path
-          |> opt_bind (fun uri ->
-                 DI.lookup_module project_root uri index
-                 |> opt_bind (find_named ident)))
-  in
-  let location =
-    Option.map
-      (fun (path, region) ->
-        Lsp.
-          {
-            location_uri =
-              ( if Source_file.is_package_path path then
-                Option.get (Source_file.uri_for_package path)
-              else Vfs.uri_from_file path );
-            location_range = range_of_region region;
-          })
-      result
+          let* uri = Lib.FilePath.relative_to project_root file_path in
+          let* module_ = DI.lookup_module project_root uri index in
+          find_named ident module_
+    in
+    Some
+      Lsp.
+        {
+          location_uri =
+            (if Source_file.is_non_file_path path then
+             Option.get (Source_file.uri_for_package path)
+            else Vfs.uri_from_file path);
+          location_range = range_of_region region;
+        }
   in
   `TextDocumentDefinitionResponse (Option.to_list location)

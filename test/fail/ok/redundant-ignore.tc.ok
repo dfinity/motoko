@@ -1,0 +1,6 @@
+redundant-ignore.mo:4.1-4.10: warning [M0089], redundant ignore, operand already has type ()
+redundant-ignore.mo:5.1-5.11: warning [M0089], redundant ignore, operand already has type ()
+redundant-ignore.mo:6.1-6.9: warning [M0089], redundant ignore, operand already has type ()
+redundant-ignore.mo:11.3-11.12: warning [M0089], redundant ignore, operand already has type ()
+redundant-ignore.mo:12.3-12.13: warning [M0089], redundant ignore, operand already has type ()
+redundant-ignore.mo:13.3-13.11: warning [M0089], redundant ignore, operand already has type ()

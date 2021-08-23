@@ -1,11 +1,11 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor counter = {
-  var c = 1;
-  public func inc() {
+  flexible var c = 1;
+  public func inc() : async () {
     c += 1;
     Prim.debugPrintNat c;
   };
-  public func printCounter () {
+  public func printCounter () : async () {
     Prim.debugPrintNat c;
   };
   public func get() : async Nat {
@@ -19,18 +19,18 @@ actor counter = {
     return tmp;
   };
 
-  public func go() {
-   counter.inc();
-   counter.inc();
-   counter.inc();
-   counter.printCounter();
+  public func go() : async () {
+   await counter.inc();
+   await counter.inc();
+   await counter.inc();
+   await counter.printCounter();
    let c1 = await counter.get();
    assert c1 == 4;
    let c2 = await counter.read();
-   counter.printCounter();
+   await counter.printCounter();
    assert c2 == 4;
    let c3 = await counter.read();
-   counter.printCounter();
+   await counter.printCounter();
    Prim.debugPrint("The following fails in the interpreter, for lack of query semantics");
    assert c3 == 4;
   };

@@ -63,9 +63,9 @@ tricky<Any>(func f(x : None) : Any { f(x);}); // correctly rejected
 ignore func <T>()  { tricky<T>(func f(x:Any):None{f(x)}) };
 
 // implicit instantiation
-ignore tricky(func f(x : Any) : None { f(x);}); // fails, under-constrained
-ignore tricky(func f(x : None) : Any { f(x);}); // fails, inconsistent instantiation required.
-ignore tricky(func f(x : None) : None { f(x);});
+tricky(func f(x : Any) : None { f(x);}); // fails, under-constrained
+tricky(func f(x : None) : Any { f(x);}); // fails, inconsistent instantiation required.
+tricky(func f(x : None) : None { f(x);});
 
 func amb<T>(f : T -> T): T->T { f };
 ignore amb<None>(func f(x : Any) : None { f(x);}) : None -> None;
@@ -73,21 +73,21 @@ ignore amb<Any>(func f(x : Any) : None { f(x);}) : Any -> Any;
 
 
 func co<T>(x : T, y : T) : () {};
-ignore co<Nat>(1, 2);
-ignore co<Int>(1, 2 : Int);
-ignore co<Any>(1, true);
-ignore co(1, 2);
-ignore co(1, 2:Int);
-ignore co(1, true);
+co<Nat>(1, 2);
+co<Int>(1, 2 : Int);
+co<Any>(1, true);
+co(1, 2);
+co(1, 2:Int);
+co(1, true);
 
 
 func contra<T>(f : (T,T) -> ()) : () {};
-ignore contra<Nat>(func (x : Nat, y : Nat) {});
-ignore contra<Nat>(func (x : Nat, y : Int) {});
-ignore contra<None>(func (x : Nat, y : Bool) {});
-ignore contra(func (x : Nat, y : Nat) {});
-ignore contra(func (x : Nat, y : Int) {});
-ignore contra(func (x : Nat, y : Bool) {});
+contra<Nat>(func (x : Nat, y : Nat) {});
+contra<Nat>(func (x : Nat, y : Int) {});
+contra<None>(func (x : Nat, y : Bool) {});
+contra(func (x : Nat, y : Nat) {});
+contra(func (x : Nat, y : Int) {});
+contra(func (x : Nat, y : Bool) {});
 
 
 func coswap<T <: U,U>(x : T,y : T): (U, U) { (y, x)};
@@ -189,6 +189,5 @@ ignore cons(1, nil()) : List<Nat>;
 ignore cons(1, cons(2, nil())) : List<Nat>;
 
 func req(x : Nat) : async Int { return x };
-func send<T <: Nat>( f: Nat -> async Int, x : T) : async Int { f(x); };
+func send<T <: Nat>( f: Nat -> async Int, x : T) : async Int { await f(x); };
 async { ignore send(req,0);};
-

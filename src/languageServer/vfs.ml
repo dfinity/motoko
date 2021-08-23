@@ -23,11 +23,11 @@ let file_from_uri uri =
 
 let abs_file_from_uri uri =
   Lib.FilePath.normalise
-    ( match Lib.String.chop_prefix "file://" uri with
+    (match Lib.String.chop_prefix "file://" uri with
     | Some file -> file
     | None ->
         let _ = Debug.log "error" ("Failed to strip filename from: " ^ uri) in
-        uri )
+        uri)
 
 let empty = VfsStore.empty
 
@@ -119,5 +119,5 @@ and apply_change lines
 
 let parse_file vfs path =
   match read_file (uri_from_file path) vfs with
-  | None -> Pipeline.parse_file path
+  | None -> Pipeline.parse_file Source.no_region path
   | Some file -> Pipeline.parse_string path file

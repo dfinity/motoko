@@ -1,6 +1,6 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query rose(0x4449444c016d00010003000400020000000000)
-← completed: 0x4449444c026e016d0001000103010001040100010201000100010001000100
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query rose(vec {vec {}; vec {vec {}; vec {vec {}; vec {}}; vec {}; vec…
+← replied: (opt vec {opt vec {}; opt vec {opt vec {}; opt vec {opt vec {}; opt vec {}}; opt vec {}; opt vec {}}…

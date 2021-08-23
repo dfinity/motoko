@@ -1,6 +1,6 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
-// CHECK: func $start
+// CHECK: func $init
 
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
 
@@ -16,166 +16,172 @@ func checkpointHotel() {};
 func checkpointIndia() {};
 func checkpointJuliett() {};
 
-// Word64 operations
-{
-    func printW64ln(w : Word64) {
-      Prim.debugPrintNat(Prim.word64ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word64ToInt w)
+// Nat64 operations
+do {
+    func printN64ln(w : Nat64) {
+      Prim.debugPrintNat(Prim.nat64ToNat w);
+    };
+    func printI64ln(w : Int64) {
+      Prim.debugPrintInt(Prim.int64ToInt w);
     };
 
-    let a : Word64 = 4567;
-    let b : Word64 = 7;
-    let c : Word64 = 8912765;
-    let d : Word64 = -15;
-    let e : Word64 = 20000;
+    let a : Nat64 = 4567;
+    let b : Nat64 = 7;
+    let c : Nat64 = 8912765;
+    let d : Int64 = -15;
+    let e : Nat64 = 20000;
 
-// CHECK: local.get $c
+// this is the value of c
+// CHECK: i32.const 17825530
 // CHECK-NOT: call $box_i64
-// CHECK: call $printW64ln
-    printW64ln(+c);
-    printW64ln(-c);
-    printW64ln(^c);
-    printW64ln(a + c);
-    printW64ln(c - a);
+// CHECK: call $printN64ln
+    printN64ln(c);
+    printN64ln(^c);
+    printN64ln(a +% c);
+    printN64ln(c -% a);
 
 // CHECK: call $checkpointAlpha
     checkpointAlpha();
 // This is a native Wasm i64 multiplication, there should be no shift involved!
 // CHECK-NOT: i64.shr_u
-// CHECK: call $printW64ln
-    printW64ln(a * b);
+// CHECK: call $printN64ln
+    printN64ln(a * b);
 
-    printW64ln(a / b);
-    printW64ln(c % a);
-    printW64ln(a ** 2);
+    printN64ln(a / b);
+    printN64ln(c % a);
+    printN64ln(a ** 2);
 
-    printW64ln(a & c);
-    printW64ln(a | c);
-    printW64ln(a ^ c);
-    printW64ln(a << b);
-    printW64ln(a >> b);
-    printW64ln(-5225319197819536385 >> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> 826339054743125951L
-    printW64ln(d +>> 3);
-    printW64ln(-5225319197819536385 +>> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> -326582449863721025L
-    printW64ln(c <<> b);
-    printW64ln(c <>> b);
-    printW64ln(Prim.popcntWord64 d); // -15 = 0xfffffffffffffff1 = 0b1111_..._1111_1111_0001 (population = 61)
-    printW64ln(Prim.clzWord64 e); // 20000 = 0x0000000000004e20 (leading zeros = 49)
-    printW64ln(Prim.ctzWord64 e); // 20000 = 0x0000000000004e20 (trailing zeros = 5)
-    printBit(Prim.btstWord64(e, 5 : Word64)); // 20000 = 0x0000000000004e20 (result = true)
-    printBit(Prim.btstWord64(e, 63 : Word64)); // 20000 = 0x0000000000004e20 (result = false)
-    printBit(Prim.btstWord64(e, 69 : Word64)); // 20000 = 0x0000000000004e20 (mod 64, result = true)
+    printN64ln(a & c);
+    printN64ln(a | c);
+    printN64ln(a ^ c);
+    printN64ln(a << b);
+    printN64ln(a >> b);
+    printI64ln(-5225319197819536385 >> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> 826339054743125951L
+    printI64ln(d >> 3);
+    printI64ln(-5225319197819536385 >> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> -326582449863721025L
 
-    assert (3 : Word64 ** (4 : Word64) == (81 : Word64));
-    assert (3 : Word64 ** (7 : Word64) == (2187 : Word64));
-    assert (3 : Word64 ** (14 : Word64) == (4782969 : Word64));
-    assert (3 : Word64 ** (20 : Word64) == (3486784401 : Word64));
+    printN64ln(c <<> b);
+    printN64ln(c <>> b);
+    printI64ln(Prim.popcntInt64 d); // -15 = 0xfffffffffffffff1 = 0b1111_..._1111_1111_0001 (population = 61)
+    printN64ln(Prim.clzNat64 e); // 20000 = 0x0000000000004e20 (leading zeros = 49)
+    printN64ln(Prim.ctzNat64 e); // 20000 = 0x0000000000004e20 (trailing zeros = 5)
+    printBit(Prim.btstNat64(e, 5 : Nat64)); // 20000 = 0x0000000000004e20 (result = true)
+    printBit(Prim.btstNat64(e, 63 : Nat64)); // 20000 = 0x0000000000004e20 (result = false)
+    printBit(Prim.btstNat64(e, 69 : Nat64)); // 20000 = 0x0000000000004e20 (mod 64, result = true)
+
+    assert (3 : Nat64 ** (4 : Nat64) == (81 : Nat64));
+    assert (3 : Nat64 ** (7 : Nat64) == (2187 : Nat64));
+    assert (3 : Nat64 ** (14 : Nat64) == (4782969 : Nat64));
+    assert (3 : Nat64 ** (20 : Nat64) == (3486784401 : Nat64));
 };
 
 
 
-// Word32 operations
-{
-    func printW32ln(w : Word32) {
-      Prim.debugPrintNat(Prim.word32ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word32ToInt w)
+// Nat32 operations
+do {
+    func printN32ln(w : Nat32) {
+      Prim.debugPrintNat(Prim.nat32ToNat w);
+    };
+    func printI32ln(w : Int32) {
+      Prim.debugPrintInt(Prim.int32ToInt w);
     };
 
-    let a : Word32 = 4567;
-    let b : Word32 = 7;
-    let c : Word32 = 8912765;
-    let d : Word32 = -15;
-    let e : Word32 = 20000;
+    let a : Nat32 = 4567;
+    let b : Nat32 = 7;
+    let c : Nat32 = 8912765;
+    let d : Int32 = -15;
+    let e : Nat32 = 20000;
 
 // CHECK: call $checkpointBravo
     checkpointBravo();
-// CHECK: local.get $c
-// CHECK-NOT: call $box_i32
-// CHECK: call $printW32ln
-    printW32ln(+c);
-    printW32ln(-c);
-    printW32ln(^c);
-    printW32ln(a + c);
-    printW32ln(c - a);
+// this is the value of c
+// CHECK: i32.const 17825530
+// CHECK-NOT: call $box_i64
+// CHECK: call $printN32ln
+    printN32ln(c);
+    printN32ln(^c);
+    printN32ln(a + c);
+    printN32ln(c - a);
 
 // CHECK: call $checkpointCharlie
     checkpointCharlie();
 // This is a native Wasm i32 multiplication, there should be no shift involved!
 // CHECK-NOT: i32.shr_u
-// CHECK: call $printW32ln
-    printW32ln(a * b);
-    printW32ln(a / b);
-    printW32ln(c % a);
-    printW32ln(a ** 2);
+// CHECK: call $printN32ln
+    printN32ln(a * b);
+    printN32ln(a / b);
+    printN32ln(c % a);
+    printN32ln(a ** 2);
 
-    printW32ln(a & c);
-    printW32ln(a | c);
-    printW32ln(a ^ c);
-    printW32ln(a << b);
-    printW32ln(a >> b);
-    printW32ln(-1216614433 >> 4); // 0b10110111011110111110111111011111l == -1216614433l --> 192397053l
-    printW32ln(d +>> 3);
-    printW32ln(-1216614433 +>> 4); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
-    printW32ln(c <<> b);
-    printW32ln(c <>> b);
-    printW32ln(Prim.popcntWord32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
-    printW32ln(Prim.clzWord32 e); // 20000 = 0x00004e20 (leading zeros = 17)
-    printW32ln(Prim.ctzWord32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
-    printBit(Prim.btstWord32(e, 5 : Word32)); // 20000 = 0x00004e20 (result = true)
-    printBit(Prim.btstWord32(e, 31 : Word32)); // 20000 = 0x00004e20 (result = false)
-    printBit(Prim.btstWord32(e, 37 : Word32)); // 20000 = 0x00004e20 (mod 32, result = true)
+    printN32ln(a & c);
+    printN32ln(a | c);
+    printN32ln(a ^ c);
+    printN32ln(a << b);
+    printN32ln(a >> b);
+    printI32ln(-1216614433 >> 4); // 0b10110111011110111110111111011111l == -1216614433l --> 192397053l
+    printI32ln(d >> 3);
+    printI32ln(-1216614433 >> 4); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
+    printN32ln(c <<> b);
+    printN32ln(c <>> b);
+    printI32ln(Prim.popcntInt32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
+    printN32ln(Prim.clzNat32 e); // 20000 = 0x00004e20 (leading zeros = 17)
+    printN32ln(Prim.ctzNat32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
+    printBit(Prim.btstNat32(e, 5 : Nat32)); // 20000 = 0x00004e20 (result = true)
+    printBit(Prim.btstNat32(e, 31 : Nat32)); // 20000 = 0x00004e20 (result = false)
+    printBit(Prim.btstNat32(e, 37 : Nat32)); // 20000 = 0x00004e20 (mod 32, result = true)
 
-    assert (3 : Word32 ** (4 : Word32) == (81 : Word32));
-    assert (3 : Word32 ** (7 : Word32) == (2187 : Word32));
-    assert (3 : Word32 ** (14 : Word32) == (4782969 : Word32));
-    assert (3 : Word32 ** (20 : Word32) == (3486784401 : Word32));
+    assert (3 : Nat32 ** (4 : Nat32) == (81 : Nat32));
+    assert (3 : Nat32 ** (7 : Nat32) == (2187 : Nat32));
+    assert (3 : Nat32 ** (14 : Nat32) == (4782969 : Nat32));
+    assert (3 : Nat32 ** (20 : Nat32) == (3486784401 : Nat32));
 };
 
-// Word16 operations
-{
-    func printW16ln(w : Word16) {
-      Prim.debugPrintNat(Prim.word16ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word16ToInt w)
+// Nat16 operations
+do {
+    func printN16ln(w : Nat16) {
+      Prim.debugPrintNat(Prim.nat16ToNat w);
+    };
+    func printI16ln(w : Int16) {
+      Prim.debugPrintInt(Prim.int16ToInt w);
     };
 
-    let a : Word16 = 4567;
-    let b : Word16 = 7;
-    let c : Word16 = 55734;
-    let d : Word16 = -15;
-    let e : Word16 = 20000;
+    let a : Nat16 = 4567;
+    let b : Nat16 = 7;
+    let c : Nat16 = 55734;
+    let d : Int16 = -15;
+    let e : Nat16 = 20000;
 
 
-    printW16ln(+c);
-    printW16ln(-c);
-    printW16ln(^c);
-    printW16ln(a + c);
-    printW16ln(c - a);
+    printN16ln(c);
+    printN16ln(^c);
+    printN16ln(a +% c);
+    printN16ln(c -% a);
 
 // CHECK: call $checkpointDelta
     checkpointDelta();
-// CHECK: local.get $a
+// this is the value of a
+// CHECK: i32.const 299302912
+// this is the value of b
+// CHECK: i32.const 458752
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 16 bits!
-// CHECK-NEXT: local.get $b
 // CHECK-NEXT: i32.const 16
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
-// CHECK-NEXT: call $printW16ln
-    printW16ln(a * b);
-    printW16ln(a / b);
-    printW16ln(c % a);
-    printW16ln(a ** 2);
+// CHECK-NEXT: call $printN16ln
+    printN16ln(a *% b);
+    printN16ln(a / b);
+    printN16ln(c % a);
+    printN16ln(a **% 2);
 
-    printW16ln(a & c);
-    printW16ln(a | c);
-    printW16ln(a ^ c);
-    printW16ln(a << b);
+    printN16ln(a & c);
+    printN16ln(a | c);
+    printN16ln(a ^ c);
+    printN16ln(a << b);
 
 // CHECK: call $checkpointEcho
    checkpointEcho();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 458752
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 16 bits and clamp it to 4 bits!
 // CHECK-NEXT: i32.const 16
 // CHECK-NEXT: i32.shr_u
@@ -185,79 +191,83 @@ func checkpointJuliett() {};
 // Then the result must be sanitised.
 // CHECK-NEXT: i32.const -65536
 // CHECK-NEXT: i32.and
-// CHECK-NEXT: call $printW16ln
-    printW16ln(a >> b);
-    printW16ln(d >> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b0001_1111_1111_1110 = 8190)
-    printW16ln(d +>> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b1111_1111_1111_1110 = -2)
+// CHECK-NEXT: call $printN16ln
+    printN16ln(a >> b);
+    printN16ln(Prim.int16ToNat16(d) >> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b0001_1111_1111_1110 = 8190)
+    printI16ln(d >> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b1111_1111_1111_1110 = -2)
 
 // CHECK: call $checkpointFoxtrot
    checkpointFoxtrot();
-// CHECK: local.get $b
-// CHECK-NEXT: call $rotl<Word16>
-// CHECK-NEXT: call $printW16ln
-    printW16ln(c <<> b);
+// this is the value of b
+// CHECK: i32.const 458752
+// CHECK-NEXT: call $rotl<Nat16>
+// CHECK-NEXT: call $printN16ln
+    printN16ln(c <<> b);
 
 // CHECK: call $checkpointGolf
    checkpointGolf();
-// CHECK: local.get $b
-// CHECK-NEXT: call $rotr<Word16>
-// CHECK-NEXT: call $printW16ln
-    printW16ln(c <>> b);
-    printW16ln(Prim.popcntWord16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
-    printW16ln(Prim.clzWord16 e); // 20000 = 0x4e20 (leading zeros = 1)
-    printW16ln(Prim.ctzWord16 e); // 20000 = 0x4e20 (trailing zeros = 5)
-    printBit(Prim.btstWord16(e, 5 : Word16)); // 20000 = 0x4e20 (result = true)
-    printBit(Prim.btstWord16(e, 15 : Word16)); // 20000 = 0x4e20 (result = false)
-    printBit(Prim.btstWord16(e, 21 : Word16)); // 20000 = 0x4e20 (mod 16, result = true)
+// this is the value of b
+// CHECK: i32.const 458752
+// CHECK-NEXT: call $rotr<Nat16>
+// CHECK-NEXT: call $printN16ln
+    printN16ln(c <>> b);
+    printI16ln(Prim.popcntInt16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
+    printN16ln(Prim.clzNat16 e); // 20000 = 0x4e20 (leading zeros = 1)
+    printN16ln(Prim.ctzNat16 e); // 20000 = 0x4e20 (trailing zeros = 5)
+    printBit(Prim.btstNat16(e, 5 : Nat16)); // 20000 = 0x4e20 (result = true)
+    printBit(Prim.btstNat16(e, 15 : Nat16)); // 20000 = 0x4e20 (result = false)
+    printBit(Prim.btstNat16(e, 21 : Nat16)); // 20000 = 0x4e20 (mod 16, result = true)
 
 
-    assert (3 : Word16 ** (0 : Word16) == (1 : Word16));
-    assert (3 : Word16 ** (1 : Word16) == (3 : Word16));
-    assert (3 : Word16 ** (4 : Word16) == (81 : Word16));
-    assert (3 : Word16 ** (7 : Word16) == (2187 : Word16));
+    assert (3 : Nat16 ** (0 : Nat16) == (1 : Nat16));
+    assert (3 : Nat16 ** (1 : Nat16) == (3 : Nat16));
+    assert (3 : Nat16 ** (4 : Nat16) == (81 : Nat16));
+    assert (3 : Nat16 ** (7 : Nat16) == (2187 : Nat16));
 };
 
-// Word8 operations
-{
-    func printW8ln(w : Word8) {
-      Prim.debugPrintNat(Prim.word8ToNat w);
-      Prim.debugPrint " ";
-      Prim.debugPrintInt(Prim.word8ToInt w)
+// Nat8 operations
+do {
+    func printN8ln(w : Nat8) {
+      Prim.debugPrintNat(Prim.nat8ToNat w);
+    };
+    func printI8ln(w : Int8) {
+      Prim.debugPrintInt(Prim.int8ToInt w);
     };
 
-    let a : Word8 = 67;
-    let b : Word8 = 7;
-    let c : Word8 = 34;
-    let d : Word8 = -15;
-    let e : Word8 = 200;
+    let a : Nat8 = 67;
+    let b : Nat8 = 7;
+    let c : Nat8 = 34;
+    let d : Int8 = -15;
+    let e : Nat8 = 200;
 
 
-    printW8ln(+c);
-    printW8ln(-c);
-    printW8ln(^c);
-    printW8ln(a + c);
-    printW8ln(c - a);
+    printN8ln(c);
+    printN8ln(^c);
+    printN8ln(a + c);
+    printN8ln(c -% a);
 // CHECK: call $checkpointHotel
     checkpointHotel();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 24 bits!
 // CHECK-NEXT: i32.const 24
 // CHECK-NEXT: i32.shr_u
 // CHECK-NEXT: i32.mul
-// CHECK-NEXT: call $printW8ln
-    printW8ln(a * b);
-    printW8ln(a / b);
-    printW8ln(c % a);
-    printW8ln(a ** 2);
+// CHECK-NEXT: call $printN8ln
+    printN8ln(a *% b);
+    printN8ln(a / b);
+    printN8ln(c % a);
+    printN8ln(a **% 2);
 
-    printW8ln(a & c);
-    printW8ln(a | c);
-    printW8ln(a ^ c);
-    printW8ln(a << b);
+    printN8ln(a & c);
+    printN8ln(a | c);
+    printN8ln(a ^ c);
+    printN8ln(a << b);
 
 // CHECK: call $checkpointIndia
     checkpointIndia();
-// CHECK: local.get $b
+// this is the value of b
+// CHECK: i32.const 117440512
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 24 bits and clamp it to 3 bits!
 // CHECK-NEXT: i32.const 24
 // CHECK-NEXT: i32.shr_u
@@ -267,41 +277,43 @@ func checkpointJuliett() {};
 // Then the result must be sanitised.
 // CHECK-NEXT: i32.const -16777216
 // CHECK-NEXT: i32.and
-// CHECK-NEXT: call $printW8ln
-    printW8ln(a >> b);
-    printW8ln(d >> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b0001_1110 = 30)
-    printW8ln(d +>> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b1111_1110 = -2)
+// CHECK-NEXT: call $printN8ln
+    printN8ln(a >> b);
+    printN8ln(Prim.int8ToNat8(d) >> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b0001_1110 = 30)
+    printI8ln(d >> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b1111_1110 = -2)
 
 // CHECK: call $checkpointJuliett
     checkpointJuliett();
-// CHECK: local.get $b
-// CHECK-NEXT: call $rotl<Word8>
-// CHECK-NEXT: call $printW8ln
-    printW8ln(c <<> b);
-// CHECK: local.get $b
-// CHECK-NEXT: call $rotr<Word8>
-// CHECK-NEXT: call $printW8ln
-    printW8ln(c <>> b);
-    printW8ln(Prim.popcntWord8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
-    printW8ln(Prim.clzWord8 e); // 200 = 0xC8 (leading zeros = 0)
-    printW8ln(Prim.ctzWord8 e); // 200 = 0xC8 (trailing zeros = 3)
-    printBit(Prim.btstWord8(e, 3 : Word8)); // 200 = 0xC8 (result = true)
-    printBit(Prim.btstWord8(e, 5 : Word8)); // 200 = 0xC8 (result = false)
-    printBit(Prim.btstWord8(e, 11 : Word8)); // 200 = 0xC8 (mod 8, result = true)
+// this is the value of b
+// CHECK: i32.const 117440512
+// CHECK-NEXT: call $rotl<Nat8>
+// CHECK-NEXT: call $printN8ln
+    printN8ln(c <<> b);
+// this is the value of b
+// CHECK: i32.const 117440512
+// CHECK-NEXT: call $rotr<Nat8>
+// CHECK-NEXT: call $printN8ln
+    printN8ln(c <>> b);
+    printI8ln(Prim.popcntInt8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
+    printN8ln(Prim.clzNat8 e); // 200 = 0xC8 (leading zeros = 0)
+    printN8ln(Prim.ctzNat8 e); // 200 = 0xC8 (trailing zeros = 3)
+    printBit(Prim.btstNat8(e, 3 : Nat8)); // 200 = 0xC8 (result = true)
+    printBit(Prim.btstNat8(e, 5 : Nat8)); // 200 = 0xC8 (result = false)
+    printBit(Prim.btstNat8(e, 11 : Nat8)); // 200 = 0xC8 (mod 8, result = true)
 
-    assert (3 : Word8 ** (0 : Word8) == (1 : Word8));
-    assert (3 : Word8 ** (3 : Word8) == (27 : Word8));
-    assert (3 : Word8 ** (4 : Word8) == (81 : Word8));
-    assert (3 : Word8 ** (5 : Word8) == (243 : Word8));
+    assert (3 : Nat8 ** (0 : Nat8) == (1 : Nat8));
+    assert (3 : Nat8 ** (3 : Nat8) == (27 : Nat8));
+    assert (3 : Nat8 ** (4 : Nat8) == (81 : Nat8));
+    assert (3 : Nat8 ** (5 : Nat8) == (243 : Nat8));
 };
 
 
 // check whether patterns work
 
-func w8 (n : Word8) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
-func w16 (n : Word16) = assert (switch n { case 0 false; case 1 false; case 65000 true; case _ false });
-func w32 (n : Word32) = assert (switch n { case 0 false; case 1 false; case 4_294_967_295 true; case _ false });
-func w64 (n : Word64) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
+func w8 (n : Nat8) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
+func w16 (n : Nat16) = assert (switch n { case 0 false; case 1 false; case 65000 true; case _ false });
+func w32 (n : Nat32) = assert (switch n { case 0 false; case 1 false; case 4_294_967_295 true; case _ false });
+func w64 (n : Nat64) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
 
 
 w8 42;

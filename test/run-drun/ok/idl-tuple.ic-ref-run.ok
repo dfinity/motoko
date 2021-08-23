@@ -1,16 +1,18 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ query len2(0x4449444c0002717102486905576f726c64)
-← completed: 0x4449444c00027c7c0205
-→ query len3(0x4449444c016c02007101750200710548656c6c6f0102030405576f726c64)
-← completed: 0x4449444c00037c7c7c050581848c20
-→ query len3a(0x4449444c036c02007101756c030071017502026e000201710548656c6c6f010203040005576f726c64)
-← completed: 0x4449444c00037c7c7c050581848c20
-→ query len3(0x4449444c016c030071007601750200710548656c6c6fdead0102030405576f726c64)
-← completed: 0x4449444c00037c7c7c050581848c20
-→ query len3(0x4449444c016c030071017502760200710548656c6c6f01020304dead05576f726c64)
-← completed: 0x4449444c00037c7c7c050581848c20
-→ query len3a(0x4449444c026c030071017502016e000200710548656c6c6f010203040005576f726c64)
-← completed: 0x4449444c00037c7c7c050581848c20
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query len2("Hi", "World")
+← replied: (+2, +5)
+→ query len3(record {"Hello"; (67305985 : int32)}, "World")
+← replied: (+5, +5, +67305985)
+→ query len3a(record {"Hello"; (67305985 : int32); null}, "World")
+← replied: (+5, +5, +67305985)
+→ query len3(record {"Hello"; (67305985 : int32); (-21026 : int16)}, "Wo…
+← replied: (+5, +5, +67305985)
+→ query len3a(record {"Hello"; (67305985 : int32); null}, "World")
+← replied: (+5, +5, +67305985)
+→ query len3a(record {0 = "Hello"; 2 = null}, "World")
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: did not find tuple field in record"
+→ query len3a(record {"Hello"; (67305985 : int32)}, "World")
+← replied: (+5, +5, +67305985)

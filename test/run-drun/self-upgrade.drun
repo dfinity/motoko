@@ -1,0 +1,11 @@
+install $ID self-upgrade/self-upgrade.mo ""
+query $ID check "DIDL\x00\x01\x7d\x01"
+ingress $ID inc "DIDL\x00\x00"
+query $ID check "DIDL\x00\x01\x7d\x02"
+ingress $ID inc "DIDL\x00\x00"
+query $ID check "DIDL\x00\x01\x7d\x03"
+upgrade $ID self-upgrade/self-upgrade.mo ""
+query $ID check "DIDL\x00\x01\x7d\x03"
+ingress $ID inc "DIDL\x00\x00"
+query $ID check "DIDL\x00\x01\x7d\x04"
+

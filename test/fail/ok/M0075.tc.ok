@@ -1,0 +1,2 @@
+M0075.mo:1.8-1.12: type error [M0075], expected array type, but expression produces type
+  Bool

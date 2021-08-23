@@ -1,0 +1,475 @@
+= Basic concepts and terms
+:proglang: Motoko
+:company-id: DFINITY
+
+{proglang} is designed for distributed programming with actors.
+
+Before you begin writing programs for distributed processing using actors, you should be familiar with a few of the basic building blocks of any programming language and with {proglang} in particular. 
+To get you started, this section introduces the following key concepts and terms that are used throughout the remainder of the documentation and that are essential to learning to program in {proglang}:
+
+* program
+* declaration
+* expression
+* value
+* variable
+* type
+
+If you have experience programming in other languages or are familiar with modern programming language theory, you are probably already comfortable with these terms and how they are used.
+There's nothing unique in how these terms are used in {proglang}.
+If you are new to programming, however, this guide introduces each of these terms gradually and by using simplified example programs that eschew any use of actors or distributed programming.
+After you have the basic terminology as a foundation to build on, you can explore more advanced aspects of the language.
+More advanced features are illustrated with correspondingly more complex examples.
+
+The following topics are covered in the section:
+
+ - <<intro-progs,{proglang} program syntax>>
+ - <<intro-printing,Printing numbers and text>>, and <<intro-stdlib, using the base library>>
+ - <<intro-decls-vs-exps,Declarations versus expressions>>
+ - <<intro-lexical-scoping,Lexical scoping of variables>>
+ - <<intro-values,Values and evaluation>>
+ - <<intro-type-anno,Type annotations variables>>
+ - <<intro-type-soundness,Type soundness and type-safe evaluation>>
+
+[[intro-progs]]
+== {proglang} program syntax
+
+Each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see the link:language-manual{outfilesuffix}[language quick reference guide] for precise program syntax).
+
+For programs that we deploy on the Internet Computer, a valid program consists of an __actor expression__, introduced with specific syntax (keyword `actor`) that we discuss in
+link:actors-async{outfilesuffix}[Actors and async data].
+
+In preparing for that discussion, we discuss programs in this chapter and in link:mutable-state{outfilesuffix}[Mutable state] that are not meant to be Internet Computer services.
+Rather, these tiny programs illustrate snippets of {proglang} for writing those services, and each can (usually) be run on its own as a (non-service) {proglang} program, possibly with some printed terminal output.
+
+The examples in this section illustrate basic principles using simple expressions, such as arithmetic.
+For an overview of the full expression syntax of {proglang}, see the link:langauge-manual{outfilesuffix[Lanaguage quick reference].
+
+As a starting point, the following code snippet consists of two declarations—for the variables `x` and `y`—followed by an expression to form a single program:
+
+[source, motoko]
+....
+let x = 1;
+let y = x + 1;
+x * y + x;
+....
+
+We will use variations of this small program in our discussion below.
+
+First, this program's type is `Nat` (natural number), and when run, it evaluates to the (natural number) value of `3`.
+
+Introducing a block with enclosing braces (`do {` and `}`) and another variable (`z`), we can amend our original program as follows:
+
+[source, motoko]
+....
+let z = do {
+  let x = 1;
+  let y = x + 1;
+  x * y + x
+};
+....
+
+[[intro-decls-exps-def]]
+== Declarations and expressions
+
+Declarations introduce immutable variables, mutable state, actors, objects, classes and other types.
+Expressions describe computations that involve these notions.
+
+For now, we use example programs that declare immutable variables, and compute simple arithmetic.
+
+[[intro-decls-vs-exps]]
+=== Declarations versus expressions
+
+<<intro-progs,Recall>> that each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related.
+In this section, we use examples to illustrate their distinctions and accommodate their intermixing.
+
+Recall our example program, first introduced above:
+
+[source, motoko]
+....
+let x = 1;
+let y = x + 1;
+x * y + x;
+....
+
+In reality, this program is a _declaration list_ that consists of _three_ declarations:
+
+. immutable variable `x`, via declaration `let x = 1;`,
+. immutable variable `y`, via declaration `let y = x + 1;`,
+. and an _unnamed, implicit variable_ holding the final expression's value, `x * y + x`.
+
+This expression `x * y + x` illustrates a more general principle:
+//
+Each expression can be thought of as a declaration where necessary since the language implicitly declares an unnamed variable with that expression's result value.
+
+When the expression appears as the final declaration, this expression may have any type.  Here, the expression `x * y + x` has type `Nat`.
+
+Expressions that do not appear at the end, but rather _within_ the list of declarations must have unit type `()`.
+
+=== Ignoring non-unit-typed expressions in declaration lists
+
+We can always overcome this unit-type restriction by explicitly using `ignore` to ignore any unused result values.
+For example:
+
+[source, motoko]
+....
+let x = 1;
+ignore(x + 42);
+let y = x + 1;
+ignore(y * 42);
+x * y + x;
+....
+
+=== Declarations and variable substitution
+
+Declarations can be mutually recursive, but in cases where they are not, they permit substitution semantics.
+(that is, replacing equals for equals, as familiar from high-school algebraic simplification).
+
+Recall our original example:
+
+[source, motoko]
+....
+let x = 1;
+let y = x + 1;
+x * y + x;
+....
+
+We can manually rewrite the program above by _substituting_ the variables' declared values for each of their respective occurrences.
+
+In so doing, we produce the following expression, which is also a program:
+
+[source, motoko]
+....
+1 * (1 + 1) + 1
+....
+
+This is also a valid program—of the same type and with the same behavior (result value `3`)—as the original program.
+
+We can also form a single expression using a block.
+
+=== From declarations to block expressions
+
+Many of the programs above each consist of a list of declarations, as with this example, just above:
+
+[source, motoko]
+....
+let x = 1;
+let y = x + 1;
+x * y + x
+....
+
+A declaration list is not itself (immediately) an _expression_, so we cannot (immediately) declare another variable with its final value (`3`).
+
+[[intro-exp-block]]
+**Block expressions.** We can form a _block expression_ from this list of declarations by enclosing it with matching _curly braces_. Blocks are only allowed as sub-expressions of control flow expressions like `if`, `loop`, `case`, etc. In all other places,
+we use `do { ... }` to represent block expression, to distinguish blocks from object literals. For example, `do {}` is the empty block of type `()`, while `{}` is an empty record of record type `{}`.
+
+[source, motoko]
+....
+do {
+  let x = 1;
+  let y = x + 1;
+  x * y + x
+}
+....
+
+This is also program, but one where the declared variables `x` and `y` are privately scoped to the block we introduced.
+
+This block form preserves the autonomy of the declaration list and its _choice of variable names_.
+
+[[intro-lexical-scoping]]
+=== Declarations follow *lexical scoping*
+
+Above, we saw that nesting blocks preserves the autonomy of each separate declaration list and its _choice of variable names_.
+Language theorists call this idea _lexical scoping_.
+It means that variables' scopes may nest, but they may not interfere as they nest.
+
+For instance, the following (larger, enclosing) program evaluates to `42`, _not_ `2`, since the final occurrences of `x` and `y`, on the final line, refer to the _very first_ definitions, _not_ the later ones within the enclosed block:
+
+[source, motoko]
+....
+let x = 40; let y = 2;
+ignore do {
+  let x = 1;
+  let y = x + 1;
+  x * y + x
+};
+x + y
+....
+
+Other languages that lack lexical scoping may give a different meaning to this program.
+However, modern languages universally favor lexical scoping, the meaning given here.
+
+Aside from mathematical clarity, the chief practical benefit of lexical scoping is _security_, and its use in building compositionally-secure systems.
+Specifically, {proglang} gives very strong composition properties. For example, nesting your program within a program you do not trust cannot arbitrarily redefine your variables with different meanings.
+
+[[intro-values]]
+== Values and evaluation
+
+Once a {proglang} expression receives the program's (single) thread of control, it evaluates eagerly until it reduces to a _result value_.
+
+In so doing, it will generally pass control to sub-expressions, and to sub-routines before it gives up control from the _ambient control stack_.
+
+If this expression never reaches a value form, the expression evaluates indefinitely.  
+Later we introduce recursive functions and imperative control flow, which each permit non-termination.
+For now, we only consider terminating programs that result in values.
+
+In the material above, we focused on expressions that produced natural numbers.
+As a broader language overview, however, we briefly summarize the other value forms below:
+
+=== Primitive values
+
+{proglang} permits the following primitive value forms:
+
+ - Boolean values (`true` and `false`).
+ - Integers (...,`-2`, `-1`, `0`, `1`, `2`, ...); Bounded and _unbounded_ variants.
+ - Natural numbers (`0`, `1`, `2`, ...); Bounded and _unbounded_ variants.
+ - Text values --- strings of unicode characters.
+
+By default, **integers** and **natural numbers** are _unbounded_ and do not overflow.
+Instead, they use representations that grow to accommodate any finite number.
+
+For practical reasons, {proglang} also includes _bounded_ types for integers and natural numbers, distinct from the default versions.
+Each bounded variant has a fixed width (one of `8`, `16`, `32`, `64`) and each carries the potential for "`overflow`". If and when this event occurs, it is an error and causes the
+<<overview-traps,program to trap>>.
+There are no unchecked, uncaught overflows in {proglang}, except in well-defined situations, for explicitly _wrapping_ operations (indicated by a `%`  character in the operator).
+The language provides primitive built-ins to convert between these various number representations.
+
+The link:language-manual{outfilesuffix}[language quick reference] contains a complete list of link:language-manual{outfilesuffix}#primitive-types[primitive types].
+
+=== Non-primitive values
+
+Building on the primitive values and types above, the language permits user-defined types, and each of the following non-primitive value forms and associated types:
+
+ - link:language-manual{outfilesuffix}#exp-tuple[Tuples], including the unit value (the "empty tuple")
+ - link:language-manual{outfilesuffix}#exp-arrays[Arrays], with both _immutable_ and _mutable_ variants.
+ - link:language-manual{outfilesuffix}#exp-object[Objects], with named, unordered fields and methods
+ - link:language-manual{outfilesuffix}#variant-types[Variants], with named constructors and optional payload values
+ - link:language-manual{outfilesuffix}#exp-func[Function values], including link:sharing{outfilesuffix}[shareable functions].
+ - link:language-manual{outfilesuffix}#exp-async[Async values], also known as _promises_ or _futures_.
+ - link:language-manual{outfilesuffix}#type-Error[Error values] carry the payload of exceptions and system failures
+
+We discuss the use of these forms in the succeeding chapters.
+For precise language definitions of primitive and non-primitive values, see the link:language-manual{outfilesuffix}#exp-error[language quick reference].
+
+[[intro-unit-type]]
+=== The *unit type* versus the `void` type
+
+{proglang} has no type named `void`.
+In many cases where readers may think of return types being "`void`" from using languages like Java or C++, we encourage them to think instead of the _unit type_, written `()`.
+
+In practical terms, like `void`, the unit value usually carries zero representation cost.
+
+Unlike the `void` type, there _is_ a unit value, but like the `void` return value, the unit value carries no values internally, and as such, it always carries zero _information_.
+
+Another mathematical way to think of the unit value is as a tuple with no elements---the nullary ("`zero-ary`") tuple. There is only one value with these properties, so it is mathematically unique, and thus need not be represented at runtime.
+
+=== Natural numbers
+
+The members of this type consist of the usual values ---`0`, `1`, `2`, ...----but, as in mathematics, the members of are not bound to a special maximum size.
+Rather, the runtime representation of these values accommodates arbitrary-sized numbers, making their "overflow" (nearly) impossible.
+(_nearly_ because it is the same event as running out of program memory, which can always happen for some programs in extreme situations).
+
+{proglang} permits the usual arithmetic operations one would expect.
+As an illustrative example, consider the following program:
+
+[source, motoko]
+....
+let x = 42 + (1 * 37) / 12: Nat
+....
+
+This program evaluates to the value `45`, also of type `Nat`.
+
+[[intro-type-soundness]]
+== Type soundness
+
+Each {proglang} expression that type-checks we call _well-typed_.  The _type_ of a {proglang} expression serves as a promise from the language to the developer about the future behavior of the program, if executed.
+
+First, each well-typed program will evaluate without undefined behavior.
+That is, the phrase **"`well-typed programs don't go wrong`"** applies here.
+For those unfamiliar with the deeper implications of that phrase, it means that there is a precise space of meaningful (unambiguous) programs, and the type system enforces that we stay within it, and that all well-typed programs have a precise (unambiguous) meaning.
+
+Furthermore, the types make a precise prediction over the program's result.
+If it yields control, the program will generate a _result value_ that agrees with that of the original program.
+
+In either case, the static and dynamic views of the program are linked by and agree with the static type system.
+This agreement is the central principle of a static type system, and is delivered by {proglang} as a core aspect of its design.
+
+The same type system also enforces that asynchronous interactions agree between static and dynamic views of the program, and that the resulting messages generated "under the hood" never mismatch at runtime.
+This agreement is similar in spirit to the caller/callee argument type and return type agreements that one ordinarily expects in a typed language.
+
+[[intro-type-anno]]
+== Type annotations and variables
+
+Variables relate (static) names and (static) types with (dynamic) values that are present only at runtime.
+
+In this sense, {proglang} types provide a form of _trusted, compiler-verified documentation_ in the program source code.
+
+Consider this very short program:
+
+[source, motoko]
+....
+let x : Nat = 1
+....
+
+In this example, the compiler infers that the expression `1` has type `Nat`, and that `x` has the same type.
+
+In this case, we can omit this annotation without changing the meaning of the program:
+
+[source, motoko]
+....
+let x = 1
+....
+
+Except for some esoteric situations involving operator overloading, type annotations do not (typically) affect the meaning of the program as it runs.
+
+If they are omitted and the compiler accepts the program, as is the case above, the program has the same meaning (same _behavior_) as it did originally.
+
+However, sometimes type annotations are required by the compiler to infer other assumptions, and to check the program as a whole.
+
+When they are added and the compiler still accepts the program, we know that the added annotations are _consistent_ with the existing ones.
+
+For instance, we can add additional (not required) annotations, and the compiler checks that all annotations and other inferred facts agree as a whole:
+
+[source, motoko]
+....
+let x : Nat = 1 : Nat
+....
+
+If we were to try to do something _inconsistent_ with our annotation type, however, the type checker will signal an error.
+
+Consider this program, which is not well-typed:
+
+[source.run, motoko]
+....
+let x : Text = 1 + 1
+....
+
+The type annotation `Text` does not agree with the rest of the program, since the type of `1 + 1` is `Nat` and not `Text`, and these types are unrelated by subtyping.
+Consequently, this program is not well-typed, and the compiler will signal an error (with a message and location) and will not compile or execute it.
+
+== Type errors and messages
+
+Mathematically, the type system of {proglang} is _declarative_, meaning that it exists independently of any implementation, as a concept entirely in formal logic.
+Likewise, the other key aspects of the language definition (for example, its execution semantics) exist outside of an implementation.
+
+However, to design this logical definition, to experiment with it, and to practice making mistakes, we want to interact with this type system, and to make lots of harmless mistakes along the way.
+
+The error messages of the _type checker_ attempt to help the developer when they misunderstand or otherwise misapply the logic of the type system, which is explained indirectly in this book.
+
+These error messages will evolve over time, and for this reason, we will not include particular error messages in this text.
+Instead, we will attempt to explain each code example in its surrounding prose.
+
+[[intro-stdlib]]
+=== Using the {proglang} base library
+
+For various practical language engineering reasons, the design of {proglang} strives to minimize builtin types and operations.
+
+Instead, whenever possible, the {proglang} base library provides the types and operations that make the language feel complete.
+__**However**, this base library is still under development,
+and is still incomplete__.
+
+The link:base-libraries/stdlib-intro{outfilesuffix}[Motoko Base Library] lists a _selection_ of modules from the {proglang} base library, focusing on core features used in the examples that are unlikely to change radically.
+However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
+
+To import from the base library, use the `import` keyword.
+Give a local module name to introduce, in this example `D` for "`**D**ebug`", and a URL where the `import` declaration may locate the imported module:
+
+[source, motoko]
+....
+include::../examples/print.mo[]
+....
+
+In this case, we import {proglang} code (not some other module form) with the `mo:` prefix.
+We specify the `base/` path, followed by the module's file name `Debug.mo` minus its extension.
+
+[[intro-printing]]
+=== Printing using `Debug.print` and `debug_show`
+
+Above, we print the text string using the function `print` in library `Debug.mo`:
+
+[source.no-repl, motoko]
+....
+print: Text -> ()
+....
+
+The function `print` accepts a text string (of type `Text`) as input, and produces the _unit value_ (of _unit type_, or `()`) as its output.
+
+Because unit values carry no information, all values of type unit are identical,  so the `print` function doesn't actually produce an interesting result. Instead of a result, it has a _side effect_.
+The function `print` has the effect of emitting the text string in a human-readable form to the output terminal. Functions that have side effects, such as emitting output, or modifying state, are often called _impure_. Functions that just return values, without further side-effects, are called _pure_.
+We discuss the return value (the unit value) <<intro-unit-type, in detail below>>, and relate it to the `void` type for readers more familiar with that concept.
+
+Finally, we can transform most {proglang} values into human-readable text strings for debugging purposes, _without_ having to write those transformations by hand.
+
+The `debug_show` primitive permits converting a large class of values into values of type `Text`.
+
+For instance, we can convert a triple (of type `(Text, Nat, Text)`) into debugging text without writing a custom conversion function ourselves:
+
+[source, motoko]
+....
+import D "mo:base/Debug";
+D.print(debug_show(("hello", 42, "world")))
+....
+
+Using these text transformations, we can print most {proglang} data as we experiment with our programs.
+
+=== Accommodating incomplete code
+
+Sometimes, in the midst of writing a program, we want to run an incomplete version, or a version where one or more execution paths are either missing or simply invalid.
+
+To accommodate these situations, we use the `xxx`, `nyi` and `unreachable` functions from the base `Prelude` library, explained below.
+Each wraps a <<overview-traps,general trap mechanism>>, explained further below.
+
+=== Use short-term holes
+
+Short-term holes are never committed to a source repository, and only ever exist in a single development session, for a developer that is still writing the program.
+
+Assuming that earlier, one has imported the prelude as follows:
+
+[source#prelude, motoko]
+....
+import P "mo:base/Prelude";
+....
+
+The developer can fill _any missing expression_ with the following one:
+
+[source.include_prelude, motoko]
+....
+P.xxx()
+....
+
+The result will _always_ type check at compile time, and _will always_ trap at run time, if and when this expression ever executes.
+
+=== Document longer-term holes
+
+By convention, longer-term holes can be considered "not yet implemented" (`nyi`) features, and marked as such with a similar function from the Prelude module:
+
+[source.include_prelude, motoko]
+....
+P.nyi()
+....
+
+=== Document `unreachable` code paths
+
+In contrast to the situations above, sometimes code will _never_ be filled, since it will _never_ be evaluated, assuming the coherence of the internal logic of the programs' invariants.
+
+To document a code path as logically impossible, or _unreachable_, use the base library function `unreachable`:
+
+[source.include_prelude, motoko]
+....
+P.unreachable()
+....
+
+As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
+
+[[overview-traps]]
+=== Execution traps stop the program
+
+Each form above is a simple wrapper around the always-fail use of the link:language-manual{outfilesuffix}#exp-assert[assert primitive]:
+
+[source, motoko]
+....
+assert false
+....
+
+Dynamically, we call this program-halting behavior a _program(-generated) trap_, and we say that the program _traps_ when it executes this code.
+It will cease to progress further.

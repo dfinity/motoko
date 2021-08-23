@@ -3,24 +3,24 @@
 = `Array` -- Arrays
 */
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 module {
   public func equals<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
-    if (a.len() != b.len()) { 
-      return false; 
+    if (a.size() != b.size()) {
+      return false;
     };
     var i = 0;
-    while (i < a.len()) {
-      if (not eq(a[i],b[i])) { 
-        return false; 
+    while (i < a.size()) {
+      if (not eq(a[i],b[i])) {
+        return false;
       };
       i += 1;
     };
-    return true; 
+    return true;
   };
 
   public func append<A>(xs : [A], ys : [A]) : [A] {
-    switch(xs.len(), ys.len()) {
+    switch(xs.size(), ys.size()) {
       case (0, 0) { []; };
       case (0, _) { ys; };
       case (_, 0) { xs; };
@@ -53,7 +53,7 @@ module {
   };
 
   public func enumerate<A>(xs : [A]) : [(A, Nat)] {
-    Prim.Array_tabulate<(A, Nat)>(xs.len(), func (i : Nat) : (A, Nat) {
+    Prim.Array_tabulate<(A, Nat)>(xs.size(), func (i : Nat) : (A, Nat) {
       (xs[i], i);
     });
   };
@@ -70,7 +70,7 @@ module {
 
   public func foldl<A, B>(f : (B, A) -> B, initial : B, xs : [A]) : B {
     var acc = initial;
-    let len = xs.len();
+    let len = xs.size();
     var i = 0;
     while (i < len) {
       acc := f(acc, xs[i]);
@@ -81,7 +81,7 @@ module {
 
   public func foldr<A, B>(f : (A, B) -> B, initial : B, xs : [A]) : B {
     var acc = initial;
-    let len = xs.len();
+    let len = xs.size();
     var i = len;
     while (i > 0) {
       i -= 1;
@@ -100,7 +100,7 @@ module {
   };
 
   public func freeze<A>(xs : [var A]) : [A] {
-    Prim.Array_tabulate<A>(xs.len(), func (i : Nat) : A {
+    Prim.Array_tabulate<A>(xs.size(), func (i : Nat) : A {
       xs[i];
     });
   };
@@ -112,13 +112,13 @@ module {
   };
 
   public func map<A, B>(f : A -> B, xs : [A]) : [B] {
-    Prim.Array_tabulate<B>(xs.len(), func (i : Nat) : B {
+    Prim.Array_tabulate<B>(xs.size(), func (i : Nat) : B {
       f(xs[i]);
     });
   };
 
   public func mapWithIndex<A, B>(f : (A, Nat) -> B, xs : [A]) : [B] {
-    Prim.Array_tabulate<B>(xs.len(), func (i : Nat) : B {
+    Prim.Array_tabulate<B>(xs.size(), func (i : Nat) : B {
       f(xs[i], i);
     });
   };
@@ -128,7 +128,7 @@ module {
   };
 
   public func thaw<A>(xs : [A]) : [var A] {
-    let xsLen = xs.len();
+    let xsLen = xs.size();
     if (xsLen == 0) {
       return [var];
     };

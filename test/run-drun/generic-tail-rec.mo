@@ -1,9 +1,9 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 /* test generic self-tail-recursion */
 
 let bound:Int = 100000;
 
-{
+do {
 func Loop(n:Int){
      if (n >= bound) {
           Prim.debugPrint "done 1";
@@ -15,7 +15,7 @@ Loop(0);
 };
 
 
-{
+do {
 func Loop(n:Int){
      if (n >= bound) {
           Prim.debugPrint "done 2";
@@ -28,7 +28,7 @@ func Loop(n:Int){
 Loop(0);
 };
 
-{
+do {
 func Loop<T>(n:Int){
      if (n >= bound) {
           Prim.debugPrint "done 3";
@@ -40,7 +40,7 @@ func Loop<T>(n:Int){
 Loop<Int>(0);
 };
 
-{
+do {
 func Loop<T,U>(n:Int){
      if (n >= bound) {
           Prim.debugPrint "done 4";
@@ -51,6 +51,3 @@ func Loop<T,U>(n:Int){
 
 Loop<Int,Bool>(0);
 };
-
-
-

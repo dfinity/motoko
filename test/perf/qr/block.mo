@@ -2,7 +2,6 @@
  * Module     : block.mo
  * Copyright  : 2020 DFINITY Stiftung
  * License    : Apache 2.0 with LLVM Exception
- * Maintainer : Enzo Haussecker <enzo@dfinity.org>
  * Stability  : Stable
  */
 
@@ -94,7 +93,7 @@ module {
     let targetSize = Common.targetSize(version, level);
     if (dataSize > targetSize) null else {
 
-      let zeroPadSize =
+      let zeroPadSize : Nat =
         if (dataSize + 7 > targetSize) {
           targetSize - dataSize
         } else {
@@ -102,7 +101,7 @@ module {
         };
       let zeroPad = List.replicate<Bool>(zeroPadSize, false);
 
-      var fillPadSize = targetSize - dataSize - zeroPadSize;
+      var fillPadSize : Nat = targetSize - dataSize - zeroPadSize;
       var fillPad = List.nil<Bool>();
       while (fillPadSize > 0) {
         let chunk = List.take<Bool>(Nat.natToBits(60433), fillPadSize);

@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
-IC_REF_RUN=${IC_REF_RUN:-ic-ref-run}
-CONFIG=$(realpath $(dirname $0)/drun.toml)
-
-
-
 if [ -z "$1" ]
 then
   echo "Usage: $0 <name>.wasm [call-script]"
@@ -13,6 +8,22 @@ fi
 
 export LANG=C.UTF-8
 
-(echo "install ic:2A012B $1 0x";
- if [ -n "$2" ]; then LANG=C perl -ne 'print "$1 ic:2A012B $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade ic:2A012B '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2; fi;
-) | $IC_REF_RUN -c "$CONFIG" /dev/stdin
+# drun creates canisters with this ID:
+ID=cvccv-qqaaq-aaaaa-aaaaa-c
+# ID=ic:0004000000000000014B
+
+if [ "${1: -5}" = ".drun" ]
+then
+  ( echo "create"
+    LANG=C perl -npe 's,\$ID,'$ID',g' $1 |
+    grep -v '^$' | grep -v '^\w*#' # ic-ref-run doesn’t like empty or comment lines
+  ) | ic-ref-run /dev/stdin
+else
+  ( echo "create"
+    echo "install "$ID" $1 0x"
+    if [ -n "$2" ]
+    then
+      LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
+    fi
+  ) | ic-ref-run /dev/stdin
+fi

@@ -1,12 +1,16 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update go(0x4449444c0000)
-debug.print: This is reachable.
-debug.print: This is reachable.
-Trap: EvalTrapError :0.1 "canister trapped explicitly: Natural subtraction underflow"
-debug.print: This is reachable.
-debug.print: This is reachable.
-debug.print: This is reachable.
-← completed: 0x4449444c0000
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+debug.print: ok 1
+debug.print: ok 2
+debug.print: ok 3
+debug.print: ok 4
+debug.print: ok 5
+debug.print: ok 6
+debug.print: ok 7
+debug.print: ok 8
+debug.print: ok 9
+debug.print: ok 10
+← replied: ()

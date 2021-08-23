@@ -9,10 +9,10 @@ type Info =
  record {
    1: Info;
    345: text;
-   "name": text;
-   "name": int;
+   name: text;
+   name: int;
  };
 service : {
-  "f": (Tup) -> () query;
-  "f_": (opt Tup) -> () oneway;
+  f: (Tup) -> () query;
+  f_: (opt Tup) -> () oneway;
 }

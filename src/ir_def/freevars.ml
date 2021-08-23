@@ -28,20 +28,30 @@ let (++) : f -> f -> f = M.union (fun _ u1 u2 -> Some (join u1 u2))
 let unions f xs = List.fold_left (++) M.empty (List.map f xs)
 let (//) x y = M.remove y x
 
+(* Operations: left-biased Map union *)
+let (+-) = M.union (fun _ u1 _ -> Some u1)
+
+(* A set of defined variables (with type information) *)
+type td = Mo_types.Type.typ M.t
+
 (* A combined set of free variables and defined variables,
-   e.g. in patterns and declaration *)
-type defs = S.t
-type fd = f * defs
+   (in declarations) *)
+type fd = f * td
+
+let fd_of_defs m = (M.empty, m)
 
 (* Operations: *)
 
 (* This adds a set of free variables to a combined set *)
-let (+++) ((f,d) : fd)  x = ((++) f x, d)
+let (+++) ((f,d) : fd) x = ((++) f x, d)
 (* This takes the union of two combined sets *)
-let (++++) (f1, d1) (f2,d2) = ((++) f1 f2, S.union d1 d2)
-let union_binders f xs = List.fold_left (++++) (M.empty, S.empty) (List.map f xs)
+let (++++) (f1, d1) (f2,d2) =
+  (++) f1 f2,
+  M.union (fun _ t _ -> Some t) d1 d2 (* any type is fine *)
+let union_binders f xs = List.fold_left (++++) (M.empty, M.empty) (List.map f xs)
 
-let diff f d = M.filter (fun k _ -> not (S.mem k d)) f
+let diff (m1 : 'a M.t) (m2 : 'b M.t) : 'a M.t =
+  M.merge (fun k v1 -> function None -> v1 | Some _ -> None) m1 m2
 
 let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
 let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
@@ -68,6 +78,25 @@ let close (f,d) = diff f d
 
 (* One traversal for each syntactic category, named by that category *)
 
+let rec pat p : td = match p.it with
+  | WildP | LitP _  -> M.empty
+  | VarP i          -> M.singleton i p.note
+  | TupP ps         -> pats ps
+  | ObjP pfs        -> pats (pats_of_obj_pat pfs)
+  | OptP p          -> pat p
+  | TagP (i, p)     -> pat p
+  | AltP (p1, p2)   -> pat p1 +- pat p2
+
+and pats ps : td = List.(fold_left (+-) M.empty (map pat ps))
+
+let arg a : fd = (M.empty, M.singleton a.it a.note)
+
+let args as_ : fd = union_binders arg as_
+
+let id i = M.singleton i {captured = false; eager = true}
+
+let fields fs = unions (fun f -> id f.it.var) fs
+
 let rec exp e : f = match e.it with
   | VarE i              -> id i
   | LitE l              -> M.empty
@@ -82,45 +111,29 @@ let rec exp e : f = match e.it with
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
-  | ActorE (ds, fs, _)  -> close (decs ds +++ fields fs)
+  | ActorE (ds, fs, u, _)  -> actor ds fs u
   | NewObjE (_, fs, _)  -> fields fs
   | TryE (e, cs)        -> exp e ++ cases cs
   | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
 
-and fields fs = unions (fun f -> id f.it.var) fs
+and actor ds fs u = close (decs ds +++ fields fs +++ upgrade u)
+
+and upgrade {pre; post} = under_lambda (exp pre) ++ under_lambda (exp post)
 
 and exps es : f = unions exp es
-
-and arg a : fd = (M.empty, S.singleton a.it)
-
-and args as_ : fd = union_binders arg as_
 
 and lexp le : f = match le.it with
   | VarLE i              -> id i
   | DotLE (e1, _)        -> exp e1
   | IdxLE (e1, e2)       -> exps [e1; e2]
 
-and pat p : fd = match p.it with
-  | WildP           -> (M.empty, S.empty)
-  | VarP i          -> (M.empty, S.singleton i)
-  | TupP ps         -> pats ps
-  | ObjP pfs        -> pats (pats_of_obj_pat pfs)
-  | LitP l          -> (M.empty, S.empty)
-  | OptP p          -> pat p
-  | TagP (i, p)     -> pat p
-  | AltP (p1, p2)   -> pat p1 ++++ pat p2
-
-and pats ps : fd = union_binders pat ps
-
-and case (c : case) = exp c.it.exp /// pat c.it.pat
+and case (c : case) = exp c.it.exp /// fd_of_defs (pat c.it.pat)
 
 and cases cs : f = unions case cs
 
-and id i = M.singleton i {captured = false; eager = true}
-
 and dec d = match d.it with
-  | LetD (p, e) -> pat p +++ exp e
-  | VarD (i, _, e) -> (M.empty, S.singleton i) +++ exp e
+  | LetD (p, e) -> fd_of_defs (pat p) +++ exp e
+  | VarD (i, t, e) -> fd_of_defs (M.singleton i t) +++ exp e
 
 (* The variables captured by a function. May include the function itself! *)
 and captured e =

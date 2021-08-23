@@ -1,9 +1,11 @@
 func add1 (x : Nat) : Nat = x + 1;
+func add2 (x : Nat) : Nat = add1(x) + 1;
+func add3 (x : Nat) : Nat = add2(x) + 1;
 
 /* Storing functions */
-let fs = [add1, add1, add1];
+let fs = [add1, add2, add3];
 
-assert(fs[0](fs[1](fs[2](1))) == 4);
+assert(fs[0](fs[1](fs[2](1))) == 7);
 
 /* Closure (scalar) */
 var answer = 42;

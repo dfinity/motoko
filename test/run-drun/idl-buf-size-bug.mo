@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
   public func match (b : Int) : async () {
     assert (switch b {
@@ -7,9 +7,9 @@ actor {
     })
   };
 
-  public func do () : async () {
+  public func foo () : async () {
     await match (4_619_372_036_854_775_805);
   }
 };
 
-//CALL ingress do 0x4449444C0000
+//CALL ingress foo 0x4449444C0000

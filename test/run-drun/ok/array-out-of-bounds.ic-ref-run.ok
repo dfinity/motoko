@@ -1,10 +1,8 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update foo1(0x4449444c0000)
-Trap: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
-→ update foo2(0x4449444c0000)
-Trap: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: Array index out of bounds"
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update foo1()
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: Array index out of bounds"
+→ update foo2()
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: Array index out of bounds"

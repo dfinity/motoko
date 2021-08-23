@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 class range(x : Nat, y : Nat) {
   var i = x;

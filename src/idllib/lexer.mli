@@ -1,4 +1,2 @@
-exception Error of Source.region * string
-
-val token : Lexing.lexbuf -> Parser.token  (* raise Error *)
+val token : Lexing.lexbuf -> Parser.token  (* raise Source.ParseError *)
 val region : Lexing.lexbuf -> Source.region

@@ -1,6 +1,6 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
-  public func go() {
+  public func go() : async () {
     var cnt : Nat = 0;
 
     func f(i:Nat) : async Nat {
@@ -66,6 +66,12 @@ actor a {
        Prim.debugPrint a;
        Prim.debugPrint b;
     };
+
+    ignore(await a);
+    ignore(await b);
+    ignore(await c);
+    ignore(await d);
+    await e;
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

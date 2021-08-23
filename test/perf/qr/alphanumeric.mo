@@ -2,7 +2,6 @@
  * Module     : alphanumeric.mo
  * Copyright  : 2020 DFINITY Stiftung
  * License    : Apache 2.0 with LLVM Exception
- * Maintainer : Enzo Haussecker <enzo@dfinity.org>
  * Stability  : Stable
  */
 
@@ -13,7 +12,7 @@ import List "list";
 import Nat "nat";
 import Option "option";
 import Prelude "prelude";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Text "text";
 import Trie "trie";
 import Util "util";
@@ -30,7 +29,7 @@ module {
     let mi = List.fromArray<Bool>([false, false, true, false]);
     let cci = Util.padLeftTo(
       Common.cciLen(version, #Alphanumeric),
-      Nat.natToBits(text.len())
+      Nat.natToBits(text.size())
     );
 
     func format(body : List<Bool>) : List<Bool> {
@@ -100,7 +99,7 @@ module {
   };
 
   func keyChar(char : Char) : Trie.Key<Char> {
-    { key = char; hash = Prim.charToWord32(char) };
+    { key = char; hash = Prim.charToNat32(char) };
   };
 
   func eqChar(a : Char, b : Char) : Bool {

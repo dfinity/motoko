@@ -108,7 +108,7 @@ and t_exp' context exp' =
        LabelEnv.add Return (Cont (ContVar k_ret))
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
-     (asyncE typ1 (typ exp1)
+     (cps_asyncE typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
                        c_exp context' exp1 (ContVar k_ret)))).it
   | TryE _ -> assert false (* these never have effect T.Triv *)
@@ -119,8 +119,11 @@ and t_exp' context exp' =
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
-  | ActorE (ds, ids, t) ->
-    ActorE (t_decs context ds, ids, t)
+  | ActorE (ds, ids, { pre; post }, t) ->
+    ActorE (t_decs context ds, ids,
+      { pre = t_exp LabelEnv.empty pre;
+        post = t_exp LabelEnv.empty post},
+      t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
   | PrimE (p, exps) ->
@@ -177,7 +180,7 @@ and nary context k naryE es =
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
       (* TBR: optimization - no need to name the last trivial argument *)
-      k -@- naryE (List.rev (e1 :: vs))
+      k -@- naryE (List.rev (t_exp context e1 :: vs))
     | e1 :: es ->
       match eff e1 with
       | T.Triv ->
@@ -215,7 +218,7 @@ and c_loop context k e1 =
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
-      (varE loop -*- unitE)
+      (varE loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
  match lexp1.it with
@@ -349,7 +352,7 @@ and c_exp' context exp k =
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
     k -@-
-      (asyncE typ1 (typ exp1)
+      (cps_asyncE typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
           (c_exp context' exp1 (ContVar k_ret)))))
   | PrimE (AwaitPrim, [exp1]) ->
@@ -363,10 +366,10 @@ and c_exp' context exp k =
        let kr = tupE [varE k; varE r] in
        match eff exp1 with
        | T.Triv ->
-          awaitE (typ exp) (t_exp context exp1) kr
+          cps_awaitE (typ_of_var k) (t_exp context exp1) kr
        | T.Await ->
           c_exp context  exp1
-            (meta (typ exp1) (fun v1 -> (awaitE (typ exp) (varE v1) kr)))
+            (meta (typ exp1) (fun v1 -> (cps_awaitE (typ_of_var k) (varE v1) kr)))
      ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
@@ -411,7 +414,7 @@ and c_dec context dec (k:kont) =
 and c_decs context decs k =
   match decs with
   | [] ->
-    k -@- unitE
+    k -@- unitE ()
   | dec :: decs ->
     c_dec context dec (meta T.unit (fun v -> c_decs context decs k))
 
@@ -474,8 +477,8 @@ and rename_pat' pat =
     let (patenv,pat1) = rename_pat pat1 in
     (patenv, TagP (i, pat1))
   | AltP (pat1,pat2) ->
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
+    assert(Freevars.(M.is_empty (pat pat1)));
+    assert(Freevars.(M.is_empty (pat pat2)));
     (PatEnv.empty,pat.it)
 
 and rename_pats pats =
@@ -498,14 +501,36 @@ and define_pat patenv pat : dec list =
   | OptP pat1
   | TagP (_, pat1) -> define_pat patenv pat1
   | AltP (pat1, pat2) ->
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
-    assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
+    assert(Freevars.(M.is_empty (pat pat1)));
+    assert(Freevars.(M.is_empty (pat pat2)));
     []
 
 and define_pats patenv (pats : pat list) : dec list =
-  List.concat (List.map (define_pat patenv) pats)
+  List.concat_map (define_pat patenv) pats
+
+and t_comp_unit context = function
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
+  | ProgU ds ->
+    begin
+      match infer_effect_decs ds with
+      | T.Triv ->
+        ProgU (t_decs context ds)
+      | T.Await ->
+        let throw = fresh_err_cont () in
+        let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+        let e = fresh_var "e" T.catch in
+        ProgU [
+          funcD throw e (assertE (falseE ()));
+          expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
+        ]
+    end
+  | ActorU (as_opt, ds, ids, { pre; post }, t) ->
+    ActorU (as_opt, t_decs context ds, ids,
+      { pre = t_exp LabelEnv.empty pre;
+        post = t_exp LabelEnv.empty post},
+      t)
 
 and t_prog (prog, flavor) =
-  (t_block LabelEnv.empty prog, { flavor with has_await = false })
+  (t_comp_unit LabelEnv.empty prog, { flavor with has_await = false })
 
 let transform prog = t_prog prog

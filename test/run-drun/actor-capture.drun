@@ -1,0 +1,2 @@
+# test zero argument class, passing unit
+install $ID actor-capture/actor-capture.mo "DIDL\x00\x01\x71\x05Hello"

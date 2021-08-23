@@ -1,3 +1,3 @@
-(unknown location): import error, canister alias "bar" target "not_an_ic_url" is not "ic:" url
-(unknown location): import error, canister alias "baz" target "canister:baz" is not "ic:" url
-(unknown location): actor-alias error, cannot parse URL "https://dfinity.org" for actor alias "foo": Unrecognized URL
+(unknown location): actor-alias error [M0007], cannot parse principal "not_an_ic_url" for actor alias "bar": invalid principal. Did you mean "sjr6b-ekuri"?
+(unknown location): actor-alias error [M0007], cannot parse principal "canister:baz" for actor alias "baz": invalid principal. Did you mean "e5mcd-furba"?
+(unknown location): actor-alias error [M0007], cannot parse principal "https://dfinity.org" for actor alias "foo": invalid principal. Did you mean "5kp66-tnini-tyora"?

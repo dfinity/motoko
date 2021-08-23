@@ -1,2 +1,2 @@
 array-out-of-bounds.mo:7.12-7.17: execution error, index out of bounds
-array-out-of-bounds.mo:11.12-11.17: execution error, index out of bounds
+array-out-of-bounds.mo:11.5-11.10: execution error, index out of bounds

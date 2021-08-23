@@ -1,6 +1,6 @@
-type Nat = ();
-type Id = Int;
-type Text = Nat;
 actor A {
-  public func f (x:Nat, y:Text):async Id {0};
+    public type Nat = ();
+    public type Id = Int;
+    public type Text = Nat;
+    public func f (x:Nat, y:Text):async Id {0};
 };

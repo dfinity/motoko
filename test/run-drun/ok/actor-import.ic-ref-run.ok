@@ -1,10 +1,10 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update go(0x4449444c0000)
-← completed: 0x4449444c016900010001022a01
-→ update go2(0x4449444c0000)
-← completed: 0x4449444c016900010001022a01
-→ update go3(0x4449444c0000)
-← completed: 0x4449444c016900010001022a01
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+← replied: (service "lg264-qjkae")
+→ update go2()
+← rejected (RC_CANISTER_REJECT): canister does not exist: lg264-qjkae
+→ update go3()
+← rejected (RC_CANISTER_REJECT): canister does not exist: lg264-qjkae

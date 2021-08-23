@@ -1,7 +1,10 @@
 assertion failed at assertFalse.mo:1.1-1.14
-
-Error: failed to process main module `_out/assertFalse.wasm`
+Error: failed to run main module `_out/assertFalse.wasm`
 
 Caused by:
-    0: Instantiation failed during setup
-    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: init
+         1: _start
+       

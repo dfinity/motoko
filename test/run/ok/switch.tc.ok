@@ -1,17 +1,19 @@
-switch.mo:86.29-86.30: warning, this pattern is never matched
-switch.mo:75.11-77.2: warning, the cases in this switch over type
-  ?Int
-do not cover value
-  ?(_)
-switch.mo:81.3-81.14: warning, the cases in this switch over type
+switch.mo:19.11-19.14: warning [M0155], operator may trap for inferred type
   Nat
-do not cover value
+switch.mo:75.11-77.2: warning [M0145], this switch of type
+  ?Int
+does not cover value
+  ?(_)
+switch.mo:81.3-81.14: warning [M0145], this switch of type
+  Nat
+does not cover value
   _
-switch.mo:92.11-94.2: warning, the cases in this switch over type
+switch.mo:86.29-86.30: warning [M0146], this pattern is never matched
+switch.mo:92.11-94.2: warning [M0145], this switch of type
   ?Nat
-do not cover value
+does not cover value
   null
-switch.mo:97.11-99.2: warning, the cases in this switch over type
+switch.mo:97.11-99.2: warning [M0145], this switch of type
   ?Nat
-do not cover value
+does not cover value
   ?(_)

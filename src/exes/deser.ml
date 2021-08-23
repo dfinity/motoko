@@ -491,8 +491,7 @@ end
 (* CLI *)
 
 let name = "deser"
-let version = "0.1"
-let banner = "Interface Description Language (IDL) " ^ version ^ " message dumper"
+let banner = "Candid toolkit " ^ Source_id.banner
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 let mode = ref Nary

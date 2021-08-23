@@ -1,5 +1,5 @@
-stdin:2.9-2.17: syntax error, unclosed text literal
-stdin:1.9-1.17: type error, operator not defined for operand types
+stdin:2.9-2.17: syntax error [M0002], unclosed text literal
+stdin:1.9-1.10: type error [M0050], literal of type
   Nat
-and
+does not have expected type
   Bool

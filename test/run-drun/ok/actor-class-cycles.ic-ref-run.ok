@@ -1,0 +1,24 @@
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+debug.print: {Principal = cvccv-qqaaq-aaaaa-aaaaa-c}
+debug.print: {balance = "0T"}
+debug.print: {balance = "100T"}
+debug.print: {iteration = 1}
+debug.print: {balance = "100T"}
+debug.print: {initial_C = 20_000_000_000_000}
+debug.print: {Principal = ai7t5-aibaq-aaaaa-aaaaa-c}
+debug.print: {current = "20T"; initial = 20_000_000_000_000}
+debug.print: {iteration = 2}
+debug.print: {balance = "80T"}
+debug.print: {initial_C = 30_000_000_000_000}
+debug.print: {Principal = hozae-racaq-aaaaa-aaaaa-c}
+debug.print: {current = "30T"; initial = 30_000_000_000_000}
+debug.print: {iteration = 3}
+debug.print: {balance = "50T"}
+debug.print: {initial_C = 40_000_000_000_000}
+debug.print: {Principal = fterm-bydaq-aaaaa-aaaaa-c}
+debug.print: {current = "40T"; initial = 40_000_000_000_000}
+← replied: ()

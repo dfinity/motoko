@@ -1,7 +1,6 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
 → query foo(0x4e4f544449444c)
-debug.print: IDL error: missing magic bytes
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "unreachable executed"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: missing magic bytes"

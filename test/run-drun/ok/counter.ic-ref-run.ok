@@ -1,18 +1,18 @@
-→ create
-← completed: canister-id = ic:2a012b
-→ install
-← completed
-→ update inc(0x4449444c0000)
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update inc()
 debug.print: 2
-← completed: 0x4449444c0000
-→ update inc(0x4449444c0000)
+← replied: ()
+→ update inc()
 debug.print: 3
-← completed: 0x4449444c0000
-→ update inc(0x4449444c0000)
+← replied: ()
+→ update inc()
 debug.print: 4
-← completed: 0x4449444c0000
-→ update printCounter(0x4449444c0000)
+← replied: ()
+→ update printCounter()
 debug.print: 4
-← completed: 0x4449444c0000
-→ update get(0x4449444c0000)
-← completed: 0x4449444c00017d04
+← replied: ()
+→ update get()
+← replied: (4)

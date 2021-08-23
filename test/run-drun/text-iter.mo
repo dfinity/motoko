@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 let s = "hello world!";
 
 Prim.debugPrint "via `debugPrint`:";
@@ -25,7 +25,7 @@ for (a in s.chars()) {
 Prim.debugPrint "";
 
 let russian = "Приветствую, мир!\n";
-assert(russian.len() == 18);
+assert(russian.size() == 18);
 
 Prim.debugPrint "via iteration and `debugPrintChar` (Unicode): #3";
 x := 0;
@@ -42,7 +42,7 @@ Prim.debugPrint "";
 assert(x == 18);
 
 let emojis = "🙈🎸😋";
-assert(emojis.len() == 3);
+assert(emojis.size() == 3);
 
 Prim.debugPrint "via iteration and `debugPrintChar` (Unicode): #4";
 x := 0;
