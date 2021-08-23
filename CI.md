@@ -42,9 +42,9 @@ Preventing `master` from breaking
 **Use-case:**
 A PR that breaks requires jobs (`all-systems-go`) cannot be merged into `master`.
 
-**Implementation (internal):**
+**Implementation (extenral):**
 Github branch protection is enabled for `master`, and requires the
-`all-systems-go` job from hydra to succeed.
+Github Action jobs (Linux and Darwin) to succeed.
 
 Require a second pair of eyeballs
 ---------------------------------
