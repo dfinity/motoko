@@ -27,7 +27,7 @@ unsafe extern "C" fn blob_iter_done(iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
-    let pos = Bytes((iter_array.get(ITER_POS_IDX).0 >> 2) as u32);
+    let pos = Bytes((iter_array.get(ITER_POS_IDX).0 >> 1) as u32);
 
     (pos >= blob.as_blob().len()).into()
 }
@@ -38,9 +38,9 @@ unsafe extern "C" fn blob_iter_next(iter: SkewedPtr) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
-    let pos = (iter_array.get(ITER_POS_IDX).0 >> 2) as u32;
+    let pos = (iter_array.get(ITER_POS_IDX).0 >> 1) as u32;
 
-    iter_array.set(ITER_POS_IDX, SkewedPtr(((pos + 1) << 2) as usize));
+    iter_array.set(ITER_POS_IDX, SkewedPtr(((pos + 1) << 1) as usize));
 
     blob.as_blob().get(pos).into()
 }

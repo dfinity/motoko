@@ -52,17 +52,21 @@ Wrapping numeric conversions are all specified uniformly by going through bigint
 (* Trapping conversions (the num_conv_t1_t2 prim used in prelude/prelude.ml) *)
 let num_conv_trap_prim t1 t2 =
   let module T = Type in
-  match (t1, t2) with
-  | T.Nat, (T.Nat8|T.Nat16|T.Nat32|T.Nat64)
-  | T.Int, (T.Int8|T.Int16|T.Int32|T.Int64)
-  | (T.Nat8|T.Nat16|T.Nat32|T.Nat64), T.Nat
-  | (T.Int8|T.Int16|T.Int32|T.Int64), T.Int
+  match t1, t2 with
+  | T.Nat, T.(T.Nat8|Nat16|Nat32|Nat64)
+  | T.Int, T.(Int8|Int16|Int32|Int64)
+  | T.(Nat8|Nat16|Nat32|Nat64), T.Nat
+  | T.(Int8|Int16|Int32|Int64), T.Int
   | T.Nat32, T.Char
   -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
-  | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
+  | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (bigint_of_double (as_float v)))
   | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
-  | t1, t2 -> raise (Invalid_argument ("Value.num_conv_trap_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
+
+  | T.Float, T.Int -> fun v -> Int (Int.of_big_int (bigint_of_double (as_float v)))
+  | T.Int, T.Float -> fun v -> Float (Wasm.F64.of_float (Big_int.float_of_big_int (Int.to_big_int (as_int v))))
+
+  | t1, t2 -> raise (Invalid_argument T.("Value.num_conv_trap_prim: " ^ string_of_typ (Prim t1) ^ string_of_typ (Prim t2) ))
 
 (*
 It is the responsibility of prelude/prelude.ml to define num_wrap_t1_t2 only

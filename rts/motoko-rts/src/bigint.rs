@@ -246,6 +246,28 @@ unsafe extern "C" fn bigint_of_int64(j: i64) -> SkewedPtr {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn bigint_of_float64(j: f64) -> SkewedPtr {
+    if j < 1073741824.0 && j > -1073741825.0 {
+        return SkewedPtr::of_tiny(j as i32);
+    }
+    let mut i = tmp_bigint();
+    check(mp_set_double(&mut i, j));
+    persist_bigint(i)
+}
+
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn bigint_to_float64(p: SkewedPtr) -> f64 {
+    if p.is_tagged_scalar() {
+        p.as_tiny() as f64
+    } else {
+        let mp_int = p.as_bigint().mp_int_ptr();
+        mp_get_double(mp_int)
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn bigint_eq(a: SkewedPtr, b: SkewedPtr) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) == 0
