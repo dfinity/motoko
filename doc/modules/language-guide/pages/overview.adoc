@@ -393,28 +393,6 @@ type Employee = { first : Text; last : Text; get : () -> Nat; add : Nat -> () };
 func Employee(fst : Text, lst : Text) : Employee = object { … }
 ....
 
-////
-=== Variants
-
-`{ #invincible; #alive : Int; #dead }`
-
-[source, motoko]
-....
-type Health = { #invincible; #alive : Nat; #dead };
-
-func takeDamage(h : Health, p : Nat) : Health {
-  switch (h) {
-    case (#invincible) #invincible;
-    case (#alive hp) {
-      if (hp > p) (#alive (hp-p)) else #dead
-    };
-    case (#dead) #dead;
-  }
-};
-
-takeDamage(#alive 20,50);
-....
-////
 
 === Variants
 `{ #Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat }`
@@ -784,23 +762,6 @@ stable variables must have _stable_ types (see manual) +
 
 == Type system
 
-////
-=== Structural
-
-[source, motoko]
-....
-type Health1 = { #invincible; #alive : Nat; #dead };
-type Health2 = { #invincible; #alive : Nat; #dead };
-
-let takeDamage : (Health1, Nat) -> Health1 = …;
-let h : Health2 = #invincible;
-let h' = takeDamage(h, 100); // works
-....
-
-Type definitions +
-do not create types, +
-but name existing types
-////
 === Structural
 
 [source.include_Lists, motoko]
@@ -874,23 +835,6 @@ let employee : Employee =
 let t = toText(employee); // also works, since Employee <: Person
 ....
 
-////
-=== Subtyping
-
-`Mortal <: Health`
-
-[source, motoko]
-....
-type Health = { #invincible; #alive : Nat; #dead };
-type Mortal = { #alive : Nat; #dead };
-
-let takeDamage : (Health, Nat) -> Health = …;
-let h : Mortal = #alive 1000;
-let h' = takeDamage(h, 100); // also works
-....
-
-`t1 <: t2`: `t1` can be used wherever `t2` is expected
-////
 
 == Fin
 
@@ -908,7 +852,7 @@ let h' = takeDamage(h, 100); // also works
 ** `vessel` (package manager)
 ** `mo_ide` (LSP language server for VSCode, emacs etc)
 
-
+////
 == Old slides
 
 === Classes
@@ -1049,3 +993,4 @@ charlie received goodbye from charlie
 alice received goodbye from charlie
 bob received goodbye from charlie
 ....
+//// Old slides
