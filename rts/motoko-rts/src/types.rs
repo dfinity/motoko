@@ -176,6 +176,12 @@ impl Value {
     }
 
     /// Analyzes the value.
+    ///
+    /// Note: when using this function in performance critical code make sure to check the
+    /// generated Wasm and see if it can be improved by using `Value::get_raw`, `unskew`, etc.
+    /// rustc/LLVM generates slightly more inefficient code (compared to using functions like
+    /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
+    /// cycle.
     pub fn get(&self) -> PtrOrScalar {
         if self.0 & 0b1 == 0b1 {
             PtrOrScalar::Ptr(unskew(self.0 as usize))
