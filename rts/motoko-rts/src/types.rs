@@ -163,7 +163,8 @@ impl Value {
         Value(value << 1)
     }
 
-    /// Create a value from a signed scalar. The value must be obtained with `to_signed_scalar`.
+    /// Create a value from a signed scalar. The scalar must be obtained with `get_signed_scalar`.
+    /// Using `get_scalar` will return an incorrect scalar.
     pub fn from_signed_scalar(value: i32) -> Self {
         debug_assert_eq!(value, value << 1 >> 1);
         Value((value << 1) as u32)
