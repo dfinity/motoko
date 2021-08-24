@@ -25,7 +25,7 @@ pub(crate) static mut LAST_HP: u32 = 0;
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
-    pub(crate) fn get_static_roots() -> SkewedPtr;
+    pub(crate) fn get_static_roots() -> Value;
 }
 
 #[no_mangle]
@@ -60,7 +60,7 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
         // Update ALLOCATED
         ALLOCATED += Bytes(bytes.0 as u64);
@@ -73,7 +73,7 @@ impl Memory for IcMemory {
         // Grow memory if needed
         grow_memory(new_hp as usize);
 
-        skew(old_hp as usize)
+        Value::from_ptr(old_hp as usize)
     }
 }
 
