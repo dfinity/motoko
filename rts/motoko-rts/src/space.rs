@@ -1,6 +1,6 @@
 use crate::page_alloc::{Page, PageAlloc};
 use crate::rts_trap_with;
-use crate::types::{size_of, skew, Array, Blob, Bytes, SkewedPtr, Words, TAG_ARRAY, TAG_BLOB};
+use crate::types::{size_of, skew, Array, Blob, Bytes, Value, Words, TAG_ARRAY, TAG_BLOB};
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -77,7 +77,7 @@ impl<P: PageAlloc> Space<P> {
         self.pages.get(idx.0)
     }
 
-    pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes().as_usize();
 
         let current_page_end = self.current_page().end();
@@ -99,7 +99,7 @@ impl<P: PageAlloc> Space<P> {
 
         self.total_alloc += bytes;
 
-        skew(alloc)
+        Value::from_ptr(alloc)
     }
 
     /// Free all pages of the space. The space itself should not be used afterwards.
@@ -109,7 +109,7 @@ impl<P: PageAlloc> Space<P> {
         }
     }
 
-    pub unsafe fn alloc_array(&mut self, len: u32) -> SkewedPtr {
+    pub unsafe fn alloc_array(&mut self, len: u32) -> Value {
         // Array payload should not be larger than half of the memory
         if len > 1 << (32 - 2 - 1) {
             // 2 for word size, 1 to divide by two
@@ -118,16 +118,18 @@ impl<P: PageAlloc> Space<P> {
 
         let skewed_ptr = self.alloc_words(size_of::<Array>() + Words(len));
 
-        let ptr: *mut Array = skewed_ptr.unskew() as *mut Array;
+        // NB. Cannot use as_array() here as the header is not written yet
+        let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
         (*ptr).header.tag = TAG_ARRAY;
         (*ptr).len = len;
 
         skewed_ptr
     }
 
-    pub unsafe fn alloc_blob(&mut self, size: Bytes<u32>) -> SkewedPtr {
+    pub unsafe fn alloc_blob(&mut self, size: Bytes<u32>) -> Value {
         let ptr = self.alloc_words(size_of::<Blob>() + size.to_words());
-        let blob = ptr.unskew() as *mut Blob;
+        // NB. Cannot use as_blob() here as the header is not written yet
+        let blob = ptr.get_ptr() as *mut Blob;
         (*blob).header.tag = TAG_BLOB;
         (*blob).len = size;
         ptr

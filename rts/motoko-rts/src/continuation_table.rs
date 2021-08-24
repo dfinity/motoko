@@ -79,7 +79,7 @@ pub unsafe fn table_initialized() -> bool {
 #[ic_mem_fn]
 pub unsafe fn remember_continuation<P: PageAlloc>(
     allocation_space: &mut Space<P>,
-    ptr: SkewedPtr,
+    ptr: Value,
 ) -> u32 {
     if !table_initialized() {
         create_continuation_table(allocation_space);

@@ -2,7 +2,7 @@
 
 use crate::page_alloc::ic::IcPageAlloc;
 use crate::space::Space;
-use crate::types::{SkewedPtr, Words};
+use crate::types::{Value, Words};
 
 // TODO: We should use `MaybeUninit` here, but `MaybeUninit::assume_init_ref` does not exist in the
 // Rust version we're using.. Need to update rustc.
@@ -13,7 +13,7 @@ pub unsafe fn init() {
 }
 
 #[no_mangle]
-pub unsafe fn alloc_words(n: Words<u32>) -> SkewedPtr {
+pub unsafe fn alloc_words(n: Words<u32>) -> Value {
     ALLOCATION_SPACE.as_mut().unwrap().alloc_words(n)
 }
 

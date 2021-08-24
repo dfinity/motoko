@@ -8,9 +8,9 @@ use quote::quote;
 /// #[ic_mem_fn]
 /// pub unsafe fn text_concat<P: PageAlloc>(
 ///     allocation_area: &mut Space<P>,
-///     s1: SkewedPtr,
-///     s2: SkewedPtr,
-/// ) -> SkewedPtr
+///     s1: Value,
+///     s2: Value,
+/// ) -> Value
 /// {
 ///     ...
 /// }
@@ -24,9 +24,9 @@ use quote::quote;
 /// // Original function generated directly, to allow use from the test suite
 /// pub unsafe fn text_concat<P: PageAlloc>(
 ///     allocation_area: &mut Space<P>,
-///     s1: SkewedPtr,
-///     s2: SkewedPtr,
-/// ) -> SkewedPtr
+///     s1: Value,
+///     s2: Value,
+/// ) -> Value
 /// {
 ///     ...
 /// }
@@ -34,7 +34,7 @@ use quote::quote;
 /// // New, monomorphic version
 /// #[cfg(feature = "ic")]
 /// #[export_name = "text_concat"]
-/// unsafe extern "C" fn ic_text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
+/// unsafe extern "C" fn ic_text_concat(s1: Value, s2: Value) -> Value {
 ///     text_concat(crate::allocation_area::ALLOCATION_AREA.assume_init_mut(), s1, s2)
 /// }
 /// ```

@@ -45,7 +45,7 @@ pub unsafe fn compacting_gc_internal<
     page_alloc: P,
     space: &mut Space<P>,
     heap_base: u32,
-    static_roots: SkewedPtr,
+    static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
     _note_live_size: NoteLiveSize,
     _note_reclaimed: NoteReclaimed,
@@ -65,7 +65,7 @@ unsafe fn mark_compact<P: PageAlloc>(
     page_alloc: P,
     space: &mut Space<P>,
     heap_base: u32,
-    static_roots: SkewedPtr,
+    static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
 ) {
     // Allocate bitmaps

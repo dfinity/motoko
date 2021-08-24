@@ -27,7 +27,7 @@ unsafe fn find_leaf<P: PageAlloc>(
     allocation_space: &mut Space<P>,
     mut text: Value,
     todo: *mut Value,
-) -> SkewedPtr {
+) -> Value {
     while text.tag() == TAG_CONCAT {
         let concat = text.as_concat();
 

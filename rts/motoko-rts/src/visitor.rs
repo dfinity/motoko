@@ -111,6 +111,6 @@ pub unsafe fn pointer_to_dynamic_heap<P: PageAlloc>(
     field_addr: *mut Value,
     heap_base: usize,
 ) -> bool {
-    let field_value = *field_addr;
+    let field_value = (*field_addr).get_raw();
     is_ptr(field_value) && !space.is_static(unskew(field_value as usize))
 }

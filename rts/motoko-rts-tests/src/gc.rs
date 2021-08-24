@@ -150,7 +150,7 @@ fn check_dynamic_heap<P: PageAlloc>(
     heap: &[u8],
     heap_base: usize,
     heap_ptr: usize,
-    continuation_table_ptr_ptr: *const SkewedPtr,
+    continuation_table_ptr_ptr: *const Value,
 ) {
     // Maps objects to their fields
     let object_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects

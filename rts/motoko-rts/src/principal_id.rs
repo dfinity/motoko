@@ -220,10 +220,7 @@ pub unsafe fn principal_of_blob<P: PageAlloc>(allocation_space: &mut Space<P>, b
 
 /// Convert a checksum-prepended base32 representation blob into the public principal name format
 /// by hyphenating and lowercasing
-unsafe fn base32_to_principal<P: PageAlloc>(
-    allocation_space: &mut Space<P>,
-    b: Value,
-) -> SkewedPtr {
+unsafe fn base32_to_principal<P: PageAlloc>(allocation_space: &mut Space<P>, b: Value) -> Value {
     let blob = b.as_blob();
 
     let n = blob.len();

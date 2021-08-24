@@ -48,10 +48,10 @@ pub unsafe fn copying_gc_internal<
     // Evacuate roots
     evac_static_roots(from_space, to_space, static_roots);
 
-    // TODO: Check that table is initialized?
-    if (*continuation_table_loc).get_ptr() >= heap_base {
-        evac(to_space, continuation_table_loc as usize);
-    }
+    // TODO
+    // if (*continuation_table_loc).get_ptr() >= heap_base {
+    //     evac(to_space, continuation_table_loc as usize);
+    // }
 
     // Scavenge to-space
     let mut to_space_page_idx = to_space.first_page();
