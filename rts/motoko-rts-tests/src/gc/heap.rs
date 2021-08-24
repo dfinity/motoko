@@ -20,7 +20,7 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         self.inner.borrow_mut().alloc_words(n)
     }
 }
@@ -216,7 +216,7 @@ impl MotokoHeapInner {
         }
     }
 
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
 
         // Update heap pointer
@@ -227,7 +227,7 @@ impl MotokoHeapInner {
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
 
-        skew(old_hp)
+        Value::from_ptr(old_hp)
     }
 
     unsafe fn grow_memory(&mut self, ptr: usize) {
