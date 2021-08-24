@@ -19,7 +19,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: cachix/install-nix-action@v13
 
-    - run: nix-env -i nix-build-uncached
+    - run: nix-env -i nix-build-uncached nix/
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
