@@ -2,7 +2,7 @@ use crate::memory::TestMemory;
 
 use motoko_rts::bigint::{self, *};
 use motoko_rts::buf::Buf;
-use motoko_rts::types::{Bytes, SkewedPtr, Words};
+use motoko_rts::types::{Bytes, Value, Words};
 
 // mp functions below are implemented separately for tests as we can't modify mp_int source code to
 // pass a generic heap argument (then monomorphise it for IC).
@@ -67,7 +67,7 @@ pub unsafe fn test() {
 }
 
 // Check leb128 encode/decode roundtrip
-unsafe fn test_bigint_leb128(n: SkewedPtr) {
+unsafe fn test_bigint_leb128(n: Value) {
     let mut buf = [0u8; 100];
     let s = bigint_leb128_size(n);
     let mut buf_ = Buf {
@@ -81,7 +81,7 @@ unsafe fn test_bigint_leb128(n: SkewedPtr) {
 }
 
 // Check sleb128 encode/decode roundtrip
-unsafe fn test_bigint_sleb128(n: SkewedPtr) {
+unsafe fn test_bigint_sleb128(n: Value) {
     let mut buf = [0u8; 100];
     let s = bigint_sleb128_size(n);
     bigint_sleb128_encode(n, buf.as_mut_ptr());
