@@ -19,6 +19,8 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: cachix/install-nix-action@v13
 
+    - run: nix-env -i nix-build-uncached
+
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
@@ -31,7 +33,7 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: "nix-build"
-      run: nix-build --max-jobs 4 -A all-systems-go
+      run: nix-build-uncached --max-jobs 4 -A all-systems-go
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
