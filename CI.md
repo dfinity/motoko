@@ -42,9 +42,9 @@ Preventing `master` from breaking
 **Use-case:**
 A PR that breaks requires jobs (`all-systems-go`) cannot be merged into `master`.
 
-**Implementation (internal):**
+**Implementation (external):**
 Github branch protection is enabled for `master`, and requires the
-`all-systems-go` job from hydra to succeed.
+Github Action jobs (Linux and Darwin) to succeed.
 
 Require a second pair of eyeballs
 ---------------------------------
@@ -117,6 +117,13 @@ Performance changes are known
 **Use-case:**
 For every PR, the developer is told about performance changes relative to the
 merge point, via an continuously updated comment on the PR.
+
+**Implementation (external):**
+ * Steps in the Github Action calculates the correct merge base using
+   `git-merge-base` (_not_ the latest version of the target branch) and passes
+   the correct git revisions to the `./perf-delta.nix` nix derivation.
+ * Building that derivations compares metrics and generates a report.
+ * A Github Action updates the comment upon every new push to the PR.
 
 **Implementation (internal):**
  * Hydra calculates the correct merge base using `git-merge-base` (_not_ the
