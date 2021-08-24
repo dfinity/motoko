@@ -184,7 +184,7 @@ impl Value {
         }
     }
 
-    /// Get the raw value. Should only be used when debugging.
+    /// Get the raw value
     pub fn get_raw(&self) -> u32 {
         self.0
     }

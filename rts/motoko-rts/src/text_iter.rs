@@ -13,7 +13,7 @@
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{PtrOrScalar, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{Value, TAG_BLOB, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn text_iter_done(iter: Value) -> u32 {
     let blob = array.get(ITER_BLOB_IDX).as_blob();
     let todo = array.get(ITER_TODO_IDX);
 
-    if pos >= blob.len().0 && matches!(todo.get(), PtrOrScalar::Scalar(0)) {
+    if pos >= blob.len().0 && todo.get_raw() == 0 {
         1
     } else {
         0
@@ -91,7 +91,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     if pos >= blob.len().0 {
         let todo = iter_array.get(ITER_TODO_IDX);
 
-        if matches!(todo.get(), PtrOrScalar::Scalar(0)) {
+        if todo.get_raw() == 0 {
             // Caller should check with text_iter_done
             rts_trap_with("text_iter_next: Iter already done");
         }

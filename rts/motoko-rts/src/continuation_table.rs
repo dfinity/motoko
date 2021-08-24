@@ -24,7 +24,7 @@
 
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
-use crate::types::{PtrOrScalar, Value};
+use crate::types::Value;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -72,7 +72,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 }
 
 pub unsafe fn table_initialized() -> bool {
-    !matches!(TABLE.get(), PtrOrScalar::Scalar(0))
+    TABLE.get_raw() != 0
 }
 
 #[ic_mem_fn]
@@ -160,7 +160,7 @@ pub(crate) unsafe fn continuation_table_loc() -> *mut Value {
 #[no_mangle]
 unsafe extern "C" fn continuation_table_size() -> u32 {
     match TABLE.get() {
-        PtrOrScalar::Scalar(_) => 0,
-        PtrOrScalar::Ptr(array) => (array as *mut crate::types::Array).len(),
+        crate::types::PtrOrScalar::Scalar(_) => 0,
+        crate::types::PtrOrScalar::Ptr(array) => (array as *mut crate::types::Array).len(),
     }
 }
