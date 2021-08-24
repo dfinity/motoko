@@ -9,7 +9,7 @@ use motoko_rts::text::{
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, SkewedPtr, TAG_BLOB};
+use motoko_rts::types::{Bytes, Value, TAG_BLOB};
 
 use std::convert::TryFrom;
 
@@ -18,12 +18,12 @@ use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 static STR: &str = "abcdefgh";
 
 struct TextIter<'a, P: PageAlloc> {
-    obj: SkewedPtr,
+    obj: Value,
     space: &'a mut Space<P>,
 }
 
 impl<'a, P: PageAlloc> TextIter<'a, P> {
-    fn from_text(space: &'a mut Space<P>, text: SkewedPtr) -> Self {
+    fn from_text(space: &'a mut Space<P>, text: Value) -> Self {
         TextIter {
             obj: unsafe { text_iter(space, text) },
             space,

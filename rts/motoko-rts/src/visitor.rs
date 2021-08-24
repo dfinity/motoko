@@ -12,7 +12,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
     heap_base: usize,
     mut visit_ptr_field: F,
 ) where
-    F: FnMut(*mut SkewedPtr),
+    F: FnMut(*mut Value),
 {
     match tag {
         TAG_OBJECT => {
@@ -108,9 +108,9 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
 
 pub unsafe fn pointer_to_dynamic_heap<P: PageAlloc>(
     space: &Space<P>,
-    field_addr: *mut SkewedPtr,
+    field_addr: *mut Value,
     heap_base: usize,
 ) -> bool {
     let field_value = *field_addr;
-    (!field_value.is_tagged_scalar()) && !space.is_static(field_value.unskew())
+    is_ptr(field_value) && !space.is_static(unskew(field_value as usize))
 }

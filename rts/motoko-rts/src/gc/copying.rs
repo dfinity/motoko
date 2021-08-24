@@ -38,8 +38,8 @@ pub unsafe fn copying_gc_internal<
 >(
     to_space: &mut Space<P>,
     from_space: &Space<P>,
-    static_roots: SkewedPtr,
-    continuation_table_loc: *mut SkewedPtr,
+    static_roots: Value,
+    continuation_table_loc: *mut Value,
     _note_live_size: NoteLiveSize,
     _note_reclaimed: NoteReclaimed,
 ) {
@@ -48,7 +48,8 @@ pub unsafe fn copying_gc_internal<
     // Evacuate roots
     evac_static_roots(from_space, to_space, static_roots);
 
-    if (*continuation_table_loc).unskew() >= heap_base {
+    // TODO: Check that table is initialized?
+    if (*continuation_table_loc).get_ptr() >= heap_base {
         evac(to_space, continuation_table_loc as usize);
     }
 
@@ -72,9 +73,9 @@ pub unsafe fn copying_gc_internal<
 /// Evacuate (copy) an object in from-space to to-space.
 unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     // Field holds a skewed pointer to the object to evacuate
-    let ptr_loc = ptr_loc as *mut SkewedPtr;
+    let ptr_loc = ptr_loc as *mut Value;
 
-    let obj = (*ptr_loc).unskew() as *mut Obj;
+    let obj = (*ptr_loc).as_obj();
 
     let tag = obj.tag();
 
@@ -90,7 +91,7 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     let obj_size = object_size(obj as usize);
 
     // Allocate space in to-space for the object
-    let obj_addr = to_space.alloc_words(obj_size).unskew() as usize;
+    let obj_addr = to_space.alloc_words(obj_size).get_ptr();
 
     // Copy object to to-space
     memcpy_words(obj_addr, obj as usize, obj_size);
@@ -98,13 +99,18 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
     (*fwd).header.tag = TAG_FWD_PTR;
-    (*fwd).fwd = skew(obj_addr);
+    (*fwd).fwd = Value::from_ptr(obj_addr);
 
     // Update evacuated field
-    *ptr_loc = skew(obj_addr);
+    *ptr_loc = Value::from_ptr(obj_addr);
 }
 
-unsafe fn scav<P: PageAlloc>(heap_base: usize, from_space: &Space<P>, to_space: &mut Space<P>, obj: usize) {
+unsafe fn scav<P: PageAlloc>(
+    heap_base: usize,
+    from_space: &Space<P>,
+    to_space: &mut Space<P>,
+    obj: usize,
+) {
     let obj = obj as *mut Obj;
 
     crate::visitor::visit_pointer_fields(from_space, obj, obj.tag(), heap_base, |field_addr| {
@@ -123,6 +129,6 @@ unsafe fn evac_static_roots<P: PageAlloc>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(heap_base, to_space, obj.unskew());
+        scav(heap_base, to_space, obj.get_ptr());
     }
 }

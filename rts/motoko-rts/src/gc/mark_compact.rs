@@ -46,7 +46,7 @@ pub unsafe fn compacting_gc_internal<
     space: &mut Space<P>,
     heap_base: u32,
     static_roots: SkewedPtr,
-    continuation_table_ptr_loc: *mut SkewedPtr,
+    continuation_table_ptr_loc: *mut Value,
     _note_live_size: NoteLiveSize,
     _note_reclaimed: NoteReclaimed,
 ) {
@@ -66,7 +66,7 @@ unsafe fn mark_compact<P: PageAlloc>(
     space: &mut Space<P>,
     heap_base: u32,
     static_roots: SkewedPtr,
-    continuation_table_ptr_loc: *mut SkewedPtr,
+    continuation_table_ptr_loc: *mut Value,
 ) {
     // Allocate bitmaps
     for page in space.iter_pages() {
@@ -78,7 +78,7 @@ unsafe fn mark_compact<P: PageAlloc>(
 
     mark_static_roots(space, &mut stack, static_roots, heap_base);
 
-    if (*continuation_table_ptr_loc).unskew() >= heap_base as usize {
+    if (*continuation_table_ptr_loc).is_ptr() {
         // TODO: No need to check if continuation table is already marked
         mark_object(space, &mut stack, *continuation_table_ptr_loc);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so it
@@ -102,14 +102,14 @@ unsafe fn mark_compact<P: PageAlloc>(
 unsafe fn mark_static_roots<P: PageAlloc>(
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
-    static_roots: SkewedPtr,
+    static_roots: Value,
     heap_base: u32,
 ) {
     let root_array = static_roots.as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
-        let obj = root_array.get(i).unskew() as *mut Obj;
+        let obj = root_array.get(i).as_obj();
         // Root array should only has pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
         debug_assert!((obj as u32) < heap_base); // check that MutBox is static
@@ -136,15 +136,11 @@ unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
     }
 }
 
-unsafe fn mark_object<P: PageAlloc>(
-    space: &Space<P>,
-    mark_stack: &mut MarkStack<P>,
-    obj: SkewedPtr,
-) {
+unsafe fn mark_object<P: PageAlloc>(space: &Space<P>, mark_stack: &mut MarkStack<P>, obj: Value) {
     let obj_tag = obj.tag();
-    let obj = obj.unskew();
+    let obj = obj.get_ptr();
 
-    let obj_page = space.get_address_page(obj as usize);
+    let obj_page = space.get_address_page(obj);
     let obj_bitmap = obj_page.get_bitmap().unwrap();
 
     let obj_bit_idx = (obj - obj_page.contents_start()) as u32 / WORD_SIZE;
@@ -181,7 +177,7 @@ unsafe fn mark_fields<P: PageAlloc>(
         mark_object(space, mark_stack, field_value);
 
         // Thread if backwards or self pointer
-        if field_value.unskew() <= obj as usize {
+        if field_value.get_ptr() <= obj as usize {
             thread(field_addr);
         }
     });
@@ -256,18 +252,18 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
 /// Thread forwards pointers in object
 unsafe fn thread_fwd_pointers<P: PageAlloc>(space: &Space<P>, obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(space, obj, obj.tag(), heap_base as usize, |field_addr| {
-        if (*field_addr).unskew() > obj as usize {
+        if (*field_addr).get_ptr() > obj as usize {
             thread(field_addr)
         }
     });
 }
 
 /// Thread a pointer field
-unsafe fn thread(field: *mut SkewedPtr) {
+unsafe fn thread(field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
-    let pointed = (*field).unskew() as *mut Obj;
+    let pointed = (*field).as_obj();
     let pointed_header = pointed.tag();
-    *field = SkewedPtr(pointed_header as usize);
+    *field = Value::from_raw(pointed_header);
     (*pointed).tag = field as u32;
 }
 
@@ -279,7 +275,7 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     while header > TAG_NULL {
         // TODO: is `header > TAG_NULL` the best way to distinguish a tag from a pointer?
         let tmp = (*(header as *mut Obj)).tag;
-        (*(header as *mut SkewedPtr)) = skew(new_loc as usize);
+        (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
     // At the end of the chain is the original header for the object

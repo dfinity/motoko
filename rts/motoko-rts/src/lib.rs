@@ -59,13 +59,13 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 #[cfg(feature = "ic")]
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
-    pub(crate) fn get_static_roots() -> types::SkewedPtr;
+    pub(crate) fn get_static_roots() -> types::Value;
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn version<P: page_alloc::PageAlloc>(
     allocation_space: &mut space::Space<P>,
-) -> types::SkewedPtr {
+) -> types::Value {
     text::text_of_str(allocation_space, "0.1")
 }
 

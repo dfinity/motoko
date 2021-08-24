@@ -43,7 +43,7 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
     }
 
     // Update closure table ptr location
-    *(closure_tbl_ptr_ptr.unskew() as *mut SkewedPtr) = closure_tbl_ptr;
+    *(closure_tbl_ptr_ptr.as_ptr() as *mut Value) = closure_tbl_ptr;
 
     space
 }
@@ -58,7 +58,7 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 unsafe fn create_static_heap<P: PageAlloc>(
     space: &mut Space<P>,
     n_roots: u32,
-) -> (Vec<SkewedPtr>, SkewedPtr) {
+) -> (Vec<Value>, Value) {
     // The layout is:
     //
     // - Array of MutBoxes for the roots (root array). This part does not need to be updated later
@@ -101,12 +101,12 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
     space: &mut Space<P>,
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     continuation_table: &[ObjectIdx],
-) -> (FxHashMap<ObjectIdx, SkewedPtr>, SkewedPtr) {
+) -> (FxHashMap<ObjectIdx, Value>, Value) {
     // First pass allocates objects and collects object addresses. Second pass fills the fields
     // with addresses collected in the first pass.
 
     // Maps objects to their addresses
-    let mut object_ptrs: FxHashMap<ObjectIdx, SkewedPtr> = Default::default();
+    let mut object_ptrs: FxHashMap<ObjectIdx, Value> = Default::default();
 
     // Allocate objects
     for (obj_idx, refs) in refs {
@@ -120,7 +120,7 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
 
         (*obj).header.tag = TAG_ARRAY;
         (*obj).len = refs.len() as u32 + 1; // +1 for tag (index)
-        obj.set(0, SkewedPtr(make_scalar(*obj_idx) as usize)); // tag (index)
+        obj.set(0, Value::from_scalar(*obj_idx)); // tag (index)
 
         // Pointer fields will be set in the second pass
     }

@@ -5,14 +5,14 @@ use crate::page_alloc::PageAlloc;
 use crate::rts_trap_with;
 use crate::space::Space;
 use crate::text::{blob_compare, blob_of_text};
-use crate::types::{Bytes, SkewedPtr, TAG_BLOB};
+use crate::types::{Bytes, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
 
 #[no_mangle]
-pub unsafe extern "C" fn compute_crc32(blob: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
     if blob.tag() != TAG_BLOB {
         panic!("compute_crc32: Blob expected");
     }
@@ -95,8 +95,8 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 /// Encode a blob into an checksum-prepended base32 representation
 pub unsafe fn base32_of_checksummed_blob<P: PageAlloc>(
     allocation_space: &mut Space<P>,
-    b: SkewedPtr,
-) -> SkewedPtr {
+    b: Value,
+) -> Value {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
@@ -183,10 +183,7 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
     }
 }
 
-pub unsafe fn base32_to_blob<P: PageAlloc>(
-    allocation_space: &mut Space<P>,
-    b: SkewedPtr,
-) -> SkewedPtr {
+pub unsafe fn base32_to_blob<P: PageAlloc>(allocation_space: &mut Space<P>, b: Value) -> Value {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
@@ -216,10 +213,7 @@ pub unsafe fn base32_to_blob<P: PageAlloc>(
 
 /// Encode a blob into its textual representation
 #[ic_mem_fn]
-pub unsafe fn principal_of_blob<P: PageAlloc>(
-    allocation_space: &mut Space<P>,
-    b: SkewedPtr,
-) -> SkewedPtr {
+pub unsafe fn principal_of_blob<P: PageAlloc>(allocation_space: &mut Space<P>, b: Value) -> Value {
     let base32 = base32_of_checksummed_blob(allocation_space, b);
     base32_to_principal(allocation_space, base32)
 }
@@ -228,7 +222,7 @@ pub unsafe fn principal_of_blob<P: PageAlloc>(
 /// by hyphenating and lowercasing
 unsafe fn base32_to_principal<P: PageAlloc>(
     allocation_space: &mut Space<P>,
-    b: SkewedPtr,
+    b: Value,
 ) -> SkewedPtr {
     let blob = b.as_blob();
 
@@ -270,10 +264,7 @@ unsafe fn base32_to_principal<P: PageAlloc>(
 
 // Decode an textual principal representation into a blob
 #[ic_mem_fn]
-pub unsafe fn blob_of_principal<P: PageAlloc>(
-    allocation_space: &mut Space<P>,
-    t: SkewedPtr,
-) -> SkewedPtr {
+pub unsafe fn blob_of_principal<P: PageAlloc>(allocation_space: &mut Space<P>, t: Value) -> Value {
     let b0 = blob_of_text(allocation_space, t);
     let bytes = base32_to_blob(allocation_space, b0);
 

@@ -15,8 +15,8 @@
 //! next free item, shifted 2 bits to the left (to make the index a scalar and traverse them in
 //! GC).
 //!
-//! The last item will have value `TABLE.len() << 2`, so after adding a continuation to the last free
-//! slot `FREE_SLOT` will be `table_size`, which is when we see that the array is full.
+//! The last item will have scalar value `TABLE.len()`, so after adding a continuation to the last
+//! free slot `FREE_SLOT` will be `table_size`, which is when we see that the array is full.
 //!
 //! When the table is full, we double the size, copy the existing table, and add the second half to
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
@@ -25,7 +25,7 @@
 use crate::page_alloc::PageAlloc;
 use crate::rts_trap_with;
 use crate::space::Space;
-use crate::types::SkewedPtr;
+use crate::types::Value;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -33,7 +33,7 @@ const INITIAL_SIZE: u32 = 256;
 
 // Skewed pointer to the `Array` object. This needs to be a skewed pointer to be able to pass its
 // location to the GC.
-static mut TABLE: SkewedPtr = SkewedPtr(0);
+static mut TABLE: Value = Value::from_scalar(0);
 
 // Number of currently live continuations
 static mut N_CONTINUATIONS: u32 = 0;
@@ -48,7 +48,7 @@ unsafe fn create_continuation_table<P: PageAlloc>(allocation_space: &mut Space<P
 
     let table = TABLE.as_array();
     for i in 0..INITIAL_SIZE {
-        table.set(i, SkewedPtr((i as usize + 1) << 2));
+        table.set(i, Value::from_scalar(i + 1));
     }
 }
 
@@ -68,8 +68,12 @@ unsafe fn double_continuation_table<P: PageAlloc>(allocation_space: &mut Space<P
     }
 
     for i in old_size..new_size {
-        new_array.set(i, SkewedPtr((i as usize + 1) << 2));
+        new_array.set(i, Value::from_scalar(i + 1));
     }
+}
+
+pub unsafe fn table_initialized() -> bool {
+    TABLE.get_raw() != 0
 }
 
 #[ic_mem_fn]
@@ -77,7 +81,7 @@ pub unsafe fn remember_continuation<P: PageAlloc>(
     allocation_space: &mut Space<P>,
     ptr: SkewedPtr,
 ) -> u32 {
-    if TABLE.0 == 0 {
+    if !table_initialized() {
         create_continuation_table(allocation_space);
     }
 
@@ -86,13 +90,13 @@ pub unsafe fn remember_continuation<P: PageAlloc>(
     }
 
     // Just as a sanity check make sure the ptr is really skewed
-    if ptr.is_tagged_scalar() {
+    if ptr.is_scalar() {
         rts_trap_with("remember_continuation: Argument is not a skewed pointer");
     }
 
     let idx = FREE_SLOT;
 
-    FREE_SLOT = (TABLE.as_array().get(idx).0 >> 2) as u32;
+    FREE_SLOT = TABLE.as_array().get(idx).get_scalar();
     TABLE.as_array().set(idx, ptr);
     N_CONTINUATIONS += 1;
 
@@ -104,8 +108,8 @@ pub unsafe fn remember_continuation<P: PageAlloc>(
 const FUTURE_ARRAY_INDEX: u32 = 2;
 
 #[no_mangle]
-pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> SkewedPtr {
-    if TABLE.0 == 0 {
+pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
+    if !table_initialized() {
         rts_trap_with("peek_future_continuation: Continuation table not allocated");
     }
 
@@ -115,7 +119,7 @@ pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> SkewedPtr {
 
     let ptr = TABLE.as_array().get(idx);
 
-    if ptr.0 & 0b1 != 1 {
+    if ptr.is_scalar() {
         rts_trap_with("peek_future_continuation: Continuation index not in table");
     }
 
@@ -123,8 +127,8 @@ pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> SkewedPtr {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn recall_continuation(idx: u32) -> SkewedPtr {
-    if TABLE.0 == 0 {
+pub unsafe extern "C" fn recall_continuation(idx: u32) -> Value {
+    if !table_initialized() {
         rts_trap_with("recall_continuation: Continuation table not allocated");
     }
 
@@ -134,14 +138,12 @@ pub unsafe extern "C" fn recall_continuation(idx: u32) -> SkewedPtr {
 
     let ptr = TABLE.as_array().get(idx);
 
-    TABLE
-        .as_array()
-        .set(idx, SkewedPtr((FREE_SLOT << 2) as usize));
+    TABLE.as_array().set(idx, Value::from_scalar(FREE_SLOT));
     FREE_SLOT = idx;
 
     N_CONTINUATIONS -= 1;
 
-    if ptr.0 & 0b1 != 1 {
+    if ptr.is_scalar() {
         rts_trap_with("recall_continuation: Continuation index not in table");
     }
 
@@ -154,14 +156,14 @@ pub unsafe extern "C" fn continuation_count() -> u32 {
 }
 
 #[cfg(feature = "ic")]
-pub(crate) unsafe fn continuation_table_loc() -> *mut SkewedPtr {
+pub(crate) unsafe fn continuation_table_loc() -> *mut Value {
     &mut TABLE
 }
 
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn continuation_table_size() -> u32 {
-    if TABLE.0 == 0 {
+    if !table_initialized() {
         0
     } else {
         TABLE.as_array().len()
