@@ -159,8 +159,9 @@ pub(crate) unsafe fn continuation_table_loc() -> *mut Value {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn continuation_table_size() -> u32 {
-    match TABLE.get() {
-        crate::types::PtrOrScalar::Scalar(_) => 0,
-        crate::types::PtrOrScalar::Ptr(array) => (array as *mut crate::types::Array).len(),
+    if !table_initialized() {
+        0
+    } else {
+        TABLE.as_array().len()
     }
 }
