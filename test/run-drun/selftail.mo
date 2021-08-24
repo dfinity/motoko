@@ -15,9 +15,9 @@ assert (f(false, 100, 0) == f(true, 100, 0));
 Prim.debugPrint "ok1";
 
 // check tail recursion works for large n
-assert(100000 == f (true, 100000, 0));
+assert(200000 == f (true, 200000, 0));
 Prim.debugPrint "ok2";
 
 // check recursion overflows for large n (overflows on drun only)
-assert(100000 == f (false, 100000, 0));
+assert(200000 == f (false, 200000, 0));
 Prim.debugPrint "ok3 (unreachable on drun)";

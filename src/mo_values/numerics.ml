@@ -27,6 +27,48 @@ let group_num s =
   Buffer.add_substring buf s exp (len - exp);
   Buffer.contents buf
 
+(* OCaml version of LibTomMath's mp_set_double
+   Converts a Wasm f64 (represented as IEEE 754 double, same as OCaml `float`)
+   to Big_int *)
+let bigint_of_double (f : Wasm.F64.t) : Big_int.big_int =
+  let bits = Wasm.F64.to_bits f in
+
+  (* A bit pattern with 11 least significant bits set *)
+  let bits_11 = Int64.of_int 0x7FF in
+
+  (* Exponent part of IEEE 754 double, 11 bits *)
+  let exp = Int64.(logand (shift_right_logical bits 52) bits_11) in
+
+  (* Fraction part of IEEE 754 double, 52 bits from the float, with an implicit
+     1 at the 53rd bit *)
+  let frac = Int64.(logor (shift_right_logical (shift_left bits 12) 12) (shift_left (of_int 1) 52)) in
+
+  if Int64.(equal exp bits_11) then
+    (* Exponent is fully set: NaN or inf *)
+    raise (Invalid_argument "bigint_of_double: argument is NaN or inf");
+
+  (* Actual exponent value: subtract bias (1023), and 52 for the missing
+     fraction dot in `frac`. Reminder: if fractional part is `xxx...` (binary)
+     then actual fraction is `1.xxx...`, which we represent as `1xxx...` in
+     `frac`. `- 52` here is to take that lost fraction point into account. *)
+  let exp = Int64.(sub exp (of_int (1023 + 52))) in
+
+  let a = Big_int.big_int_of_int64 frac in
+
+  let a = if Int64.(compare exp (of_int 0)) < 0 then
+    (* Exponent < 0, shift right *)
+    Big_int.(shift_right_big_int a (- (Int64.to_int exp)))
+  else
+    (* Exponent >= 0, shift left *)
+    Big_int.(shift_left_big_int a (Int64.to_int exp))
+  in
+
+  (* Negate the number if sign bit is set (double is negative) *)
+  if Int64.shift_right_logical bits 63 = Int64.of_int 1 && a <> Big_int.zero_big_int then
+    Big_int.minus_big_int a
+  else
+    a
+
 (* a mild extension over Was.Int.RepType *)
 module type WordRepType =
 sig
