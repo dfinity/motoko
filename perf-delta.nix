@@ -63,10 +63,10 @@ in
 nixpkgs.runCommandNoCC "perf-delta" {
   nativeBuildInputs = [ nixpkgs.coreutils diff-stats ];
 } ''
-  cat > $out
+  echo "Comparing from ${from} to ${to}:" > $out
   if cmp -s ${wasm-hash-base} ${wasm-hash-pr}
   then
-    echo "This PR does not affect the produced WebAssembly code." >> $out
+    echo "The produced WebAssembly code seems to be completely unchanged." >> $out
   else
     diff-stats ${baseJobs.tests.perf}/stats.csv ${prJobs.tests.perf}/stats.csv >> $out;
   fi
