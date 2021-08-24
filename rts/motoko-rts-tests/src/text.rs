@@ -8,7 +8,7 @@ use motoko_rts::text::{
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, SkewedPtr, Words, TAG_BLOB};
+use motoko_rts::types::{Bytes, Value, Words, TAG_BLOB};
 
 use std::convert::TryFrom;
 
@@ -17,12 +17,12 @@ use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 static STR: &str = "abcdefgh";
 
 struct TextIter<'a, M: Memory> {
-    obj: SkewedPtr,
+    obj: Value,
     mem: &'a mut M,
 }
 
 impl<'a, M: Memory> TextIter<'a, M> {
-    fn from_text(mem: &'a mut M, text: SkewedPtr) -> Self {
+    fn from_text(mem: &'a mut M, text: Value) -> Self {
         TextIter {
             obj: unsafe { text_iter(mem, text) },
             mem,

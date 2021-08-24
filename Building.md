@@ -41,19 +41,6 @@ Within this shell you can run
 This invokes `dune` under the hood, which will, as a side effect, also create
 `.merlin` files for integration with Merlin, the Ocaml Language Server
 
-## Access to `drun`
-
-The Motoko test suite uses a tool called `drun`, which is an in-process
-emulator of the Internet Computer. This tool is not yet open source, so
-external contributors cannot run it.
-
-The build system is setup by default to _not_ load the `drun` tool. If you have
-access to this tool, create an empty file called `enable-internals` in this repository
-```
-touch enable-internals
-```
-and reload the shell.
-
 ## Replicating CI locally
 
 A good way to check that everything is fine, i.e. if this will pass CI, is to run

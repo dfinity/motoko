@@ -25,7 +25,20 @@ func go() {
     go4({ a = 25; foo = 8; field = 42; other = 83 });
     let co4 = CO4();
     let a = co4.a;
-    go4(co4)
+    go4(co4);
+    absurdities(co4.foo)
+};
+
+func absurdities(inp : Int) {
+    if (inp == 1) go1(loop {});
+    if (inp == 2) go2(loop {});
+    if (inp == 3) go3(loop {});
+    if (inp == 4) go4(loop {});
+
+    if (inp == 1) (loop {}).field;
+    if (inp == 2) (loop {}).a;
+    if (inp == 3) (loop {}).other;
+    if (inp == 4) (loop {}).foo;
 };
 
 go();
