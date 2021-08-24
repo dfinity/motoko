@@ -104,8 +104,7 @@ pub unsafe fn visit_pointer_fields<F>(
 }
 
 pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) -> bool {
-    match (*field_addr).get() {
-        PtrOrScalar::Ptr(ptr) => ptr >= heap_base,
-        PtrOrScalar::Scalar(_) => false,
-    }
+    // NB. pattern matching on `field_addr.get()` generates inefficient code
+    let field_value = (*field_addr).get_raw();
+    is_ptr(field_value) && unskew(field_value as usize) >= heap_base
 }

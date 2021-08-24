@@ -266,11 +266,16 @@ impl Value {
     }
 }
 
-const fn skew(ptr: usize) -> usize {
+/// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
+pub fn is_ptr(value: u32) -> bool {
+    value & 0b1 == 0b1
+}
+
+pub const fn skew(ptr: usize) -> usize {
     ptr.wrapping_sub(1)
 }
 
-const fn unskew(value: usize) -> usize {
+pub const fn unskew(value: usize) -> usize {
     value.wrapping_add(1)
 }
 
