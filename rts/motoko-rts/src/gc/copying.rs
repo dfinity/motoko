@@ -44,8 +44,8 @@ pub unsafe fn copying_gc_internal<
     heap_base: u32,
     get_hp: GetHp,
     mut set_hp: SetHp,
-    static_roots: SkewedPtr,
-    continuation_table_loc: *mut SkewedPtr,
+    static_roots: Value,
+    continuation_table_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -58,12 +58,12 @@ pub unsafe fn copying_gc_internal<
     // Evacuate roots
     evac_static_roots(mem, begin_from_space, begin_to_space, static_roots);
 
-    if (*continuation_table_loc).unskew() >= begin_from_space {
+    if (*continuation_table_ptr_loc).is_ptr() {
         evac(
             mem,
             begin_from_space,
             begin_to_space,
-            continuation_table_loc as usize,
+            continuation_table_ptr_loc as usize,
         );
     }
 
@@ -121,9 +121,9 @@ unsafe fn evac<M: Memory>(
     ptr_loc: usize,
 ) {
     // Field holds a skewed pointer to the object to evacuate
-    let ptr_loc = ptr_loc as *mut SkewedPtr;
+    let ptr_loc = ptr_loc as *mut Value;
 
-    let obj = (*ptr_loc).unskew() as *mut Obj;
+    let obj = (*ptr_loc).as_obj();
 
     // Update the field if the object is already evacauted
     if obj.tag() == TAG_FWD_PTR {
@@ -135,7 +135,7 @@ unsafe fn evac<M: Memory>(
     let obj_size = object_size(obj as usize);
 
     // Allocate space in to-space for the object
-    let obj_addr = mem.alloc_words(obj_size).unskew() as usize;
+    let obj_addr = mem.alloc_words(obj_size).get_ptr();
 
     // Copy object to to-space
     memcpy_words(obj_addr, obj as usize, obj_size);
@@ -146,10 +146,10 @@ unsafe fn evac<M: Memory>(
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
     (*fwd).header.tag = TAG_FWD_PTR;
-    (*fwd).fwd = skew(obj_loc);
+    (*fwd).fwd = Value::from_ptr(obj_loc);
 
     // Update evacuated field
-    *ptr_loc = skew(obj_loc);
+    *ptr_loc = Value::from_ptr(obj_loc);
 }
 
 unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: usize, obj: usize) {
@@ -172,6 +172,6 @@ unsafe fn evac_static_roots<M: Memory>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(mem, begin_from_space, begin_to_space, obj.unskew());
+        scav(mem, begin_from_space, begin_to_space, obj.get_ptr());
     }
 }

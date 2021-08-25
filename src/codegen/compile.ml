@@ -605,12 +605,12 @@ let compile_while cond body =
       cond ^^ G.if_ [] (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
-(* Expects a number on the stack. Iterates from zero to below that number. *)
-let from_0_to_n env mk_body =
+(* Expects a number n on the stack. Iterates from m to below that number. *)
+let from_m_to_n env m mk_body =
     let (set_n, get_n) = new_local env "n" in
     let (set_i, get_i) = new_local env "i" in
     set_n ^^
-    compile_unboxed_zero ^^
+    compile_unboxed_const m ^^
     set_i ^^
 
     compile_while
@@ -625,6 +625,8 @@ let from_0_to_n env mk_body =
         set_i
       )
 
+(* Expects a number on the stack. Iterates from zero to below that number. *)
+let from_0_to_n env mk_body = from_m_to_n env 0l mk_body
 
 (* Pointer reference and dereference  *)
 
@@ -756,6 +758,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_float64" [F64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_float64" [I32Type] [F64Type];
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
@@ -1516,8 +1520,8 @@ module Word64 = struct
     let name = prim_fun_name Type.Nat64 "wpow_nat" in
     Func.share_code2 env name (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
-        let set_n = G.i (LocalSet (nr 0l)) in
-        let set_exp = G.i (LocalSet (nr 1l)) in
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
         let (set_acc, get_acc) = new_local64 env "acc" in
 
         (* start with result = 1 *)
@@ -1730,8 +1734,8 @@ module TaggedSmallWord = struct
     let name = prim_fun_name ty "wpow_nat" in
     Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
-        let set_n = G.i (LocalSet (nr 0l)) in
-        let set_exp = G.i (LocalSet (nr 1l)) in
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
         let (set_acc, get_acc) = new_local env "acc" in
 
         (* unshift arguments *)
@@ -2708,64 +2712,77 @@ module Object = struct
 
 
   (* Returns a pointer to the object field (without following the indirection) *)
-  let idx_hash_raw env =
-    Func.share_code2 env "obj_idx" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
+  let idx_hash_raw env low_bound =
+    let name = Printf.sprintf "obj_idx<%d>" low_bound  in
+    Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+      let set_x = G.setter_for get_x in
+      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
 
-      get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
+      get_x ^^ Heap.load_field hash_ptr_field ^^
 
-      get_x ^^ Heap.load_field size_field ^^
       (* Linearly scan through the fields (binary search can come later) *)
-      from_0_to_n env (fun get_i ->
-        get_i ^^
-        compile_mul_const Heap.word_size  ^^
-        get_h_ptr ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        Heap.load_field 0l ^^
-        get_hash ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ []
-          ( get_i ^^
-            compile_add_const header_size ^^
-            compile_mul_const Heap.word_size ^^
-            get_x ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            G.i Return
-          ) G.nop
-      ) ^^
-      E.trap_with env "internal error: object field not found"
+      (* unskew h_ptr and advance both to low bound *)
+      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size (of_int low_bound))) ^^
+      set_h_ptr ^^
+      get_x ^^
+      compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
+      set_x ^^
+      G.loop_ [] (
+          get_h_ptr ^^ load_unskewed_ptr ^^
+          get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if_ []
+            (get_x ^^ G.i Return)
+            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
+             get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+             G.i (Br (nr 1l)))
+        ) ^^
+      G.i Unreachable
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
-  let idx_hash env indirect =
+  let idx_hash env low_bound indirect =
     if indirect
-    then Func.share_code2 env "obj_idx_ind" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+    then
+      let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
+      Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
-      idx_hash_raw env ^^
+      idx_hash_raw env low_bound ^^
       load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
-    else idx_hash_raw env
+    else idx_hash_raw env low_bound
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
+  (* Computes a lower bound for the positional index of a field in an object *)
+  let field_lower_bound env obj_type s =
+    let open Type in
+    let _, fields = as_obj_sub [s] obj_type in
+    List.iter (function {typ = Typ _; _} -> assert false | _ -> ()) fields;
+    let sorted_by_hash =
+      List.sort
+        (fun (h1, _) (h2, _) -> Lib.Uint32.compare h1 h2)
+        (List.map (fun f -> Lib.Uint32.of_int32 (E.hash env f.lab), f) fields) in
+    match Lib.List.index_of s (List.map (fun (_, {lab; _}) -> lab) sorted_by_hash) with
+    | Some i -> i
+    | _ -> assert false
+
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_raw env f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash_raw env
+    idx_hash_raw env 0
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx env obj_type f =
     compile_unboxed_const (E.hash env f) ^^
-    idx_hash env (is_mut_field env obj_type f)
+    idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
 
   (* load the value (or the mutbox) *)
   let load_idx_raw env f =
     idx_raw env f ^^
     load_ptr
-
 
   (* load the actual value (dereferencing the mutbox) *)
   let load_idx env obj_type f =
@@ -4346,8 +4363,8 @@ module Serialization = struct
     let name = "@serialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
-      let set_data_buf = G.i (LocalSet (nr 1l)) in
-      let set_ref_buf = G.i (LocalSet (nr 2l)) in
+      let set_data_buf = G.setter_for get_data_buf in
+      let set_ref_buf = G.setter_for get_ref_buf in
 
       (* Some combinators for writing values *)
 
@@ -7485,6 +7502,16 @@ and compile_exp (env : E.t) ae exp =
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         TaggedSmallWord.check_and_tag_codepoint env
+
+      | Float, Int ->
+        SR.Vanilla,
+        compile_exp_as env ae SR.UnboxedFloat64 e ^^
+        E.call_import env "rts" "bigint_of_float64"
+
+      | Int, Float ->
+        SR.UnboxedFloat64,
+        compile_exp_vanilla env ae e ^^
+        E.call_import env "rts" "bigint_to_float64"
 
       | Float, Int64 ->
         SR.UnboxedWord64,
