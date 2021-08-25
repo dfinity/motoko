@@ -1,0 +1,57 @@
+From 322955b6f0d2dd0836bd3048eda9f81b4165daf4 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Wed, 25 Aug 2021 20:26:02 +0200
+Subject: [PATCH] ocamlPackages.vlq: init at 0.2.1
+
+---
+ .../development/ocaml-modules/vlq/default.nix | 27 +++++++++++++++++++
+ pkgs/top-level/ocaml-packages.nix             |  2 ++
+ 2 files changed, 29 insertions(+)
+ create mode 100644 pkgs/development/ocaml-modules/vlq/default.nix
+
+diff --git a/pkgs/development/ocaml-modules/vlq/default.nix b/pkgs/development/ocaml-modules/vlq/default.nix
+new file mode 100644
+index 00000000000000..8f0f3a8682820f
+--- /dev/null
++++ b/pkgs/development/ocaml-modules/vlq/default.nix
+@@ -0,0 +1,27 @@
++{ lib, buildDunePackage, fetchFromGitHub
++, dune-configurator
++}:
++
++buildDunePackage rec {
++  pname = "vlq";
++  version = "0.2.1";
++
++  src = fetchFromGitHub {
++    owner = "flowtype";
++    repo = "ocaml-vlq";
++    rev = "v${version}";
++    sha256 = "0lgk8j54gsb2jjh4ih72ladlrdxbpbnl0kv5hax696qmznfm8zqf";
++  };
++
++  useDune2 = true;
++
++  buildInputs = [ dune-configurator ];
++
++  meta = {
++    description = "encoding variable-length quantities, in particular base64";
++    license = lib.licenses.mit;
++    inherit (src.meta) homepage;
++    maintainers = [ lib.maintainers.nomeata ];
++  };
++
++}
+diff --git a/pkgs/top-level/ocaml-packages.nix b/pkgs/top-level/ocaml-packages.nix
+index 160c810840e7dd..364aed68e22f71 100644
+--- a/pkgs/top-level/ocaml-packages.nix
++++ b/pkgs/top-level/ocaml-packages.nix
+@@ -1304,6 +1304,8 @@ let
+ 
+     vg = callPackage ../development/ocaml-modules/vg { };
+ 
++    vlq = callPackage ../development/ocaml-modules/vlq { };
++
+     visitors = callPackage ../development/ocaml-modules/visitors { };
+ 
+     wasm = callPackage ../development/ocaml-modules/wasm { };
