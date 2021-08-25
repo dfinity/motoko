@@ -6,7 +6,7 @@ pkgs:
       src = pkgs.sources.ic + "/rs";
 
       # update this after dependency changes
-      cargoSha256 = "0fnqgvqiv8lb8d0280kyhrml9fpmgw7mvvlhgkp4mxl3y77r0r0p";
+      cargoSha256 = "0xg4wf6m103kn0kqgc4bfdz343lwhi5d3lx14xhq3b5jrnzk30a4";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
