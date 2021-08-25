@@ -15,6 +15,7 @@ let
     src = nixpkgs_src;
     patches = [
       ./patches/124498.patch
+      ./patches/135687.patch # ocaml-vlq
     ];
   };
 
@@ -39,11 +40,6 @@ let
           self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
-              vlq = import ./ocaml-vlq.nix {
-                inherit (self) fetchFromGitHub ocaml dune_1;
-                inherit (self.ocamlPackages) findlib;
-                inherit (self.stdenv) mkDerivation;
-              };
               obelisk = import ./ocaml-obelisk.nix {
                 inherit (self) lib fetchFromGitHub ocaml dune_2;
                 inherit (self) ocamlPackages;
