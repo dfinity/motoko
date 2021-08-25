@@ -166,7 +166,7 @@ actor Life {
         word |= bit;
         word <<= 1;
       };
-      SM.storeNat32(offset + P.natToNat32(i) * 4, word);
+      SM.storeNat32(offset + P.natToNat32(i) * 4, word );
     };
     #v3 { size; offset};
   };
@@ -174,7 +174,7 @@ actor Life {
   stable var state : State = newState(0, 32);
 
   flexible var src = Grid(0, state);
-  flexible var dst = Grid(1, newState(1, src.size()));
+  flexible var dst = Grid(32, newState(32, src.size()));
 
   func update(c : Nat) {
     var i = c;
