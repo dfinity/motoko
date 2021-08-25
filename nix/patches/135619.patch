@@ -1,0 +1,53 @@
+diff --git a/pkgs/build-support/bintools-wrapper/add-hardening.sh b/pkgs/build-support/bintools-wrapper/add-hardening.sh
+index 5e49b7bd905..0a2b2509a82 100644
+--- a/pkgs/build-support/bintools-wrapper/add-hardening.sh
++++ b/pkgs/build-support/bintools-wrapper/add-hardening.sh
+@@ -37,7 +37,11 @@ fi
+ for flag in "${!hardeningEnableMap[@]}"; do
+   case $flag in
+     pie)
+-      if [[ ! ("$*" =~ " -shared " || "$*" =~ " -static ") ]]; then
++      if [[ ! (" $* " =~ " -shared " \
++            || " $* " =~ " -static " \
++            || " $* " =~ " -r " \
++            || " $* " =~ " -Ur " \
++            || " $* " =~ " -i ") ]]; then
+         if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling LDFlags -pie >&2; fi
+         hardeningLDFlags+=('-pie')
+       fi
+diff --git a/pkgs/build-support/cc-wrapper/add-hardening.sh b/pkgs/build-support/cc-wrapper/add-hardening.sh
+index 8e2fe6c407e..3948f055e09 100644
+--- a/pkgs/build-support/cc-wrapper/add-hardening.sh
++++ b/pkgs/build-support/cc-wrapper/add-hardening.sh
+@@ -34,6 +34,16 @@ if (( "${NIX_DEBUG:-0}" >= 1 )); then
+   fi
+ fi
+ 
++# Ensure PIE flags occur before PIC, if applicable
++if [ "${hardeningEnableMap[pie]-}" = 1 ]; then
++  if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling CFlags -fPIE >&2; fi
++  hardeningCFlags+=('-fPIE')
++  if [[ ! (" $* " =~ " -shared " \
++        || " $* " =~ " -static ") ]]; then
++    if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling LDFlags -pie >&2; fi
++    hardeningCFlags+=('-pie')
++  fi
++fi
+ for flag in "${!hardeningEnableMap[@]}"; do
+   case $flag in
+     fortify)
+@@ -44,13 +54,7 @@ for flag in "${!hardeningEnableMap[@]}"; do
+       if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling stackprotector >&2; fi
+       hardeningCFlags+=('-fstack-protector-strong' '--param' 'ssp-buffer-size=4')
+       ;;
+-    pie)
+-      if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling CFlags -fPIE >&2; fi
+-      hardeningCFlags+=('-fPIE')
+-      if [[ ! ("$*" =~ " -shared " || "$*" =~ " -static ") ]]; then
+-        if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling LDFlags -pie >&2; fi
+-        hardeningCFlags+=('-pie')
+-      fi
++    pie) # Handled above
+       ;;
+     pic)
+       if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling pic >&2; fi
