@@ -11,9 +11,8 @@ use core::convert::TryFrom;
 #[derive(Clone)]
 pub struct IcPageAlloc {}
 
-/// A `Page` implementation for the IC. Currently maps to a single Wasm page, but we may want to
-/// chage that in the future.
-// NB. first page is special: the contents start at heap base instead of 0.
+/// A `Page` implementation for the IC. Currently maps to a single Wasm page, but that may change
+/// in the future.
 #[derive(Debug, Clone, Copy)]
 pub struct IcPage {
     // Wasm page number for this page
@@ -21,12 +20,8 @@ pub struct IcPage {
 }
 
 /// Free list for `IcPageAlloc`. It's important that this is static data rather than a
-/// `IcPageAlloc` field, otherwise `IcPageAlloc` won't disappear in the generated code.
-///
-/// Initially the first page is free (TODO: won't work if static data is multiple pages).
-///
-/// `IcPage::start` accounts for static data. Pages linked with the `next` field. `prev` is not
-/// used in this list.
+/// `IcPageAlloc` field, otherwise `IcPageAlloc` will need to be passed around in RTS functions and
+/// to the RTS by the mutator.
 static mut FREE_PAGES: Vec<IcPage> = Vec::new();
 
 impl PageAlloc for IcPageAlloc {
@@ -43,6 +38,7 @@ impl PageAlloc for IcPageAlloc {
                 rts_trap_with("Cannot grow memory");
             }
 
+            // TODO: Should be safe to use `as u16` here
             IcPage {
                 wasm_page_num: u16::try_from(wasm_page_num).unwrap(),
             }
@@ -66,14 +62,7 @@ impl PageAlloc for IcPageAlloc {
 
 impl Page for IcPage {
     unsafe fn start(&self) -> usize {
-        // First page is special: it contains static data
-        // TODO: This will break if static data is multiple pages
-        if self.wasm_page_num == 0 {
-            // Skip static data
-            crate::get_heap_base() as usize
-        } else {
-            (usize::from(self.wasm_page_num) * WASM_PAGE_SIZE.as_usize()) as usize
-        }
+        usize::from(self.wasm_page_num) * WASM_PAGE_SIZE.as_usize()
     }
 
     unsafe fn contents_start(&self) -> usize {
