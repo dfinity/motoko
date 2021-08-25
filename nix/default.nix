@@ -14,7 +14,7 @@ let
     name = "nixpkgs-patched";
     src = nixpkgs_src;
     patches = [
-      ./patches/124498.patch
+      ./patches/04ee46bb300cdaffd9efc2f3252c0a25922ba74c.patch
     ];
   };
 

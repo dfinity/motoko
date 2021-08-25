@@ -1,0 +1,49 @@
+From 04ee46bb300cdaffd9efc2f3252c0a25922ba74c Mon Sep 17 00:00:00 2001
+From: Ryan Burns <rtburns@protonmail.com>
+Date: Tue, 24 Aug 2021 01:46:01 -0700
+Subject: [PATCH] {cc,binutils}-wrapper: match leading/trailing arguments
+
+fixes e.g.:
+pkgsMusl.libfsm
+pkgsMusl.libiscsi
+pkgsMusl.nsjail
+pkgsMusl.pv
+
+match strings have whitespace on either side, which wasn't
+matching leading/trailing arguments previously
+---
+ pkgs/build-support/bintools-wrapper/add-hardening.sh | 6 +++++-
+ pkgs/build-support/cc-wrapper/add-hardening.sh       | 3 ++-
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/pkgs/build-support/bintools-wrapper/add-hardening.sh b/pkgs/build-support/bintools-wrapper/add-hardening.sh
+index 4d289a334b7724..0a2b2509a82653 100644
+--- a/pkgs/build-support/bintools-wrapper/add-hardening.sh
++++ b/pkgs/build-support/bintools-wrapper/add-hardening.sh
+@@ -37,7 +37,11 @@ fi
+ for flag in "${!hardeningEnableMap[@]}"; do
+   case $flag in
+     pie)
+-      if [[ ! ("$*" =~ " -shared " || "$*" =~ " -static " || "$*" =~ " -r " || "$*" =~ " -Ur " || "$*" =~ " -i ") ]]; then
++      if [[ ! (" $* " =~ " -shared " \
++            || " $* " =~ " -static " \
++            || " $* " =~ " -r " \
++            || " $* " =~ " -Ur " \
++            || " $* " =~ " -i ") ]]; then
+         if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling LDFlags -pie >&2; fi
+         hardeningLDFlags+=('-pie')
+       fi
+diff --git a/pkgs/build-support/cc-wrapper/add-hardening.sh b/pkgs/build-support/cc-wrapper/add-hardening.sh
+index 12185c80ed51eb..3948f055e094e1 100644
+--- a/pkgs/build-support/cc-wrapper/add-hardening.sh
++++ b/pkgs/build-support/cc-wrapper/add-hardening.sh
+@@ -38,7 +38,8 @@ fi
+ if [ "${hardeningEnableMap[pie]-}" = 1 ]; then
+   if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling CFlags -fPIE >&2; fi
+   hardeningCFlags+=('-fPIE')
+-  if [[ ! ("$*" =~ " -shared " || "$*" =~ " -static ") ]]; then
++  if [[ ! (" $* " =~ " -shared " \
++        || " $* " =~ " -static ") ]]; then
+     if (( "${NIX_DEBUG:-0}" >= 1 )); then echo HARDENING: enabling LDFlags -pie >&2; fi
+     hardeningCFlags+=('-pie')
+   fi
