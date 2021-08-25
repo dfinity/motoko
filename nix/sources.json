@@ -12,12 +12,6 @@
         "url": "https://github.com/dfinity/candid/archive/a555d77704d691bb8f34e21a049d44ba0acee3f8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "dfinity": {
-        "branch": "master",
-        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "071d8388c1b4905072c9417ede0f75cea4002600",
-        "type": "git"
-    },
     "esm": {
         "builtin": false,
         "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
@@ -25,6 +19,19 @@
         "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz",
         "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
         "version": "3.2.25"
+    },
+    "ic": {
+        "branch": "master",
+        "builtin": false,
+        "description": "Internet Computer blockchain source: the client/replica software run by nodes",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "ic",
+        "rev": "e362530172c44679313b1b7fca1e90d8967545d8",
+        "sha256": "1nn979mhwki4gg4j1xpy8i93hhnzvf1vdq0hmp0jf55gii4kmzs9",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/ic/archive/e362530172c44679313b1b7fca1e90d8967545d8.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
         "branch": "master",
@@ -57,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "51758e16085f212752cd2442683a79368f9fe3fa",
-        "sha256": "0xdqnazy89hvxawhi60x4ipjp6f66fv607n0y89yizf5xh8a5zjr",
+        "rev": "6d65c866cabba539cd84a1c0f48e5b952dee2bde",
+        "sha256": "1ziqi2cx9vbx65144vlafdmv11cbll1rrxgvqbdm4mjlbhh379gy",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/51758e16085f212752cd2442683a79368f9fe3fa.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/6d65c866cabba539cd84a1c0f48e5b952dee2bde.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -122,10 +129,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "b1001ed670666ca4ce1c1b064481f88694315c1d",
-        "sha256": "1hpig8z4pzdwc2vazr6hg7qyxllbgznsaivaigjnmrdszlxz55zz",
+        "rev": "0510159186dd2ef46e5464484fbdf119393afa58",
+        "sha256": "1c6r5ldkh71v6acsfhni7f9sxvi7xrqzshcwd8w0hl2rrqyzi58w",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/b1001ed670666ca4ce1c1b064481f88694315c1d.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/0510159186dd2ef46e5464484fbdf119393afa58.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

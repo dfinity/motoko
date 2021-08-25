@@ -1,5 +1,5 @@
 use motoko_rts::memory::Memory;
-use motoko_rts::types::{skew, SkewedPtr, Words};
+use motoko_rts::types::{Value, Words};
 
 pub struct TestMemory {
     heap: Box<[u8]>,
@@ -27,7 +27,7 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
 
         // Update heap pointer
@@ -38,6 +38,6 @@ impl Memory for TestMemory {
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
 
-        skew(old_hp)
+        Value::from_ptr(old_hp)
     }
 }

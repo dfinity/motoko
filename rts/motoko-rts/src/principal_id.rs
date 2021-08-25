@@ -4,14 +4,14 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
-use crate::types::{Bytes, SkewedPtr, TAG_BLOB};
+use crate::types::{Bytes, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
 
 #[no_mangle]
-pub unsafe extern "C" fn compute_crc32(blob: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
     if blob.tag() != TAG_BLOB {
         panic!("compute_crc32: Blob expected");
     }
@@ -92,7 +92,7 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 }
 
 /// Encode a blob into an checksum-prepended base32 representation
-pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
+pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
@@ -179,7 +179,7 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
     }
 }
 
-pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
+pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
@@ -209,14 +209,14 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr 
 
 /// Encode a blob into its textual representation
 #[ic_mem_fn]
-pub unsafe fn principal_of_blob<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
+pub unsafe fn principal_of_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let base32 = base32_of_checksummed_blob(mem, b);
     base32_to_principal(mem, base32)
 }
 
 /// Convert a checksum-prepended base32 representation blob into the public principal name format
 /// by hyphenating and lowercasing
-unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr {
+unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
     let blob = b.as_blob();
 
     let n = blob.len();
@@ -257,7 +257,7 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: SkewedPtr) -> SkewedPtr
 
 // Decode an textual principal representation into a blob
 #[ic_mem_fn]
-pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: SkewedPtr) -> SkewedPtr {
+pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
     let b0 = blob_of_text(mem, t);
     let bytes = base32_to_blob(mem, b0);
 
