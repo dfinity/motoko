@@ -95,7 +95,7 @@ In the `init` function, the `Subscriber` actor passes a reference to itself, of 
 
 If called more than once, the actor will subscribe itself multiple times, and will receive multiple (duplicate) notifications from the publisher.
 This fragility is the consequence of the basic
-publiisher-subscriber design we show above.  With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
+publisher-subscriber design we show above.  With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
 
 == Sharing functions among actors
 
@@ -107,7 +107,7 @@ The full version offers additional features to the publisher-subscriber relation
 For instance, the notification function is _always_ designated as `notify`.
 A more flexible design would only fix the type of `notify`, and permit the subscriber to choose any of its `shared` functions, specified in a `subscribe` message in place of (just) the actor that is subscribing.
 
-See the link:https://github.com/dfinity/examples/tree/master/motoko/pubsub[the full example]
+See the link:https://github.com/dfinity/examples/tree/master/motoko/pub-sub[the full example]
 for details.
 
 In particular, suppose that the subscriber wants to avoid being locked into a certain naming scheme for its interface.

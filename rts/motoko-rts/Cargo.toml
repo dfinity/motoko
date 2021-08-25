@@ -9,18 +9,18 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [features]
-default = ["panic_handler", "gc"]
+# This file is used to build the RTS to be linked with moc-generated code, so
+# we enable the "ic" feature. `native/Cargo.toml` doesn't have this feature and
+# is used in RTS tests.
+default = ["ic"]
 
-# Enables garbage collector and bump allocator. Without this the GC module is
-# disabled (not compiled) and allocation routines use `malloc`.
-gc = []
-
-# Defines a panic handler. Required for generating `staticlib` as static
-# libraries need to be self-contained.
-panic_handler = []
+# This feature is used to enable stuff needed for the RTS linked with
+# moc-generated code, but not when testing the RTS
+ic = []
 
 [dependencies]
 libc = { version = "0.2.81", default_features = false }
+motoko-rts-macros = { path = "../motoko-rts-macros" }
 
 # Added here so that it ends up in Cargo.lock, so that nix will pre-fetch it
 [dependencies.compiler_builtins]

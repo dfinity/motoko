@@ -25,30 +25,32 @@ moc [option] [file ...]
 
 You can use the following options with the `+moc+` command.
 
-[width="100%",cols="<31%,<69%",options="header",]
+[width="100%",cols="<45%,<55%",options="header",]
 |===
 |Option |Description
-|`+--actor-idl+` |Specifies a path to actor IDL files.
+|`+--actor-idl <idl-path>+` |Specifies a path to actor IDL (Candid) files.
 
-|`+--actor-alias+` |Specifies an actor import alias.
+|`+--actor-alias <alias> <principal>+` |Specifies an actor import alias.
 
 |`+--args <file>+` |Read additional newline separated command line arguments from <file>
 
 |`+--args0 <file>+` |Read additional NUL separated command line arguments from <file>
 
-|`+-c+` |Compiles programs to WebAssembly.
+|`+-c+` |Compile to WebAssembly.
 
 |`+--check+` |Performs type checking only.
 
+|`+--compacting-gc+` |Link with compacting GC instead of copying GC.
+
 |`+--debug+` |Respects debug expressions in the source (the default).
 
-|`+-dp+` |Dumps parse.
+//|`+-dp+` |Dumps parse.
 
-|`+-dt+` |Dumps type-checked AST.
+//|`+-dt+` |Dumps type-checked AST.
 
-|`+-dl+` |Dumps intermediate representation
+//|`+-dl+` |Dumps intermediate representation
 
-|`+--error-detail+` |Displays detailed error message for syntax errors.
+|`+--error-detail <n>+` |Set level of error message detail for syntax errors, n in [0..3] (default 2).
 
 |`+-help+`,`+--help+` |Displays usage information.
 
@@ -60,43 +62,43 @@ You can use the following options with the `+moc+` command.
 
 |`+-i+` |Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).
 
-|`+-iR+` |Interprets the lowered code.
+//|`+-iR+` |Interprets the lowered code.
 
-|`+--map+` |Outputs a source map.
+|`+--map+` |Outputs a JavaScript source map.
 
-|`+-no-await+` |Disables await-lowering (with -iR).
+//|`+-no-await+` |Disables await-lowering (with -iR).
 
-|`+-no-async+` |Disables async-lowering (with -iR).
+//|`+-no-async+` |Disables async-lowering (with -iR).
 
-|`+-no-check-ir+` |Skips intermediate code checking.
+//|`+-no-check-ir+` |Skips intermediate code checking.
 
-|`+-no-link+` |Disables statically-linked runtime.
+//|`+-no-link+` |Disables statically-linked runtime.
 
-|`+-no-system-api+` |Disables system API imports. 
+|`+-no-system-api+` |Disables system API imports.
 
-|`+-o+` |Creates an output file.
+|`+-o <file>+` |Specifies the output file.
 
-|`+-p+` |Sets the print depth.
+|`+-p <n>+` |Sets the print depth.
 
-|`+--package <pkg-name> <pkg-URL>+` |Specifies a package-name package-URL pair, separated by a space.
+|`+--package <package-name> <package-path>+` |Specifies a package-name package-path pair, separated by a space.
 
 |`+--print-deps+` |Prints the dependencies for a given source file.
 
-|`+--profile+` |Activates profiling counters in interpreters.
+//|`+--profile+` |Activates profiling counters in interpreters.
 
-|`+--profile-field <field>+` |Includes the given field from the program result in the profile file. 
+//|`+--profile-field <field>+` |Includes the given field from the program result in the profile file.
 
-|`+--profile-file+` |Sets profiling output file. 
+//|`+--profile-file+` |Sets profiling output file.
 
-|`+--profile-line-prefix <prefix>+` |Adds the specified prefix string to each profile line.
+//|`+--profile-line-prefix <prefix>+` |Adds the specified prefix string to each profile line.
 
 |`+-r+` |Interprets programs.
 
 |`+--release+` |Ignores debug expressions in the source.
 
-|`+-stub-system-api+` |Uses the the stub version of the system API.
+//|`+--sanity-checks+` |Enable sanity checking in the runtime system and generated code (for compiler development only).
 
-|`+-t+` |Activates tracing in interpreters.
+|`+-t+` |Activates tracing in interpreter.
 
 |`+-v+` |Generates verbose output.
 
@@ -104,4 +106,4 @@ You can use the following options with the `+moc+` command.
 
 |`+-wasi-system-api+` |Uses the WASI system API (wasmtime).
 |===
-   
+

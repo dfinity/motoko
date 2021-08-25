@@ -25,13 +25,15 @@
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
-use crate::alloc::{alloc_blob, alloc_words};
-use crate::mem::memcpy_bytes;
+use crate::mem_utils::memcpy_bytes;
+use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, SkewedPtr, TAG_BLOB, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Value, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
+
+use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 
@@ -39,27 +41,27 @@ const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 // Make this MAX_STR_SIZE to disable the use of ropes completely, e.g. for debugging
 const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
 
-unsafe fn alloc_text_blob(size: Bytes<u32>) -> SkewedPtr {
+unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_bloc: Text too large");
     }
-    alloc_blob(size)
+    alloc_blob(mem, size)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> SkewedPtr {
-    let blob = alloc_text_blob(n);
+#[ic_mem_fn]
+pub unsafe fn text_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<u32>) -> Value {
+    let blob = alloc_text_blob(mem, n);
     let payload_addr = blob.as_blob().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
     blob
 }
 
-pub unsafe fn text_of_str(s: &str) -> SkewedPtr {
-    text_of_ptr_size(s.as_ptr(), Bytes(s.len() as u32))
+pub unsafe fn text_of_str<M: Memory>(mem: &mut M, s: &str) -> Value {
+    text_of_ptr_size(mem, s.as_ptr(), Bytes(s.len() as u32))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr {
+#[ic_mem_fn]
+pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value {
     let blob1_len = text_size(s1);
     let blob2_len = text_size(s2);
 
@@ -80,7 +82,7 @@ pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr 
         let blob1 = s1.as_blob();
         let blob2 = s2.as_blob();
 
-        let r = alloc_text_blob(new_len);
+        let r = alloc_text_blob(mem, new_len);
         let r_payload: *const u8 = r.as_blob().payload_addr();
         memcpy_bytes(r_payload as usize, blob1.payload_addr() as usize, blob1_len);
         memcpy_bytes(
@@ -98,8 +100,8 @@ pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr 
     }
 
     // Create concat node
-    let r = alloc_words(size_of::<Concat>());
-    let r_concat = r.unskew() as *mut Concat;
+    let r = mem.alloc_words(size_of::<Concat>());
+    let r_concat = r.get_ptr() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1;
@@ -112,13 +114,13 @@ pub unsafe extern "C" fn text_concat(s1: SkewedPtr, s2: SkewedPtr) -> SkewedPtr 
 #[repr(packed)]
 struct Crumb {
     /// Pointer to the concat node/blob to serialize
-    t: SkewedPtr,
+    t: Value,
     /// Where to serialize the concat node/blob
     next: *const Crumb,
 }
 
 #[no_mangle]
-unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
+unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
     let mut next_crumb: *const Crumb = core::ptr::null();
 
     loop {
@@ -160,14 +162,14 @@ unsafe extern "C" fn text_to_buf(mut s: SkewedPtr, mut buf: *mut u8) {
 }
 
 // Straighten into contiguous memory, if needed (e.g. for system calls)
-#[no_mangle]
-pub unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
+#[ic_mem_fn]
+pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
     let obj = s.as_obj();
     if obj.tag() == TAG_BLOB {
         s
     } else {
         let concat = obj.as_concat();
-        let r = alloc_text_blob((*concat).n_bytes);
+        let r = alloc_text_blob(mem, (*concat).n_bytes);
         text_to_buf(s, r.as_blob().payload_addr());
         r
     }
@@ -175,18 +177,18 @@ pub unsafe extern "C" fn blob_of_text(s: SkewedPtr) -> SkewedPtr {
 
 /// Size of the text, in bytes
 #[no_mangle]
-pub unsafe extern "C" fn text_size(s: SkewedPtr) -> Bytes<u32> {
+pub unsafe extern "C" fn text_size(s: Value) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
-    (s.unskew() as *mut Blob).len()
+    (s.get_ptr() as *mut Blob).len()
 }
 
 /// Compares texts from given offset on for the given number of bytes. All assumed to be in range.
 unsafe fn text_compare_range(
-    s1: SkewedPtr,
+    s1: Value,
     offset1: Bytes<u32>,
-    s2: SkewedPtr,
+    s2: Value,
     offset2: Bytes<u32>,
     n: Bytes<u32>,
 ) -> Ordering {
@@ -253,10 +255,10 @@ unsafe fn text_compare_range(
 /// Follow left/right strings of concat nodes until we reach to a BLOB or a CONCAT that can't be
 /// split further (i.e. range spans left and right nodes). Returns a BLOB or CONCAT.
 unsafe fn text_get_range(
-    mut s: SkewedPtr,
+    mut s: Value,
     mut offset: Bytes<u32>,
     n: Bytes<u32>,
-) -> (SkewedPtr, Bytes<u32>) {
+) -> (Value, Bytes<u32>) {
     loop {
         let s_obj = s.as_obj();
 
@@ -289,7 +291,7 @@ unsafe fn text_get_range(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
+pub unsafe extern "C" fn text_compare(s1: Value, s2: Value) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
@@ -309,7 +311,7 @@ pub unsafe extern "C" fn text_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
     }
 }
 
-pub(crate) unsafe fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
+pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
@@ -333,7 +335,7 @@ pub(crate) unsafe fn blob_compare(s1: SkewedPtr, s2: SkewedPtr) -> i32 {
 
 /// Length in characters
 #[no_mangle]
-pub unsafe extern "C" fn text_len(text: SkewedPtr) -> u32 {
+pub unsafe extern "C" fn text_len(text: Value) -> u32 {
     if text.tag() == TAG_BLOB {
         let blob = text.as_blob();
         let payload_addr = blob.payload_addr();
@@ -378,12 +380,12 @@ pub unsafe fn decode_code_point(s: *const u8, size: *mut u32) -> u32 {
 }
 
 /// Allocate a text from a character
-#[no_mangle]
-pub unsafe extern "C" fn text_singleton(char: u32) -> SkewedPtr {
+#[ic_mem_fn]
+pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
     let mut buf = [0u8; 4];
     let str_len = char::from_u32_unchecked(char).encode_utf8(&mut buf).len() as u32;
 
-    let blob_ptr = alloc_text_blob(Bytes(str_len));
+    let blob_ptr = alloc_text_blob(mem, Bytes(str_len));
 
     let blob = blob_ptr.as_blob();
 

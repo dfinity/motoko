@@ -119,14 +119,6 @@ let nop : t = fun _ _ rest -> rest
 (* The concatenation operator *)
 let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
 
-(* Forcing side effects to happen,
-   only for depth- and location-oblivious instructions
-   (TODO: to be refactored after merge, will go away)
- *)
-let effects t =
-  let instrs = t 0l Wasm.Source.no_region [] in
-  fun _ _ rest -> instrs @ rest
-
 (* Singletons *)
 let i (instr : instr') : t = fun _ pos rest -> (instr @@ pos) :: rest
 
@@ -196,6 +188,14 @@ let branch_to_ (p : depth) : t =
 
 let labeled_block_ (ty : stack_type) depth (body : t) : t =
   block_ ty (remember_depth depth body)
+
+(* Obtain the setter from a known variable's getter *)
+
+let setter_for (getter : t) =
+  match List.map (fun {it; _} -> it) (getter 0l Wasm.Source.no_region []) with
+  | [LocalGet v] -> i (LocalSet v)
+  | [GlobalGet v] -> i (GlobalSet v)
+  | _ -> failwith "input must be a getter"
 
 (* Intended to be used within assert *)
 

@@ -3,11 +3,15 @@ use crate::types::*;
 
 /// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
-pub unsafe fn visit_pointer_fields<F>(obj: *mut Obj, heap_base: usize, mut visit_ptr_field: F)
-where
-    F: FnMut(*mut SkewedPtr),
+pub unsafe fn visit_pointer_fields<F>(
+    obj: *mut Obj,
+    tag: Tag,
+    heap_base: usize,
+    mut visit_ptr_field: F,
+) where
+    F: FnMut(*mut Value),
 {
-    match obj.tag() {
+    match tag {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
@@ -85,7 +89,7 @@ where
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => {
             // These don't have pointers, skip
         }
 
@@ -99,6 +103,8 @@ where
     }
 }
 
-unsafe fn pointer_to_dynamic_heap(field_addr: *mut SkewedPtr, heap_base: usize) -> bool {
-    (!(*field_addr).is_tagged_scalar()) && ((*field_addr).unskew() >= heap_base)
+pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) -> bool {
+    // NB. pattern matching on `field_addr.get()` generates inefficient code
+    let field_value = (*field_addr).get_raw();
+    is_ptr(field_value) && unskew(field_value as usize) >= heap_base
 }

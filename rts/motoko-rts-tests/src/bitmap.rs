@@ -1,35 +1,75 @@
-use motoko_rts::bitmap::{alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-use motoko_rts::types::{Bytes, Words, WORD_SIZE};
+use crate::memory::TestMemory;
 
-use quickcheck::{quickcheck, TestResult};
+use motoko_rts::constants::WORD_SIZE;
+use motoko_rts::gc::mark_compact::bitmap::{
+    alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
+};
+use motoko_rts::memory::Memory;
+use motoko_rts::types::{Bytes, Words};
 
 use std::collections::HashSet;
+
+use proptest::strategy::Strategy;
+use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
     println!("Testing bitmap ...");
     println!("  Testing set_bit/get_bit");
-    test_set_get(vec![0, 33]).unwrap();
-    quickcheck(test_set_get_qc as fn(Vec<u16>) -> TestResult);
-    println!("  Testing bit iteration");
-    quickcheck(test_bit_iter as fn(HashSet<u16>) -> TestResult);
-}
 
-fn test_set_get_qc(bits: Vec<u16>) -> TestResult {
-    match test_set_get(bits) {
-        Ok(()) => TestResult::passed(),
-        Err(err) => TestResult::error(&err),
+    {
+        let mut mem = TestMemory::new(Words(1024));
+        test_set_get(&mut mem, vec![0, 33]).unwrap();
     }
+
+    let mut proptest_runner = TestRunner::new(Config {
+        cases: 100,
+        failure_persistence: None,
+        ..Default::default()
+    });
+
+    proptest_runner
+        .run(&bit_index_vec_strategy(), |bits| {
+            // Max bit idx = 65,534, requires 2048 words. Add 2 words for Blob header (header +
+            // length).
+            let mut mem = TestMemory::new(Words(2051));
+            test_set_get_proptest(&mut mem, bits)
+        })
+        .unwrap();
+
+    println!("  Testing bit iteration");
+    proptest_runner
+        .run(&bit_index_set_strategy(), |bits| {
+            // Same as above
+            let mut mem = TestMemory::new(Words(2051));
+            test_bit_iter(&mut mem, bits)
+        })
+        .unwrap();
 }
 
-fn test_set_get(mut bits: Vec<u16>) -> Result<(), String> {
+/// Generates vectors of bit indices
+fn bit_index_vec_strategy() -> impl Strategy<Value = Vec<u16>> {
+    proptest::collection::vec(0u16..u16::MAX, 0..1_000)
+}
+
+/// Same as `bit_index_vec_strategy`, but generates sets
+fn bit_index_set_strategy() -> impl Strategy<Value = HashSet<u16>> {
+    proptest::collection::hash_set(0u16..u16::MAX, 0..1_000)
+}
+
+fn test_set_get_proptest<M: Memory>(mem: &mut M, bits: Vec<u16>) -> TestCaseResult {
+    test_set_get(mem, bits).map_err(|err| TestCaseError::Fail(err.into()))
+}
+
+fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String> {
     if bits.is_empty() {
         return Ok(());
     }
 
     unsafe {
-        alloc_bitmap(Bytes(
-            u32::from(*bits.iter().max().unwrap() + 1) * WORD_SIZE,
-        ));
+        alloc_bitmap(
+            mem,
+            Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE),
+        );
 
         for bit in &bits {
             set_bit(u32::from(*bit));
@@ -63,7 +103,7 @@ fn test_set_get(mut bits: Vec<u16>) -> Result<(), String> {
     Ok(())
 }
 
-fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
+fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
     // If the max bit is N, the heap size is at least N+1 words
     let heap_size = Words(u32::from(
         bits.iter().max().map(|max_bit| max_bit + 1).unwrap_or(0),
@@ -71,7 +111,7 @@ fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
     .to_bytes();
 
     unsafe {
-        alloc_bitmap(heap_size);
+        alloc_bitmap(mem, heap_size);
 
         for bit in bits.iter() {
             set_bit(u32::from(*bit));
@@ -86,15 +126,18 @@ fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
         while let Some(vec_bit) = bit_vec_iter.next() {
             match bit_map_iter.next() {
                 BITMAP_ITER_END => {
-                    return TestResult::error(
-                        "bitmap iterator didn't yield but there are more bits",
-                    );
+                    return Err(TestCaseError::Fail(
+                        "bitmap iterator didn't yield but there are more bits".into(),
+                    ));
                 }
                 map_bit => {
                     if map_bit != u32::from(vec_bit) {
-                        return TestResult::error(&format!(
-                            "bitmap iterator yields {}, but actual bit is {}",
-                            map_bit, vec_bit
+                        return Err(TestCaseError::Fail(
+                            format!(
+                                "bitmap iterator yields {}, but actual bit is {}",
+                                map_bit, vec_bit
+                            )
+                            .into(),
                         ));
                     }
                 }
@@ -103,12 +146,15 @@ fn test_bit_iter(bits: HashSet<u16>) -> TestResult {
 
         let map_bit = bit_map_iter.next();
         if map_bit != BITMAP_ITER_END {
-            return TestResult::error(&format!(
-                "bitmap iterator yields {}, but there are no more bits left",
-                map_bit
+            return Err(TestCaseError::Fail(
+                format!(
+                    "bitmap iterator yields {}, but there are no more bits left",
+                    map_bit
+                )
+                .into(),
             ));
         }
     }
 
-    TestResult::passed()
+    Ok(())
 }

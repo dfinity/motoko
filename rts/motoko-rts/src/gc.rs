@@ -1,58 +1,32 @@
-mod copying;
-mod mark_compact;
+pub mod copying;
+pub mod mark_compact;
 
-use crate::types::*;
+#[cfg(feature = "ic")]
+unsafe fn should_do_gc() -> bool {
+    use crate::memory::ic::{HP, LAST_HP};
+    use crate::types::Bytes;
 
-extern "C" {
-    /// Get __heap_base. Provided by the code generator (src/codegen/compile.ml).
-    pub(crate) fn get_heap_base() -> u32;
+    use core::cmp::{max, min};
 
-    /// Get pointer to the static memory with an array to the static roots. Provided by the
-    /// generated code.
-    pub(crate) fn get_static_roots() -> SkewedPtr;
-}
+    // A factor of last heap size. We allow at most this much allocation before doing GC.
+    const HEAP_GROWTH_FACTOR: f64 = 1.5;
 
-/// Maximum live data retained in a GC.
-static mut MAX_LIVE: Bytes<u32> = Bytes(0);
+    // On small heaps `last_hp * HEAP_GROWTH_FACTOR` will be quite small. To avoid doing redundant
+    // collections in such cases we only check `last_hp * HEAP_GROWTH_FACTOR` if at least this
+    // much is allocated.
+    const SMALL_HEAP_DELTA: Bytes<u64> = Bytes(10 * 1024 * 1024); // 10 MiB
 
-/// Amount of garbage collected so far.
-static mut RECLAIMED: Bytes<u64> = Bytes(0);
+    // Regardless of other parameters (`HEAP_GROWTH_FACTOR`, `SMALL_HEAP_DELTA`) we want to do GC
+    // if `HP` is more than this amount.
+    const MAX_HP_FOR_GC: u64 = 1 * 1024 * 1024 * 1024; // 3 GiB
 
-/// Counter for total allocations
-pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
+    let heap_limit = min(
+        max(
+            (f64::from(LAST_HP) * HEAP_GROWTH_FACTOR) as u64,
+            u64::from(LAST_HP) + SMALL_HEAP_DELTA.0,
+        ),
+        MAX_HP_FOR_GC,
+    );
 
-/// Heap pointer
-pub(crate) static mut HP: u32 = 0;
-
-#[no_mangle]
-unsafe extern "C" fn init() {
-    HP = get_heap_base() as u32;
-}
-
-unsafe fn note_live_size(live: Bytes<u32>) {
-    MAX_LIVE = ::core::cmp::max(MAX_LIVE, live);
-}
-
-#[no_mangle]
-unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
-    MAX_LIVE
-}
-
-unsafe fn note_reclaimed(reclaimed: Bytes<u32>) {
-    RECLAIMED += Bytes(reclaimed.0 as u64);
-}
-
-#[no_mangle]
-unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
-    RECLAIMED
-}
-
-#[no_mangle]
-unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    ALLOCATED
-}
-
-#[no_mangle]
-unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_heap_base())
+    u64::from(HP) >= heap_limit
 }

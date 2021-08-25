@@ -1,2 +1,2 @@
-exception UnsupportedCandidFeature of string
+exception UnsupportedCandidFeature of Diag.message
 

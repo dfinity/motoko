@@ -28,7 +28,7 @@ let interpret_ir = ref false
 let gen_source_map = ref false
 let explain_code = ref ""
 
-let argspec = Arg.align [
+let argspec = [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
@@ -37,10 +37,10 @@ let argspec = Arg.align [
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
   "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
   "--explain", Arg.String (fun c -> explain_code := c; set_mode Explain ()), " provides a detailed explanation of an error message";
-  "-o", Arg.Set_string out_file, " output file";
+  "-o", Arg.Set_string out_file, "<file>  output file";
 
   "-v", Arg.Set Flags.verbose, " verbose output";
-  "-p", Arg.Set_int Flags.print_depth, " set print depth";
+  "-p", Arg.Set_int Flags.print_depth, "<n>  set print depth";
   "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
   "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as werrors";
   ]
@@ -59,11 +59,11 @@ let argspec = Arg.align [
 
   @ [
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
-  "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
-  "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
+  "--profile-file", Arg.Set_string Flags.profile_file, "<file>  set profiling output file ";
+  "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, "<string>  prefix each profile line with the given string ";
   "--profile-field",
   Arg.String (fun n -> Flags.(profile_field_names := n :: !profile_field_names)),
-  " profile file includes the given field from the program result ";
+  "<field>  profile file includes the given field from the program result ";
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
@@ -104,6 +104,10 @@ let argspec = Arg.align [
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.compacting_gc := true),
   " link with compacting GC instead of copying GC";
+
+  "--force-gc",
+  Arg.Unit (fun () -> Flags.force_gc := true),
+  " disable GC scheduling, always do GC after an update message (for testing)";
     ]
 
   @  Args.inclusion_args
@@ -180,7 +184,7 @@ let process_files files : unit =
 (* Copy relevant flags into the profiler library's (global) settings.
    This indirection affords the profiler library an independence from the (hacky) Flags library.
    See also, this discussion:
-   https://github.com/dfinity-lab/motoko/pull/405#issuecomment-503326551
+   https://github.com/dfinity/motoko/pull/405#issuecomment-503326551
 *)
 let process_profiler_flags () =
   ProfilerFlags.profile             := !Flags.profile;

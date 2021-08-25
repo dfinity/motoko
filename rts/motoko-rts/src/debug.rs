@@ -1,30 +1,43 @@
 #![allow(dead_code)]
 
-use crate::closure_table;
 use crate::print::*;
 use crate::types::*;
 
-#[cfg(feature = "gc")]
-use crate::gc;
-
 use core::fmt::Write;
 
-#[cfg(feature = "gc")]
-pub(crate) unsafe fn dump_heap() {
-    print_closure_table();
-    print_static_roots();
-    print_heap();
+/// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn print_value(value: Value) {
+    let mut buf = [0u8; 1000];
+    let mut write_buf = WriteBuf::new(&mut buf);
+
+    match value.get() {
+        PtrOrScalar::Scalar(scalar) => print_tagged_scalar(&mut write_buf, scalar),
+        PtrOrScalar::Ptr(ptr) => print_boxed_object(&mut write_buf, ptr),
+    }
+
+    print(&write_buf);
 }
 
-pub(crate) unsafe fn print_closure_table() {
-    let closure_tbl = closure_table::closure_table_loc();
+pub unsafe fn dump_heap(
+    heap_base: u32,
+    hp: u32,
+    static_roots: Value,
+    continuation_table_loc: *mut Value,
+) {
+    print_continuation_table(continuation_table_loc);
+    print_static_roots(static_roots);
+    print_heap(heap_base, hp);
+}
 
-    if (*closure_tbl).0 == 0 {
-        println!(100, "Closure table not initialized");
+pub(crate) unsafe fn print_continuation_table(closure_tbl_loc: *mut Value) {
+    if !crate::continuation_table::table_initialized() {
+        println!(100, "Continuation table not initialized");
         return;
     }
 
-    let arr = (*closure_tbl).unskew() as *mut Array;
+    let arr = (*closure_tbl_loc).as_array() as *mut Array;
     let len = (*arr).len;
 
     if len == 0 {
@@ -39,9 +52,9 @@ pub(crate) unsafe fn print_closure_table() {
 
     for i in 0..len {
         let elem = arr.get(i);
-        if !elem.is_tagged_scalar() {
-            let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, elem.unskew());
-            print_boxed_object(&mut write_buf, elem.unskew());
+        if elem.is_ptr() {
+            let _ = write!(&mut write_buf, "{}: ", i);
+            print_boxed_object(&mut write_buf, elem.get_ptr());
             print(&write_buf);
             write_buf.reset();
         }
@@ -49,9 +62,10 @@ pub(crate) unsafe fn print_closure_table() {
     println!(50, "End of closure table");
 }
 
-#[cfg(feature = "gc")]
-pub(crate) unsafe fn print_static_roots() {
-    let static_roots = gc::get_static_roots().unskew() as *mut Array;
+pub(crate) unsafe fn print_static_roots(static_roots: Value) {
+    let static_roots = static_roots.as_array();
+    println!(100, "static roots at {:#x}", static_roots as usize);
+
     let len = (*static_roots).len;
 
     if len == 0 {
@@ -64,10 +78,11 @@ pub(crate) unsafe fn print_static_roots() {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
+    let payload_addr = static_roots.payload_addr();
     for i in 0..len {
-        let obj = static_roots.get(i);
-        let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, obj.unskew());
-        print_boxed_object(&mut write_buf, obj.unskew());
+        let field_addr = payload_addr.add(i as usize);
+        let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, field_addr as usize);
+        print_boxed_object(&mut write_buf, (*field_addr).get_ptr());
         print(&write_buf);
         write_buf.reset();
     }
@@ -75,31 +90,21 @@ pub(crate) unsafe fn print_static_roots() {
     println!(50, "End of static roots");
 }
 
-#[cfg(feature = "gc")]
-unsafe fn print_heap() {
-    let heap_begin = gc::get_heap_base();
-    let heap_end = gc::HP;
-
+unsafe fn print_heap(heap_start: u32, heap_end: u32) {
     println!(
         200,
-        "Heap begin={:#x}, heap end={:#x}, size={} bytes",
-        heap_begin,
+        "Heap start={:#x}, heap end={:#x}, size={} bytes",
+        heap_start,
         heap_end,
-        heap_end - heap_begin
+        heap_end - heap_start
     );
 
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
-    let mut p = heap_begin;
+    let mut p = heap_start;
     let mut i: Words<u32> = Words(0);
     while p < heap_end {
-        if *(p as *const u8) == 0 {
-            p += 1;
-            continue;
-        }
-
-        let _ = write!(&mut write_buf, "{}: ", i.0);
         print_boxed_object(&mut write_buf, p as usize);
         print(&write_buf);
         write_buf.reset();
@@ -110,7 +115,7 @@ unsafe fn print_heap() {
     }
 }
 
-unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: usize) {
+unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
     let _ = write!(buf, "<Scalar {:#x}>", p);
 }
 
@@ -135,11 +140,10 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 (*object).hash_ptr
             );
             for i in 0..object.size() {
-                let val = object.get(i).0;
-                let _ = write!(buf, "{:#x}", val);
+                let val = object.get(i);
+                let _ = write!(buf, "{:#x}", val.get_raw());
 
-                if !SkewedPtr(val).is_tagged_scalar() {
-                    let indirectee_ptr = SkewedPtr(val).unskew();
+                if let PtrOrScalar::Ptr(indirectee_ptr) = val.get() {
                     let _ = write!(buf, " (indirectee=");
                     print_boxed_object(buf, indirectee_ptr);
                     let _ = write!(buf, ")");
@@ -153,14 +157,14 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_OBJ_IND => {
             let obj_ind = obj as *const ObjInd;
-            let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.0);
+            let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.get_raw());
         }
         TAG_ARRAY => {
             let array = obj as *mut Array;
             let _ = write!(buf, "<Array len={:#x}", (*array).len);
 
             for i in 0..::core::cmp::min(10, (*array).len) {
-                let _ = write!(buf, " {:#x}", array.get(i).0);
+                let _ = write!(buf, " {:#x}", array.get(i).get_raw());
             }
 
             if (*array).len > 10 {
@@ -175,7 +179,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
-            let _ = write!(buf, "<MutBox field={:#x}>", (*mutbox).field.0);
+            let _ = write!(buf, "<MutBox field={:#x}>", (*mutbox).field.get_raw());
         }
         TAG_CLOSURE => {
             let closure = obj as *const Closure;
@@ -183,7 +187,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_SOME => {
             let some = obj as *const Some;
-            let _ = write!(buf, "<Some field={:#x}>", (*some).field.0);
+            let _ = write!(buf, "<Some field={:#x}>", (*some).field.get_raw());
         }
         TAG_VARIANT => {
             let variant = obj as *const Variant;
@@ -191,7 +195,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 buf,
                 "<Variant tag={:#x} field={:#x}>",
                 (*variant).tag,
-                (*variant).field.0
+                (*variant).field.get_raw()
             );
         }
         TAG_BLOB => {
@@ -200,7 +204,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
-            let _ = write!(buf, "<Forwarding to {:#x}>", (*ind).fwd.0);
+            let _ = write!(buf, "<Forwarding to {:#x}>", (*ind).fwd.get_raw());
         }
         TAG_BITS32 => {
             let bits32 = obj as *const Bits32;
@@ -216,9 +220,16 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
                 (*concat).n_bytes.0,
-                (*concat).text1.0,
-                (*concat).text2.0
+                (*concat).text1.get_raw(),
+                (*concat).text2.get_raw()
             );
+        }
+        TAG_ONE_WORD_FILLER => {
+            let _ = write!(buf, "<One word filler>",);
+        }
+        TAG_FREE_SPACE => {
+            let free_space = obj as *const FreeSpace;
+            let _ = write!(buf, "<Free space {} words>", (*free_space).words.0);
         }
         other => {
             let _ = write!(buf, "<??? {} ???>", other);

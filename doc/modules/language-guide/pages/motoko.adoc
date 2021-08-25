@@ -18,7 +18,8 @@ Check back regularly to try new features and see what's changed.
 The {proglang} programming language is a new, modern, type-sound language designed for developers who want to build the next generation of apps and services to run directly on the internet.
 Motoko is specifically designed to support the unique features of the Internet Computer and to provide a familiar yet robust programming environment.
 As a new language {proglang} is constantly evolving with support for new features and improvements.
-Keep checking back for updates and for the announcement of the {proglang} becoming available as an open source project.
+
+The Motoko compiler, documentation and other tooling is https://github.com/dfinity/motoko[open source] and released under the Apache 2.0 license. Contributions are welcome.
 
 [.cards.cards-4.personas.conceal-title]
 {empty}
@@ -47,7 +48,7 @@ include::../examples/factorial.mo[lines=9..-1]
 [.card]
 == Modern type system
 
-Motoko has been designed to be intuitive to those familiar with Javascript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and checked pattern matching.
+Motoko has been designed to be intuitive to those familiar with JavaScript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and checked pattern matching.
 
 [source,motoko]
 ----

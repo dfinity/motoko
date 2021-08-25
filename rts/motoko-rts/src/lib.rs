@@ -4,47 +4,53 @@
 // TODO (osa): Some of these are stabilized, we need to update rustc
 #![feature(
     arbitrary_self_types,
-    panic_info_message,
     assoc_char_funcs,
     core_intrinsics,
+    panic_info_message,
     ptr_offset_from
 )]
 
 #[macro_use]
 mod print;
 
-#[cfg(feature = "gc")]
-mod gc;
-
 #[cfg(debug_assertions)]
 pub mod debug;
 
-mod alloc;
 pub mod bigint;
-pub mod bitmap;
+#[cfg(feature = "ic")]
 mod blob_iter;
 pub mod buf;
 mod char;
-pub mod closure_table;
+pub mod constants;
+pub mod continuation_table;
+#[cfg(feature = "ic")]
 mod float;
+pub mod gc;
+#[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
-pub mod mark_stack;
-mod mem;
+mod mem_utils;
+pub mod memory;
 pub mod principal_id;
 pub mod text;
 pub mod text_iter;
-#[allow(non_camel_case_types)]
 mod tommath_bindings;
 pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::{Bytes, SkewedPtr};
+use types::Bytes;
 
-#[no_mangle]
-unsafe extern "C" fn version() -> SkewedPtr {
-    text::text_of_str("0.1")
+use motoko_rts_macros::ic_mem_fn;
+
+#[ic_mem_fn(ic_only)]
+unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
+    text::text_of_str(mem, "0.1")
+}
+
+#[ic_mem_fn(ic_only)]
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+    mem.alloc_words(n)
 }
 
 extern "C" {
@@ -82,11 +88,15 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     rts_trap(c_str.as_ptr(), Bytes(b_idx as u32));
 }
 
+pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
+    trap_with_prefix("IDL error: ", msg);
+}
+
 pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
     trap_with_prefix("RTS error: ", msg)
 }
 
-#[cfg(feature = "panic_handler")]
+#[cfg(feature = "ic")]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     unsafe {

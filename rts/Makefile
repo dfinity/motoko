@@ -13,6 +13,7 @@ TOMMATHFILES = \
    mp_init mp_zero mp_add mp_sub mp_mul mp_cmp \
    mp_set_u32 mp_set_i32 mp_get_i32 mp_get_mag_u32 \
    mp_set_u64 mp_set_i64 mp_get_i64 mp_get_mag_u64 \
+   mp_set_double mp_get_double \
    mp_div mp_init_copy mp_neg mp_abs mp_2expt mp_expt_u32 mp_set mp_sqr \
    s_mp_add mp_cmp_mag s_mp_sub mp_grow mp_clamp \
    mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_rshd mp_mul_d mp_div_2d mp_mod_2d \
@@ -45,6 +46,10 @@ TOMMATH_FLAGS = \
   -DMP_MEMSET=0 \
   -DMP_FIXED_CUTOFFS \
   -DMP_NO_FILE \
+  -D__STDC_IEC_559__ \
+
+# Note: the above __STDC_IEC_559__ define is somewhat of a misnomer
+#       as only IEEE 754 features are used.
 
 #
 # Various musl flags, in particular telling it to not have long doubles
@@ -157,8 +162,9 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
 RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
-# this relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
+# This relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
 RTS_RUST_FILES=$(shell ls **/*.rs)
+RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
 
 TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
@@ -174,6 +180,8 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --whitelist-function mp_set_u64 \
 	    --whitelist-function mp_set_i64 \
 	    --whitelist-function mp_get_i64 \
+	    --whitelist-function mp_set_double \
+	    --whitelist-function mp_get_double \
 	    --whitelist-function mp_count_bits \
 	    --whitelist-function mp_cmp \
 	    --whitelist-function mp_add \
@@ -201,11 +209,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 
-$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) | _build/wasm
+$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
 	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) | _build/wasm
+$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
 	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 

@@ -41,12 +41,14 @@ let
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
               vlq = import ./ocaml-vlq.nix {
-                inherit (self) stdenv fetchFromGitHub ocaml dune_1;
+                inherit (self) fetchFromGitHub ocaml dune_1;
                 inherit (self.ocamlPackages) findlib;
+                inherit (self.stdenv) mkDerivation;
               };
               obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) stdenv lib fetchFromGitHub ocaml dune_2;
+                inherit (self) lib fetchFromGitHub ocaml dune_2;
                 inherit (self) ocamlPackages;
+                inherit (self.stdenv) mkDerivation;
               };
             };
           }
@@ -76,6 +78,9 @@ let
 
         # wasm-profiler
         (self: super: import ./wasm-profiler.nix self)
+
+        # drun
+        (self: super: import ./drun.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
         (self: super: {
