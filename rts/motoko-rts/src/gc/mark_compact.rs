@@ -25,9 +25,8 @@ unsafe fn schedule_compacting_gc() {
 #[no_mangle]
 unsafe fn compacting_gc() {
     compacting_gc_internal(
-        crate::page_alloc::ic::IcPageAlloc {},
+        &crate::page_alloc::ic::IcPageAlloc {},
         crate::allocation_space::ALLOCATION_SPACE.as_mut().unwrap(),
-        crate::get_heap_base(),
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
@@ -42,29 +41,21 @@ pub unsafe fn compacting_gc_internal<
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
-    page_alloc: P,
+    page_alloc: &P,
     space: &mut Space<P>,
-    heap_base: u32,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
     _note_live_size: NoteLiveSize,
     _note_reclaimed: NoteReclaimed,
 ) {
-    mark_compact(
-        page_alloc,
-        space,
-        heap_base,
-        static_roots,
-        continuation_table_ptr_loc,
-    );
+    mark_compact(page_alloc, space, static_roots, continuation_table_ptr_loc);
 
     // TODO: Update stats
 }
 
 unsafe fn mark_compact<P: PageAlloc>(
-    page_alloc: P,
+    page_alloc: &P,
     space: &mut Space<P>,
-    heap_base: u32,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
 ) {
@@ -76,7 +67,7 @@ unsafe fn mark_compact<P: PageAlloc>(
 
     let mut stack = MarkStack::new(page_alloc.clone());
 
-    mark_static_roots(space, &mut stack, static_roots, heap_base);
+    mark_static_roots(page_alloc, space, &mut stack, static_roots);
 
     if (*continuation_table_ptr_loc).is_ptr() {
         // TODO: No need to check if continuation table is already marked
@@ -86,9 +77,9 @@ unsafe fn mark_compact<P: PageAlloc>(
         thread(continuation_table_ptr_loc);
     }
 
-    mark_stack(space, &mut stack, heap_base);
+    mark_stack(page_alloc, space, &mut stack);
 
-    update_refs(space, heap_base);
+    update_refs(page_alloc, space);
 
     stack.free();
 
@@ -100,10 +91,10 @@ unsafe fn mark_compact<P: PageAlloc>(
 }
 
 unsafe fn mark_static_roots<P: PageAlloc>(
+    page_alloc: &P,
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     static_roots: Value,
-    heap_base: u32,
 ) {
     let root_array = static_roots.as_array();
 
@@ -112,21 +103,21 @@ unsafe fn mark_static_roots<P: PageAlloc>(
         let obj = root_array.get(i).as_obj();
         // Root array should only has pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
-        debug_assert!((obj as u32) < heap_base); // check that MutBox is static
-        mark_root_mutbox_fields(space, mark_stack, obj as *mut MutBox, heap_base);
+        debug_assert!(page_alloc.in_static_heap(obj as usize)); // check that MutBox is static
+        mark_root_mutbox_fields(page_alloc, space, mark_stack, obj as *mut MutBox);
     }
 }
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
+    page_alloc: &P,
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     mutbox: *mut MutBox,
-    heap_base: u32,
 ) {
     let field_addr = &mut (*mutbox).field;
     // TODO: Not sure if this check is necessary?
-    if pointer_to_dynamic_heap(space, field_addr, heap_base as usize) {
+    if pointer_to_dynamic_heap(page_alloc, field_addr) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
         mark_object(space, mark_stack, *field_addr);
@@ -156,23 +147,23 @@ unsafe fn mark_object<P: PageAlloc>(space: &Space<P>, mark_stack: &mut MarkStack
 }
 
 unsafe fn mark_stack<P: PageAlloc>(
+    page_alloc: &P,
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
-    heap_base: u32,
 ) {
     while let Some((obj, tag)) = mark_stack.pop() {
-        mark_fields(space, mark_stack, obj as *mut Obj, tag, heap_base);
+        mark_fields(page_alloc, space, mark_stack, obj as *mut Obj, tag);
     }
 }
 
 unsafe fn mark_fields<P: PageAlloc>(
+    page_alloc: &P,
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     obj: *mut Obj,
     obj_tag: Tag,
-    heap_base: u32,
 ) {
-    visit_pointer_fields(space, obj, obj_tag, heap_base as usize, |field_addr| {
+    visit_pointer_fields(page_alloc, obj, obj_tag, |field_addr| {
         let field_value = *field_addr;
         mark_object(space, mark_stack, field_value);
 
@@ -192,7 +183,7 @@ unsafe fn mark_fields<P: PageAlloc>(
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
+unsafe fn update_refs<P: PageAlloc>(page_alloc: &P, space: &Space<P>) {
     // Next object will be moved to this page
     let mut to_page_idx = space.first_page();
 
@@ -238,7 +229,7 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
             }
 
             // Thread forward pointers of the object
-            thread_fwd_pointers(space, to_addr as *mut Obj, heap_base);
+            thread_fwd_pointers(page_alloc, to_addr as *mut Obj);
 
             to_addr += obj_size.to_bytes().as_usize();
 
@@ -250,8 +241,8 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>, heap_base: u32) {
 }
 
 /// Thread forwards pointers in object
-unsafe fn thread_fwd_pointers<P: PageAlloc>(space: &Space<P>, obj: *mut Obj, heap_base: u32) {
-    visit_pointer_fields(space, obj, obj.tag(), heap_base as usize, |field_addr| {
+unsafe fn thread_fwd_pointers<P: PageAlloc>(page_alloc: &P, obj: *mut Obj) {
+    visit_pointer_fields(page_alloc, obj, obj.tag(), |field_addr| {
         if (*field_addr).get_ptr() > obj as usize {
             thread(field_addr)
         }

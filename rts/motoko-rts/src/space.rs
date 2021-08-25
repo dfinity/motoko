@@ -1,6 +1,6 @@
 use crate::page_alloc::{Page, PageAlloc};
 use crate::rts_trap_with;
-use crate::types::{size_of, skew, Array, Blob, Bytes, Value, Words, TAG_ARRAY, TAG_BLOB};
+use crate::types::{size_of, Array, Blob, Bytes, Value, Words, TAG_ARRAY, TAG_BLOB};
 
 use alloc::vec;
 use alloc::vec::Vec;

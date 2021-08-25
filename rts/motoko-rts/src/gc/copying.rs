@@ -17,8 +17,8 @@ unsafe fn copying_gc() {
     let mut to_space = Space::new(crate::page_alloc::ic::IcPageAlloc {});
 
     copying_gc_internal(
+        &crate::page_alloc::ic::IcPageAlloc {},
         &mut to_space,
-        crate::get_heap_base(),
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
@@ -36,8 +36,8 @@ pub unsafe fn copying_gc_internal<
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
+    page_alloc: &P,
     to_space: &mut Space<P>,
-    from_space: &Space<P>,
     static_roots: Value,
     continuation_table_loc: *mut Value,
     _note_live_size: NoteLiveSize,
@@ -46,12 +46,11 @@ pub unsafe fn copying_gc_internal<
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
-    evac_static_roots(from_space, to_space, static_roots);
+    evac_static_roots(page_alloc, to_space, static_roots);
 
-    // TODO
-    // if (*continuation_table_loc).get_ptr() >= heap_base {
-    //     evac(to_space, continuation_table_loc as usize);
-    // }
+    if (*continuation_table_loc).is_ptr() {
+        evac(to_space, continuation_table_loc as usize);
+    }
 
     // Scavenge to-space
     let mut to_space_page_idx = to_space.first_page();
@@ -62,7 +61,7 @@ pub unsafe fn copying_gc_internal<
 
         while p < page_end {
             let size = object_size(p);
-            scav(from_space, to_space, p);
+            scav(page_alloc, to_space, p);
             p += size.to_bytes().0 as usize;
         }
 
@@ -105,15 +104,10 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     *ptr_loc = Value::from_ptr(obj_addr);
 }
 
-unsafe fn scav<P: PageAlloc>(
-    heap_base: usize,
-    from_space: &Space<P>,
-    to_space: &mut Space<P>,
-    obj: usize,
-) {
+unsafe fn scav<P: PageAlloc>(page_alloc: &P, to_space: &mut Space<P>, obj: usize) {
     let obj = obj as *mut Obj;
 
-    crate::visitor::visit_pointer_fields(from_space, obj, obj.tag(), heap_base, |field_addr| {
+    crate::visitor::visit_pointer_fields(page_alloc, obj, obj.tag(), |field_addr| {
         evac(to_space, field_addr as usize);
     });
 }
@@ -121,7 +115,7 @@ unsafe fn scav<P: PageAlloc>(
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
 unsafe fn evac_static_roots<P: PageAlloc>(
-    heap_base: usize,
+    page_alloc: &P,
     to_space: &mut Space<P>,
     roots: *mut Array,
 ) {
@@ -129,6 +123,6 @@ unsafe fn evac_static_roots<P: PageAlloc>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(heap_base, to_space, obj.get_ptr());
+        scav(page_alloc, to_space, obj.get_ptr());
     }
 }
