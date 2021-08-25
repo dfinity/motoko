@@ -1,0 +1,10 @@
+= M0003
+
+This error means that a module tried to import itself.
+
+Erroneous code example (file is called `Self.mo`):
+
+    import S "./Self"; // import error, file Self.mo must not depend on itself
+    module { }
+
+If you encounter this error you should probably remove the offending import.

@@ -1,18 +1,18 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
 → query pair(record {"Hey!"; +42})
 debug.print: ok: +42
-← completed: ()
-→ query record(record {427265337 = "Hey!"; 834174833 = +42})
+← replied: ()
+→ query record(record {bhned_q = "Hey!"; value = +42})
 debug.print: ok: Hey!
-← completed: ()
-→ query record1(record {427265337 = "Hey!"; 834174833 = +42; 1092820744 = (…
+← replied: ()
+→ query record1(record {bhned_q = "Hey!"; value = +42; byte = (25 : int8)})
 debug.print: ok: +25
-← completed: ()
-→ query record2(record {427265337 = "Hey!"; 834174833 = +42; 1092820744 = (…
+← replied: ()
+→ query record2(record {bhned_q = "Hey!"; value = +42; byte = (24 : int8)},…
 debug.print: ok:  Hey! +25
-← completed: ((25 : int8))
-→ query record3(record {427265337 = "Hey!"; 834174833 = +42})
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: did not find field extra in record"
+← replied: ((25 : int8))
+→ query record3(record {bhned_q = "Hey!"; value = +42})
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: did not find field extra in record"

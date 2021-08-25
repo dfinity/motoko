@@ -24,7 +24,7 @@ _out/%.lib.wasm: _out/%.lib.o | _out
 		$< -o $@
 
 _out/%.base.wasm: %.wat | _out
-	wat2wasm --debug-names --enable-multi-value $< -o $@
+	wat2wasm --debug-names $< -o $@
 
 _out/%.linked.wasm: _out/%.base.wasm _out/%.lib.wasm
 	$(MO_LD) -b _out/$*.base.wasm -l _out/$*.lib.wasm -o _out/$*.linked.wasm

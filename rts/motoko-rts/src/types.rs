@@ -1,19 +1,25 @@
-use core::ops::{Add, AddAssign};
+use crate::tommath_bindings::{mp_digit, mp_int};
+use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+
+use crate::constants::WORD_SIZE;
+use crate::rts_trap_with;
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
 }
 
-pub const WORD_SIZE: u32 = 4;
-
 /// The unit "words": `Words(123u32)` means 123 words.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Words<A>(pub A);
 
 impl Words<u32> {
     pub fn to_bytes(self) -> Bytes<u32> {
         Bytes(self.0 * WORD_SIZE)
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -25,9 +31,39 @@ impl<A: Add<Output = A>> Add for Words<A> {
     }
 }
 
+impl<A: Sub<Output = A>> Sub for Words<A> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Words(self.0 - rhs.0)
+    }
+}
+
+impl<A: Mul<Output = A>> Mul<A> for Words<A> {
+    type Output = Self;
+
+    fn mul(self, rhs: A) -> Self::Output {
+        Words(self.0 * rhs)
+    }
+}
+
+impl<A: Div<Output = A>> Div<A> for Words<A> {
+    type Output = Self;
+
+    fn div(self, rhs: A) -> Self::Output {
+        Words(self.0 / rhs)
+    }
+}
+
 impl<A: AddAssign> AddAssign for Words<A> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
+    }
+}
+
+impl<A: SubAssign> SubAssign for Words<A> {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
     }
 }
 
@@ -38,8 +74,8 @@ impl From<Bytes<u32>> for Words<u32> {
 }
 
 /// The unit "bytes": `Bytes(123u32)` means 123 bytes.
-#[repr(C)]
-#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+#[repr(transparent)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
 
 impl Bytes<u32> {
@@ -47,6 +83,10 @@ impl Bytes<u32> {
     pub fn to_words(self) -> Words<u32> {
         // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -58,9 +98,23 @@ impl<A: Add<Output = A>> Add for Bytes<A> {
     }
 }
 
+impl<A: Sub<Output = A>> Sub for Bytes<A> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Bytes(self.0 - rhs.0)
+    }
+}
+
 impl<A: AddAssign> AddAssign for Bytes<A> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
+    }
+}
+
+impl<A: SubAssign> SubAssign for Bytes<A> {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
     }
 }
 
@@ -70,18 +124,166 @@ impl From<Words<u32>> for Bytes<u32> {
     }
 }
 
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct SkewedPtr(pub usize);
+/// A value in a heap slot
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Value(u32);
 
-impl SkewedPtr {
-    pub fn unskew(self) -> usize {
-        self.0.wrapping_add(1)
+/// A view of `Value` for analyzing the slot contents.
+pub enum PtrOrScalar {
+    /// Slot is a pointer to a boxed object
+    Ptr(usize),
+
+    /// Slot is an unboxed scalar value
+    Scalar(u32),
+}
+
+impl PtrOrScalar {
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, PtrOrScalar::Ptr(_))
+    }
+
+    pub fn is_scalar(&self) -> bool {
+        matches!(self, PtrOrScalar::Scalar(_))
     }
 }
 
-pub fn skew(ptr: usize) -> SkewedPtr {
-    SkewedPtr(ptr.wrapping_sub(1))
+impl Value {
+    /// Create a value from a pointer
+    pub const fn from_ptr(ptr: usize) -> Self {
+        // TODO: Update rustc to enable assertion
+        // debug_assert_eq!(ptr & 0b1, 0b0);
+        Value(skew(ptr) as u32)
+    }
+
+    /// Create a value from a scalar
+    pub const fn from_scalar(value: u32) -> Self {
+        // TODO: Update rustc to enable assertion
+        // debug_assert_eq!(value >> 31, 0);
+        Value(value << 1)
+    }
+
+    /// Create a value from a signed scalar. The scalar must be obtained with `get_signed_scalar`.
+    /// Using `get_scalar` will return an incorrect scalar.
+    pub fn from_signed_scalar(value: i32) -> Self {
+        debug_assert_eq!(value, value << 1 >> 1);
+        Value((value << 1) as u32)
+    }
+
+    /// Create a value from raw representation. Useful when e.g. temporarily writing invalid values
+    /// to object fields in garbage collection.
+    pub const fn from_raw(raw: u32) -> Self {
+        Value(raw)
+    }
+
+    /// Analyzes the value.
+    ///
+    /// Note: when using this function in performance critical code make sure to check the
+    /// generated Wasm and see if it can be improved by using `Value::get_raw`, `unskew`, etc.
+    /// rustc/LLVM generates slightly more inefficient code (compared to using functions like
+    /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
+    /// cycle.
+    pub fn get(&self) -> PtrOrScalar {
+        if self.0 & 0b1 == 0b1 {
+            PtrOrScalar::Ptr(unskew(self.0 as usize))
+        } else {
+            PtrOrScalar::Scalar(self.0 >> 1)
+        }
+    }
+
+    /// Get the raw value
+    pub fn get_raw(&self) -> u32 {
+        self.0
+    }
+
+    /// Is the value a scalar?
+    pub fn is_scalar(&self) -> bool {
+        self.get().is_scalar()
+    }
+
+    /// Is the value a pointer?
+    pub fn is_ptr(&self) -> bool {
+        self.get().is_ptr()
+    }
+
+    /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
+    /// the value is not a scalar.
+    pub fn get_scalar(&self) -> u32 {
+        debug_assert!(self.get().is_scalar());
+        self.0 >> 1
+    }
+
+    /// Assumes that the value is a signed scalar and returns the scalar value. In debug mode
+    /// panics if the value is not a scalar.
+    pub fn get_signed_scalar(&self) -> i32 {
+        debug_assert!(self.get().is_scalar());
+        self.0 as i32 >> 1
+    }
+
+    /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
+    /// the value is not a pointer.
+    pub fn get_ptr(self) -> usize {
+        debug_assert!(self.get().is_ptr());
+        unskew(self.0 as usize)
+    }
+
+    /// Get the object tag. In debug mode panics if the value is not a pointer.
+    pub unsafe fn tag(self) -> Tag {
+        debug_assert!(self.get().is_ptr());
+        (self.get_ptr() as *mut Obj).tag()
+    }
+
+    /// Get the pointer as `Obj`. In debug mode panics if the value is not a pointer.
+    pub unsafe fn as_obj(self) -> *mut Obj {
+        debug_assert!(self.get().is_ptr());
+        self.get_ptr() as *mut Obj
+    }
+
+    /// Get the pointer as `Array`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Array`.
+    pub unsafe fn as_array(self) -> *mut Array {
+        debug_assert_eq!(self.tag(), TAG_ARRAY);
+        self.get_ptr() as *mut Array
+    }
+
+    /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `Concat`.
+    pub unsafe fn as_concat(self) -> *mut Concat {
+        debug_assert_eq!(self.tag(), TAG_CONCAT);
+        self.get_ptr() as *mut Concat
+    }
+
+    /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `Blob`.
+    pub unsafe fn as_blob(self) -> *mut Blob {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.get_ptr() as *mut Blob
+    }
+
+    /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `BigInt`.
+    pub unsafe fn as_bigint(self) -> *mut BigInt {
+        debug_assert_eq!(self.tag(), TAG_BIGINT);
+        self.get_ptr() as *mut BigInt
+    }
+
+    pub fn as_tiny(self) -> i32 {
+        debug_assert!(self.is_scalar());
+        self.0 as i32 >> 1
+    }
+}
+
+/// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
+pub fn is_ptr(value: u32) -> bool {
+    value & 0b1 == 0b1
+}
+
+pub const fn skew(ptr: usize) -> usize {
+    ptr.wrapping_sub(1)
+}
+
+pub const fn unskew(value: usize) -> usize {
+    value.wrapping_add(1)
 }
 
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
@@ -102,14 +304,33 @@ pub const TAG_FWD_PTR: Tag = 11;
 pub const TAG_BITS32: Tag = 12;
 pub const TAG_BIGINT: Tag = 13;
 pub const TAG_CONCAT: Tag = 14;
+pub const TAG_NULL: Tag = 15;
+pub const TAG_ONE_WORD_FILLER: Tag = 16;
+pub const TAG_FREE_SPACE: Tag = 17;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
-#[repr(C)]
+#[repr(packed)]
 pub struct Obj {
     pub tag: Tag,
 }
 
-#[repr(C)]
+impl Obj {
+    pub unsafe fn tag(self: *mut Self) -> Tag {
+        (*self).tag
+    }
+
+    pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self as *mut Blob
+    }
+
+    pub unsafe fn as_concat(self: *mut Self) -> *mut Concat {
+        debug_assert_eq!(self.tag(), TAG_CONCAT);
+        self as *mut Concat
+    }
+}
+
+#[repr(packed)]
 #[rustfmt::skip]
 pub struct Array {
     pub header: Obj,
@@ -121,37 +342,56 @@ pub struct Array {
 }
 
 impl Array {
-    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
-        self.offset(1) as *const SkewedPtr // skip array header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip array header
     }
 
-    pub unsafe fn get(self: *const Self, idx: u32) -> SkewedPtr {
+    pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
+        debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *const SkewedPtr)
+        *(slot_addr as *const Value)
+    }
+
+    pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
+        debug_assert!(self.len() > idx);
+        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        *(slot_addr as *mut Value) = ptr;
+    }
+
+    pub unsafe fn len(self: *mut Self) -> u32 {
+        (*self).len
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Object {
     pub header: Obj,
-    pub size: u32,
-    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important
-                       // for GC (does not contain pointers).
+    pub size: u32,     // Number of elements
+    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important for GC (does not contain pointers).
 }
 
 impl Object {
-    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
-        self.offset(1) as *const SkewedPtr // skip object header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.add(1) as *mut Value // skip object header
+    }
+
+    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
+    }
+
+    #[cfg(debug_assertions)]
+    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
+        *self.payload_addr().add(idx as usize)
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct ObjInd {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Closure {
     pub header: Obj,
     pub funid: u32,
@@ -160,60 +400,244 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub unsafe fn payload_addr(self: *const Self) -> *const SkewedPtr {
-        self.offset(1) as *const SkewedPtr // skip closure header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip closure header
+    }
+
+    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+        (*self).size
     }
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
     // data follows ..
 }
 
+impl Blob {
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
+        self.add(1) as *mut u8 // skip closure header
+    }
+
+    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+        (*self).len
+    }
+
+    pub unsafe fn get(self: *mut Self, idx: u32) -> u8 {
+        *self.payload_addr().add(idx as usize)
+    }
+
+    pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
+        *self.payload_addr().add(idx as usize) = byte;
+    }
+
+    /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
+    pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
+        let current_len_words = self.len().to_words();
+        let new_len_words = new_len.to_words();
+
+        debug_assert!(new_len_words <= current_len_words);
+
+        let slop = current_len_words - new_len_words;
+
+        if slop == Words(1) {
+            let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
+                as *mut OneWordFiller;
+            (*filler).header.tag = TAG_ONE_WORD_FILLER;
+        } else if slop != Words(0) {
+            let filler =
+                (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
+            (*filler).header.tag = TAG_FREE_SPACE;
+            (*filler).words = slop - Words(1);
+        }
+
+        (*self).len = new_len;
+    }
+}
+
 /// A forwarding pointer placed by the GC in place of an evacuated object.
-#[repr(C)]
+#[repr(packed)]
 pub struct FwdPtr {
     pub header: Obj,
-    pub fwd: SkewedPtr,
+    pub fwd: Value,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct BigInt {
     pub header: Obj,
-    // the data following now must describe the `mp_int` struct
-    // (https://github.com/libtom/libtommath/blob/44ee82cd34d0524c171ffd0da70f83bba919aa38/tommath.h#L174-L179)
-    pub size: u32,
-    pub alloc: u32,
-    pub sign: u32,
-    // Unskewed pointer to a blob payload. data_ptr - 2 (words) gives us the blob header.
-    pub data_ptr: usize,
+    /// The data following now must describe is the `mp_int` struct.
+    /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
+    /// the data within this object before it is used.
+    /// (NB: If we have a non-moving GC, we can make this an invaiant)
+    pub mp_int: mp_int,
+    // data follows ..
 }
 
-#[repr(C)]
+impl BigInt {
+    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+        Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
+    }
+
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
+        self.add(1) as *mut mp_digit // skip closure header
+    }
+
+    pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
+        (ptr as *mut u32).sub(size_of::<BigInt>().0 as usize) as *mut BigInt
+    }
+
+    /// Returns pointer to the `mp_int` struct
+    ///
+    /// It fixes up the dp pointer. Instead of doing it here
+    /// this could be done on allocation and every object move.
+    ///
+    /// Note that this returns a `const` pointer. This is very nice, as together with the const
+    /// annotation on the libtommath API, this should prevent us from passing this pointer to a
+    /// libtommath function that tries to change it. For example, we cannot confuse input and
+    /// output parameters of mp_add() this way.
+    pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *const mp_int {
+        (*self).mp_int.dp = self.payload_addr();
+        &(*self).mp_int
+    }
+}
+
+#[repr(packed)]
 pub struct MutBox {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Some {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(C)]
+#[repr(packed)]
 pub struct Concat {
     pub header: Obj,
-    pub n_bytes: u32,
-    pub text1: SkewedPtr,
-    pub text2: SkewedPtr,
+    pub n_bytes: Bytes<u32>,
+    pub text1: Value,
+    pub text2: Value,
+}
+
+impl Concat {
+    pub unsafe fn text1(self: *mut Self) -> Value {
+        (*self).text1
+    }
+
+    pub unsafe fn text2(self: *mut Self) -> Value {
+        (*self).text2
+    }
+}
+
+#[repr(packed)]
+pub struct Null {
+    pub header: Obj,
+}
+
+#[repr(packed)]
+pub struct Bits64 {
+    pub header: Obj,
+    pub bits: u64,
+}
+
+#[repr(packed)]
+pub struct Bits32 {
+    pub header: Obj,
+    pub bits: u32,
+}
+
+/// Marks one word empty space in heap
+#[repr(packed)]
+pub struct OneWordFiller {
+    pub header: Obj,
+}
+
+/// Marks arbitrary sized emtpy space in heap
+#[repr(packed)]
+pub struct FreeSpace {
+    pub header: Obj,
+    pub words: Words<u32>,
+}
+
+impl FreeSpace {
+    /// Size of the free space (includes object header)
+    pub unsafe fn size(self: *mut Self) -> Words<u32> {
+        (*self).words + size_of::<Obj>()
+    }
+}
+
+/// Returns object size in words
+pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
+    let obj = obj as *mut Obj;
+    match obj.tag() {
+        TAG_OBJECT => {
+            let object = obj as *mut Object;
+            let size = object.size();
+            size_of::<Object>() + Words(size)
+        }
+
+        TAG_OBJ_IND => size_of::<ObjInd>(),
+
+        TAG_ARRAY => {
+            let array = obj as *mut Array;
+            let size = array.len();
+            size_of::<Array>() + Words(size)
+        }
+
+        TAG_BITS64 => size_of::<Bits64>(),
+
+        TAG_MUTBOX => size_of::<MutBox>(),
+
+        TAG_CLOSURE => {
+            let closure = obj as *mut Closure;
+            let size = closure.size();
+            size_of::<Closure>() + Words(size)
+        }
+
+        TAG_SOME => size_of::<Some>(),
+
+        TAG_VARIANT => size_of::<Variant>(),
+
+        TAG_BLOB => {
+            let blob = obj as *mut Blob;
+            size_of::<Blob>() + blob.len().to_words()
+        }
+
+        TAG_FWD_PTR => {
+            rts_trap_with("object_size: forwarding pointer");
+        }
+
+        TAG_BITS32 => size_of::<Bits32>(),
+
+        TAG_BIGINT => {
+            let bigint = obj as *mut BigInt;
+            size_of::<BigInt>() + bigint.len().to_words()
+        }
+
+        TAG_CONCAT => size_of::<Concat>(),
+
+        TAG_NULL => size_of::<Null>(),
+
+        TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
+
+        TAG_FREE_SPACE => {
+            let free_space = obj as *mut FreeSpace;
+            free_space.size()
+        }
+
+        _ => {
+            rts_trap_with("object_size: invalid object tag");
+        }
+    }
 }

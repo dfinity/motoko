@@ -1,4 +1,4 @@
-type Result_2 = 
+type Result_1 = 
  variant {
    err: text;
    ok: nat;
@@ -8,9 +8,9 @@ type Result3 =
    err: Result2;
    ok;
  };
-type Result2_2 = 
+type Result2_1 = 
  variant {
-   err: Result_2;
+   err: Result_1;
    ok: nat;
  };
 type Result2 = 
@@ -24,6 +24,6 @@ type Result =
    ok;
  };
 service : {
-  f: (opt nat) -> (Result_2);
-  g: (Result3) -> (Result2_2);
+  f: (opt nat) -> (Result_1);
+  g: (Result3) -> (Result2_1);
 }

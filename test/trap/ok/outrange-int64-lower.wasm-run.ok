@@ -2,11 +2,11 @@ losing precision
 Error: failed to run main module `_out/outrange-int64-lower.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
        wasm backtrace:
-         0: <unknown>!Int->Int64
-         1: <unknown>!intToInt64
-         2: <unknown>!init
-         3: <unknown>!_start
+         0: Int->Int64
+         1: intToInt64
+         2: init
+         3: _start
        

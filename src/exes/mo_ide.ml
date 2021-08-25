@@ -10,15 +10,14 @@ let set_entry_point ep = entry_point := Some ep
 let usage = "LSP server for motoko"
 
 let argspec =
-  Arg.align
     [ "--debug",
       Arg.Unit set_debug,
       " outputs logging information to a lsp.log file"
     ; "--canister-main",
       Arg.String set_entry_point,
-      " specifies the entry point for the current project"
+      "<file>  specifies the entry point for the current project"
     ; "--port", Arg.Int set_port,
-      " when specified communicates over TCP on the given port"
+      "<port>  when specified communicates over TCP on the given port"
     ]
     @ Args.error_args
     @ Args.package_args

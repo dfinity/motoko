@@ -180,7 +180,7 @@ and nary context k naryE es =
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
       (* TBR: optimization - no need to name the last trivial argument *)
-      k -@- naryE (List.rev (e1 :: vs))
+      k -@- naryE (List.rev (t_exp context e1 :: vs))
     | e1 :: es ->
       match eff e1 with
       | T.Triv ->
@@ -218,7 +218,7 @@ and c_loop context k e1 =
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
-      (varE loop -*- unitE)
+      (varE loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
  match lexp1.it with
@@ -366,10 +366,10 @@ and c_exp' context exp k =
        let kr = tupE [varE k; varE r] in
        match eff exp1 with
        | T.Triv ->
-          cps_awaitE (typ exp) (t_exp context exp1) kr
+          cps_awaitE (typ_of_var k) (t_exp context exp1) kr
        | T.Await ->
           c_exp context  exp1
-            (meta (typ exp1) (fun v1 -> (cps_awaitE (typ exp) (varE v1) kr)))
+            (meta (typ exp1) (fun v1 -> (cps_awaitE (typ_of_var k) (varE v1) kr)))
      ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
@@ -414,7 +414,7 @@ and c_dec context dec (k:kont) =
 and c_decs context decs k =
   match decs with
   | [] ->
-    k -@- unitE
+    k -@- unitE ()
   | dec :: decs ->
     c_dec context dec (meta T.unit (fun v -> c_decs context decs k))
 
@@ -506,11 +506,24 @@ and define_pat patenv pat : dec list =
     []
 
 and define_pats patenv (pats : pat list) : dec list =
-  Lib.List.concat_map (define_pat patenv) pats
+  List.concat_map (define_pat patenv) pats
 
 and t_comp_unit context = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
-  | ProgU ds -> ProgU (t_decs context ds)
+  | ProgU ds ->
+    begin
+      match infer_effect_decs ds with
+      | T.Triv ->
+        ProgU (t_decs context ds)
+      | T.Await ->
+        let throw = fresh_err_cont () in
+        let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+        let e = fresh_var "e" T.catch in
+        ProgU [
+          funcD throw e (assertE (falseE ()));
+          expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
+        ]
+    end
   | ActorU (as_opt, ds, ids, { pre; post }, t) ->
     ActorU (as_opt, t_decs context ds, ids,
       { pre = t_exp LabelEnv.empty pre;

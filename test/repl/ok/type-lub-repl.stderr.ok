@@ -1,0 +1,3 @@
+lib/type-lub.mo:37.16-37.42: warning [M0074], this array has type
+  [Any]
+because elements have inconsistent types

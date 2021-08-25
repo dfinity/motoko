@@ -1,0 +1,52 @@
+diff --git a/pkgs/development/compilers/ocaml/generic.nix b/pkgs/development/compilers/ocaml/generic.nix
+index d9853dd642a..4ff1b0ead72 100644
+--- a/pkgs/development/compilers/ocaml/generic.nix
++++ b/pkgs/development/compilers/ocaml/generic.nix
+@@ -58,6 +58,8 @@ stdenv.mkDerivation (args // {
+   ++ optional spaceTimeSupport (flags "--enable-spacetime" "-spacetime")
+   ;
+ 
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
++
+   buildFlags = [ "world" ] ++ optionals useNativeCompilers [ "bootstrap" "world.opt" ];
+   buildInputs = optional (!lib.versionAtLeast version "4.07") ncurses
+     ++ optionals useX11 [ libX11 xorgproto ];
+diff --git a/pkgs/development/ocaml-modules/menhir/generic.nix b/pkgs/development/ocaml-modules/menhir/generic.nix
+index a917d634a19..a15452ec490 100644
+--- a/pkgs/development/ocaml-modules/menhir/generic.nix
++++ b/pkgs/development/ocaml-modules/menhir/generic.nix
+@@ -10,6 +10,8 @@ stdenv.mkDerivation {
+ 
+   createFindlibDestdir = true;
+ 
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
++
+   preBuild = ''
+     # fix makefiles.
+     RM=$(type -p rm)
+diff --git a/pkgs/development/ocaml-modules/wasm/default.nix b/pkgs/development/ocaml-modules/wasm/default.nix
+index c8944926488..27e6bbe73fa 100644
+--- a/pkgs/development/ocaml-modules/wasm/default.nix
++++ b/pkgs/development/ocaml-modules/wasm/default.nix
+@@ -17,6 +17,8 @@ stdenv.mkDerivation rec {
+ 
+   buildInputs = [ ocaml findlib ocamlbuild ];
+ 
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
++
+   makeFlags = [ "-C" "interpreter" ];
+ 
+   createFindlibDestdir = true;
+diff --git a/pkgs/development/tools/ocaml/ocamlbuild/default.nix b/pkgs/development/tools/ocaml/ocamlbuild/default.nix
+index c74794b35c9..b7d0a08c010 100644
+--- a/pkgs/development/tools/ocaml/ocamlbuild/default.nix
++++ b/pkgs/development/tools/ocaml/ocamlbuild/default.nix
+@@ -17,6 +17,8 @@ stdenv.mkDerivation {
+ 
+   buildInputs = [ ocaml findlib ];
+ 
++  hardeningDisable = lib.optional stdenv.targetPlatform.isMusl "pie";
++
+   configurePhase = ''
+   make -f configure.make Makefile.config \
+     "OCAMLBUILD_PREFIX=$out" \

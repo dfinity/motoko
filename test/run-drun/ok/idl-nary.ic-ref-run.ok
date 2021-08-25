@@ -1,26 +1,26 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
 → query two("One", "Two")
-← completed: ("One", "Two")
+← replied: ("One", "Two")
 → query three("One", "Two", "Three")
-← completed: ("One", "Two", "Three")
+← replied: ("One", "Two", "Three")
 → query four("One", "Two", "Three", "Four")
-← completed: ("One", "Two", "Three", "Four")
+← replied: ("One", "Two", "Three", "Four")
 → query mkRecord()
-← completed: (record {"One"; "Two"; "Three"; "Four"})
+← replied: (record {"One"; "Two"; "Three"; "Four"})
 → query unary1(record {"One"; "Two"; "Three"; "Four"})
-← completed: (record {"One"; "Two"; "Three"; "Four"})
+← replied: (record {"One"; "Two"; "Three"; "Four"})
 → query unary2(record {"One"; "Two"; "Three"; "Four"})
-← completed: (record {"One"; "Two"; "Three"; "Four"})
+← replied: (record {"One"; "Two"; "Three"; "Four"})
 → query unary3(record {"One"; "Two"; "Three"; "Four"})
-← completed: (record {"One"; "Two"; "Three"; "Four"})
+← replied: (record {"One"; "Two"; "Three"; "Four"})
 → query unary4(record {"One"; "Two"; "Three"; "Four"})
-← completed: (record {"One"; "Two"; "Three"; "Four"})
+← replied: (record {"One"; "Two"; "Three"; "Four"})
 → query three("One", "Two")
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: too few arguments ttt"
-→ query three("One", "Two", "Three")
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: left-over bytes ttt"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: too few arguments ttt"
+→ query three(0x4449444c0003717171034f6e650354776f05546872656545585452414…
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: left-over bytes ttt"
 → query four("One", "Two", "Three", "Four", "Five")
-← completed: ("One", "Two", "Three", "Four")
+← replied: ("One", "Two", "Three", "Four")

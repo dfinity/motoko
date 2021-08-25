@@ -27,10 +27,6 @@ actor a {
                       , func<B, A> (bs : [B], a : A) : B = bs[0]
                       ];
 
-    let poly_funcs4 = [ func<A <: Int, B <: Nat> (as : [A], b : B) : A = as[0]
-                      , func<B <: Nat, A <: Int> (bs : [B], a : A) : B = bs[0]
-                      ];
-
     let funcs = [ func (a : [Int]) : Nat = a.size()
                 , func (a : [Nat]) : Int = -42
                 ];
@@ -40,7 +36,7 @@ actor a {
                         ];
 
     // TODO(gabor), mutable arrays
-    let mut_arrs = [[var 42], [var 25], [77]]; // boring
+    let mut_arrs = [[var 42], [var 25], [var 77]]; // boring
 
     // TODO(gabor), mutable fields, see fail/type-inference.mo:13
 
@@ -59,7 +55,7 @@ actor a {
 
     // recursive objects
 
-    // { need global types due to https://dfinity.atlassian.net/browse/AST-34
+    // {
     type A = {x : A};
     type B = {x : B};
 
@@ -82,7 +78,7 @@ actor a {
 
     func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] };
 
-    // example from https://dfinity.atlassian.net/browse/AST-83
+
 
     type Foo<A> = ?(Foo<A>);
     ignore (if true (null : Foo<Int>) else (null : Foo<Bool>));

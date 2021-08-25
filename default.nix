@@ -1,40 +1,57 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
+
+  # version to embed in the release. Used by `.github/workflows/release.yml`
+  releaseVersion ? null,
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-let subpath = p: import ./nix/gitSource.nix p; in
+let subpath = import ./nix/gitSource.nix; in
 
-let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
-let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
-
-let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
-let ic-ref = ic-ref-pkgs.ic-ref; in
+let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
+let ic-ref-run =
+  # copy out the binary, to remove dependencies on the libraries
+  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
+      mkdir -p $out/bin
+      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
+  ''; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  rtsBuildInputs = [
-    nixpkgs.clang_10 # for native/wasm building
-    nixpkgs.lld_10 # for wasm building
-    nixpkgs.rustc-nightly
-    nixpkgs.cargo-nightly
-    nixpkgs.xargo
+  rtsBuildInputs = with nixpkgs; [
+    # pulls in clang (wrapped) and clang-10 (unwrapped)
+    llvmPackages_10.clang
+    # pulls in wasm-ld
+    llvmPackages_10.lld
+    llvmPackages_10.bintools
+    rustc-nightly
+    cargo-nightly
+    xargo
+    wasmtime
+    rust-bindgen
+    rustfmt
   ];
 
   llvmEnv = ''
+    # When compiling to wasm, we want to have more control over the flags,
+    # so we do not use the nix-provided wrapper in clang
+    export WASM_CLANG="clang-10"
+    export WASM_LD=wasm-ld
+    # because we use the unwrapped clang, we have to pass in some flags/paths
+    # that otherwise the wrapped clang would take care for us
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_10.clang-unwrapped.lib}"
+
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
     # there we use plain clang-10. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_10}/bin/clang"
-    export WASM_CLANG="clang-10"
-    export WASM_LD=wasm-ld
   '';
 in
 
@@ -62,18 +79,15 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
     pkgs.perl
+    pkgs.removeReferencesTo
   ]; in
-
-let darwin_standalone =
-  let common = import (nixpkgs.sources.common + "/pkgs")
-    { inherit (nixpkgs) system; repoRoot = ./.; }; in
-  common.lib.standaloneRust; in
 
 let ocaml_exe = name: bin: rts:
   let
@@ -81,15 +95,17 @@ let ocaml_exe = name: bin: rts:
       if is_static
       then "release-static"
       else "release";
-
-    drv = staticpkgs.stdenv.mkDerivation {
+  in
+    staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if is_static then "allowedRequisites" else null} = [];
+      allowedRequisites = [];
 
       src = subpath ./src;
 
       buildInputs = commonBuildInputs staticpkgs;
+
+      MOTOKO_RELEASE = releaseVersion;
 
       # we only need to include the wasm statically when building moc, not
       # other binaries
@@ -104,13 +120,25 @@ let ocaml_exe = name: bin: rts:
       installPhase = ''
         mkdir -p $out/bin
         cp --verbose --dereference ${bin} $out/bin
+      '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
+        # there are references to darwin system libraries
+        # in the binaries. But curiously, we can remove them
+        # an the binaries still work. They are essentially static otherwise.
+        remove-references-to \
+          -t ${nixpkgs.darwin.Libsystem} \
+          -t ${nixpkgs.darwin.CF} \
+          -t ${nixpkgs.libiconv} \
+          $out/bin/*
+      '' + ''
+        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # Let's remove that, too
+        remove-references-to \
+          -t ${staticpkgs.ocamlPackages.menhir} \
+          $out/bin/*
+        # sanity check
+        $out/bin/* --help >/dev/null
       '';
     };
-  in
-    # Make standalone on darwin (nothing to do on linux, is static)
-    if nixpkgs.stdenv.isDarwin
-    then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
-    else drv;
 
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";
@@ -125,14 +153,17 @@ in
 rec {
   rts =
     let
-      rustDeps = nixpkgs.rustPlatform-nightly.fetchcargo {
+      # We run this on motoko-rts-tests, to get the union of all
+      # dependencies
+      rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
         name = "motoko-rts-deps";
-        src = subpath rts/motoko-rts;
-        sourceRoot = null;
-        sha256 = "0axxn4g6wf4v3ah7parjzfzzc98w816kpipp905y5srx0fvws637";
+        src = subpath ./rts;
+        sourceRoot = "rts/motoko-rts-tests";
+        sha256 = "0sy7jglz9pxw2lz0qjyplchcfn78d7789sd93xwybisamjynlniy";
         copyLockfile = true;
       };
     in
+
     stdenv.mkDerivation {
       name = "moc-rts";
 
@@ -148,12 +179,13 @@ rec {
         # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
         mkdir -p $CARGO_HOME
         echo "Using vendored sources from ${rustDeps}"
+        unpackFile ${rustDeps}
         cat > $CARGO_HOME/config <<__END__
           [source."crates-io"]
           "replace-with" = "vendored-sources"
 
           [source."vendored-sources"]
-          "directory" = "${rustDeps}"
+          "directory" = "$(stripHash ${rustDeps})"
         __END__
 
         ${llvmEnv}
@@ -166,7 +198,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-        ./test_rts
+	make test
       '';
 
       installPhase = ''
@@ -189,11 +221,12 @@ rec {
   mo-doc = ocaml_exe "mo-doc" "mo-doc" null;
   didc = ocaml_exe "didc" "didc" null;
   deser = ocaml_exe "deser" "deser" null;
+  candid-tests = ocaml_exe "candid-tests" "candid-tests" null;
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-ref;
+  inherit ic-ref-run;
 
   tests = let
     testDerivationArgs = {
@@ -213,29 +246,25 @@ rec {
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
+    # so include from test/ only the common files, plus everything in test/${dir}/
+    test_src = dir:
+      with nixpkgs.lib;
+      cleanSourceWith {
+        filter = path: type:
+          let relPath = removePrefix (toString ./test + "/") (toString path); in
+          type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+        src = subpath ./test;
+        name = "test-${dir}-src";
+      };
+
     test_subdir = dir: deps:
       testDerivation {
-        # include from test/ only the common files, plus everything in test/${dir}/
-        src =
-          with nixpkgs.lib;
-          cleanSourceWith {
-            filter = path: type:
-              let relPath = removePrefix (toString ./test + "/") (toString path); in
-              type != "directory" || hasPrefix "${dir}/" "${relPath}/";
-            src = subpath ./test;
-            name = "test-${dir}-src";
-        };
+        src = test_src dir;
         buildInputs =
           deps ++
-          [ nixpkgs.wabt
-            nixpkgs.bash
-            nixpkgs.perl
-            nixpkgs.getconf
-            nixpkgs.moreutils
-            nixpkgs.nodejs-10_x
-            filecheck
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
+          [ filecheck
             wasmtime
-            nixpkgs.sources.esm
           ] ++
           rtsBuildInputs;
 
@@ -244,8 +273,6 @@ rec {
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
-            # run this once to work around self-unpacking-race-condition
-            type -p drun && drun --version
             make -C ${dir}
           '';
       };
@@ -254,6 +281,11 @@ rec {
     snty_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks";
+      });
+
+    compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
       });
 
     perf_subdir = dir: deps:
@@ -276,8 +308,10 @@ rec {
       });
 
     qc = testDerivation {
-      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
+      buildInputs =
+        [ moc wasmtime haskellPackages.qc-motoko nixpkgs.drun ];
       checkPhase = ''
+	export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
       '';
@@ -288,6 +322,7 @@ rec {
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
+	export LANG=C.utf8 # for haskell
         lsp-int ${mo-ide}/bin/mo-ide .
       '';
     };
@@ -296,6 +331,7 @@ rec {
       src = subpath ./src;
       buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
+        patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
       '';
       installPhase = ''
@@ -303,17 +339,44 @@ rec {
       '';
     };
 
+    candid = testDerivation {
+      buildInputs = [ moc wasmtime candid-tests ];
+      checkPhase = ''
+        candid-tests -i ${nixpkgs.sources.candid}/test
+      '';
+    };
+
+    profiling-graphs = testDerivation {
+      src = test_src "perf";
+      buildInputs =
+        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+        [ moc nixpkgs.drun ];
+      checkPhase = ''
+        patchShebangs .
+        type -p moc && moc --version
+        type -p drun && drun --version
+        ./profile-report.sh
+      '';
+      installPhase = ''
+        mv _profile $out;
+        mkdir -p $out/nix-support
+        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+      '';
+    };
+
+
     fix_names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs (_old: { name = "test-${name}"; })
     );
 
-  in fix_names {
+  in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      drun       = test_subdir "run-drun"   [ moc drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref ];
-      perf       = perf_subdir "perf"       [ moc drun ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
@@ -321,8 +384,9 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit;
-    };
+      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      inherit qc lsp unit candid profiling-graphs;
+    }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
     name = "samples";
@@ -338,7 +402,7 @@ rec {
   };
 
   js =
-    let mk = n: with_rts:
+    let mk = n:
       stdenv.mkDerivation {
         name = "${n}.js";
         src = subpath ./src;
@@ -349,49 +413,65 @@ rec {
         ];
         buildPhase = ''
           patchShebangs .
-          make ${n}.js
+          '' + nixpkgs.lib.optionalString (rts != null)''
+          ./rts/gen.sh ${rts}/rts/
+          '' + ''
+          make DUNE_OPTS="--profile=release" ${n}.js
         '';
         installPhase = ''
           mkdir -p $out
-          cp -v ${n}.js $out
-        '' + (if with_rts then ''
-          cp -vr ${rts}/rts $out
-        '' else "");
+          mkdir -p $out/bin
+          cp --verbose --dereference ${n}.js $out/bin
+        '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
         '';
       };
     in
     {
-      moc = mk "moc" true;
-      didc = mk "didc" false;
+      moc = mk "moc";
+      moc_interpreter = mk "moc_interpreter";
+      didc = mk "didc";
+      recurseForDerivations = true;
     };
 
-  inherit drun;
+  inherit (nixpkgs) wabt wasmtime wasm;
+
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
-  wabt = nixpkgs.wabt;
-  wasmtime = nixpkgs.wasmtime;
-  xargo = nixpkgs.xargo;
-  wasm = nixpkgs.wasm;
+  inherit (nixpkgs) xargo;
 
-  overview-slides = stdenv.mkDerivation {
-    name = "overview-slides";
+  # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
+  inherit (nixpkgs) gitMinimal;
+
+  docs = stdenv.mkDerivation {
+    name = "docs";
     src = subpath ./doc;
-    buildInputs = [ nixpkgs.pandoc nixpkgs.bash ];
+    buildInputs = with nixpkgs; [ pandoc bash antora gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
+      # Make this a git repo, to please antora
+      git -C .. init
+      git add .
+      git config user.name "Nobody"
+      git config user.email "nobody@example.com"
+      git commit -m 'Dummy commit for antora'
+      export HOME=$PWD
+      export MOC_JS=${js.moc}/bin/moc.js
+      export MOTOKO_BASE=${base-src}
       make
     '';
 
     installPhase = ''
       mkdir -p $out
       mv overview-slides.html $out/
+      mv build/site/* $out/
       mkdir -p $out/nix-support
-      echo "report guide $out overview-slides.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
+      echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -410,13 +490,14 @@ rec {
   check-rts-formatting = stdenv.mkDerivation {
     name = "check-rts-formatting";
     buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rustfmt ];
-    src = subpath ./rts/motoko-rts;
+    src = subpath ./rts;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
-    installPhase = "touch $out";
     checkPhase = ''
-      cargo fmt -- --check
+      cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
+      cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
     '';
+    installPhase = "touch $out";
   };
 
   base-src = stdenv.mkDerivation {
@@ -441,6 +522,22 @@ rec {
     ];
     checkPhase = ''
       make MOC=moc VESSEL_PKGS="--package matchers ${nixpkgs.sources.motoko-matchers}/src" -C test
+    '';
+  };
+
+  guide-examples-tc =  stdenv.mkDerivation {
+    name = "guid-examples-tc";
+    src = subpath doc/modules/language-guide/examples;
+    phases = "unpackPhase checkPhase installPhase";
+    doCheck = true;
+    MOTOKO_BASE = base-src;
+    installPhase = "touch $out";
+    checkInputs = [
+      moc
+    ];
+    checkPhase = ''
+      patchShebangs .
+      ./check.sh
     '';
   };
 
@@ -490,6 +587,20 @@ rec {
       '';
     };
 
+  check-error-codes = stdenv.mkDerivation {
+      name = "check-error-codes";
+      src = subpath ./test;
+      phases = "unpackPhase buildPhase installPhase";
+      buildInputs = [ nixpkgs.python3 ];
+      buildPhase = ''
+      patchShebangs .
+      ./check-error-codes.py ${./src/lang_utils/error_codes.ml}
+      '';
+      installPhase = ''
+        touch $out
+      '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -503,34 +614,36 @@ rec {
       base-src
       base-tests
       base-doc
-      overview-slides
-      ic-ref
+      docs
+      ic-ref-run
       shell
       check-formatting
       check-rts-formatting
       check-generated
       check-grammar
+      check-error-codes
     ] ++
     builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
     builtins.attrValues js;
   };
 
-  shell = nixpkgs.mkShell rec {
+  shell = stdenv.mkDerivation {
+    name = "motoko-shell";
+
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
     # both, while not actually building `moc`
     #
-
     propagatedBuildInputs =
-      let dont_build = [ moc mo-ld didc deser ]; in
+      let dont_build = [ moc mo-ld didc deser candid-tests ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
-        overview-slides.buildInputs ++
-        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests) ++
+        docs.buildInputs ++
+        builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat
@@ -540,13 +653,19 @@ rec {
       ));
 
     shellHook = llvmEnv + ''
+      # Include our wrappers in the PATH
       export PATH="${toString ./bin}:$PATH"
+      # some cleanup of environment variables otherwise set by nix-shell
+      # that would be confusing in interactive use
+      unset XDG_DATA_DIRS
     '';
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
-    LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    MOTOKO_BASE = base-src;
+    CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell

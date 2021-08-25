@@ -1,5 +1,6 @@
-import Prim "mo:prim";
-import Node "distributor/node";
+import Prim "mo:⛔";
+import Cycles = "cycles/cycles";
+import Lib "distributor/node";
 
 // A naive, distributed map from Nat to Text.
 // Illustrates dynamic installation of imported actor classes.
@@ -12,11 +13,7 @@ actor a {
   // Number of Nodes
   let n = 8;
 
-  // Would be nice if class import defined a type too
-  type Node = actor {
-    lookup : Key -> async ?Value;
-    insert : (Key, Value) -> async ()
-  };
+  type Node = Lib.Node;
 
   let nodes : [var ?Node] = Prim.Array_init(n, null);
 
@@ -32,7 +29,8 @@ actor a {
     let i = k % n;
     let node = switch (nodes[i]) {
       case null {
-        let n = await Node(i); // dynamically install a new Node
+        Cycles.add(2_000_000_000_000);
+        let n = await Lib.Node(i); // dynamically install a new Node
         nodes[i] := ?n;
         n;
       };
@@ -43,6 +41,10 @@ actor a {
 
   // Test
   public func go() : async () {
+    // To get lots of cycles in both drun and ic-ref-run
+    if (Cycles.balance() == (0 : Nat64))
+      await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
+
     var i = 0;
     while (i < 24) {
       let t = debug_show(i);
@@ -56,3 +58,7 @@ actor a {
 };
 
 a.go() //OR-CALL ingress go "DIDL\x00\x00"
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

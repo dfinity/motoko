@@ -1,2 +1,1 @@
-let () = { type Foo = Int
-};
+let () = do { type Foo = Int };

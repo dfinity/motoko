@@ -1,94 +1,94 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
 → query any(null, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(true, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(16777216, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(+16777216, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((171 : nat8), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((52651 : nat16), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((4022250974 : nat32), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((7417146883396513246 : nat64), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((-85 : int8), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((-12885 : int16), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((-272716322 : int32), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((7417146883396513246 : int64), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((-1.1802469e29 : float32), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((6.7440016273455695e187 : float64), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any("Foo", "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any((null : reserved), "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(0x4449444c000268710003466f6f)
 debug.print: ok: Foo
-← completed: ()
-→ query any(service "psokg-ww6vw-7o6", "Foo")
+← replied: ()
+→ query any(principal "psokg-ww6vw-7o6", "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(null, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(opt "Foo", "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(vec {}, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(vec {"Foo"}, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(vec {""; "Foo"}, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(record {}, "Foo")
 debug.print: ok: Foo
-← completed: ()
-→ query any(record {128 = (-272716322 : int32)}, "Foo")
+← replied: ()
+→ query any(record {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: ()
-→ query any(0x4449444c016c02007180017502007101a0deadbeef03466f6f)
+← replied: ()
+→ query any(record {0 = "☃"; dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: ()
-→ query any(variant {128 = (-272716322 : int32)}, "Foo")
+← replied: ()
+→ query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: ()
-→ query any(0x4449444c016b0200718001750200710001a003466f6f)
+← replied: ()
+→ query any(variant {0 = "☃"}, "Foo")
 debug.print: ok: Foo
-← completed: ()
-→ query any(variant {128 = (-272716322 : int32)}, "Foo")
+← replied: ()
+→ query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()
 → query any(0x4449444c016602abcd0200710400deadbeef03466f6f)
 debug.print: ok: Foo
-← completed: ()
+← replied: ()

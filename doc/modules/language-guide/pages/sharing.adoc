@@ -23,9 +23,9 @@ To see the complete code for a working project that uses this pattern, see the l
 
 The following `Subscriber` actor type provides a possible interface for the subscriber actor and the publisher actor to expose and to call, respectively:
 
-[source,motoko]
+[source#tsub,motoko]
 ----
-public type Subscriber = actor {
+type Subscriber = actor {
   notify : () -> ()
 };
 ----
@@ -43,8 +43,10 @@ For example, the subscriber might return a change to its subscription settings b
 The publisher side of the code stores an array of subscribers.
 For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function.
 
-[source,motoko]
+[source#pub.include_tsub,motoko]
 ----
+import Array "mo:base/Array";
+
 actor Publisher {
     var subs: [Subscriber] = [];
 
@@ -72,21 +74,19 @@ In the simplest case, the subscriber actor has the following methods:
 
 The following code illustrates implementing these methods:
 
-[source,motoko]
+[source.include_tsub_pub, motoko]
 ----
-import Publisher "canister:pub";
-
 actor Subscriber {
-    var count: Nat = 0;
-    public func init() {
-        Publisher.subscribe(Subscriber);
-    };
-    public func notify() {
-        count += 1;
-    };
-    public func get() : async Nat {
-        count
-    };
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe(Subscriber);
+  };
+  public func notify() {
+    count += 1;
+  };
+  public func get() : async Nat {
+    count
+  };
 }
 ----
 
@@ -95,7 +95,7 @@ In the `init` function, the `Subscriber` actor passes a reference to itself, of 
 
 If called more than once, the actor will subscribe itself multiple times, and will receive multiple (duplicate) notifications from the publisher.
 This fragility is the consequence of the basic
-publiisher-subscriber design we show above.  With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
+publisher-subscriber design we show above.  With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
 
 == Sharing functions among actors
 
@@ -107,34 +107,34 @@ The full version offers additional features to the publisher-subscriber relation
 For instance, the notification function is _always_ designated as `notify`.
 A more flexible design would only fix the type of `notify`, and permit the subscriber to choose any of its `shared` functions, specified in a `subscribe` message in place of (just) the actor that is subscribing.
 
-See the link:https://github.com/dfinity/examples/tree/master/motoko/pubsub[the full example]
+See the link:https://github.com/dfinity/examples/tree/master/motoko/pub-sub[the full example]
 for details.
 
 In particular, suppose that the subscriber wants to avoid being locked into a certain naming scheme for its interface.
 What really matters is that the publisher can call _some_ function that the subscriber chooses.
 
-=== The `shared` keyword 
+=== The `shared` keyword
 
 To permit this flexibility, an actor needs to share a single _function_ that permits remote invocation from another actor, not merely a reference to itself.
 
 The ability to share a function requires that it be pre-designated as `shared`, and the type system enforces that these functions follow certain rules around the types of data that these functions accept, return, and over which their closures close.
 
-We omit this keyword for actor methods since implicitly, _all public functions of every actor are `shared`_, whether marked explicitly
+Motoko lets you omit this keyword for _public_ actor methods since, implicitly, _any public function of an actor must be `shared`_, whether marked explicitly
 or not.
 
-More generally, a `shared` function is one that is _either_ part of the public interface of an actor, _or_ it is not mentioned in the public interface, but it does not close over the actor's mutable state, and it adheres to the same argument and return-type typing restrictions as a public actor function (that is, no mutable data in the arguments or results).
+// More generally, a `shared` function is one that is _either_ part of the public interface of an actor, _or_ it is not mentioned in the public interface, but it does not close over the actor's mutable state, and it adheres to the same argument and return-type typing restrictions as a public actor function (that is, no mutable data in the arguments or results).
 
-Using the `shared` type, we can extend the example above to be more flexible.
+Using the `shared` function type, we can extend the example above to be more flexible.
 For example:
 
-[source,motoko]
+[source#submessage,motoko]
 ----
 type SubscribeMessage = { callback: shared () -> (); };
 ----
 
 This type differs from the original, in that it describes _a message_ record type with a single field called `callback`, and the original type first shown above describes _an actor_ type with a single method called `notify`:
 
-[source,motoko]
+[source#typesub,motoko]
 ----
 type Subscriber = actor { notify : () -> () };
 ----
@@ -144,19 +144,19 @@ method, which _must_ be called `notify`.
 
 By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose another name for their `notify` method:
 
-[source,motoko]
+[source#newsub.include_submessage_newpub,motoko]
 ----
 actor Subscriber {
-    var count: Nat = 0;
-    public func init() {
-        Publisher.subscribe({callback = incr;});
-    };
-    public func incr() {
-        count += 1;
-    };
-    public query func get(): async Nat {
-        count
-    };
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe({callback = incr;});
+  };
+  public func incr() {
+    count += 1;
+  };
+  public query func get(): async Nat {
+    count
+  };
 };
 ----
 
@@ -164,18 +164,18 @@ Compared to the original version, the only lines that change are those that rena
 
 Likewise, we can update the publisher to have a matching interface:
 
-[source,motoko]
+[source#newpub.include_submessage,motoko]
 ----
-type SubscribeMessage = { callback: shared () -> (); };
+import Array "mo:base/Array";
 actor Publisher {
-    var subs: [SubscribeMessage] = [];
-    public func subscribe(sub: SubscribeMessage) {
-         subs := Array.append<SubscribeMessage>(subs, [sub]);
+  var subs: [SubscribeMessage] = [];
+  public func subscribe(sub: SubscribeMessage) {
+    subs := Array.append<SubscribeMessage>(subs, [sub]);
+  };
+  public func publish() {
+    for (sub in subs.vals()) {
+      sub.callback();
     };
-    public func publish() {
-        for (sub in subs.vals()) {
-            subscriber.callback();
-         };
-    };
+  };
 };
 ----

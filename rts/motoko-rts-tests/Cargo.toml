@@ -1,0 +1,12 @@
+[package]
+name = "motoko-rts-tests"
+version = "0.1.0"
+authors = ["dfinity <sdk@dfinity.org"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.4.3"
+fxhash = "0.2.1"
+libc = { version = "0.2.81", default_features = false }
+motoko-rts = { path = "../motoko-rts/native" }
+proptest = { version = "1.0.0", default-features = false, features = ["std"] }

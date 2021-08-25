@@ -56,6 +56,7 @@ and typ t = match t.it with
   | VariantT cts        -> "VariantT" $$ List.map typ_field cts
   | FuncT (ms, s, t) -> "FuncT" $$ List.map typ s @ List.map typ t @ List.map mode ms
   | ServT ts -> "ServT" $$ List.map typ_meth ts
+  | ClassT (ts, t) -> "ClassT" $$ List.map typ ts @ [typ t]
   | PrincipalT -> Atom "PrincipalT"
   | PreT -> Atom "PreT"
 
@@ -83,7 +84,7 @@ let quote ppf s =
   str ppf "\""; str ppf (Lib.String.lightweight_escaped s); str ppf "\"";
   pp_close_box ppf ()
 let text ppf s =
-  if Escape.needs_quote s then quote ppf s else str ppf s
+  if Escape.needs_candid_quote s then quote ppf s else str ppf s
 
 let rec pp_typ ppf t =
   pp_open_hovbox ppf 1;
@@ -106,6 +107,7 @@ let rec pp_typ ppf t =
      str ppf "}";
      pp_close_box ppf ()
   | PrincipalT -> str ppf "principal"
+  | ClassT _ -> assert false
   | PreT -> assert false);
   pp_close_box ppf ()
 and pp_fields ppf name fs =
@@ -203,9 +205,17 @@ let pp_actor ppf actor =
      kwd ppf ":";
      str ppf x.it;
      pp_close_box ppf ()
+  | Some {it=ClassT(args, t); _} ->
+     pp_open_hbox ppf ();
+     kwd ppf "service";
+     kwd ppf ":";
+     pp_args ppf args;
+     str ppf " -> ";
+     pp_typ ppf t;
+     pp_close_box ppf ()
   | _ -> assert false);
   pp_print_cut ppf ()
-  
+
 let pp_prog ppf prog =
   pp_open_vbox ppf 0;
   List.iter (fun d ->

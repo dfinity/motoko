@@ -1,11 +1,11 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 actor {
-  public type Either = { #left: Word32; #right: Char; #fix: Either };
+  public type Either = { #left: Nat32; #right: Char; #fix: Either };
 
   func to_left(e : Either) : Either
     = switch e {
-        case (#right n) #left (Prim.charToWord32 n);
+        case (#right n) #left (Prim.charToNat32 n);
         case (#fix t) #fix (to_left t);
         case other other
       };

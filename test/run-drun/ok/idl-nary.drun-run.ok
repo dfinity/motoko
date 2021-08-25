@@ -1,4 +1,4 @@
-ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c00027171034f6e650354776f
 Ok: Reply: 0x4449444c0003717171034f6e650354776f055468726565
@@ -8,6 +8,6 @@ Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466
 Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
-Err: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: IDL error: too few arguments ttt
-Err: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: IDL error: left-over bytes ttt
+Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: too few arguments ttt
+Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: left-over bytes ttt
 Ok: Reply: 0x4449444c000471717171034f6e650354776f05546872656504466f7572

@@ -1,5 +1,6 @@
-large-tuple.mo:4.21-4.73: warning, this pattern consuming type
-  (Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat)
+large-tuple.mo:4.21-4.73: warning [M0145], this pattern of type
+  (Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat,
+   Nat, Nat, Nat, Nat, Nat)
 does not cover value
   (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0 or 1 or _) or
   (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 0 or 1 or _, _) or

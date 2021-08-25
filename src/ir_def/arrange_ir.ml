@@ -70,15 +70,25 @@ and prim = function
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
   | SerializePrim t   -> "SerializePrim" $$ List.map typ t
   | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
-  | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
+  | NumConvWrapPrim (t1, t2) -> "NumConvWrapPrim" $$ [prim_ty t1; prim_ty t2]
+  | NumConvTrapPrim (t1, t2) -> "NumConvTrapPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
+  | DecodeUtf8        -> Atom "DecodeUtf8"
+  | EncodeUtf8        -> Atom "EncodeUtf8"
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
+  | SystemCyclesAddPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
+  | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
+  | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
+  | SetCertifiedData  -> Atom "SetCertifiedData"
+  | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait          -> Atom "CPSAwait"
+  | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
@@ -86,7 +96,6 @@ and prim = function
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
-
 
 and mut = function
   | Const -> Atom "Const"
@@ -106,21 +115,17 @@ and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
   | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
   | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
-  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_pretty_string n) ]
-  | Nat8Lit w     -> "Nat8Lit"   $$ [ Atom (Value.Nat8.to_pretty_string w) ]
-  | Nat16Lit w    -> "Nat16Lit"  $$ [ Atom (Value.Nat16.to_pretty_string w) ]
-  | Nat32Lit w    -> "Nat32Lit"  $$ [ Atom (Value.Nat32.to_pretty_string w) ]
-  | Nat64Lit w    -> "Nat64Lit"  $$ [ Atom (Value.Nat64.to_pretty_string w) ]
-  | IntLit i      -> "IntLit"    $$ [ Atom (Value.Int.to_pretty_string i) ]
-  | Int8Lit w     -> "Int8Lit"   $$ [ Atom (Value.Int_8.to_pretty_string w) ]
-  | Int16Lit w    -> "Int16Lit"  $$ [ Atom (Value.Int_16.to_pretty_string w) ]
-  | Int32Lit w    -> "Int32Lit"  $$ [ Atom (Value.Int_32.to_pretty_string w) ]
-  | Int64Lit w    -> "Int64Lit"  $$ [ Atom (Value.Int_64.to_pretty_string w) ]
-  | Word8Lit w    -> "Word8Lit"  $$ [ Atom (Value.Word8.to_pretty_string w) ]
-  | Word16Lit w   -> "Word16Lit" $$ [ Atom (Value.Word16.to_pretty_string w) ]
-  | Word32Lit w   -> "Word32Lit" $$ [ Atom (Value.Word32.to_pretty_string w) ]
-  | Word64Lit w   -> "Word64Lit" $$ [ Atom (Value.Word64.to_pretty_string w) ]
-  | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_pretty_string f) ]
+  | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
+  | Nat8Lit w     -> "Nat8Lit"   $$ [ Atom (Numerics.Nat8.to_pretty_string w) ]
+  | Nat16Lit w    -> "Nat16Lit"  $$ [ Atom (Numerics.Nat16.to_pretty_string w) ]
+  | Nat32Lit w    -> "Nat32Lit"  $$ [ Atom (Numerics.Nat32.to_pretty_string w) ]
+  | Nat64Lit w    -> "Nat64Lit"  $$ [ Atom (Numerics.Nat64.to_pretty_string w) ]
+  | IntLit i      -> "IntLit"    $$ [ Atom (Numerics.Int.to_pretty_string i) ]
+  | Int8Lit w     -> "Int8Lit"   $$ [ Atom (Numerics.Int_8.to_pretty_string w) ]
+  | Int16Lit w    -> "Int16Lit"  $$ [ Atom (Numerics.Int_16.to_pretty_string w) ]
+  | Int32Lit w    -> "Int32Lit"  $$ [ Atom (Numerics.Int_32.to_pretty_string w) ]
+  | Int64Lit w    -> "Int64Lit"  $$ [ Atom (Numerics.Int_64.to_pretty_string w) ]
+  | FloatLit f    -> "FloatLit"  $$ [ Atom (Numerics.Float.to_pretty_string f) ]
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
   | BlobLit b     -> "BlobLit"   $$ [ Atom (Printf.sprintf "%S" b) ] (* hex might be nicer *)

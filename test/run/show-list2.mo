@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 type List<A> = {#nil; #cons : (A, List<A>)};
 

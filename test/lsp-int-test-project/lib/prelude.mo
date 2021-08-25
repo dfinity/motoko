@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 module {
 /**
 
@@ -35,10 +35,10 @@ trap in all execution contexts.
 
 */
 
-public func nyi() : None =
+public func nyi() : None
   { assert false ; loop { } };
 
-public func xxx() : None =
+public func xxx() : None
   { assert false ; loop { } };
 
 /***
@@ -52,5 +52,5 @@ public func xxx() : None =
  trap in all execution contexts.
 
 */
-public func unreachable() : None = { assert false ; loop { } };
+public func unreachable() : None { assert false ; loop { } };
 }

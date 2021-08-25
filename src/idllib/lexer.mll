@@ -107,9 +107,14 @@ rule token = parse
   | "}" { RCURLY }
   | ";" { SEMICOLON }
   | "," { COMMA }
+  | "." { PERIOD }
   | ":" { COLON }
   | "=" { EQ }
+  | "==" { EQQ }
+  | "!:" { NOTCOLON }
+  | "!=" { NOTEQ }
   | "->" { ARROW }
+  | "-" { MINUS }
 
   | nat as s { NAT s }
   | text as s { TEXT (text lexbuf s) }

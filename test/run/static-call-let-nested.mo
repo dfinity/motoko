@@ -1,5 +1,5 @@
 func go () {
-  let foobaz1 = {
+  let foobaz1 = do {
     func fuzz1() = ();
     func foobar1() = fuzz1();
     let fooquux1 = foobar1;
@@ -9,7 +9,7 @@ func go () {
 };
 go();
 
-let foobaz2 = {
+let foobaz2 = do {
   func fuzz2() = ();
   func foobar2() = fuzz2();
   let fooquux2 = foobar2;

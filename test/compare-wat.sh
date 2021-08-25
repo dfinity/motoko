@@ -9,7 +9,7 @@
 old="$(git rev-parse HEAD)"
 new=""
 
-WASM2WAT="wasm2wat --no-check --enable-multi-value"
+WASM2WAT="wasm2wat --no-check"
 
 while getopts "f:t:" o; do
     case "${o}" in
@@ -72,7 +72,7 @@ do
 
   rm -rf compare-out/$base.old
   mkdir compare-out/$base.old
-  old-moc/bin/moc $mangled -ref-system-api -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
+  old-moc/bin/moc $mangled -ref-system-api -g -o compare-out/$base.old/$base.wasm 2> compare-out/$base.old/$base.stderr
   test ! -e compare-out/$base.old/$base.wasm ||
   $WASM2WAT compare-out/$base.old/$base.wasm >& compare-out/$base.old/$base.wat
   #wasm-objdump -s -h -d compare-out/$base.old/$base.wasm > compare-out/$base.old/$base.dump

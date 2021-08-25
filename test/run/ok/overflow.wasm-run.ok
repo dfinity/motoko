@@ -1,10 +1,10 @@
 Error: failed to run main module `_out/overflow.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: integer divide by zero, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: integer divide by zero
        wasm backtrace:
-         0: <unknown>!B+div
-         1: <unknown>!init
-         2: <unknown>!_start
+         0: B+div
+         1: init
+         2: _start
        

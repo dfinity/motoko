@@ -17,7 +17,7 @@ let extract_cursors input =
                    (* Need to account for the previously found pipe,
                       so we subtract 1 from the column_num *)
                    cursor_end := (line_num, column_num - 1)
-               | None -> () )
+               | None -> ())
              else cursor_end := (line_num, column_num);
              line |> String.split_on_char '|' |> String.concat ""
          | None -> line)
@@ -47,8 +47,8 @@ let apply_change_test_case file replacement expected =
   in
   String.equal actual expected
   ||
-  ( Printf.printf "\nExpected: %s\nActual:   %s\n" expected actual;
-    false )
+  (Printf.printf "\nExpected: %s\nActual:   %s\n" expected actual;
+   false)
 
 let%test "it applies the empty change" =
   apply_change_test_case "hi ||dude" "" "hi dude"

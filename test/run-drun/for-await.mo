@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 actor a {
   class range(x : Nat, y : Nat) {
@@ -8,7 +8,7 @@ actor a {
 
 
   public func go()  : async () {
-    {
+    do {
       var i = 0;
       i := 0;
       for (j in range(0, 10)) {

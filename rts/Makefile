@@ -10,17 +10,19 @@ WASM_LD ?= wasm-ld-10
 #
 
 TOMMATHFILES = \
-   mp_init mp_add mp_sub mp_mul mp_zero mp_cmp \
+   mp_init mp_zero mp_add mp_sub mp_mul mp_cmp \
    mp_set_u32 mp_set_i32 mp_get_i32 mp_get_mag_u32 \
    mp_set_u64 mp_set_i64 mp_get_i64 mp_get_mag_u64 \
+   mp_set_double mp_get_double \
    mp_div mp_init_copy mp_neg mp_abs mp_2expt mp_expt_u32 mp_set mp_sqr \
    s_mp_add mp_cmp_mag s_mp_sub mp_grow mp_clamp \
    mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_rshd mp_mul_d mp_div_2d mp_mod_2d \
-   s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr mp_decr mp_add_d mp_sub_d
+   s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul \
+   s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr \
+   mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  towctrans iswspace iswupper iswlower iswalpha wcschr wcslen \
   floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
   __rem_pio2 __rem_pio2_large __sin __cos __tan \
@@ -44,6 +46,10 @@ TOMMATH_FLAGS = \
   -DMP_MEMSET=0 \
   -DMP_FIXED_CUTOFFS \
   -DMP_NO_FILE \
+  -D__STDC_IEC_559__ \
+
+# Note: the above __STDC_IEC_559__ define is somewhat of a misnomer
+#       as only IEEE 754 features are used.
 
 #
 # Various musl flags, in particular telling it to not have long doubles
@@ -86,23 +92,18 @@ MUSL_FLAGS = \
   -Dfabs=__builtin_fabs
 
 #
-# clang flags used both for Wasm compilation and native (i.e. test suite) compilation
+# clang flags
 #
 
 CLANG_FLAGS = \
    --compile \
    -fpic \
    -fvisibility=hidden \
-   --std=c11
-
-#
-# clang flags only used during Wasm compilation
-#
-
-WASM_FLAGS = \
+   --std=c11 \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
    --optimize=s \
+   -resource-dir=$(WASM_CLANG_LIB)/lib/clang/10.0.1
 
 #
 # Build targets
@@ -110,110 +111,162 @@ WASM_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm test_rts test_leb128
+all: mo-rts.wasm mo-rts-debug.wasm
 
-_build/wasm _build/native:
+_build:
+	mkdir -p $@
+
+_build/wasm:
 	mkdir -p $@
 
 #
-# Building the libtommath files, Wasm and native
-#
-
-_build/wasm/tommath_%.o: bn_%.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
-
-_build/native/tommath_%.o: bn_%.c | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
-
-TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
-TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
-MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
-
-#
-# Look into following directories for source dependencies
+# Let make automatically search these directorys (tommath and musl) for .c files
 #
 
 vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
 
+
 #
-# Our part of the RTS, Wasm and native
+# Building the libtommath files
 #
 
-RTSFILES=rts idl bigint float char buf utf8_valid closure-table text blob principal
+TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
+TOMMATH_WASM_A=_build/libtommath.a
 
-_build/wasm/%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
+_build/wasm/tommath_%.o: bn_%.c | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
-_build/wasm/%_debug.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) -DDEBUG $< --output $@
+$(TOMMATH_WASM_A): $(TOMMATH_WASM_O)
+	llvm-ar rcs $@ $^
+	llvm-ranlib $@
 
-_build/native/%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
+#
+# Building the musl files
+#
 
-_build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
-
-_build/native/tommath_%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
+MUSL_WASM_A=_build/libmusl.a
 
 _build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) $< --output $@
 
-.PHONY: _build/wasm/libmotoko_rts.a
-_build/wasm/libmotoko_rts.a: | _build/wasm
-	# NB. codegen-units=1 is to make debugging easier, not strictly
-	# necessary
-	cd motoko-rts && \
-	    xargo -v rustc --target=wasm32-unknown-emscripten --release -- \
-		-Crelocation-model=pic -Ccodegen-units=1
+
+$(MUSL_WASM_A): $(MUSL_WASM_O)
+	llvm-ar rcs $@ $^
+	llvm-ranlib $@
+
+#
+# The rust code code of the RTS
+#
+
+RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
+RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
+
+# This relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
+RTS_RUST_FILES=$(shell ls **/*.rs)
+RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
+
+TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
+
+$(TOMMATH_BINDINGS_RS): | _build
+	bindgen $(TOMMATHSRC)/tommath.h \
+	    -o $@ \
+	    --use-core --ctypes-prefix=libc --no-layout-tests \
+	    --whitelist-function mp_init \
+	    --whitelist-function mp_init_copy \
+	    --whitelist-function mp_set_u32 \
+	    --whitelist-function mp_set_i32 \
+	    --whitelist-function mp_get_i32 \
+	    --whitelist-function mp_set_u64 \
+	    --whitelist-function mp_set_i64 \
+	    --whitelist-function mp_get_i64 \
+	    --whitelist-function mp_set_double \
+	    --whitelist-function mp_get_double \
+	    --whitelist-function mp_count_bits \
+	    --whitelist-function mp_cmp \
+	    --whitelist-function mp_add \
+	    --whitelist-function mp_sub \
+	    --whitelist-function mp_mul \
+	    --whitelist-function mp_div \
+	    --whitelist-function mp_div_2d \
+	    --whitelist-function mp_neg \
+	    --whitelist-function mp_abs \
+	    --whitelist-function mp_mul_2d \
+	    --whitelist-function mp_expt_u32 \
+	    --whitelist-function mp_2expt \
+	    --whitelist-function mp_incr \
+	    --blacklist-type __int32_t \
+	    --blacklist-type __int64_t \
+	    --blacklist-type __uint32_t \
+	    --blacklist-type __uint64_t \
+            -- $(TOMMATH_FLAGS)
+
+	# Whitelist parameters used as libtommath.h has lots of definitions that we don't
+	# need. Blacklist parameters are used because bindgen still generates unused type
+	# definition with the whitelist parameters.
+	#
+	# Note that bindgen can't generate Rust macros or functions for CPP macros, so
+	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
+
+
+$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
+	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-.PHONY: _build/wasm/libmotoko_rts_debug.a
-_build/wasm/libmotoko_rts_debug.a: | _build/wasm
-	# NB. codegen-units=1 is to make debugging easier, not strictly
-	# necessary
-	cd motoko-rts && \
-	    xargo -v rustc --target=wasm32-unknown-emscripten -- \
-		-Crelocation-model=pic -Ccodegen-units=1
+$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
+	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
-RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
-RTS_DEBUG_WASM_O=$(RTSFILES:%=_build/wasm/%_debug.o)
-RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
-RTS_RUST_WASM_O=_build/wasm/libmotoko_rts.a
-RTS_RUST_DEBUG_WASM_O=_build/wasm/libmotoko_rts_debug.a
-
 #
-# The actual RTS, as we ship it with the compiler
+# The test suite
 #
 
-mo-rts.wasm: $(RTS_RUST_WASM_O) $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+.PHONY: test
+test: $(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
+	cd motoko-rts-tests && cargo build --target=wasm32-wasi
+	wasmtime --disable-cache --cranelift motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+
+#
+# Putting it all together
+#
+
+# These symbols from musl are used by the code generator directly
+EXPORTED_SYMBOLS=\
+  __wasm_call_ctors \
+  memcpy \
+  memcmp \
+  tan \
+  asin \
+  acos \
+  atan \
+  atan2 \
+  pow \
+  sin \
+  cos \
+  exp \
+  fmod \
+  log \
+
+mo-rts.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
-		--export=__wasm_call_ctors \
-		--export=memcpy \
-		--export=memcmp \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
 		--whole-archive \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_O) $(RTS_DEBUG_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
-		--export=__wasm_call_ctors \
-		--export=memcpy \
-		--export=memcmp \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
 		--whole-archive \
 		$+
-
-#
-# A simple program to do simple tests of rts.c, using native compilation
-#
-
-test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-	$(CLANG) -o $@ $+
-
-test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-	$(CLANG) -o $@ $+
 
 clean:
-	rm -rf _build mo-rts.wasm mo-rts-debug.wasm test_rts test_leb128 motoko-rts/target motoko-rts/xargo-home motoko-rts/cargo-home
+	rm -rf \
+	  _build \
+	  mo-rts.wasm \
+	  mo-rts-debug.wasm \
+	  motoko-rts/target \
+	  motoko-rts-tests/target \
+	  motoko-rts/xargo-home \
+	  motoko-rts/cargo-home

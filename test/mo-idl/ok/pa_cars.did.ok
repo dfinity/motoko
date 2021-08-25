@@ -5,11 +5,6 @@ type TimeSpan =
    start: int;
  };
 type Result = opt record {reservationId: text;};
-type PACars = 
- service {
-   verifyCarInformation: (User, Car) ->
-    (opt func (Location, TimeSpan) -> (Result));
- };
 type Location = 
  record {
    lat: float64;
@@ -18,6 +13,10 @@ type Location =
 type DMV = 
  service {
    check: (Car) -> (CarInfo);
+ };
+type Car__1 = 
+ service {
+   reserveSpot: (User, CarInfo, Location, TimeSpan) -> (Result);
  };
 type CarInfo = 
  record {
@@ -32,4 +31,4 @@ type Car =
    model: text;
    plate: text;
  };
-
+service : (DMV) -> Car__1

@@ -1,1 +1,1 @@
-use-before-define6.mo:6.3-6.20: definedness error, cannot use g before g has been defined
+use-before-define6.mo:6.3-6.20: definedness error [M0016], cannot use g before g has been defined

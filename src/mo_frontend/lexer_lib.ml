@@ -5,12 +5,10 @@
 *)
 type mode = {
   privileged : bool;
-  with_trivia : bool;
 }
 
 let mode : mode = {
   privileged = Option.is_some (Sys.getenv_opt "MOC_UNLOCK_PRIM");
-  with_trivia = false;
 }
 
 let mode_priv : mode = { mode with privileged = true }

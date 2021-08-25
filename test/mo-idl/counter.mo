@@ -1,15 +1,13 @@
 // A simple Counter actor.
-
-actor class Counter(i : Int) {
+actor class (i : Int, step : Nat) {
   flexible var c = i;
   func show(note : Text, c : Int) {};
   // Decrement counter
   public func dec() {
     show("dec", c);
-    c -= 1;
+    c -= step;
   };
 
   // Read counter, asynchronous
   public func read() : async Int { c };
 };
-

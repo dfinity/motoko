@@ -3,7 +3,7 @@
 # libraries (core and std) without PIC relocation model, so we use xargo to make
 # PIC versions of core and std.
 
-{ rustPlatform-nightly, fetchFromGitHub, lib, python, cmake, llvmPackages, clang, stdenv, darwin, zlib }:
+{ rustPlatform-nightly, fetchFromGitHub, lib }:
 
 rustPlatform-nightly.buildRustPackage rec {
   name = "xargo";
@@ -16,7 +16,7 @@ rustPlatform-nightly.buildRustPackage rec {
     fetchSubmodules = true;
   };
 
-  cargoSha256 = "0zzksgi2prgw01m6r4bqjjz902h5g5ich0h3xvb60w4sshlss891";
+  cargoSha256 = "171a7xm47qdcdd6n67plyvnsxp00hn6skx5vzxd8a2kmblfqn5gy";
 
   doCheck = false;
   USER = "nobody"; # for xargo tests (if we would run them)
@@ -25,12 +25,7 @@ rustPlatform-nightly.buildRustPackage rec {
     description = "The sysroot manager that lets you build and customize std";
     homepage = "https://github.com/japaric/xargo";
     license = licenses.mit;
-    maintainers = [ {
-      email = "omer.agacan@dfinity.org";
-      github = "osa1";
-      githubId = 123123;
-      name = "Ömer Sinan Ağacan";
-    } ];
+    maintainers = [];
     platforms = platforms.unix;
   };
 }

@@ -2,7 +2,6 @@
  * Module     : galois.mo
  * Copyright  : 2020 DFINITY Stiftung
  * License    : Apache 2.0 with LLVM Exception
- * Maintainer : Enzo Haussecker <enzo@dfinity.org>
  * Stability  : Stable
  */
 
@@ -10,7 +9,7 @@ import Array "array";
 import List "list";
 import Nat "nat";
 import Prelude "prelude";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Util "util"
 
 module {
@@ -108,7 +107,7 @@ module {
   };
 
   public func elemFromBit(bit : Bool) : Elem {
-    if bit { unbox = 1 } else { unbox = 0 }
+    if bit ({ unbox = 1 }) else ({ unbox = 0 })
   };
 
   public func elemToBits(elem : Elem) : List<Bool> {
@@ -135,7 +134,7 @@ module {
     switch (elem1.unbox, elem2.unbox) {
       case (0, _) { elem1 };
       case (_, 0) { elem2 };
-      case (a, b) { unbox = alog((log(a) + log(b)) % 255) }
+      case (a, b) { { unbox = alog((log(a) + log(b)) % 255) } }
     }
   };
 
@@ -145,8 +144,8 @@ module {
         Prelude.printLn("Error: Division by zero is undefined in GF(256)!");
         Prelude.unreachable()
       };
-      case (0, _) { unbox = 0 };
-      case (a, b) { unbox = alog((255 + log(a) - log(b)) % 255) }
+      case (0, _) { { unbox = 0 } };
+      case (a, b) { { unbox = alog((255 + log(a) - log(b)) % 255) } }
     }
   };
 
@@ -207,7 +206,7 @@ module {
   public func polyLeadCoeff(poly : Poly) : Elem {
     switch (List.pop<Elem>(polyTrim(poly).unbox).0) {
       case (?elem) { elem };
-      case (null) { unbox = 0 }
+      case (null) { { unbox = 0 } }
     }
   };
 

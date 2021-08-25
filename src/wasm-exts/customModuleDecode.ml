@@ -726,7 +726,18 @@ let name_section_subsection (ns : name_section) s =
   | 2 -> (* local names *)
     let loc_names = sized (fun _ -> indirect_name_map) s in
     { ns with locals_names = ns.locals_names @ loc_names }
-  | i -> error s (pos s) "unknown name section subsection id"
+
+  (* We ignore additional name subsections for now, despite newer
+     LLVM seemingly producing them.
+
+     We should check if these sections are indeed as spec'ed in
+     https://github.com/WebAssembly/extended-name-section/blob/master/proposals/extended-name-section/Overview.md
+     and implement them, for better debugging.
+  *)
+  | 7 ->
+    let _global_names = sized (fun _ -> name_map) s in
+    ns
+  | i -> error s (pos s) (Printf.sprintf "unknown name section subsection id %d" i)
 
 let name_section_content p_end s =
   repeat_until p_end s empty_name_section name_section_subsection
@@ -736,9 +747,27 @@ let is_name n = (n = Utf8.decode "name")
 let name_section s =
   custom_section is_name name_section_content empty_name_section s
 
+(* motoko section *)
+
+let motoko_section_subsection (ms : motoko_section) s =
+  match u8 s with
+  | 0 -> (* module name *)
+    let labels = sized (fun _ -> vec string) s in
+    { labels = ms.labels @ labels }
+  | i -> error s (pos s) (Printf.sprintf "unknown motoko section subsection id %d" i)
+
+let motoko_section_content p_end s =
+  repeat_until p_end s empty_motoko_section motoko_section_subsection
+
+let is_motoko n = (n = Utf8.decode "motoko")
+
+let motoko_section s =
+  custom_section is_motoko motoko_section_content empty_motoko_section s
+
+
 (* Other custom sections *)
 
-let is_unknown n = not (is_dylink n || is_name n) 
+let is_unknown n = not (is_dylink n || is_name n)
 
 let skip_custom sec_end s =
   skip (sec_end - pos s) s;
@@ -782,6 +811,8 @@ let module_ s =
   iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
+  let motoko = motoko_section s in
+  iterate skip_custom_section s;
   require (pos s = len s) s (len s) "junk after last section";
   require (List.length func_types = List.length func_bodies)
     s (len s) "function and code section have inconsistent lengths";
@@ -793,6 +824,8 @@ let module_ s =
      {types; tables; memories; globals; funcs; imports; exports; elems; data; start};
     dylink;
     name;
+    motoko;
+    source_mapping_url = None;
   }
 
 

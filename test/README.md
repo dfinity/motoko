@@ -101,6 +101,34 @@ You can also run individual directories via, say,
 $ nix-build -A tests.run-drun
 ```
 
+Running WASI tests in the browser
+---------------------------------
+
+The browsers provide a developer console that supports some support for
+stepping through wasm (including pretty-printing WASM, breakpoints, stepping).
+Together with the ability to print, this can be useful for debugging.
+
+You can easily run any of the tests in `test/run` in the browser as follows:
+
+* Make sure they are built:
+  ```
+  make -C run
+  ```
+  (or just `./run.sh run/empty.mo` to just build a single one.)
+
+* Run the python web server:
+  ```
+  python3 -m http.server
+  ```
+  (It likely has to be this one, as the script parses the directory listing)
+
+* Open the URL that this command tells you, likely http://0.0.0.0:8000/
+
+Now you can select the test you are interested from the drop down. It will load the wasm and run it. You can open the debugger, insepct the wasm, set breakpoints.
+
+Use the _Reload_ button if you have changed the `.wasm.`;
+use the _Rerun_ button if you want to rerun from the beginning without reloading, e.g. after setting break points.
+
 Randomised testing
 ------------------
 
@@ -115,12 +143,52 @@ programs representative of real use of Motoko.
 For these tests the test suite records the following numbers:
 
 * Size of the produced Wasm binary.
-* Gas consumed by a single run in drun [not yet implemented]
+* Cycles consumed by a single run in drun
 
 The numbers are written to the file specified by `$PERF_OUT` (and end up being
-the output of the nix derivation `tests.perf`.
+the output of the nix derivation `tests.perf`).
 
 The format is a simple CSV format, as consumed by
 [gipeda](https://github.com/nomeata/gipeda).
 
-Every PR reports a summary of changes to these numbers to the PR. [not yet implemented]
+Every PR reports a summary of changes to these numbers to the PR.
+
+Wasm profiling/flamegraphs
+--------------------------
+
+The programs in the `perf/` directory can also be used to get some
+instruction-based profiling data/reports, using the
+[wasm-profiler](https://github.com/dfinity/wasm-profiler).
+
+To generate the report, run
+
+    ./profile-report.sh
+
+and look in `_profile/`.
+
+The same can be achieved with
+
+    nix-build -A tests.profiling-graphs ..
+
+and Hydra serves [the latest report].
+
+[the latest report]: https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/tests.profiling-graphs/latest/download/1/index.html
+
+Also see this script for inspiration if you want to profile other programs or
+do other things.
+
+Candid test suite
+-----------------
+
+To run the candid test suite, just run the
+
+    candid-tests
+
+command.
+
+To run it against a local copy of the test data, pass `-i ../candid/tests/`.
+
+To mark certain tests as known-to-be-failing, pass `--expect-fail` in the
+invocation to `candid-tests` in `default.nix`.
+
+See `candid-tests --help` for instructions.

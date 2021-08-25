@@ -1,3 +1,4 @@
 (library
   (name mo_config)
+  (libraries source_id)
 )

@@ -1,7 +1,8 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
   public func go() {
-    { var i = 0;
+    do {
+      var i = 0;
       var j = 0;
       label l
       loop {
@@ -15,7 +16,7 @@ actor a {
     };
 
 
-    {
+    do {
       var i = 0;
       var j = 0;
       label l
@@ -30,7 +31,7 @@ actor a {
       assert(i == 3);
     };
 
-    {
+    do {
       var i = 0;
       var j = 0;
       label l
@@ -45,7 +46,7 @@ actor a {
       assert(i == 3);
     };
 
-    {
+    do {
       var i = 0;
       var j = 0;
       label l

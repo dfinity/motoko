@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 let a = actor {
   public func hello() : async Text {
     "Hello ";

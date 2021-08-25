@@ -70,21 +70,17 @@ and typ_item = id option * typ
 type lit =
   | NullLit
   | BoolLit of bool
-  | NatLit of Value.Nat.t
-  | Nat8Lit of Value.Nat8.t
-  | Nat16Lit of Value.Nat16.t
-  | Nat32Lit of Value.Nat32.t
-  | Nat64Lit of Value.Nat64.t
-  | IntLit of Value.Int.t
-  | Int8Lit of Value.Int_8.t
-  | Int16Lit of Value.Int_16.t
-  | Int32Lit of Value.Int_32.t
-  | Int64Lit of Value.Int_64.t
-  | Word8Lit of Value.Word8.t
-  | Word16Lit of Value.Word16.t
-  | Word32Lit of Value.Word32.t
-  | Word64Lit of Value.Word64.t
-  | FloatLit of Value.Float.t
+  | NatLit of Numerics.Nat.t
+  | Nat8Lit of Numerics.Nat8.t
+  | Nat16Lit of Numerics.Nat16.t
+  | Nat32Lit of Numerics.Nat32.t
+  | Nat64Lit of Numerics.Nat64.t
+  | IntLit of Numerics.Int.t
+  | Int8Lit of Numerics.Int_8.t
+  | Int16Lit of Numerics.Int_16.t
+  | Int32Lit of Numerics.Int_32.t
+  | Int64Lit of Numerics.Int_64.t
+  | FloatLit of Numerics.Float.t
   | CharLit of Value.unicode
   | TextLit of string
   | BlobLit of string
@@ -117,7 +113,12 @@ and pat_field' = {id : id; pat : pat}
 (* Expressions *)
 
 type vis = vis' Source.phrase
-and vis' = Public | Private | System
+and vis' =
+  | Public of string option
+  | Private
+  | System
+
+let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
@@ -151,7 +152,10 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | ObjE of obj_sort * exp_field list          (* object *)
+  | DoOptE of exp                              (* option monad *)
+  | BangE of exp                               (* scoped option projection *)
+  | ObjBlockE of obj_sort * dec_field list     (* object block *)
+  | ObjE of exp_field list                     (* record literal *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
@@ -179,13 +183,17 @@ and exp' =
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
+  | IgnoreE of exp                             (* ignore *)
 (*
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)
 
+and dec_field = dec_field' Source.phrase
+and dec_field' = {dec : dec; vis : vis; stab: stab option}
+
 and exp_field = exp_field' Source.phrase
-and exp_field' = {dec : dec; vis : vis; stab: stab option}
+and exp_field' = {mut : mut; id : id; exp : exp}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -196,258 +204,119 @@ and case' = {pat : pat; exp : exp}
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
   | ExpD of exp                                (* plain unit expression *)
-  | IgnoreD of exp                             (* plain any expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
 
 
 (* Program (pre unit detection) *)
 
-type prog = (prog', string) Source.annotated_phrase
+type prog_note = { filename : string; trivia : Trivia.triv_table }
+type prog = (prog', prog_note) Source.annotated_phrase
 and prog' = dec list
 
 
-(* Imports *)
+(* Compilation units *)
 
 type import = (import', Type.typ) Source.annotated_phrase
 and import' = id * string * resolved_import ref
 
-(* Compilation units *)
-
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
- | ActorU of id option * exp_field list      (* main IC actor *)
- | ModuleU of id option * exp_field list     (* module library *)
+ | ActorU of id option * dec_field list      (* main IC actor *)
+ | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * typ_id * pat * typ option * id * exp_field list
+     sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
-
-type comp_unit = (comp_unit', string) Source.annotated_phrase
-and comp_unit' = (import list * comp_unit_body)
+type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
+and comp_unit' = {
+  imports : import list;
+  body : comp_unit_body;
+  }
 
 type lib = comp_unit
 
-(* Lib as pair of import decs and body decs *)
-let obj_decs obj_sort at note id_opt fields =
-  let open Source in
-  match id_opt with
-  | None -> [
-    { it = ExpD {
-        it = ObjE ({ it = obj_sort; at = no_region; note = ()}, fields);
-        at;
-        note };
-      at; note }]
-  | Some id -> [
-    { it = LetD (
-        { it = VarP id; at; note = note.note_typ },
-        { it = ObjE ({ it = obj_sort; at = no_region; note = ()}, fields);
-          at; note; });
-      at; note
-    };
-    { it = ExpD { it = VarE id; at; note };
-      at; note }
-    ]
 
-(* Compilation unit detection *)
+(* Helpers *)
 
-(* Happens after parsing, before type checking *)
-let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
-  let open Source in
-  let f = prog.note in
+let (@@) = Source.(@@)
+let (@?) it at = Source.({it; at; note = empty_typ_note})
+let (@!) it at = Source.({it; at; note = Type.Pre})
+let (@=) it at = Source.({it; at; note = None})
 
-  let finish imports u = { it = (imports, u); note = f; at = no_region } in
-  let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
-
-  let rec go imports ds : comp_unit =
-    match ds with
-    (* imports *)
-    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
-      let i : import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
-      go (imports @ [i]) ds'
-
-    (* terminal expressions *)
-    | [{it = ExpD ({it = ObjE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
-      finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
-    | [{it = ExpD ({it = ObjE ({it = Type.Actor; _}, fields); _} as e); _}] ->
-      finish imports { it = ActorU (None, fields); note = e.note; at = e.at }
-    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
-      assert (tbs = []);
-      finish imports { it = ActorClassU (sp, tid, p, typ_ann, self_id, fields); note = d.note; at = d.at }
-    (* let-bound terminal expressions *)
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
-      finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjE ({it = Type.Actor; _}, fields); _} as e)); _}] ->
-      finish imports { it = ActorU (Some i1, fields); note = e.note; at = e.at }
-
-    (* Everything else is a program *)
-    | ds' ->
-      if as_lib
-      then
-        let fs = List.map (fun d -> {vis = Public @@ no_region; dec = d; stab = None} @@ d.at) ds' in
-        finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
-      else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
-  in
-  go [] prog.it
-
-(* To enable uniform definedness checking, typechecking and interpretation,
-   present the unit as a list of declarations.   
-*)
-let decs_of_comp_unit (cu : comp_unit) =
-  let open Source in
-  let (imports, cub) = cu.it in
-  let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
-    { it = LetD (
-      { it = VarP id; at; note; },
-      { it = ImportE (fp, ri);
-        at;
-        note = { note_typ = note; note_eff = Type.Triv} });
-      at;
-      note = { note_typ = note; note_eff = Type.Triv } }) imports
-  in
-  import_decs,
-  match cub.it with
-  | ProgU ds -> ds
-  | ModuleU (id_opt, fields) ->
-    obj_decs Type.Module cub.at cub.note id_opt fields
-  | ActorClassU (csp, i, p, t, i', efs) ->
-    [{ it = ClassD (csp, i, [], p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
-       at = cub.at;
-       note = cub.note;}];
-  | ActorU (id_opt, fields) ->
-    obj_decs Type.Actor cub.at cub.note id_opt fields
-
-(* a hack to support compiling multiple files *)
-let combine_progs progs : prog =
-  let open Source in
-  if progs = []
-  then { it = []; at = no_region; note = "empty" }
-  else { it = Lib.List.concat_map (fun p -> p.it) progs
-       ; at = (Lib.List.last progs).at
-       ; note = (Lib.List.last progs).note
-       }
-
-(* n-ary arguments/result sequences *)
-
-let arity t =
-  match t.Source.it with
-  | TupT ts -> List.length ts
-  | _ -> 1
-
-(* Literals *)
 
 (* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
   | IntLit n
-  | NatLit n      -> Value.Int.to_pretty_string n
-  | Int8Lit n     -> Value.Int_8.to_pretty_string n
-  | Int16Lit n    -> Value.Int_16.to_pretty_string n
-  | Int32Lit n    -> Value.Int_32.to_pretty_string n
-  | Int64Lit n    -> Value.Int_64.to_pretty_string n
-  | Nat8Lit n     -> Value.Nat8.to_pretty_string n
-  | Nat16Lit n    -> Value.Nat16.to_pretty_string n
-  | Nat32Lit n    -> Value.Nat32.to_pretty_string n
-  | Nat64Lit n    -> Value.Nat64.to_pretty_string n
-  | Word8Lit n    -> Value.Word8.to_pretty_string n
-  | Word16Lit n   -> Value.Word16.to_pretty_string n
-  | Word32Lit n   -> Value.Word32.to_pretty_string n
-  | Word64Lit n   -> Value.Word64.to_pretty_string n
+  | NatLit n      -> Numerics.Int.to_pretty_string n
+  | Int8Lit n     -> Numerics.Int_8.to_pretty_string n
+  | Int16Lit n    -> Numerics.Int_16.to_pretty_string n
+  | Int32Lit n    -> Numerics.Int_32.to_pretty_string n
+  | Int64Lit n    -> Numerics.Int_64.to_pretty_string n
+  | Nat8Lit n     -> Numerics.Nat8.to_pretty_string n
+  | Nat16Lit n    -> Numerics.Nat16.to_pretty_string n
+  | Nat32Lit n    -> Numerics.Nat32.to_pretty_string n
+  | Nat64Lit n    -> Numerics.Nat64.to_pretty_string n
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
   | BlobLit b     -> b
-  | FloatLit f    -> Value.Float.to_pretty_string f
+  | FloatLit f    -> Numerics.Float.to_pretty_string f
   | PreLit _      -> assert false
 
 
+
+(* Miscellaneous *)
+(* TODO: none of what follows should probably be in this file *)
+
 open Source
-let (@@) = Source.(@@)
-let (@?) it at = Source.({it; at; note = empty_typ_note})
-let (@!) it at = Source.({it; at; note = Type.Pre})
-let (@=) it at = Source.({it; at; note = None})
-
-let scope_typ region =
-  Source.(
-    { it = PathT (
-      { it = IdH { it = Type.default_scope_var; at = region; note = () };
-        at = no_region;
-        note = Type.Pre },
-      []);
-    at = region;
-    note = Type.Pre })
-
-let scope_bind var =
-  { var = Type.scope_var var @@ no_region;
-    sort = Type.Scope @@ no_region;
-    bound = PrimT "Any" @! no_region
-  } @= no_region
-
-let ensure_scope_bind var tbs =
-  match tbs with
-  | tb::_ when tb.it.sort.it = Type.Scope ->
-    tbs
-  | _ ->
-    scope_bind var::tbs
 
 
-let funcT (sort, tbs, t1, t2) =
-  match sort.it, t2.it with
-  | Type.Local, AsyncT _ ->
-    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
-  | Type.Shared _, _ ->
-    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
-  | _ ->
-    FuncT(sort, tbs, t1, t2)
+(* Identifiers *)
 
-let is_Async e =
-  match e.it with
-  | AsyncE _ -> true
-  | _ -> false
+let anon_id sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
+let is_anon_id id = Lib.String.chop_prefix "anon-" id.it <> None
 
-let is_IgnoreAsync e =
-  match e.it with
-  | BlockE [ { it = IgnoreD
-      { it = AnnotE ({ it = AsyncE _; _},
-        { it = AsyncT (_, { it = TupT[]; _}); _}); _}; _}] ->
-    true
-  | _ -> false
+(* Types & Scopes *)
 
-let async f e =
-  AsyncE (scope_bind f, e)  @? e.at
-
-let ignoreAsync f e =
-  BlockE [ IgnoreD (
-    AnnotE (AsyncE (scope_bind f, e)  @? e.at,
-      AsyncT (scope_typ e.at,TupT[] @! e.at) @! e.at) @? e.at ) @? e.at] @? e.at
-
-let desugar sp f t_opt (sugar, e) =
-  match sugar, e with
-  | (false, e) -> false, e (* body declared as EQ e *)
-  | (true, e) -> (* body declared as immediate block *)
-    match sp.it, t_opt with
-    | _, Some {it = AsyncT _; _} ->
-      true, async f.it e
-    | Type.Shared _, (None | Some { it = TupT []; _}) ->
-      true, ignoreAsync f.it e
-    | _, _ -> (true, e)
-
-let funcE (f, s, tbs, p, t_opt, sugar, e) =
-  match s.it, t_opt, e with
-  | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
-  | Type.Shared _, _, _ ->
-    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, sugar, e)
-  | _ ->
-    FuncE(f, s, tbs, p, t_opt, sugar, e)
+let arity t =
+  match t.Source.it with
+  | TupT ts -> List.length ts
+  | _ -> 1
 
 let is_any t =
   match t.it with
   | PrimT "Any" -> true
   | _ -> false
 
-let is_anonymous id =
-  Lib.(String.chop_prefix "anon-" id.it <> None)
+let scopeT at =
+  PathT (IdH {it = Type.default_scope_var; at; note = ()} @! at, []) @! at
+
+
+(* Expressions *)
+
+let asyncE tbs e =
+  AsyncE (tbs, e) @? e.at
+
+let ignore_asyncE tbs e =
+  IgnoreE (
+    AnnotE (AsyncE (tbs, e) @? e.at,
+      AsyncT (scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
+
+let is_asyncE e =
+  match e.it with
+  | AsyncE _ -> true
+  | _ -> false
+
+let is_ignore_asyncE e =
+  match e.it with
+  | IgnoreE
+      {it = AnnotE ({it = AsyncE _; _},
+        {it = AsyncT (_, {it = TupT []; _}); _}); _} ->
+    true
+  | _ -> false

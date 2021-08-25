@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // This test checks that the IDL decoder properly
 // zooms past the any argument and finds the beginning of the string
 actor {

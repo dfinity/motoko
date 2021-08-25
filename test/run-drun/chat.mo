@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 type List<T> = ?{head : T; var tail : List<T>};
 
 type Post = shared Text -> ();
@@ -49,11 +49,11 @@ actor class Client() = this {
 
 
 actor Test {
-  public func go() {
-    let server = Server();
-    let bob = Client();
-    let alice = Client();
-    let charlie = Client();
+  public func go() : async () {
+    let server = await Server();
+    let bob = await Client();
+    let alice = await Client();
+    let charlie = await Client();
     bob.go("bob", server);
     alice.go("alice", server);
     charlie.go("charlie", server);

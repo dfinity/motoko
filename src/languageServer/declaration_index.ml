@@ -4,9 +4,19 @@ open Mo_def
 open Source
 open Syntax
 
-type value_decl = { name : string; typ : Type.typ; definition : region option }
+type value_decl = {
+  name : string;
+  typ : Type.typ;
+  definition : region option;
+  doc_comment : string option;
+}
 
-type type_decl = { name : string; typ : Type.con; definition : region option }
+type type_decl = {
+  name : string;
+  typ : Type.con;
+  definition : region option;
+  doc_comment : string option;
+}
 
 type ide_decl = ValueDecl of value_decl | TypeDecl of type_decl
 
@@ -73,39 +83,38 @@ let ic_id_to_lookup : string option -> string -> string -> string =
 let lookup_module (project_root : string) (path : string) (index : t) :
     (string * ide_decl list) option =
   let open Ic.Url in
+  let open Lib.Option.Syntax in
   let make_absolute = Lib.FilePath.make_absolute project_root in
   match parse path with
   | Ok (Relative path) ->
       let path = Pipeline.ResolveImport.append_extension Sys.file_exists path in
-      Index.find_opt (make_absolute path) index.modules
-      |> Option.map (fun decls -> (path, decls))
+      let+ decls = Index.find_opt (make_absolute path) index.modules in
+      (path, decls)
   | Ok (Package (pkg, path)) ->
-      Option.bind (Flags.M.find_opt pkg index.package_map) (fun pkg_path ->
-          let path =
-            Pipeline.ResolveImport.append_extension Sys.file_exists
-              (Filename.concat pkg_path path)
-          in
-          Index.find_opt (make_absolute path) index.modules
-          |> Option.map (fun decls -> (path, decls)))
+      let* pkg_path = Flags.M.find_opt pkg index.package_map in
+      let path =
+        Pipeline.ResolveImport.append_extension Sys.file_exists
+          (Filename.concat pkg_path path)
+      in
+      let+ decls = Index.find_opt (make_absolute path) index.modules in
+      (path, decls)
   | Ok Prim ->
-      Index.find_opt "@prim" index.modules
-      |> Option.map (fun decls -> ("@prim", decls))
+      let+ decls = Index.find_opt "@prim" index.modules in
+      ("@prim", decls)
   | Ok (Ic id) ->
       let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
-      Index.find_opt lookup_path index.modules
-      |> Option.map (fun decls -> (path, decls))
+      let+ decls = Index.find_opt lookup_path index.modules in
+      (path, decls)
   | Ok (IcAlias alias) ->
       let mic_id = Flags.M.find_opt alias index.ic_aliases in
       let _ =
         Debug.log "lookup_module.ic_alias.ic_id"
           (string_of_option (fun x -> x) mic_id)
       in
-      Option.bind mic_id (fun id ->
-          let lookup_path =
-            ic_id_to_lookup index.actor_idl_path project_root id
-          in
-          Index.find_opt lookup_path index.modules)
-      |> Option.map (fun decls -> (alias, decls))
+      let* id = mic_id in
+      let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
+      let+ decls = Index.find_opt lookup_path index.modules in
+      (alias, decls)
   | Error _ -> None
 
 let rec drop_common_prefix eq l1 l2 =
@@ -126,7 +135,7 @@ let shorten_import_path :
   if Filename.extension path = ".did" then
     let idl_basename = Filename.basename path in
     Flags.M.bindings ic_aliases
-    |> Lib.List.first_opt (fun (alias, id) ->
+    |> List.find_map (fun (alias, id) ->
            Debug.log "basename" (Ic.Url.idl_basename_of_blob id);
            if Ic.Url.idl_basename_of_blob id = idl_basename then Some alias
            else None)
@@ -136,7 +145,7 @@ let shorten_import_path :
   else
     let pkg_path =
       Flags.M.bindings pkg_map
-      |> Lib.List.first_opt (fun (name, pkg_path) ->
+      |> List.find_map (fun (name, pkg_path) ->
              if Lib.FilePath.is_subpath pkg_path path then
                let rel_path =
                  Option.get (Lib.FilePath.relative_to pkg_path path)
@@ -163,7 +172,7 @@ let find_with_prefix : string -> string -> t -> (string * ide_decl list) list =
   Index.bindings modules
   |> List.map (fun (p, ds) ->
          let import_path =
-           if p = "@prim" then "mo:prim"
+           if p = "@prim" then "mo:⛔"
            else shorten_import_path package_map ic_aliases base p
          in
          (import_path, List.filter (decl_has_prefix prefix) ds))
@@ -216,57 +225,77 @@ let read_single_module_lib (ty : Type.typ) : ide_decl list option =
   match ty with
   | Type.Obj ((Type.Module | Type.Actor), fields) ->
       fields
-      |> List.map (fun Type.{ lab = name; typ } ->
+      |> List.map (fun Type.{ lab = name; typ; _ } ->
              match typ with
-             | Type.Typ con -> TypeDecl { name; typ = con; definition = None }
-             | typ -> ValueDecl { name; typ; definition = None })
+             | Type.Typ con ->
+                 TypeDecl
+                   { name; typ = con; definition = None; doc_comment = None }
+             | typ ->
+                 ValueDecl { name; typ; definition = None; doc_comment = None })
       |> Option.some
   | _ -> None
 
-let unwrap_module_ast (lib : Syntax.lib) : Syntax.exp_field list option =
-  match lib.it with
-  | _, { it = Syntax.ModuleU (_, fields); _ } -> Some fields
+let unwrap_module_ast (lib : Syntax.lib) : Syntax.dec_field list option =
+  match lib.it.body with
+  | { it = Syntax.ModuleU (_, fields); _ } -> Some fields
   | _ -> None
 
 let populate_definitions (project_root : string) (libs : Syntax.lib list)
     (path : string) (decls : ide_decl list) : ide_decl list =
-  let is_let_bound exp_field =
-    match exp_field.it.Syntax.dec.it with
+  let is_let_bound dec_field =
+    match dec_field.it.Syntax.dec.it with
     | Syntax.LetD (pat, _) -> Some pat
     | _ -> None
   in
-  let is_type_def exp_field =
-    match exp_field.it.Syntax.dec.it with
+  let is_type_def dec_field =
+    match dec_field.it.Syntax.dec.it with
     | Syntax.TypD (typ_id, _, _) -> Some typ_id
     | Syntax.ClassD (_, typ_id, _, _, _, _, _, _) -> Some typ_id
     | _ -> None
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
-  let find_def (lib : Syntax.lib) def =
+  let find_def lib def =
+    let find_doc_comment (parser_pos : Source.region) : string option =
+      Trivia.PosHashtbl.find_opt lib.note.trivia
+        Trivia.{ line = parser_pos.left.line; column = parser_pos.left.column }
+      |> Option.get
+      |> Trivia.doc_comment_of_trivia_info
+    in
     match def with
-    | ValueDecl value ->
+    | ValueDecl value -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
-        let positioned_binder =
-          fields
-          |> List.filter_map is_let_bound
-          |> List.fold_left extract_binders PatternMap.empty
-          |> PatternMap.find_opt value.name
+        let find_binder field =
+          let open Lib.Option.Syntax in
+          let* pat = is_let_bound field in
+          let* binder_definition =
+            extract_binders PatternMap.empty pat
+            |> PatternMap.find_opt value.name
+          in
+          Some (binder_definition, find_doc_comment field.at)
         in
-        ValueDecl { value with definition = positioned_binder }
-    | TypeDecl typ ->
+        match List.find_map find_binder fields with
+        | None -> ValueDecl { value with definition = None }
+        | Some (definition, doc_comment) ->
+            ValueDecl { value with definition = Some definition; doc_comment })
+    | TypeDecl typ -> (
         let fields = Lib.Option.get (unwrap_module_ast lib) [] in
-        let type_definition =
-          fields
-          |> List.filter_map is_type_def
-          |> Lib.List.first_opt (fun ty_id ->
-                 if ty_id.it = typ.name then Some ty_id.at else None)
+        let find_type_binder field =
+          let open Lib.Option.Syntax in
+          let* ty_id = is_type_def field in
+          if ty_id.it = typ.name then Some (ty_id.at, find_doc_comment field.at)
+          else None
         in
-        TypeDecl { typ with definition = type_definition }
+        match List.find_map find_type_binder fields with
+        | None -> TypeDecl typ
+        | Some (type_definition, doc_comment) ->
+            TypeDecl { typ with definition = Some type_definition; doc_comment }
+        )
   in
   let opt_lib =
     List.find_opt
       (fun lib ->
-        String.equal path (Lib.FilePath.make_absolute project_root lib.note))
+        String.equal path
+          (Lib.FilePath.make_absolute project_root lib.note.filename))
       libs
   in
   match opt_lib with None -> decls | Some lib -> List.map (find_def lib) decls
@@ -309,10 +338,10 @@ let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
         else Lib.FilePath.make_absolute project_root path
       in
       add_module path
-        ( ty
+        (ty
         |> read_single_module_lib
         |> Fun.flip Lib.Option.get []
-        |> populate_definitions project_root libs path )
+        |> populate_definitions project_root libs path)
         acc)
     scope.Scope.lib_env initial_index
 

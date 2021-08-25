@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 func Array_thaw<A>(xs : [A]) : [var A] {
   let xsLen = xs.size();
@@ -12,7 +12,7 @@ func Array_thaw<A>(xs : [A]) : [var A] {
   ys;
 };
 
-{
+do {
   let xs : [Int] = [1, 2, 3];
 
   let actual = Array_thaw<Int>(xs);

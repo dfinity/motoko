@@ -491,7 +491,7 @@ end
 (* CLI *)
 
 let name = "deser"
-let banner = "Candid toolkit (revision " ^ Source_id.id ^ ")"
+let banner = "Candid toolkit " ^ Source_id.banner
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 let mode = ref Nary

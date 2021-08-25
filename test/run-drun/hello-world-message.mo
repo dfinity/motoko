@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
   public func hello() {
     Prim.debugPrint("Hello World!");

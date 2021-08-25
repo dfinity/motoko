@@ -1,9 +1,9 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
 → update go()
-← completed: (0x4449444c016900010001022a01)
+← replied: (service "lg264-qjkae")
 → update go2()
 ← rejected (RC_CANISTER_REJECT): canister does not exist: lg264-qjkae
 → update go3()

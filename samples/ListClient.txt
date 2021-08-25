@@ -3,7 +3,12 @@
 -- Checking ListLib.mo:
 -- Definedness ListLib.mo:
 -- Checking ListClient.mo:
-let List : module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
+let List :
+  module {
+    type List<T> = ?(T, List<T>);
+    cons : <T>(T, List<T>) -> List<T>;
+    nil : <T>() -> List<T>
+  }
 -- Definedness ListClient.mo:
 -- Interpreting ListLib.mo:
 -- Interpreting ListClient.mo:

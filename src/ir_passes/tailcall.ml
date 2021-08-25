@@ -100,7 +100,7 @@ and exp' env e  : exp' = match e.it with
                  info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
-      (blockE (assignEs temps (exp env e2)) (breakE label unitE)).it
+      (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
     | _,_-> PrimE (CallPrim insts, [exp env e1; exp env e2])
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
@@ -127,7 +127,9 @@ and exp' env e  : exp' = match e.it with
     let exp2' = exp env exp2 in
     let exp3' = exp env exp3 in
     SelfCallE (ts, exp1', exp2', exp3')
-  | ActorE (ds, fs, u, t)  -> ActorE (ds, fs, u, t) (* TODO(1358): descent into ds  *)
+  | ActorE (ds, fs, u, t) ->
+    let u = { u with pre = exp env u.pre; post = exp env u.post } in
+    ActorE (snd (decs env ds), fs, u, t)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
 
@@ -209,7 +211,7 @@ and dec' env d =
         in
         let l_typ = Type.unit in
         let body =
-          blockE (List.map2 (fun t i -> varD (id_of_var t) (typ_of_var i) (varE i)) temps ids) (
+          blockE (List.map2 (fun t i -> varD t (varE i)) temps ids) (
             loopE (
               labelE label l_typ (blockE
                 (List.map2 (fun a t -> letD (var_of_arg a) (immuteE (varE t))) as_ temps)
@@ -255,7 +257,9 @@ and block env ds exp =
 and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
-  | ActorU (as_opt, ds, fs, u, t)  -> ActorU (as_opt, ds, fs, u, t) (* TODO(1358): descent into ds  *)
+  | ActorU (as_opt, ds, fs, u, t)  ->
+    let u = { u with pre = exp env u.pre; post = exp env u.post } in
+    ActorU (as_opt, snd (decs env ds), fs, u, t)
 
 and prog (cu, flavor) =
   let env = { tail_pos = false; info = None } in
@@ -263,4 +267,4 @@ and prog (cu, flavor) =
 
 (* validation *)
 
-let transform p = prog p
+let transform = prog

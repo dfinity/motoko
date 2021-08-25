@@ -99,10 +99,10 @@ let rec exp msgs e : f = match e.it with
   | ShowE (_, e)        -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjE (s, efs)       ->
+  | ObjBlockE (s, dfs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
-    (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
-    group msgs (exp_fields msgs efs)
+    group msgs (dec_fields msgs dfs)
+  | ObjE efs            -> exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
@@ -125,9 +125,15 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
+  | DoOptE e            -> exp msgs e
+  | BangE e             -> exp msgs e
   | TagE (_, e)         -> exp msgs e
+  | IgnoreE e           -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
+
+and exp_fields msgs efs : f = unions (exp_field msgs) efs
+and exp_field msgs ef : f = exp msgs ef.it.exp
 
 and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
@@ -157,17 +163,17 @@ and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 
 and cases msgs cs : f = unions (case msgs) cs
 
-and exp_fields msgs efs =
-  decs msgs (List.map (fun ef -> ef.it.dec) efs)
+and dec_fields msgs dfs =
+  decs msgs (List.map (fun df -> df.it.dec) dfs)
 
 and dec msgs d = match d.it with
-  | ExpD e | IgnoreD e -> (exp msgs e, S.empty)
+  | ExpD e -> (exp msgs e, S.empty)
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (csp, i, tp, p, t, s, i', efs) ->
+  | ClassD (csp, i, tp, p, t, s, i', dfs) ->
     (M.empty, S.singleton i.it) +++ delayify (
-      group msgs (exp_fields msgs efs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
+      group msgs (dec_fields msgs dfs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
     )
 
 (* The class self binding is treated as defined at the very end of the group *)
@@ -194,10 +200,14 @@ and group msgs (grp : group) : f =
            defined after j *)
         if j < i
         then () (* all izz well *)
-        else Diag.(add_msg msgs
-          { sev = Error; at; cat = "definedness";
-            text = Printf.sprintf "cannot use %s before %s has been defined" x y
-          })
+        else
+          Diag.add_msg
+            msgs
+            (Diag.error_message
+               at
+               "M0016"
+               "definedness"
+               (Printf.sprintf "cannot use %s before %s has been defined" x y))
       | None ->
         (* External variable, ok for now *)
         ()
@@ -222,7 +232,7 @@ let check_prog prog =
 
 let check_lib lib =
   Diag.with_message_store (fun msgs ->
-    let (imp_ds, ds) = Syntax.decs_of_comp_unit lib in
+    let (imp_ds, ds) = CompUnit.decs_of_lib lib in
     ignore (group msgs (decs msgs (imp_ds @ ds)));
     Some ()
   )

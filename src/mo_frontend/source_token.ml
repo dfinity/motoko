@@ -1,9 +1,8 @@
-type line_feed = LF | CRLF
-
-type 'l trivia = Comment of string | Space of int | Tab of int | Line of 'l
+open Mo_def.Trivia
 
 type token =
   | EOF
+  | DISALLOWED
   | LET
   | VAR
   | LPAR
@@ -20,6 +19,7 @@ type token =
   | CONTINUE
   | LABEL
   | DEBUG
+  | DO
   | FLEXIBLE
   | IF
   | IGNORE
@@ -51,6 +51,7 @@ type token =
   | SUB
   | DOT
   | QUEST
+  | BANG
   | AND
   | OR
   | NOT
@@ -64,11 +65,18 @@ type token =
   | DIVOP
   | MODOP
   | POWOP
+  | WRAPADDOP
+  | WRAPSUBOP
+  | WRAPMULOP
+  | WRAPPOWOP
+  | WRAPADDASSIGN
+  | WRAPSUBASSIGN
+  | WRAPMULASSIGN
+  | WRAPPOWASSIGN
   | ANDOP
   | OROP
   | XOROP
   | SHLOP
-  | SSHROP
   | ROTLOP
   | ROTROP
   | EQOP
@@ -90,8 +98,7 @@ type token =
   | ORASSIGN
   | XORASSIGN
   | SHLASSIGN
-  | USHRASSIGN
-  | SSHRASSIGN
+  | SHRASSIGN
   | ROTLASSIGN
   | ROTRASSIGN
   | NULL
@@ -114,6 +121,7 @@ type token =
 let to_parser_token :
     token -> (Parser.token, line_feed trivia) result = function
   | EOF -> Ok Parser.EOF
+  | DISALLOWED -> Ok Parser.DISALLOWED
   | LET -> Ok Parser.LET
   | VAR -> Ok Parser.VAR
   | LPAR -> Ok Parser.LPAR
@@ -129,6 +137,7 @@ let to_parser_token :
   | CATCH -> Ok Parser.CATCH
   | CONTINUE -> Ok Parser.CONTINUE
   | LABEL -> Ok Parser.LABEL
+  | DO -> Ok Parser.DO
   | DEBUG -> Ok Parser.DEBUG
   | FLEXIBLE -> Ok Parser.FLEXIBLE
   | IF -> Ok Parser.IF
@@ -161,6 +170,7 @@ let to_parser_token :
   | SUB -> Ok Parser.SUB
   | DOT -> Ok Parser.DOT
   | QUEST -> Ok Parser.QUEST
+  | BANG -> Ok Parser.BANG
   | AND -> Ok Parser.AND
   | OR -> Ok Parser.OR
   | NOT -> Ok Parser.NOT
@@ -174,11 +184,18 @@ let to_parser_token :
   | DIVOP -> Ok Parser.DIVOP
   | MODOP -> Ok Parser.MODOP
   | POWOP -> Ok Parser.POWOP
+  | WRAPADDOP -> Ok Parser.WRAPADDOP
+  | WRAPSUBOP -> Ok Parser.WRAPSUBOP
+  | WRAPMULOP -> Ok Parser.WRAPMULOP
+  | WRAPPOWOP -> Ok Parser.WRAPPOWOP
+  | WRAPADDASSIGN -> Ok Parser.WRAPADDASSIGN
+  | WRAPSUBASSIGN -> Ok Parser.WRAPSUBASSIGN
+  | WRAPMULASSIGN -> Ok Parser.WRAPMULASSIGN
+  | WRAPPOWASSIGN -> Ok Parser.WRAPPOWASSIGN
   | ANDOP -> Ok Parser.ANDOP
   | OROP -> Ok Parser.OROP
   | XOROP -> Ok Parser.XOROP
   | SHLOP -> Ok Parser.SHLOP
-  | SSHROP -> Ok Parser.SSHROP
   | ROTLOP -> Ok Parser.ROTLOP
   | ROTROP -> Ok Parser.ROTROP
   | EQOP -> Ok Parser.EQOP
@@ -200,8 +217,7 @@ let to_parser_token :
   | ORASSIGN -> Ok Parser.ORASSIGN
   | XORASSIGN -> Ok Parser.XORASSIGN
   | SHLASSIGN -> Ok Parser.SHLASSIGN
-  | USHRASSIGN -> Ok Parser.USHRASSIGN
-  | SSHRASSIGN -> Ok Parser.SSHRASSIGN
+  | SHRASSIGN -> Ok Parser.SHRASSIGN
   | ROTLASSIGN -> Ok Parser.ROTLASSIGN
   | ROTRASSIGN -> Ok Parser.ROTRASSIGN
   | NULL -> Ok Parser.NULL
@@ -223,6 +239,7 @@ let to_parser_token :
 
 let string_of_parser_token = function
   | Parser.EOF -> "EOF"
+  | Parser.DISALLOWED -> "DISALLOWED"
   | Parser.LET -> "LET"
   | Parser.VAR -> "VAR"
   | Parser.LPAR -> "LPAR"
@@ -239,6 +256,7 @@ let string_of_parser_token = function
   | Parser.CONTINUE -> "CONTINUE"
   | Parser.LABEL -> "LABEL"
   | Parser.DEBUG -> "DEBUG"
+  | Parser.DO -> "DO"
   | Parser.FLEXIBLE -> "FLEXIBLE"
   | Parser.IF -> "IF"
   | Parser.IGNORE -> "IGNORE"
@@ -271,6 +289,7 @@ let string_of_parser_token = function
   | Parser.SUB -> "SUB"
   | Parser.DOT -> "DOT"
   | Parser.QUEST -> "QUEST"
+  | Parser.BANG -> "BANG"
   | Parser.AND -> "AND"
   | Parser.OR -> "OR"
   | Parser.NOT -> "NOT"
@@ -284,12 +303,19 @@ let string_of_parser_token = function
   | Parser.DIVOP -> "DIVOP"
   | Parser.MODOP -> "MODOP"
   | Parser.POWOP -> "POWOP"
+  | Parser.WRAPADDOP -> "WRAPADDOP"
+  | Parser.WRAPSUBOP -> "WRAPSUBOP"
+  | Parser.WRAPMULOP -> "WRAPMULOP"
+  | Parser.WRAPPOWOP -> "WRAPPOWOP"
+  | Parser.WRAPADDASSIGN -> "WRAPADDASSIGN"
+  | Parser.WRAPSUBASSIGN -> "WRAPSUBASSIGN"
+  | Parser.WRAPMULASSIGN -> "WRAPMULASSIGN"
+  | Parser.WRAPPOWASSIGN -> "WRAPPOWASSIGN"
   | Parser.ANDOP -> "ANDOP"
   | Parser.OROP -> "OROP"
   | Parser.XOROP -> "XOROP"
   | Parser.SHLOP -> "SHLOP"
-  | Parser.USHROP -> "USHROP"
-  | Parser.SSHROP -> "SSHROP"
+  | Parser.SHROP -> "SHROP"
   | Parser.ROTLOP -> "ROTLOP"
   | Parser.ROTROP -> "ROTROP"
   | Parser.EQOP -> "EQOP"
@@ -313,8 +339,7 @@ let string_of_parser_token = function
   | Parser.ORASSIGN -> "ORASSIGN"
   | Parser.XORASSIGN -> "XORASSIGN"
   | Parser.SHLASSIGN -> "SHLASSIGN"
-  | Parser.USHRASSIGN -> "USHRASSIGN"
-  | Parser.SSHRASSIGN -> "SSHRASSIGN"
+  | Parser.SHRASSIGN -> "SHRASSIGN"
   | Parser.ROTLASSIGN -> "ROTLASSIGN"
   | Parser.ROTRASSIGN -> "ROTRASSIGN"
   | Parser.NULL -> "NULL"
@@ -327,30 +352,6 @@ let string_of_parser_token = function
   | Parser.TEXT _ -> "TEXT of string"
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
-
-type void
-
-let rec absurd : void -> 'a = fun v -> absurd v
-
-let map_trivia : ('a -> 'b) -> 'a trivia -> 'b trivia =
- fun f -> function
-  | Comment str -> Comment str
-  | Space n -> Space n
-  | Tab n -> Tab n
-  | Line l -> Line (f l)
-
-let string_of_line_feed = function LF -> "LF" | CRLF -> "CRLF"
-
-let string_of_trivia : ('a -> string) -> 'a trivia -> string =
- fun f t ->
-  match t with
-  | Comment str -> str
-  | Space n -> Printf.sprintf "Space(%d)" n
-  | Tab n -> Printf.sprintf "Tab(%d)" n
-  | Line l -> Printf.sprintf "Line(%s)" (f l)
-
-let string_of_trivia_lf : line_feed trivia -> string =
-  string_of_trivia string_of_line_feed
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

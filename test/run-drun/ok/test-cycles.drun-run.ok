@@ -1,0 +1,32 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: client: available: 0
+debug.print: client: accept(0): 0
+debug.print: wallet: {cycles = "<not_shown>"}
+debug.print: client: setting cycles
+debug.print: wallet: {cycles = "<not_shown>"}
+debug.print: client: # debit
+debug.print: client: # credit-1
+debug.print: client: refunded: 0
+debug.print: client: # credit-2
+debug.print: client: refunded: 0
+debug.print: client: # refund
+debug.print: refunding: 250_000
+debug.print: client: refunded: 250_000
+debug.print: client: refund(5)
+debug.print: refunding: 5
+debug.print: client: refund(4)
+debug.print: refunding: 4
+debug.print: client: refund(3)
+debug.print: refunding: 3
+debug.print: client: refund(2)
+debug.print: refunding: 2
+debug.print: client: refund(1)
+debug.print: refunding: 1
+debug.print: client: refunded: 1
+debug.print: client: refunded: 2
+debug.print: client: refunded: 3
+debug.print: client: refunded: 4
+debug.print: client: refunded: 5
+debug.print: client: 0
+ingress Completed: Reply: 0x4449444c0000

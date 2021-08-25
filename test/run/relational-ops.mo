@@ -55,7 +55,7 @@ func testFloat(a : Float, b : Float) {
    let ge2 = (a >= b) : Bool;
 };
 
-func testWord8(a : Word8, b : Word8) {
+func testNat8(a : Nat8, b : Nat8) {
    let eq1 = a == b;
    let eq2 = (a == b) : Bool;
    let neq1 = a != b;
@@ -70,7 +70,7 @@ func testWord8(a : Word8, b : Word8) {
    let ge2 = (a >= b) : Bool;
 };
 
-func testWord16(a : Word16, b : Word16) {
+func testNat16(a : Nat16, b : Nat16) {
    let eq1 = a == b;
    let eq2 = (a == b) : Bool;
    let neq1 = a != b;
@@ -85,7 +85,7 @@ func testWord16(a : Word16, b : Word16) {
    let ge2 = (a >= b) : Bool;
 };
 
-func testWord32(a : Word32, b : Word32) {
+func testNat32(a : Nat32, b : Nat32) {
    let eq1 = a == b;
    let eq2 = (a == b) : Bool;
    let neq1 = a != b;
@@ -100,7 +100,7 @@ func testWord32(a : Word32, b : Word32) {
    let ge2 = (a >= b) : Bool;
 };
 
-func testWord64(a : Word64, b : Word64) {
+func testNat64(a : Nat64, b : Nat64) {
    let eq1 = a == b;
    let eq2 = (a == b) : Bool;
    let neq1 = a != b;

@@ -2,10 +2,10 @@ arithmetic overflow
 Error: failed to run main module `_out/addInt16-lower.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: unreachable, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
        wasm backtrace:
-         0: <unknown>!add<Int16>
-         1: <unknown>!init
-         2: <unknown>!_start
+         0: add<Int16>
+         1: init
+         2: _start
        

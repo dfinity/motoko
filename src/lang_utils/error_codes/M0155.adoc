@@ -1,0 +1,48 @@
+= M0155
+This warning indicates that the type of a subtraction operation had to be deduced from its operands and was inferred to be `Nat`.
+That implies that it traps when the result is negative, which may be unintentional.
+
+Offending code examples:
+
+```
+  func f(n : Nat) {
+    if (n < 10) { return };
+    let m = 2 * (n - 1);
+  };
+
+  func g(n : Nat) {
+    if (n - 1 < 10) { return };
+  };
+```
+
+If the subtraction was indeed intended to have a `Nat` result, you can let the compiler know by annotating the intended type explicitly:
+
+```
+  func f(n : Nat) {
+    let m : Nat = 2 * (n - 1);
+  };
+```
+
+If the intended type was `Int`, however, you can either annotate it as such:
+
+```
+  func f(n : Nat) {
+    let m : Int = 2 * (n - 1);
+  };
+```
+
+Or you can insert a sign operator `+`, which also forces the expression to be of type `Int`:
+
+```
+  func f(n : Nat) {
+    let m = 2 * (+n - 1);
+  };
+```
+
+This latter possibility is particularly convenient in the case of comparisons, because it is always okay to perform them at type `Int`:
+
+```
+  func g(n : Nat) {
+    if (+n - 1 < 10) { return };
+  };
+```

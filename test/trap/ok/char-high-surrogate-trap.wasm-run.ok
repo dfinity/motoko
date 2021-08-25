@@ -1,0 +1,12 @@
+codepoint out of range
+Error: failed to run main module `_out/char-high-surrogate-trap.wasm`
+
+Caused by:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: Nat32->Char
+         1: nat32ToChar
+         2: init
+         3: _start
+       

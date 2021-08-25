@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 let a = Prim.Array_init<Nat>(10,42);
 

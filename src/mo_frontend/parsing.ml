@@ -56,27 +56,9 @@ let abstract_items explanations =
   let ss = List.map abstract_item items in
   String.concat "  " (uniq ss)
 
-let error_message error_detail lexeme explanations =
-  let token = String.escaped lexeme in
-  match error_detail with
-  | 1 ->
-    Printf.sprintf
-      "unexpected token '%s', \nexpected one of token or <phrase>:\n  %s"
-      token (abstract_symbols explanations)
-  | 2 ->
-    Printf.sprintf
-      "unexpected token '%s', \nexpected one of token or <phrase> sequence:\n  %s"
-      token (abstract_futures explanations)
-  | 3 ->
-    Printf.sprintf
-      "unexpected token '%s'\n in position marked . of partially parsed item(s):\n%s"
-      token (abstract_items explanations)
-  | _ ->
-    Printf.sprintf "unexpected token '%s'" token
-
 type error_detail = int
 
-exception Error of (string * Lexing.position * Lexing.position)
+exception Error of string * Lexing.position * Lexing.position
 
 (* The lexbuf is a 1024 byte wide window, we need to compute offsets before
    accessing it, because token positions are absolute to the whole input *)
@@ -89,5 +71,37 @@ let slice_lexeme lexbuf i1 i2 =
   else Bytes.sub_string lexbuf.lex_buffer offset len
 
 let parse error_detail checkpoint lexer lexbuf =
-  try E.entry checkpoint lexer with E.Error ((start, end_), explanations) ->
-    raise (Error (error_message error_detail (slice_lexeme lexbuf start end_) explanations, start, end_))
+  Diag.with_message_store (fun m ->
+    try
+      (* Temporary hack! *)
+      Parser_lib.msg_store := Some m;
+      Some (E.entry checkpoint lexer)
+    with E.Error ((start, end_), explanations) ->
+      let at =
+        Source.{left = Lexer.convert_pos start; right = Lexer.convert_pos end_}
+      in
+      let lexeme = slice_lexeme lexbuf start end_ in
+      let token =
+        if lexeme = "" then "end of input" else
+        "token '" ^ String.escaped lexeme ^ "'"
+      in
+      let msg =
+        match error_detail with
+        | 1 ->
+          Printf.sprintf
+            "unexpected %s, expected one of token or <phrase>:\n  %s"
+            token (abstract_symbols explanations)
+        | 2 ->
+          Printf.sprintf
+            "unexpected %s, expected one of token or <phrase> sequence:\n  %s"
+            token (abstract_futures explanations)
+        | 3 ->
+          Printf.sprintf
+            "unexpected %s in position marked . of partially parsed item(s):\n%s"
+            token (abstract_items explanations)
+        | _ ->
+          Printf.sprintf "unexpected %s" token
+      in
+      Diag.add_msg m (Diag.error_message at "M0001" "syntax" msg);
+      None
+  )

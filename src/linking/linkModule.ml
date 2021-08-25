@@ -12,9 +12,9 @@ This module is a first stab that should be functionally working, but will go
 through further refactoring before we are happy with it. Things to do:
 
  * much code (finding imports, counting) is duplicated for globals and
-   functions. This could be refactored into general functions an predicates.
+   functions. This could be refactored into general functions and predicates.
  * There are multiple AST traversals. These could be turned into a single one
-   (taking multiple rename functions) or even more general taking a record
+   (taking multiple rename functions) or even more generally taking a record
    of functions for each syntactic category.
 *)
 
@@ -618,7 +618,8 @@ let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : 
       em1.name with
       function_names = em1.name.function_names @ ns2.function_names;
       locals_names = em1.name.locals_names @ ns2.locals_names;
-    }
+      };
+    motoko = em1.motoko;
   }
 
 (* The main linking function *)
@@ -649,7 +650,7 @@ let align p n =
   shift_left (shift_right_logical (add n (sub (shift_left 1l p) 1l)) p) p
 
 let find_fun_export (name : name) (exports : export list) : var option =
-  Lib.List.first_opt (fun (export : export) ->
+  List.find_map (fun (export : export) ->
     if export.it.name = name then
       match export.it.edesc.it with
       | FuncExport var -> Some var
@@ -809,7 +810,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let global_required1 = find_imports is_global_import libname em1.module_ in
   let global_required2 = find_imports is_global_import "env" dm2 in
   let global_exports2 = find_exports is_global_export dm2 in
-  (* Resolve imports, to produce a renumbering globalction: *)
+  (* Resolve imports, to produce a renumbering *)
   let global_resolved12 = resolve global_required1 global_exports2 in
   let global_resolved21 = resolve global_required2 global_exports1 in
   let (globals1, globals2) =

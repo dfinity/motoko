@@ -4,7 +4,7 @@
 
 module Make
   (I : MenhirLib.IncrementalEngine.EVERYTHING)
-  (User : sig
+  (_ : sig
 
     (* In order to submit artificial tokens to the parser, we need a function
        that converts a terminal symbol to a token. Unfortunately, we cannot

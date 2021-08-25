@@ -20,7 +20,7 @@ a little reading advice:
  * Nullary types are described a single letter, or few letters:
 
      Nat: N
-     Word8: w8
+     Int8: i8
      (): u
 
  * Unary type constructors just prefix their type argument
@@ -85,10 +85,6 @@ let prim = function
   | Int16 -> "i16"
   | Int32 -> "i32"
   | Int64 -> "i64"
-  | Word8 -> "w8"
-  | Word16 -> "w16"
-  | Word32 -> "w32"
-  | Word64 -> "w64"
   | Float -> "f"
   | Char -> "c"
   | Text -> "t"
@@ -173,6 +169,7 @@ let typ_seq_hash : typ list -> string = fun ts ->
 
 (* Some small unit tests *)
 
+[@@@warning "-32"]
 let test t expected =
   let actual = typ_hash t in
   if actual = expected then

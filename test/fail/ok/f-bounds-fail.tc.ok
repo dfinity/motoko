@@ -1,176 +1,176 @@
-f-bounds-fail.mo:13.42-13.43: type error, type argument
+f-bounds-fail.mo:13.42-13.43: type error [M0046], type argument
   A/10
 does not match parameter bound
   C
-f-bounds-fail.mo:14.42-14.43: type error, type argument
+f-bounds-fail.mo:14.42-14.43: type error [M0046], type argument
   A/11
 does not match parameter bound
   C/1
-f-bounds-fail.mo:15.42-15.43: type error, type argument
+f-bounds-fail.mo:15.42-15.43: type error [M0046], type argument
   A/12
 does not match parameter bound
   C/2
-f-bounds-fail.mo:3.38-3.41: type error, type argument
+f-bounds-fail.mo:3.38-3.41: type error [M0046], type argument
   Int
 does not match parameter bound
   Nat
-f-bounds-fail.mo:9.53-9.54: type error, expression of type
+f-bounds-fail.mo:9.53-9.54: type error [M0096], expression of type
   A/19
 cannot produce expected type
   C/6
-f-bounds-fail.mo:10.52-10.53: type error, expression of type
+f-bounds-fail.mo:10.52-10.53: type error [M0096], expression of type
   A/20
 cannot produce expected type
   C/7
-f-bounds-fail.mo:11.52-11.53: type error, expression of type
+f-bounds-fail.mo:11.52-11.53: type error [M0096], expression of type
   A/21
 cannot produce expected type
   C/8
-f-bounds-fail.mo:45.23-45.25: type error, expression of type
+f-bounds-fail.mo:45.23-45.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> A/22
-f-bounds-fail.mo:46.23-46.25: type error, expression of type
+f-bounds-fail.mo:46.23-46.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> B/13
-f-bounds-fail.mo:47.23-47.25: type error, expression of type
+f-bounds-fail.mo:47.23-47.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> B/13
-f-bounds-fail.mo:48.23-48.25: type error, expression of type
+f-bounds-fail.mo:48.23-48.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> B/13
-f-bounds-fail.mo:49.23-49.25: type error, expression of type
+f-bounds-fail.mo:49.23-49.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:50.14-50.15: type error, type argument
+f-bounds-fail.mo:50.14-50.15: type error [M0046], type argument
   B/13
 does not match parameter bound
   C/9
-f-bounds-fail.mo:50.23-50.25: type error, expression of type
+f-bounds-fail.mo:50.23-50.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:51.23-51.25: type error, expression of type
+f-bounds-fail.mo:51.23-51.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   C/9 -> C/9
-f-bounds-fail.mo:53.23-53.25: type error, expression of type
+f-bounds-fail.mo:53.23-53.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> A/22
-f-bounds-fail.mo:54.23-54.25: type error, expression of type
+f-bounds-fail.mo:54.23-54.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> B/13
-f-bounds-fail.mo:55.23-55.25: type error, expression of type
+f-bounds-fail.mo:55.23-55.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> B/13
-f-bounds-fail.mo:56.23-56.25: type error, expression of type
+f-bounds-fail.mo:56.23-56.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> B/13
-f-bounds-fail.mo:57.23-57.25: type error, expression of type
+f-bounds-fail.mo:57.23-57.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:58.16-58.17: type error, type argument
+f-bounds-fail.mo:58.16-58.17: type error [M0046], type argument
   B/13
 does not match parameter bound
   C/9
-f-bounds-fail.mo:58.23-58.25: type error, expression of type
+f-bounds-fail.mo:58.23-58.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:59.23-59.25: type error, expression of type
+f-bounds-fail.mo:59.23-59.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   C/9 -> C/9
-f-bounds-fail.mo:61.23-61.25: type error, expression of type
+f-bounds-fail.mo:61.23-61.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> A/22
-f-bounds-fail.mo:62.23-62.25: type error, expression of type
+f-bounds-fail.mo:62.23-62.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> B/13
-f-bounds-fail.mo:63.23-63.25: type error, expression of type
+f-bounds-fail.mo:63.23-63.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   A/22 -> B/13
-f-bounds-fail.mo:64.23-64.25: type error, expression of type
+f-bounds-fail.mo:64.23-64.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> B/13
-f-bounds-fail.mo:65.23-65.25: type error, expression of type
+f-bounds-fail.mo:65.23-65.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:66.18-66.19: type error, type argument
+f-bounds-fail.mo:66.18-66.19: type error [M0046], type argument
   B/13
 does not match parameter bound
   C/9
-f-bounds-fail.mo:66.23-66.25: type error, expression of type
+f-bounds-fail.mo:66.23-66.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   B/13 -> C/9
-f-bounds-fail.mo:67.23-67.25: type error, expression of type
+f-bounds-fail.mo:67.23-67.25: type error [M0096], expression of type
   ()
 cannot produce expected type
   C/9 -> C/9
-f-bounds-fail.mo:70.27-70.28: type error, expression of type
+f-bounds-fail.mo:70.27-70.28: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:71.27-71.28: type error, expression of type
+f-bounds-fail.mo:71.27-71.28: type error [M0096], expression of type
   B/13
 cannot produce expected type
   C/9
-f-bounds-fail.mo:74.27-74.28: type error, expression of type
+f-bounds-fail.mo:74.27-74.28: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:75.27-75.28: type error, expression of type
+f-bounds-fail.mo:75.27-75.28: type error [M0096], expression of type
   B/13
 cannot produce expected type
   C/9
-f-bounds-fail.mo:77.27-77.28: type error, expression of type
+f-bounds-fail.mo:77.27-77.28: type error [M0096], expression of type
   B/13
 cannot produce expected type
   C/9
-f-bounds-fail.mo:80.23-80.24: type error, expression of type
+f-bounds-fail.mo:80.23-80.24: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:80.25-80.26: type error, expression of type
+f-bounds-fail.mo:80.25-80.26: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:80.27-80.28: type error, expression of type
+f-bounds-fail.mo:80.27-80.28: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:81.23-81.24: type error, expression of type
+f-bounds-fail.mo:81.23-81.24: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:81.25-81.26: type error, expression of type
+f-bounds-fail.mo:81.25-81.26: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:81.27-81.28: type error, expression of type
+f-bounds-fail.mo:81.27-81.28: type error [M0096], expression of type
   B/13
 cannot produce expected type
   C/9
-f-bounds-fail.mo:82.24-82.25: type error, expression of type
+f-bounds-fail.mo:82.24-82.25: type error [M0096], expression of type
   A/22
 cannot produce expected type
   C/9
-f-bounds-fail.mo:82.26-82.27: type error, expression of type
+f-bounds-fail.mo:82.26-82.27: type error [M0096], expression of type
   B/13
 cannot produce expected type
   C/9

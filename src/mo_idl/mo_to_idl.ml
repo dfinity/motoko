@@ -1,39 +1,55 @@
+open Mo_def
 open Mo_types
-open Mo_types.Type
+
 open Source
-module E = Mo_def.Syntax
+open Type
+module E = Syntax
 module I = Idllib.Syntax
 
 let env = ref Env.empty
 
 (* For monomorphization *)
-module Stamp = Map.Make(String)
+module Stamp = Type.ConEnv
 let stamp = ref Stamp.empty
 
 module TypeMap = Map.Make (struct type t = con * typ list let compare = compare end)
 let type_map = ref TypeMap.empty
 
+let normalize_name name =
+  String.map (fun c ->
+      if c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+      then c else '_'
+    ) name
+
 let monomorphize_con vs c =
-  let name = Con.name c in
+  let name = normalize_name (Con.name c) in
   match Con.kind c with
   | Def _ ->
-     let id = (c, vs) in
-     let n =
-       match TypeMap.find_opt id !type_map with
-       | None ->
-          (match Stamp.find_opt name !stamp with
-           | None ->
-              stamp := Stamp.add name 1 !stamp;
-              type_map := TypeMap.add id 1 !type_map;
-              1
-           | Some n ->
-              stamp := Stamp.add name (n+1) !stamp;
-              type_map := TypeMap.add id (n+1) !type_map;
-              n+1)
-       | Some n -> n
-     in
-     if n == 1 then name
-     else Printf.sprintf "%s_%d" name n
+    let id = (c, vs) in
+    let (k, n) =
+      match TypeMap.find_opt id !type_map with
+      | None ->
+        (match Stamp.find_opt c !stamp with
+         | None ->
+           let keys = Stamp.keys !stamp in
+           let k = List.length (List.filter (fun d -> Con.name c = Con.name d) keys) in
+           stamp := Stamp.add c (k, 0) !stamp;
+           type_map := TypeMap.add id (k, 0) !type_map;
+           (k, 0)
+         | Some (k, n) ->
+           stamp := Stamp.add c (k, n + 1) !stamp;
+           type_map := TypeMap.add id (k, n + 1) !type_map;
+           (k, n + 1))
+      | Some (k, n) -> (k, n)
+    in
+    begin
+      match (k, n) with
+      | (0, 0) -> name
+      | (0, n) when n > 0 -> Printf.sprintf "%s_%d" name n
+      | (k, 0) when k > 0 -> Printf.sprintf "%s__%d" name k
+      | (k, n) when k > 0 && n > 0 -> Printf.sprintf "%s__%d_%d" name k n
+      | _ -> assert false
+    end
   | _ -> assert false
 
 let prim p =
@@ -50,10 +66,6 @@ let prim p =
   | Int16 -> I.PrimT I.Int16
   | Int32 -> I.PrimT I.Int32
   | Int64 -> I.PrimT I.Int64
-  | Word8 -> I.PrimT I.Nat8
-  | Word16 -> I.PrimT I.Nat16
-  | Word32 -> I.PrimT I.Nat32
-  | Word64 -> I.PrimT I.Nat64
   | Float -> I.PrimT I.Float64
   | Char -> I.PrimT I.Nat32
   | Text -> I.PrimT I.Text
@@ -79,7 +91,7 @@ let rec typ t =
              if not (Env.mem id !env) then
                begin
                  env := Env.add id (I.PreT @@ no_region) !env;
-                 let t = typ t in
+                 let t = typ (normalize t) in
                  env := Env.add id t !env
                end;
              I.VarT (id @@ no_region))
@@ -119,7 +131,7 @@ let rec typ t =
   | Mut t -> assert false
   | Pre -> assert false
   ) @@ no_region
-and field {lab; typ=t} =
+and field {lab; typ=t; _} =
   let open Idllib.Escape in
   match unescape lab with
   | Nat nat ->
@@ -143,14 +155,8 @@ and meths fs =
          list
       | _ ->
          let meth =
-           let open Idllib.Escape in
-           match unescape f.lab with
-           | Nat nat ->
-              I.{var = Lib.Uint32.to_string nat @@ no_region;
-                 meth = typ f.typ} @@ no_region
-           | Id id ->
-              I.{var = id @@ no_region;
-                 meth = typ f.typ} @@ no_region in
+           I.{var = Idllib.Escape.unescape_method f.lab @@ no_region;
+              meth = typ f.typ} @@ no_region in
          meth :: list
     ) fs []
 
@@ -172,15 +178,18 @@ let gather_decs () =
 
 let actor progs =
   let open E in
-  let prog = combine_progs progs in
-  let (_, cub) = (comp_unit_of_prog false prog).it in
+  let prog = CompUnit.combine_progs progs in
+  let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
   match cub.it with
   | ProgU _ | ModuleU _ -> None
   | ActorU _ -> Some (typ cub.note.note_typ)
   | ActorClassU _ ->
-     (match cub.note.note_typ with
-      | Func (Local, Returns, [], args, [actor]) ->
-         Some (typ actor)
+     (match normalize cub.note.note_typ with
+      | Func (Local, Returns, [tb], ts1, [t2]) ->
+        let args = List.map typ (List.map (open_ [Non]) ts1) in
+        let (_, rng) = as_async (normalize (open_ [Non] t2)) in
+        let actor = typ rng in
+        Some (I.ClassT (args, actor) @@ cub.at)
       | _ -> assert false
      )
 

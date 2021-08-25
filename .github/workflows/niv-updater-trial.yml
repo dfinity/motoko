@@ -22,14 +22,15 @@ on:
 jobs:
   niv-updater:
     name: 'Check for updates'
+    timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
-        uses: knl/niv-updater-action@v6
+        uses: knl/niv-updater-action@60f23607814cf4f2e80a1e32ee74f8323897d09e
         with:
           whitelist: 'nixpkgs,musl-wasi'
           labels: |
             autoclose
-            ci-also-darwin
+          keep_updating: true
         env:
           GITHUB_TOKEN: ${{ secrets.NIV_UPDATER_TOKEN }}

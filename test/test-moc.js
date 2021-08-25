@@ -5,35 +5,40 @@ const assert = require('assert').strict;
 // Load moc.js
 const moc = require('moc.js');
 
-// Compile the empty module in plain and dfinity mode
-const empty_wasm_plain = moc.Motoko.compileWasm('wasm', '');
-const empty_wasm_dfinity = moc.Motoko.compileWasm('dfinity', '');
+// Store files
+moc.Motoko.saveFile('empty.mo', '');
+moc.Motoko.saveFile('ok.mo', '1');
+moc.Motoko.saveFile('bad.mo', '1+');
+
+// Compile the empty module in wasi and ic mode
+const empty_wasm_plain = moc.Motoko.compileWasm('wasi', 'empty.mo');
+const empty_wasm_ic = moc.Motoko.compileWasm('ic', 'empty.mo');
 
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
 assert.equal(typeof(empty_wasm_plain), 'object');
-assert.equal(empty_wasm_plain.code.substr(0,4), '\0asm');
-assert.equal(empty_wasm_plain.code.substr(4,4), '\1\0\0\0');
+assert.deepEqual(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
+assert.deepEqual(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
 assert.equal(typeof(empty_wasm_plain.diagnostics), 'object');
 assert.equal(empty_wasm_plain.diagnostics.length, 0);
 
 // Check that the WebAssembly binary can be loaded
-WebAssembly.compile(Buffer.from(empty_wasm_plain.code, 'ascii'));
+WebAssembly.compile(empty_wasm_plain.code);
 
-// Now again for the definity module
-assert.equal(typeof(empty_wasm_dfinity), 'object');
-assert.equal(empty_wasm_dfinity.code.substr(0,4), '\0asm');
-assert.equal(empty_wasm_dfinity.code.substr(4,4), '\1\0\0\0');
-assert.equal(typeof(empty_wasm_dfinity.diagnostics), 'object');
-assert.equal(empty_wasm_dfinity.diagnostics.length, 0);
+// Now again for the ic module
+assert.equal(typeof(empty_wasm_ic), 'object');
+assert.deepEqual(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
+assert.deepEqual(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
+assert.equal(typeof(empty_wasm_ic.diagnostics), 'object');
+assert.equal(empty_wasm_ic.diagnostics.length, 0);
 
-WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code, 'ascii'));
+WebAssembly.compile(empty_wasm_ic.code);
 
-// The plain and the dfinity module should not be the same
-assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);
+// The plain and the ic module should not be the same
+assert.notEqual(empty_wasm_plain.code, empty_wasm_ic.code);
 
 // Check if error messages are correctly returned
-const bad_result = moc.Motoko.compileWasm('dfinity', '1+');
+const bad_result = moc.Motoko.compileWasm('ic', 'bad.mo');
 // Uncomment to see what to paste below
 // console.log(JSON.stringify(bad_result, null, 2));
 assert.deepStrictEqual(bad_result, {
@@ -50,21 +55,20 @@ assert.deepStrictEqual(bad_result, {
         }
       },
       "severity": 1,
-      "source": "motoko",
-      "message": "unexpected token \'\', \nexpected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
+      "source": "bad.mo",
+      "message": "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
     }
   ],
   "code": null,
-  "map": null
 });
 
 // Check the check command (should print errors, but have no code)
-assert.deepStrictEqual(moc.Motoko.check('1'), {
+assert.deepStrictEqual(moc.Motoko.check('ok.mo'), {
   "diagnostics": [],
   "code": null
 });
 
-assert.deepStrictEqual(moc.Motoko.check('1+'), {
+assert.deepStrictEqual(moc.Motoko.check('bad.mo'), {
   "diagnostics": [
     {
       "range": {
@@ -78,20 +82,9 @@ assert.deepStrictEqual(moc.Motoko.check('1+'), {
         }
       },
       "severity": 1,
-      "source": "motoko",
-      "message": "unexpected token \'\', \nexpected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
+      "source": "bad.mo",
+      "message": "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
     }
   ],
   "code": null
 });
-
-// Create a source map, and check some of its structure
-const with_map = moc.Motoko.compileWasm('dfinity', '');
-assert.equal(typeof(with_map.map), 'string')
-let map
-assert.doesNotThrow(() => map = JSON.parse(with_map.map), SyntaxError)
-assert.ok(Array.isArray(map.sources))
-assert.ok(Array.isArray(map.sourcesContent))
-assert.equal(typeof(map.mappings), 'string')
-assert.equal(typeof(map.version), 'number')
-

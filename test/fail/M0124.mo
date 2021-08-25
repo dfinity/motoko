@@ -1,0 +1,3 @@
+actor {
+  public let foo = ()
+}

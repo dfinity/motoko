@@ -35,11 +35,15 @@ The following are not necessary true:
    be exported, such as mutable arrays.
 
  * The type export mapping is not injective: there may be different
-   Motoko types that map to the same IDL type, e.g. `Char`, `Word32` and
+   Motoko types that map to the same IDL type, e.g. `Char`, `Nat32` and
    `Nat32`.
 
    This implies that round-tripping an Motoko type via the IDL can yield
    different types.
+
+ * The type export mapping is not surjective: there are Candid types that
+   cannot be imported, in particular types with `service` types with methods
+   names that are no valid identifiers in Motoko.
 
  * For some types, not all IDL values may be accepted: for example, `Char` is
    may be exported as `nat32`, but not all `nat32` values can be read as
@@ -81,7 +85,6 @@ e(Nat) = nat
 e(Int) = int
 e(Nat<n>) = nat<n> for n = 8, 16, 32, 64
 e(Int<n>) = int<n> for n = 8, 16, 32, 64
-e(Word<n>) = nat<n> for n = 8, 16, 32, 64
 e(Float) = float64
 e(Char) = nat32
 e(Text) = text
@@ -110,12 +113,16 @@ ea( ( <typ>,* ) ) = e(<typ>);*
 ea(<typ>) = ( e(<typ>) )  otherwise
 
 em : <typ-field> -> <methtype>
-em(<id> : <typ>) = unescape(<id>) : efn(<typ>)
+em(<id> : <typ>) = unescape_method(<id>) : efn(<typ>)
 
 unescape : <id> -> <nat>|<name>
 unescape("_" <nat> "_") = <nat>  if <nat> is 32-bit
 unescape(<id> "_") = <id>
 unescape(<id>) = <id>
+
+unescape_method : <id> -> <name>
+unescape_method(<id> "_") = <id>
+unescape_method(<id>) = <id>
 ```
 
 ### Type import
@@ -161,13 +168,19 @@ ia(<argtype>,) = i(<argtype>)
 ia(<argtype>,*) = ( i(<argtype>),* )  otherwise
 
 im : <methtype> -> <typ>
-im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
+im(<name> : <functype>) = escape_method(<name>) : ifn(<functype>)
 
 escape : <name> -> <id>
 escape <name> = <name> "_"  if <name> is a reserved identifier in Motoko
 escape <name> = <name> "_"  if <name> ends with "_"
 escape <name> = <name>  if <name> is a valid Motoko <id> not ending in "_"
 escape <name> = "_" hash(<name>) "_"  otherwise
+
+escape_method : <name> -> <id>
+escape_method <name> = <name> "_"  if <name> is a reserved identifier in Motoko
+escape_method <name> = <name> "_"  if <name> is a valid Motoko <id> ending in "_"
+escape_method <name> = <name>  if <name> is a valid Motoko <id> not ending in "_"
+escape_method <name> = (* failure, unsupported *)
 ```
 
 ### Notes:
@@ -213,6 +226,12 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    e({clash_ : Nat; clash : Int})
    ```
    is undefined, because `unescape(clash_) = unescape(clash)`.
+
+ * Similarly, the `escape_method` and `unescape_method` functions append `_` to
+   method names in Candid that happen to be reserved keywords in Motoko.
+
+   Candid method names that are _not_ valid identifiers in Motoko are
+   unsupported.
 
  * Motoko functions with type parameters are not in the domain of `e`.
 

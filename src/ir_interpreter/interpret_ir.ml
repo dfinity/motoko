@@ -35,7 +35,6 @@ type env =
     throws : throw_env;
     replies : reply_env;
     rejects : reject_env;
-    async : bool;
     caller : V.value;
     self : V.actor_id;
     actor_env : actor_env;
@@ -56,7 +55,6 @@ let env_of_scope flags flavor ae ve =
     rejects = None;
     caller = V.Text V.top_id;
     self = V.top_id;
-    async = false;
     actor_env = ae;
   }
 
@@ -91,7 +89,7 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor (initial_state ()) empty_scope)
+let last_env = ref (env_of_scope { trace = false; print_depth = 2} (Ir.full_flavor ()) (initial_state ()) empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
@@ -117,7 +115,7 @@ struct
   let yield () =
     trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
-      Printf.printf "%s: execution error, %s\n" (Source.string_of_region at) msg
+      Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
 
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
@@ -158,31 +156,29 @@ let reject async v =
   | _ -> assert false
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
-    let async = make_async () in
-    let k' = reply async in
-    let r = reject async in
-    if env.flags.trace then trace "-> async %s" (string_of_region at);
-    Scheduler.queue (fun () ->
-      if env.flags.trace then trace "<- async %s" (string_of_region at);
-      incr trace_depth;
-      f (fun v ->
-        if env.flags.trace then trace "<= %s" (string_of_val env v);
-        decr trace_depth;
-        k' v)
-        r
+  let async = make_async () in
+  let k' = reply async in
+  let r = reject async in
+  if env.flags.trace then trace "-> async %s" (string_of_region at);
+  Scheduler.queue (fun () ->
+    if env.flags.trace then trace "<- async %s" (string_of_region at);
+    incr trace_depth;
+    f (fun v ->
+      if env.flags.trace then trace "<= %s" (string_of_val env v);
+      decr trace_depth;
+      k' v) r
     );
-    k (V.Async async)
+  k (V.Async async)
 
 let await env at async k =
   if env.flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-      Scheduler.queue (fun () ->
-          if env.flags.trace then
-            trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
-          incr trace_depth;
-          k v
-        )
+    Scheduler.queue (fun () ->
+      if env.flags.trace then
+        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
+      incr trace_depth;
+      k v)
     )
 
 
@@ -262,10 +258,6 @@ let interpret_lit env lit : V.value =
   | Int16Lit i -> V.Int16 i
   | Int32Lit i -> V.Int32 i
   | Int64Lit i -> V.Int64 i
-  | Word8Lit w -> V.Word8 w
-  | Word16Lit w -> V.Word16 w
-  | Word32Lit w -> V.Word32 w
-  | Word64Lit w -> V.Word64 w
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
@@ -360,7 +352,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | Const -> vs
         in k (V.Array (Array.of_list vs'))
       | IdxPrim, [v1; v2] ->
-        k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+        k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
@@ -379,11 +371,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | CPSAsync _, [v1] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         let (_, f) = V.as_func v1 in
-        let typ = exp.note.Note.typ in
+        let typ = (List.hd es).note.Note.typ in
         begin match typ with
-        | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
-          let call_conv_f = CC.call_conv_of_typ f_dom in
-          let call_conv_r = CC.call_conv_of_typ r_dom in
+        | T.Func(_, _, _, [f_typ; r_typ], _) ->
+          let call_conv_f = CC.call_conv_of_typ f_typ in
+          let call_conv_r = CC.call_conv_of_typ r_typ in
           async env exp.at
             (fun k' r ->
               let vk' = Value.Func (call_conv_f, fun c v _ -> k' v) in
@@ -394,7 +386,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             k
         | _ -> assert false
         end
-      | CPSAwait, [v1; v2] ->
+      | CPSAwait _, [v1; v2] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         begin match V.as_tup v2 with
          | [vf; vr] ->
@@ -412,6 +404,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k v1
       | ActorOfIdBlob t, [v1] ->
         k v1
+      | DecodeUtf8, [v1] ->
+        let s = V.as_blob v1 in
+        begin match Wasm.Utf8.decode s with
+          | _ -> k (V.Opt (V.Text s))
+          | exception Wasm.Utf8.Utf8 -> k V.Null
+        end
+      | EncodeUtf8, [v1] ->
+        k (V.Blob (V.as_text v1))
       | BlobOfIcUrl, [v1] ->
         begin match Ic.Url.decode_principal (V.as_text v1) with
           | Ok bytes -> k (V.Blob bytes)
@@ -419,9 +419,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         end
       | IcUrlOfBlob, [v1] ->
         k (V.Text (Ic.Url.encode_principal (V.as_blob v1)))
-      | NumConvPrim (t1, t2), vs ->
+      | NumConvTrapPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        k (try Prim.num_conv_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
+        k (try Prim.num_conv_trap_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
+      | NumConvWrapPrim (t1, t2), vs ->
+        let arg = match vs with [v] -> v | _ -> V.Tup vs in
+        k (try Prim.num_conv_wrap_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
       | ICReplyPrim ts, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reply = Option.get env.replies in
@@ -452,7 +455,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | SelfRef _, [] ->
         k (V.Text env.self)
       | SystemTimePrim, [] ->
-        k (V.Nat64 (Value.Nat64.of_int 42))
+        k (V.Nat64 (Numerics.Nat64.of_int 42))
+      | SystemCyclesRefundedPrim, [] -> (* faking it *)
+        k (V.Nat64 (Numerics.Nat64.of_int 0))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -489,7 +494,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     async env
       exp.at
       (fun k' r ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
+        let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
         in interpret_exp env' exp1 k')
       k
   | DeclareE (id, typ, exp1) ->
@@ -569,7 +574,7 @@ and interpret_lexp env lexp (k : (V.value ref) V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         k (V.as_mut
-          (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+          (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap lexp.at "%s" s))
       )
     )
@@ -686,20 +691,16 @@ and match_lit lit v : bool =
   match lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Int n' -> V.Int.eq n n'
-  | Nat8Lit n, V.Nat8 n' -> V.Nat8.eq n n'
-  | Nat16Lit n, V.Nat16 n' -> V.Nat16.eq n n'
-  | Nat32Lit n, V.Nat32 n' -> V.Nat32.eq n n'
-  | Nat64Lit n, V.Nat64 n' -> V.Nat64.eq n n'
-  | IntLit i, V.Int i' -> V.Int.eq i i'
-  | Int8Lit i, V.Int8 i' -> V.Int_8.eq i i'
-  | Int16Lit i, V.Int16 i' -> V.Int_16.eq i i'
-  | Int32Lit i, V.Int32 i' -> V.Int_32.eq i i'
-  | Int64Lit i, V.Int64 i' -> V.Int_64.eq i i'
-  | Word8Lit w, V.Word8 w' -> w = w'
-  | Word16Lit w, V.Word16 w' -> w = w'
-  | Word32Lit w, V.Word32 w' -> w = w'
-  | Word64Lit w, V.Word64 w' -> w = w'
+  | NatLit n, V.Int n' -> Numerics.Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> Numerics.Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> Numerics.Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> Numerics.Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> Numerics.Nat64.eq n n'
+  | IntLit i, V.Int i' -> Numerics.Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> Numerics.Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
@@ -816,7 +817,6 @@ and interpret_func env at sort x args f c v (k : V.value V.cont) =
       vals = V.Env.adjoin env.vals ve;
       labs = V.Env.empty;
       rets = Some k';
-      async = false;
       caller = caller;
     }
   in f env' k'
@@ -844,7 +844,6 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
       replies = Some (fun v -> reply (context env) v V.as_unit);
       rejects = Some (fun v -> reject (context env) v V.as_unit);
       caller = v_caller;
-      async = false
     }
   in f env' k'
 
@@ -876,7 +875,10 @@ and interpret_comp_unit env cu k = match cu with
 let interpret_prog flags (cu, flavor) =
   let state = initial_state () in
   let scope = empty_scope in
-  let env = env_of_scope flags flavor state scope in
+  let env =
+    { (env_of_scope flags flavor state scope) with
+      throws = Some (fun v -> trap !last_region "uncaught throw") }
+  in
   trace_depth := 0;
   try
     Scheduler.queue (fun () ->

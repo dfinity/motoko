@@ -1,9 +1,9 @@
 Error: failed to run main module `_out/divInt32.wasm`
 
 Caused by:
-    0: failed to invoke `_start`
-    1: wasm trap: integer overflow, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: integer overflow
        wasm backtrace:
-         0: <unknown>!init
-         1: <unknown>!_start
+         0: init
+         1: _start
        

@@ -1,6 +1,6 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
-→ query numify(variant {5095893 = variant {3915647964 = (32 : nat32)}})
-← completed: (variant {5095893 = variant {1202718727 = (32 : nat32)}})
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query numify(variant {fix = variant {right = (32 : nat32)}})
+← replied: (variant {fix = variant {left = (32 : nat32)}})

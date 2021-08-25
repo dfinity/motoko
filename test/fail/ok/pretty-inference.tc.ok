@@ -1,0 +1,251 @@
+pretty-inference.mo:13.1-13.5: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>(T) -> ()
+to argument of type
+  Nat
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  Nat  <:  T  <:  ()
+where
+  Nat  </:  ()
+so that no valid instantiation exists
+pretty-inference.mo:15.1-15.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>(T) -> ()
+to argument of type
+  (Nat, Bool)
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  (Nat, Bool)  <:  T  <:  ()
+where
+  (Nat, Bool)  </:  ()
+so that no valid instantiation exists
+pretty-inference.mo:17.1-17.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>(T) -> ()
+to argument of type
+  ((Nat, Bool), (Nat, Bool))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  ((Nat, Bool), (Nat, Bool))  <:  T  <:  ()
+where
+  ((Nat, Bool), (Nat, Bool))  </:  ()
+so that no valid instantiation exists
+pretty-inference.mo:19.1-19.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>(T) -> ()
+to argument of type
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <:  T  <:  ()
+where
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  </:  ()
+so that no valid instantiation exists
+pretty-inference.mo:21.1-21.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>(T) -> ()
+to argument of type
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
+    T  <:  ()
+where
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  </: 
+    ()
+so that no valid instantiation exists
+pretty-inference.mo:23.1-23.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>(T) -> ()
+to argument of type
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
+    T  <:  ()
+where
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  </: 
+    ()
+so that no valid instantiation exists
+pretty-inference.mo:28.1-28.5: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+to argument of type
+  Nat
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  Nat  <:  T  <:  C<C<C<C<Nat>>>>
+where
+  Nat  </:  C<C<C<C<Nat>>>>
+so that no valid instantiation exists
+pretty-inference.mo:30.1-30.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+to argument of type
+  (Nat, Bool)
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  (Nat, Bool)  <:  T  <:  C<C<C<C<Nat>>>>
+where
+  (Nat, Bool)  </:  C<C<C<C<Nat>>>>
+so that no valid instantiation exists
+pretty-inference.mo:32.1-32.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+to argument of type
+  ((Nat, Bool), (Nat, Bool))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  ((Nat, Bool), (Nat, Bool))  <:  T  <:  C<C<C<C<Nat>>>>
+where
+  ((Nat, Bool), (Nat, Bool))  </:  C<C<C<C<Nat>>>>
+so that no valid instantiation exists
+pretty-inference.mo:34.1-34.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+to argument of type
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <: 
+    T  <:  C<C<C<C<Nat>>>>
+where
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  </: 
+    C<C<C<C<Nat>>>>
+so that no valid instantiation exists
+pretty-inference.mo:36.1-36.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+to argument of type
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
+    T  <:  C<C<C<C<Nat>>>>
+where
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  </: 
+    C<C<C<C<Nat>>>>
+so that no valid instantiation exists
+pretty-inference.mo:38.1-38.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+to argument of type
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))
+to produce result of type
+  ()
+because implicit instantiation of type parameter T is over-constrained with
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
+    T  <:  C<C<C<C<Nat>>>>
+where
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  </: 
+    C<C<C<C<Nat>>>>
+so that no valid instantiation exists
+pretty-inference.mo:42.1-42.7: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
+to argument of type
+  (Nat, Nat)
+to produce result of type
+  ()
+because no instantiation of T/40, U/12 makes
+  (Nat, Nat)  <:  (T/40, U/12)
+and
+  Nat  <:  ()
+pretty-inference.mo:44.1-44.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
+to argument of type
+  ((Nat, Bool), (Nat, Bool))
+to produce result of type
+  ()
+because no instantiation of T/41, U/13 makes
+  ((Nat, Bool), (Nat, Bool))  <:  (T/41, U/13)
+and
+  Nat  <:  ()
+pretty-inference.mo:46.1-46.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
+to argument of type
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
+to produce result of type
+  ()
+because no instantiation of T/42, U/14 makes
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <:  (T/42, U/14)
+and
+  Nat  <:  ()
+pretty-inference.mo:48.1-48.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
+to argument of type
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
+to produce result of type
+  ()
+because no instantiation of T/43, U/15 makes
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
+    (T/43, U/15)
+and
+  Nat  <:  ()
+pretty-inference.mo:50.1-50.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
+to argument of type
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))
+to produce result of type
+  ()
+because no instantiation of T/44, U/16 makes
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
+    (T/44, U/16)
+and
+  Nat  <:  ()
+pretty-inference.mo:52.1-52.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
+to argument of type
+  ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))),
+   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))
+to produce result of type
+  ()
+because no instantiation of T/45, U/17 makes
+  ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))),
+   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))  <: 
+    (T/45, U/17)
+and
+  Nat  <:  ()

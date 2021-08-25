@@ -14,7 +14,6 @@ type field = shared {_1291438163_ : Nat8; test : tree} -> async {};
 */
 
 type expected = actor {
-  _2669435454_ : shared () -> async ();
   field : shared {_1291438163_ : Nat8; test : Nat16} -> async {};
   fieldnat : shared {_2_ : Int; _50_ : Nat} -> async {_0_ : Int};
   //o : shared o -> async o;

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 moc -v -i <<__END__
 import "lib/b";
 import "lib/a";

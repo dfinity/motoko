@@ -1,29 +1,6 @@
 module ST = Source_token
+open Mo_def.Trivia
 include Lexer_lib
-
-type pos = { line : int; column : int }
-
-let pos_of_lexpos : Lexing.position -> pos =
- fun lexpos ->
-  Lexing.{ line = lexpos.pos_lnum; column = lexpos.pos_cnum - lexpos.pos_bol }
-
-type trivia_info = {
-  leading_trivia : ST.line_feed ST.trivia list;
-  trailing_trivia : ST.void ST.trivia list;
-}
-
-module PosHash = struct
-  type t = pos
-
-  let equal i j = i = j
-
-  let hash { line; column } = column lor 20 land line
-end
-
-module PosHashtbl = Hashtbl.Make (PosHash)
-
-(* type triv_table = trivia_info IntHashtbl.t *)
-type triv_table = trivia_info PosHashtbl.t
 
 type source_token = ST.token * Lexing.position * Lexing.position
 
@@ -31,16 +8,16 @@ type parser_token = Parser.token * Lexing.position * Lexing.position
 
 let first (t, _, _) = t
 
-let opt_is_whitespace : 'a ST.trivia option -> bool =
+let opt_is_whitespace : 'a trivia option -> bool =
  fun x -> Option.fold ~none:false ~some:ST.is_whitespace x
 
 let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
-    (unit -> parser_token) * (unit -> triv_table) =
+    (unit -> parser_token) * triv_table =
   let trivia_table : triv_table = PosHashtbl.create 1013 in
   let lookahead : source_token option ref = ref None in
   (* We keep the trailing whitespace of the previous token
      around so we can disambiguate operators *)
-  let last_trailing : ST.line_feed ST.trivia list ref = ref [] in
+  let last_trailing : line_feed trivia list ref = ref [] in
   let next () : source_token =
     match !lookahead with
     | Some t ->
@@ -73,7 +50,7 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
         when opt_is_whitespace (Lib.List.hd_opt (acc @ List.rev !last_trailing))
              && first (peek ()) = ST.GT ->
           let _, _, end_ = next () in
-          (acc, (Parser.USHROP, start, end_))
+          (acc, (Parser.SHROP, start, end_))
       | Ok t -> (List.rev acc, (t, start, end_))
       | Error t -> eat_leading (t :: acc)
     in
@@ -100,10 +77,9 @@ let tokenizer (mode : Lexer_lib.mode) (lexbuf : Lexing.lexbuf) :
       | Parser.LT when leading_ws () && trailing_ws () -> Parser.LTOP
       | _ -> token
     in
-    last_trailing := List.map (ST.map_trivia ST.absurd) trailing_trivia;
-    if mode.with_trivia then
-      PosHashtbl.add trivia_table (pos_of_lexpos start)
-        { leading_trivia; trailing_trivia };
+    last_trailing := List.map (map_trivia absurd) trailing_trivia;
+    PosHashtbl.add trivia_table (pos_of_lexpos start)
+      { leading_trivia; trailing_trivia };
     (token, start, end_)
   in
-  (next_parser_token, fun () -> trivia_table)
+  (next_parser_token, trivia_table)

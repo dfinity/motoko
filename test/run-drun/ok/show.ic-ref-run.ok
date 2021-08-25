@@ -1,6 +1,6 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: true
 debug.print: false
 debug.print: -42_000_000_000_000
@@ -32,8 +32,7 @@ debug.print: #bar([])
 debug.print: #bar(42)
 debug.print: #bar(-42)
 debug.print: #foo(+42)
-debug.print: 0x2A
 debug.print: 42
 debug.print: +42
 debug.print: -42
-← completed: ()
+← replied: ()

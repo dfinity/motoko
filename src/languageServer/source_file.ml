@@ -34,9 +34,9 @@ let cursor_target_at_pos (position : Lsp.position) (file_contents : string) :
                 else loop next_token
             | (_, start, _) as next_token ->
                 if pos_past_cursor start then Some (CIdent ident)
-                else loop next_token )
+                else loop next_token)
         | _, start, _ when pos_past_cursor start -> Some (CIdent ident)
-        | tkn -> loop tkn )
+        | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ())
   in
@@ -60,7 +60,7 @@ let uri_for_package (path : string) =
       | Some pkg_path ->
           (* Resolved package paths are always absolute *)
           (* TBR: But Flags.package_urls does not contain the resolved paths! *)
-          Some ("file://" ^ Filename.concat pkg_path path) )
+          Some ("file://" ^ Filename.concat pkg_path path))
   | _ -> None
 
 let import_relative_to_project_root root module_path dependency =
@@ -96,12 +96,12 @@ let parse_module_header project_root current_file_path file =
                   import_relative_to_project_root project_root current_file_path
                     path
                 in
-                ( match path with
+                (match path with
                 | Some path -> res := (alias, path) :: !res
-                | None -> () );
+                | None -> ());
                 loop (next ())
-            | tkn -> loop tkn )
-        | tkn -> loop tkn )
+            | tkn -> loop tkn)
+        | tkn -> loop tkn)
     | Parser.EOF -> List.rev !res
     | tkn -> loop (next ())
   in
@@ -124,8 +124,8 @@ let identifier_at_pos project_root file_path file_contents position =
        | CIdent s -> (
            match List.find_opt (fun (alias, _) -> alias = s) imported with
            | None -> Ident s
-           | Some (alias, path) -> Alias (alias, path) )
+           | Some (alias, path) -> Alias (alias, path))
        | CQualified (qual, ident) -> (
            match List.find_opt (fun (alias, _) -> alias = qual) imported with
            | None -> Unresolved { qualifier = qual; ident }
-           | Some (alias, path) -> Resolved { qualifier = qual; ident; path } ))
+           | Some (alias, path) -> Resolved { qualifier = qual; ident; path }))

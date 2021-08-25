@@ -4,7 +4,7 @@
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 
-{proglang} is a modern programming language you can use specifically for link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC} platform] programs or as a general-purpose language for programs running on other platforms.
+{proglang} is a modern programming language you can use specifically for link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} platform] programs or as a general-purpose language for programs running on other platforms.
 
 == Approachability
 
@@ -20,12 +20,12 @@ Specifically, {proglang} programs are _type sound_ since {proglang} includes a p
 The {proglang} type system statically checks that each {proglang} program will execute safely, without internal type errors, on all possible inputs. 
 Consequently, entire classes of common programming pitfalls that are common in other languages are ruled out, including null pointer errors, mis-matched argument and result types and many others.
 
-To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC}].
+To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
 [[pitch-actors]]
 == Each microservice as an _actor_
 
-{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC}].
+{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
 An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
 
@@ -43,6 +43,7 @@ In the case of {proglang}, each communicating component is an actor.
 
 As an example of _using_ actors, perhaps as an actor ourselves, consider this three-line program:
 
+[source.no-repl, motoko]
 ....
 let result1 = service1.computeAnswer(params);
 let result2 = service2.computeAnswer(params);
@@ -80,7 +81,7 @@ However, it requires special compiler and type-system support, as we discuss in 
 
 In an _asynchronous_ computing setting, a program and its running environment are permitted to perform _internal computations_ that occur _concurrently_ with one another.
 
-Specifically, asynchronous programs are ones where the program's requests of its environment do not (necessarily) require the program to wait for the environment. 
+Specifically, asynchronous programs are ones where the program's requests of its environment do not (necessarily) require the program to wait for the environment.
 In the meantime, the program is permitted to make internal progress within this environment while it waits, perhaps _actively_. In the example, above, the program makes the second request while still waiting for the first micro service.
 
 Symmetrically, the environment's requests of the program do not (necessarily) require the environment to wait for the program's answer to make external progress around it while it waits for this answer.
@@ -92,13 +93,14 @@ We do not show an example of this "`notify`" pattern above, since it uses callba
 
 To address the need for clarity and simplicity, {proglang} adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a _structured_ language for describing potentially-complex asynchronous dependency graphs.
 
-The link:language-manual{outfilesuffix}#exp-async[async] syntax introduces the _"`promise`" of asynchronous data in the future_ (not shown in the first example above).  
-You'll learn more about asynchronous promises when we introduce actors in link:actors-async{outfilesuffix}[Actors and async data].
+The link:language-manual{outfilesuffix}#exp-async[async] syntax introduces futures. A future value
+represents a _"`promise`" of a result that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
+You'll learn more about futures when we introduce actors in link:actors-async{outfilesuffix}[Actors and async data].
 
 Here, we merely use the ones that arise from calling `service1.computeAnswer(params)` and
 `service2.computeAnswer(params)`.
 
-The syntax `await` synchronizes on a previously-made promise, and potentially blocks until the future when this promise is fulfilled by its producer.
+The syntax `await` synchronizes on a future, and potentially suspends computation until the future is completed by its producer.
 We show two uses of the `await` form in the example above, which await the results of the two services.
 
 When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program's control- and data-flow that would be tedious to perform by hand.

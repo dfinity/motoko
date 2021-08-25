@@ -2,6 +2,7 @@ open Mo_types
 open Ir_def
 open Source
 open Ir
+open Lbool
 
 (*
   This module identifies subexpressions that can be compiled statically. This
@@ -43,68 +44,16 @@ open Ir
   subexpressions are.
 
   As always, recursion makes things harder. But not too much, thanks to a trick:
-  we pass down a custom type called `lazy_bool`. It denotes a boolean value,
-  just we do not know which one yet.  But we can still do operations like
-  implication and conjunction on these values.
-
-  Internally, these lazy_bool values keep track of their dependencies, and
-  propagate more knowledge automatically. When one of them knows it is going to
-  be surely false, then it updates the corresponding `note.const` field.
-
-  This works even in the presence of recursion, because it is monotonic: We start
-  with true (possibly constant) and only use implications to connect these values, so
-  all propagations of “false” eventually terminate.
+  we pass down a custom type called `Lbool.t`. It denotes a boolean value,
+  just we do not know which one yet.  But we can still register implications on
+  these values. Internally, these lazy_bool values keep track of their
+  dependencies, and propagate additional information automatically. When one of them
+  knows it is going to be surely false, then it updates the corresponding
+  `note.const` field. See lbool.mli for more on that.
 
   This analysis relies on the fact that AST notes are mutable. So sharing AST
   nodes would be bad.  Check_ir checks for the absence of sharing.
 *)
-
-(*
-A type for callbacks, or notification sinks
-These are invoked at most once, hence `unit Lazy.t` (and not `unit -> unit`)
-*)
-
-type callback = unit Lazy.t
-
-let do_nothing : callback = lazy ()
-
-let (>>) cb1 cb2 = lazy Lazy.(force cb1; force cb2)
-
-(* The lazy bool value type *)
-
-type lazy_bool' =
-  | SurelyTrue
-  | SurelyFalse
-  | MaybeFalse of callback (* whom to notify when turning false *)
-type lazy_bool = lazy_bool' ref
-
-let set_false (l : lazy_bool) =
-  match !l with
-  | SurelyTrue -> assert false
-  | SurelyFalse -> ()
-  | MaybeFalse when_false ->
-    l := SurelyFalse; (* do this first, this breaks cycles *)
-    Lazy.force when_false
-
-let when_false (l : lazy_bool) (act : callback) =
-  match !l with
-  | SurelyTrue -> ()
-  | SurelyFalse -> Lazy.force act
-  | MaybeFalse when_false ->
-    l := MaybeFalse (act >> when_false)
-
-let surely_true = ref SurelyTrue (* sharing is ok *)
-let surely_false = ref SurelyFalse (* sharing is ok *)
-let maybe_false () = ref (MaybeFalse do_nothing) (* no sharing, so unit argument *)
-
-let required_for (a : lazy_bool) (b : lazy_bool) =
-  when_false a (lazy (set_false b))
-
-let all (xs : lazy_bool list) : lazy_bool =
-  if xs = [] then surely_true else
-  let b = maybe_false () in
-  List.iter (fun a -> required_for a b) xs;
-  b
 
 (* The environment *)
 
@@ -114,14 +63,14 @@ module M = Env.Make(String)
 
 type info = {
   loc_known : bool;
-  const : lazy_bool;
+  const : Lbool.t;
 }
 type env = info M.t
 
 
 let no_info = { loc_known = false; const = surely_false }
-let arg env a = M.add a.it no_info env
-let args env as_ = List.fold_left arg env as_
+let arg lvl env a = M.add a.it { no_info with loc_known = lvl = TopLvl } env
+let args lvl env as_ = List.fold_left (arg lvl) env as_
 
 let rec pat env p = match p.it with
   | WildP
@@ -148,12 +97,12 @@ let set_lazy_const e lb =
 
 (* Traversals *)
 
-let rec exp lvl (env : env) e : lazy_bool =
+let rec exp lvl (env : env) e : Lbool.t =
   let lb =
     match e.it with
     | VarE v -> (find v env).const
     | FuncE (x, s, c, tp, as_ , ts, body) ->
-      exp_ NotTopLvl (args env as_) body;
+      exp_ NotTopLvl (args NotTopLvl env as_) body;
       begin match s, lvl with
       (* shared functions are not const for now *)
       | Type.Shared _, _ -> surely_false
@@ -239,7 +188,7 @@ and gather_dec lvl scope dec : env =
 and gather_decs lvl ds : env =
   List.fold_left (gather_dec lvl) M.empty ds
 
-and check_dec lvl env dec : lazy_bool = match dec.it with
+and check_dec lvl env dec : Lbool.t = match dec.it with
   | LetD (p, e) when Ir_utils.is_irrefutable p ->
     let vs = snd (Freevars.dec dec) in (* TODO: implement gather_dec more directly *)
     let lb = exp lvl env e in
@@ -249,10 +198,10 @@ and check_dec lvl env dec : lazy_bool = match dec.it with
     exp_ lvl env e;
     surely_false
 
-and check_decs lvl env ds : lazy_bool =
+and check_decs lvl env ds : Lbool.t =
   all (List.map (check_dec lvl env) ds)
 
-and decs lvl env ds : (env * lazy_bool) =
+and decs lvl env ds : (env * Lbool.t) =
   let scope = gather_decs lvl ds in
   let env' = M.adjoin env scope in
   let could_be = check_decs lvl env' ds in
@@ -271,7 +220,7 @@ and comp_unit = function
   | ActorU (as_opt, ds, fs, {pre; post}, typ) ->
     let env = match as_opt with
       | None -> M.empty
-      | Some as_ -> args M.empty as_
+      | Some as_ -> args TopLvl M.empty as_
     in
     let (env', _) = decs TopLvl env ds in
     exp_ TopLvl env' pre;

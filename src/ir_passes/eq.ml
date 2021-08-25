@@ -50,9 +50,11 @@ let eq_var_for t : Construct.var =
    and calls the right eq_var_for otherwise
 *)
 
-let invoke_eq : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t e1 e2 ->
+let eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t e1 e2 ->
+  (* This is used when constructing equality functions, so e1 e2
+     are pure (variables, projections) and can be dropped *)
   if T.singleton t
-  then trueE
+  then blockE [expD (ignoreE e1); expD (ignoreE e2)] (trueE ())
   else if Check_ir.has_prim_eq t
   then primE (RelPrim (t, Operator.EqOp)) [e1; e2]
   else varE (eq_var_for t) -*- (tupE [e1; e2])
@@ -67,7 +69,7 @@ let arg2E t = varE (arg2Var t)
 let define_eq : T.typ -> Ir.exp -> Ir.dec = fun t e ->
   Construct.nary_funcD (eq_var_for t) [arg1Var t; arg2Var t] e
 
-let invoke_equal_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e1 e2 ->
+let array_eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e1 e2 ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [eq_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.bool]) in
   callE (varE (var "@equal_array" fun_typ)) [t] (tupE [f; e1; e2])
@@ -82,7 +84,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   (* These are needed when one of these types appears in an array, as we
      need a function to pass to @equal_array *)
   | t when T.singleton t || Check_ir.has_prim_eq t ->
-    define_eq t (invoke_eq t (arg1E t) (arg2E t)),
+    define_eq t (eq_func_body t (arg1E t) (arg2E t)),
     []
   (* Error cases *)
   | T.Con (c,_) ->
@@ -93,7 +95,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     let ts' = List.map T.normalize ts' in
     define_eq t (
       conjE (List.mapi (fun i t' ->
-        invoke_eq t' (projE (arg1E t) i) (projE (arg2E t) i)
+        eq_func_body t' (projE (arg1E t) i) (projE (arg2E t) i)
       ) ts')
     ),
     ts'
@@ -105,19 +107,19 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
       (* x1 is null *)
       ( switch_optE (arg2E t)
         (* x2 is null *)
-        trueE
+        (trueE ())
         (* x2 is ?_ *)
-        wildP falseE
+        wildP (falseE ())
         (* ret type *)
         T.bool
       ) (* x1 is ?y1 *)
       ( varP y1 )
       ( switch_optE (arg2E t)
         (* x2 is null *)
-        falseE
+        (falseE ())
         (* x2 is ?_ *)
         ( varP y2 )
-        ( invoke_eq t' (varE y1) (varE y2) )
+        ( eq_func_body t' (varE y1) (varE y2) )
         (* ret type *)
         T.bool
       )
@@ -129,14 +131,14 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     begin match T.normalize t' with
     | T.Mut _ -> assert false (* mutable arrays not equatable *)
     | t' ->
-      define_eq t (invoke_equal_array t' (varE (eq_var_for t')) (arg1E t) (arg2E t)),
+      define_eq t (array_eq_func_body t' (varE (eq_var_for t')) (arg1E t) (arg2E t)),
       [t']
     end
   | T.Obj ((T.Object | T.Memory | T.Module), fs) ->
     define_eq t (
       conjE (List.map (fun f ->
         let t' = T.as_immut (T.normalize f.Type.typ) in
-        invoke_eq t' (dotE (arg1E t) f.Type.lab t') (dotE (arg2E t) f.Type.lab t')
+        eq_func_body t' (dotE (arg1E t) f.Type.lab t') (dotE (arg2E t) f.Type.lab t')
       ) fs)
     ),
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
@@ -154,10 +156,10 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
                   [ { it = TagP (f.Type.lab, varP y1); at = no_region; note = t }
                   ; { it = TagP (f.Type.lab, varP y2); at = no_region; note = t }
                   ]; at = no_region; note = T.Tup [t;t] };
-                exp = invoke_eq t' (varE y1) (varE y2);
+                exp = eq_func_body t' (varE y1) (varE y2);
               }; at = no_region; note = ()
             }) fs @
-            [ { it = { pat = wildP; exp = falseE };
+            [ { it = { pat = wildP; exp = falseE () };
                 at = no_region; note = () } ]
         );
       at = no_region;
@@ -166,7 +168,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
-    define_eq t unreachableE,
+    define_eq t (unreachableE ()),
     []
   | t ->
     raise (Invalid_argument ("Ir_passes.Eq.eq_on: Unexpected type " ^ T.string_of_typ t))
@@ -203,7 +205,10 @@ and t_exp' env = function
   | LitE l -> LitE l
   | VarE id -> VarE id
   | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when T.singleton ot ->
-    trueE.it
+    (* Handle singletons here, but beware of side-effects *)
+    let e1 = t_exp env exp1 in
+    let e2 = t_exp env exp2 in
+    (blockE [expD (ignoreE e1); expD (ignoreE e2)] (trueE ())).it
   | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when not (Check_ir.has_prim_eq ot) ->
     let t' = T.normalize ot in
     add_type env t';
@@ -292,4 +297,5 @@ and t_comp_unit = function
 (* Entry point for the program transformation *)
 
 let transform (cu, flavor) =
+  assert (not flavor.has_typ_field); (* required for hash_typ *)
   (t_comp_unit cu, {flavor with has_poly_eq = false})

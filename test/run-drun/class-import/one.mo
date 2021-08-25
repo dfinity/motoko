@@ -1,6 +1,6 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
-shared actor class (a : Text) {
+shared actor class One(a : Text) {
    Prim.debugPrint(a);
 
    public func test() : async () {

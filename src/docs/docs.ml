@@ -2,25 +2,41 @@ open Extract
 
 type output_format = Plain | Adoc | Html
 
+let mkdir_recursive path =
+  let segments = String.split_on_char '/' path in
+  let _ =
+    List.fold_left
+      (fun acc dir ->
+        let next = Filename.concat acc dir in
+        (try Unix.mkdir next 0o777 with _ -> ());
+        next)
+      "." segments
+  in
+  ()
+
 let write_file : string -> string -> unit =
  fun file output ->
   let dirname = Filename.dirname file in
-  (try Unix.mkdir dirname 0o777 with _ -> ());
+  (try mkdir_recursive dirname with _ -> ());
   let oc = open_out file in
   Printf.fprintf oc "%s" output;
   flush oc;
   close_out oc
 
-let extract : string -> string * doc list =
+let extract : string -> extracted option =
  fun in_file ->
-  let parse_result = Pipeline.parse_file_with_trivia Source.no_region in_file in
+  let parse_result = Pipeline.parse_file Source.no_region in_file in
   match parse_result with
   | Error err ->
+      Printf.eprintf "Skipping %s:\n" in_file;
       Diag.print_messages err;
-      exit 1
-  | Ok ((prog, trivia_table), _) ->
-      let module_docs, imports, docs = extract_docs prog trivia_table in
-      (module_docs, docs)
+      None
+  | Ok ((prog, _), _) -> (
+      match extract_docs prog with
+      | Error err ->
+          Printf.eprintf "Skipping %s:\n%s\n" in_file err;
+          None
+      | Ok x -> Some x)
 
 let list_files_recursively : string -> string list =
  fun dir ->
@@ -58,11 +74,20 @@ let make_render_inputs : string -> string -> (string * Common.render_input) list
  fun source output ->
   let all_files = List.sort compare (list_files source output) in
   let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
-  List.map
+  List.filter_map
     (fun (input, output, current_path) ->
-      let module_comment, declarations = extract input in
-      ( output,
-        Common.{ all_modules; current_path; module_comment; declarations } ))
+      Option.map
+        (fun { module_comment; docs; lookup_type } ->
+          ( output,
+            Common.
+              {
+                all_modules;
+                current_path;
+                lookup_type;
+                module_comment;
+                declarations = docs;
+              } ))
+        (extract input))
     all_files
 
 let start : output_format -> string -> string -> unit =

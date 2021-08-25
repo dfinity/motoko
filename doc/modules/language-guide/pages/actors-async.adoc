@@ -2,167 +2,350 @@
 :proglang: Motoko
 :company-id: DFINITY
 
-{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the Internet Computer.
+The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of binary data encoding Candid values.
+A canister processes its messages one-at-a-time, preventing race conditions.
+A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
 
-An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
+{proglang} abstracts the complexity of the {IC} with a well known, higher-level abstraction: the _actor model_.
+Each canister is represented as a typed actor. The type of an actor lists the messages
+it can handle. Each message is abstracted as a typed, asynchronous function.
+A translation from actor types to Candid types imposes structure on the raw binary data of the underlying {IC}.
+An actor is similar to an object, but is different in that its state is completely isolated,
+its interactions with the world are entirely through asynchronous messaging, and its messages are processed one-at-a-time, even when issued in parallel by concurrent actors.
 
-Each {proglang} actor represents a service that one might want to deploy on the Internet Computer.
+In {proglang}, sending a message to an actor is a function call, but instead of
+blocking the caller until the call has returned, the message is enqueued
+on the callee, and a _future_ representing that pending request
+immediately returned to the caller.  The future is a placeholder for the eventual result
+of the request, that the caller can later query. Between issuing the
+request, and deciding to wait for the result, the caller is free to do
+other work, including issuing more requests to the same or other
+actors.
+Once the callee has processed the request, the future is completed and its result made
+available to the caller.
+If the caller is waiting on the future, its execution can resume with the result, otherwise the result is simply stored in the future for later use.
 
-The interface of each actor introduces `async` data whenever it returns information to its caller.
-This programming abstraction serves a key role in {proglang}, as it coordinates with the transformations of the {proglang} compiler pipeline and eventual execution behavior of {proglang} actors on the Internet Computer.
+In {proglang}, actors have dedicated syntax and types; messaging is handled by so called _shared_ functions returning futures (shared because they are available to remote actors);
+a future, `f`, is a value of the special type `async T` for some type `T`; waiting
+on `f` to be completed is expressed using `await f` to obtain a value of type `T`.
+To avoid introducing shared state through messaging, for example, by sending an object or mutable array,
+the data that can be transmitted through shared functions is restricted to immutable, _shared_ types.
 
-This abstraction represents a _promise_ from the system to the caller, on behalf of the callee:
-
- - Either the `async` value, when ``await``ed, will yield a value from the callee of the expected type,
-
- - or, an error --- system-level or callee-level --- will eventually arise.
-
-In general, the caller may not _immediately_ `await` each call.  But even in cases when they do, they use the same `async` and `await` abstractions, for the same reason: To maintain the illusion of call-return, direct-style control flow, as supported by the {proglang} compiler's transformations.
-
-*Technical aside.* In reality, the underlying message-passing of the system forces the program's logic into another form.
-Specifically, control flow around each actor method call involves the program loosing control to a system-level message-processing loop, which forces the program's logic into a so-called
-_"continuation-passing-style"_ (CPS) to expose event-handling
-_"callback functions"_.
-This program structure is complex for humans to read and maintain, and stands in stark contrast to the direct style most prefer for most program logic.
-
-We note that {proglang} programs may avoid callbacks for many cases, but not _all_ cases where they are used in other asynchronous, message-passing settings.
-Notably, callbacks are still needed when they serve as a fundamental aspect of the service's interface, as with a link:sharing{outfilesuffix}[publish-subscribe] service, where users register with the service to get notified some times later, when some predetermined class of events, occur over time.
-
-'''
-
-To start, we consider the simplest stateful service: A counter with
-a single "current count" value.
+To start, we consider the simplest stateful service: a `Counter` actor, the distributed version of our previous, local `counter` object.
 
 == Example: a Counter service
 
-Consider the following actor object (a value form):
-
-....
-actor Counter {
-  var count : Nat = 0;
-
-  public func increment() : async () {
-    count += 1;
-  };
-
-  public query func get_current() : async Nat {
-    count
-  };
-
-  public func set_current(n: Nat) : async () {
-    count := n;
-  };
-}
-....
-
-////
-TODO: discuss counter example
-////
-== Using async to await values
-
-To get the underlying content of an `async` value, such as a return value from `get_current` above, the caller uses `await`:
-
-....
-let a : async Nat = counter.get_current()
-let c : Nat = await(counter.get_current())
-....
-
-The first line gets _a promise of the current value_ (the variable `a`), but does not wait for it, and thus cannot use it as a natural number.
-
-The second line immediately inspects this promise and gets the natural number, or waits until it is ready.
-
-NOTE: For now, the {proglang} compiler gives an error for calls that
-do not follow this second form, which is currently required to ensure
-that certain program resources will always be reclaimed.
-
-== Actor classes generalize an actor's initial state
-
-An actor class defines a constructor function that produces objects of a predetermined type, with a predetermined interface and behavior.
-
-For example, we can generalize `Counter` given above to `CounterInit`
-below, by introducing a constructor parameter, variable `init` of type `Nat`:
-
-....
-actor class CounterInit(init: Nat) {
-  var count : Nat = init;
-
-  public func increment() : async () {
-    count += 1;
-  };
-
-  public query func get_current() : async Nat {
-    count
-  };
-
-  public func set_current(n: Nat) : async () {
-    count := n;
-  };
-}
-....
-
-To use this class, we can create several actors with different initial values:
-
-....
-let c1 = CounterInit(1);
-let c2 = CounterInit(2);
-....
-
-The two lines above _instantiate_ the actor class twice, once per line.
-The first invocation uses the initial value `1`, where the second uses initial value `2`.
-Their interface is common, and in terms of their types, they are compatible and can be used interchangeably.
-
-NOTE: For now, the {proglang} compiler gives an error when compiling
-programs that do not consist of a single actor.
-The interpreter accommodates the examples above.
-
-== Stable and flexible variables
-
-To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
-
-In an actor, you can identify a variable that must be preserved by using the _stable_ modifier as part of the variable's declaration.
-
-More precisely, every `+let+` and `+var+` variable declaration in an actor must specify whether the variable is a `+stable+` variable or a `+flexible+` variable. If you don't include a modifier in the declaration, the variable is treated as a `+flexible+` variable by default.
-
-Concretely, you use the following syntax to declare stable or flexible variables in an actor:
-
-```
-<dec-field> ::=
-  (public|private)? (stable|flexible)? dec
-```
-
-Explicitly declaring whether a variable is `+stable+` or `+flexible+` ensures the appropriate type restrictions apply.
-Note that you should only use the `+stable+` or `+flexible+` modifier on `let` and `var` declarations that are **actor fields**.
-You should not use the `+stable+` or `+flexible+` modifier anywhere else in your program.
-
-The representation for stable variable signatures looks like a {proglang} actor type:
+Consider the following actor declaration:
 
 [source,motoko]
 ----
-actor {
-  stable x : Nat;
-  stable var y : Int;
-  stable z : [var Nat];
-};
+include::../examples/counter-actor.mo[]
 ----
 
-=== Typing
+////
+actor Counter {
 
-Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state: 
+  var count = 0;
 
-* A `+stable+` declaration must have a _stable_ type. 
-* Stable types are a superset of _shared_ types.
-* Stable types allow objects or arrays with mutable components.
+  public shared func inc() : async () { count += 1 };
 
-The key point to note is that stable types extend shared types to include **mutable arrays and fields**. 
-Like shared types, stable types exclude ordinary functions and structures built from functions (such as objects). 
-This exclusion of functions and structures built from functions is required because the meaning of a function value—consisting of both data and code—cannot be preserved across an upgrade, while the meaning of plain data—mutable or not—can be preserved.
+  public shared func read() : async Nat { count };
 
-NOTE: In general, object types are not stable because they can contain local functions. 
-However, records are a special case because a record consists of fields that are stable with data that can be preserved across updates.
-Actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve values for a set of actors or callbacks subscribing to a service.
+  public shared func bump() : async Nat {
+    count += 1;
+    count;
+  };
+};
+////
 
-=== How stable variables are upgraded
+The `Counter` actor declares one field and three public, _shared_ functions:
 
-When you first compile and deploy an actor (canister), all flexible and stable variable are initialized in sequence.
-When deploy an actor (canister) as an upgrade,  all stable variables that existed in the previous version are pre-initialized with their old values.
-After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
+* the field `count` is mutable, initialized to zero and implicitly `private`.
+* function `inc()` asynchronously increments the counter and returns a future of type `async ()` for synchronization.
+* function `read()` asynchronously reads the counter value and returns a future of type `async Nat` containing its value.
+* function `bump()` asynchronously increments and reads the counter.
+
+Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions: their arguments and return value must be _shared_ types - a subset of types that includes immutable data, actor references, and shared function references, but excludes
+references to local functions and mutable data. Because all interaction with actors is asynchronous,
+an actor's functions must return futures, that is, types of the form `async T`, for some type `T`.
+
+The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
+
+A value of type `async T` is a future. The producer of the future
+completes the future when it returns a result, either a value or error.
+
+Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, {proglang} allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
+
+[source#counter,motoko]
+----
+include::../examples/counter-actor-sugar.mo[]
+----
+
+For now, the only place shared functions can be declared is in the
+body of an actor or actor class.  Despite this restriction, shared
+functions are still first-class values in {proglang} and can be passed
+as arguments or results, and stored in data structures.
+
+The type of a shared function is specified using a shared function type. For example, the
+value `inc` has type `shared () -> async Nat` and could be supplied
+as a standalone callback to some other service (see link:sharing{outfilesuffix}[publish-subscribe] for an example).
+
+== Actor types
+
+Just as objects have object types, actors have _actor types_. The
+`Counter` actor has the following type:
+
+[source.no-repl, motoko]
+....
+actor {
+  inc  : shared () -> async ();
+  read : shared () -> async Nat;
+  bump : shared () -> async Nat;
+}
+....
+
+Again, because the `shared` modifier is required on every member of an actor,
+{proglang} both elides them on display, and allows you to omit them
+when authoring an actor type.
+
+Thus the previous type can be expressed more succinctly as:
+
+[source.no-repl, motoko]
+....
+actor {
+  inc  : () -> async ();
+  read : () -> async Nat;
+  bump : () -> async Nat;
+}
+....
+
+Like object types, actor types support subtyping: an actor type is a subtype of a more general one that offers fewer functions with more general types.
+
+== Using `await` to consume async futures
+
+The caller of a shared function typically receives a future, a value of type `async T` for some T.
+
+The only thing the caller, a consumer, can do with this future is
+wait for it to be completed by the producer, throw it away, or store
+it for later use.
+
+To access the result of an `async` value, the receiver of the future use an  `*await*` expression.
+
+For example, to use the result of `Counter.read()` above, we can first bind the
+future to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
+
+[source.include_counter, motoko]
+----
+let a : async Nat = Counter.read();
+let n : Nat = await a;
+----
+
+The first line immediately receives _a future of the counter value_, but does not wait for it, and thus cannot (yet) use it as a natural number.
+
+The second line ``await``s this future and extracts the result, a natural number.
+This line may suspend execution until the future has been completed.
+
+Typically, one rolls the two steps into one and one just awaits an asynchronous call directly:
+
+[source.include_counter, motoko]
+----
+let n : Nat = await Counter.read();
+----
+
+Unlike a local function call, which blocks the caller until the callee has returned a result,
+a shared function call immediately returns a future, `f`, without blocking.
+Instead of blocking, a later call to `await f` suspends the current computation until `f` is complete.
+Once the future is completed (by the producer), execution of `await p` resumes with its result.
+If the result is a value, `await f` returns that value.
+Otherwise the result is some error, and `await f` propagates the error to the
+consumer of `await f`.
+
+Awaiting a future a second time will just produce the same result, including re-throwing any error stored in the future.
+Suspension occurs even if the future is already complete; this ensures state changes and message sends prior to _every_ `await` are committed.
+
+
+WARNING: A function that does not `await` in its body is guaranteed to
+execute atomically - in particular, the environment cannot change the
+state of the actor while the function is executing.  If a function
+performs an `await`, however, atomicity is no longer guaranteed.
+Between suspension and resumption around the `await`, the state of the
+enclosing actor may change due to concurrent processing of other
+incoming actor messages. It is the programmer's responsibility to
+guard against non-synchronized state changes. A programmer may,
+however, rely on any state change prior to the await being committed.
+
+For example, the implementation of `bump()` above is guaranteed to increment and read the
+value of `count`, in one atomic step. The alternative implementation:
+
+[source.no-repl, motoko]
+....
+  public shared func bump() : async Nat {
+    await inc();
+    await read();
+  };
+....
+
+does _not_ have the same semantics and allows another client of the actor to
+interfere with its operation: each `await` suspends execution, allowing an interloper
+to change the state of the actor.
+By design, the explicit ``await``s make the potential points of interference clear to the reader.
+
+== Traps and Commit Points
+
+A trap is a non-recoverable runtime failure caused by, for example, division-by-zero,  out-of-bounds array indexing, numeric overflow, cycle exhaustion or assertion failure.
+
+A shared function call that executes without executing an `await` expression
+never suspends and executes atomically.
+A shared function that contains no `await` expression is syntactically atomic.
+
+An atomic shared function whose execution traps has no
+visible effect on the state of the enclosing actor or its environment
+- any state change is reverted, and any message that it has sent is
+revoked.  In fact, all state changes and message sends are tentative
+during execution: they are committed only after a successful _commit
+point_ is reached.
+
+The points at which tentative state changes and message sends are irrevocably
+committed are:
+
+* implicit exit from a shared function by producing a result,
+* explict exit via `return` or `throw` expressions, and
+* explicit `await` expressions.
+
+A trap will only revoke changes made since the last commit point.  In
+particular, in a non-atomic function that does multiple awaits, a trap
+will only revoke changes attempted since the last await - all preceding effects
+will have been committed and cannot be undone.
+
+For example, consider the following (contrived) stateful `Atomicity` actor:
+
+[source.no-repl, motoko]
+....
+include::../examples/atomicity.mo[]
+....
+
+Calling (shared) function `atomic()` will fail with an error, since the last statement causes a trap.
+However, the trap leaves the mutable variable `s` with value `0`, not `1`, and variable `pinged` with value `false`, not `true`.
+This is because the trap happens _before_ method `atomic` has executed an `await`, or exited with a result.
+Even though `atomic` calls `ping()`, `ping()` is tentative (queued) until the next commit point, so never delivered.
+
+Calling (shared) function `nonAtomic()` will fail with an error, since the last statement causes a trap.
+However, the trap leaves the variable `s` with value `3`, not `0`, and variable `pinged` with value `true`, not `false`.
+This is because each `await` commits its preceding side-effects, including message sends.
+Even though `f` is complete by the second await on `f`, this await also forces a commit of the state, suspends execution and allows for
+interleaved processing of other messages to this actor.
+
+== Query functions
+
+In {IC} terminology, all three `Counter` functions are _update_ messages
+that can alter the state of the canister when called. Effecting a state change requires
+agreement amongst the distributed replicas before the {IC} can
+commit the change and return a result. Reaching consensus is an
+expensive process with relatively high latency.
+
+For the parts of applications that don't require the guarantees of consensus, the {IC} supports more efficient
+_query_ operations. These are able to read the state of a canister from a single replica,
+modify a snapshot during their execution and return a result, but
+cannot permanently alter the state or send further {IC} messages.
+
+{proglang} supports the implementation of {IC} queries using `query` functions. The `query` keyword
+modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster,
+{IC} query semantics.
+
+For example, we can extend the `Counter` actor with a fast-and-loose variant of the trustworthy `read` function, called `peek`:
+
+[source,motoko]
+----
+include::../examples/CounterWithQuery.mo[]
+----
+
+The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy,
+display of the current counter value.
+
+It is a compile-time error for a query method to call an actor function since this would violate dynamic restrictions imposed by the {IC}. Calls to ordinary functions are permitted.
+
+Query functions can be called from non-query functions. Because those nested calls require consensus,
+the efficiency gains of nested query calls will be modest at best.
+
+The `query` modifier is reflected in the type of a query function:
+
+[source.no-repl, motoko]
+....
+  peek : shared query () -> async Nat
+....
+
+As before, in `query` declarations and actor types the `shared` keyword can be omitted.
+
+== Messaging Restrictions
+
+The {IC} places restrictions on when and how canisters are allowed to communicate. These restrictions are enforced dynamically on the {IC} but prevented statically in {proglang}, ruling out a class
+of dynamic execution errors. Two examples are:
+
+*  canister installation can execute code, but not send messages.
+*  a canister query method cannot send messages.
+
+These restrictions are surfaced in {proglang} as restrictions on the context in which certain
+expressions can be used.
+
+In {proglang}, an expression occurs in an _asynchronous context_ if
+it appears in the body of an `async` expression, which may be the body of a (shared or local) function or a stand-alone expression.
+The only exception are `query` functions, whose body is not considered to open an asynchronous context.
+
+In {proglang} calling a shared function is an error unless the function is called in an asynchronouus context. In addition, calling a shared function from an actor class constructor is also an error.
+
+The `await` construct is only allowed in an asynchronous context.
+
+The `async` construct is only allowed in an asynchronous context.
+
+It is only possible to `throw` or `try/catch` errors in an asynchronous context.
+This is because structured error handling is supported for messaging errors only and,
+like messaging itself, confined to asynchronous contexts.
+
+These rules also mean that local functions cannot, in general, directly call shared functions or `await` futures. This limitation can sometimes be awkward:  we hope to extend the type system to be more permissive in future.
+
+////
+TODO: scoped awaits (if at all)
+////
+
+
+[#actor_classes]
+== Actor classes generalize actors
+
+An actor _class_ generalizes a single actor declaration to the declaration of family of actors satisfying the same interface.
+An actor class declares a type, naming the interface of its actors, and a function that
+constructs a fresh actor of that type each time it is supplied with an argument.
+An actor class thus serves as a factory for manufacturing actors.
+Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a future.
+
+For example, we can generalize `Counter` given above to `Counter(init)`
+below, by introducing a constructor parameter, variable `init` of type `Nat`:
+
+.Counters.mo
+[source#Counters, motoko]
+----
+include::../examples/Counters.mo[]
+----
+
+If this class is stored in file `+Counters.mo+`, then
+we can import the file as a module and use it to
+create several actors with different initial values:
+
+[source.include_Counters, motoko]
+----
+import Counters "Counters";
+
+let C1 = await Counters.Counter(1);
+let C2 = await Counters.Counter(2);
+(await C1.read(), await C2.read())
+----
+
+The last two lines above _instantiate_ the actor class twice.
+The first invocation uses the initial value `1`, where the second uses initial value `2`.
+Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a future that can be ``await``ed for the resulting actor value.
+Both `C1` and `C2` have the same type, `Counters.Counter` and can be used interchangeably.
+
+
+NOTE: For now, the {proglang} compiler gives an error when compiling
+programs that do not consist of a single actor or actor class.
+Compiled programs may still, however, reference imported actor classes.
+For more information, see link:modules-and-imports{outfilesuffix}#importing_actor_classes[Importing actor classes] and link:actor-classes{outfilesuffix}#actor_classes[Actor classes].

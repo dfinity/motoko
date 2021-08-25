@@ -19,9 +19,8 @@ let arg_bind rho a =
   let i' = fresh_id a.it in
   ({a with it = i'}, Renaming.add a.it i' rho)
 
-let rec prim rho = function
-  | BreakPrim i -> BreakPrim (id rho i)
-  | p -> p
+let rec prim rho p =
+  Ir.map_prim (fun t -> t) (id rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho e  = match e with
@@ -109,7 +108,7 @@ and pats rho ps  =
      (p'::ps', rho'')
 
 and case rho (c : case) =
-    {c with it = case' rho c.it}
+  {c with it = case' rho c.it}
 and case' rho { pat = p; exp = e} =
   let (p', rho') = pat rho p in
   let e' = exp rho' e in

@@ -1,4 +1,4 @@
-shared {caller = c} actor class C () {
+shared(c) actor class C () {
   let c = 1;
 
   public shared ctxt func c1 () : async Nat {
@@ -8,7 +8,7 @@ shared {caller = c} actor class C () {
 
 };
 
-ignore C().c1(); //OR-CALL ingress c1 0x4449444C0000
+ignore (await C()).c1(); //OR-CALL ingress c1 0x4449444C0000
 
 
 

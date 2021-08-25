@@ -23,12 +23,12 @@ let usage_err s =
   eprintf "%s\n" usage;
   exit 1
 
-let argspec = Arg.align
+let argspec =
 [
-  "-b", Arg.Set_string base_file, " base file (e.g. output of moc --no-link)";
-  "-l", Arg.Set_string lib_file, " library file";
-  "-o", Arg.Set_string out_file, " output file";
-  "-n", Arg.Set_string lib_name, " library name (defaults to \"rts\")";
+  "-b", Arg.Set_string base_file, "<file> base file (e.g. output of moc --no-link)";
+  "-l", Arg.Set_string lib_file, "<file> library file";
+  "-o", Arg.Set_string out_file, "<file> output file";
+  "-n", Arg.Set_string lib_name, "<name> library name (defaults to \"rts\")";
   "--version", Arg.Unit print_banner, " show version";
 ]
 
@@ -59,6 +59,7 @@ let () =
   if !lib_file = "" then usage_err "no library file specified";
   if !out_file = "" then usage_err "no output file specified";
 
+  Mo_config.Flags.debug_info := true; (* linking mode: preserve debug info *)
 
   let base = decode_file !base_file in
   let lib = decode_file !lib_file in

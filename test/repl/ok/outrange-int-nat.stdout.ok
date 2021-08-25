@@ -1,30 +1,18 @@
-Motoko compiler (revision XXX)
+Motoko compiler (source XXX)
 > let Prim : module {...}
 > +127 : Int8
-> prim:___: execution error, numeric overflow
-> -128 : Int8
-> prim:___: execution error, numeric overflow
->   +32_767 : Int16
-> prim:___: execution error, numeric overflow
-> -32_768 : Int16
-> prim:___: execution error, numeric overflow
->   +2_147_483_647 : Int32
-> prim:___: execution error, numeric overflow
-> -2_147_483_648 : Int32
-> prim:___: execution error, numeric overflow
->   +9_223_372_036_854_775_807 : Int64
-> prim:___: execution error, numeric overflow
-> -9_223_372_036_854_775_808 : Int64
-> prim:___: execution error, numeric overflow
->     255 : Nat8
-> prim:___: execution error, numeric overflow
->   65_535 : Nat16
-> prim:___: execution error, numeric overflow
->   4_294_967_295 : Nat32
-> prim:___: execution error, numeric overflow
->   18_446_744_073_709_551_615 : Nat64
-> prim:___: execution error, numeric overflow
->     -127 : Int8
+> > -128 : Int8
+> >   +32_767 : Int16
+> > -32_768 : Int16
+> >   +2_147_483_647 : Int32
+> > -2_147_483_648 : Int32
+> >   +9_223_372_036_854_775_807 : Int64
+> > -9_223_372_036_854_775_808 : Int64
+> >     255 : Nat8
+> >   65_535 : Nat16
+> >   4_294_967_295 : Nat32
+> >   18_446_744_073_709_551_615 : Nat64
+> >     -127 : Int8
 > -127 : Int8
 > -32_767 : Int16
 > -32_767 : Int16

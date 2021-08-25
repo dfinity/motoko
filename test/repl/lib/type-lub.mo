@@ -25,10 +25,6 @@ let poly_funcs3 = [ func<A, B> (as : [A], b : B) : A = as[0]
                   , func<B, A> (bs : [B], a : A) : B = bs[0]
                   ];
 
-let poly_funcs4 = [ func<A <: Int, B <: Nat> (as : [A], b : B) : A = as[0]
-                  , func<B <: Nat, A <: Int> (bs : [B], a : A) : B = bs[0]
-                  ];
-
 let funcs = [ func (a : [Int]) : Nat = a.size()
             , func (a : [Nat]) : Int = -42
             ];
@@ -60,14 +56,14 @@ let c1s = [async ?4, async ?-42];
 
 // recursive objects
 
-// { need global types due to https://dfinity.atlassian.net/browse/AST-34
+// do {
 type A = {x : A};
 type B = {x : B};
 
 func f(v : {x : {x : B}; b : B}, x : A, y : B, z : {x : B; a : A}) : [A] { ignore([v, x, y, z]); [v, x, y, z] };
 // };
 
-// {
+// do {
 type A1 = {x : B1};
 type B1 = {x : A1};
 
@@ -83,7 +79,7 @@ type S = ?Q;
 
 func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] };
 
-// example from https://dfinity.atlassian.net/browse/AST-83
+
 
 type Foo<A> = ?(Foo<A>);
 ignore (if true (null : Foo<Int>) else (null : Foo<Bool>));

@@ -1,1 +1,1 @@
-objpat-mutable.mo:10.12-10.13: type error, cannot pattern match mutable field x
+objpat-mutable.mo:10.12-10.13: type error [M0120], cannot pattern match mutable field x

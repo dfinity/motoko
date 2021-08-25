@@ -1,24 +1,27 @@
-word-range.mo:31.17-31.20: type error, literal out of range for type Word8
-word-range.mo:32.17-32.22: type error, literal out of range for type Word8
-word-range.mo:33.17-33.21: type error, literal out of range for type Word8
-word-range.mo:34.17-34.23: type error, literal out of range for type Word8
-word-range.mo:35.17-35.21: type error, literal out of range for type Word8
-word-range.mo:36.17-36.22: type error, literal out of range for type Word8
-word-range.mo:37.18-37.23: type error, literal out of range for type Word16
-word-range.mo:38.18-38.25: type error, literal out of range for type Word16
-word-range.mo:39.18-39.24: type error, literal out of range for type Word16
-word-range.mo:40.18-40.26: type error, literal out of range for type Word16
-word-range.mo:41.18-41.24: type error, literal out of range for type Word16
-word-range.mo:42.18-42.25: type error, literal out of range for type Word16
-word-range.mo:43.18-43.28: type error, literal out of range for type Word32
-word-range.mo:44.18-44.29: type error, literal out of range for type Word32
-word-range.mo:45.18-45.29: type error, literal out of range for type Word32
-word-range.mo:46.18-46.30: type error, literal out of range for type Word32
-word-range.mo:47.18-47.29: type error, literal out of range for type Word32
-word-range.mo:48.18-48.29: type error, literal out of range for type Word32
-word-range.mo:49.18-49.44: type error, literal out of range for type Word64
-word-range.mo:50.18-50.37: type error, literal out of range for type Word64
-word-range.mo:51.18-51.45: type error, literal out of range for type Word64
-word-range.mo:52.18-52.38: type error, literal out of range for type Word64
-word-range.mo:53.18-53.44: type error, literal out of range for type Word64
-word-range.mo:54.18-54.37: type error, literal out of range for type Word64
+word-range.mo:46.16-46.19: type error [M0048], literal out of range for type Nat8
+word-range.mo:47.16-47.21: type error [M0048], literal out of range for type Nat8
+word-range.mo:48.16-48.19: type error [M0048], literal out of range for type Int8
+word-range.mo:49.16-49.20: type error [M0048], literal out of range for type Int8
+word-range.mo:50.16-50.20: type error [M0048], literal out of range for type Int8
+word-range.mo:51.16-51.21: type error [M0048], literal out of range for type Int8
+word-range.mo:52.16-52.20: type error [M0048], literal out of range for type Int8
+word-range.mo:55.17-55.22: type error [M0048], literal out of range for type Nat16
+word-range.mo:56.17-56.24: type error [M0048], literal out of range for type Nat16
+word-range.mo:57.17-57.22: type error [M0048], literal out of range for type Int16
+word-range.mo:58.17-58.23: type error [M0048], literal out of range for type Int16
+word-range.mo:59.17-59.23: type error [M0048], literal out of range for type Int16
+word-range.mo:60.17-60.24: type error [M0048], literal out of range for type Int16
+word-range.mo:61.17-61.23: type error [M0048], literal out of range for type Int16
+word-range.mo:64.17-64.27: type error [M0048], literal out of range for type Nat32
+word-range.mo:65.17-65.28: type error [M0048], literal out of range for type Nat32
+word-range.mo:66.17-66.27: type error [M0048], literal out of range for type Int32
+word-range.mo:67.17-67.27: type error [M0048], literal out of range for type Int32
+word-range.mo:68.17-68.28: type error [M0048], literal out of range for type Int32
+word-range.mo:69.17-69.28: type error [M0048], literal out of range for type Int32
+word-range.mo:70.17-70.28: type error [M0048], literal out of range for type Int32
+word-range.mo:73.17-73.43: type error [M0048], literal out of range for type Nat64
+word-range.mo:75.17-75.42: type error [M0048], literal out of range for type Int64
+word-range.mo:76.17-76.35: type error [M0048], literal out of range for type Int64
+word-range.mo:77.17-77.43: type error [M0048], literal out of range for type Int64
+word-range.mo:78.17-78.36: type error [M0048], literal out of range for type Int64
+word-range.mo:79.17-79.43: type error [M0048], literal out of range for type Int64

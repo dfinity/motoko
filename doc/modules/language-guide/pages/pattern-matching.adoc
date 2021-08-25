@@ -6,35 +6,42 @@ Pattern matching is a language feature that makes it easy to both test and decom
 Syntactically, the patterns resemble the construction of structured data, but generally appear in input-direction positions, such as in function argument positions, after the `case` keyword in `switch` expressions, and after `let` or `var` declarations.
 
 Consider the following function call:
-```
+
+[source.include_fullname, motoko]
+....
 let name : Text = fullName({ first = "Jane"; mid = "M"; last = "Doe" });
-```
-We see that an object with three fields is being built, then passed to the function `fullName`, and the returned result is being captured and brought into scope by binding it to the `name` identifier. The latter step is referred to as pattern matching, and `name : Text` is a pattern. When we consider the callee, we'll encounter something like the following:
+....
 
-```
+This code constructs a record with three fields and passes it to the function `fullName`. The result of the call is named and brought into scope by binding it to the identifier `name`. The last, binding step is called pattern matching, and `name : Text` is one of the simplest forms of pattern. For instance, in the following implementation of the callee:
+
+[source#fullname, motoko]
+....
 func fullName({ first : Text; mid : Text; last : Text }) : Text {
-  ...
+  first # " " # mid # " " # last
 };
-```
+....
 
-The input is an (anonymous) object, which is deconstructed into its three `Text` fields, whose values are bound to the identifiers `first`, `mid` and `last`. They can be freely used in the block that forms the body of the function. Above we have resorted to _name punning_ for object field patterns, their general form allows the binding identifier to be distinct from the field name, as in `mid = middle_name : Text`.
 
-You can also use pattern matching to search for _literal patterns_, which look just like literal constants. Literal patterns are especially useful in `switch` expressions because they can cause the current pattern match to _fail_, and thus start to match the next pattern. For example:
+The input is an (anonymous) object, which is destructured into its three `Text` fields, whose values are bound to the identifiers `first`, `mid` and `last`. They can be freely used in the block that forms the body of the function. Above we have resorted to _name punning_ (a form of aliasing) for object field patterns, using the name of a field to also name its contents. A more general form of field pattern allows the content to be named separately from the field, as in `...; mid = m : Text; ...`. Here `mid` determines which field to match, and `m` names the content of that field within the scope of the pattern.
 
-```
+You can also use pattern matching to declare _literal patterns_, which look just like literal constants. Literal patterns are especially useful in `switch` expressions because they can cause the current pattern match to _fail_, and thus start to match the next pattern. For example:
+
+[source, motoko]
+....
 switch ("Adrienne", #female) {
-  case (name, #female) { "It's a girl! " # name };
-  case (name, _) { name # ", a boy!" };
+  case (name, #female) { name # " is a girl!" };
+  case (name, #male) { name # " is a boy!" };
+  case (name, _) { name # ", is a human!" };
 }
-```
+....
 
-will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"It's a girl! Adrienne"`. The second clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
+... will match the first `case` clause (because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal), and evaluate to `"Adrienne is a girl!"`. The last clause showcases the _wildcard_ pattern `_`. It cannot fail, but won't bind any identifier.
 
-The last kind of pattern is the `or`-pattern. As their name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or`-pattern fails when its rightmost sub-pattern fails.
+The last kind of pattern is the `or` pattern. As its name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or` pattern fails when its rightmost sub-pattern fails.
 
 .The following table summarises the different ways of pattern matching.
 |===
-|pattern kind |examples |appears in |can fail |remarks
+|pattern kind|example(s) |context |can fail |remarks
 
 |literal
 |`null`, `42`, `()`, `"Hi"`
@@ -57,7 +64,7 @@ The last kind of pattern is the `or`-pattern. As their name suggests, these are 
 |typed
 |`age : Nat`
 |everywhere
-|depends
+|conditional
 |
 
 |option
@@ -69,19 +76,19 @@ The last kind of pattern is the `or`-pattern. As their name suggests, these are 
 | tuple
 |`( component~0~, component~1~, ... )`
 |everywhere
-|depends
+|conditional
 |must have at least two components
 
 | object
 |`{ field~A~; field~B~; ... }`
 |everywhere
-|depends
+|conditional
 |allowed to mention a subset of fields
 
 | field
 |`age`, `count = 0`
 |object
-|depends
+|conditional
 |`age` is short for `age = age`
 
 |variant
@@ -103,7 +110,7 @@ The last kind of pattern is the `or`-pattern. As their name suggests, these are 
 Since pattern matching has a rich history and interesting mechanics, a few additional comments are justified.
 
 - nomenclature
-The (usually structured) expression that is being matched is frequently called the _scrutinee_ and the patterns appearing behind the keyword `case` are the _alternatives_. When every possible scutinee is matched by (at least one) alternative, then we say that the scrutinee is _covered_. The patterns are tried in top-down fashion and thus in case of _overlapping_ patterns the one higher-up is selected. A scrutinee is considered _dead_ (or _inactive_), if for every value that it matches there is higher-up alternative that is also matched.
+The (usually structured) expression that is being matched is frequently called the _scrutinee_ and the patterns appearing behind the keyword `case` are the _alternatives_. When every possible scrutinee is matched by (at least one) alternative, then we say that the scrutinee is _covered_. The patterns are tried in top-down fashion and thus in case of _overlapping_ patterns the one higher-up is selected. An alternative is considered _dead_ (or _inactive_), if for every value that it matches there is higher-up alternative that is also matched.
 
 - booleans
 The data type `Bool` can be regarded as two disjointed altenatives (`true` and `false`) and {proglang}'s built-in `if` construct will _eliminate_ the data and turn it into _control_ flow. `if` expressions are a form of pattern matching that abbreviates the general `switch` expression for the special case of boolean scrutinees.
@@ -115,12 +122,12 @@ The data type `Bool` can be regarded as two disjointed altenatives (`true` and `
 Other programming languages—for example C, but not {proglang}—often use a keyword `enum` to introduce enumerations. These are impoverished relatives of Motoko's variant types, as the alternatives are not allowed to carry any payload. Correspondingly, in those languages the `switch`-like statements lack the full power of pattern matching. {proglang} provides the short-hand syntax (as in `type Weekday = { #mon; #tue; ... }`) to define enumerations, where payload for the variants is not desired.
 
 - error handling
-Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure (for example, an option value or a variant), pattern matching can be used to distinguish between the two as discussed in xref:errors-and-options{outfilesuffix}[Errors and optional results].
+Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure (for example, an option value or a variant), pattern matching can be used to distinguish between the two as discussed in xref:errors{outfilesuffix}[Error handling].
 
 - non-failable matching
-Some types admit only a single value and we call these _singleton types_. Examples of these are the unit type (also known as an empty tuple) or tuples that only contain singleton types. Variants with only one alternative and no payload (or singleton-typed payload) are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible alternative, which can never fail.
+Some types admit only a single value and we call these _singleton types_. Examples of these are the unit type (also known as an empty tuple) or tuples that only contain singleton types. Variants with a single tag and no payload (or singleton-typed payload) are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible outcome: a successful match.
 
 - exhaustiveness (coverage) checking
-When a pattern check alternative has the potential to fail, then it becomes important to find out whether the whole `switch` expression can fail. If this can happen the execution of the program can trap for certain inputs, posing an operational threat. To this end, the compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees ({proglang} even tries to come up with an example of a scrutinee that is not patched). As by-product of the exhaustiveness check, warnings are also issued for dead alternatives.
+When a pattern check alternative has the potential to fail, then it becomes important to find out whether the whole `switch` expression can fail. If this can happen the execution of the program can trap for certain inputs, posing an operational threat. To this end, the compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees ({proglang} even constructs a helpful example of a scrutinee that is not matched). As by-product of the exhaustiveness check, warnings are also issued for dead alternatives.
 
-In summary, pattern checking is a great tool for several use-cases and enables active assistance from the compiler to the programmer by pointing out which inputs are not exhaustively taken care of. The static compile-time nature of coverage checking reliably rules out runtime failures.
+In summary, pattern checking is a great tool with several use-cases. By statically analyzing patterns, the compiler assists the programmer by pointing out unhandled cases and unreachable code, both of which often indicate programmer error. The static, compile-time nature of coverage checking reliably rules out runtime failures.

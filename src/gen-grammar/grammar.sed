@@ -4,6 +4,8 @@ s/<typ_id>/<id>/g
 /^<id> ::=/,+2d
 s/<id>/ID/g
 /^<semicolon> ::=/,+3d
+/^<annot(T)> ::=/,+2d
+/^<pat_opt> ::=/,+3d
 /^<start> ::=/,+2d
 /^<parse_prog_interactive> ::=/,+3d
 /^<import_list> ::=/,+2d
@@ -16,13 +18,23 @@ s/<parse_prog>/<prog>/g
 s/(<bl>)//g
 s/(<ob>)//g
 s/(B)//g
-s/ B$//g
+s/ B$/ <exp_obj>/g
 s/\[/(/g
 s/\]/)?/g
 s/(\([a-zA-Z_0-9]*\))/\1/g
 s/(\(<[a-z_0-9]*>\))/\1/g
 s/<semicolon>/\';\'/g
+s/<annot_opt>/(':' <typ>)?/g
+s/<pat_opt>/<pat_plain>?/g
 s/epsilon/<empty>/g
+s/WRAPADDASSIGN/\'+%=\'/g
+s/WRAPSUBASSIGN/\'-%=\'/g
+s/WRAPMULASSIGN/\'*%=\'/g
+s/WRAPPOWASSIGN/\'**%=\'/g
+s/WRAPADDOP/\'+%\'/g
+s/WRAPSUBOP/\'-%\'/g
+s/WRAPMULOP/\'*%\'/g
+s/WRAPPOWOP/\'**%\'/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
 s/IGNORE/\'ignore\'/g
@@ -31,8 +43,8 @@ s/XOROP/\'^\'/g
 s/XORASSIGN/\'^=\'/g
 s/WHILE/\'while\'/g
 s/VAR/\'var\'/g
-s/USHROP/\' >>\'/g
-s/USHRASSIGN/\'>>=\'/g
+s/SHROP/\' >>\'/g
+s/SHRASSIGN/\'>>=\'/g
 s/UNDERSCORE/\'_\'/g
 s/TYPE/\'type\'/g
 s/TRY/\'try\'/g
@@ -42,8 +54,6 @@ s/SWITCH/\'switch\'/g
 s/SUBOP/\'-\'/g
 s/SUB/\'<:\'/g
 s/STABLE/\'stable\'/g
-s/SSHROP/\'+>>\'/g
-s/SSHRASSIGN/\'+>>=\'/g
 s/SHLOP/\'<<\'/g
 s/SHLASSIGN/\'<<=\'/g
 s/SHARED/\'shared\'/g
@@ -123,5 +133,8 @@ s/ARROW/\'->\'/g
 s/ANDOP/\'\&\'/g
 s/ADDOP/\'+\'/g
 s/ASSIGN/\':=\'/g
+s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
+/'return'$/d
+s/'return' <exp>/'return' <exp>?/

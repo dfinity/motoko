@@ -16,12 +16,15 @@ let binop bo = match bo with
   | OrOp   -> Atom "OrOp"
   | XorOp  -> Atom "XorOp"
   | ShLOp  -> Atom "ShiftLOp"
-  | UShROp -> Atom "UnsignedShiftROp"
-  | SShROp -> Atom "SignedShiftROp"
+  | ShROp  -> Atom "ShiftROp"
   | RotLOp -> Atom "RotLOp"
   | RotROp -> Atom "RotROp"
   | CatOp  -> Atom "CatOp"
   | PowOp  -> Atom "PowOp"
+  | WAddOp  -> Atom "WAddOp"
+  | WSubOp  -> Atom "WSubOp"
+  | WMulOp  -> Atom "WMulOp"
+  | WPowOp  -> Atom "WPowOp"
 
 let relop ro = match ro with
   | EqOp  -> Atom "EqOp"

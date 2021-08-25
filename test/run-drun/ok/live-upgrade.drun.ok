@@ -1,0 +1,16 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: {version = 0}
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+debug.print: {version = 0}
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {version = 1}
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000

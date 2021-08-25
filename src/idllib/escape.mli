@@ -2,6 +2,8 @@
 type label = Nat of Lib.Uint32.t | Id of string
 val escape : string -> string
 val escape_num : Lib.Uint32.t -> string
+val escape_method : Source.region -> string -> string
 val unescape : string -> label
 val unescape_hash : string -> Lib.Uint32.t
-val needs_quote : string -> bool
+val unescape_method : string -> string
+val needs_candid_quote : string -> bool

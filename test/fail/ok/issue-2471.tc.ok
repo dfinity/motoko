@@ -1,0 +1,1 @@
+../fail/issue-2471.mo:1.1-1.33: import error [M0003], file ../fail/issue-2471.mo must not depend on itself

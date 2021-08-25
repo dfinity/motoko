@@ -6,6 +6,7 @@ ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 :company-id: DFINITY
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
+:!page-repl:
 
 The _{proglang} Programming Language Guide_ introduces key features of the general-purpose {proglang} programming language and provides examples and reference information to help you learn the nuances of the language and the practical implications of how to apply it.
 
@@ -16,7 +17,7 @@ This guide attempts to strike a balance between highlighting features that are u
 == Intended audience
 
 This guide provides reference information and examples for programmers who want to explore or plan to use the {proglang} programming language.
-Most of the information is this guide is applicable independent of whether you are developing programs to run on the {platform} or working with the {sdk-short-name}.
+Most of the information in this guide is applicable independent of whether you are developing programs to run on the {platform} or working with the {sdk-short-name}.
 
 The guide assumes you are familiar with basic programming principles and terminology and have at least some experience writing programs in a high-level programming language such as C++ or Rust, or have practical experience working with a scripting language such as JavaScript or TypeScript.
 In addition, {proglang} incorporates some aspects of functional programming, so you might find some knowledge of functional programming design principles helpful in learning to use {proglang}.
@@ -33,6 +34,8 @@ With those considerations in mind, you can start to explore fundamental concepts
 Once you are familiar with the basic concepts and terminology, later sections introduce programs that compute in more interesting ways, including function abstractions, user-defined type definitions, user-defined actors, and asynchronous communication.
 
 As you begin using {proglang} to write your own programs, you can return to this guide for reference information and examples.
+
+Most of the code examples in this guide are interactive: you can live edit the example, interpret the code in the browser and see the result. The interpreter is provided for education purposes. While most of the language features are supported in the interpreter, they are not exactly the same as the real compiler. For example, you may get a stack overflow for a medium-size input, while the real compiler handles the input just fine. Some of the system features are not fully supported, such as cycles, canister imports and state-mutating query calls.
 
 == Documentation conventions
 
@@ -56,7 +59,7 @@ For transparency into the principles that guide the engineering effort, the engi
 
 The following guiding principles represent the core values of the engineering organization in prioritized order:
 
-. Seamless integration with the link:../developers-guide/introduction-key-concepts{outfilesuffix}#ic-overview[{IC} platform] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
+. Seamless integration with the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} platform] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
 . Ergonomics to ensure that {proglang} embraces familiarity, simplicity, clarity, explicitness, and other human factors.
 . Formal correctness to ensure that {proglang} maintains state isolation, a sound type system and type safety, precision, pattern matching, appropriate defaults, and coding best-practices.
 
@@ -74,7 +77,7 @@ As a counterpoint to the core values and goals, the engineering organization als
 
 . Having a more advanced type system, with more complex types.
 . Simplicity over functionality in design or implementation (the "Worse is Better" approach).
-. Interoperability with existing smart contract platforms.
+. Interoperability or support for running {proglang} programs on blockchain platforms other than the {IC}.
 
 == Finding more information 
 

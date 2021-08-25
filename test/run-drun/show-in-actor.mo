@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 Prim.debugPrint (debug_show true);
 let _ = actor {
   Prim.debugPrint (debug_show false);

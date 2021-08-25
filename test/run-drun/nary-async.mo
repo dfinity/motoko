@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 /* test n-ary async/await */
 
 actor a {
@@ -18,7 +18,7 @@ actor a {
   };
 
   public func go1() : async () {
-    {
+    do {
       let t = "0_0";
       await async {
         await f0_0();
@@ -26,7 +26,7 @@ actor a {
       };
     };
 
-    {
+    do {
       let t = "1_0";
       await async {
         await f1_0(1);
@@ -34,7 +34,7 @@ actor a {
       };
     };
 
-    {
+    do {
       let t = "2_0";
       await async {
         await f2_0(1,true);
@@ -42,7 +42,7 @@ actor a {
       };
     };
 
-    {
+    do {
     let t = "3_0";
       await async {
         await f3_0(1,true,"a");
@@ -64,7 +64,7 @@ actor a {
   };
 
   public func go2() : async () {
-    {
+    do {
       let t = "0_0";
       await async {
         await g0_0();
@@ -72,7 +72,7 @@ actor a {
       };
     };
 
-    {
+    do {
       let t = "0_1";
       ignore await async {
         let x = await g0_1();
@@ -82,7 +82,7 @@ actor a {
       };
     };
 
-    {
+    do {
       let t = "0_2";
       ignore await async {
         let (x,y) = await g0_2();
@@ -94,7 +94,7 @@ actor a {
     };
 
 
-    {
+    do {
       let t = "0_3";
       ignore await async {
         let (x,y,z) = await g0_3();

@@ -1,0 +1,1 @@
+bad-actor-import3.mo:1.1-1.34: import error [M0008], cannot import canister urls without --actor-idl param

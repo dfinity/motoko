@@ -27,8 +27,8 @@ let hovered_identifier_test_case file expected =
   in
   Option.equal ( = ) actual expected
   ||
-  ( Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
-    false )
+  (Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
+   false)
 
 let parse_module_header_test_case project_root current_file file expected =
   let actual = Source_file.parse_module_header project_root current_file file in
@@ -62,7 +62,7 @@ let%test "it parses a simple module header" =
 
 let%test "it parses a simple module header that contains a prim import" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
-    "import Prim \"mo:prim\"" [ ("Prim", "mo:prim") ]
+    "import Prim \"mo:⛔\"" [ ("Prim", "mo:⛔") ]
 
 let%test "it parses a simple module header with package paths" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"

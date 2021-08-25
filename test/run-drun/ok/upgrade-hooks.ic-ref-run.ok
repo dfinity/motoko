@@ -1,45 +1,45 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: init'ed
-← completed: ()
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: init'ed 0
 debug.print: postupgrade 0
-← completed: ()
+← replied: ()
 → query check(1)
 debug.print: a
-← completed: ()
+← replied: ()
 → update inc()
-← completed: ()
+← replied: ()
 → query check(2)
 debug.print: aa
-← completed: ()
+← replied: ()
 → update inc()
-← completed: ()
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: preupgrade 0
 debug.print: init'ed 1
 debug.print: postupgrade 1
-← completed: ()
+← replied: ()
 → query check(3)
 debug.print: 3
 debug.print: aaa
-← completed: ()
+← replied: ()
 → update inc()
-← completed: ()
+← replied: ()
 → query check(4)
 debug.print: 4
 debug.print: aaa
-← completed: ()
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: preupgrade 1
 debug.print: init'ed 2
 debug.print: postupgrade 2
-← completed: ()
+← replied: ()
 → query check(4)
-← completed: ()
+← replied: ()
 → update inc()
-← completed: ()
+← replied: ()
 → query check(5)
-← completed: ()
+← replied: ()

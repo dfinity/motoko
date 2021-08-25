@@ -1,4 +1,4 @@
-ingress Completed: Reply: 0x4449444c016c01b3c4b1f2046801000112010000000000000000000000000000000001
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: ok: +42
 Ok: Reply: 0x4449444c0000
@@ -8,4 +8,4 @@ debug.print: ok: +25
 Ok: Reply: 0x4449444c0000
 debug.print: ok:  Hey! +25
 Ok: Reply: 0x4449444c00017719
-Err: IC0503: Canister 75hes-oqbaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-q trapped explicitly: IDL error: did not find field extra in record
+Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: did not find field extra in record

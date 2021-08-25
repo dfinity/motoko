@@ -1,4 +1,4 @@
-import P = "mo:prim";
+import P = "mo:⛔";
 
 actor Life {
 
@@ -23,7 +23,7 @@ actor Life {
     public func size() : Nat { n };
 
     let grid = P.Array_tabulate(n, func (i : Nat) : [var Cell] {
-      let a = P.Array_init(n, false);
+      let a = P.Array_init<Bool>(n, false);
       let si = state[i];
       assert (si.size() == n);
       for (j in si.keys()) {
@@ -83,7 +83,8 @@ actor Life {
   };
 
   stable var state : State =
-    { let n = 32;
+    do {
+      let n = 32;
       #v1 (
       	 P.Array_tabulate<[Cell]>(n,
            func i { P.Array_tabulate<Cell>(n, func j { Random.next(); }) })

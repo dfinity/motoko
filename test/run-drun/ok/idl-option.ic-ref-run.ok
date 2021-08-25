@@ -1,13 +1,13 @@
-→ update create_canister()
-← completed: (record {1313628723 = service "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {4849238 = blob ""; 265441191 = blob "\00asm\01\00\0…
-← completed: ()
+→ update create_canister(record {dnczaeh = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
 → query any(null)
 debug.print: ok: null
-← completed: ()
+← replied: ()
 → query any(null)
 debug.print: ok: null
-← completed: ()
+← replied: ()
 → query any(opt "Foo")
 debug.print: ok: Foo
-← completed: ()
+← replied: ()

@@ -1,5 +1,5 @@
-{ stdenv, fetchFromGitHub, ocaml, dune_2, ocamlPackages }:
-stdenv.mkDerivation rec {
+{ mkDerivation, lib, fetchFromGitHub, ocaml, dune_2, ocamlPackages }:
+mkDerivation rec {
 	pname = "obelisk";
 	version = "0.5.2";
 	src = fetchFromGitHub {
@@ -22,8 +22,8 @@ stdenv.mkDerivation rec {
 
 	meta = {
 		description = "A simple tool which produces pretty-printed output from a Menhir parser file (.mly)";
-		license = stdenv.lib.licenses.mit;
-		maintainers = [ stdenv.lib.maintainers.vbgl ];
+		license = lib.licenses.mit;
+		maintainers = [];
 		inherit (src.meta) homepage;
 		inherit (ocamlPackages.ocaml.meta) platforms;
 	};

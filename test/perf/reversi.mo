@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
    // based on https://github.com/dfinity-lab/dapps/blob/75ead35363574f3697e37cd3a0592e51d3253a36/examples/reversi/src/reversi/main.mo
    // with stdlib inlined and board size changed to 8
@@ -11,7 +11,7 @@ actor {
     public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
   };
 
-  flexible func unreachable() : None = { assert false ; loop { } };
+  flexible func unreachable() : None { assert false ; loop { } };
 
   flexible func toText(x : Int) : Text {
     if (x == 0) {

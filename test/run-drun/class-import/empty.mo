@@ -1,5 +1,5 @@
-import Prim "mo:prim";
-actor class() {
+import Prim "mo:⛔";
+actor class Empty() {
 
   Prim.debugPrint("empty");
 

@@ -1,4 +1,4 @@
-# Memory Management and Persistence in Wasm/Dfinity/Motoko
+# Memory Management and Persistence in Wasm/IC/Motoko
 
 ## Preliminaries
 
@@ -32,7 +32,7 @@ The Heap is *not* an explicit entity that can be im/exported, only individual re
 Note: It is highly likely that most languages implemented on Wasm will eventually use Wasm GC.
 Various implementers are currently waiting for it to become available before they start porting their language to Wasm.
 
-### Dfinity
+### Internet Computer (IC)
 
 #### API Types
 
@@ -55,7 +55,7 @@ Once Wasm GC is available, some of these types (esp. buffers) could be replaced 
 
 ### Representing Data Structures
 
-There are 3 possible ways of representing structured data in Wasm/Dfinity.
+There are 3 possible ways of representing structured data in Wasm/IC.
 
 #### Using Wasm Memory
 
@@ -67,12 +67,12 @@ References are stored via indirections through a Table.
    2. may ease transparent persistence (see below)
 
    Cons:
-   1. message arguments require de/serialisation into Dfinity buffers on both ends (in addition to the de/serialisation steps already performed by Dfinity)
+   1. message arguments require de/serialisation into IC buffers on both ends (in addition to the de/serialisation steps already performed by IC)
    2. each actor must ship its own instance of a GC (for both memory and table) and de/serialisation code
    3. all references require an indirection
    4. more implementation effort
 
-#### Using Dfinity API
+#### Using IC API
 
 All data structures are mapped to element and data buffers created through the API.
 
@@ -83,9 +83,9 @@ All data structures are mapped to element and data buffers created through the A
 
    Cons:
    1. local access to data involves system call overhead
-   2. requires adding mutable buffer types to Dfinity API
+   2. requires adding mutable buffer types to IC API
    3. mixed numeric/reference structures must be split into data and element buffers
-   4. Dfinity-only solution unlikely to be adopted by other languages
+   4. IC-only solution unlikely to be adopted by other languages
 
 #### Using Wasm Heap
 
@@ -94,7 +94,7 @@ All data structures are represented as Wasm GCed objects.
    Pros:
    1. local access should be as fast as Memory
    2. GC is handled by VM
-   3. no extra de/serialisation step for message args (provided Dfinity API can handle Wasm structs)
+   3. no extra de/serialisation step for message args (provided IC API can handle Wasm structs)
    4. can freely mix numerics and references
    5. this is likely the route most future languages compiling to Wasm will take
 
@@ -111,7 +111,7 @@ There are at least 3 general models for providing persistence.
 
 #### *Explicit* persistence
 
-Dfinity API provides explicit system calls to manage persistent data.
+IC API provides explicit system calls to manage persistent data.
 Wasm state is volatile; each message received runs in a fresh instance of the actor's module.
 
    Pros:

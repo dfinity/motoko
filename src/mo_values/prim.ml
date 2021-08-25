@@ -2,200 +2,78 @@
 open Mo_types
 
 open Value
+open Numerics
 
-module Conv = struct
-  open Big_int
-  let int_of_word32_u w = Int32.to_int w land 0xffff_ffff
+let as_big_int = function
+  | Type.Nat -> fun v -> Nat.to_big_int (as_int v)
+  | Type.Int -> fun v -> Int.to_big_int (as_int v)
+  | Type.Nat8 -> fun v -> Nat8.to_big_int (as_nat8 v)
+  | Type.Nat16 -> fun v -> Nat16.to_big_int (as_nat16 v)
+  | Type.Nat32 -> fun v -> Nat32.to_big_int (as_nat32 v)
+  | Type.Nat64 -> fun v -> Nat64.to_big_int (as_nat64 v)
+  | Type.Int8 -> fun v -> Int_8.to_big_int (as_int8 v)
+  | Type.Int16 -> fun v -> Int_16.to_big_int (as_int16 v)
+  | Type.Int32 -> fun v -> Int_32.to_big_int (as_int32 v)
+  | Type.Int64 -> fun v -> Int_64.to_big_int (as_int64 v)
+  | Type.Char -> fun v -> Big_int.big_int_of_int (as_char v)
+  | t -> raise (Invalid_argument ("Value.as_big_int: " ^ Type.string_of_typ (Type.Prim t)))
 
-  let twoRaised62 = power_int_positive_int 2 62
-  let twoRaised63 = power_int_positive_int 2 63
-  let twoRaised64 = power_int_positive_int 2 64
-  let word_twoRaised63 = Word64.(pow 2L 63L)
+let of_big_int_trap = function
+  | Type.Nat -> fun i -> Int (Nat.of_big_int i)
+  | Type.Int -> fun i -> Int (Int.of_big_int i)
+  | Type.Nat8 -> fun i -> Nat8 (Nat8.of_big_int i)
+  | Type.Nat16 -> fun i -> Nat16 (Nat16.of_big_int i)
+  | Type.Nat32 -> fun i -> Nat32 (Nat32.of_big_int i)
+  | Type.Nat64 -> fun i -> Nat64 (Nat64.of_big_int i)
+  | Type.Int8 -> fun i -> Int8 (Int_8.of_big_int i)
+  | Type.Int16 -> fun i -> Int16 (Int_16.of_big_int i)
+  | Type.Int32 -> fun i -> Int32 (Int_32.of_big_int i)
+  | Type.Int64 -> fun i -> Int64 (Int_64.of_big_int i)
+  | Type.Char -> fun i ->
+    let i = Big_int.int_of_big_int i in
+    if i < 0xD800 || i >= 0xE000 && i < 0x110000 then Char i else raise (Invalid_argument "character value out of bounds")
+  | t -> raise (Invalid_argument ("Value.of_big_int_trap: " ^ Type.string_of_typ (Type.Prim t)))
 
-  let word64_of_big_int_u i =
-    assert (sign_big_int i > -1);
-    let wrapped = mod_big_int i twoRaised64 in
-    match int64_of_big_int_opt wrapped with
-    | Some n -> n
-    | _ -> Word64.add (int64_of_big_int (sub_big_int wrapped twoRaised63)) word_twoRaised63
+let of_big_int_wrap = function
+  | Type.Nat8 -> fun i -> Nat8 (Nat8.wrapping_of_big_int i)
+  | Type.Nat16 -> fun i -> Nat16 (Nat16.wrapping_of_big_int i)
+  | Type.Nat32 -> fun i -> Nat32 (Nat32.wrapping_of_big_int i)
+  | Type.Nat64 -> fun i -> Nat64 (Nat64.wrapping_of_big_int i)
+  | Type.Int8 -> fun i -> Int8 (Int_8.wrapping_of_big_int i)
+  | Type.Int16 -> fun i -> Int16 (Int_16.wrapping_of_big_int i)
+  | Type.Int32 -> fun i -> Int32 (Int_32.wrapping_of_big_int i)
+  | Type.Int64 -> fun i -> Int64 (Int_64.wrapping_of_big_int i)
+  | t -> raise (Invalid_argument ("Value.of_big_int_wrap: " ^ Type.string_of_typ (Type.Prim t)))
 
-  let word64_of_big_int_s i =
-    let wrapped = mod_big_int i twoRaised64 in
-    match int64_of_big_int_opt wrapped with
-    | Some n -> n
-    | _ -> Word64.sub (int64_of_big_int (sub_big_int wrapped twoRaised63)) word_twoRaised63
+(*
+Wrapping numeric conversions are all specified uniformly by going through bigint
+*)
 
-  let big_int_of_word64_u w =
-    let i = big_int_of_int64 w in
-    if sign_big_int i > -1 then i
-    else add_big_int i twoRaised64
-
-  let wrapped_int_of_big_int i =
-    match int_of_big_int_opt i with
-    | Some n -> n
-    | _ -> int_of_big_int (mod_big_int i twoRaised62)
-
-  (* for q in {0, -1} return i + q * offs *)
-  let to_signed i q offs = if Big_int.sign_big_int q = 0 then i else i - offs
-  let to_signed_big_int i q offs = Big_int.(if sign_big_int q = 0 then i else sub_big_int i offs)
-end (* Conv *)
-
-let range_violation () = raise (Invalid_argument "numeric overflow")
-
-let num_conv_prim t1 t2 =
+(* Trapping conversions (the num_conv_t1_t2 prim used in prelude/prelude.ml) *)
+let num_conv_trap_prim t1 t2 =
   let module T = Type in
-  match (t1, t2) with
-  | T.Nat8, T.Word8 -> fun v ->
-    let i = Nat8.to_int (as_nat8 v)
-    in Word8 (Word8.of_int_u i)
-  | T.Nat, T.Word8 -> fun v ->
-    let i = Conv.wrapped_int_of_big_int (as_int v)
-    in Word8 (Word8.of_int_u i)
-  | T.Nat, T.Nat8 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 8) in
-    let i = Big_int.int_of_big_int r
-    in Big_int.(if eq_big_int q zero_big_int then Nat8 (Nat8.of_int i) else range_violation ())
-  | T.Int8, T.Word8 -> fun v ->
-    let i = Int_8.to_int (as_int8 v)
-    in Word8 (Word8.of_int_s i)
-  | T.Int, T.Word8 -> fun v ->
-    let i = Conv.wrapped_int_of_big_int (as_int v)
-    in Word8 (Word8.of_int_s i)
-  | T.Int, T.Int8 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 7) in
-    let i = Big_int.int_of_big_int r in
-    Big_int.
-    (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then Int8(Int_8.of_int (Conv.to_signed i q 0x80)) else range_violation ())
-  | T.Nat16, T.Word16 -> fun v ->
-    let i = Nat16.to_int (as_nat16 v)
-    in Word16 (Word16.of_int_u i)
-  | T.Nat, T.Word16 -> fun v ->
-    let i = Conv.wrapped_int_of_big_int (as_int v)
-    in Word16 (Word16.of_int_u i)
-  | T.Nat, T.Nat16 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 16) in
-    let i = Big_int.int_of_big_int r
-    in Big_int.(if eq_big_int q zero_big_int then Nat16 (Nat16.of_int i) else range_violation ())
-  | T.Int16, T.Word16 -> fun v ->
-    let i = Int_16.to_int (as_int16 v)
-    in Word16 (Word16.of_int_s i)
-  | T.Int, T.Word16 -> fun v ->
-    let i = Conv.wrapped_int_of_big_int (as_int v)
-    in Word16 (Word16.of_int_s i)
-  | T.Int, T.Int16 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 15) in
-    let i = Big_int.int_of_big_int r in
-    Big_int.
-    (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then Int16(Int_16.of_int (Conv.to_signed i q 0x8000)) else range_violation ())
-  | T.Nat32, T.Word32 -> fun v ->
-    let i = Nat32.to_int (as_nat32 v)
-    in Word32 (Word32.of_int_u i)
-  | T.Nat, T.Word32 -> fun v ->
-    let i = Conv.wrapped_int_of_big_int (as_int v)
-    in Word32 (Word32.of_int_u i)
-  | T.Nat, T.Nat32 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 32) in
-    let i = Big_int.int_of_big_int r
-    in Big_int.(if eq_big_int q zero_big_int then Nat32 (Nat32.of_int i) else range_violation ())
-  | T.Int32, T.Word32 -> fun v ->
-    let i = Int_32.to_int (as_int32 v)
-    in Word32 (Word32.of_int_s i)
-  | T.Int, T.Word32 -> fun v ->
-    let i = Conv.wrapped_int_of_big_int (as_int v)
-    in Word32 (Word32.of_int_s i)
-  | T.Int, T.Int32 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 31) in
-    let i = Big_int.int_of_big_int r in
-    Big_int.
-    (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then Int32 (Int_32.of_int (Conv.to_signed i q 0x80000000)) else range_violation ())
+  match t1, t2 with
+  | T.Nat, T.(T.Nat8|Nat16|Nat32|Nat64)
+  | T.Int, T.(Int8|Int16|Int32|Int64)
+  | T.(Nat8|Nat16|Nat32|Nat64), T.Nat
+  | T.(Int8|Int16|Int32|Int64), T.Int
+  | T.Nat32, T.Char
+  -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
 
-  | T.Nat64, T.Word64 -> fun v ->
-    let q, r = Big_int.quomod_big_int (Nat64.to_big_int (as_nat64 v)) Conv.twoRaised63 in
-    let i = Conv.(to_signed_big_int r q twoRaised63) in
-    Word64 (Big_int.int64_of_big_int i)
-  | T.Nat, T.Word64 -> fun v -> Word64 (Conv.word64_of_big_int_u (as_int v))
-  | T.Nat, T.Nat64 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised64 in
-    Big_int.
-    (if eq_big_int q zero_big_int
-    then Nat64 (Nat64.of_big_int r)
-    else range_violation ())
-  | T.Int64, T.Word64 -> fun v -> Word64 (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v)))
-  | T.Int, T.Word64 -> fun v -> Word64 (Conv.word64_of_big_int_s (as_int v))
-  | T.Int, T.Int64 -> fun v ->
-    let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised63 in
-    Big_int.
-    (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-    then Int64 (Int_64.of_big_int Conv.(to_signed_big_int r q twoRaised63))
-    else range_violation ())
-
-  | T.Word8, T.Nat -> fun v ->
-    let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
-    in Int (Big_int.big_int_of_int i)
-  | T.Word8, T.Nat8 -> fun v ->
-    let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
-    in Nat8 (Nat8.of_int i)
-  | T.Int8, T.Int -> fun v -> Int (Int.of_int (Int_8.to_int (as_int8 v)))
-  | T.Nat8, T.Nat -> fun v -> Int (Nat.of_int (Nat8.to_int (as_nat8 v)))
-  | T.Word8, T.Int -> fun v ->
-    let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
-    in Int (Big_int.big_int_of_int i)
-  | T.Word8, T.Int8 -> fun v ->
-    let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
-    in Int8 (Int_8.of_int i)
-  | T.Word16, T.Nat -> fun v ->
-    let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
-    in Int (Big_int.big_int_of_int i)
-  | T.Word16, T.Nat16 -> fun v ->
-    let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
-    in Nat16 (Nat16.of_int i)
-  | T.Int16, T.Int -> fun v -> Int (Int.of_int (Int_16.to_int (as_int16 v)))
-  | T.Nat16, T.Nat -> fun v -> Int (Nat.of_int (Nat16.to_int (as_nat16 v)))
-  | T.Word16, T.Int -> fun v ->
-    let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
-    in Int (Big_int.big_int_of_int i)
-  | T.Word16, T.Int16 -> fun v ->
-    let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
-    in Int16 (Int_16.of_int i)
-  | T.Int32, T.Int -> fun v -> Int (Int.of_int (Int_32.to_int (as_int32 v)))
-  | T.Nat32, T.Nat -> fun v -> Int (Nat.of_int (Nat32.to_int (as_nat32 v)))
-  | T.Word32, T.Nat -> fun v ->
-    let i = Conv.int_of_word32_u (as_word32 v)
-    in Int (Big_int.big_int_of_int i)
-  | T.Word32, T.Int -> fun v -> Int (Big_int.big_int_of_int32 (as_word32 v))
-  | T.Word32, T.Int32 -> fun v ->
-    let i = Big_int.(int_of_big_int (big_int_of_int32 (as_word32 v))) in
-    Int32 (Int_32.of_int i)
-  | T.Word32, T.Nat32 -> fun v ->
-    let i = Big_int.(int_of_big_int (big_int_of_int32 (as_word32 v))) in
-    let i' = if i < 0 then i + 0x100000000 else i in
-    Nat32 (Nat32.of_int i')
-
-  | T.Int64, T.Int -> fun v -> Int (Int_64.to_big_int (as_int64 v))
-  | T.Nat64, T.Nat -> fun v -> Int (Nat64.to_big_int (as_nat64 v))
-  | T.Word64, T.Nat -> fun v ->
-    let i = Conv.big_int_of_word64_u (as_word64 v)
-    in Int i
-  | T.Word64, T.Nat64 -> fun v ->
-    let i = Conv.big_int_of_word64_u (as_word64 v)
-    in Nat64 (Nat64.of_big_int i)
-  | T.Word64, T.Int -> fun v -> Int (Big_int.big_int_of_int64 (as_word64 v))
-  | T.Word64, T.Int64 -> fun v ->
-    let i = Big_int.big_int_of_int64 (as_word64 v)
-    in Int64 (Int_64.of_big_int i)
-
-  | T.Char, T.Word32 -> fun v ->
-    let i = as_char v
-    in Word32 (Word32.of_int_u i)
-  | T.Word32, T.Char -> fun v ->
-    let i = Conv.int_of_word32_u (as_word32 v)
-    in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then Char i else raise (Invalid_argument "character value out of bounds")
-  | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v))))
+  | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (bigint_of_double (as_float v)))
   | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
-  | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
+
+  | T.Float, T.Int -> fun v -> Int (Int.of_big_int (bigint_of_double (as_float v)))
+  | T.Int, T.Float -> fun v -> Float (Wasm.F64.of_float (Big_int.float_of_big_int (Int.to_big_int (as_int v))))
+
+  | t1, t2 -> raise (Invalid_argument T.("Value.num_conv_trap_prim: " ^ string_of_typ (Prim t1) ^ string_of_typ (Prim t2) ))
+
+(*
+It is the responsibility of prelude/prelude.ml to define num_wrap_t1_t2 only
+for suitable types t1 and t2
+*)
+let num_conv_wrap_prim t1 t2 =
+  fun v -> of_big_int_wrap t2 (as_big_int t1 v)
 
 let prim =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
@@ -251,38 +129,54 @@ let prim =
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. popcnt w)
-        | Word16 w -> Word16 (Word16.popcnt w)
-        | Word32 w -> Word32 (Word32.popcnt w)
-        | Word64 w -> Word64 (Word64.popcnt w)
+        | Nat8  w -> Nat8  (Nat8. popcnt w)
+        | Nat16 w -> Nat16 (Nat16.popcnt w)
+        | Nat32 w -> Nat32 (Nat32.popcnt w)
+        | Nat64 w -> Nat64 (Nat64.popcnt w)
+        | Int8  w -> Int8  (Int_8. popcnt w)
+        | Int16 w -> Int16 (Int_16.popcnt w)
+        | Int32 w -> Int32 (Int_32.popcnt w)
+        | Int64 w -> Int64 (Int_64.popcnt w)
         | _ -> failwith "popcnt")
 
   | "clz8" | "clz16" | "clz32" | "clz64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. clz w)
-        | Word16 w -> Word16 (Word16.clz w)
-        | Word32 w -> Word32 (Word32.clz w)
-        | Word64 w -> Word64 (Word64.clz w)
+        | Nat8  w -> Nat8  (Nat8. clz w)
+        | Nat16 w -> Nat16 (Nat16.clz w)
+        | Nat32 w -> Nat32 (Nat32.clz w)
+        | Nat64 w -> Nat64 (Nat64.clz w)
+        | Int8  w -> Int8  (Int_8. clz w)
+        | Int16 w -> Int16 (Int_16.clz w)
+        | Int32 w -> Int32 (Int_32.clz w)
+        | Int64 w -> Int64 (Int_64.clz w)
         | _ -> failwith "clz")
 
   | "ctz8" | "ctz16" | "ctz32" | "ctz64" ->
      fun _ v k ->
      k (match v with
-        | Word8  w -> Word8  (Word8. ctz w)
-        | Word16 w -> Word16 (Word16.ctz w)
-        | Word32 w -> Word32 (Word32.ctz w)
-        | Word64 w -> Word64 (Word64.ctz w)
+        | Nat8  w -> Nat8  (Nat8. ctz w)
+        | Nat16 w -> Nat16 (Nat16.ctz w)
+        | Nat32 w -> Nat32 (Nat32.ctz w)
+        | Nat64 w -> Nat64 (Nat64.ctz w)
+        | Int8  w -> Int8  (Int_8. ctz w)
+        | Int16 w -> Int16 (Int_16.ctz w)
+        | Int32 w -> Int32 (Int_32.ctz w)
+        | Int64 w -> Int64 (Int_64.ctz w)
         | _ -> failwith "ctz")
 
   | "btst8" | "btst16" | "btst32" | "btst64" ->
      fun _ v k ->
      let w, a = as_pair v
      in k (match w with
-           | Word8  y -> Word8  Word8. (and_ y (shl (of_int_u 1) (as_word8  a)))
-           | Word16 y -> Word16 Word16.(and_ y (shl (of_int_u 1) (as_word16 a)))
-           | Word32 y -> Word32 Word32.(and_ y (shl 1l (as_word32 a)))
-           | Word64 y -> Word64 Word64.(and_ y (shl 1L (as_word64 a)))
+           | Nat8  y -> Nat8  Nat8. (and_ y (shl (of_int 1) (as_nat8  a)))
+           | Nat16 y -> Nat16 Nat16.(and_ y (shl (of_int 1) (as_nat16 a)))
+           | Nat32 y -> Nat32 Nat32.(and_ y (shl (of_int 1) (as_nat32 a)))
+           | Nat64 y -> Nat64 Nat64.(and_ y (shl (of_int 1) (as_nat64 a)))
+           | Int8  y -> Int8  Int_8. (and_ y (shl (of_int 1) (as_int8  a)))
+           | Int16 y -> Int16 Int_16.(and_ y (shl (of_int 1) (as_int16 a)))
+           | Int32 y -> Int32 Int_32.(and_ y (shl (of_int 1) (as_int32 a)))
+           | Int64 y -> Int64 Int_64.(and_ y (shl (of_int 1) (as_int64 a)))
            | _ -> failwith "btst")
 
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
@@ -294,17 +188,20 @@ let prim =
   | "rts_heap_size" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_outstanding_callbacks" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
-  | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Value.Nat64.of_int 42))
-  | "idlHash" -> fun _ v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
+  | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
+  | "idlHash" -> fun _ v k ->
+    let s = as_text v in
+    k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))))
   | "crc32Hash" -> fun _ v k -> let s = as_blob v in
-    k (Word32 Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)))
+    let i = Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)) in
+    k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 i)))
   | "array_len" -> fun _ v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_blob v))))
-  | "blob_iter" -> fun _ v k ->
+  | "blob_vals_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_blob v) in
-    let valuation b = Word8 (Word8.of_int_u (Char.code b)) in
+    let valuation b = Nat8 (Nat8.of_int (Char.code b)) in
     k (Iter (ref (Seq.map valuation s)))
   | "blob_iter_done" | "text_iter_done" -> fun _ v k ->
     let i = Value.as_iter v in
@@ -339,13 +236,40 @@ let prim =
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+  | "blobToArray" -> fun _ v k ->
+    k (Array (Array.of_seq (Seq.map (fun c ->
+      Nat8 (Nat8.of_int (Char.code c))
+    ) (String.to_seq (Value.as_blob v)))))
+  | "blobToArrayMut" -> fun _ v k ->
+    k (Array (Array.of_seq (Seq.map (fun c ->
+      Mut (ref (Nat8 (Nat8.of_int (Char.code c))))
+    ) (String.to_seq (Value.as_blob v)))))
+  | "arrayToBlob" -> fun _ v k ->
+    k (Blob (String.of_seq (Seq.map (fun v ->
+      Char.chr (Nat8.to_int (Value.as_nat8 v))
+    ) (Array.to_seq (Value.as_array v)))))
+  | "arrayMutToBlob" -> fun _ v k ->
+    k (Blob (String.of_seq (Seq.map (fun v ->
+      Char.chr (Nat8.to_int (Value.as_nat8 !(Value.as_mut v)))
+    ) (Array.to_seq (Value.as_array v)))))
+
   | "cast" -> fun _ v k -> k v
+
   | p when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
     | [_;_;s1;s2] ->
       let p1 = Type.prim s1 in
       let p2 = Type.prim s2 in
-      fun env v k -> k (num_conv_prim p1 p2 v)
+      fun env v k -> k (num_conv_trap_prim p1 p2 v)
+    | _ -> assert false
+    end
+
+  | p when Lib.String.chop_prefix "num_wrap" p <> None ->
+    begin match String.split_on_char '_' p with
+    | [_;_;s1;s2] ->
+      let p1 = Type.prim s1 in
+      let p2 = Type.prim s2 in
+      fun env v k -> k (num_conv_wrap_prim p1 p2 v)
     | _ -> assert false
     end
 
@@ -380,5 +304,16 @@ let prim =
 
   | "char_is_alphabetic" ->
       fun _ v k -> k (Bool (Uucp.Alpha.is_alphabetic (Uchar.of_int (as_char v))))
+
+  | "decodeUtf8" ->
+      fun _ v k ->
+        let s = as_blob v in
+        begin match Wasm.Utf8.decode s with
+          | _ -> k (Opt (Text s))
+          | exception Wasm.Utf8.Utf8 -> k Null
+        end
+
+  | "encodeUtf8" ->
+      fun _ v k -> k (Blob (as_text v))
 
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

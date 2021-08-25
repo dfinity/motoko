@@ -1,3 +1,4 @@
+
 (* WIP translation of syntaxops to use IR in place of Source *)
 open Source
 open Ir
@@ -93,6 +94,8 @@ let primE prim es =
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
+    | SystemCyclesAvailablePrim -> T.nat64
+    | SystemCyclesAcceptPrim -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -134,11 +137,14 @@ let cps_asyncE typ1 typ2 e =
     note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
   }
 
-let cps_awaitE typ e1 e2 =
-  { it = PrimE (CPSAwait, [e1; e2]);
-    at = no_region;
-    note = Note.{ def with typ = T.unit; eff = max_eff (eff e1) (eff e2) }
-  }
+let cps_awaitE cont_typ e1 e2 =
+  match cont_typ with
+  | T.Func(T.Local, T.Returns, [], _, ts2) ->
+    { it = PrimE (CPSAwait cont_typ, [e1; e2]);
+      at = no_region;
+      note = Note.{ def with typ = T.seq ts2; eff = max_eff (eff e1) (eff e2) }
+    }
+  | _ -> assert false
 
 let ic_replyE ts e =
   (match ts with
@@ -184,14 +190,14 @@ let optE e =
 
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
-   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e}]; eff = eff e };
+   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
    at = no_region;
  }
 
 let dec_eff dec = match dec.it with
   | LetD (_,e) | VarD (_, _, e) -> eff e
 
-let rec simpl_decs decs = Lib.List.concat_map simpl_dec decs
+let rec simpl_decs decs = List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
   | LetD ({it = WildP;_}, {it = PrimE (TupPrim, []);_}) ->
     []
@@ -254,18 +260,20 @@ let funcE name sort ctrl typ_binds args typs exp =
     note = Note.{ def with typ; eff = T.Triv };
   }
 
-let callE exp1 ts exp2 =
-  match T.promote (typ exp1) with
-  | T.Func (_sort, _control, _, _, ret_tys) ->
-    { it = PrimE (CallPrim ts, [exp1; exp2]);
-      at = no_region;
-      note = Note.{ def with
-        typ = T.open_ ts (T.seq ret_tys);
-        eff = max_eff (eff exp1) (eff exp2)
-      }
+let callE exp1 typs exp2 =
+  let typ =  match T.promote (typ exp1) with
+    | T.Func (_sort, _control, _, _, ret_tys) ->
+      T.open_ typs (T.seq ret_tys)
+    | T.Non -> T.Non
+    | _ -> raise (Invalid_argument "callE expect a function")
+  in
+  { it = PrimE (CallPrim typs, [exp1; exp2]);
+    at = no_region;
+    note = Note.{ def with
+     typ;
+     eff = max_eff (eff exp1) (eff exp2)
     }
-  | T.Non -> exp1
-  | _ -> raise (Invalid_argument "callE expect a function")
+  }
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
@@ -276,14 +284,14 @@ let ifE exp1 exp2 exp3 typ =
     }
   }
 
-let falseE = boolE false
-let trueE = boolE true
+let falseE () = boolE false
+let trueE () = boolE true
 let notE : Ir.exp -> Ir.exp = fun e ->
-  primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE]
-let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 falseE T.bool
-let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 trueE e2 T.bool
+  primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE ()]
+let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 (falseE ()) T.bool
+let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 (trueE ()) e2 T.bool
 let rec conjE : Ir.exp list -> Ir.exp = function
-  | [] -> trueE
+  | [] -> trueE ()
   | [x] -> x
   | (x::xs) -> andE x (conjE xs)
 
@@ -348,7 +356,7 @@ let tupE exps =
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
   }
 
-let unitE = tupE []
+let unitE () = tupE []
 
 let breakE l exp =
   { it = PrimE (BreakPrim l, [exp]);
@@ -412,8 +420,10 @@ let letP pat exp = LetD (pat, exp) @@ no_region
 
 let letD x exp = letP (varP x) exp
 
-let varD x t exp =
-  VarD (x, t, exp) @@ no_region
+let varD x exp =
+  let t = typ_of_var x in
+  assert (T.is_mut t);
+  VarD (id_of_var x, T.as_immut t, exp) @@ no_region
 
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.Note.typ } in
@@ -550,18 +560,7 @@ let forall tbs e =
 
 (* Lambda application (monomorphic) *)
 
-let ( -*- ) exp1 exp2 =
-  match typ exp1 with
-  | T.Func (_, _, [], _, ret_tys) ->
-    { it = PrimE (CallPrim [], [exp1; exp2]);
-      at = no_region;
-      note = Note.{def with typ = T.seq ret_tys; eff = max_eff (eff exp1) (eff exp2)}
-    }
-  | typ1 -> failwith
-     (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
-        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp1))
-        (T.string_of_typ typ1)
-        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp2)))
+let ( -*- ) exp1 exp2 = callE exp1 [] exp2
 
 
 (* derived loop forms; each can be expressed as an unconditional loop *)
@@ -626,7 +625,7 @@ let forE pat exp1 exp2 =
     )
   )
 
-let unreachableE =
+let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
-  loopE unitE
+  loopE (unitE ())
 
