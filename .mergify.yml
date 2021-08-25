@@ -3,8 +3,8 @@ pull_request_rules:
     conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
-      - status-success=hydra:dfinity-ci-build:evaluation
-      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
+      - status-success=tests (ubuntu-latest)
+      - status-success=tests (macos-latest)
       - base=master
       - label=automerge-squash
     actions:
@@ -15,8 +15,8 @@ pull_request_rules:
       delete_head_branch: {}
   - name: Automatic closing succesfull trials
     conditions:
-      - status-success=hydra:dfinity-ci-build:evaluation
-      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
+      - status-success=tests (ubuntu-latest)
+      - status-success=tests (macos-latest)
       - label=autoclose
     actions:
       close:
