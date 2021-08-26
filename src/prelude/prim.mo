@@ -292,6 +292,11 @@ func stableMemoryGrow(pages : Nat32) : Nat32 =
 func stableMemoryLoadNat32(offset : Nat32) : Nat32 =
   (prim "stableMemoryLoadNat32" : Nat32 -> Nat32) offset;
 
-func stableMemoryStoreNat32(offset : Nat32, nat32 : Nat32) : () =
-  (prim "stableMemoryStoreNat32" : (Nat32, Nat32) -> ()) (offset, nat32);
+func stableMemoryStoreNat32(offset : Nat32, val : Nat32) : () =
+  (prim "stableMemoryStoreNat32" : (Nat32, Nat32) -> ()) (offset, val);
 
+func stableMemoryLoadNat8(offset : Nat32) : Nat8 =
+  (prim "stableMemoryLoadNat8" : Nat32 -> Nat8) offset;
+
+func stableMemoryStoreNat8(offset : Nat32, val : Nat8) : () =
+  (prim "stableMemoryStoreNat8" : (Nat32, Nat8) -> ()) (offset, val);
