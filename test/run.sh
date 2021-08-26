@@ -24,7 +24,7 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-WASMTIME_OPTIONS="--disable-cache --cranelift --enable-multi-value"
+WASMTIME_OPTIONS="--disable-cache --cranelift --enable-multi-value true"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -313,8 +313,8 @@ do
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
-        run_if wasm valid wasm-validate --enable-multi-value $out/$base.wasm
-        run_if ref.wasm valid-ref wasm-validate --enable-multi-value  $out/$base.ref.wasm
+        run_if wasm valid wasm-validate $out/$base.wasm
+        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
 
         if [ -e $out/$base.wasm ]
         then
