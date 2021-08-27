@@ -3860,6 +3860,35 @@ module StableMem = struct
             IC.system_call env "ic0" "stable_write"))
     | _ -> assert false
 
+  (* read word16 from stable mem offset on stack *)
+  let read_word16 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_read_word16"
+        ("offset", I32Type) [I32Type]
+        (fun env get_offset ->
+          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 2l ^^
+            IC.system_call env "ic0" "stable_read" ^^
+            get_temp_ptr ^^
+            G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)})))
+    | _ -> assert false
+
+  (* write stable mem offset and value, operands on stack *)
+  let write_word16 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_write_word16"
+        (("offset", I32Type),("value", I32Type)) []
+        (fun env get_offset get_value ->
+          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_value ^^ store_unskewed_ptr ^^
+            get_offset ^^
+            get_temp_ptr ^^ compile_unboxed_const 2l ^^
+            IC.system_call env "ic0" "stable_write"))
+    | _ -> assert false
+
+
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
     match E.mode env with
@@ -3981,6 +4010,7 @@ module StableMem = struct
 
    | _ -> assert false
 
+
   let load_word32 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -4032,6 +4062,33 @@ module StableMem = struct
           get_offset ^^
           get_value ^^
           write_word8 env)
+    | _ -> assert false
+
+  let load_word16 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_load_word16"
+        (("offset", I32Type)) [I32Type]
+        (fun env get_offset  ->
+          get_offset ^^
+          compile_unboxed_const 2l ^^
+          guard_range env ^^
+          get_offset ^^
+          read_word16 env)
+    | _ -> assert false
+
+  let store_word16 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_store_word16"
+        (("offset", I32Type), ("value", I32Type)) []
+        (fun env get_offset get_value ->
+          get_offset ^^
+          compile_unboxed_const 2l ^^
+          guard_range env ^^
+          get_offset ^^
+          get_value ^^
+          write_word16 env)
     | _ -> assert false
 
 end (* Stack *)
@@ -7860,6 +7917,18 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
       StableMem.store_word8 env
+
+    | OtherPrim ("stableMemoryLoadNat16"), [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      StableMem.load_word16 env ^^
+      TaggedSmallWord.msb_adjust Type.Nat16
+
+    | OtherPrim ("stableMemoryStoreNat16"), [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
+      compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+      StableMem.store_word16 env
 
     | OtherPrim ("stableMemorySize"), [] ->
       SR.UnboxedWord32,

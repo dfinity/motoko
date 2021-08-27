@@ -11,4 +11,7 @@ module {
   public let loadNat8 = Prim.stableMemoryLoadNat8;
   public let storeNat8 = Prim.stableMemoryStoreNat8;
 
+  public let loadNat16 = Prim.stableMemoryLoadNat16;
+  public let storeNat16 = Prim.stableMemoryStoreNat16;
+
 }
