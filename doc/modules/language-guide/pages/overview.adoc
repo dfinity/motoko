@@ -110,6 +110,7 @@ The usual suspects...
 * `for (pat in e) …`
 * `return`, `return e`
 * `label l e`,  `break l e`
+* `do ? { … e! … }`
 * `async e`, `await e`             _(restricted)_
 * `throw`, `try … catch x { … }` _(restricted)_
 
@@ -291,12 +292,25 @@ func display(x : ?Text) : Text {
 
 [source.include_display, motoko]
 ....
-display(null);
+(display(null), display(?"Test"))
 ....
 
-[source.include_display, motoko]
+=== Option blocks
+
+Switching on every option value can be inconvenient ... +
+
+The _option block_, `do ? { … }`, allow you to safely access option values with a postfix _null break_ `!` expression.
+
+Within `do ? { … }`, which returns an option,
+the expression `e!` immediately exits the block with `null` when the value of option `e` is `null` or continues with the option's contents.
+
+[source, motoko]
 ....
-display(?"Test");
+func add(x : ?Nat, y: ?Nat) : ?Nat {
+  do ? { x! + y! };
+};
+
+(add(null, null), add (?1,null), add (?1,?2), add (null,?2));
 ....
 
 === Arrays (immutable)
@@ -353,7 +367,7 @@ employee;
 
 === Objects
 
-`{ first : Text; last : Text; get : () -> Nat; add : Nat -> () }`
+`{first : Text; last : Text; get : () -> Nat; add : Nat -> ()}`
 
 [source, motoko]
 ....
@@ -386,18 +400,18 @@ Just sugar for:
 
 [source.no-repl, motoko]
 ....
-type Employee = { first : Text; last : Text; get : () -> Nat; add : Nat -> () };
+type Employee = {first : Text; last : Text; get : () -> Nat; add : Nat -> ()};
 
 func Employee(fst : Text, lst : Text) : Employee = object { … }
 ....
 
 
 === Variants
-`{ #Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat }`
+`{#Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat}`
 
 [source, motoko]
 ....
-type Day = { #Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat };
+type Day = {#Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat};
 
 func toText(d : Day) : Text {
   switch d {
@@ -424,7 +438,7 @@ func sort(d : Day) : { #WeekDay; #WeekEnd } {
 [source#Lists, motoko]
 ....
 type List = {
-  #item : { head : Text; tail : List }; // variant with payload!
+  #item : {head : Text; tail : List}; // variant with payload!
   #empty                     // ^^^^ recursion!
 };
 
@@ -440,7 +454,7 @@ func reverse(l : List) : List {
   rev(l, #empty);
 };
 
-let l = reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }});
+let l = reverse(#item {head = "A"; tail = #item {head = "B"; tail = #empty}});
 ....
 
 === Generic types
@@ -448,7 +462,7 @@ let l = reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }})
 [source, motoko]
 ....
 type List<T> = {
-  #item : { head : T; tail : List<T> };
+  #item : {head : T; tail : List<T>};
   #empty
 };
 
@@ -465,10 +479,10 @@ func reverse<T>(l : List<T>) : List<T> {
 };
 
 let s : List<Text> =
-  reverse(#item { head = "A"; tail = #item { head = "B"; tail = #empty }});
+  reverse(#item {head = "A"; tail = #item {head = "B"; tail = #empty}});
 
 let ns : List<Nat> =
-  reverse(#item { head = 0; tail = #item { head = 1; tail = #empty }})
+  reverse(#item {head = 0; tail = #item {head = 1; tail = #empty}})
 ....
 
 == Packages and modules
@@ -563,7 +577,7 @@ import Array "mo:base/Array";
 
 actor Broadcast {
 
-  type Receiver = actor { recv : query Text -> async Nat };
+  type Receiver = actor {recv : query Text -> async Nat};
 
   var r : [Receiver] = [];
 
@@ -739,7 +753,7 @@ import Array "mo:base/Array";
 
 actor Broadcast {
 
-  type Receiver = actor { recv : query Text -> async Nat };
+  type Receiver = actor {recv : query Text -> async Nat};
 
   stable var r : [Receiver] = []; // declare r `stable`
 
@@ -765,7 +779,7 @@ stable variables must have _stable_ types (see manual) +
 ....
 /*
 type List = {
-  #item : { head : Text; tail : List };
+  #item : {head : Text; tail : List};
   #empty
 };
 
@@ -773,7 +787,7 @@ func reverse(l : List) : List { //... };
 */
 type Stack = {
    #empty;
-   #item : { tail : Stack; head : Text };
+   #item : {tail : Stack; head : Text};
 };
 
 let stack : Stack = #empty;
@@ -793,9 +807,9 @@ Despite their different names, `Stack` and `List` are equivalent types.
 
 [source, motoko]
 ....
-type WeekDay = { #Mon; #Tue; #Wed; #Thu; #Fri };
+type WeekDay = {#Mon; #Tue; #Wed; #Thu; #Fri};
 
-type Day = { #Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat };
+type Day = {#Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat};
 
 func toText(d : Day) : Text {
   switch d
@@ -819,8 +833,8 @@ let t = toText(mon); // also works, since WeekDay <: Day
 [source, motoko]
 ....
 
-type Employee = { first : Text; last : Text; var salary : Nat };
-type Person = { first : Text; last : Text};
+type Employee = {first : Text; last : Text; var salary : Nat};
+type Person = {first : Text; last : Text};
 
 func toText(p : Person) : Text {
   p.last # "," # p.first;
@@ -932,7 +946,7 @@ actor Server {
 === Example: The client class
 
 ....
-type Server = actor { subscribe : Client -> async Post; };
+type Server = actor {subscribe : Client -> async Post};
 
 actor class Client() = this {
   private var name : Text = "";
