@@ -353,7 +353,7 @@ counters;
 
 [source.include_impDebugInt, motoko]
 ....
-let employee = {first = "Boris"; last = "Johnson"; var salary = 81_932};
+let employee = {first = "John"; last = "Doe"; var salary = 81_932};
 
 Debug.print(
   employee.first # " " # employee.last # " earns " #
@@ -372,8 +372,8 @@ employee;
 [source, motoko]
 ....
 object self {
-  public let first = "Boris";
-  public let last = "Johnson";
+  public let first = "John";
+  public let last = "Doe";
   var salary : Nat = 81_932; // private by default
   public func get() : Nat = salary;
   public func add(bump : Nat) { salary += bump };
@@ -841,7 +841,7 @@ func toText(p : Person) : Text {
 };
 
 let employee : Employee =
-  { first = "Boris"; last = "Johnson"; var salary = 161_401};
+  { first = "John"; last = "Doe"; var salary = 161_401};
 
 let t = toText(employee); // also works, since Employee <: Person
 ....
