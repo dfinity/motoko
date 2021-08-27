@@ -3981,10 +3981,10 @@ module StableMem = struct
 
    | _ -> assert false
 
-  let load_nat32 env =
+  let load_word32 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_load_nat32"
+      Func.share_code1 env "__stablemem_load_word32"
         (("offset", I32Type)) [I32Type]
         (fun env get_offset  ->
           get_offset ^^
@@ -3994,10 +3994,10 @@ module StableMem = struct
           read_word32 env)
     | _ -> assert false
 
-  let store_nat32 env =
+  let store_word32 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_store_nat32"
+      Func.share_code2 env "__stablemem_store_word32"
         (("offset", I32Type), ("n32", I32Type)) []
         (fun env get_offset get_n32 ->
           get_offset ^^
@@ -4009,10 +4009,10 @@ module StableMem = struct
     | _ -> assert false
 
 
-  let load_nat8 env =
+  let load_word8 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_load_nat8"
+      Func.share_code1 env "__stablemem_load_word8"
         (("offset", I32Type)) [I32Type]
         (fun env get_offset  ->
           get_offset ^^
@@ -4021,10 +4021,10 @@ module StableMem = struct
           read_word8 env)
     | _ -> assert false
 
-  let store_nat8 env =
+  let store_word8 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_store_nat8"
+      Func.share_code2 env "__stablemem_store_word8"
         (("offset", I32Type), ("value", I32Type)) []
         (fun env get_offset get_value ->
           get_offset ^^
@@ -7841,25 +7841,25 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim ("stableMemoryLoadNat32"), [e] ->
       SR.UnboxedWord32,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
-      StableMem.load_nat32 env
+      StableMem.load_word32 env
 
     | OtherPrim ("stableMemoryStoreNat32"), [e1; e2] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.UnboxedWord32 e2 ^^
-      StableMem.store_nat32 env
+      StableMem.store_word32 env
 
     | OtherPrim ("stableMemoryLoadNat8"), [e] ->
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
-      StableMem.load_nat8 env ^^
+      StableMem.load_word8 env ^^
       TaggedSmallWord.msb_adjust Type.Nat8
 
     | OtherPrim ("stableMemoryStoreNat8"), [e1; e2] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
-      StableMem.store_nat8 env
+      StableMem.store_word8 env
 
     | OtherPrim ("stableMemorySize"), [] ->
       SR.UnboxedWord32,
