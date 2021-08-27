@@ -15,7 +15,6 @@ let
     src = nixpkgs_src;
     patches = [
       ./patches/124498.patch
-      ./patches/135687.patch # ocaml-vlq
     ];
   };
 
