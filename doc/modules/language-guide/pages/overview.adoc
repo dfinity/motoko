@@ -6,29 +6,29 @@ A simple, useful language for the Internet Computer (IC)
 
 * Familiar syntax
 * Safe by default
-* Incorporating [line-through]*actor* _canister_ model
+* Incorporating *actor* model for canisters
 * Seamless integration of IC features
 * Making most of present and future WebAssembly
 
 === Key Design Points
 
 * Object-oriented, functional & imperative
-* Objects as records of members
+* Objects as records of functions
 * `async`/`await` for sequential programming of asynchronous messaging
 * Structural typing with simple generics and subtyping
-* Safe arithmetic (unbounded and checked)
+* Safe arithmetic (both unbounded and checked)
 * Non-nullable types by default
 * Garbage collected (no manual memory management)
 * JavaScript-like syntax but statically typed & sane
 
-Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
+Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 === Semantics
 
-* call-by-value (like Java, C, JS, ML; unlike Haskell, Nix)
+* call-by-value (like Java, C, JS, ML; unlike Haskell)
 * declarations are locally mutually recursive
 * parametric, bounded polymorphism
-* subtyping as subsumption, not coercion.
+* subtyping as zero-cost subsumption, not coercion
 * no dynamic casts
 * no inheritance
 
@@ -39,7 +39,7 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 * less simple compiler to WebAssembly
 ** multipass with typed IR in each pass.
 ** uniform representation, unboxed arithmetic
-** two-space gc or mark-compact gc, gc between messages (for now)
+** two-space GC or mark-compact GC, invoked after messages (for now)
 * polymorphism by erasure
 
 == The language
@@ -80,7 +80,6 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 
 === Blocks and declarations
 
-
 [source.include_impDebugInt, motoko]
 ....
   type Delta = Nat;
@@ -102,17 +101,17 @@ Inspirations: Java(Script), C#, Swift, Pony, ML, Haskell
 The usual suspects...
 
 * `do { … }`
-* `if (b) …`
-* `if (b) … else …`
-* `switch e { case (pat1) e1; …; case _ en }`
-* `while (b) …`
+* `if b …`
+* `if b … else …`
+* `switch e { case pat1 e1; …; case _ en }`
+* `while b …`
 * `loop …`
-* `loop …  while (b)`
+* `loop …  while b`
 * `for (pat in e) …`
 * `return`, `return e`
 * `label l e`,  `break l e`
 * `async e`, `await e`             _(restricted)_
-* `throw`, `try … catch (x) { … }` _(restricted)_
+* `throw`, `try … catch x { … }` _(restricted)_
 
 == Primitive types
 
@@ -148,8 +147,8 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 `Nat8`, `Nat16`, `Nat32`, `Nat64`, `Int8`, `Int16`, `Int32`, `Int64`
 
-Trap on over- and underflow. Wrap-on-trap and bit-manipulating
-operations available.
+Trap on over- and underflow; wrap-around and bit-manipulating
+operations available separately
 
 Needs type annotations (somewhere)
 
@@ -178,11 +177,11 @@ No surprises here
 
 `a +% b, a -% b, …` for wrapping, modular arithmetic (where appropriate)
 
-=== Characters and text
+=== Characters and Text
 
 `Char`, `Text`
 
-Unicode! No random access.
+Unicode! Character = Unicode scalar value; no random access on text
 
 * `'x'`, `+'\u{6a}'+`, `'☃'`,
 * `"boo"`, `+"foo \u{62}ar ☃"+`
@@ -336,15 +335,15 @@ counters;
 
 === Records
 
-`{ first : Text; last : Text; salary : var Nat }`
+`{first : Text; last : Text; salary : var Nat}`
 
 [source.include_impDebugInt, motoko]
 ....
-let employee = { first = "Boris"; last = "Johnson"; var salary = 81_932 };
+let employee = {first = "Boris"; last = "Johnson"; var salary = 81_932};
 
 Debug.print(
   employee.first # " " # employee.last # " earns " #
-  Int.toText(employee.salary) # " pounds."
+    Int.toText(employee.salary) # " pounds."
 );
 
 employee.salary += 79_496;
@@ -509,7 +508,6 @@ More libraries popping up!
 [source.no-repl, motoko]
 ....
 module {
-
   public type List<T> = …;
 
   public func reverse<T>(l : List<T>) : List<T> { … };
@@ -540,7 +538,7 @@ _sharable_ arguments and _no_ or _async_ result type.
 * `send` is an IC _update_ method
 * `recv` is IC _query_ method
 
-IC "canister" ≈ Motoko "actor"
+IC canister ≈ Motoko actor
 
 === sharable ≈ serializable
 
