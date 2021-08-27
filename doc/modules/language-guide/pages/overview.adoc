@@ -576,7 +576,6 @@ with immutable sharable components
 import Array "mo:base/Array";
 
 actor Broadcast {
-
   type Receiver = actor {recv : query Text -> async Nat};
 
   var r : [Receiver] = [];
