@@ -286,7 +286,7 @@ latter is legal in the target language.
 ## Work flows
 
 The mapping specified here can be used to support the following use-cases. The
-user interfaces (e.g. flag names, or whether `moc`, `didc`, `dfx` is used) are
+user interfaces (e.g. flag names, or whether `moc`, `dfx` is used) are
 just suggestions.
 
 * Generating IDL from Motoko
@@ -312,26 +312,14 @@ just suggestions.
   mapping `i`, will generate an IDL type `e(t)` as in the previous point, and
   and check that `e(t) <: t_spec` (using IDL subtyping).
 
-* Converting IDL types to Motoko types
-
-  If `foo.did` a textual IDL file, then
-
-      didc foo.did -o foo.mo
-
-  will create an Motoko library unit `foo.mo` that consists of type
-  definitions.
-  All `<def>`s and the final `<actor>` from `foo.did` is turned into a `type`
-  declaration in Motoko, according to `i`.
-  Imported IDL files are recursively inlined.
-
-  Variant: Imported IDL files are translated separately and included via
-  `import` in Motoko.
-
 * Importing IDL types from the Motoko compiler
 
   If `path/to/foo.did` a textual IDL file, then a declaration
 
       import Foo "path/to/foo"
 
-  is treated by `moc` by reading `foo.did` as if  the developer had
-  run `didc path/to/foo.did -o path/to/foo.mo`.
+  will behaves like importing a Motoko library that consists of type
+  definitions.
+  All `<def>`s and the final `<actor>` from `foo.did` is turned into a `type`
+  declaration in Motoko, according to `i`.
+  Imported IDL files are recursively inlined.
