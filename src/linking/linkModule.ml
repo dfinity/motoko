@@ -872,12 +872,11 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
   in
 
-  (* Inject call to "__wasm_apply_global_relocs" *)
-  let apply_global_relocs_name = "__wasm_apply_global_relocs" in
-  let add_apply_global_relocs =
-    match List.find_opt (fun (_, name) -> name = apply_global_relocs_name) (em2.name.function_names) with
-    | None -> fun em -> em
-    | Some (fi, _) -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
+  (* Prepend second module's start to the argument's start *)
+  let add_module2_start (em : extended_module) : extended_module =
+    match em2.module_.start with
+    | None -> em
+    | Some fi -> prepend_to_start (funs2 fi.it) (add_or_get_ty (Wasm.Types.FuncType ([], []))) em
   in
 
   let new_table_size =
@@ -910,7 +909,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_name_section funs2
     )
   |> add_call_ctors
-  |> add_apply_global_relocs
+  |> add_module2_start
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
   in
 
