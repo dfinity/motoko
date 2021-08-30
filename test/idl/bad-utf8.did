@@ -1,5 +1,0 @@
-type t = variant {
-  "good1 \00";
-  "good2 \e2\98\83";
-  "bad1  \ff";
-}

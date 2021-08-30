@@ -19,11 +19,6 @@
  (libraries docs)
 )
 (executable
- (name didc)
- (modules didc)
- (libraries idllib source_id)
-)
-(executable
  (name deser)
  (modules deser)
  (libraries stdio num source_id)

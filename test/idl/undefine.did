@@ -1,4 +1,0 @@
-type A = vec B;
-type B = C;
-type C = opt D;
-type D = vec a;

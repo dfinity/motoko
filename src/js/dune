@@ -20,11 +20,3 @@
  (js_of_ocaml (flags --no-extern-fs --no-source-map))
  (preprocess (pps js_of_ocaml-ppx))
 )
-
-(executable
- (name didc_js)
- (modules didc_js)
- (libraries idllib lang_utils)
- (preprocess (pps js_of_ocaml-ppx))
-)
-

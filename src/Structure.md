@@ -27,7 +27,7 @@ for the real deal; some shortcuts had to be taken.
 
    Stuff that could be in the Ocaml standard library.
 
- * `lang_utils/` (moc, didc; using `lib/`)
+ * `lang_utils/` (moc; using `lib/`)
 
    General PL-related utility-functions, useful for AS Source, AS IR, the IDL
    AST: Environments, diagnostic error messages, source locations.
@@ -89,7 +89,7 @@ for the real deal; some shortcuts had to be taken.
 
  * `idllib/`
 
-   Kitchen-sink of `didc` related files. Yet to be split up.
+   Kitchen-sink of Candid related files. Yet to be split up.
 
  * `lsp/`
 
@@ -121,7 +121,3 @@ actual functionality is easily shared.
  * `mo-ld` (using `linking/`)
 
    The stand-alone Wasm linker
-
- * `didc` (using `idl/`)
-
-   The IDL compiler

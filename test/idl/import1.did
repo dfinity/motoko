@@ -1,9 +1,0 @@
-type t = blob;
-
-import "px.did";
-
-type t1 = t;
-type t2 = UserId;
-service : {
-  f : (t,t1,t2) -> ();
-}

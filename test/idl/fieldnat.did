@@ -1,8 +1,0 @@
-service Foo: 
-{
-  foo : (record {2 : int}) -> ();
-  bar : (record {"2" : int}) -> ();
-  baz : (record {2: int; "2": nat}) -> ();
-  bab : (two: int, "2": nat) -> ();
-}
-

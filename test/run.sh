@@ -245,15 +245,10 @@ do
       if [ $IDL = 'yes' ]
       then
         run idl $moc_with_flags --idl $base.mo -o $out/$base.did
-        idl_succeeded=$?
 
         normalize $out/$base.did
         diff_files="$diff_files $base.did"
 
-        if [ "$idl_succeeded" -eq 0 ]
-        then
-          run didc didc --check $out/$base.did
-        fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
@@ -441,34 +436,6 @@ do
     then
         run wasm2wat wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat
         diff_files="$diff_files $base.linked.wat"
-    fi
-  ;;
-  "did")
-    # The file is a .did file, so we are expected to test the idl
-    # Typecheck
-    $ECHO -n " [tc]"
-    didc --check $base.did > $out/$base.tc 2>&1
-    tc_succeeded=$?
-    normalize $out/$base.tc
-    diff_files="$diff_files $base.tc"
-
-    if [ "$tc_succeeded" -eq 0 ];
-    then
-      $ECHO -n " [pp]"
-      didc --pp $base.did > $out/$base.pp.did
-      sed -i 's/import "/import "..\//g' $out/$base.pp.did
-      didc --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
-      diff_files="$diff_files $base.pp.tc"
-
-      run didc-js didc --js $base.did -o $out/$base.js
-      normalize $out/$base.js
-      diff_files="$diff_files $base.js"
-
-      if [ -e $out/$base.js ]
-      then
-        export NODE_PATH=$NODE_PATH:$ESM
-        run node node -r esm $out/$base.js
-      fi
     fi
   ;;
   *)

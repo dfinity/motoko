@@ -1,8 +1,0 @@
-export default ({ IDL }) => {
- const const_ =
-  IDL.Record({'type_': IDL.Nat, 'vec_': IDL.Nat, 'service_': IDL.Nat})
- return IDL.Service({'blob': IDL.Func([const_], [IDL.Vec(IDL.Nat8)], []),
-  'record':
-   IDL.Func([IDL.Nat, IDL.Nat, IDL.Variant({})], [IDL.Nat, IDL.Record({})],
-    [])});
-};

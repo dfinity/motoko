@@ -4,7 +4,6 @@ TO-TEST = \
   $(patsubst %.mo,_out/%_done,$(wildcard *.mo)) \
   $(patsubst %.sh,_out/%_done,$(wildcard *.sh)) \
   $(patsubst %.wat,_out/%_done,$(wildcard *.wat)) \
-  $(patsubst %.did,_out/%_done,$(wildcard *.did)) \
 
 
 .PHONY: quick
@@ -23,8 +22,5 @@ _out/%_done: %.sh $(wildcard ../../src/moc) ../run.sh  | _out
 	@+ chronic ../run.sh $(RUNFLAGS) $<
 	@+ touch $@
 _out/%_done: %.wat $(wildcard ../../src/moc) ../run.sh  | _out
-	@+ chronic ../run.sh $(RUNFLAGS) $<
-	@+ touch $@
-_out/%_done: %.did $(wildcard ../../src/didc) ../run.sh  | _out
 	@+ chronic ../run.sh $(RUNFLAGS) $<
 	@+ touch $@

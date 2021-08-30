@@ -50,14 +50,6 @@ let parse_file filename : parse_result =
      Diag.return (prog, filename)
   | Error e -> Error e
 
-let parse_string s : parse_result =
-  let lexer = Lexing.from_string s in
-  let parser = Parser.parse_prog in
-  let result = parse_with lexer parser "source1" in
-  match result with
-  | Ok prog -> Diag.return (prog, "source2")
-  | Error e -> Error e
-
 let parse_file filename : parse_result =
   try parse_file filename
   with Sys_error s ->
@@ -129,28 +121,11 @@ let load_prog parse senv =
 
 let initial_stat_env = Typing.empty_scope
 
-let check_string source : load_result = load_prog (parse_string source) initial_stat_env
 let check_file file : load_result = load_prog (parse_file file) initial_stat_env
 let check_prog prog : Typing.scope Diag.result =
   let open Diag.Syntax in
   let* scope, _ = check_prog initial_stat_env prog in
   Diag.return scope
-
-(* JS Compilation *)
-
-type compile_result = Buffer.t Diag.result
-
-let compile_js_file file : compile_result =
-  let open Diag.Syntax in
-  let* prog, senv, _ = check_file file in
-  phase "JS Compiling" file;
-  Diag.return (Compile_js.compile senv prog)
-
-let compile_js_string source : compile_result =
-  let open Diag.Syntax in
-  let* prog, senv, _ = check_string source in
-  phase "JS Compiling" "source3";
-  Diag.return (Compile_js.compile senv prog)
 
 (* Test file *)
 

@@ -1,3 +1,0 @@
-service : {
-  "getCaller": () -> (principal, nat32);
-}

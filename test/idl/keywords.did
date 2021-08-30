@@ -1,5 +1,0 @@
-type const_ = record { type_:nat; service_:nat; vec_:nat };
-service : {
-  "blob": (const_) -> (blob);
-  "record": (opt_:nat, import_:nat, variant_:variant {}) -> (record_:nat, record {});
-}

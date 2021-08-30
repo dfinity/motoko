@@ -1,4 +1,0 @@
-export default ({ IDL }) => {
- return IDL.Service({
-  'getCaller': IDL.Func([], [IDL.Principal, IDL.Nat32], [])});
-};

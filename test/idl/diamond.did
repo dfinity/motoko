@@ -1,6 +1,0 @@
-type t1 = record { t2; t3; t };
-import "diamond2.did";
-import "diamond3.did";
-service S: {
-  f : (t, t2, t3) -> (t1);
-}

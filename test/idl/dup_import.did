@@ -1,2 +1,0 @@
-import "px.did";
-type UserId = blob;

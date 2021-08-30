@@ -1,7 +1,0 @@
-export default ({ IDL }) => {
- const t = IDL.Nat
- const t2 = IDL.Vec(t)
- const t3 = IDL.Opt(t)
- const t1 = IDL.Tuple(t2, t3, t)
- return IDL.Service({'f': IDL.Func([t, t2, t3], [t1], [])});
-};

@@ -79,13 +79,6 @@ Files named `foo.sh` will simply be executed.
 Files named `foo.wat` expect a corresponding `.c` file and are used to test
 `mo-ld`. See `ld/` for examples.
 
-### `.did` files
-
-Files named `foo.did` will be passed through the `didc` file checker,
-pretty-printer, the pretty-printed file will be checked again. It also generates
-JS bindings, which will be parsed by `node`.
-
-
 Running as a `nix` derivation
 -----------------------------
 

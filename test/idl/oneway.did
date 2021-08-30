@@ -1,3 +1,0 @@
-type g = func (nat) -> () oneway;
-type f = func (nat) -> (nat) oneway;
-

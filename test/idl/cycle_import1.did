@@ -1,2 +1,0 @@
-import "cycle_import2.did";
-type A = nat;

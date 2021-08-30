@@ -33,7 +33,6 @@ the top-level `default.nix`:
 * `moc`: contains `bin/moc`
 * `mo-ide`: contains `bin/mo-ide`
 * `mo-doc`: contains `bin/mo-doc`
-* `didc`: contains `bin/didc`
 * `base-src`: contains the base library, directly in the top level directory,
   as `*.mo` files. It does not contain extra files (test files, for example)
 
@@ -98,23 +97,6 @@ The `⟨canisterid⟩` here refers to the “textual representation“, e.g. `em
 This file informs Motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
 
 Open problem: how to resolve mutual canister imports.
-
-Compiling IDL Files to JS
--------------------------
-
-In order to compile an IDL file, `dfx` invokes `didc` with
-
-    didc --js some/path/input.did -o another/path/output.js
-
-This _reads_ `some/path/input.did` and any `.did` file referenced by
-`some/path/input.did`.
-
-No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
-
-This _writes_ to `another/path/output.js`, but has no other effect. It does
-not create `another/path/`.
-
-Compiler warnings and errors are reported to `stderr`. Nothing writes to `stdout`.
 
 Invoking the IDE
 ----------------

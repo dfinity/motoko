@@ -1,7 +1,0 @@
-export default ({ IDL }) => {
- const t = IDL.Vec(IDL.Nat8)
- const t1 = t
- const UserId = IDL.Nat
- const t2 = UserId
- return IDL.Service({'f': IDL.Func([t, t1, t2], [], [])});
-};

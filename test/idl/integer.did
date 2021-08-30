@@ -1,5 +1,0 @@
-service : {
-  f : (nat8) -> (int16);
-  g : (nat64) -> (int64);
-  h : (int8) -> (nat);
-}

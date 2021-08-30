@@ -219,7 +219,6 @@ rec {
   mo-ld = ocaml_exe "mo-ld" "mo-ld" null;
   mo-ide = ocaml_exe "mo-ide" "mo-ide" null;
   mo-doc = ocaml_exe "mo-doc" "mo-doc" null;
-  didc = ocaml_exe "didc" "didc" null;
   deser = ocaml_exe "deser" "deser" null;
   candid-tests = ocaml_exe "candid-tests" "candid-tests" null;
 
@@ -262,7 +261,7 @@ rec {
         src = test_src dir;
         buildInputs =
           deps ++
-          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
+          (with nixpkgs; [ wabt bash perl getconf moreutils ]) ++
           [ filecheck
             wasmtime
           ] ++
@@ -271,7 +270,6 @@ rec {
         checkPhase = ''
             patchShebangs .
             ${llvmEnv}
-            export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             make -C ${dir}
           '';
@@ -380,8 +378,7 @@ rec {
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
-      idl        = test_subdir "idl"        [ didc ];
-      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      mo-idl     = test_subdir "mo-idl"     [ moc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
@@ -433,7 +430,6 @@ rec {
     {
       moc = mk "moc";
       moc_interpreter = mk "moc_interpreter";
-      didc = mk "didc";
       recurseForDerivations = true;
     };
 
@@ -607,7 +603,6 @@ rec {
       moc
       mo-ide
       mo-doc
-      didc
       deser
       samples
       rts
@@ -637,7 +632,7 @@ rec {
     # both, while not actually building `moc`
     #
     propagatedBuildInputs =
-      let dont_build = [ moc mo-ld didc deser candid-tests ]; in
+      let dont_build = [ moc mo-ld deser candid-tests ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
@@ -659,7 +654,6 @@ rec {
       # that would be confusing in interactive use
       unset XDG_DATA_DIRS
     '';
-    ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;

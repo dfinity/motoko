@@ -1,3 +1,0 @@
-type A = record {
- "\u{D800}":nat;
-};
