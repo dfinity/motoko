@@ -7,6 +7,7 @@
     arbitrary_self_types,
     assoc_char_funcs,
     core_intrinsics,
+    map_first_last,
     panic_info_message,
     ptr_offset_from
 )]

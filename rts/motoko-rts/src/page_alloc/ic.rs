@@ -3,9 +3,11 @@ use crate::bitmap::Bitmap;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 
+use alloc::collections::btree_set::BTreeSet;
 use alloc::vec::Vec;
 use core::arch::wasm32;
-use core::convert::TryFrom;
+
+pub const IC_PAGE_SIZE: crate::types::Bytes<u32> = crate::constants::WASM_PAGE_SIZE;
 
 /// A `PageAlloc` implementation for the IC
 #[derive(Clone)]
@@ -14,45 +16,230 @@ pub struct IcPageAlloc {}
 /// A `Page` implementation for the IC. Currently maps to a single Wasm page, but that may change
 /// in the future.
 #[derive(Debug, Clone, Copy)]
+#[repr(packed)]
 pub struct IcPage {
-    // Wasm page number for this page
+    /// Wasm page number for this page
     wasm_page_num: u16,
+
+    /// Number of Wasm pages in this page
+    n_pages: u16,
 }
 
-/// Free list for `IcPageAlloc`. It's important that this is static data rather than a
-/// `IcPageAlloc` field, otherwise `IcPageAlloc` will need to be passed around in RTS functions and
-/// to the RTS by the mutator.
-static mut FREE_PAGES: Vec<IcPage> = Vec::new();
+#[derive(Debug)]
+struct SizeClass {
+    n_pages: u16,
+    // Set of Wasm pages
+    pages: BTreeSet<u16>,
+}
+
+impl SizeClass {
+    fn new(n_pages: u16) -> Self {
+        SizeClass {
+            n_pages,
+            pages: BTreeSet::new(),
+        }
+    }
+
+    fn insert(&mut self, wasm_page_num: u16) {
+        let present = self.pages.insert(wasm_page_num);
+        debug_assert!(!present);
+    }
+
+    fn remove(&mut self, wasm_page_num: u16) {
+        let present = self.pages.remove(&wasm_page_num);
+        debug_assert!(present);
+    }
+
+    fn remove_first(&mut self) -> Option<u16> {
+        self.pages.pop_first()
+    }
+
+    fn empty(&self) -> bool {
+        self.pages.is_empty()
+    }
+}
+
+//
+// Free list operations
+//
+
+/// Free pages sorted by start address (Wasm page num). Used to find pages to merge.
+// TODO: Make this a `BTreeSet` after updating rustc (currently BTreeSet::new is not const)
+static mut FREE_PAGES_ADDR_SORTED: Vec<IcPage> = Vec::new();
+
+unsafe fn get_page_num_idx(wasm_page_num: u16) -> Result<usize, usize> {
+    FREE_PAGES_ADDR_SORTED.binary_search_by_key(&wasm_page_num, |page| page.wasm_page_num)
+}
+
+unsafe fn add_free_page_addr_sorted(page: IcPage) {
+    match get_page_num_idx(page.wasm_page_num) {
+        Ok(_) => panic!("add_free_page_addr_sorted: page already in free list"),
+        Err(idx) => FREE_PAGES_ADDR_SORTED.insert(idx, page),
+    }
+}
+
+unsafe fn remove_free_page_addr_sorted(wasm_page_num: u16) {
+    match get_page_num_idx(wasm_page_num) {
+        Ok(idx) => {
+            FREE_PAGES_ADDR_SORTED.remove(idx);
+        }
+        Err(_) => panic!(
+            "remove_free_page_addr: page {} is not in free list",
+            wasm_page_num
+        ),
+    }
+}
+
+/// Free pages reverse-sorted by region size and start address (or Wasm page num), used to allocate.
+// TODO: Make this a `BTreeSet` after updating rustc (currently BTreeSet::new is not const)
+static mut FREE_PAGES_SIZE_SORTED: Vec<SizeClass> = Vec::new();
+
+unsafe fn get_size_class_idx(n_pages: u16) -> Result<usize, usize> {
+    FREE_PAGES_SIZE_SORTED.binary_search_by_key(&n_pages, |size_class| size_class.n_pages)
+}
+
+unsafe fn add_free_page_size_sorted(wasm_page_num: u16, n_pages: u16) {
+    match get_size_class_idx(n_pages) {
+        Ok(size_class_idx) => {
+            FREE_PAGES_SIZE_SORTED[size_class_idx].insert(wasm_page_num);
+        }
+        Err(new_size_class_idx) => {
+            let mut size_class = SizeClass::new(n_pages);
+            size_class.insert(wasm_page_num);
+            FREE_PAGES_SIZE_SORTED.insert(new_size_class_idx, size_class);
+        }
+    }
+}
+
+unsafe fn remove_free_size_sorted(wasm_page_num: u16, n_pages: u16) {
+    match get_size_class_idx(n_pages) {
+        Ok(size_class_idx) => {
+            FREE_PAGES_SIZE_SORTED[size_class_idx].remove(wasm_page_num);
+        }
+        Err(_) => panic!(
+            "remove_free_size_sorted: No size class for {} pages",
+            n_pages
+        ),
+    }
+}
+
+//
+// End of free list operations
+//
+
+unsafe fn alloc_wasm_pages(n_pages: u16) -> u16 {
+    let wasm_page_num = wasm32::memory_grow(0, usize::from(n_pages));
+
+    if wasm_page_num == usize::MAX {
+        rts_trap_with("Cannot grow memory");
+    }
+
+    wasm_page_num as u16
+}
 
 impl PageAlloc for IcPageAlloc {
     type Page = IcPage;
 
     unsafe fn alloc(&self) -> IcPage {
-        FREE_PAGES.pop().unwrap_or_else(|| {
-            let wasm_page_num = wasm32::memory_grow(0, 1);
-
-            // First page should be in use
-            debug_assert_ne!(wasm_page_num, 0);
-
-            if wasm_page_num == usize::MAX {
-                rts_trap_with("Cannot grow memory");
+        // Get the smallest page
+        match FREE_PAGES_SIZE_SORTED.get_mut(0) {
+            None => {
+                let wasm_page_num = alloc_wasm_pages(1);
+                IcPage {
+                    wasm_page_num,
+                    n_pages: 1,
+                }
             }
+            Some(size_class) => {
+                // TODO: Improve error msg
+                let page = size_class.remove_first().unwrap();
 
-            // TODO: Should be safe to use `as u16` here
-            IcPage {
-                wasm_page_num: u16::try_from(wasm_page_num).unwrap(),
+                // Page removed from size-sorted list, remove from addr-sorted list
+                remove_free_page_addr_sorted(page);
+
+                if size_class.n_pages > 1 {
+                    // Page too big: split it, add the unused part to free lists
+                    let free_page = IcPage {
+                        wasm_page_num: page + 1,
+                        n_pages: size_class.n_pages - 1,
+                    };
+
+                    add_free_page_size_sorted(free_page.wasm_page_num, free_page.n_pages);
+                    add_free_page_addr_sorted(free_page);
+                }
+
+                IcPage {
+                    wasm_page_num: page,
+                    n_pages: 1,
+                }
             }
-        })
+        }
+    }
+
+    unsafe fn alloc_pages(&self, n_pages: u16) -> IcPage {
+        // Get the size class with n_pages or the smallest size class larger than n_pages
+        match get_size_class_idx(n_pages) {
+            Ok(size_class_idx) => {
+                // TODO: Improve err msg
+                let wasm_page_num = FREE_PAGES_SIZE_SORTED[size_class_idx]
+                    .remove_first()
+                    .unwrap();
+
+                let page = IcPage {
+                    wasm_page_num,
+                    n_pages,
+                };
+
+                remove_free_page_addr_sorted(wasm_page_num);
+
+                page
+            }
+            Err(size_class_idx) => {
+                if size_class_idx == FREE_PAGES_SIZE_SORTED.len() {
+                    // No size class available for `n_pages`, allocate Wasm pages
+                    let wasm_page_num = alloc_wasm_pages(n_pages);
+
+                    IcPage {
+                        wasm_page_num,
+                        n_pages,
+                    }
+                } else {
+                    // We have a size class larger than requested. Get a page, free unused parts.
+                    let size_class = &mut FREE_PAGES_SIZE_SORTED[size_class_idx];
+
+                    // TODO: Improve err msg
+                    let page = size_class.remove_first().unwrap();
+
+                    remove_free_page_addr_sorted(page);
+
+                    let free_page = IcPage {
+                        wasm_page_num: page + n_pages,
+                        n_pages: size_class.n_pages - n_pages,
+                    };
+
+                    add_free_page_size_sorted(free_page.wasm_page_num, free_page.n_pages);
+                    add_free_page_addr_sorted(free_page);
+
+                    IcPage {
+                        wasm_page_num: page,
+                        n_pages,
+                    }
+                }
+            }
+        }
     }
 
     unsafe fn free(&self, page: IcPage) {
-        FREE_PAGES.push(page)
+        todo!()
     }
 
-    unsafe fn get_address_page(&self, addr: usize) -> IcPage {
-        IcPage {
-            wasm_page_num: (addr / WASM_PAGE_SIZE.as_usize()) as u16,
-        }
+    unsafe fn get_address_page_start(&self, addr: usize) -> usize {
+        // TODO: Implement debug mode checks:
+        // - `addr` is not in a "large" page
+        // - `addr` is within heap
+
+        // Mask least significant bits to get Wasm page start
+        addr & !(WASM_PAGE_SIZE.as_usize() - 1)
     }
 
     unsafe fn in_static_heap(&self, addr: usize) -> bool {

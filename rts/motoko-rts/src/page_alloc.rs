@@ -3,18 +3,25 @@ use crate::bitmap::Bitmap;
 #[cfg(feature = "ic")]
 pub mod ic;
 
+pub const PAGE_SIZE: crate::types::Bytes<u32> = crate::constants::WASM_PAGE_SIZE;
+
 /// Trait for page allocators. A page is a unit of allocation from the underlying systme (Wasm, OS,
 /// some kind of mock or simulation in tests etc.).
 pub trait PageAlloc: Clone {
     type Page: Page;
 
+    /// Allocate single page
     unsafe fn alloc(&self) -> Self::Page;
 
+    /// Allocate given number of consecutive pages
+    unsafe fn alloc_pages(&self, n_pages: u16) -> Self::Page;
+
+    /// Free a page
     unsafe fn free(&self, page: Self::Page);
 
-    /// Get the page of a given address. May panic if address does not belong to a page for this
-    /// allocator.
-    unsafe fn get_address_page(&self, addr: usize) -> Self::Page;
+    /// Get the start address of the page that contains the given address. Only works on
+    /// single-page pages! Can be used to get page header.
+    unsafe fn get_address_page_start(&self, addr: usize) -> usize;
 
     /// Is the address in static heap?
     unsafe fn in_static_heap(&self, addr: usize) -> bool;
