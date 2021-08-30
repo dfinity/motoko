@@ -2,9 +2,11 @@ all: overview-slides.html antora
 
 SHELL=bash
 
-overview-slides.html : overview-slides.md
+overview-slides.html : modules/language-guide/pages/overview.adoc
+	asciidoc -b docbook -o overview.xml modules/language-guide/pages/overview.adoc || true
+	pandoc -f docbook -t markdown_strict overview.xml -o overview.md
 	pandoc \
-	  -t revealjs -s -o overview-slides.html overview-slides.md \
+	  -t revealjs -s -o overview-slides.html overview.md \
 	  -V theme=moon \
 	  --strip-comments \
 	  -V revealjs-url=https://cdn.jsdelivr.net/npm/reveal.js@4.1.0 \
