@@ -230,7 +230,57 @@ impl PageAlloc for IcPageAlloc {
     }
 
     unsafe fn free(&self, page: IcPage) {
-        todo!()
+        // Check add-sorted list first, coalesce with neighbors
+
+        let free_list_idx = match get_page_num_idx(page.wasm_page_num) {
+            Ok(_) => panic!("free: Wasm page {} is already in a free list"),
+            Err(idx) => idx,
+        };
+
+        let mut coalesce_start = free_list_idx;
+        let mut coalesce_end = free_list_idx;
+
+        while coalesce_start != 0 {
+            let prev_page = FREE_PAGES_ADDR_SORTED[coalesce_start - 1];
+            if prev_page.wasm_page_num + prev_page.n_pages == page.wasm_page_num {
+                coalesce_start -= 1;
+            } else {
+                break;
+            }
+        }
+
+        while coalesce_end != FREE_PAGES_ADDR_SORTED.len() {
+            let next_page = FREE_PAGES_ADDR_SORTED[coalesce_end];
+            if next_page.wasm_page_num == page.wasm_page_num + page.n_pages {
+                coalesce_end += 1;
+            }
+            break;
+        }
+
+        if coalesce_start != coalesce_end {
+            // Remove coalesced pages from free lists
+            let mut total_pages = page.n_pages;
+            let coalesced_wasm_page_num = FREE_PAGES_ADDR_SORTED[coalesce_start].wasm_page_num;
+
+            for coalesced_page in &FREE_PAGES_ADDR_SORTED[coalesce_start..coalesce_end] {
+                remove_free_page_addr_sorted(coalesced_page.wasm_page_num);
+                remove_free_size_sorted(coalesced_page.wasm_page_num, coalesced_page.n_pages);
+                total_pages += total_pages;
+            }
+
+            // Insert new page
+            let new_page = IcPage {
+                wasm_page_num: coalesced_wasm_page_num,
+                n_pages: total_pages,
+            };
+
+            add_free_page_addr_sorted(new_page);
+            add_free_page_size_sorted(coalesced_wasm_page_num, total_pages);
+        } else {
+            // Coalescing not possible
+            add_free_page_addr_sorted(page);
+            add_free_page_size_sorted(page.wasm_page_num, page.n_pages);
+        }
     }
 
     unsafe fn get_address_page_start(&self, addr: usize) -> usize {
