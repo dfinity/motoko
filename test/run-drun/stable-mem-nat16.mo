@@ -47,7 +47,7 @@ actor {
     assert (n == StableMemory.size());
     P.debugPrint (debug_show {testBounds=n});
     // test bounds check
-    var i : Nat32 = n * 65536 - 0;
+    var i : Nat32 = n * 65536 - 1;
     let max = i + 16;
     while (i < max) {
       try {
