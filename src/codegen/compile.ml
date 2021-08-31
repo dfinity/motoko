@@ -3907,7 +3907,7 @@ module StableMem = struct
   let write_word64 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_write_word16"
+      Func.share_code2 env "__stablemem_write_word64"
         (("offset", I32Type),("value", I64Type)) []
         (fun env get_offset get_value ->
           Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
@@ -3917,6 +3917,7 @@ module StableMem = struct
             get_temp_ptr ^^ compile_unboxed_const 8l ^^
             IC.system_call env "ic0" "stable_write"))
     | _ -> assert false
+
 
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
