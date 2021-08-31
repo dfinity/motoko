@@ -3918,7 +3918,6 @@ module StableMem = struct
             IC.system_call env "ic0" "stable_write"))
     | _ -> assert false
 
-
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
     match E.mode env with
@@ -4128,7 +4127,7 @@ module StableMem = struct
         (("offset", I32Type)) [I64Type]
         (fun env get_offset  ->
           get_offset ^^
-          compile_unboxed_const 4l ^^
+          compile_unboxed_const 8l ^^
           guard_range env ^^
           get_offset ^^
           read_word64 env)
@@ -4141,7 +4140,7 @@ module StableMem = struct
         (("offset", I32Type), ("value", I64Type)) []
         (fun env get_offset get_value ->
           get_offset ^^
-          compile_unboxed_const 4l ^^
+          compile_unboxed_const 8l ^^
           guard_range env ^^
           get_offset ^^
           get_value ^^
