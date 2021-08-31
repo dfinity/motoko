@@ -3918,6 +3918,35 @@ module StableMem = struct
             IC.system_call env "ic0" "stable_write"))
     | _ -> assert false
 
+  (* read float64 from stable mem offset on stack *)
+  let read_float64 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_read_float64"
+        ("offset", I32Type) [F64Type]
+        (fun env get_offset ->
+          Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 8l ^^
+            IC.system_call env "ic0" "stable_read" ^^
+            get_temp_ptr ^^
+            G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None })))
+    | _ -> assert false
+
+  (* write stable mem offset and value, operands on stack *)
+  let write_float64 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_write_float64"
+        (("offset", I32Type),("value", F64Type)) []
+        (fun env get_offset get_value ->
+          Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_value ^^
+              G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
+            get_offset ^^
+            get_temp_ptr ^^ compile_unboxed_const 8l ^^
+            IC.system_call env "ic0" "stable_write"))
+    | _ -> assert false
+
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
     match E.mode env with
@@ -4067,7 +4096,6 @@ module StableMem = struct
           write_word32 env)
     | _ -> assert false
 
-
   let load_word8 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -4145,6 +4173,33 @@ module StableMem = struct
           get_offset ^^
           get_value ^^
           write_word64 env)
+    | _ -> assert false
+
+  let load_float64 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_load_float64"
+        (("offset", I32Type)) [F64Type]
+        (fun env get_offset  ->
+          get_offset ^^
+          compile_unboxed_const 8l ^^
+          guard_range env ^^
+          get_offset ^^
+          read_float64 env)
+    | _ -> assert false
+
+  let store_float64 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_store_float64"
+        (("offset", I32Type), ("value", F64Type)) []
+        (fun env get_offset get_value ->
+          get_offset ^^
+          compile_unboxed_const 8l ^^
+          guard_range env ^^
+          get_offset ^^
+          get_value ^^
+          write_float64 env)
     | _ -> assert false
 
 end (* Stack *)
@@ -7996,6 +8051,17 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.UnboxedWord64 e2 ^^
       StableMem.store_word64 env
+
+    | OtherPrim ("stableMemoryLoadFloat"), [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      StableMem.load_float64 env
+
+    | OtherPrim ("stableMemoryStoreFloat"), [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
+      compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
+      StableMem.store_float64 env
 
     | OtherPrim ("stableMemorySize"), [] ->
       SR.UnboxedWord32,

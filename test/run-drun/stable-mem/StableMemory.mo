@@ -17,4 +17,7 @@ module {
   public let loadNat64 = Prim.stableMemoryLoadNat64;
   public let storeNat64 = Prim.stableMemoryStoreNat64;
 
+  public let loadFloat = Prim.stableMemoryLoadFloat;
+  public let storeFloat= Prim.stableMemoryStoreFloat;
+
 }
