@@ -313,6 +313,31 @@ func stableMemoryLoadNat64(offset : Nat32) : Nat64 =
 func stableMemoryStoreNat64(offset : Nat32, val : Nat64) : () =
   (prim "stableMemoryStoreNat64" : (Nat32, Nat64) -> ()) (offset, val);
 
+
+func stableMemoryLoadInt32(offset : Nat32) : Int32 =
+  (prim "stableMemoryLoadInt32" : Nat32 -> Int32) offset;
+
+func stableMemoryStoreInt32(offset : Nat32, val : Int32) : () =
+  (prim "stableMemoryStoreInt32" : (Nat32, Int32) -> ()) (offset, val);
+
+func stableMemoryLoadInt8(offset : Nat32) : Int8 =
+  (prim "stableMemoryLoadInt8" : Nat32 -> Int8) offset;
+
+func stableMemoryStoreInt8(offset : Nat32, val : Int8) : () =
+  (prim "stableMemoryStoreInt8" : (Nat32, Int8) -> ()) (offset, val);
+
+func stableMemoryLoadInt16(offset : Nat32) : Int16 =
+  (prim "stableMemoryLoadInt16" : Nat32 -> Int16) offset;
+
+func stableMemoryStoreInt16(offset : Nat32, val : Int16) : () =
+  (prim "stableMemoryStoreInt16" : (Nat32, Int16) -> ()) (offset, val);
+
+func stableMemoryLoadInt64(offset : Nat32) : Int64 =
+  (prim "stableMemoryLoadInt64" : Nat32 -> Int64) offset;
+
+func stableMemoryStoreInt64(offset : Nat32, val : Int64) : () =
+  (prim "stableMemoryStoreInt64" : (Nat32, Int64) -> ()) (offset, val);
+
 func stableMemoryLoadFloat(offset : Nat32) : Float =
   (prim "stableMemoryLoadFloat" : Nat32 -> Float) offset;
 

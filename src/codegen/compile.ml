@@ -8006,12 +8006,12 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim ("arrayToBlob"|"arrayMutToBlob"), e ->
       const_sr SR.Vanilla (Arr.toBlob env)
 
-    | OtherPrim ("stableMemoryLoadNat32"), [e] ->
+    | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
       SR.UnboxedWord32,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       StableMem.load_word32 env
 
-    | OtherPrim ("stableMemoryStoreNat32"), [e1; e2] ->
+    | OtherPrim ("stableMemoryStoreNat32"|"stableMemoryStoreInt32"), [e1; e2] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.UnboxedWord32 e2 ^^
@@ -8023,10 +8023,22 @@ and compile_exp (env : E.t) ae exp =
       StableMem.load_word8 env ^^
       TaggedSmallWord.msb_adjust Type.Nat8
 
+    | OtherPrim ("stableMemoryLoadInt8"), [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      StableMem.load_word8 env ^^
+      TaggedSmallWord.msb_adjust Type.Int8
+
     | OtherPrim ("stableMemoryStoreNat8"), [e1; e2] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+      StableMem.store_word8 env
+
+    | OtherPrim ("stableMemoryStoreInt8"), [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
+      compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
       StableMem.store_word8 env
 
     | OtherPrim ("stableMemoryLoadNat16"), [e] ->
@@ -8035,18 +8047,30 @@ and compile_exp (env : E.t) ae exp =
       StableMem.load_word16 env ^^
       TaggedSmallWord.msb_adjust Type.Nat16
 
+    | OtherPrim ("stableMemoryLoadInt16"), [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      StableMem.load_word16 env ^^
+      TaggedSmallWord.msb_adjust Type.Int16
+
     | OtherPrim ("stableMemoryStoreNat16"), [e1; e2] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
       StableMem.store_word16 env
 
-    | OtherPrim ("stableMemoryLoadNat64"), [e] ->
+    | OtherPrim ("stableMemoryStoreInt16"), [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
+      compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
+      StableMem.store_word16 env
+
+    | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       StableMem.load_word64 env
 
-    | OtherPrim ("stableMemoryStoreNat64"), [e1; e2] ->
+    | OtherPrim ("stableMemoryStoreNat64" | "stableMemoryStoreInt64"), [e1; e2] ->
       SR.unit,
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.UnboxedWord64 e2 ^^

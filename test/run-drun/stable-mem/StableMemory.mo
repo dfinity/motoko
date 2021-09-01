@@ -20,4 +20,16 @@ module {
   public let loadFloat = Prim.stableMemoryLoadFloat;
   public let storeFloat= Prim.stableMemoryStoreFloat;
 
+  public let loadInt32 = Prim.stableMemoryLoadInt32;
+  public let storeInt32 = Prim.stableMemoryStoreInt32;
+
+  public let loadInt8 = Prim.stableMemoryLoadInt8;
+  public let storeInt8 = Prim.stableMemoryStoreInt8;
+
+  public let loadInt16 = Prim.stableMemoryLoadInt16;
+  public let storeInt16 = Prim.stableMemoryStoreInt16;
+
+  public let loadInt64 = Prim.stableMemoryLoadInt64;
+  public let storeInt64 = Prim.stableMemoryStoreInt64;
+
 }

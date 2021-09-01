@@ -5,14 +5,18 @@ actor {
   stable var n : Nat32 = 0;
   assert (n == StableMemory.size());
 
+  func valOfNat32(n : Nat32) : Int16 { P.intToInt16(P.nat32ToNat(n % 65536) : Int - 32768) };
+  let inc : Nat32 = 2;
+
   var i : Nat32 = 0;
   let max = n * 65536;
   while (i < max) {
-    assert (StableMemory.loadNat32(i) == i);
-    StableMemory.storeNat32(i, ^i);
-    assert (StableMemory.loadNat32(i) == ^i);
-    StableMemory.storeNat32(i, i);
-    i += 4
+    let v = valOfNat32(i);
+    assert (StableMemory.loadInt16(i) == v);
+    StableMemory.storeInt16(i, ^v);
+    assert (StableMemory.loadInt16(i) == ^v);
+    StableMemory.storeInt16(i, v);
+    i += inc
   };
 
   system func preupgrade() {
@@ -22,6 +26,7 @@ actor {
     assert (n == m);
 
     n += 1;
+
     P.debugPrint(debug_show {old = m; new = n; size = StableMemory.size()});
 
     assert (n == StableMemory.size());
@@ -30,42 +35,40 @@ actor {
     var i : Nat32 = m * 65536;
     let max = i + 65536;
     while (i < max) {
-      assert (StableMemory.loadNat32(i) == 0);
-      StableMemory.storeNat32(i, i);
-      i += 4
+      assert (StableMemory.loadInt16(i) == 0);
+      StableMemory.storeInt16(i, valOfNat32(i));
+      i += inc
     };
 
   };
 
-  func log(e : Error) {
-    P.debugPrint(debug_show({code = P.errorCode(e); message = P.errorMessage(e)}));
-  };
-
   public func testBounds() : async () {
-
     if (n == 0) return;
     assert (n == StableMemory.size());
     P.debugPrint (debug_show {testBounds=n});
     // test bounds check
-    var i : Nat32 = n * 65536 - 3;
+    var i : Nat32 = n * 65536 - 1;
     let max = i + 16;
     while (i < max) {
       try {
         await async {
-          ignore StableMemory.loadNat32(i);
+          ignore StableMemory.loadInt16(i);
         };
-        P.debugPrint (debug_show {oops=i});
-      }
-      catch e { log(e) };
-      try {
-        await async StableMemory.storeNat32(i, i);
         assert false;
       }
-      catch e { log(e) };
-      i += 4
+      catch e {
+        assert P.errorCode e == #canister_error;
+      };
+      try {
+        await async StableMemory.storeInt16(i, valOfNat32(i));
+        assert false;
+      }
+      catch e {
+        assert P.errorCode e == #canister_error;
+      };
+      i += 1;
     };
   };
-
 
   system func postupgrade() {
     P.debugPrint("...upgraded" # debug_show n);
