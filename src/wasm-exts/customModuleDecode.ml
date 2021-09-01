@@ -142,7 +142,7 @@ let name s =
   try Utf8.decode (string s) with Utf8.Utf8 ->
     error s pos "malformed UTF-8 encoding"
 
-let sized f s =
+let sized (f : int -> stream -> 'a) (s : stream) =
   let size = len32 s in
   let start = pos s in
   let x = f size s in
@@ -663,7 +663,7 @@ let data_section s =
 
 (* Custom sections *)
 
-let custom_section name_pred f default s =
+let custom_section (name_pred : int list -> bool) (f : int -> stream -> 'a) (default : 'a) (s : stream) =
   let p = pos s in
   match id s with
   | Some `CustomSection ->
@@ -715,7 +715,7 @@ let assoc_list f = vec (fun s ->
 let name_map = assoc_list string
 let indirect_name_map = assoc_list name_map
 
-let name_section_subsection (ns : name_section) s =
+let name_section_subsection (ns : name_section) (s : stream) : name_section =
   match u8 s with
   | 0 -> (* module name *)
     let mod_name = sized (fun _ -> string) s in
@@ -726,17 +726,30 @@ let name_section_subsection (ns : name_section) s =
   | 2 -> (* local names *)
     let loc_names = sized (fun _ -> indirect_name_map) s in
     { ns with locals_names = ns.locals_names @ loc_names }
-
-  (* We ignore additional name subsections for now, despite newer
-     LLVM seemingly producing them.
-
-     We should check if these sections are indeed as spec'ed in
+  (* The following subsections are not in the standard yet, but from the extended-name-section proposal
      https://github.com/WebAssembly/extended-name-section/blob/master/proposals/extended-name-section/Overview.md
-     and implement them, for better debugging.
   *)
-  | 7 ->
-    let _global_names = sized (fun _ -> name_map) s in
-    ns
+  | 3 -> (* label names *)
+    let label_names = sized (fun _ -> indirect_name_map) s in
+    { ns with label_names = ns.label_names @ label_names }
+  | 4 -> (* type names *)
+    let type_names = sized (fun _ -> name_map) s in
+    { ns with type_names = ns.type_names @ type_names }
+  | 5 -> (* table names *)
+    let table_names = sized (fun _ -> name_map) s in
+    { ns with table_names = ns.table_names @ table_names }
+  | 6 -> (* memory names *)
+    let memory_names = sized (fun _ -> name_map) s in
+    { ns with memory_names = ns.memory_names @ memory_names }
+  | 7 -> (* global names *)
+    let global_names = sized (fun _ -> name_map) s in
+    { ns with global_names = ns.global_names @ global_names }
+  | 8 -> (* elem segment names *)
+    let elem_segment_names = sized (fun _ -> name_map) s in
+    { ns with elem_segment_names = ns.elem_segment_names @ elem_segment_names }
+  | 9 -> (* data segment names *)
+    let data_segment_names = sized (fun _ -> name_map) s in
+    { ns with data_segment_names = ns.data_segment_names @ data_segment_names }
   | i -> error s (pos s) (Printf.sprintf "unknown name section subsection id %d" i)
 
 let name_section_content p_end s =

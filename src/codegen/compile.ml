@@ -8205,13 +8205,10 @@ and conclude_module env start_fi_o =
     let open Wasm_exts.CustomModule in
     { module_;
       dylink = None;
-      name = {
-        module_ = None;
-        function_names =
-            List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
-        locals_names =
-            List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
-        };
+      name = { empty_name_section with function_names =
+                 List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+               locals_names =
+                 List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
       motoko = {
         labels = E.get_labs env;
       };
