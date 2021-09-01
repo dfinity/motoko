@@ -2,11 +2,7 @@
 
 #![no_std]
 // TODO (osa): Some of these are stabilized, we need to update rustc
-#![feature(
-    arbitrary_self_types,
-    core_intrinsics,
-    panic_info_message,
-)]
+#![feature(arbitrary_self_types, core_intrinsics, panic_info_message)]
 
 #[macro_use]
 mod print;
