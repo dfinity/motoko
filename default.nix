@@ -32,7 +32,6 @@ let
     llvmPackages_12.bintools
     rustc-nightly
     cargo-nightly
-    xargo
     wasmtime
     rust-bindgen
     rustfmt
@@ -173,7 +172,6 @@ rec {
       buildInputs = rtsBuildInputs;
 
       preBuild = ''
-        export XARGO_HOME=$PWD/xargo-home
         export CARGO_HOME=$PWD/cargo-home
 
         # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
@@ -441,7 +439,6 @@ rec {
 
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
-  inherit (nixpkgs) xargo;
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;

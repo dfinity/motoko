@@ -22,20 +22,6 @@ ic = []
 libc = { version = "0.2.81", default_features = false }
 motoko-rts-macros = { path = "../motoko-rts-macros" }
 
-# Added here so that it ends up in Cargo.lock, so that nix will pre-fetch it
-[dependencies.compiler_builtins]
-version = "0.1.39"
-# Without this feature we get dozens of duplicate symbol errors when generating
-# the final shared .wasm file:
-#
-#     wasm-ld: error: duplicate symbol: __multi3
-#     >>> defined in _build/wasm/libmotoko_rts.a(compiler_builtins-d709bd899857aa61.compiler_builtins.3abndchk-cgu.0.rcgu.o)
-#     >>> defined in _build/wasm/libmotoko_rts.a(compiler_builtins-06d1ead628e1f468.compiler_builtins.6moz1ltd-cgu.0.rcgu.o)
-#
-# It seems like we're linking multiple versions of compiler_builtins in the same
-# shared library, which we should fix at some point. TODO
-features = ["mangled-names"]
-
 [profile.dev]
 panic = "abort"
 

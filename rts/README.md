@@ -58,13 +58,10 @@ See `motoko-rts/src/bigint.rs` for the technical details.
 Rust build
 ----------
 
-The Rust parts are built from `motoko-rts`, using `xargo` and `cargo`.
+The Rust parts are built from `motoko-rts`, using `cargo`.
 
-To build this in nix, we need pre-fetch some dependencies (currently
-`compiler_builtins` and `libc`). This works in `nix-build` by:
-
- * Adding`compiler_builtins` as a dependency in `Cargo.toml` (even though not
-   needed), so that it shows up with a hash in `Cargo.lock`
+To build this in nix, we need pre-fetch some dependencies (currently `libc`).
+This works in `nix-build` by:
 
  * Building a directory with vendored sources in `default.nix` (see `rustDeps`)
 

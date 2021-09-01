@@ -67,7 +67,6 @@ let
             rustc = rustc-nightly;
             cargo = cargo-nightly;
           };
-          xargo = self.callPackage ./xargo.nix {};
         })
 
         # wasm-profiler
