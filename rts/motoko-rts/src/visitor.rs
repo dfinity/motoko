@@ -1,6 +1,8 @@
 use crate::rts_trap_with;
 use crate::types::*;
 
+use core::ptr::addr_of_mut;
+
 /// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
 pub unsafe fn visit_pointer_fields<F>(
@@ -36,7 +38,7 @@ pub unsafe fn visit_pointer_fields<F>(
 
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
-            let field_addr = &mut (*mutbox).field;
+            let field_addr = addr_of_mut!((*mutbox).field);
             if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(field_addr);
             }
@@ -55,7 +57,7 @@ pub unsafe fn visit_pointer_fields<F>(
 
         TAG_SOME => {
             let some = obj as *mut Some;
-            let field_addr = &mut (*some).field;
+            let field_addr = addr_of_mut!((*some).field);
             if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(field_addr);
             }
@@ -63,7 +65,7 @@ pub unsafe fn visit_pointer_fields<F>(
 
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
-            let field_addr = &mut (*variant).field;
+            let field_addr = addr_of_mut!((*variant).field);
             if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(field_addr);
             }
@@ -71,11 +73,11 @@ pub unsafe fn visit_pointer_fields<F>(
 
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
-            let field1_addr = &mut (*concat).text1;
+            let field1_addr = addr_of_mut!((*concat).text1);
             if pointer_to_dynamic_heap(field1_addr, heap_base) {
                 visit_ptr_field(field1_addr);
             }
-            let field2_addr = &mut (*concat).text2;
+            let field2_addr = addr_of_mut!((*concat).text2);
             if pointer_to_dynamic_heap(field2_addr, heap_base) {
                 visit_ptr_field(field2_addr);
             }
@@ -83,7 +85,7 @@ pub unsafe fn visit_pointer_fields<F>(
 
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
-            let field_addr = &mut (*obj_ind).field;
+            let field_addr = addr_of_mut!((*obj_ind).field);
             if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(field_addr);
             }

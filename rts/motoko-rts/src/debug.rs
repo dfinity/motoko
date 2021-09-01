@@ -136,8 +136,8 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
-                (*object).size,
-                (*object).hash_ptr
+                { (*object).size },
+                { (*object).hash_ptr },
             );
             for i in 0..object.size() {
                 let val = object.get(i);
@@ -161,7 +161,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_ARRAY => {
             let array = obj as *mut Array;
-            let _ = write!(buf, "<Array len={:#x}", (*array).len);
+            let _ = write!(buf, "<Array len={:#x}", { (*array).len });
 
             for i in 0..::core::cmp::min(10, (*array).len) {
                 let _ = write!(buf, " {:#x}", array.get(i).get_raw());
@@ -175,7 +175,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BITS64 => {
             let bits64 = obj as *const Bits64;
-            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
+            let _ = write!(buf, "<Bits64 {:#x}>", { (*bits64).bits });
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
@@ -183,7 +183,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_CLOSURE => {
             let closure = obj as *const Closure;
-            let _ = write!(buf, "<Closure size={:#x}>", (*closure).size);
+            let _ = write!(buf, "<Closure size={:#x}>", { (*closure).size });
         }
         TAG_SOME => {
             let some = obj as *const Some;
@@ -194,7 +194,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Variant tag={:#x} field={:#x}>",
-                (*variant).tag,
+                { (*variant).tag },
                 (*variant).field.get_raw()
             );
         }
@@ -208,7 +208,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BITS32 => {
             let bits32 = obj as *const Bits32;
-            let _ = write!(buf, "<Bits32 {:#x}>", (*bits32).bits);
+            let _ = write!(buf, "<Bits32 {:#x}>", { (*bits32).bits });
         }
         TAG_BIGINT => {
             // Add more details here as needed
@@ -221,7 +221,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
                 (*concat).n_bytes.0,
                 (*concat).text1.get_raw(),
-                (*concat).text2.get_raw()
+                (*concat).text2.get_raw(),
             );
         }
         TAG_ONE_WORD_FILLER => {

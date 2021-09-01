@@ -16,6 +16,8 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
+use core::ptr::addr_of_mut;
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     if super::should_do_gc() {
@@ -158,7 +160,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
-    let field_addr = &mut (*mutbox).field;
+    let field_addr = addr_of_mut!((*mutbox).field);
     // TODO: Not sure if this check is necessary?
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox

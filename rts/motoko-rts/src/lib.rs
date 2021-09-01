@@ -4,10 +4,8 @@
 // TODO (osa): Some of these are stabilized, we need to update rustc
 #![feature(
     arbitrary_self_types,
-    assoc_char_funcs,
     core_intrinsics,
     panic_info_message,
-    ptr_offset_from
 )]
 
 #[macro_use]
