@@ -4214,8 +4214,8 @@ module StableMem = struct
           get_len ^^
           guard_range env ^^
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          get_offset ^^
           get_blob ^^ Blob.payload_ptr_unskewed ^^
+          get_offset ^^
           get_len ^^
           IC.system_call env "ic0" "stable_read" ^^
           get_blob)
