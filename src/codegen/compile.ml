@@ -4202,6 +4202,42 @@ module StableMem = struct
           write_float64 env)
     | _ -> assert false
 
+
+  let load_blob env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_load_blob"
+        (("offset", I32Type), ("len", I32Type)) [I32Type]
+        (fun env get_offset get_len ->
+          let (set_blob, get_blob) = new_local env "blob" in
+          get_offset ^^
+          get_len ^^
+          guard_range env ^^
+          get_len ^^ Blob.alloc env ^^ set_blob ^^
+          get_offset ^^
+          get_blob ^^ Blob.payload_ptr_unskewed ^^
+          get_len ^^
+          IC.system_call env "ic0" "stable_read" ^^
+          get_blob)
+    | _ -> assert false
+
+  let store_blob env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_store_blob"
+        (("offset", I32Type), ("blob", I32Type)) []
+        (fun env get_offset get_blob ->
+         let (set_len, get_len) = new_local env "len" in
+          get_blob ^^ Blob.len env ^^ set_len ^^
+          get_offset ^^
+          get_len ^^
+          guard_range env ^^
+          get_offset ^^
+          get_blob ^^ Blob.payload_ptr_unskewed ^^
+          get_len ^^
+          IC.system_call env "ic0" "stable_write")
+    | _ -> assert false
+
 end (* Stack *)
 
 module RTS_Exports = struct
@@ -8086,6 +8122,20 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedWord32 e1 ^^
       compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
       StableMem.store_float64 env
+
+    | OtherPrim ("stableMemoryLoadBlob"), [e1; e2] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
+      compile_exp_as env ae SR.Vanilla e2 ^^
+      Blob.lit env "Blob size out of bounds" ^^
+      BigNum.to_word32_with env ^^
+      StableMem.load_blob env
+
+    | OtherPrim ("stableMemoryStoreBlob"), [e1; e2] ->
+      SR.unit,
+      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
+      compile_exp_as env ae SR.Vanilla e2 ^^
+      StableMem.store_blob env
 
     | OtherPrim ("stableMemorySize"), [] ->
       SR.UnboxedWord32,
