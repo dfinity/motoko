@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-== 0.6.8 (2021-09-07)
+== 0.6.8 (2021-09-06)
 
 * Introduce primitives for `Int` ⇔ `Float` conversions (#2733)
 * Bump LLVM toolchain to version 12 (#2542)
