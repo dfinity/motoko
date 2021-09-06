@@ -1,8 +1,8 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-10
-WASM_CLANG ?= clang-10
-WASM_LD ?= wasm-ld-10
+CLANG ?= clang-12
+WASM_CLANG ?= clang-12
+WASM_LD ?= wasm-ld-12
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -103,7 +103,7 @@ CLANG_FLAGS = \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
    --optimize=s \
-   -resource-dir=$(WASM_CLANG_LIB)/lib/clang/10.0.1
+   -resource-dir=$(wildcard $(WASM_CLANG_LIB)/lib/clang/*)
 
 #
 # Build targets
