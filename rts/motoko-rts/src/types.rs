@@ -536,8 +536,8 @@ pub struct Bits64 {
     pub header: Obj,
     // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
     // boundary.
-    bits_hi: u32,
     bits_lo: u32,
+    bits_hi: u32,
 }
 
 impl Bits64 {
