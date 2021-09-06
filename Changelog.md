@@ -2,7 +2,10 @@
 
 == 0.6.8 (2021-09-07)
 
-*  Introduce primitives for Int ⇔ Float conversions (#2733)
+* Introduce primitives for `Int` ⇔ `Float` conversions (#2733)
+* Bump LLVM toolchain to version 12 (#2542)
+* Support extended name linker sections (#2760)
+* Fix crashing bug for formatting huge floats (#2737)
 
 == 0.6.7 (2021-08-16)
 
