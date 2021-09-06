@@ -309,7 +309,6 @@ pub const TAG_ONE_WORD_FILLER: Tag = 16;
 pub const TAG_FREE_SPACE: Tag = 17;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
-#[repr(packed)]
 pub struct Obj {
     pub tag: Tag,
 }
@@ -330,7 +329,6 @@ impl Obj {
     }
 }
 
-#[repr(packed)]
 #[rustfmt::skip]
 pub struct Array {
     pub header: Obj,
@@ -363,7 +361,6 @@ impl Array {
     }
 }
 
-#[repr(packed)]
 pub struct Object {
     pub header: Obj,
     pub size: u32,     // Number of elements
@@ -385,13 +382,11 @@ impl Object {
     }
 }
 
-#[repr(packed)]
 pub struct ObjInd {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(packed)]
 pub struct Closure {
     pub header: Obj,
     pub funid: u32,
@@ -409,7 +404,6 @@ impl Closure {
     }
 }
 
-#[repr(packed)]
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -458,13 +452,11 @@ impl Blob {
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
-#[repr(packed)]
 pub struct FwdPtr {
     pub header: Obj,
     pub fwd: Value,
 }
 
-#[repr(packed)]
 pub struct BigInt {
     pub header: Obj,
     /// The data following now must describe is the `mp_int` struct.
@@ -503,26 +495,22 @@ impl BigInt {
     }
 }
 
-#[repr(packed)]
 pub struct MutBox {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(packed)]
 pub struct Some {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(packed)]
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
     pub field: Value,
 }
 
-#[repr(packed)]
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
@@ -540,31 +528,35 @@ impl Concat {
     }
 }
 
-#[repr(packed)]
 pub struct Null {
     pub header: Obj,
 }
 
-#[repr(packed)]
 pub struct Bits64 {
     pub header: Obj,
-    pub bits: u64,
+    // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
+    // boundary.
+    bits_hi: u32,
+    bits_lo: u32,
 }
 
-#[repr(packed)]
+impl Bits64 {
+    pub fn bits(&self) -> u64 {
+        (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
+    }
+}
+
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
 }
 
 /// Marks one word empty space in heap
-#[repr(packed)]
 pub struct OneWordFiller {
     pub header: Obj,
 }
 
 /// Marks arbitrary sized emtpy space in heap
-#[repr(packed)]
 pub struct FreeSpace {
     pub header: Obj,
     pub words: Words<u32>,
