@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+== 0.6.8 (2021-09-07)
+
+*  Introduce primitives for Int ⇔ Float conversions (#2733)
+
 == 0.6.7 (2021-08-16)
 
 * moc
