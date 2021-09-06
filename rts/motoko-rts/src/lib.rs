@@ -32,6 +32,7 @@ pub mod leb128;
 mod mem_utils;
 pub mod memory;
 pub mod principal_id;
+mod static_checks;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;
@@ -39,9 +40,9 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::Bytes;
-
 use motoko_rts_macros::ic_mem_fn;
+
+use types::Bytes;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
