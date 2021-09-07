@@ -313,7 +313,6 @@ func stableMemoryLoadNat64(offset : Nat32) : Nat64 =
 func stableMemoryStoreNat64(offset : Nat32, val : Nat64) : () =
   (prim "stableMemoryStoreNat64" : (Nat32, Nat64) -> ()) (offset, val);
 
-
 func stableMemoryLoadInt32(offset : Nat32) : Int32 =
   (prim "stableMemoryLoadInt32" : Nat32 -> Int32) offset;
 
