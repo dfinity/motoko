@@ -3805,147 +3805,63 @@ module StableMem = struct
           E.else_trap_with env "StableMemory range out of bounds")
     | _ -> assert false
 
-  (* read word32 from stable mem offset on stack *)
+  let read env name typ bytes load =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env ("__stablemem_read_" ^ name)
+        ("offset", I32Type) [typ]
+        (fun env get_offset ->
+          let words = Int32.div (Int32.add bytes 3l) 4l in
+          Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const bytes ^^
+            IC.system_call env "ic0" "stable_read" ^^
+            get_temp_ptr ^^ load))
+    | _ -> assert false
+
+  let write env name typ bytes store =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env ("__stablemem_write_" ^ name)
+        (("offset", I32Type), ("value", typ)) []
+        (fun env get_offset get_value ->
+          let words = Int32.div (Int32.add bytes 3l) 4l in
+          Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
+            get_temp_ptr ^^ get_value ^^ store ^^
+            get_offset ^^
+            get_temp_ptr ^^ compile_unboxed_const bytes ^^
+            IC.system_call env "ic0" "stable_write"))
+    | _ -> assert false
+
   let read_word32 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_word32"
-        ("offset", I32Type) [I32Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 4l ^^
-            IC.system_call env "ic0" "stable_read" ^^
-            get_temp_ptr ^^ load_unskewed_ptr))
-    | _ -> assert false
-
-  (* write stable mem offset and value, operands on stack *)
+    read env "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_write_word32"
-        (("offset", I32Type),("value", I32Type)) []
-        (fun env get_offset get_value ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_value ^^ store_unskewed_ptr ^^
-            get_offset ^^
-            get_temp_ptr ^^ compile_unboxed_const 4l ^^
-            IC.system_call env "ic0" "stable_write"))
-    | _ -> assert false
+    write env "word32" I32Type 4l store_unskewed_ptr
 
-  (* read word8 from stable mem offset on stack *)
   let read_word8 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_word8"
-        ("offset", I32Type) [I32Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_offset ^^ compile_unboxed_const 1l ^^
-            IC.system_call env "ic0" "stable_read" ^^
-            get_temp_ptr ^^
-            G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)})))
-    | _ -> assert false
-
-  (* write stable mem offset and value, operands on stack *)
+    read env "word8" I32Type 1l
+      (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}))
   let write_word8 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_write_word8"
-        (("offset", I32Type), ("value", I32Type)) []
-        (fun env get_offset get_value ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_value ^^ store_unskewed_ptr ^^
-            get_offset ^^
-            get_temp_ptr ^^ compile_unboxed_const 1l ^^
-            IC.system_call env "ic0" "stable_write"))
-    | _ -> assert false
+    write env "word8" I32Type 1l store_unskewed_ptr
 
-  (* read word16 from stable mem offset on stack *)
   let read_word16 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_word16"
-        ("offset", I32Type) [I32Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 2l ^^
-            IC.system_call env "ic0" "stable_read" ^^
-            get_temp_ptr ^^
-            G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)})))
-    | _ -> assert false
-
-  (* write stable mem offset and value, operands on stack *)
+    read env "word16" I32Type 2l
+      (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)}))
   let write_word16 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_write_word16"
-        (("offset", I32Type), ("value", I32Type)) []
-        (fun env get_offset get_value ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_value ^^ store_unskewed_ptr ^^
-            get_offset ^^
-            get_temp_ptr ^^ compile_unboxed_const 2l ^^
-            IC.system_call env "ic0" "stable_write"))
-    | _ -> assert false
+    write env "word16" I32Type 2l store_unskewed_ptr
 
-
-  (* read word64 from stable mem offset on stack *)
   let read_word64 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_word64"
-        ("offset", I32Type) [I64Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 8l ^^
-            IC.system_call env "ic0" "stable_read" ^^
-            get_temp_ptr ^^
-            G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })))
-    | _ -> assert false
-
-  (* write stable mem offset and value, operands on stack *)
+    read env "word64" I64Type 8l
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None }))
   let write_word64 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_write_word64"
-        (("offset", I32Type), ("value", I64Type)) []
-        (fun env get_offset get_value ->
-          Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_value ^^
-              G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
-            get_offset ^^
-            get_temp_ptr ^^ compile_unboxed_const 8l ^^
-            IC.system_call env "ic0" "stable_write"))
-    | _ -> assert false
+    write env "word64" I64Type 8l
+      (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}))
 
-  (* read float64 from stable mem offset on stack *)
   let read_float64 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_float64"
-        ("offset", I32Type) [F64Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_offset ^^ compile_unboxed_const 8l ^^
-            IC.system_call env "ic0" "stable_read" ^^
-            get_temp_ptr ^^
-            G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None })))
-    | _ -> assert false
-
-  (* write stable mem offset and value, operands on stack *)
+    read env "float64" F64Type 8l
+      (G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None }))
   let write_float64 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_write_float64"
-        (("offset", I32Type), ("value", F64Type)) []
-        (fun env get_offset get_value ->
-          Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_value ^^
-              G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
-            get_offset ^^
-            get_temp_ptr ^^ compile_unboxed_const 8l ^^
-            IC.system_call env "ic0" "stable_write"))
-    | _ -> assert false
+    write env "float64" F64Type 8l
+      (G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}))
 
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
