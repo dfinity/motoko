@@ -3851,7 +3851,7 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_write_word8"
-        (("offset", I32Type),("value", I32Type)) []
+        (("offset", I32Type), ("value", I32Type)) []
         (fun env get_offset get_value ->
           Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
             get_temp_ptr ^^ get_value ^^ store_unskewed_ptr ^^
@@ -3879,7 +3879,7 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_write_word16"
-        (("offset", I32Type),("value", I32Type)) []
+        (("offset", I32Type), ("value", I32Type)) []
         (fun env get_offset get_value ->
           Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
             get_temp_ptr ^^ get_value ^^ store_unskewed_ptr ^^
@@ -3908,7 +3908,7 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_write_word64"
-        (("offset", I32Type),("value", I64Type)) []
+        (("offset", I32Type), ("value", I64Type)) []
         (fun env get_offset get_value ->
           Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
             get_temp_ptr ^^ get_value ^^
@@ -3926,7 +3926,7 @@ module StableMem = struct
         ("offset", I32Type) [F64Type]
         (fun env get_offset ->
           Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 8l ^^
+            get_temp_ptr ^^ get_offset ^^ compile_unboxed_const 8l ^^
             IC.system_call env "ic0" "stable_read" ^^
             get_temp_ptr ^^
             G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None })))
@@ -3937,7 +3937,7 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_write_float64"
-        (("offset", I32Type),("value", F64Type)) []
+        (("offset", I32Type), ("value", F64Type)) []
         (fun env get_offset get_value ->
           Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
             get_temp_ptr ^^ get_value ^^
@@ -4086,13 +4086,13 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_store_word32"
-        (("offset", I32Type), ("n32", I32Type)) []
-        (fun env get_offset get_n32 ->
+        (("offset", I32Type), ("value", I32Type)) []
+        (fun env get_offset get_value ->
           get_offset ^^
           compile_unboxed_const 4l ^^
           guard_range env ^^
           get_offset ^^
-          get_n32 ^^
+          get_value ^^
           write_word32 env)
     | _ -> assert false
 
