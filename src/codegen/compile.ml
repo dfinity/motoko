@@ -3937,7 +3937,7 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_write_float64"
-        (("offset", I32Type),("value", F64Type)) []
+        (("offset", I32Type), ("value", F64Type)) []
         (fun env get_offset get_value ->
           Stack.with_words env "temp_ptr" 2l (fun get_temp_ptr ->
             get_temp_ptr ^^ get_value ^^
