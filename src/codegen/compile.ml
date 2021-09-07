@@ -3840,7 +3840,7 @@ module StableMem = struct
         ("offset", I32Type) [I32Type]
         (fun env get_offset ->
           Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            get_temp_ptr ^^ get_offset ^^  compile_unboxed_const 1l ^^
+            get_temp_ptr ^^ get_offset ^^ compile_unboxed_const 1l ^^
             IC.system_call env "ic0" "stable_read" ^^
             get_temp_ptr ^^
             G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)})))
