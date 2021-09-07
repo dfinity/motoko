@@ -7,8 +7,8 @@
 { releaseVersion ? "latest" }:
 let
   nixpkgs = import ./nix { };
-  linux = import ./default.nix { system = "x86_64-linux"; internal = true; inherit releaseVersion; };
-  darwin = import ./default.nix { system = "x86_64-darwin"; internal = true; inherit releaseVersion; };
+  linux = import ./default.nix { system = "x86_64-linux"; inherit releaseVersion; };
+  darwin = import ./default.nix { system = "x86_64-darwin"; inherit releaseVersion; };
 
   as_tarball = dir: derivations:
     nixpkgs.runCommandNoCC "motoko-${releaseVersion}.tar.gz" {
