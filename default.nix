@@ -294,10 +294,6 @@ rec {
           mkdir -p $out
           export PERF_OUT=$out/stats.csv
         '' + args.checkPhase + ''
-          # export stats to hydra
-          mkdir -p $out/nix-support
-          tr '/;' '_\t' < $out/stats.csv > $out/nix-support/hydra-metrics
-
           # sanity check
           if ! grep -q ^gas/ $out/stats.csv
           then
@@ -359,8 +355,6 @@ rec {
       '';
       installPhase = ''
         mv _profile $out;
-        mkdir -p $out/nix-support
-        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
       '';
     };
 
@@ -469,9 +463,6 @@ rec {
       mkdir -p $out
       mv overview-slides.html $out/
       mv build/site/* $out/
-      mkdir -p $out/nix-support
-      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
-      echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -553,9 +544,6 @@ rec {
     installPhase = ''
       mkdir -p $out
       cp -rv docs/* $out/
-
-      mkdir -p $out/nix-support
-      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -667,7 +655,7 @@ rec {
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
-    # allow building this as a derivation, so that hydra builds and caches
+    # allow building this as a derivation, so that CI builds and caches
     # the dependencies of shell
     # Also mention the dependencies in the output, so that after `nix-build -A
     # shell` (or just `nix-build`) they are guaranteed to be present in the

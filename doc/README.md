@@ -20,9 +20,7 @@ This is somewhat hackish
 This will likely easily break when things change in the official playbook and
 the official UI bundle.
 
-CI pushes these docs for latest master to
-<https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/overview-slides.html>.
-
+The corresponding job on CI is `nix-build -A docs` in the top level directory.
 
 # Support interpreter in documentation
 
