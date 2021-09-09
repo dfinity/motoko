@@ -8,12 +8,26 @@ type name_section = {
   module_ : string option;
   function_names : (int32 * string) list;
   locals_names : (int32 * (int32 * string) list) list;
+  label_names : (int32 * (int32 * string) list) list;
+  type_names : (int32 * string) list;
+  table_names : (int32 * string) list;
+  memory_names : (int32 * string) list;
+  global_names : (int32 * string) list;
+  elem_segment_names : (int32 * string) list;
+  data_segment_names : (int32 * string) list;
 }
 
 let empty_name_section : name_section = {
   module_ = None;
   function_names = [];
   locals_names = [];
+  label_names = [];
+  type_names = [];
+  table_names = [];
+  memory_names = [];
+  global_names = [];
+  elem_segment_names = [];
+  data_segment_names = [];
 }
 
 type dylink_section = {
