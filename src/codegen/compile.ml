@@ -3845,7 +3845,7 @@ module StableMem = struct
             IC.system_call env "ic0" "stable_write"))
     | _ -> assert false
 
-  let read_word32 env =
+  let _read_word32 env =
     read env false "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
     write env false "word32" I32Type 4l store_unskewed_ptr
