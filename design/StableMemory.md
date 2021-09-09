@@ -55,7 +55,7 @@ module StableMemory {
   storeNat8 : (offset : Nat32, n : Nat8) -> ();
     // traps outside logical address space
   ...
-  loadBlob : (offset : Nat32, size : i32) -> Blob
+  loadBlob : (offset : Nat32, size : Nat) -> Blob
      // read Blob contents from memory at [offset,..,offset+size-1] into fresh blob, trapping if exceeding logical address space
   storeBlob : (offset : Nat32, b : Blob) -> (); // write contents of blob to memory, trapping if exceeding logical address space
 }
