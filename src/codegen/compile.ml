@@ -3939,37 +3939,38 @@ module StableMem = struct
           get_pages ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           G.i (Binary (Wasm.Values.I64 I32Op.Add)) ^^
           compile_const_64 65536L ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-          G.if_ []
-            (G.nop) (* fallthrough *)
-            (compile_unboxed_const (-1l) ^^
-             G.i Return) ^^
-
-          let (set_new_size, get_new_size) = new_local env "new_size" in
-          get_size ^^
-          get_pages ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          set_new_size ^^
-
-          (* physical grow if necessary *)
-          let (set_ensured, get_ensured) = new_local env "ensured" in
-          get_new_size ^^
-          ensure_pages env ^^
-          set_ensured ^^
-
-          (* Check result *)
-          get_ensured ^^
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
           G.if_ [I32Type]
-            ((* propagate failure -1; preserve logical size *)
-             get_ensured)
-            ((* update logical size *)
-             get_new_size ^^
-             set_mem_size env ^^
-             (* return old logical size *)
-             get_size))
+            begin
+             compile_unboxed_const (-1l) ^^
+             G.i Return
+            end
+            begin
+              let (set_new_size, get_new_size) = new_local env "new_size" in
+              get_size ^^
+              get_pages ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+              set_new_size ^^
 
+              (* physical grow if necessary *)
+              let (set_ensured, get_ensured) = new_local env "ensured" in
+              get_new_size ^^
+              ensure_pages env ^^
+              set_ensured ^^
+
+              (* Check result *)
+              get_ensured ^^
+              compile_unboxed_zero ^^
+              G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+              G.if_ [I32Type]
+                ((* propagate failure -1; preserve logical size *)
+                 get_ensured)
+                ((* update logical size *)
+                 get_new_size ^^
+                 set_mem_size env ^^
+                 (* return old logical size *)
+                 get_size)
+            end)
    | _ -> assert false
 
   let load_word32 env =
