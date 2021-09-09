@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+* moc
+
+* Add runtime support for low-level, direct access to 32-bit IC stable memory (#2626)
+
+* motoko-base
+
+  * Add StableMemory library, exposing 32-bit IC stable memory (#280)
+
 == 0.6.8 (2021-09-06)
 
 * Introduce primitives for `Int` ⇔ `Float` conversions (#2733)
