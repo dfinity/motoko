@@ -32,4 +32,7 @@ module {
   public let loadInt64 = Prim.stableMemoryLoadInt64;
   public let storeInt64 = Prim.stableMemoryStoreInt64;
 
+  public let loadBlob = Prim.stableMemoryLoadBlob;
+  public let storeBlob = Prim.stableMemoryStoreBlob;
+
 }
