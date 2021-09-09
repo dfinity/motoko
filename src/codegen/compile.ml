@@ -3805,26 +3805,39 @@ module StableMem = struct
           E.else_trap_with env "StableMemory range out of bounds")
     | _ -> assert false
 
-  let read env name typ bytes load =
+  let add_guard env guarded get_offset bytes =
+    if guarded then
+     (if bytes = 1l then
+        get_offset ^^
+        guard env
+      else
+        get_offset ^^
+        compile_unboxed_const bytes ^^
+        guard_range env)
+    else G.nop
+
+  let read env guarded name typ bytes load =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env ("__stablemem_read_" ^ name)
+      Func.share_code1 env ("__stablemem_" ^ (if guarded then "guarded_" else "") ^ "read_" ^ name)
         ("offset", I32Type) [typ]
         (fun env get_offset ->
           let words = Int32.div (Int32.add bytes 3l) 4l in
+          add_guard env guarded get_offset bytes ^^
           Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
             get_temp_ptr ^^ get_offset ^^  compile_unboxed_const bytes ^^
             IC.system_call env "ic0" "stable_read" ^^
             get_temp_ptr ^^ load))
     | _ -> assert false
 
-  let write env name typ bytes store =
+  let write env guarded name typ bytes store =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env ("__stablemem_write_" ^ name)
+      Func.share_code2 env ("__stablemem_" ^ (if guarded then "guarded_" else "") ^ "write_" ^ name)
         (("offset", I32Type), ("value", typ)) []
         (fun env get_offset get_value ->
           let words = Int32.div (Int32.add bytes 3l) 4l in
+          add_guard env guarded get_offset bytes ^^
           Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
             get_temp_ptr ^^ get_value ^^ store ^^
             get_offset ^^
@@ -3833,35 +3846,10 @@ module StableMem = struct
     | _ -> assert false
 
   let read_word32 env =
-    read env "word32" I32Type 4l load_unskewed_ptr
+    read env false "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
-    write env "word32" I32Type 4l store_unskewed_ptr
+    write env false "word32" I32Type 4l store_unskewed_ptr
 
-  let read_word8 env =
-    read env "word8" I32Type 1l
-      (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}))
-  let write_word8 env =
-    write env "word8" I32Type 1l store_unskewed_ptr
-
-  let read_word16 env =
-    read env "word16" I32Type 2l
-      (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)}))
-  let write_word16 env =
-    write env "word16" I32Type 2l store_unskewed_ptr
-
-  let read_word64 env =
-    read env "word64" I64Type 8l
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None }))
-  let write_word64 env =
-    write env "word64" I64Type 8l
-      (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}))
-
-  let read_float64 env =
-    read env "float64" F64Type 8l
-      (G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None }))
-  let write_float64 env =
-    write env "float64" F64Type 8l
-      (G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}))
 
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
@@ -3984,64 +3972,36 @@ module StableMem = struct
 
    | _ -> assert false
 
-
-  let load env name typ bytes read =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env ("__stablemem_load_" ^ name)
-        (("offset", I32Type)) [typ]
-        (fun env get_offset  ->
-          get_offset ^^
-          (if bytes = 1l then
-            guard env
-           else
-            compile_unboxed_const bytes ^^
-            guard_range env) ^^
-          get_offset ^^
-          read env)
-    | _ -> assert false
-
-  let store env name typ bytes write =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env ("__stablemem_store_" ^ name)
-        (("offset", I32Type), ("value", typ)) []
-        (fun env get_offset get_value ->
-          get_offset ^^
-          (if bytes = 1l then
-            guard env
-           else
-            compile_unboxed_const bytes ^^
-            guard_range env) ^^
-          get_offset ^^
-          get_value ^^
-          write env)
-    | _ -> assert false
-
   let load_word32 env =
-    load env "word32" I32Type 4l read_word32
+    read env true "word32" I32Type 4l load_unskewed_ptr
   let store_word32 env =
-    store env "word32" I32Type 4l write_word32
+    write env true "word32" I32Type 4l store_unskewed_ptr
 
   let load_word8 env =
-    load env "word8" I32Type 1l read_word8
+    read env true "word8" I32Type 1l
+      (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}))
   let store_word8 env =
-    store env "word8" I32Type 1l write_word8
+    write env true "word8" I32Type 1l store_unskewed_ptr
 
   let load_word16 env =
-    load env "word16" I32Type 2l read_word16
+    read env true "word16" I32Type 2l
+      (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)}))
   let store_word16 env =
-    store env "word16" I32Type 2l write_word16
+    write env true "word16" I32Type 2l store_unskewed_ptr
 
   let load_word64 env =
-    load env "word64" I64Type 8l read_word64
+    read env true "word64" I64Type 8l
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None }))
   let store_word64 env =
-    store env "word64" I64Type 8l write_word64
+    write env true "word64" I64Type 8l
+      (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}))
 
   let load_float64 env =
-    load env "float64" F64Type 8l read_float64
+    read env true "float64" F64Type 8l
+      (G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None }))
   let store_float64 env =
-    store env "float64" F64Type 8l write_float64
+    write env true "float64" F64Type 8l
+      (G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}))
 
 end (* Stack *)
 
