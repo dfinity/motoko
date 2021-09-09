@@ -40,9 +40,9 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use motoko_rts_macros::ic_mem_fn;
-
 use types::Bytes;
+
+use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
