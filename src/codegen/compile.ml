@@ -3807,11 +3807,10 @@ module StableMem = struct
 
   let add_guard env guarded get_offset bytes =
     if guarded then
-     (if bytes = 1l then
-        get_offset ^^
+     (get_offset ^^
+      if bytes = 1l then
         guard env
       else
-        get_offset ^^
         compile_unboxed_const bytes ^^
         guard_range env)
     else G.nop
@@ -3819,7 +3818,7 @@ module StableMem = struct
   let read env guarded name typ bytes load =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env ("__stablemem_" ^ (if guarded then "guarded_" else "") ^ "read_" ^ name)
+      Func.share_code1 env (Printf.sprintf "__stablemem_%sread_%s" (if guarded then "guarded_" else "") name)
         ("offset", I32Type) [typ]
         (fun env get_offset ->
           let words = Int32.div (Int32.add bytes 3l) 4l in
@@ -3833,7 +3832,7 @@ module StableMem = struct
   let write env guarded name typ bytes store =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env ("__stablemem_" ^ (if guarded then "guarded_" else "") ^ "write_" ^ name)
+      Func.share_code2 env (Printf.sprintf "__stablemem_%swrite_%s" (if guarded then "guarded_" else "") name)
         (("offset", I32Type), ("value", typ)) []
         (fun env get_offset get_value ->
           let words = Int32.div (Int32.add bytes 3l) 4l in
