@@ -16,6 +16,7 @@ const_assert_eq!(size_of::<usize>(), size_of::<u32>());
 const_assert_eq!(size_of::<usize>(), WORD_SIZE);
 
 // Check that sizes of structs are as expected by the compiler
+// (Expectations are all over the place, e.g. `header_size` definitions in `compile.ml`, calls to `static_closure`, etc.)
 const_assert_eq!(size_of::<Obj>(), 1 * WORD_SIZE);
 const_assert_eq!(size_of::<ObjInd>(), 2 * WORD_SIZE);
 const_assert_eq!(size_of::<Closure>(), 3 * WORD_SIZE);
