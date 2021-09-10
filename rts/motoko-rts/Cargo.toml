@@ -21,6 +21,7 @@ ic = []
 [dependencies]
 libc = { version = "0.2.81", default_features = false }
 motoko-rts-macros = { path = "../motoko-rts-macros" }
+static_assertions = "1.1.0"
 
 [profile.dev]
 panic = "abort"

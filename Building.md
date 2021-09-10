@@ -97,7 +97,7 @@ squash merge) once CI passes
 
 ## Profile the compiler
 
-(This section is currently defuct, and needs to be update to work with the dune
+(This section is currently defunct, and needs to be update to work with the dune
 build system.)
 
 1. Build with profiling within nix-shell (TODO: How to do with dune)

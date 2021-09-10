@@ -1,5 +1,20 @@
 # Motoko compiler changelog
 
+* moc
+
+* Add runtime support for low-level, direct access to 32-bit IC stable memory (#2626)
+
+* motoko-base
+
+  * Add StableMemory library, exposing 32-bit IC stable memory (#280)
+
+== 0.6.8 (2021-09-06)
+
+* Introduce primitives for `Int` ⇔ `Float` conversions (#2733)
+* Bump LLVM toolchain to version 12 (#2542)
+* Support extended name linker sections (#2760)
+* Fix crashing bug for formatting huge floats (#2737)
+
 == 0.6.7 (2021-08-16)
 
 * moc

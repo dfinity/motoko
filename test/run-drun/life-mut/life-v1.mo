@@ -15,21 +15,11 @@ actor Life {
      #v1 : [[var Cell]];
   };
 
-  class Grid(#v1 state : State) {
+  class Grid(#v1 grid : State) {
 
-    let n = state.size();
+    let n = grid.size();
 
     public func size() : Nat { n };
-
-    let grid = P.Array_tabulate(n, func (i : Nat) : [var Cell] {
-      let a = P.Array_init<Bool>(n, false);
-      let si = state[i];
-      assert (si.size() == n);
-      for (j in si.keys()) {
-        a[j] := si[j];
-      };
-      a
-    });
 
     public func get(i : Nat, j : Nat) : Cell { grid[i][j] };
 
@@ -79,20 +69,21 @@ actor Life {
     };
   };
 
-  stable var state : State =
-    do {
-      let n = 32;
+  func newState(size : Nat) : State {
+    let size = 32;
       #v1 (
-      	 P.Array_tabulate<[var Cell]>(n,
+      	 P.Array_tabulate<[var Cell]>(size,
            func i {
-             let ai = P.Array_init<Bool>(n,false);
+             let ai = P.Array_init<Bool>(size, false);
              for (j in ai.keys()) { ai[j] := Random.next() };
              ai })
       )
-    };
+  };
 
-  flexible var src = Grid(state);
-  flexible var dst = Grid(state);
+  stable var state : State = newState(32);
+
+  var src = Grid(state);
+  var dst = Grid(newState(src.size()));
 
   func update(c : Nat) {
     var i = c;
