@@ -4,7 +4,7 @@ import StableMemory "stable-mem/StableMemory";
 actor {
 
   func ensure(offset : Nat32) {
-    let pages = (offset + 65535) >> 16;
+    let pages = (offset + 65536) >> 16;
       if (pages > StableMemory.size()) {
         let oldsize = StableMemory.grow(pages - StableMemory.size());
         assert (oldsize != 0xFFFF);
