@@ -115,9 +115,8 @@ actor Life {
     };
   };
 
-  stable var state : State = do {
-    let n = 32;
-    let len = (n * n) / 64 + 1;
+  func newState(size : Nat) : State {
+    let len = (size * size) / 64 + 1;
     let words = P.Array_init<Nat64>(len, 0);
     for (i in words.keys()) {
       var word : Nat64 = 0;
@@ -128,11 +127,13 @@ actor Life {
       };
       words[i] := word;
     };
-    #v2 { size = n; bits = words };
+    #v2 { size = size; bits = words };
   };
 
-  flexible var src = Grid(state);
-  flexible var dst = Grid(state);
+  stable var state : State = newState(32);
+
+  var src = Grid(state);
+  var dst = Grid(newState(src.size()));
 
   func update(c : Nat) {
     var i = c;
