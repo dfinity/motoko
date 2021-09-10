@@ -175,7 +175,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BITS64 => {
             let bits64 = obj as *const Bits64;
-            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
+            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits());
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;

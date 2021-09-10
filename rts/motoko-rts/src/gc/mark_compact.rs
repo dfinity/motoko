@@ -127,6 +127,9 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value, heap_base: u32) {
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
 
+    // Check object alignment to avoid undefined behavior. See also static_checks module.
+    debug_assert_eq!(obj % WORD_SIZE, 0);
+
     let obj_idx = (obj - heap_base) / WORD_SIZE;
 
     if get_bit(obj_idx) {

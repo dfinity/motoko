@@ -21,6 +21,7 @@ ic = []
 [dependencies]
 libc = { version = "0.2.81", default_features = false }
 motoko-rts-macros = { path = "../motoko-rts-macros" }
+static_assertions = "1.1.0"
 
 # Added here so that it ends up in Cargo.lock, so that nix will pre-fetch it
 [dependencies.compiler_builtins]
