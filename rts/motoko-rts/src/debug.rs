@@ -4,7 +4,6 @@ use crate::print::*;
 use crate::types::*;
 
 use core::fmt::Write;
-use core::ptr::addr_of;
 
 /// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
 #[cfg(feature = "ic")]
@@ -158,11 +157,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_OBJ_IND => {
             let obj_ind = obj as *const ObjInd;
-            let _ = write!(
-                buf,
-                "<ObjInd field={:#x}>",
-                (&*addr_of!((*obj_ind).field)).get_raw()
-            );
+            let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.get_raw());
         }
         TAG_ARRAY => {
             let array = obj as *mut Array;
@@ -184,11 +179,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
-            let _ = write!(
-                buf,
-                "<MutBox field={:#x}>",
-                (&*addr_of!((*mutbox).field)).get_raw()
-            );
+            let _ = write!(buf, "<MutBox field={:#x}>", (*mutbox).field.get_raw());
         }
         TAG_CLOSURE => {
             let closure = obj as *const Closure;
@@ -196,11 +187,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_SOME => {
             let some = obj as *const Some;
-            let _ = write!(
-                buf,
-                "<Some field={:#x}>",
-                (&*addr_of!((*some).field)).get_raw()
-            );
+            let _ = write!(buf, "<Some field={:#x}>", (*some).field.get_raw());
         }
         TAG_VARIANT => {
             let variant = obj as *const Variant;
@@ -208,7 +195,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 buf,
                 "<Variant tag={:#x} field={:#x}>",
                 { (*variant).tag },
-                (&*addr_of!((*variant).field)).get_raw()
+                (*variant).field.get_raw()
             );
         }
         TAG_BLOB => {
@@ -217,11 +204,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
-            let _ = write!(
-                buf,
-                "<Forwarding to {:#x}>",
-                (&*addr_of!((*ind).fwd)).get_raw()
-            );
+            let _ = write!(buf, "<Forwarding to {:#x}>", (*ind).fwd.get_raw());
         }
         TAG_BITS32 => {
             let bits32 = obj as *const Bits32;
@@ -237,8 +220,8 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
                 (*concat).n_bytes.0,
-                (&*addr_of!((*concat).text1)).get_raw(),
-                (&*addr_of!((*concat).text2)).get_raw(),
+                (*concat).text1.get_raw(),
+                (*concat).text2.get_raw(),
             );
         }
         TAG_ONE_WORD_FILLER => {
