@@ -82,7 +82,7 @@ pub unsafe fn mp_realloc<M: Memory>(
 ) -> *mut libc::c_void {
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
-    debug_assert_eq!({ (*bigint).header.tag }, TAG_BIGINT);
+    debug_assert_eq!((*bigint).header.tag, TAG_BIGINT);
     debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {

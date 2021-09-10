@@ -1,9 +1,8 @@
+use crate::tommath_bindings::{mp_digit, mp_int};
+use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
-use crate::tommath_bindings::{mp_digit, mp_int};
-
-use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
-use core::ptr::addr_of;
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
@@ -492,7 +491,7 @@ impl BigInt {
     /// output parameters of mp_add() this way.
     pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *const mp_int {
         (*self).mp_int.dp = self.payload_addr();
-        addr_of!((*self).mp_int)
+        &(*self).mp_int
     }
 }
 
