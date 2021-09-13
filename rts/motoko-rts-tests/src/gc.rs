@@ -9,7 +9,9 @@ mod heap;
 mod utils;
 
 use heap::MotokoHeap;
-use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
+use utils::{
+    get_scalar_value, read_byte, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
+};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
@@ -171,7 +173,8 @@ fn check_dynamic_heap(
             continue;
         }
 
-        let tag = read_word(heap, offset);
+        let tag = read_byte(heap, offset);
+        // Skip tag and rest of the header
         offset += WORD_SIZE;
 
         assert_eq!(tag, TAG_ARRAY);
@@ -295,7 +298,8 @@ fn compute_reachable_objects(
 }
 
 fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
-    assert_eq!(read_word(heap, offset), TAG_ARRAY);
+    assert_eq!(read_byte(heap, offset), TAG_ARRAY);
+    // Skip tag and rest of the header
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);

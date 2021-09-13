@@ -70,6 +70,6 @@ pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
         STACK_PTR = STACK_PTR.sub(2);
         let p = *STACK_PTR;
         let tag = *STACK_PTR.add(1);
-        Some((p, tag as u32))
+        Some((p, tag as u8))
     }
 }

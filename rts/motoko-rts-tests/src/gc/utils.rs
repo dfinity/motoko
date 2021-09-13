@@ -32,6 +32,16 @@ pub fn write_word(heap: &mut [u8], offset: usize, word: u32) {
     (&mut heap[offset..]).write_u32::<LE>(word).unwrap()
 }
 
+/// Read a single byte from given offset
+pub fn read_byte(heap: &[u8], offset: usize) -> u8 {
+    heap[offset]
+}
+
+/// Write a single byte to given offset
+pub fn write_byte(heap: &mut [u8], offset: usize, byte: u8) {
+    heap[offset] = byte
+}
+
 /// Make a scalar value to be used in heap object payload
 pub fn make_scalar(value: u32) -> u32 {
     // Scalar values can be at most 31 bits

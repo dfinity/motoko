@@ -37,7 +37,7 @@ const_assert_eq!(size_of::<FwdPtr>(), 2 * WORD_SIZE);
 
 // Check that objects need to be aligned on word boundaries. Having a different alignment
 // restriction an object type would require changing allocation routines for it.
-const_assert_eq!(align_of::<Obj>(), WORD_SIZE);
+const_assert_eq!(align_of::<Obj>(), WORD_SIZE / 2); // less than word size is OK
 const_assert_eq!(align_of::<ObjInd>(), WORD_SIZE);
 const_assert_eq!(align_of::<Closure>(), WORD_SIZE);
 const_assert_eq!(align_of::<Blob>(), WORD_SIZE);
@@ -46,9 +46,9 @@ const_assert_eq!(align_of::<MutBox>(), WORD_SIZE);
 const_assert_eq!(align_of::<Some>(), WORD_SIZE);
 const_assert_eq!(align_of::<Variant>(), WORD_SIZE);
 const_assert_eq!(align_of::<Concat>(), WORD_SIZE);
-const_assert_eq!(align_of::<Null>(), WORD_SIZE);
+const_assert_eq!(align_of::<Null>(), WORD_SIZE / 2); // less than word size is OK
 const_assert_eq!(align_of::<Bits32>(), WORD_SIZE);
 const_assert_eq!(align_of::<Bits64>(), WORD_SIZE);
-const_assert_eq!(align_of::<OneWordFiller>(), WORD_SIZE);
+const_assert_eq!(align_of::<OneWordFiller>(), WORD_SIZE / 2); // less than word size is OK
 const_assert_eq!(align_of::<FreeSpace>(), WORD_SIZE);
 const_assert_eq!(align_of::<FwdPtr>(), WORD_SIZE);

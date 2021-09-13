@@ -1,5 +1,6 @@
 use super::utils::{
-    make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
+    make_pointer, make_scalar, write_byte, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE,
+    WORD_SIZE,
 };
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
@@ -313,7 +314,8 @@ fn create_dynamic_heap(
             object_addrs.insert(*obj, heap_start + heap_offset);
 
             // Store object header
-            write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+            write_byte(dynamic_heap, heap_offset, TAG_ARRAY);
+            // Skip tag and rest of the header
             heap_offset += WORD_SIZE;
 
             // Store length: idx + refs
@@ -358,7 +360,8 @@ fn create_dynamic_heap(
     {
         let mut heap_offset = continuation_table_offset;
 
-        write_word(dynamic_heap, continuation_table_offset, TAG_ARRAY);
+        write_byte(dynamic_heap, continuation_table_offset, TAG_ARRAY);
+        // Skip tag and rest of the header
         heap_offset += WORD_SIZE;
 
         write_word(dynamic_heap, heap_offset, continuation_table.len() as u32);
@@ -391,7 +394,7 @@ fn create_static_heap(
 
     // Create static root array. Each element of the array is a MutBox pointing to the actual
     // root.
-    write_word(heap, 0, TAG_ARRAY);
+    write_byte(heap, 0, TAG_ARRAY);
     write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
     // Current offset in the heap for the next static roots array element
@@ -402,7 +405,7 @@ fn create_static_heap(
 
     for root_address in root_addresses {
         // Add a MutBox for the object
-        write_word(heap, mutbox_offset, TAG_MUTBOX);
+        write_byte(heap, mutbox_offset, TAG_MUTBOX);
         write_word(
             heap,
             mutbox_offset + WORD_SIZE,

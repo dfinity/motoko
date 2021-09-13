@@ -890,11 +890,15 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
 
+  let load_field_u8 (i : int32) : G.t =
+    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Pack8, ZX)})
+
   let store_field (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
-  (* Although we occasionally want to treat two 32 bit fields as one 64 bit number *)
+  (* We occasionally want to treat two 32 bit fields as one 64 bit number *)
 
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -1192,8 +1196,8 @@ module Tagged = struct
     | FreeSpace -> 31l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
-    | CoercionFailure -> 0xfffffffel
-    | StableSeen -> 0xffffffffl
+    | CoercionFailure -> 32l
+    | StableSeen -> 33l
 
   (* The tag *)
   let header_size = 1l
@@ -1204,8 +1208,7 @@ module Tagged = struct
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
 
-  let load =
-    Heap.load_field tag_field
+  let load = Heap.load_field_u8 tag_field
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
@@ -4494,7 +4497,8 @@ module Serialization = struct
           (* Second time we see this *)
           (* Calculate relative offset *)
           let (set_offset, get_offset) = new_local env "offset" in
-          get_tag ^^ get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+          get_x ^^ Heap.load_field Tagged.tag_field ^^
+          get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0l ^^
