@@ -1,4 +1,0 @@
-stable-log.mo:30.9-30.14: warning [M0145], this pattern of type
-  ?Text
-does not cover value
-  null

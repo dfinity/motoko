@@ -27,8 +27,9 @@ actor {
     if (offset >= base) return null;
     let size = StableMemory.loadNat32(offset);
     let blob = StableMemory.loadBlob(offset + 4, Prim.nat32ToNat(size));
-    let ?text = Prim.decodeUtf8(blob);
-    ?(text, offset + 4 + size)
+    do ? {
+      (Prim.decodeUtf8(blob)!, offset + 4 + size)
+    }
   };
 
 
