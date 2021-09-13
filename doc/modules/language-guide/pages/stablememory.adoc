@@ -1,7 +1,7 @@
 # The StableMemory Library
 
-Motoko stable variabes, while convenient to use, require serialization
-and deserialization of all stable variables on upgrade.  During an
+Motoko stable variables, while convenient to use, require serialization
+and deserialization of all stable variables on upgrade  (see link:upgrades{outfilesuffix}[Stable variables and upgrade methods]).  During an
 upgrade, the current values of stable variables are first saved to IC
 stable memory, then restored from stable memory after the new code is
 installed.  Unfortunately, this mechanism does not scale to canisters
@@ -24,7 +24,12 @@ application.
 
 ## The Library
 
-The interface to Motoko's StableMemory library consists of functions for querying and growing the currently allocated set of stable memory pages,
+
+Support for stable memory is provided by the link:../base-libraries/StableMemory{outfilesuffix}[StableMemory]
+library in package `+base+`.
+
+
+The interface to the `StableMemory` library consists of functions for querying and growing the currently allocated set of stable memory pages,
 plus matching pairs of `load`, `store` operations
 for most of Motoko's fixed-size scalar types.
 
@@ -94,8 +99,8 @@ offset in StableMemory.
 The shared `read` query reads the message at the given offset,
 returning `null` if reading beyond the end of the log, or the `Text`
 message and next `offset` to continue reading from. An initial read
-should pass `0` as the offset; a subsequent read should use the offset
-returned from the previous read, as a simple form of cursor.  (This
+should pass `0` as the first offset; a subsequent read should use the offset
+returned from the previous one, as a simple form of cursor.  (This
 overly simple implementation of `read` relies on the user providing
 valid offsets and may trap or return garbage entries when abused.)
 
@@ -105,6 +110,3 @@ amount of storage for actual stable variables (here `base`), upgrading
 `StableLog` to a new implementation (perhaps to provide more
 functionality) should not consume too many cycles, regardless of the
 current size of the log.
-
-
-
