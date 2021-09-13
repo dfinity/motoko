@@ -5,10 +5,10 @@ actor {
 
   func ensure(offset : Nat32) {
     let pages = (offset + 65536) >> 16;
-      if (pages > StableMemory.size()) {
-        let oldsize = StableMemory.grow(pages - StableMemory.size());
-        assert (oldsize != 0xFFFF);
-     };
+    if (pages > StableMemory.size()) {
+      let oldsize = StableMemory.grow(pages - StableMemory.size());
+      assert (oldsize != 0xFFFF);
+    };
   };
 
   stable var base : Nat32 = 0;
