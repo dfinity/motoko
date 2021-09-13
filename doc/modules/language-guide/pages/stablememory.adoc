@@ -86,7 +86,7 @@ but stores the contents of the log directly in stable memory.
 include::../examples/StableLog.mo[]
 ----
 
-The auxilliary function `ensure(offset)` is
+The auxiliary function `ensure(offset)` is
 used to grow `StableMemory` as necessary to accommodate more data.
 It computes the 64KiB page of a given offset and ensures enough pages have
 been allocated to guarantee that offset is within bounds.
