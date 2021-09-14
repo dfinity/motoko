@@ -24,22 +24,19 @@ actor {
   };
 
   public query func readLast(count : Nat) : async ?[Text] {
-    let a = Prim.Array_init<Text>(count, "");
-    var offset = base;
-    for (k in a.keys()) {
-      if (offset == 0) return null;
-      offset -= 4;
-      let size = StableMemory.loadNat32(offset);
-      offset -= size;
-      let blob = StableMemory.loadBlob(offset, Prim.nat32ToNat(size));
-      switch (Prim.decodeUtf8(blob)) {
-        case (?t) {
-          a[k] := t;
-        };
-        case null { return null; }
+    do ? {
+      let a = Prim.Array_init<Text>(count, "");
+      var offset = base;
+      for (k in a.keys()) {
+        if (offset == 0) return ?Prim.Array_tabulate<Text>(k, func i { a[i] });
+        offset -= 4;
+        let size = StableMemory.loadNat32(offset);
+        offset -= size;
+        let blob = StableMemory.loadBlob(offset, Prim.nat32ToNat(size));
+        a[k] := Prim.decodeUtf8(blob)!;
       };
+      return ?Prim.Array_tabulate<Text>(count, func i { a[i] });
     };
-    return ?Prim.Array_tabulate<Text>(count, func i { a[i] });
   };
 
 
@@ -64,7 +61,20 @@ actor {
       };
       case null {}
     };
+  };
+
+  public func readMore() : async () {
+    switch (await readLast(2*count)) {
+      case (?ts) {
+        for (t in ts.vals()) {
+          Prim.debugPrint(t);
+        }
+      };
+      case null {}
+    };
   }
+
+
 }
 
 //SKIP run
@@ -78,3 +88,4 @@ actor {
 //CALL upgrade ""
 //CALL ingress populate "DIDL\x00\x00"
 //CALL ingress readAll "DIDL\x00\x00"
+//CALL ingress readMore "DIDL\x00\x00"

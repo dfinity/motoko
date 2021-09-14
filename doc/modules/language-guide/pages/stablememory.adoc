@@ -91,18 +91,15 @@ used to grow `StableMemory` as necessary to accommodate more data.
 It computes the 64KiB page of a given offset and ensures enough pages have
 been allocated to guarantee that offset is within bounds.
 
-The shared `log` function allocates the next offset at which to store
-its text argument, encodes the text argument as a blob and writes both
-the size of the blob and contents of the blob at the next available
-offset in StableMemory.
+The shared `log(t)` function encodes its `Text` argument as a  `Blob`,
+allocates enough stable memory to store it, and writes both
+the blob contents and its size at the next available
+offset in `StableMemory`, updating base.
 
-The shared `read` query reads the message at the given offset,
-returning `null` if reading beyond the end of the log, or the `Text`
-message and next `offset` to continue reading from. An initial read
-should pass `0` as the first offset; a subsequent read should use the offset
-returned from the previous one, as a simple form of cursor.  (This
-overly simple implementation of `read` relies on the user providing
-valid offsets and may trap or return garbage entries when abused.)
+The shared `readLast(count)` query reads up to `count` messages from the log, traversing
+the log in reverse from base.
+
+
 
 Because `StableLog` allocates and maintains its (potentially large)
 log data directly in stable memory and uses just a small and fixed
