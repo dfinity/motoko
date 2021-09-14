@@ -28,8 +28,8 @@ actor StableLog {
   public query func readLast(count : Nat) : async [Text] {
     let a = Array.init<Text>(count, "");
     var offset = base;
-    for (k in a.keys()) {
-      if (offset == 0) return Array.tabulate<Text>(k, func i { a[i] });
+    var k = 0;
+    while (k < count and offset > 0) {
       offset -= 4;
       let size = StableMemory.loadNat32(offset);
       offset -= size;
@@ -37,9 +37,10 @@ actor StableLog {
       switch (Text.decodeUtf8(blob)) {
         case (?t) { a[k] := t };
         case null { assert false };
-      }
+      };
+      k += 1;
     };
-    return Array.tabulate<Text>(count, func i { a[i] });
+    return Array.tabulate<Text>(k, func i { a[i] });
   };
 
 };

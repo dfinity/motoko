@@ -26,8 +26,8 @@ actor {
   public query func readLast(count : Nat) : async [Text] {
     let a = Prim.Array_init<Text>(count, "");
     var offset = base;
-    for (k in a.keys()) {
-      if (offset == 0) return Prim.Array_tabulate<Text>(k, func i { a[i] });
+    var k = 0;
+    while (k < count and offset > 0) {
       offset -= 4;
       let size = StableMemory.loadNat32(offset);
       offset -= size;
@@ -36,8 +36,9 @@ actor {
         case (?t) { a[k] := t };
         case null { assert false };
       };
+      k += 1;
     };
-    return Prim.Array_tabulate<Text>(count, func i { a[i] });
+    return Prim.Array_tabulate<Text>(k, func i { a[i] });
   };
 
 
@@ -60,7 +61,7 @@ actor {
     };
   };
 
-  public func readMore() : async () {
+  public func readExtra() : async () {
     let ts = await readLast(2*count);
     for (t in ts.vals()) {
       Prim.debugPrint(t);
@@ -81,4 +82,4 @@ actor {
 //CALL upgrade ""
 //CALL ingress populate "DIDL\x00\x00"
 //CALL ingress readAll "DIDL\x00\x00"
-//CALL ingress readMore "DIDL\x00\x00"
+//CALL ingress readExtra "DIDL\x00\x00"
