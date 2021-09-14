@@ -16,20 +16,31 @@ actor {
   public func log(t : Text) {
     let blob = Prim.encodeUtf8(t);
     let size = Prim.natToNat32(blob.size());
-    let next = base + 4 + size;
+    let next = base + size + 4;
     ensure(next);
-    StableMemory.storeNat32(base, size);
-    StableMemory.storeBlob(base + 4, blob);
+    StableMemory.storeBlob(base, blob);
+    StableMemory.storeNat32(base + size, size);
     base := next;
   };
 
-  public query func read(offset : Nat32) : async ?(Text, nextOffset : Nat32) {
-    if (offset >= base) return null;
-    let size = StableMemory.loadNat32(offset);
-    let blob = StableMemory.loadBlob(offset + 4, Prim.nat32ToNat(size));
-    do ? {
-      (Prim.decodeUtf8(blob)!, offset + 4 + size)
-    }
+  public query func readLast(count : Nat) : async ?[Text] {
+    if (base == 0) return null;
+    let a = Prim.Array_init<Text>(count, "");
+    var offset = base;
+    for (k in a.keys()) {
+      if (offset == 0) return null;
+      offset -= 4;
+      let size = StableMemory.loadNat32(offset);
+      offset -= size;
+      let blob = StableMemory.loadBlob(offset, Prim.nat32ToNat(size));
+      switch (Prim.decodeUtf8(blob)) {
+        case (?t) {
+          a[k] := t;
+        };
+        case null { return null; }
+      };
+    };
+    return ?Prim.Array_tabulate<Text>(count, func i { a[i] });
   };
 
 
@@ -46,18 +57,14 @@ actor {
   };
 
   public func readAll() : async () {
-    var cur : Nat32 = 0;
-    loop {
-      switch (await read(cur)) {
-        case (?(text, next)) {
-          Prim.debugPrint(text);
-          cur := next;
-        };
-        case null {
-          return;
+    switch (await readLast(count)) {
+      case (?ts) {
+        for (t in ts.vals()) {
+          Prim.debugPrint(t);
         }
-      }
-    }
+      };
+      case null {}
+    };
   }
 }
 
