@@ -25,21 +25,22 @@ actor StableLog {
     base += 4;
   };
 
-  public query func readLast(count : Nat) : async ?[Text] {
-    do ? {
-      let a = Array.init<Text>(count, "");
-      var offset = base;
-      for (k in a.keys()) {
-        if (offset == 0) return ?Array.tabulate<Text>(k, func i { a[i] });
-        offset -= 4;
-        let size = StableMemory.loadNat32(offset);
-        offset -= size;
-        let blob = StableMemory.loadBlob(offset, Nat32.toNat(size));
-        a[k] := Text.decodeUtf8(blob)!;
-      };
-      return ?Array.tabulate<Text>(count, func i { a[i] });
+  public query func readLast(count : Nat) : async [Text] {
+    let a = Array.init<Text>(count, "");
+    var offset = base;
+    for (k in a.keys()) {
+      if (offset == 0) return Array.tabulate<Text>(k, func i { a[i] });
+      offset -= 4;
+      let size = StableMemory.loadNat32(offset);
+      offset -= size;
+      let blob = StableMemory.loadBlob(offset, Nat32.toNat(size));
+      switch (Text.decodeUtf8(blob)) {
+        case (?t) { a[k] := t };
+        case null { assert false };
+      }
     };
-  }
+    return Array.tabulate<Text>(count, func i { a[i] });
+  };
 
 };
 

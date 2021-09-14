@@ -99,8 +99,6 @@ offset in `StableMemory`, updating base.
 The shared `readLast(count)` query reads up to `count` messages from the log, traversing
 the log in reverse from base.
 
-
-
 Because `StableLog` allocates and maintains its (potentially large)
 log data directly in stable memory and uses just a small and fixed
 amount of storage for actual stable variables (here `base`), upgrading

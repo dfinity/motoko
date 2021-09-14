@@ -23,20 +23,21 @@ actor {
     base += 4;
   };
 
-  public query func readLast(count : Nat) : async ?[Text] {
-    do ? {
-      let a = Prim.Array_init<Text>(count, "");
-      var offset = base;
-      for (k in a.keys()) {
-        if (offset == 0) return ?Prim.Array_tabulate<Text>(k, func i { a[i] });
-        offset -= 4;
-        let size = StableMemory.loadNat32(offset);
-        offset -= size;
-        let blob = StableMemory.loadBlob(offset, Prim.nat32ToNat(size));
-        a[k] := Prim.decodeUtf8(blob)!;
+  public query func readLast(count : Nat) : async [Text] {
+    let a = Prim.Array_init<Text>(count, "");
+    var offset = base;
+    for (k in a.keys()) {
+      if (offset == 0) return Prim.Array_tabulate<Text>(k, func i { a[i] });
+      offset -= 4;
+      let size = StableMemory.loadNat32(offset);
+      offset -= size;
+      let blob = StableMemory.loadBlob(offset, Prim.nat32ToNat(size));
+      switch (Prim.decodeUtf8(blob)) {
+        case (?t) { a[k] := t };
+        case null { assert false };
       };
-      return ?Prim.Array_tabulate<Text>(count, func i { a[i] });
     };
+    return Prim.Array_tabulate<Text>(count, func i { a[i] });
   };
 
 
@@ -45,7 +46,7 @@ actor {
 
   public func populate() : async () {
     // populate
-    let limit = count + 100;
+    let limit = count + 10;
     while (count < limit) {
       log(debug_show(count));
       count += 1;
@@ -53,25 +54,17 @@ actor {
   };
 
   public func readAll() : async () {
-    switch (await readLast(count)) {
-      case (?ts) {
-        for (t in ts.vals()) {
-          Prim.debugPrint(t);
-        }
-      };
-      case null {}
+    let ts = await readLast(count);
+    for (t in ts.vals()) {
+      Prim.debugPrint(t);
     };
   };
 
   public func readMore() : async () {
-    switch (await readLast(2*count)) {
-      case (?ts) {
-        for (t in ts.vals()) {
-          Prim.debugPrint(t);
-        }
-      };
-      case null {}
-    };
+    let ts = await readLast(2*count);
+    for (t in ts.vals()) {
+      Prim.debugPrint(t);
+    }
   }
 
 
