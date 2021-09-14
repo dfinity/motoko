@@ -44,32 +44,32 @@ More general `loadBlob` and `storeBlob` operations are also available for readin
 ----
 module {
 
-  /// Current size of the stable memory, in pages.
-  /// Each page is 64KiB (65536 bytes).
-  /// Initially `0`.
+  // Current size of the stable memory, in pages.
+  // Each page is 64KiB (65536 bytes).
+  // Initially `0`.
   size : () -> (pages : Nat32);
 
-  /// Grow current `size` of stable memory by `pagecount` pages.
-  /// Each page is 64KiB (65536 bytes).
-  /// Returns previous `size` when able to grow.
-  /// Returns `0xFFFF` if remaining pages insufficient.
+  // Grow current `size` of stable memory by `pagecount` pages.
+  // Each page is 64KiB (65536 bytes).
+  // Returns previous `size` when able to grow.
+  // Returns `0xFFFF` if remaining pages insufficient.
   grow : (new_pages : Nat32) -> (oldpages : Nat32);
 
   loadNat8 : (offset : Nat32) -> Nat8;
   storeNat8 : (offset : Nat32, value: Nat8) -> ();
 
-  /// ... and similar for Nat16, Nat32, Nat64,
-  /// Int8, Int16, Int32 and Int64 ...
+  // ... and similar for Nat16, Nat32, Nat64,
+  // Int8, Int16, Int32 and Int64 ...
 
   loadFloat : (offset : Nat32) -> Float;
   storeFloat : (offset : Nat32, value : Float) -> ();
 
-  /// Load `size` bytes starting from `offset` as a `Blob`.
-  /// Traps on out-of-bounds access.
+  // Load `size` bytes starting from `offset` as a `Blob`.
+  // Traps on out-of-bounds access.
   loadBlob : (offset : Nat32, size : Nat) -> Blob;
 
-  /// Write bytes of `blob` beginning at `offset`.
-  /// Traps on out-of-bounds access.
+  // Write bytes of `blob` beginning at `offset`.
+  // Traps on out-of-bounds access.
   storeBlob : (offset : Nat32, value : Blob) -> ()
 
 }
@@ -86,7 +86,7 @@ stable variables and stable memory.
 It uses a single stable variable to keep track of the next available offset,
 but stores the contents of the log directly in stable memory.
 
-[source#StableLog.no-repl,motoko]
+[source.no-repl,motoko]
 ----
 include::../examples/StableLog.mo[]
 ----
