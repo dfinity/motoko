@@ -1,4 +1,4 @@
-# The StableMemory Library
+# The `StableMemory` library
 
 Motoko stable variables, while convenient to use, require serialization
 and deserialization of all stable variables on upgrade  (see link:upgrades{outfilesuffix}[Stable variables and upgrade methods]).  During an
@@ -19,7 +19,7 @@ abstraction presented by the `StableMemory` library and an actor's stable
 variables, even though the two abstractions ultimately use the same underlying
 (concrete) stable memory facilities available to all IC canisters.
 This runtime support means that is safe for a Motoko program to
-exploit both stable variables and `StableMemory`, within the same
+exploit both stable variables and ``StableMemory``, within the same
 application.
 
 ## The Library
@@ -30,7 +30,7 @@ library in package `+base+`.
 
 
 The interface to the `StableMemory` library consists of functions for querying and growing the currently allocated set of stable memory pages,
-plus matching pairs of `load`, `store` operations
+plus matching pairs of ``load``, `store` operations
 for most of Motoko's fixed-size scalar types.
 
 More general `loadBlob` and `storeBlob` operations are also available for reading/writing binary blobs and other types that can be encoded as ``Blob``s (e.g. `Text` values) of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
@@ -91,13 +91,13 @@ used to grow `StableMemory` as necessary to accommodate more data.
 It computes the 64KiB page of a given offset and ensures enough pages have
 been allocated to guarantee that offset is within bounds.
 
-The shared `log(t)` function encodes its `Text` argument as a  `Blob`,
+The shared `log(t)` function encodes its `Text` argument as a  ``Blob``,
 allocates enough stable memory to store it, and writes both
 the blob contents and its size at the next available
-offset in `StableMemory`, updating base.
+offset in ``StableMemory``, updating `base`.
 
 The shared `readLast(count)` query reads up to `count` messages from the log, traversing
-the log in reverse from base.
+the log in reverse from `base`.
 
 Because `StableLog` allocates and maintains its (potentially large)
 log data directly in stable memory and uses just a small and fixed
