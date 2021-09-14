@@ -16,15 +16,14 @@ actor {
   public func log(t : Text) {
     let blob = Prim.encodeUtf8(t);
     let size = Prim.natToNat32(blob.size());
-    let next = base + size + 4;
-    ensure(next);
+    ensure(base + size + 4);
     StableMemory.storeBlob(base, blob);
-    StableMemory.storeNat32(base + size, size);
-    base := next;
+    base += size;
+    StableMemory.storeNat32(base, size);
+    base += 4;
   };
 
   public query func readLast(count : Nat) : async ?[Text] {
-    if (base == 0) return null;
     let a = Prim.Array_init<Text>(count, "");
     var offset = base;
     for (k in a.keys()) {

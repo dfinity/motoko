@@ -1,6 +1,6 @@
 import Nat32 "mo:base/Nat32";
-import Nat "mo:base/Nat";
 import Text "mo:base/Text";
+import Array "mo:base/Array";
 import StableMemory "mo:base/StableMemory";
 
 actor StableLog {
@@ -18,22 +18,30 @@ actor StableLog {
   public func log(t : Text) {
     let blob = Text.encodeUtf8(t);
     let size = Nat32.fromNat(blob.size());
-    let next = base + 4 + size;
-    ensure(next);
+    ensure(base + size + 4);
+    StableMemory.storeBlob(base, blob);
+    base += size;
     StableMemory.storeNat32(base, size);
-    StableMemory.storeBlob(base + 4, blob);
-    base := next;
+    base += 4;
   };
 
-  public query func read(offset : Nat32) :
-    async ?(Text, nextOffset : Nat32)
-  {
-    if (offset >= base) return null;
-    let size = StableMemory.loadNat32(offset);
-    let blob = StableMemory.loadBlob(offset + 4, Nat32.toNat(size));
-    do ? {
-      (Text.decodeUtf8(blob)!, offset + 4 + size)
-    }
+  public query func readLast(count : Nat) : async ?[Text] {
+    let a = Array.init<Text>(count, "");
+    var offset = base;
+    for (k in a.keys()) {
+      if (offset == 0) return null;
+      offset -= 4;
+      let size = StableMemory.loadNat32(offset);
+      offset -= size;
+      let blob = StableMemory.loadBlob(offset, Nat32.toNat(size));
+      switch (Text.decodeUtf8(blob)) {
+        case (?t) {
+          a[k] := t;
+        };
+        case null { return null; }
+      };
+    };
+    return ?Array.tabulate<Text>(count, func i { a[i] });
   };
 
 };
