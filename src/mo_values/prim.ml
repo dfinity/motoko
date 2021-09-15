@@ -184,7 +184,8 @@ let prim =
                                           | code -> Wasm.Utf8.encode [code]
                                in k (Text str)
   | "print" -> fun _ v k -> Printf.printf "%s\n%!" (as_text v); k unit
-  | "trap" -> fun _ v k -> Printf.printf "%s\n%!" (as_text v); raise (Invalid_argument "explicit trap")
+  | "trap" -> fun _ v k ->
+    raise (Invalid_argument ("explicit trap: "^ (as_text v)))
   | "rts_version" -> fun _ v k -> as_unit v; k (Text "0.1")
   | "rts_heap_size" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
