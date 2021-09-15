@@ -1,6 +1,6 @@
 import Prim "mo:⛔";
 actor a {
-  public func go() {
+  public func go() : async Nat {
     Prim.trap("This is an explicit trap");
   }
 };

@@ -52,7 +52,7 @@ func debugPrintChar(x : Char) { debugPrint (charToText x) };
 
 // Trapping
 
-func trap(x : Text) { (prim "trap" : Text -> None) x };
+func trap(x : Text) : None { (prim "trap" : Text -> None) x };
 
 // RTS stats
 
