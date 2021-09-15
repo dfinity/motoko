@@ -3480,7 +3480,7 @@ module IC = struct
   let trap_with env s =
     Blob.lit_ptr_len env s ^^ trap_ptr_len env
 
-  let _trap_text env  =
+  let trap_text env  =
     Text.to_blob env ^^ Blob.as_ptr_len env ^^ trap_ptr_len env
 
   let default_exports env =
@@ -7837,6 +7837,11 @@ and compile_exp (env : E.t) ae exp =
       SR.unit,
       compile_exp_vanilla env ae e ^^
       IC.print_text env
+
+    | OtherPrim "trap", [e] ->
+      SR.unit,
+      compile_exp_vanilla env ae e ^^
+      IC.trap_text env
 
     | OtherPrim ("blobToArray"|"blobToArrayMut"), e ->
       const_sr SR.Vanilla (Arr.ofBlob env)
