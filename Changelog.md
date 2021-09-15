@@ -1,8 +1,10 @@
 # Motoko compiler changelog
 
+== 0.6.9 (2021-09-15)
+
 * motoko-base
 
-  * add Debug.trap : Text -> None
+  * add Debug.trap : Text -> None (#288)
 
 == 0.6.8 (2021-09-06)
 
