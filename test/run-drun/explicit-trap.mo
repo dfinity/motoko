@@ -4,4 +4,4 @@ actor a {
     Prim.trap("This is an explicit trap");
   }
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
