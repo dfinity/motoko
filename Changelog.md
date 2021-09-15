@@ -2,7 +2,7 @@
 
 * moc
 
-* Add runtime support for low-level, direct access to 32-bit IC stable memory (#2626)
+  * Add runtime support for low-level, direct access to 32-bit IC stable memory (#2626)
 
 * motoko-base
 
