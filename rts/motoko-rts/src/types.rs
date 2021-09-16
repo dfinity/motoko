@@ -330,7 +330,7 @@ pub const TAG_ONE_WORD_FILLER: Tag = 16;
 pub const TAG_FREE_SPACE: Tag = 17;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
 }
@@ -352,7 +352,7 @@ impl Obj {
 }
 
 #[rustfmt::skip]
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Array {
     pub header: Obj,
     pub len: u32, // number of elements
@@ -384,7 +384,7 @@ impl Array {
     }
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Object {
     pub header: Obj,
     pub size: u32,     // Number of elements
@@ -406,13 +406,13 @@ impl Object {
     }
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct ObjInd {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Closure {
     pub header: Obj,
     pub funid: u32,
@@ -430,7 +430,7 @@ impl Closure {
     }
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -479,13 +479,13 @@ impl Blob {
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
     pub header: Obj,
     pub fwd: Value,
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct BigInt {
     pub header: Obj,
     /// The data following now must describe is the `mp_int` struct.
@@ -524,26 +524,26 @@ impl BigInt {
     }
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct MutBox {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Some {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
     pub field: Value,
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
@@ -561,12 +561,12 @@ impl Concat {
     }
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Null {
     pub header: Obj,
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Bits64 {
     pub header: Obj,
     // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
@@ -581,20 +581,20 @@ impl Bits64 {
     }
 }
 
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
 }
 
 /// Marks one word empty space in heap
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct OneWordFiller {
     pub header: Obj,
 }
 
 /// Marks arbitrary sized emtpy space in heap
-#[repr(C)] // See the note at the beginnign of this module
+#[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
     pub header: Obj,
     pub words: Words<u32>,
