@@ -1387,8 +1387,8 @@ module Variant = struct
 
   *)
 
-  let tag_field = Tagged.header_size
-  let payload_field = Int32.add Tagged.header_size 1l
+  let variant_tag_field = Tagged.header_size
+  let payload_field = Int32.add variant_tag_field 1l
 
   let hash_variant_label env : Mo_types.Type.lab -> int32 =
     E.hash env
@@ -1396,12 +1396,12 @@ module Variant = struct
   let inject env l e =
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
-  let get_tag = Heap.load_field tag_field
+  let get_variant_tag = Heap.load_field variant_tag_field
   let project = Heap.load_field payload_field
 
-  (* Test if the top of the stacks points to a variant with this label *)
+  (* Test if the top of the stack points to a variant with this label *)
   let test_is env l =
-    get_tag ^^
+    get_variant_tag ^^
     compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
