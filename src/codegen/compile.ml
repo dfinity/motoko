@@ -4478,13 +4478,6 @@ module Serialization = struct
         begin
           (* This is a reference *)
           write_byte (compile_unboxed_const 1l) ^^
-          (* Sanity Checks *)
-          get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
-          E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
-          get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
-          E.then_trap_with env "unvisited mutable data in serialize_go (ObjInd)" ^^
-          get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
-          E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
           (* Second time we see this *)
           (* Calculate relative offset *)
           let (set_offset, get_offset) = new_local env "offset" in
