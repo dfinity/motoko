@@ -28,10 +28,10 @@ actor Counter {
   };
 
   /// Returns the current counter value,
-  /// and an unforgeable certificate (from the system) about its authenticity.
-  public query func get() : async ?{ value : Nat32; certificate : Blob } {
-    do ? {
-      { value; certificate = CD.getCertificate()! }
-    }
+  /// and, if available, an unforgeable certificate (from the system) about its authenticity.
+  /// When called via update call or inter-canister call, no certificate is present (and not needed,
+  /// as in these cases the system already certifies the response)
+  public query func get() : async { value : Nat32; certificate : ?Blob } {
+    return { value; certificate = CD.getCertificate() }
   };
 }
