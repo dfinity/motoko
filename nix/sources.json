@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "c49a2f443d177b6486a1797ca646d8546ac7288c",
-        "sha256": "0pfnz3x4ls8asnq4x7jpp0ijiss24j2sg77bn4hg6gvbfmczp4x6",
+        "rev": "fb558eb58aed501a6b46768baf0a50ece6bedeaa",
+        "sha256": "1y1h4s3nwk88bdnqxsph9hsh5qc32ji6bj4h31ykj9n7b0f2hxsh",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/c49a2f443d177b6486a1797ca646d8546ac7288c.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/fb558eb58aed501a6b46768baf0a50ece6bedeaa.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -103,10 +103,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "e0ca65c81a2d7a4d82a189f1e23a48d59ad42070",
-        "sha256": "1pq9nh1d8nn3xvbdny8fafzw87mj7gsmp6pxkdl65w2g18rmcmzx",
+        "rev": "65a61b147f307d24bfd0a5cd56ce7d7b7cc61d2e",
+        "sha256": "17mirpsx5wyw262fpsd6n6m47jcgw8k2bwcp1iwdnrlzy4dhcgqh",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/e0ca65c81a2d7a4d82a189f1e23a48d59ad42070.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/65a61b147f307d24bfd0a5cd56ce7d7b7cc61d2e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
