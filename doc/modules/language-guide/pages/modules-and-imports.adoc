@@ -93,19 +93,19 @@ The type annotation  `+: Counters.Counter+` is redundant here. It's included onl
 
 == Importing from another canister smart contract
 
-In addition to the examples above that import {proglang} modules, you can also import functions from canister smart constracts by using the `+canister:+` prefix in place of the `+mo:+` prefix.
+In addition to the examples above that import {proglang} modules, you can also import actors (and their shared functions) from canister smart constracts by using the `+canister:+` prefix in place of the `+mo:+` prefix.
 
 NOTE: Unlike a Motoko library, an imported canister can be implemented in any other {IC} language that emits Candid interfaces for its canister smart contracts (for instance Rust), not just Motoko. It could even be an older or newer version of Motoko.
 
 For example, you might have a project that produces the following three canisters:
 
-* BigMap
-* Connectd
-* LinkedUp
+* BigMap (implemented in Rust)
+* Connectd (implemented in Motoko)
+* LinkedUp (implemented in Motoko)
 
 These three canisters are declared in the project's `+dfx.json+` configuration file and compiled by running `+dfx build+`.
 
-You can then use the following lines to import the functions from the `+BigMap+` and `+Connectd+` canisters in the LinkedUp program:
+You can then use the following lines to import the `+BigMap+` and `+Connectd+` canisters as actors in the Motoko LinkedUp actor:
 
 [source.no-repl,motoko]
 ----
