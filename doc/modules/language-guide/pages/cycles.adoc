@@ -2,11 +2,11 @@
 :proglang: Motoko
 :company-id: DFINITY
 
-Usage of the Internet Computer is measured, and paid for, in _cycles_.
-The {company-id} platform maintains a per canister balance of cycles
-and cycles can be transferred between canisters.
+Usage of the {IC} is measured, and paid for, in _cycles_.
+The {IC} maintains a balance of cycles per canister smart contract.
+In addition, cycles can be transferred between canisters.
 
-In {proglang}, each actor has a balance of cycles.
+In {proglang}, each actor, as an {IC} canister, also has a balance of cycles.
 The ownership of cycles can be transferred between actors.
 Cycles are selectively sent and received through messages, that is, shared function calls.
 A caller can choose to transfer cycles with a call, and a callee can choose to

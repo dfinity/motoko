@@ -91,9 +91,11 @@ The call to `+Counters.Counter(1)+` installs a fresh counter on the network. Ins
 
 The type annotation  `+: Counters.Counter+` is redundant here. It's included only to illustrate that the type of the actor class is available when required.
 
-== Importing from another canister
+== Importing from another canister smart contract
 
-In addition to the examples above that import {proglang} modules, you can also import functions from canisters by using the `+canister:+` prefix in place of the `+mo:+` prefix.
+In addition to the examples above that import {proglang} modules, you can also import functions from canister smart constracts by using the `+canister:+` prefix in place of the `+mo:+` prefix.
+
+NOTE: Unlike a Motoko library, an imported canister can be implemented in any other {IC} language that emits Candid interfaces for its canister smart contracts (for instance Rust), not just Motoko. It could even be an older or newer version of Motoko.
 
 For example, you might have a project that produces the following three canisters:
 
@@ -120,8 +122,6 @@ The translation from {proglang} actor type to Candid service type is mostly, but
 
 The type of an imported canister function, therefore, might differ from the type of the original {proglang} code that implements it.
 For example, if the {proglang} function had type `+shared Nat32 -> async Char+` in the implementation, its exported Candid type would be `+(nat32) -> (nat32)+` but the {proglang} type imported from this Candid type will actually be the correct—but perhaps unexpected—type  `+shared Nat32 -> async Nat32+`.
-
-These type differences are the result of the Candid-to-{proglang} composition layer inherent to the canister abstraction.
 
 == Naming imported modules
 

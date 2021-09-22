@@ -4,12 +4,12 @@
 
 
 {proglang}'s shared functions support a simple form of caller identification that allows you to inspect the {IC} **principal** associated with the caller of a function.
-The principal associated with a call is a value that identifies a unique user or canister.
+The principal associated with a call is a value that identifies a unique user or canister smart contract.
 
 You can use the **principal** associated with the caller of a function to implement a basic form of _access-control_ in your program.
 
-In {proglang}, the `+shared+` keyword is used to declare a shared function. 
-The shared function can also declare an optional parameter of type `+{caller : Principal}+`. 
+In {proglang}, the `+shared+` keyword is used to declare a shared function.
+The shared function can also declare an optional parameter of type `+{caller : Principal}+`.
 ////
 (The type is a record to accommodate future extension.)
 ////
