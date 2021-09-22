@@ -36,8 +36,8 @@ An actor’s messages are processed in sequence, so state modifications never ad
 The Internet Computer ensures that each message that is sent receives
 a response. The response is either success with some value, or
 an error. An error can be the explicit rejection of the message by the
-receiving canister, a trap due to an illegal instruction such as division by zero, or a system error due to distribution or other resource constraints.
-A system error might be
+receiving canister, a trap due to an illegal instruction such as division by zero, or a system error due to distribution or resource constraints.
+For example, a system error might be
 the transient or permanent unavailability of the receiver (either because
 the receiving actor is oversubscribed or has been deleted).
 
