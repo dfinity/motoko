@@ -6,13 +6,13 @@ This automatic and user-transparent preservation of state is called
 _orthogonal persistence_.
 
 Though convenient, orthogonal persistence poses a challenge when it comes to upgrading the code of a canister.
-Without an explicit representation of the canister's state, how does one migrate
+Without an explicit representation of the canister's state, how does one tranfer
 any application data from the retired canister to its replacement?
 
-Accommodating upgrades without data loss requires some facility to
+Accommodating upgrades without data loss requires some new facility to
 _migrate_ a canister's crucial data to the upgraded canister.  For example, if
-you want to deploy a new version of a canister to fix an issue or add
-functionality, you need to ensure that any critical canister data (such as user registrations) survives the upgrade process.
+you want to deploy a new version of a user-registration canister to fix an issue or add
+functionality, you need to ensure that existing registrations survive the upgrade process.
 
 The {IC}'s persistence model allows a canister to save and restore
 such data to dedicated _stable memory_ that, unlike ordinary canister
