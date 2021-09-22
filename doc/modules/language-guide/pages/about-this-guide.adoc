@@ -10,7 +10,7 @@ ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 
 The _{proglang} Programming Language Guide_ introduces key features of the general-purpose {proglang} programming language and provides examples and reference information to help you learn the nuances of the language and the practical implications of how to apply it.
 
-The {proglang} programming language is optimized for developing programs that run on the {platform} and to work with the {sdk-long-name}. 
+The {proglang} programming language is optimized for developing programs that run on the {platform} and to work with the {sdk-long-name}.
 However, you can also write programs using {proglang} for other platforms and to run in other contexts.
 This guide attempts to strike a balance between highlighting features that are uniquely suited to running on the {IC} and features that are generally-applicable or well-suited for programs running on other platforms.
 
@@ -26,7 +26,7 @@ Although this guide is intended to help readers from different backgrounds under
 
 == Using this guide
 
-To provide a framework for learning {proglang}, you might want to start by reviewing <<Engineering values and goals>>. 
+To provide a framework for learning {proglang}, you might want to start by reviewing <<Engineering values and goals>>.
 The <<Engineering values and goals>> describe the core design considerations for the development and evolution of the {proglang} programming language.
 
 With those considerations in mind, you can start to explore fundamental concepts, including the role of types and type annotations, in simple code examples and small programs.
@@ -68,8 +68,8 @@ The following guiding principles represent the core values of the engineering or
 The following principles represent the secondary values of the engineering organization that are deemed important but not primary driving factors:
 
 . Expressiveness, so that {proglang} provides first-class functions, polymorphism, pattern matching, and more as the language evolves.
-. Performance, so that {proglang} provides reasonably fast operation initially and continues to improves as the language evolves. 
-. Readiness, so the {proglang} comes with "batteries included" in the form of libraries and examples and out-of-the-box integration wit the {sdk-short-name}. 
+. Performance, so that {proglang} provides reasonably fast operation initially and continues to improves as the language evolves.
+. Readiness, so the {proglang} comes with "batteries included" in the form of libraries and examples and out-of-the-box integration with the {sdk-short-name}.
 
 === Non-goals
 
@@ -79,7 +79,7 @@ As a counterpoint to the core values and goals, the engineering organization als
 . Simplicity over functionality in design or implementation (the "Worse is Better" approach).
 . Interoperability or support for running {proglang} programs on blockchain platforms other than the {IC}.
 
-== Finding more information 
+== Finding more information
 
 For information about using {proglang} with the {sdk-short-name}, see the link:../developers-guide/sdk-guide{outfilesuffix}[SDK Developer Tools].
 
@@ -99,7 +99,7 @@ For background information on various topics relevant to the design, use, or dep
 
 == Getting additional support
 
-If you are looking for more information or technical support, the {company-id} website provides quick access to frequently-asked questions, technical articles, developer updates, and other resources. 
+If you are looking for more information or technical support, the {company-id} website provides quick access to frequently-asked questions, technical articles, developer updates, and other resources.
 From the website, you can search knowledge base articles, open and view support cases, sign up for the newsletter, read the latest blog posts, view how-to videos, download software updates, or exchange ideas with members of the community.
 
 In addition to the resources available on the website, you can connect with {company-id} or other developers using social media or by visiting the {company-id} Community Forum on Discourse and joining the conversation.
