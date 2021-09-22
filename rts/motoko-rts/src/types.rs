@@ -312,22 +312,24 @@ pub const fn unskew(value: usize) -> usize {
 // of an unsafe API usage).
 pub type Tag = u32;
 
+// Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
+// locations in mark-compact GC. (Reminder: objects and fields are word aligned)
 pub const TAG_OBJECT: Tag = 1;
-pub const TAG_OBJ_IND: Tag = 2;
-pub const TAG_ARRAY: Tag = 3;
-pub const TAG_BITS64: Tag = 5;
-pub const TAG_MUTBOX: Tag = 6;
-pub const TAG_CLOSURE: Tag = 7;
-pub const TAG_SOME: Tag = 8;
-pub const TAG_VARIANT: Tag = 9;
-pub const TAG_BLOB: Tag = 10;
-pub const TAG_FWD_PTR: Tag = 11;
-pub const TAG_BITS32: Tag = 12;
-pub const TAG_BIGINT: Tag = 13;
-pub const TAG_CONCAT: Tag = 14;
-pub const TAG_NULL: Tag = 15;
-pub const TAG_ONE_WORD_FILLER: Tag = 16;
-pub const TAG_FREE_SPACE: Tag = 17;
+pub const TAG_OBJ_IND: Tag = 3;
+pub const TAG_ARRAY: Tag = 5;
+pub const TAG_BITS64: Tag = 7;
+pub const TAG_MUTBOX: Tag = 9;
+pub const TAG_CLOSURE: Tag = 11;
+pub const TAG_SOME: Tag = 13;
+pub const TAG_VARIANT: Tag = 15;
+pub const TAG_BLOB: Tag = 17;
+pub const TAG_FWD_PTR: Tag = 19;
+pub const TAG_BITS32: Tag = 21;
+pub const TAG_BIGINT: Tag = 23;
+pub const TAG_CONCAT: Tag = 25;
+pub const TAG_NULL: Tag = 27;
+pub const TAG_ONE_WORD_FILLER: Tag = 29;
+pub const TAG_FREE_SPACE: Tag = 31;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
