@@ -602,7 +602,16 @@ let loopWhileE exp1 exp2 =
 
 let forE pat exp1 exp2 =
   match exp1.it with
-  | PrimE (CallPrim _, [{it=PrimE (CallPrim _,[{it=VarE "@immut_array_vals";_};_]);_}; {it=PrimE _;_}]) (*when immut_array_vals.it = VarE "@immut_array_vals"*) -> assert false
+  | PrimE (CallPrim _, [{it=PrimE (CallPrim _,[{it=VarE "@immut_array_vals";_};_]);_}; {it=PrimE _;_}]) ->
+  (* when e1 = arr.vals()
+     for p in e1 e2
+     ~~>
+     label l loop {
+       if e1.i < e1.l
+       then { let p = arr[e1.i] in e2; e1.i += 1 }
+       else { break l }
+     } *)
+    assert false
   | _ -> 
   (* for p in e1 e2
      ~~>
@@ -610,7 +619,7 @@ let forE pat exp1 exp2 =
      label l loop {
        switch nxt () {
          case null { break l };
-         case p    { e2 };
+         case ?p    { e2 };
        }
      } *)
   let lab = fresh_id "done" () in
