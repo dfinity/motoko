@@ -601,6 +601,9 @@ let loopWhileE exp1 exp2 =
     )
 
 let forE pat exp1 exp2 =
+  match exp1.it with
+  | PrimE (CallPrim _, [{it=PrimE (CallPrim _,[{it=VarE "@immut_array_vals";_};_]);_}; {it=PrimE _;_}]) (*when immut_array_vals.it = VarE "@immut_array_vals"*) -> assert false
+  | _ -> 
   (* for p in e1 e2
      ~~>
      let nxt = e1.next ;
