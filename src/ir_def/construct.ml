@@ -606,9 +606,12 @@ let forE pat exp1 exp2 =
   (* when e1 = arr.vals()
      for p in e1 e2
      ~~>
+     let arr = ... ;
+     let indx = 0 ;
+     let len = arr.size() ;
      label l loop {
-       if e1.i < e1.l
-       then { let p = arr[e1.i] in e2; e1.i += 1 }
+       if indx < len
+       then { let p = arr[indx]; e2; indx += 1 }
        else { break l }
      } *)
     assert false
