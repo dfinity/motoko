@@ -93,6 +93,19 @@ impl MotokoHeap {
     pub fn heap(&self) -> Ref<Box<[u8]>> {
         Ref::map(self.inner.borrow(), |heap| &heap.heap)
     }
+
+    /// Print heap contents to stdout, for debugging purposes.
+    #[allow(unused)]
+    pub fn dump(&self) {
+        unsafe {
+            motoko_rts::debug::dump_heap(
+                self.heap_base_address() as u32,
+                self.heap_ptr_address() as u32,
+                Value::from_ptr(self.static_root_array_address()),
+                self.continuation_table_ptr_address() as *mut Value,
+            );
+        }
+    }
 }
 
 struct MotokoHeapInner {

@@ -1168,24 +1168,30 @@ module Tagged = struct
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
 
-  (* Let's leave out tag 0 to trap earlier on invalid memory *)
+  (* Tags needs to have the lowest bit set, to allow distinguishing object
+     headers from heap locations (object or field addresses).
+
+     (Reminder: objects and fields are word-aligned so will have the lowest two
+     bits unset) *)
   let int_of_tag = function
     | Object -> 1l
-    | ObjInd -> 2l
-    | Array -> 3l
-    | Bits64 -> 5l
-    | MutBox -> 6l
-    | Closure -> 7l
-    | Some -> 8l
-    | Variant -> 9l
-    | Blob -> 10l
-    | Indirection -> 11l
-    | Bits32 -> 12l
-    | BigInt -> 13l
-    | Concat -> 14l
-    | Null -> 15l
-    | OneWordFiller -> 16l
-    | FreeSpace -> 17l
+    | ObjInd -> 3l
+    | Array -> 5l
+    | Bits64 -> 7l
+    | MutBox -> 9l
+    | Closure -> 11l
+    | Some -> 13l
+    | Variant -> 15l
+    | Blob -> 17l
+    | Indirection -> 19l
+    | Bits32 -> 21l
+    | BigInt -> 23l
+    | Concat -> 25l
+    | Null -> 27l
+    | OneWordFiller -> 29l
+    | FreeSpace -> 31l
+    (* Next two tags won't be seen by the GC, so no need to set the lowest bit
+       for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
