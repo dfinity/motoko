@@ -5453,7 +5453,7 @@ module Stabilization = struct
     StableMem.get_mem_size env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     G.if_ []
-      begin( (* ensure [0,..,3,...len+4) *)
+      begin (* ensure [0,..,3,...len+4) *)
         compile_unboxed_const 0l ^^
         get_len ^^
         compile_add_const 4l ^^  (* reserve one word for size *)
@@ -5468,7 +5468,7 @@ module Stabilization = struct
         compile_unboxed_const 4l ^^
         get_dst ^^
         get_len ^^
-        E.call_import env "ic0" "stable_write")
+        E.call_import env "ic0" "stable_write"
       end
       begin
         let (set_N, get_N) = new_local env "N" in
