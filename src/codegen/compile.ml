@@ -1168,9 +1168,7 @@ module Tagged = struct
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
 
-  (* Leave out tag 0 to trap earlier on invalid memory.
-
-     Tags needs to have the lowest bit set, to allow distinguishing object
+  (* Tags needs to have the lowest bit set, to allow distinguishing object
      headers from heap locations (object or field addresses).
 
      (Reminder: objects and fields are word-aligned so will have the lowest two
@@ -1193,7 +1191,7 @@ module Tagged = struct
     | OneWordFiller -> 29l
     | FreeSpace -> 31l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
-       for `CoercionFailure` *)
+       for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
