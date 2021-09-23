@@ -495,7 +495,7 @@ NOTE: Traps that occur within actor messages are more subtle: they don't abort t
 
 Occasionally it can be useful to force an unconditional trap, with a user-defined message.
 
-The `Debug` library provides a the function `trap(t)` for this purpose, which can be used in any context.
+The `Debug` library provides the function `trap(t)` for this purpose, which can be used in any context.
 
 [source, motoko]
 ....
