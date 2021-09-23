@@ -17,7 +17,7 @@ This guide attempts to strike a balance between highlighting features that are u
 == Intended audience
 
 This guide provides reference information and examples for programmers who want to explore or plan to use the {proglang} programming language.
-Most of the information in this guide is applicable independent of whether you are developing programs to run on the {platform or working with the {sdk-short-name}.
+Most of the information in this guide is applicable independent of whether you are developing programs to run on the {IC} or working with the {sdk-short-name}.
 
 The guide assumes you are familiar with basic programming principles and terminology and have at least some experience writing programs in a high-level programming language such as C++ or Rust, or have practical experience working with a scripting language such as JavaScript or TypeScript.
 In addition, {proglang} incorporates some aspects of functional programming, so you might find some knowledge of functional programming design principles helpful in learning to use {proglang}.
