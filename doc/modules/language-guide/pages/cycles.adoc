@@ -26,7 +26,7 @@ provided by the link:../base-libraries/ExperimentalCycles{outfilesuffix}[Experim
 library in package `+base+`.
 
 NOTE: This library is subject to change and likely to be replaced by
-more high-level support for cycles in later versions of Motoko.
+more high-level support for cycles in later versions of {proglang}.
 
 == The `+ExperimentalCycles+` Library
 

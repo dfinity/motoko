@@ -3,7 +3,7 @@
 :base: https://github.com/dfinity/motoko-base[base]
 :!page-repl:
 
-== Different ways to represent errors in Motoko ==
+== Different ways to represent errors in {proglang} ==
 . Option
 . Result
 . Asynchronous Exceptions
@@ -41,7 +41,7 @@ We now realize that there are conditions under which marking a Todo as done fail
 * The `id` could reference a non-existing Todo
 * The Todo might already be marked as done
 
-We'll now talk about the different ways to communicate these errors in Motoko and slowly improve our solution.
+We'll now talk about the different ways to communicate these errors in {proglang} and slowly improve our solution.
 
 
 == What error type to prefer ==

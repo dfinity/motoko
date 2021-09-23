@@ -105,7 +105,7 @@ For example, you might have a project that produces the following three canister
 
 These three canisters are declared in the project's `+dfx.json+` configuration file and compiled by running `+dfx build+`.
 
-You can then use the following lines to import the `+BigMap+` and `+Connectd+` canisters as actors in the Motoko LinkedUp actor:
+You can then use the following lines to import the `+BigMap+` and `+Connectd+` canisters as actors in the {proglang} LinkedUp actor:
 
 [source.no-repl,motoko]
 ----
