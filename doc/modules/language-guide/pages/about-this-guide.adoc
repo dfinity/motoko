@@ -1,7 +1,7 @@
 = About this guide
 ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 :proglang: Motoko
-:platform: Internet Computer platform
+:platform: Internet Computer blockchain network
 :IC: Internet Computer
 :company-id: DFINITY
 :sdk-short-name: DFINITY Canister SDK
@@ -11,13 +11,13 @@ ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 The _{proglang} Programming Language Guide_ introduces key features of the general-purpose {proglang} programming language and provides examples and reference information to help you learn the nuances of the language and the practical implications of how to apply it.
 
 The {proglang} programming language is optimized for developing programs that run on the {platform} and to work with the {sdk-long-name}.
-However, you can also write programs using {proglang} for other platforms and to run in other contexts.
-This guide attempts to strike a balance between highlighting features that are uniquely suited to running on the {IC} and features that are generally-applicable or well-suited for programs running on other platforms.
+You could, in principle, also write programs using {proglang} for more traditional platforms and to run in other contexts, though support for this is currently best-effort and incomplete.
+This guide attempts to strike a balance between highlighting features that are uniquely suited to running on the {IC} and features that are generally-applicable or well-suited for programs running on all targets.
 
 == Intended audience
 
 This guide provides reference information and examples for programmers who want to explore or plan to use the {proglang} programming language.
-Most of the information in this guide is applicable independent of whether you are developing programs to run on the {platform} or working with the {sdk-short-name}.
+Most of the information in this guide is applicable independent of whether you are developing programs to run on the {platform or working with the {sdk-short-name}.
 
 The guide assumes you are familiar with basic programming principles and terminology and have at least some experience writing programs in a high-level programming language such as C++ or Rust, or have practical experience working with a scripting language such as JavaScript or TypeScript.
 In addition, {proglang} incorporates some aspects of functional programming, so you might find some knowledge of functional programming design principles helpful in learning to use {proglang}.
@@ -59,7 +59,7 @@ For transparency into the principles that guide the engineering effort, the engi
 
 The following guiding principles represent the core values of the engineering organization in prioritized order:
 
-. Seamless integration with the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} platform] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
+. Seamless integration with the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} blockchain network] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
 . Ergonomics to ensure that {proglang} embraces familiarity, simplicity, clarity, explicitness, and other human factors.
 . Formal correctness to ensure that {proglang} maintains state isolation, a sound type system and type safety, precision, pattern matching, appropriate defaults, and coding best-practices.
 
@@ -75,9 +75,9 @@ The following principles represent the secondary values of the engineering organ
 
 As a counterpoint to the core values and goals, the engineering organization also identified the following as "non-goals" that are outside of the scope of the engineering effort:
 
-. Having a more advanced type system, with more complex types.
+. Having a more advanced type system, with cutting-edge features.
 . Simplicity over functionality in design or implementation (the "Worse is Better" approach).
-. Interoperability or support for running {proglang} programs on blockchain platforms other than the {IC}.
+. Interoperability or support for running {proglang} programs on blockchains other than the {IC}.
 
 == Finding more information
 

@@ -118,7 +118,7 @@ will not exceed `+capacity+`, breaking the piggy bank.  Because the
 deposit function only accepts a portion of the available
 amount, a caller whose deposit exceeds the limit will receive an
 implicit refund of any unaccepted cycles. Refunds are automatic and
-ensured by the platform.
+ensured by the {IC} infrastructure.
 
 Since transfer of cycles is one-directional (from caller to callee),
 retrieving cycles requires the use of an explicit callback (the

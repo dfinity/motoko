@@ -1,7 +1,7 @@
 = Motoko Programming Language
 :page-layout: default
 :proglang: Motoko
-:platform: Internet Computer platform
+:platform: Internet Computer blockchain network
 :IC: Internet Computer
 :ext: .mo
 :company-id: DFINITY
