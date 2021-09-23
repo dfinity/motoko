@@ -86,7 +86,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
         let r_payload: *const u8 = r.as_blob().payload_addr();
         memcpy_bytes(r_payload as usize, blob1.payload_addr() as usize, blob1_len);
         memcpy_bytes(
-            r_payload.add(blob1_len.0 as usize) as usize,
+            r_payload.add(blob1_len.as_usize()) as usize,
             blob2.payload_addr() as usize,
             blob2_len,
         );
@@ -147,11 +147,11 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
 
             if s2_len < Bytes(core::mem::size_of::<Crumb>() as u32) {
                 // If second string is smaller than size of a crumb just do it directly
-                text_to_buf(s2, buf.add(s1_len.0 as usize));
+                text_to_buf(s2, buf.add(s1_len.as_usize()));
                 s = s1;
             } else {
                 // Otherwise leave a breadcrumb to the location of the second string
-                let new_crumb: *mut Crumb = buf.add(s1_len.0 as usize) as *mut Crumb;
+                let new_crumb: *mut Crumb = buf.add(s1_len.as_usize()) as *mut Crumb;
                 (*new_crumb).t = s2;
                 (*new_crumb).next = next_crumb;
                 next_crumb = new_crumb;
@@ -237,9 +237,9 @@ unsafe fn text_compare_range(
         let s2_blob = s2_obj.as_blob();
 
         let cmp = libc::memcmp(
-            s1_blob.payload_addr().add(offset1.0 as usize) as *const _,
-            s2_blob.payload_addr().add(offset2.0 as usize) as *const _,
-            n.0 as usize,
+            s1_blob.payload_addr().add(offset1.as_usize()) as *const _,
+            s2_blob.payload_addr().add(offset2.as_usize()) as *const _,
+            n.as_usize(),
         );
 
         if cmp < 0 {
@@ -318,7 +318,7 @@ pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
 
     let payload1 = s1.as_blob().payload_addr();
     let payload2 = s2.as_blob().payload_addr();
-    let cmp = libc::memcmp(payload1 as *const _, payload2 as *const _, n.0 as usize);
+    let cmp = libc::memcmp(payload1 as *const _, payload2 as *const _, n.as_usize());
 
     if cmp == 0 {
         if n1 < n2 {
@@ -343,7 +343,7 @@ pub unsafe extern "C" fn text_len(text: Value) -> u32 {
 
         str::from_utf8_unchecked(slice::from_raw_parts(
             payload_addr as *const u8,
-            len.0 as usize,
+            len.as_usize(),
         ))
         .chars()
         .count() as u32
