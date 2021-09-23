@@ -18,7 +18,7 @@
 The Internet Computer provides a blockchain network that can support programs written in different languages.
 The only requirement is that the program must support compilation to WebAssembly code.
 WebAssembly (commonly-abbreviated as Wasm) is a low-level computer instruction format for virtual machines.
-Because WebAssembly code is designed to provide portable low-level instructions that enable applications to be deployed on many platforms such as the web, it is a natural fit for deploying applications that are intended to run on the internet computer blockchain network.
+Because WebAssembly code is designed to provide portable low-level instructions that enable applications to be deployed on many platforms such as the web, it is a natural fit for deploying applications that are intended to run on the {IC}.
 However, most of the higher-level languages - like C, C++, and Rust - that support compiling to WebAssembly are either too unsafe (for example, C or C++) or too complex (for example, Rust) for developers who want to deliver secure applications without a long learning curve.
 
 To address the need for correctness without complexity, {company-id} has designed its own *{proglang}* programming language. *{proglang}* provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
