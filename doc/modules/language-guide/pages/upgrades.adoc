@@ -10,7 +10,7 @@ The {IC}'s persistence model allows a canister to save and restore such data to 
 
 For applications written in {proglang}, the language provides high-level support for preserving state that leverages {IC} stable memory. This higher-level feature, called _stable storage_, is designed to accommodate changes to both the application data and to the {proglang} compiler used to produce the application code.
 
-Utilizing stable storage depends on you —as the application programmer— anticipating and indicating the data you want to retain after an upgrade.
+Utilizing stable storage depends on you — as the application programmer — anticipating and indicating the data you want to retain after an upgrade.
 Depending on the application, the data you decide to persist might be some, all, or none of a given actor's state.
 
 ////

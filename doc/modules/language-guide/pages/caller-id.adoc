@@ -25,7 +25,7 @@ shared(msg) func inc() : async () {
 
 In this example, the shared function `+inc()+` specifies a `+msg+` parameter, a record, and the `+msg.caller+` accesses the principal field of `+msg+`.
 
-The calls to the `+inc()+` function do not change— at each call site, the caller's principal is provided by the system, not the user—so the principal cannot be forged or spoofed by a malicious user.
+The calls to the `+inc()+` function do not change — at each call site, the caller's principal is provided by the system, not the user — so the principal cannot be forged or spoofed by a malicious user.
 
 To access the caller of an actor class constructor, you use the same (optional) syntax on the actor class declaration.
 For example:
