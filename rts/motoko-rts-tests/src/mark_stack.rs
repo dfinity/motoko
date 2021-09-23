@@ -35,6 +35,23 @@ fn test_push_pop() {
         .unwrap();
 }
 
+static TAGS: [Tag; 14] = [
+    TAG_OBJECT,
+    TAG_OBJ_IND,
+    TAG_ARRAY,
+    TAG_BITS64,
+    TAG_MUTBOX,
+    TAG_CLOSURE,
+    TAG_SOME,
+    TAG_VARIANT,
+    TAG_BLOB,
+    TAG_FWD_PTR,
+    TAG_BITS32,
+    TAG_BIGINT,
+    TAG_CONCAT,
+    TAG_NULL,
+];
+
 fn test_<P: PageAlloc>(page_alloc: &mut P, n_objs: u32) -> TestCaseResult {
     let objs: Vec<u32> = (0..n_objs).collect();
 
@@ -43,12 +60,12 @@ fn test_<P: PageAlloc>(page_alloc: &mut P, n_objs: u32) -> TestCaseResult {
 
         for obj in &objs {
             // Pushing a dummy argument derived from `obj` for tag
-            mark_stack.push(*obj as usize, obj + 1);
+            mark_stack.push(*obj as usize, TAGS[(*obj as usize) % TAGS.len()]);
         }
 
         for obj in objs.iter().copied().rev() {
             let popped = mark_stack.pop();
-            if popped != Some((obj as usize, obj + 1)) {
+            if popped != Some((obj as usize, TAGS[(obj as usize) % TAGS.len()])) {
                 mark_stack.free();
                 return Err(TestCaseError::Fail(
                     format!(

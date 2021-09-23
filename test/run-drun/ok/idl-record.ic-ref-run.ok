@@ -1,18 +1,18 @@
-→ update create_canister(record {dnczaeh = null})
+→ update create_canister(record {settings = null})
 ← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → query pair(record {"Hey!"; +42})
 debug.print: ok: +42
 ← replied: ()
-→ query record(record {bhned_q = "Hey!"; value = +42})
+→ query record(record {content = "Hey!"; value = +42})
 debug.print: ok: Hey!
 ← replied: ()
-→ query record1(record {bhned_q = "Hey!"; value = +42; byte = (25 : int8)})
+→ query record1(record {content = "Hey!"; value = +42; byte = (25 : int8)})
 debug.print: ok: +25
 ← replied: ()
-→ query record2(record {bhned_q = "Hey!"; value = +42; byte = (24 : int8)},…
+→ query record2(record {content = "Hey!"; value = +42; byte = (24 : int8)},…
 debug.print: ok:  Hey! +25
 ← replied: ((25 : int8))
-→ query record3(record {bhned_q = "Hey!"; value = +42})
+→ query record3(record {content = "Hey!"; value = +42})
 ← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: did not find field extra in record"

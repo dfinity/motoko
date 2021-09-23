@@ -50,6 +50,10 @@ func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
 func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
 func debugPrintChar(x : Char) { debugPrint (charToText x) };
 
+// Trapping
+
+func trap(x : Text) : None { (prim "trap" : Text -> None) x };
+
 // RTS stats
 
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
@@ -280,3 +284,71 @@ func cyclesAdd(amount: Nat64) : () {
 // certified data
 func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;
 func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob) ();
+
+// stable memory
+
+func stableMemorySize() : Nat32 =
+  (prim "stableMemorySize" : () -> Nat32) ();
+
+func stableMemoryGrow(pages : Nat32) : Nat32 =
+  (prim "stableMemoryGrow" : Nat32 -> Nat32) pages;
+
+func stableMemoryLoadNat32(offset : Nat32) : Nat32 =
+  (prim "stableMemoryLoadNat32" : Nat32 -> Nat32) offset;
+
+func stableMemoryStoreNat32(offset : Nat32, val : Nat32) : () =
+  (prim "stableMemoryStoreNat32" : (Nat32, Nat32) -> ()) (offset, val);
+
+func stableMemoryLoadNat8(offset : Nat32) : Nat8 =
+  (prim "stableMemoryLoadNat8" : Nat32 -> Nat8) offset;
+
+func stableMemoryStoreNat8(offset : Nat32, val : Nat8) : () =
+  (prim "stableMemoryStoreNat8" : (Nat32, Nat8) -> ()) (offset, val);
+
+func stableMemoryLoadNat16(offset : Nat32) : Nat16 =
+  (prim "stableMemoryLoadNat16" : Nat32 -> Nat16) offset;
+
+func stableMemoryStoreNat16(offset : Nat32, val : Nat16) : () =
+  (prim "stableMemoryStoreNat16" : (Nat32, Nat16) -> ()) (offset, val);
+
+func stableMemoryLoadNat64(offset : Nat32) : Nat64 =
+  (prim "stableMemoryLoadNat64" : Nat32 -> Nat64) offset;
+
+func stableMemoryStoreNat64(offset : Nat32, val : Nat64) : () =
+  (prim "stableMemoryStoreNat64" : (Nat32, Nat64) -> ()) (offset, val);
+
+func stableMemoryLoadInt32(offset : Nat32) : Int32 =
+  (prim "stableMemoryLoadInt32" : Nat32 -> Int32) offset;
+
+func stableMemoryStoreInt32(offset : Nat32, val : Int32) : () =
+  (prim "stableMemoryStoreInt32" : (Nat32, Int32) -> ()) (offset, val);
+
+func stableMemoryLoadInt8(offset : Nat32) : Int8 =
+  (prim "stableMemoryLoadInt8" : Nat32 -> Int8) offset;
+
+func stableMemoryStoreInt8(offset : Nat32, val : Int8) : () =
+  (prim "stableMemoryStoreInt8" : (Nat32, Int8) -> ()) (offset, val);
+
+func stableMemoryLoadInt16(offset : Nat32) : Int16 =
+  (prim "stableMemoryLoadInt16" : Nat32 -> Int16) offset;
+
+func stableMemoryStoreInt16(offset : Nat32, val : Int16) : () =
+  (prim "stableMemoryStoreInt16" : (Nat32, Int16) -> ()) (offset, val);
+
+func stableMemoryLoadInt64(offset : Nat32) : Int64 =
+  (prim "stableMemoryLoadInt64" : Nat32 -> Int64) offset;
+
+func stableMemoryStoreInt64(offset : Nat32, val : Int64) : () =
+  (prim "stableMemoryStoreInt64" : (Nat32, Int64) -> ()) (offset, val);
+
+func stableMemoryLoadFloat(offset : Nat32) : Float =
+  (prim "stableMemoryLoadFloat" : Nat32 -> Float) offset;
+
+func stableMemoryStoreFloat(offset : Nat32, val :  Float) : () =
+  (prim "stableMemoryStoreFloat" : (Nat32, Float) -> ()) (offset, val);
+
+func stableMemoryLoadBlob(offset : Nat32, size : Nat) : Blob =
+  (prim "stableMemoryLoadBlob" : (Nat32, Nat) -> Blob) (offset, size);
+
+func stableMemoryStoreBlob(offset : Nat32, val :  Blob) : () =
+  (prim "stableMemoryStoreBlob" : (Nat32, Blob) -> ()) (offset, val);

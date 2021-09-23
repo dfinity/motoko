@@ -131,6 +131,9 @@ unsafe fn mark_object<P: PageAlloc>(space: &Space<P>, mark_stack: &mut MarkStack
     let obj_tag = obj.tag();
     let obj = obj.get_ptr();
 
+    // Check object alignment to avoid undefined behavior. See also static_checks module.
+    debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
+
     let obj_page = space.get_address_page(obj);
     let obj_bitmap = obj_page.get_bitmap().unwrap();
 
@@ -260,17 +263,19 @@ unsafe fn thread(field: *mut Value) {
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
 unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
-    // NOTE: For this to work heap addresses need to be greater than the largest value for object
-    // headers. Currently this holds. TODO: Document this better.
     let mut header = (*obj).tag;
-    while header > TAG_NULL {
-        // TODO: is `header > TAG_NULL` the best way to distinguish a tag from a pointer?
+
+    // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
+    // bit to distinguish a header (tag) from a field address.
+    while header & 0b1 == 0 {
         let tmp = (*(header as *mut Obj)).tag;
         (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
+
     // At the end of the chain is the original header for the object
     debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+
     (*obj).tag = header;
 }
 

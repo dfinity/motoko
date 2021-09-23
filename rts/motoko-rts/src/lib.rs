@@ -38,6 +38,7 @@ mod mem_utils;
 pub mod page_alloc;
 pub mod principal_id;
 pub mod space;
+mod static_checks;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;

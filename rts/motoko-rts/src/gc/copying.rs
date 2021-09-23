@@ -1,3 +1,4 @@
+use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::page_alloc::{Page, PageAlloc};
 use crate::space::Space;
@@ -75,6 +76,9 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     let ptr_loc = ptr_loc as *mut Value;
 
     let obj = (*ptr_loc).as_obj();
+
+    // Check object alignment to avoid undefined behavior. See also static_checks module.
+    debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
     let tag = obj.tag();
 

@@ -1,3 +1,24 @@
+// Note [struct representation]
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// TLDR: Add `#[repr(C)]` in types used by both the runtime system and generated code, and add
+// assertions to `static_assertions` module to check that the object size and field offsets are as
+// expected.
+//
+// Rust compiler is free to reorder fields[1]. To avoid this in types that are used by both the
+// runtime system and generated code we need a `repr` attribute like `repr(C)` or `repr(packed)`.
+//
+// We can't use `repr(packed)` because it potentially introduces undefined behavior as getting
+// address (reference or pointer) of an unaligned field (or using the address) is an undefined
+// behavior in Rust. See Motoko PR #2764.
+//
+// So to avoid reordering fields without introducing undefined behaviors we use `repr(C)`. See [2]
+// for details on how `repr(C)` works. In short: it does not reorder fields. It can add padding,
+// but in our case all fields are word-sized so that's not a problem.
+//
+// [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
+// [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
+
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
@@ -291,25 +312,27 @@ pub const fn unskew(value: usize) -> usize {
 // of an unsafe API usage).
 pub type Tag = u32;
 
+// Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
+// locations in mark-compact GC. (Reminder: objects and fields are word aligned)
 pub const TAG_OBJECT: Tag = 1;
-pub const TAG_OBJ_IND: Tag = 2;
-pub const TAG_ARRAY: Tag = 3;
-pub const TAG_BITS64: Tag = 5;
-pub const TAG_MUTBOX: Tag = 6;
-pub const TAG_CLOSURE: Tag = 7;
-pub const TAG_SOME: Tag = 8;
-pub const TAG_VARIANT: Tag = 9;
-pub const TAG_BLOB: Tag = 10;
-pub const TAG_FWD_PTR: Tag = 11;
-pub const TAG_BITS32: Tag = 12;
-pub const TAG_BIGINT: Tag = 13;
-pub const TAG_CONCAT: Tag = 14;
-pub const TAG_NULL: Tag = 15;
-pub const TAG_ONE_WORD_FILLER: Tag = 16;
-pub const TAG_FREE_SPACE: Tag = 17;
+pub const TAG_OBJ_IND: Tag = 3;
+pub const TAG_ARRAY: Tag = 5;
+pub const TAG_BITS64: Tag = 7;
+pub const TAG_MUTBOX: Tag = 9;
+pub const TAG_CLOSURE: Tag = 11;
+pub const TAG_SOME: Tag = 13;
+pub const TAG_VARIANT: Tag = 15;
+pub const TAG_BLOB: Tag = 17;
+pub const TAG_FWD_PTR: Tag = 19;
+pub const TAG_BITS32: Tag = 21;
+pub const TAG_BIGINT: Tag = 23;
+pub const TAG_CONCAT: Tag = 25;
+pub const TAG_NULL: Tag = 27;
+pub const TAG_ONE_WORD_FILLER: Tag = 29;
+pub const TAG_FREE_SPACE: Tag = 31;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
 }
@@ -330,8 +353,8 @@ impl Obj {
     }
 }
 
-#[repr(packed)]
 #[rustfmt::skip]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Array {
     pub header: Obj,
     pub len: u32, // number of elements
@@ -363,7 +386,7 @@ impl Array {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Object {
     pub header: Obj,
     pub size: u32,     // Number of elements
@@ -385,13 +408,13 @@ impl Object {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct ObjInd {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Closure {
     pub header: Obj,
     pub funid: u32,
@@ -409,7 +432,7 @@ impl Closure {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -458,13 +481,13 @@ impl Blob {
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
     pub header: Obj,
     pub fwd: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct BigInt {
     pub header: Obj,
     /// The data following now must describe is the `mp_int` struct.
@@ -503,26 +526,26 @@ impl BigInt {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct MutBox {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Some {
     pub header: Obj,
     pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
     pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
@@ -540,31 +563,40 @@ impl Concat {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Null {
     pub header: Obj,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Bits64 {
     pub header: Obj,
-    pub bits: u64,
+    // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
+    // boundary.
+    bits_lo: u32,
+    bits_hi: u32,
 }
 
-#[repr(packed)]
+impl Bits64 {
+    pub fn bits(&self) -> u64 {
+        (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
+    }
+}
+
+#[repr(C)] // See the note at the beginning of this module
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
 }
 
 /// Marks one word empty space in heap
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct OneWordFiller {
     pub header: Obj,
 }
 
 /// Marks arbitrary sized emtpy space in heap
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
     pub header: Obj,
     pub words: Words<u32>,
