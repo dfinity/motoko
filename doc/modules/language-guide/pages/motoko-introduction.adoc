@@ -85,7 +85,7 @@ In an _asynchronous_ computing setting, a program and its running environment ar
 Specifically, asynchronous programs are ones where the program's requests of its environment do not (necessarily) require the program to wait for the environment.
 In the meantime, the program is permitted to make internal progress within this environment while the environment proceeds to complete the request. In the example, above, the program issues the second request before waiting for the first request to complete.
 
-Symmetrically, the environment's requests of the program do not (necessarily) require the environment to wait for the program's answer to make external progress around it while it waits for this answer.
+Symmetrically, the environment's requests of the program do not (necessarily) require the environment to wait for the program's answer: the environment can make external progress while the answer is produced.
 
 We do not show an example of this "`notify`" pattern above, since it uses callbacks (and _higher-order_ functions and control flow) and is thus more complex.
 
