@@ -161,7 +161,7 @@ For these situations {base} provides the `fromOption` and `toOption` functions i
 
 == Asynchronous Errors ==
 
-The last way of dealing with errors in Motoko is to use asynchronous `Error` handling, a restricted form of the exception handling familiar from other languages.
+The last way of dealing with errors in {proglang} is to use asynchronous `Error` handling, a restricted form of the exception handling familiar from other languages.
 Unlike the exceptions of other languages, {proglang}  _errors_ values, can only be thrown and caught in asynchronous contexts, typically the body of a `shared` function or `async` expression. Non-`shared` functions cannot employ structured error handling.
 This means you can exit a shared function by ``throw``ing an `Error` value and `+try+`  some code calling a shared function on another actor, ``catch``ing its failure as a result of type `Error`, but you can't use these error handling constructs in regular code, outside of an asynchronous context.
 
