@@ -39,7 +39,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
     ic::LAST_HP = ic::HP;
@@ -200,7 +200,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
             memcpy_words(p_new as usize, p as usize, p_size_words);
         }
 
-        free += p_size_words.to_bytes().0;
+        free += p_size_words.to_bytes().as_u32();
 
         // Thread forward pointers of the object
         thread_fwd_pointers(p_new as *mut Obj, heap_base);
