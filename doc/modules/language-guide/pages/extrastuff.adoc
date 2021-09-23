@@ -3,7 +3,7 @@
 
 {proglang} provides:
 
-* A high-level language for programming applications to run on the internet computer blockchain network.
+* A high-level language for programming applications to run on the {IC} blockchain network.
 
 * A simple design that uses familiar syntax that is easy for programmers to learn.
 
