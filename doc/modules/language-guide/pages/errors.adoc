@@ -3,10 +3,11 @@
 :base: https://github.com/dfinity/motoko-base[base]
 :!page-repl:
 
-== Different ways to represent errors in {proglang} ==
-. Option
-. Result
-. Asynchronous Exceptions
+There are three primary ways to represent and handle errors values in {proglang}:
+
+- Option values (with a non-informative `null` indicated _some_ error);
+- `Result` variants (with a descriptive `#err value` providing more information about the error); and
+- `Error` values (that, in an asynchronous context, can be thrown and caught - similar to exceptions - and contain a numeric code and message).
 
 == Our Example API ==
 Let's assume we're building an API for a Todo application and want to expose a function that lets a user mark one of their Todo's as *Done*.
