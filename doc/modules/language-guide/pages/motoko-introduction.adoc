@@ -5,7 +5,7 @@
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 
 {proglang} is a modern, general-purpose programming language you can use specifically to author link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[Internet Computer]  canister smart contracts.
-Although aimed squarely at the IC, its design is general enough to support future compilation to other targets.
+Although aimed squarely at the {IC}, its design is general enough to support future compilation to other targets.
 
 == Approachability
 
@@ -28,7 +28,7 @@ To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffi
 
 {proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
-An actor is similar to an object, but is special in that it state is completely isolated, and all its interactions with the world are by _asynchronous_ messaging.
+An actor is similar to an object, but is special in that its state is completely isolated, and all its interactions with the world are by _asynchronous_ messaging.
 
 All communication with and between actors involves passing messages asynchronously over the network using the Internet Computer's messaging protocol.
 An actor’s messages are processed in sequence, so state modifications never admit race conditions (unless explicitly allowed by punctuating `await`s).
