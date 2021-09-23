@@ -83,7 +83,7 @@ However, it requires special compiler and type-system support, as we discuss in 
 In an _asynchronous_ computing setting, a program and its running environment are permitted to perform _internal computations_ that occur _concurrently_ with one another.
 
 Specifically, asynchronous programs are ones where the program's requests of its environment do not (necessarily) require the program to wait for the environment.
-In the meantime, the program is permitted to make internal progress within this environment while it waits, perhaps _actively_. In the example, above, the program issues the second request before waiting for the first request to complete.
+In the meantime, the program is permitted to make internal progress within this environment while the environment proceeds to complete the request. In the example, above, the program issues the second request before waiting for the first request to complete.
 
 Symmetrically, the environment's requests of the program do not (necessarily) require the environment to wait for the program's answer to make external progress around it while it waits for this answer.
 
