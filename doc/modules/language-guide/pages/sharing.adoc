@@ -119,7 +119,7 @@ To permit this flexibility, an actor needs to share a single _function_ that per
 
 The ability to share a function requires that it be pre-designated as `shared`, and the type system enforces that these functions follow certain rules around the types of data that these functions accept, return, and over which their closures close.
 
-Motoko lets you omit this keyword for _public_ actor methods since, implicitly, _any public function of an actor must be `shared`_, whether marked explicitly
+{proglang} lets you omit this keyword for _public_ actor methods since, implicitly, _any public function of an actor must be `shared`_, whether marked explicitly
 or not.
 
 // More generally, a `shared` function is one that is _either_ part of the public interface of an actor, _or_ it is not mentioned in the public interface, but it does not close over the actor's mutable state, and it adheres to the same argument and return-type typing restrictions as a public actor function (that is, no mutable data in the arguments or results).

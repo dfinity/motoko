@@ -1,6 +1,6 @@
 = Structural equality
 
-Equality (`+==+`) —and by extension inequality (`+!=+`)— is *structural*: two values `+a+` and `+b+` are equal, `+a == b+`, whenever they have equal contents, regardless of the physical representation, or identity,  of those values in memory. 
+Equality (`+==+`) — and by extension inequality (`+!=+`) — is *structural*: two values `+a+` and `+b+` are equal, `+a == b+`, whenever they have equal contents, regardless of the physical representation, or identity,  of those values in memory. 
 
 For example, the strings `+"hello world"+`  and `+"hello " #  "world"+` are equal, even though they are most likely  represented by different objects in memory.
 
