@@ -45,6 +45,8 @@ For example, this section provides technical details of interest to the followin
 The language quick reference is intended to provide complete reference information about {proglang}, but this section does _not_ provide explanatory text or usage information.
 Therefore, this section is typically not suitable for readers who are new to programming languages or who are looking for a general introduction to using {proglang}.
 
+Throughout, we use the term canister to refer to an {IC} canister smart contract.
+
 == Basic language syntax
 
 This section describes the basic language conventions you need to know for programming in {proglang}.
