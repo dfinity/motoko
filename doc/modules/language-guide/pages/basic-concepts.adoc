@@ -2,7 +2,7 @@
 :proglang: Motoko
 :company-id: DFINITY
 
-{proglang} is designed for distributed programming with actors. When programming on the Internet Computer, Motoko actors represent IC canister smart contracts.
+{proglang} is designed for distributed programming with actors. When programming on the Internet Computer, Motoko actors represent  {IC} canister smart contracts with Candid interfaces.
 
 Before you begin writing distributed applications using actors, you should be familiar with a few of the basic building blocks of any programming language and with {proglang} in particular.
 To get you started, this section introduces the following key concepts and terms that are used throughout the remainder of the documentation and that are essential to learning to program in {proglang}:

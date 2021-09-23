@@ -95,7 +95,7 @@ The type annotation  `+: Counters.Counter+` is redundant here. It's included onl
 
 In addition to the examples above that import {proglang} modules, you can also import actors (and their shared functions) from canister smart constracts by using the `+canister:+` prefix in place of the `+mo:+` prefix.
 
-NOTE: Unlike a Motoko library, an imported canister can be implemented in any other {IC} language that emits Candid interfaces for its canister smart contracts (for instance Rust), not just Motoko. It could even be an older or newer version of Motoko.
+NOTE: Unlike a Motoko library, an imported canister can be implemented in any other {IC} language that emits Candid interfaces for its canister smart contracts (for instance Rust). It could even be an older or newer version of Motoko.
 
 For example, you might have a project that produces the following three canisters:
 
