@@ -1,6 +1,6 @@
 = Stable variables and upgrade methods
 
-One key feature of the {IC} is its ability to persist canister smart contract state state using WebAssembly memory and globals rather than a traditional database. This means that that the entire state of a canister is transparently restored before and saved after each message, without explicit user instruction. This automatic and user-transparent preservation of state is called _orthogonal persistence_.
+One key feature of the {IC} is its ability to persist canister smart contract state using WebAssembly memory and globals rather than a traditional database. This means that that the entire state of a canister is magically restored before, and saved after, each message, without explicit user instruction. This automatic and user-transparent preservation of state is called _orthogonal persistence_.
 
 Though convenient, orthogonal persistence poses a challenge when it comes to upgrading the code of a canister. Without an explicit representation of the canister's state, how does one tranfer any application data from the retired canister to its replacement?
 
