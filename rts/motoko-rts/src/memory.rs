@@ -1,6 +1,7 @@
 #[cfg(feature = "ic")]
 pub mod ic;
 
+use crate::constants::WASM_HEAP_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -43,8 +44,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     // Array payload should not be larger than half of the memory
-    if len > 1 << (32 - 2 - 1) {
-        // 2 for word size, 1 to divide by two
+    if len > (WASM_HEAP_SIZE / 2).0 {
         rts_trap_with("Array allocation too large");
     }
 
