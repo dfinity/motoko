@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+== 0.6.10 (2021-09-23)
+
+* moc
+
+  * documentation changes
+
+* motoko-base
+
+  * documentation changes
+
 == 0.6.9 (2021-09-15)
 
 * motoko-base
