@@ -1,28 +1,16 @@
 = Stable variables and upgrade methods
 
-One key feature of the {IC} is its ability to persist canister smart contract state state using WebAssembly memory and globals rather than a traditional database. This means that
-that the entire state of a canister is transparently restored before and saved after each message, without explicit user instruction.
-This automatic and user-transparent preservation of state is called
-_orthogonal persistence_.
+One key feature of the {IC} is its ability to persist canister smart contract state state using WebAssembly memory and globals rather than a traditional database. This means that that the entire state of a canister is transparently restored before and saved after each message, without explicit user instruction. This automatic and user-transparent preservation of state is called _orthogonal persistence_.
 
-Though convenient, orthogonal persistence poses a challenge when it comes to upgrading the code of a canister.
-Without an explicit representation of the canister's state, how does one tranfer
-any application data from the retired canister to its replacement?
+Though convenient, orthogonal persistence poses a challenge when it comes to upgrading the code of a canister. Without an explicit representation of the canister's state, how does one tranfer any application data from the retired canister to its replacement?
 
-Accommodating upgrades without data loss requires some new facility to
-_migrate_ a canister's crucial data to the upgraded canister.  For example, if
-you want to deploy a new version of a user-registration canister to fix an issue or add
-functionality, you need to ensure that existing registrations survive the upgrade process.
+Accommodating upgrades without data loss requires some new facility to _migrate_ a canister's crucial data to the upgraded canister.  For example, if you want to deploy a new version of a user-registration canister to fix an issue or add functionality, you need to ensure that existing registrations survive the upgrade process.
 
-The {IC}'s persistence model allows a canister to save and restore
-such data to dedicated _stable memory_ that, unlike ordinary canister
-memory, is retained across an upgrade, allowing a canister to
-transfer data in bulk to its replacement canister.
+The {IC}'s persistence model allows a canister to save and restore such data to dedicated _stable memory_ that, unlike ordinary canister memory, is retained across an upgrade, allowing a canister to transfer data in bulk to its replacement canister.
 
-For applications written in {proglang}, the language provides high-level support for preserving state that leverages {IC} stable memory.
-This higher-level feature, called _stable storage_, is designed to accommodate changes to both the application data and to the {proglang} compiler used to produce the application code.
+For applications written in {proglang}, the language provides high-level support for preserving state that leverages {IC} stable memory. This higher-level feature, called _stable storage_, is designed to accommodate changes to both the application data and to the {proglang} compiler used to produce the application code.
 
-Utilizing stable storage depends on you—as the application programmer—anticipating and indicating the data you want to retain after an upgrade.
+Utilizing stable storage depends on you —as the application programmer— anticipating and indicating the data you want to retain after an upgrade.
 Depending on the application, the data you decide to persist might be some, all, or none of a given actor's state.
 
 ////
