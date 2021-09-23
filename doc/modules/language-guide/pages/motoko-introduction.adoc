@@ -54,7 +54,7 @@ finalStep(await result1, await result2)
 We can summarize the program's behavior with three steps:
 
 . The program makes two requests (lines 1 and 2) to two
-distinct services, each implemented as a Motoko actor or canister smart contract implemented in some other language.
+distinct services, each implemented as a {proglang} actor or canister smart contract implemented in some other language.
 
 . The program waits for each result to be ready (line 3) using the keyword `await` on each result value.
 
