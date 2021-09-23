@@ -4323,7 +4323,6 @@ module Serialization = struct
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
         (* Sanity check *)
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
