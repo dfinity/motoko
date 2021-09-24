@@ -1013,8 +1013,8 @@ module Bool = struct
 
   (* in SR.Bool *)
   let lit = function
-    | false -> compile_unboxed_const 0l
-    | true -> compile_unboxed_const 1l
+    | false -> compile_unboxed_zero
+    | true -> compile_unboxed_one
 
   let vanilla_lit = function
     | false -> 0l
@@ -1757,7 +1757,7 @@ module TaggedSmallWord = struct
         begin
           G.loop_ [] begin
             (* Are we done? *)
-            get_exp ^^ compile_unboxed_const 1l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+            get_exp ^^ compile_unboxed_one ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
             G.if_ [] G.nop (* done *)
             begin
               (* Check low bit of exp to see if we need to multiply *)
@@ -1785,7 +1785,7 @@ module TaggedSmallWord = struct
     Func.share_code2 env name (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
         get_exp ^^
-        compile_unboxed_const 0l ^^
+        compile_unboxed_zero ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         E.else_trap_with env "negative power"  ^^
         get_n ^^ get_exp ^^ compile_nat_power env ty
@@ -1911,10 +1911,10 @@ module ReadBuf = struct
     G.i (Compare (Wasm.Values.I32 I64Op.Eq))
 
   let read_byte env get_buf =
-    check_space env get_buf (compile_unboxed_const 1l) ^^
+    check_space env get_buf (compile_unboxed_one) ^^
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
-    advance get_buf (compile_unboxed_const 1l)
+    advance get_buf (compile_unboxed_one)
 
   let read_word16 env get_buf =
     check_space env get_buf (compile_unboxed_const 2l) ^^
@@ -2234,7 +2234,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_n, get_n = new_local env "n" in
     set_n ^^ get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_n ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
+      (get_n ^^ compile_unboxed_zero ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
       (get_n ^^ Num.compile_is_negative env)
 
   let vanilla_lit env = function
@@ -2250,7 +2250,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           G.if_ [I32Type]
             (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env)
             begin
-              compile_unboxed_const 0l ^^
+              compile_unboxed_zero ^^
               get_n ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Sub))
             end
@@ -2325,7 +2325,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         fun _ ->
         let set_a, get_a = new_local env "a" in
         set_a ^^
-        get_a ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+        get_a ^^ compile_unboxed_zero ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
         G.if_ [I32Type]
           begin
             get_a ^^
@@ -2335,7 +2335,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
               (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env)
               begin
                 (* absolute value works directly on shifted representation *)
-                compile_unboxed_const 0l ^^
+                compile_unboxed_zero ^^
                 get_a ^^
                 G.i (Binary (Wasm.Values.I32 I32Op.Sub))
               end
@@ -2972,7 +2972,7 @@ module Blob = struct
       (* clear all words *)
       from_0_to_n env (fun get_i ->
         get_ptr ^^
-        compile_unboxed_const 0l ^^
+        compile_unboxed_zero ^^
         store_unskewed_ptr ^^
         get_ptr ^^
         compile_add_const Heap.word_size ^^
@@ -3036,7 +3036,7 @@ module Text = struct
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       match op with
         | LtOp -> G.i (Compare (Wasm.Values.I32 I32Op.LtS))
         | LeOp -> G.i (Compare (Wasm.Values.I32 I32Op.LeS))
@@ -3429,7 +3429,7 @@ module IC = struct
             G.i (Store {ty = I32Type; align = 2; offset = 8l; sz = None}) ^^
 
             get_iovec_ptr ^^
-            compile_unboxed_const 1l ^^
+            compile_unboxed_one ^^
             G.i (Store {ty = I32Type; align = 2; offset = 12l; sz = None}) ^^
 
             get_iovec_ptr ^^
@@ -3440,16 +3440,16 @@ module IC = struct
                https://github.com/bytecodealliance/wasmtime/issues/629
             *)
 
-            compile_unboxed_const 1l (* stdout *) ^^
+            compile_unboxed_one (* stdout *) ^^
             get_iovec_ptr ^^
-            compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
+            compile_unboxed_one (* one string segment (2 doesn't work) *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop ^^
 
-            compile_unboxed_const 1l (* stdout *) ^^
+            compile_unboxed_one (* stdout *) ^^
             get_iovec_ptr ^^ compile_add_const 8l ^^
-            compile_unboxed_const 1l (* one string segment *) ^^
+            compile_unboxed_one (* one string segment *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop)
@@ -3575,7 +3575,7 @@ module IC = struct
         Blob.of_size_copy env
           (fun env -> system_call env "ic0" "canister_self_size")
           (fun env -> system_call env "ic0" "canister_self_copy")
-          (fun env -> compile_unboxed_const 0l)
+          (fun env -> compile_unboxed_zero)
       )
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
@@ -3594,7 +3594,7 @@ module IC = struct
       Blob.of_size_copy env
         (fun env -> system_call env "ic0" "msg_caller_size")
         (fun env -> system_call env "ic0" "msg_caller_copy")
-        (fun env -> compile_unboxed_const 0l)
+        (fun env -> compile_unboxed_zero)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get caller  when running locally")
 
@@ -3629,7 +3629,7 @@ module IC = struct
       Blob.of_size_copy env
         (fun env -> system_call env "ic0" "msg_reject_msg_size")
         (fun env -> system_call env "ic0" "msg_reject_msg_copy")
-        (fun env -> compile_unboxed_const 0l)
+        (fun env -> compile_unboxed_zero)
     )
 
   let error_value env =
@@ -3670,16 +3670,16 @@ module IC = struct
     E.else_trap_with env "not a self-call" ^^
 
     get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
-    get_str1 ^^ compile_unboxed_const 0l ^^ get_len1 ^^
+    get_str1 ^^ compile_unboxed_zero ^^ get_len1 ^^
     system_call env "ic0" "canister_self_copy" ^^
 
     get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
-    get_str2 ^^ compile_unboxed_const 0l ^^ get_len2 ^^
+    get_str2 ^^ compile_unboxed_zero ^^ get_len2 ^^
     system_call env "ic0" "msg_caller_copy" ^^
 
 
     get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
-    compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    compile_unboxed_zero ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
   (* Cycles *)
@@ -3744,7 +3744,7 @@ module IC = struct
           Blob.of_size_copy env
             (fun env -> system_call env "ic0" "data_certificate_size")
             (fun env -> system_call env "ic0" "data_certificate_copy")
-            (fun env -> compile_unboxed_const 0l)
+            (fun env -> compile_unboxed_zero)
         )
       end (Opt.null_lit env)
     | _ ->
@@ -3871,7 +3871,7 @@ module StableMem = struct
             get_temp_ptr ^^ load_unskewed_ptr ^^
             set_word ^^
             (* write 0 *)
-            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
+            get_temp_ptr ^^ compile_unboxed_zero ^^ store_unskewed_ptr ^^
             get_offset ^^
             get_temp_ptr ^^ compile_unboxed_const 4l ^^
             IC.system_call env "ic0" "stable_write" ^^
@@ -4297,8 +4297,8 @@ module Serialization = struct
       (* Some combinators for writing values *)
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_ref_size, get_ref_size) = new_local env "ref_size" in
-      compile_unboxed_const 0l ^^ set_data_size ^^
-      compile_unboxed_const 0l ^^ set_ref_size ^^
+      compile_unboxed_zero ^^ set_data_size ^^
+      compile_unboxed_zero ^^ set_ref_size ^^
 
       let inc_data_size code =
         get_data_size ^^ code ^^
@@ -4352,11 +4352,11 @@ module Serialization = struct
       begin match t with
       | Prim Nat -> inc_data_size (get_x ^^ BigNum.compile_data_size_unsigned env)
       | Prim Int -> inc_data_size (get_x ^^ BigNum.compile_data_size_signed env)
-      | Prim (Int8|Nat8) -> inc_data_size (compile_unboxed_const 1l)
+      | Prim (Int8|Nat8) -> inc_data_size (compile_unboxed_one)
       | Prim (Int16|Nat16) -> inc_data_size (compile_unboxed_const 2l)
       | Prim (Int32|Nat32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Float) -> inc_data_size (compile_unboxed_const 8l)
-      | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
+      | Prim Bool -> inc_data_size (compile_unboxed_one)
       | Prim Null -> G.nop
       | Any -> G.nop
       | Tup [] -> G.nop (* e(()) = null *)
@@ -4390,7 +4390,7 @@ module Serialization = struct
         size_word env get_len ^^
         inc_data_size get_len
       | Opt t ->
-        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        inc_data_size (compile_unboxed_one) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
         G.if_ [] (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
@@ -4405,11 +4405,11 @@ module Serialization = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
-        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        inc_data_size (compile_unboxed_one) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
-        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        inc_data_size (compile_unboxed_one) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
@@ -4452,7 +4452,7 @@ module Serialization = struct
       let write_byte code =
         get_data_buf ^^ code ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-        compile_unboxed_const 1l ^^ advance_data_buf
+        compile_unboxed_one ^^ advance_data_buf
       in
 
       let write env t =
@@ -4472,18 +4472,18 @@ module Serialization = struct
         G.if_ []
         begin
           (* This is the real data *)
-          write_byte (compile_unboxed_const 0l) ^^
+          write_byte (compile_unboxed_zero) ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
-          write_word32 (compile_unboxed_const 0l) ^^
-          write_word32 (compile_unboxed_const 0l) ^^
+          write_word32 (compile_unboxed_zero) ^^
+          write_word32 (compile_unboxed_zero) ^^
           (* Now the data, following the object field mutbox indirection *)
           write_thing ()
         end
         begin
           (* This is a reference *)
-          write_byte (compile_unboxed_const 1l) ^^
+          write_byte (compile_unboxed_one) ^^
           (* Sanity Checks *)
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
@@ -4497,7 +4497,7 @@ module Serialization = struct
           get_tag ^^ get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_offset ^^
           (* A sanity check *)
-          get_offset ^^ compile_unboxed_const 0l ^^
+          get_offset ^^ compile_unboxed_zero ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
           (* Write the offset to the output buffer *)
@@ -4568,8 +4568,8 @@ module Serialization = struct
         get_x ^^
         Opt.is_some env ^^
         G.if_ []
-          ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t )
-          ( write_byte (compile_unboxed_const 0l) )
+          ( write_byte (compile_unboxed_one) ^^ get_x ^^ Opt.project env ^^ write env t )
+          ( write_byte (compile_unboxed_zero) )
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
@@ -4597,11 +4597,11 @@ module Serialization = struct
         get_x ^^ get_data_buf ^^ Text.to_buf env ^^
         get_len ^^ advance_data_buf
       | Func _ ->
-        write_byte (compile_unboxed_const 1l) ^^
+        write_byte (compile_unboxed_one) ^^
         get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
-        write_byte (compile_unboxed_const 1l) ^^
+        write_byte (compile_unboxed_one) ^^
         get_x ^^ write env (Prim Blob)
       | Non ->
         E.trap_with env "serializing value of type None"
@@ -4679,10 +4679,10 @@ module Serialization = struct
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if_ [I32Type]
           (get_depth ^^ compile_add_const 1l)
-          (compile_unboxed_const 0l)
+          (compile_unboxed_zero)
         ) ^^
         (if can_recover
-         then compile_unboxed_const 1l
+         then compile_unboxed_one
          else get_can_recover) ^^
         deserialize_go env t
       in
@@ -4691,7 +4691,7 @@ module Serialization = struct
       let go_can_recover = go' true in
 
       let skip get_typ =
-        get_data_buf ^^ get_typtbl ^^ get_typ ^^ compile_unboxed_const 0l ^^
+        get_data_buf ^^ get_typtbl ^^ get_typ ^^ compile_unboxed_zero ^^
         E.call_import env "rts" "skip_any"
       in
 
@@ -4700,7 +4700,7 @@ module Serialization = struct
          as Stack.with_words is used to allocate scratch space.
       *)
       let (set_failed, get_failed) = new_local env "failed" in
-      let set_failure = compile_unboxed_const 1l ^^ set_failed in
+      let set_failure = compile_unboxed_one ^^ set_failed in
       let when_failed f = get_failed ^^ G.if_ [] f G.nop in
 
       (* This looks at a value and if it is coercion_error_value, sets the failure flag.
@@ -4783,7 +4783,7 @@ module Serialization = struct
       (* returns true if get_arg_typ is a composite type of this id *)
       let check_composite_typ get_arg_typ idl_tycon_id =
         get_arg_typ ^^
-        compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        compile_unboxed_zero ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         G.if_ [I32Type]
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
@@ -4801,7 +4801,7 @@ module Serialization = struct
             compile_eq_const idl_tycon_id
           )
         end
-        (compile_unboxed_const 0l)
+        (compile_unboxed_zero)
       in
 
 
@@ -4812,7 +4812,7 @@ module Serialization = struct
       let with_composite_arg_typ get_arg_typ idl_tycon_id f =
         (* make sure index is not negative *)
         get_arg_typ ^^
-        compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        compile_unboxed_zero ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         G.if_ [I32Type]
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
@@ -4889,7 +4889,7 @@ module Serialization = struct
           let (set_offset, get_offset) = new_local env "offset" in
           ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
           (* A sanity check *)
-          get_offset ^^ compile_unboxed_const 0l ^^
+          get_offset ^^ compile_unboxed_zero ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
 
@@ -5206,7 +5206,7 @@ module Serialization = struct
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
-          Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
+          Tagged.obj env Tagged.ObjInd [ compile_unboxed_zero ] ^^ set_result ^^
           on_alloc get_result ^^
           get_result ^^
             get_arg_typ ^^ go env t ^^
@@ -5267,7 +5267,7 @@ module Serialization = struct
       E.else_trap_with env "data buffer not filled " ^^
 
       get_refs_size ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
@@ -5293,7 +5293,7 @@ module Serialization = struct
       get_blob ^^ Blob.payload_ptr_unskewed ^^ set_data_start ^^
 
       (* Allocate space for the reference buffer and copy it *)
-      compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
+      compile_unboxed_zero ^^ set_refs_size (* none yet *) ^^
 
       (* Allocate space for out parameters of parse_idl_header *)
       Stack.with_words env "get_typtbl_size_ptr" 1l (fun get_typtbl_size_ptr ->
@@ -5327,8 +5327,8 @@ module Serialization = struct
           get_typtbl_ptr ^^ load_unskewed_ptr ^^
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
           get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
-          compile_unboxed_const 0l ^^ (* initial depth *)
-          compile_unboxed_const 0l ^^ (* initially, cannot recover *)
+          compile_unboxed_zero ^^ (* initial depth *)
+          compile_unboxed_zero ^^ (* initially, cannot recover *)
           deserialize_go env t ^^ set_val ^^
           get_val ^^ compile_eq_const (coercion_error_value env) ^^
           E.then_trap_with env ("IDL error: coercion failure encountered") ^^
@@ -5341,7 +5341,7 @@ module Serialization = struct
           get_data_buf ^^
           get_typtbl_ptr ^^ load_unskewed_ptr ^^
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
-          compile_unboxed_const 0l ^^
+          compile_unboxed_zero ^^
           E.call_import env "rts" "skip_any"
         ) ^^
 
@@ -5356,7 +5356,7 @@ module Serialization = struct
     Blob.of_size_copy env
       (fun env -> IC.system_call env "ic0" "msg_arg_data_size")
       (fun env -> IC.system_call env "ic0" "msg_arg_data_copy")
-      (fun env -> compile_unboxed_const 0l) ^^
+      (fun env -> compile_unboxed_zero) ^^
     deserialize_from_blob false env ts
 
 (*
@@ -5452,13 +5452,13 @@ module Stabilization = struct
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     G.if_ []
       begin (* ensure [0,..,3,...len+4) *)
-        compile_unboxed_const 0l ^^
+        compile_unboxed_zero ^^
         get_len ^^
         compile_add_const 4l ^^  (* reserve one word for size *)
         StableMem.ensure env ^^
 
         (* write len to initial word of stable memory*)
-        compile_unboxed_const 0l ^^
+        compile_unboxed_zero ^^
         get_len ^^
         StableMem.write_word32 env ^^
 
@@ -5512,7 +5512,7 @@ module Stabilization = struct
            mark first word as 0 *)
         get_M ^^
         compile_add_const (Int32.sub page_size 8l) ^^
-        compile_unboxed_const 0l ^^
+        compile_unboxed_zero ^^
         StableMem.read_and_clear_word32 env ^^
         StableMem.write_word32 env ^^
 
@@ -5548,7 +5548,7 @@ module Stabilization = struct
           let (set_marker, get_marker) = new_local env "marker" in
           let (set_len, get_len) = new_local env "len" in
           let (set_offset, get_offset) = new_local env "offset" in
-          compile_unboxed_const 0l ^^
+          compile_unboxed_zero ^^
           StableMem.read_and_clear_word32 env ^^
           set_marker ^^
 
@@ -5580,7 +5580,7 @@ module Stabilization = struct
                 (Int32.to_string StableMem.version)) ^^
 
               (* restore StableMem bytes [0..4) *)
-              compile_unboxed_const 0l ^^
+              compile_unboxed_zero ^^
               get_M ^^
               compile_add_const (Int32.sub page_size 8l) ^^
               StableMem.read_and_clear_word32 env ^^
