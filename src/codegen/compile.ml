@@ -1911,10 +1911,10 @@ module ReadBuf = struct
     G.i (Compare (Wasm.Values.I32 I64Op.Eq))
 
   let read_byte env get_buf =
-    check_space env get_buf (compile_unboxed_one) ^^
+    check_space env get_buf compile_unboxed_one ^^
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
-    advance get_buf (compile_unboxed_one)
+    advance get_buf compile_unboxed_one
 
   let read_word16 env get_buf =
     check_space env get_buf (compile_unboxed_const 2l) ^^
@@ -4352,11 +4352,11 @@ module Serialization = struct
       begin match t with
       | Prim Nat -> inc_data_size (get_x ^^ BigNum.compile_data_size_unsigned env)
       | Prim Int -> inc_data_size (get_x ^^ BigNum.compile_data_size_signed env)
-      | Prim (Int8|Nat8) -> inc_data_size (compile_unboxed_one)
+      | Prim (Int8|Nat8) -> inc_data_size compile_unboxed_one
       | Prim (Int16|Nat16) -> inc_data_size (compile_unboxed_const 2l)
       | Prim (Int32|Nat32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Float) -> inc_data_size (compile_unboxed_const 8l)
-      | Prim Bool -> inc_data_size (compile_unboxed_one)
+      | Prim Bool -> inc_data_size compile_unboxed_one
       | Prim Null -> G.nop
       | Any -> G.nop
       | Tup [] -> G.nop (* e(()) = null *)
@@ -4390,7 +4390,7 @@ module Serialization = struct
         size_word env get_len ^^
         inc_data_size get_len
       | Opt t ->
-        inc_data_size (compile_unboxed_one) ^^ (* one byte tag *)
+        inc_data_size compile_unboxed_one ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
         G.if_ [] (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
@@ -4405,11 +4405,11 @@ module Serialization = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
-        inc_data_size (compile_unboxed_one) ^^ (* one byte tag *)
+        inc_data_size compile_unboxed_one ^^ (* one byte tag *)
         get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
-        inc_data_size (compile_unboxed_one) ^^ (* one byte tag *)
+        inc_data_size compile_unboxed_one ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
@@ -4472,18 +4472,18 @@ module Serialization = struct
         G.if_ []
         begin
           (* This is the real data *)
-          write_byte (compile_unboxed_zero) ^^
+          write_byte compile_unboxed_zero ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
-          write_word32 (compile_unboxed_zero) ^^
-          write_word32 (compile_unboxed_zero) ^^
+          write_word32 compile_unboxed_zero ^^
+          write_word32 compile_unboxed_zero ^^
           (* Now the data, following the object field mutbox indirection *)
           write_thing ()
         end
         begin
           (* This is a reference *)
-          write_byte (compile_unboxed_one) ^^
+          write_byte compile_unboxed_one ^^
           (* Sanity Checks *)
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
@@ -4568,8 +4568,8 @@ module Serialization = struct
         get_x ^^
         Opt.is_some env ^^
         G.if_ []
-          ( write_byte (compile_unboxed_one) ^^ get_x ^^ Opt.project env ^^ write env t )
-          ( write_byte (compile_unboxed_zero) )
+          ( write_byte compile_unboxed_one ^^ get_x ^^ Opt.project env ^^ write env t )
+          ( write_byte compile_unboxed_zero )
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
@@ -4597,11 +4597,11 @@ module Serialization = struct
         get_x ^^ get_data_buf ^^ Text.to_buf env ^^
         get_len ^^ advance_data_buf
       | Func _ ->
-        write_byte (compile_unboxed_one) ^^
+        write_byte compile_unboxed_one ^^
         get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
-        write_byte (compile_unboxed_one) ^^
+        write_byte compile_unboxed_one ^^
         get_x ^^ write env (Prim Blob)
       | Non ->
         E.trap_with env "serializing value of type None"
@@ -4679,7 +4679,7 @@ module Serialization = struct
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if_ [I32Type]
           (get_depth ^^ compile_add_const 1l)
-          (compile_unboxed_zero)
+          compile_unboxed_zero
         ) ^^
         (if can_recover
          then compile_unboxed_one
@@ -4801,7 +4801,7 @@ module Serialization = struct
             compile_eq_const idl_tycon_id
           )
         end
-        (compile_unboxed_zero)
+        compile_unboxed_zero
       in
 
 
