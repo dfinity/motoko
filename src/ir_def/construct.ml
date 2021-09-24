@@ -602,7 +602,7 @@ let loopWhileE exp1 exp2 =
 
 let forE pat exp1 exp2 =
   match exp1.it with
-  | PrimE (CallPrim _, [{it=PrimE (CallPrim _,[{it=VarE "@immut_array_vals";_};_]);_}; {it=PrimE _;_}]) ->
+  | PrimE (CallPrim (*T.opt element_ty*)_, [{it=PrimE (CallPrim _,[{it=VarE "@immut_array_vals";_};arr]);_}; {it=PrimE _;_}]) ->
   (* when e1 = arr.vals()
      for p in e1 e2
      ~~>
@@ -614,7 +614,15 @@ let forE pat exp1 exp2 =
        then { let p = arr[indx]; e2; indx += 1 }
        else { break l }
      } *)
-    assert false
+    let arrv = fresh_var "arr" arr.note.Note.typ in
+    let size = fresh_var "size" T.nat in
+    let indx = fresh_var "indx" T.nat in
+    letE arrv arr (
+        letE indx (LitE (NatLit 0)) (
+        letE size (callE (varE "@immut_array_size") [element_ty] arrv   [] [T.nat]) (
+            assert false
+          ))
+      )
   | _ -> 
   (* for p in e1 e2
      ~~>
