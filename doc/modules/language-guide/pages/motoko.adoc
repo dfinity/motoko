@@ -1,7 +1,7 @@
 = Motoko Programming Language
 :page-layout: default
 :proglang: Motoko
-:platform: Internet Computer platform
+:platform: Internet Computer blockchain network
 :IC: Internet Computer
 :ext: .mo
 :company-id: DFINITY
@@ -11,21 +11,22 @@ ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 
 [IMPORTANT]
 =====================================================================
-The Motoko programming language continues to evolve with each release of the {sdk-short-name} and with ongoing updates to the Motoko compiler. 
+The {proglang} programming language continues to evolve with each release of the {sdk-short-name} and with ongoing updates to the {proglang} compiler. 
 Check back regularly to try new features and see what's changed.
 =====================================================================
 
 The {proglang} programming language is a new, modern, type-sound language designed for developers who want to build the next generation of apps and services to run directly on the internet.
-Motoko is specifically designed to support the unique features of the Internet Computer and to provide a familiar yet robust programming environment.
+{proglang} is specifically designed to support the unique features of the Internet Computer and to provide a familiar yet robust programming environment.
 As a new language {proglang} is constantly evolving with support for new features and improvements.
 
-The Motoko compiler, documentation and other tooling is https://github.com/dfinity/motoko[open source] and released under the Apache 2.0 license. Contributions are welcome.
+The {proglang} compiler, documentation and other tooling is https://github.com/dfinity/motoko[open source] and released under the Apache 2.0 license. Contributions are welcome.
 
 [.cards.cards-4.personas.conceal-title]
 {empty}
 
 [.card]
 == Native canister smart contract support
+
 
 {porglang} has native support for Internet Computer canister smart contracts.
 
@@ -51,7 +52,7 @@ include::../examples/factorial.mo[lines=9..-1]
 [.card]
 == Modern type system
 
-Motoko has been designed to be intuitive to those familiar with JavaScript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and checked pattern matching.
+{proglang} has been designed to be intuitive to those familiar with JavaScript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and checked pattern matching.
 
 [source,motoko]
 ----

@@ -2,7 +2,7 @@
 :proglang: Motoko
 :company-id: DFINITY
 
-Each actor in {proglang} may use, but may _never directly share_, an
+Each actor in {proglang} may use, but may _never directly share_,
 internal mutable state.
 
 Later, we discuss link:sharing{outfilesuffix}[sharing among actors], where
