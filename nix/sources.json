@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "d8add5d60331c02f852f3911eee8a0a4d757d08d",
-        "sha256": "07yvc9ifc3vim9393xxdswvynh6zan5krsfjccgwm0jrf64hig6h",
+        "rev": "bbee52ee1a5e430fa4d139ebf73ef93b8c10109a",
+        "sha256": "1hx10qfzr9gny6l6f8lvciy8znjlff3dxg9nf0pdpmajbfnm5nzk",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/d8add5d60331c02f852f3911eee8a0a4d757d08d.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/bbee52ee1a5e430fa4d139ebf73ef93b8c10109a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
