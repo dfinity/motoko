@@ -1195,9 +1195,12 @@ module Tagged = struct
     | OneWordFiller -> 29l
     | FreeSpace -> 31l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
-       for `CoercionFailure` and `StableSeen` *)
-    | CoercionFailure -> 32l
-    | StableSeen -> 33l
+       for `CoercionFailure` and `StableSeen`, and they also don't need to be
+       8-bit. *)
+    | CoercionFailure -> 0xfffffffel
+    (* StableSeen need to be a value that cannot be a blob offset.
+       See Note [mutable stable values] for details. *)
+    | StableSeen -> 0xffffffffl
 
   (* The tag *)
   let header_size = 1l
@@ -1209,6 +1212,8 @@ module Tagged = struct
     Heap.store_field tag_field
 
   let load = Heap.load_field_u8 tag_field
+
+  let load_header_word = Heap.load_field tag_field
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
@@ -4326,7 +4331,7 @@ module Serialization = struct
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
         (* Sanity check *)
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        get_x ^^ Tagged.load_header_word ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
@@ -4335,7 +4340,7 @@ module Serialization = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         E.else_trap_with env "object_size/Mut: Unexpected tag " ^^
         (* Check if we have seen this before *)
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        get_x ^^ Tagged.load_header_word ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if_ [] begin
           (* Seen before *)
           (* One byte marker, one word offset *)
@@ -4471,7 +4476,7 @@ module Serialization = struct
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        get_x ^^ Tagged.load_header_word ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if_ []
         begin
           (* This is the real data *)
