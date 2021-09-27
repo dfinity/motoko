@@ -75,16 +75,23 @@ impl PageAlloc for TestPageAlloc {
     type Page = TestPageRef;
 
     unsafe fn alloc(&self) -> Self::Page {
-        let alloc_ref = self.clone();
-        self.inner.borrow_mut().alloc(alloc_ref)
+        todo!()
+    }
+
+    unsafe fn alloc_pages(&self, n_pages: u16) -> Self::Page {
+        todo!()
     }
 
     unsafe fn free(&self, page: Self::Page) {
-        self.inner.borrow_mut().free(page)
+        todo!()
     }
 
-    unsafe fn get_address_page(&self, addr: usize) -> Self::Page {
-        self.inner.borrow().get_address_page(addr)
+    unsafe fn get_address_page_start(&self, addr: usize) -> usize {
+        todo!()
+    }
+
+    unsafe fn in_static_heap(&self, addr: usize) -> bool {
+        todo!()
     }
 }
 

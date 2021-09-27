@@ -165,7 +165,7 @@ fn check_dynamic_heap<P: PageAlloc>(
     let mut page_idx = space.first_page();
 
     // Continuation table location
-    let continuation_table_ptr = unsafe { *continuation_table_ptr_ptr }.unskew();
+    let continuation_table_ptr = unsafe { *continuation_table_ptr_ptr }.get_ptr();
 
     // Scan the space, check that objects are not seen multiple times and have the right fields
     loop {
@@ -189,7 +189,7 @@ fn check_dynamic_heap<P: PageAlloc>(
             let obj = scan as *mut Array;
             assert_eq!(unsafe { (*obj).header.tag }, TAG_ARRAY);
 
-            let tag = get_scalar_value(unsafe { obj.get(1) }.0 as u32);
+            let tag = get_scalar_value(unsafe { obj.get(1) }.get_raw());
             let expected_fields = object_map.get(&tag).unwrap();
 
             let old = seen.insert(tag, scan);
@@ -206,8 +206,8 @@ fn check_dynamic_heap<P: PageAlloc>(
             // Check that the fields are as expected
             for (field_idx, expected_field_tag) in expected_fields.iter().enumerate() {
                 // +1 to skip the tag
-                let field = unsafe { obj.get(field_idx as u32 + 1) }.unskew();
-                let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.0 as u32);
+                let field = unsafe { obj.get(field_idx as u32 + 1) }.get_ptr();
+                let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.get_raw());
                 assert_eq!(field_tag, *expected_field_tag);
             }
 
@@ -302,8 +302,8 @@ fn check_continuation_table(cont_tbl_addr: usize, cont_tbl: &[ObjectIdx]) {
     assert_eq!(unsafe { cont_tbl_.len() }, cont_tbl.len() as u32);
 
     for (i, obj_tag) in cont_tbl.iter().enumerate() {
-        let field = unsafe { cont_tbl_.get(i as u32) }.unskew();
-        let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.0 as u32);
+        let field = unsafe { cont_tbl_.get(i as u32) }.get_ptr();
+        let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.get_raw());
         assert_eq!(field_tag, *obj_tag);
     }
 }

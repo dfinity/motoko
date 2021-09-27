@@ -37,13 +37,13 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 
     // Update root MutBox fields
     for (root_idx, root_mutbox) in roots.iter().zip(mutbox_ptrs.iter()) {
-        let mutbox = root_mutbox.unskew() as *mut MutBox;
+        let mutbox = root_mutbox.get_ptr() as *mut MutBox;
         let root_ptr = *obj_addrs.get(root_idx).unwrap();
         (*mutbox).field = root_ptr;
     }
 
     // Update closure table ptr location
-    *(closure_tbl_ptr_ptr.as_ptr() as *mut Value) = closure_tbl_ptr;
+    *(closure_tbl_ptr_ptr.get_ptr() as *mut Value) = closure_tbl_ptr;
 
     space
 }
@@ -72,7 +72,7 @@ unsafe fn create_static_heap<P: PageAlloc>(
     // Allocate the root array
     let root_array_size = Words(n_roots) + size_of::<Array>();
     let root_array_ptr = space.alloc_words(root_array_size);
-    let root_array = root_array_ptr.unskew() as *mut Array;
+    let root_array = root_array_ptr.get_ptr() as *mut Array;
     (*root_array).header.tag = TAG_ARRAY;
     (*root_array).len = n_roots;
 
@@ -116,7 +116,7 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
 
         object_ptrs.insert(*obj_idx, obj_ptr);
 
-        let obj = obj_ptr.unskew() as *mut Array;
+        let obj = obj_ptr.get_ptr() as *mut Array;
 
         (*obj).header.tag = TAG_ARRAY;
         (*obj).len = refs.len() as u32 + 1; // +1 for tag (index)
@@ -128,7 +128,7 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
     // Add fields
     for (obj_idx, refs) in refs {
         let obj_ptr = object_ptrs.get(obj_idx).unwrap();
-        let obj = obj_ptr.unskew() as *mut Array;
+        let obj = obj_ptr.get_ptr() as *mut Array;
 
         for (ref_idx, ref_) in refs.iter().enumerate() {
             let ref_ptr = object_ptrs.get(ref_).unwrap();
@@ -139,7 +139,7 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
     // Allocate continuation table
     let cont_tbl_size = continuation_table.len() + 2;
     let cont_tbl_ptr = space.alloc_words(Words(cont_tbl_size as u32));
-    let cont_tbl = cont_tbl_ptr.unskew() as *mut Array;
+    let cont_tbl = cont_tbl_ptr.get_ptr() as *mut Array;
     (*cont_tbl).header.tag = TAG_ARRAY;
     (*cont_tbl).len = continuation_table.len() as u32;
 

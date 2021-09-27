@@ -2,6 +2,7 @@ use crate::page_alloc::TestPageAlloc;
 
 use motoko_rts::gc::mark_compact::mark_stack::MarkStack;
 use motoko_rts::page_alloc::PageAlloc;
+use motoko_rts::types::*;
 
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
