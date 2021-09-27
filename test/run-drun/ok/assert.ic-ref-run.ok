@@ -3,4 +3,4 @@
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → update go()
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at assert/Lib.mo:3.27-5.4"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at Lib.mo:3.27-5.4"
