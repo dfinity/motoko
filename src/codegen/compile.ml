@@ -4509,7 +4509,7 @@ module Serialization = struct
           get_offset ^^ compile_unboxed_const 0l ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
-          (* Write the office to the output buffer *)
+          (* Write the offset to the output buffer *)
           write_word32 get_offset
         end
       in

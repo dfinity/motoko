@@ -28,7 +28,7 @@ pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
     STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).get_ptr() as *mut Blob;
     STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
     STACK_PTR = STACK_BASE;
-    STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.0 as usize);
+    STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.as_usize());
 }
 
 pub unsafe fn free_mark_stack() {
@@ -46,7 +46,7 @@ pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
     // Make sure nothing was allocated after the stack
     debug_assert_eq!(STACK_TOP, p);
 
-    let new_cap: Words<u32> = Words(stack_cap.0 * 2);
+    let new_cap: Words<u32> = stack_cap * 2;
     (*STACK_BLOB_PTR).len = new_cap.to_bytes();
     STACK_TOP = STACK_BASE.add(new_cap.as_usize());
 }
