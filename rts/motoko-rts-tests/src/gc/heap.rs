@@ -1,6 +1,4 @@
-use super::utils::{
-    make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
-};
+use super::utils::{ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE};
 
 use motoko_rts::page_alloc::PageAlloc;
 use motoko_rts::space::Space;

@@ -9,7 +9,7 @@ mod heap;
 mod utils;
 
 use crate::page_alloc::TestPageAlloc;
-use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
+use utils::{ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
@@ -189,7 +189,7 @@ fn check_dynamic_heap<P: PageAlloc>(
             let obj = scan as *mut Array;
             assert_eq!(unsafe { (*obj).header.tag }, TAG_ARRAY);
 
-            let tag = get_scalar_value(unsafe { obj.get(1) }.get_raw());
+            let tag = unsafe { obj.get(1) }.get_scalar();
             let expected_fields = object_map.get(&tag).unwrap();
 
             let old = seen.insert(tag, scan);
@@ -207,7 +207,7 @@ fn check_dynamic_heap<P: PageAlloc>(
             for (field_idx, expected_field_tag) in expected_fields.iter().enumerate() {
                 // +1 to skip the tag
                 let field = unsafe { obj.get(field_idx as u32 + 1) }.get_ptr();
-                let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.get_raw());
+                let field_tag = unsafe { (field as *mut Array).get(1) }.get_scalar();
                 assert_eq!(field_tag, *expected_field_tag);
             }
 
@@ -303,7 +303,7 @@ fn check_continuation_table(cont_tbl_addr: usize, cont_tbl: &[ObjectIdx]) {
 
     for (i, obj_tag) in cont_tbl.iter().enumerate() {
         let field = unsafe { cont_tbl_.get(i as u32) }.get_ptr();
-        let field_tag = get_scalar_value(unsafe { (field as *mut Array).get(1) }.get_raw());
+        let field_tag = unsafe { (field as *mut Array).get(1) }.get_scalar();
         assert_eq!(field_tag, *obj_tag);
     }
 }
