@@ -16,7 +16,6 @@ pub struct IcPageAlloc {}
 /// A `Page` implementation for the IC. Currently maps to a single Wasm page, but that may change
 /// in the future.
 #[derive(Debug, Clone, Copy)]
-#[repr(packed)]
 pub struct IcPage {
     /// Wasm page number for this page
     wasm_page_num: u16,
@@ -230,10 +229,12 @@ impl PageAlloc for IcPageAlloc {
     }
 
     unsafe fn free(&self, page: IcPage) {
-        // Check add-sorted list first, coalesce with neighbors
-
+        // Check addr-sorted list first, coalesce with neighbors
         let free_list_idx = match get_page_num_idx(page.wasm_page_num) {
-            Ok(_) => panic!("free: Wasm page {} is already in a free list"),
+            Ok(_) => panic!(
+                "free: Wasm page {} is already in a free list",
+                page.wasm_page_num
+            ),
             Err(idx) => idx,
         };
 
@@ -257,7 +258,11 @@ impl PageAlloc for IcPageAlloc {
             break;
         }
 
-        if coalesce_start != coalesce_end {
+        if coalesce_start == coalesce_end {
+            // Coalescing not possible
+            add_free_page_addr_sorted(page);
+            add_free_page_size_sorted(page.wasm_page_num, page.n_pages);
+        } else {
             // Remove coalesced pages from free lists
             let mut total_pages = page.n_pages;
             let coalesced_wasm_page_num = FREE_PAGES_ADDR_SORTED[coalesce_start].wasm_page_num;
@@ -276,10 +281,6 @@ impl PageAlloc for IcPageAlloc {
 
             add_free_page_addr_sorted(new_page);
             add_free_page_size_sorted(coalesced_wasm_page_num, total_pages);
-        } else {
-            // Coalescing not possible
-            add_free_page_addr_sorted(page);
-            add_free_page_size_sorted(page.wasm_page_num, page.n_pages);
         }
     }
 
