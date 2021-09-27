@@ -267,10 +267,14 @@ impl PageAlloc for IcPageAlloc {
             let mut total_pages = page.n_pages;
             let coalesced_wasm_page_num = FREE_PAGES_ADDR_SORTED[coalesce_start].wasm_page_num;
 
-            for coalesced_page in &FREE_PAGES_ADDR_SORTED[coalesce_start..coalesce_end] {
-                remove_free_page_addr_sorted(coalesced_page.wasm_page_num);
+            let coalesced_pages: Vec<IcPage> = FREE_PAGES_ADDR_SORTED
+                .drain(coalesce_start..coalesce_end)
+                .collect();
+
+            for coalesced_page in &coalesced_pages {
+                // Page already removed from addr-sorted list above
                 remove_free_size_sorted(coalesced_page.wasm_page_num, coalesced_page.n_pages);
-                total_pages += total_pages;
+                total_pages += coalesced_page.n_pages;
             }
 
             // Insert new page
