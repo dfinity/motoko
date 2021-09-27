@@ -5,7 +5,6 @@ use alloc::alloc::{alloc, dealloc};
 use core::alloc::Layout;
 use core::convert::TryFrom;
 
-#[repr(packed)]
 pub struct Bitmap {
     ptr: *mut u8,
 
