@@ -1,4 +1,8 @@
-== Overview
+== Concise overview of Motoko
+
+This is terse, slide-like introduction to Motoko and its features.
+
+(For a gentler introduction, visit the other sections on this site.)
 
 === Motivation and Goals
 
@@ -6,7 +10,7 @@ A simple, useful language for the Internet Computer (IC)
 
 * Familiar syntax
 * Safe by default
-* Incorporating *actor* model for canisters
+* Incorporating *actor* model for canister smart contracts
 * Seamless integration of IC features
 * Making most of present and future WebAssembly
 
@@ -551,7 +555,7 @@ _sharable_ arguments and _no_ or _async_ result type.
 * `send` is an IC _update_ method
 * `recv` is IC _query_ method
 
-IC canister ≈ Motoko actor
+IC canister with Candid interface ≈ Motoko actor
 
 === sharable ≈ serializable
 
@@ -594,7 +598,7 @@ actor Broadcast {
 }
 ....
 
-a typical canister main file
+a typical actor/canister main file
 
 === Async/await
 
@@ -1004,4 +1008,5 @@ alice received goodbye from charlie
 bob received goodbye from charlie
 ....
 
-//// Old slides
+////
+

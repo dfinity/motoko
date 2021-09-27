@@ -39,6 +39,10 @@ impl Words<u32> {
         Bytes(self.0 * WORD_SIZE)
     }
 
+    pub fn as_u32(self) -> u32 {
+        self.0
+    }
+
     pub fn as_usize(self) -> usize {
         self.0 as usize
     }
@@ -104,6 +108,10 @@ impl Bytes<u32> {
     pub fn to_words(self) -> Words<u32> {
         // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
+    }
+
+    pub fn as_u32(self) -> u32 {
+        self.0
     }
 
     pub fn as_usize(self) -> usize {
@@ -508,7 +516,7 @@ impl BigInt {
     }
 
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
-        (ptr as *mut u32).sub(size_of::<BigInt>().0 as usize) as *mut BigInt
+        (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt
     }
 
     /// Returns pointer to the `mp_int` struct

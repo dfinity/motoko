@@ -22,7 +22,7 @@ pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
 
     let mut crc: u32 = !0;
 
-    for i in 0..len.0 {
+    for i in 0..len.as_u32() {
         let octet = blob.get(i);
         crc = (crc >> 8) ^ CRC_TABLE[usize::from((crc & 0xFF) as u8 ^ octet)];
     }
@@ -101,7 +101,7 @@ pub unsafe fn base32_of_checksummed_blob<P: PageAlloc>(
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_addr();
 
-    let r = allocation_space.alloc_blob(Bytes((n.0 + 4 + 4) / 5 * 8)); // contains padding
+    let r = allocation_space.alloc_blob(Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob();
     let dest = blob.payload_addr();
 
@@ -117,7 +117,7 @@ pub unsafe fn base32_of_checksummed_blob<P: PageAlloc>(
     enc_stash(&mut pump, (checksum >> 8) as u8);
     enc_stash(&mut pump, checksum as u8);
 
-    for _ in 0..n.0 {
+    for _ in 0..n.as_u32() {
         enc_stash(&mut pump, *data);
         data = data.add(1);
     }
@@ -188,7 +188,7 @@ pub unsafe fn base32_to_blob<P: PageAlloc>(allocation_space: &mut Space<P>, b: V
     let mut data = b.as_blob().payload_addr();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = allocation_space.alloc_blob(Bytes(((n.0 + 7) / 8) * 5)); // we deal with padding later
+    let r = allocation_space.alloc_blob(Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob();
     let dest = blob.payload_addr();
 
@@ -200,7 +200,7 @@ pub unsafe fn base32_to_blob<P: PageAlloc>(allocation_space: &mut Space<P>, b: V
         pending_data: 0,
     };
 
-    for _ in 0..n.0 {
+    for _ in 0..n.as_u32() {
         dec_stash(&mut pump, *data);
         data = data.add(1);
     }
@@ -227,12 +227,12 @@ unsafe fn base32_to_principal<P: PageAlloc>(allocation_space: &mut Space<P>, b: 
     let mut data = blob.payload_addr();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
-    let r = allocation_space.alloc_blob(Bytes(((n.0 + 4) / 5) * 6));
+    let r = allocation_space.alloc_blob(Bytes(((n.as_u32() + 4) / 5) * 6));
     let blob = r.as_blob();
     let mut dest = blob.payload_addr();
 
     let mut n_written = 0;
-    for i in 0..n.0 {
+    for i in 0..n.as_u32() {
         let mut byte = *data;
         data = data.add(1);
 
@@ -246,7 +246,7 @@ unsafe fn base32_to_principal<P: PageAlloc>(allocation_space: &mut Space<P>, b: 
         n_written += 1;
 
         // If quintet done, add hyphen
-        if n_written % 5 == 0 && i + 1 < n.0 {
+        if n_written % 5 == 0 && i + 1 < n.as_u32() {
             n_written = 0;
             *dest = b'-';
             dest = dest.add(1);

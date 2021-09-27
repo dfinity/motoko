@@ -45,10 +45,10 @@ unsafe fn mp_alloc<P: PageAlloc>(allocation_space: &mut Space<P>, size: Bytes<u3
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
-    // libtommath stores the size of the object in alloc
-    // as count of mp_digits (u64)
-    debug_assert_eq!((size.0 as usize % core::mem::size_of::<mp_digit>()), 0);
-    (*blob).mp_int.alloc = (size.0 as usize / core::mem::size_of::<mp_digit>()) as i32;
+    // libtommath stores the size of the object in alloc as count of mp_digits (u64)
+    let size = size.as_usize();
+    debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
+    (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
     blob.payload_addr() as *mut u8
 }
 
@@ -67,7 +67,7 @@ pub unsafe fn mp_calloc<P: PageAlloc>(
     let payload = mp_alloc(allocation_space, size) as *mut u32;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
-    for i in 0..size.to_words().0 {
+    for i in 0..size.to_words().as_usize() {
         *payload.add(i as usize) = 0;
     }
 
