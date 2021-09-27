@@ -53,7 +53,6 @@ pub trait Page: Clone {
     unsafe fn take_bitmap(&self) -> Option<Bitmap>;
 }
 
-#[repr(packed)]
 pub struct PageHeader {
     // Bitmap used when marking the page for garbage collection
     pub bitmap: Option<Bitmap>,
