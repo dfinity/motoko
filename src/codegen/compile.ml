@@ -1206,6 +1206,8 @@ module Tagged = struct
   let header_size = 1l
   let tag_field = 0l
 
+  let static_bit_mask = 0b00000001_00000000l
+
   (* Assumes a pointer to the object on the stack *)
   let store tag =
     compile_unboxed_const (int_of_tag tag) ^^
@@ -1296,7 +1298,7 @@ module MutBox = struct
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
 
   let static env =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+    let tag = bytes_of_int32 (Int32.logor (Tagged.int_of_tag Tagged.MutBox) Tagged.static_bit_mask) in
     let zero = bytes_of_int32 0l in
     let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
     E.add_static_root env ptr;
@@ -1340,7 +1342,7 @@ module Opt = struct
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Null);
+      I32 (Int32.logor Tagged.(int_of_tag Null) Tagged.static_bit_mask);
     ]
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
@@ -1360,7 +1362,7 @@ module Opt = struct
             (* NB: even ?null does not require allocation: We use a static
                singleton for that: *)
             compile_unboxed_const (E.add_static env StaticBytes.[
-              I32 Tagged.(int_of_tag Some);
+              I32 (Int32.logor Tagged.(int_of_tag Some) Tagged.static_bit_mask);
               I32 (null_vanilla_lit env)
             ])
           ; Tagged.Some,
@@ -1459,7 +1461,7 @@ module Closure = struct
 
   let static_closure env fi : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Closure);
+      I32 (Int32.logor Tagged.(int_of_tag Closure) Tagged.static_bit_mask);
       I32 (E.add_fun_ptr env fi);
       I32 0l
     ]
@@ -1488,7 +1490,7 @@ module BoxedWord64 = struct
     then BitTagged.tag_const i
     else
       E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits64);
+        I32 (Int32.logor Tagged.(int_of_tag Bits64) Tagged.static_bit_mask);
         I64 i
       ]
 
@@ -1606,7 +1608,7 @@ module BoxedSmallWord = struct
     then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
       E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits32);
+        I32 (Int32.logor Tagged.(int_of_tag Bits64) Tagged.static_bit_mask);
         I32 i
       ]
 
@@ -1847,7 +1849,7 @@ module Float = struct
 
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Bits64);
+      I32 (Int32.logor Tagged.(int_of_tag Bits64) Tagged.static_bit_mask);
       I64 (Wasm.F64.to_bits f)
     ]
 
@@ -2534,7 +2536,7 @@ module BigNumLibtommath : BigNumType = struct
 
     (* cf. mp_int in tommath.h *)
     let ptr = E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag BigInt);
+      I32 (Int32.logor Tagged.(int_of_tag BigInt) Tagged.static_bit_mask);
       I32 size; (* used *)
       I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
@@ -2663,7 +2665,7 @@ module Object = struct
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Object);
+      I32 (Int32.logor Tagged.(int_of_tag Object) Tagged.static_bit_mask);
       I32 (Int32.of_int (List.length fs));
       I32 hash_ptr;
       i32s ptrs;
@@ -2825,7 +2827,7 @@ module Blob = struct
 
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Blob);
+      I32 (Int32.logor Tagged.(int_of_tag Blob) Tagged.static_bit_mask);
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -3105,7 +3107,7 @@ module Arr = struct
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Array);
+      I32 (Int32.logor Tagged.(int_of_tag Array) Tagged.static_bit_mask);
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]

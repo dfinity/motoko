@@ -113,7 +113,11 @@ pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) 
             if ptr >= heap_base {
                 true
             } else {
-                debug_assert!((*(ptr as *mut Obj)).gc_metadata.is_static());
+                debug_assert!(
+                    (*(ptr as *mut Obj)).gc_metadata.is_static(),
+                    "object tag = {}",
+                    (*(ptr as *mut Obj)).tag
+                );
                 false
             }
         }
