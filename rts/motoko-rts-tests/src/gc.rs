@@ -97,9 +97,9 @@ fn test_gc<P: PageAlloc>(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let space = unsafe { heap::create_motoko_heap(page_alloc, refs, roots, continuation_table) };
+    let (space, continuation_table_ptr_loc) =
+        unsafe { heap::create_motoko_heap(page_alloc, refs, roots, continuation_table) };
 
-    /*
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         &space,
@@ -107,9 +107,8 @@ fn test_gc<P: PageAlloc>(
         refs,
         roots,
         continuation_table,
-        todo!(),
+        continuation_table_ptr_loc as *const Value,
     );
-    */
 
     /*
     for _ in 0..3 {

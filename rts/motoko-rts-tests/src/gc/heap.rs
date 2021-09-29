@@ -15,7 +15,7 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
     map: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
-) -> Space<P> {
+) -> (Space<P>, usize) {
     // Check test correctness: an object should appear at most once in `map`
     {
         let heap_objects: FxHashSet<ObjectIdx> = map.iter().map(|(obj, _)| *obj).collect();
@@ -28,10 +28,11 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 
     let mut space = Space::new(page_alloc.clone());
 
-    let (mutbox_ptrs, closure_tbl_ptr_ptr) =
+    let (mutbox_ptrs, continuation_tbl_ptr_loc) =
         create_static_heap(&mut space, u32::try_from(roots.len()).unwrap());
 
-    let (obj_addrs, closure_tbl_ptr) = create_dynamic_heap(&mut space, map, continuation_table);
+    let (obj_addrs, continuation_tbl_ptr) =
+        create_dynamic_heap(&mut space, map, continuation_table);
 
     // Update root MutBox fields
     for (root_idx, root_mutbox) in roots.iter().zip(mutbox_ptrs.iter()) {
@@ -40,10 +41,10 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
         (*mutbox).field = root_ptr;
     }
 
-    // Update closure table ptr location
-    *(closure_tbl_ptr_ptr.get_ptr() as *mut Value) = closure_tbl_ptr;
+    // Update continuation table ptr location
+    *(continuation_tbl_ptr_loc as *mut Value) = continuation_tbl_ptr;
 
-    space
+    (space, continuation_tbl_ptr_loc)
 }
 
 /// Creates static part of the heap, with space left for continuation table pointer and the roots.
@@ -52,11 +53,11 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 /// 1. Pointers to MutBoxes for the roots. Nth root will need to be pointed by Nth MutBox in the
 ///    vector.
 ///
-/// 2. Pointer to the closure table pointer.
+/// 2. Pointer to the continuation table pointer.
 unsafe fn create_static_heap<P: PageAlloc>(
     space: &mut Space<P>,
     n_roots: u32,
-) -> (Vec<Value>, Value) {
+) -> (Vec<Value>, usize) {
     // The layout is:
     //
     // - Array of MutBoxes for the roots (root array). This part does not need to be updated later
@@ -84,9 +85,9 @@ unsafe fn create_static_heap<P: PageAlloc>(
         mutbox_ptrs.push(mutbox);
     }
 
-    let closure_table_pointer_loc = space.alloc_words(Words(1));
+    let continuation_table_pointer_loc = space.alloc_words(Words(1));
 
-    (mutbox_ptrs, closure_table_pointer_loc)
+    (mutbox_ptrs, continuation_table_pointer_loc.get_ptr())
 }
 
 /// Creates dynamic part of the heap. Returns:
