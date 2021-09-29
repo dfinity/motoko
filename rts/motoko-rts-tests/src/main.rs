@@ -25,7 +25,7 @@ fn main() {
         bitmap::test();
         continuation_table::test();
         crc32::test();
-        // gc::test();
+        gc::test();
         leb128::test();
         mark_stack::test();
         principal_id::test();

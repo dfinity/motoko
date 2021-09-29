@@ -102,16 +102,16 @@ fn test_gc<P: PageAlloc>(
     /*
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
+        &space,
         false, // before gc
         refs,
         roots,
         continuation_table,
-        &**heap.heap(),
-        heap.heap_base_offset(),
-        heap.heap_ptr_offset(),
-        heap.continuation_table_ptr_offset(),
+        todo!(),
     );
+    */
 
+    /*
     for _ in 0..3 {
         gc.run(heap.clone());
 
@@ -147,9 +147,6 @@ fn check_dynamic_heap<P: PageAlloc>(
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
-    heap: &[u8],
-    heap_base: usize,
-    heap_ptr: usize,
     continuation_table_ptr_ptr: *const Value,
 ) {
     // Maps objects to their fields
@@ -168,13 +165,13 @@ fn check_dynamic_heap<P: PageAlloc>(
     let continuation_table_ptr = unsafe { *continuation_table_ptr_ptr }.get_ptr();
 
     // Scan the space, check that objects are not seen multiple times and have the right fields
-    loop {
+    while page_idx <= space.last_page() {
         let page = space.get_page(page_idx).unwrap();
 
         let mut scan = unsafe { page.contents_start() };
 
         let end = if page_idx == space.current_page_idx() {
-            heap_ptr
+            space.hp()
         } else {
             unsafe { page.end() }
         };
@@ -214,11 +211,7 @@ fn check_dynamic_heap<P: PageAlloc>(
             scan += unsafe { object_size(scan) }.to_bytes().as_usize();
         }
 
-        if page_idx == space.current_page_idx() {
-            break;
-        } else {
-            page_idx = page_idx.next();
-        }
+        page_idx = page_idx.next();
     }
 
     // At this point we've checked that all seen objects point to the expected objects (as

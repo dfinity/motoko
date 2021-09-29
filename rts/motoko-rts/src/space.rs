@@ -1,6 +1,7 @@
+use crate::constants::WORD_SIZE;
 use crate::page_alloc::{Page, PageAlloc};
 use crate::rts_trap_with;
-use crate::types::{size_of, Array, Blob, Bytes, Value, Words, TAG_ARRAY, TAG_BLOB};
+use crate::types::*;
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -25,7 +26,7 @@ pub struct Space<P: PageAlloc> {
     total_alloc: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PageIdx(usize);
 
 impl PageIdx {
@@ -69,6 +70,10 @@ impl<P: PageAlloc> Space<P> {
         PageIdx(0)
     }
 
+    pub fn last_page(&self) -> PageIdx {
+        PageIdx(self.pages.len() - 1)
+    }
+
     pub fn current_page_idx(&self) -> PageIdx {
         PageIdx(self.current_page)
     }
@@ -83,8 +88,23 @@ impl<P: PageAlloc> Space<P> {
         let current_page_end = self.current_page().end();
 
         if self.hp + bytes > current_page_end {
+            let slop = current_page_end - self.hp;
+
             // Rest of the page is considered allocated
-            self.total_alloc += current_page_end - self.hp;
+            self.total_alloc += slop;
+
+            // In debug mode fill the slop with a filler object, to be able to check page sanity
+            if cfg!(debug_assertions) {
+                if slop == 1 {
+                    *(self.hp as *mut u32) = TAG_ONE_WORD_FILLER;
+                } else {
+                    let free_space = self.hp as *mut FreeSpace;
+                    (*free_space).header.tag = TAG_FREE_SPACE;
+                    let slop = slop as u32;
+                    assert_eq!(slop % WORD_SIZE, 0);
+                    (*free_space).words = Bytes(slop).to_words();
+                }
+            }
 
             let new_page = self.page_alloc.alloc();
 
@@ -149,5 +169,9 @@ impl<P: PageAlloc> Space<P> {
     pub unsafe fn get_address_page(&self, obj: usize) -> P::Page {
         // self.page_alloc.get_address_page(obj)
         todo!()
+    }
+
+    pub fn hp(&self) -> usize {
+        self.hp
     }
 }
