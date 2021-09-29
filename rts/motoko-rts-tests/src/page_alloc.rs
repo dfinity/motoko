@@ -22,7 +22,8 @@ struct TestPageAllocInner {
     // element of a given one, so using a sorted `Vec` which provides a binary search method.
     page_addrs: Vec<(usize, TestPageRef)>,
 
-    /// Total pages allocated so far. We don't reuse page refs to catch use-after-free issues.
+    /// Total pages allocated so far. Used to generate `TestPageRef`s. We don't reuse page refs to
+    /// catch use-after-free issues.
     n_total_pages: usize,
 }
 
@@ -75,28 +76,31 @@ impl PageAlloc for TestPageAlloc {
     type Page = TestPageRef;
 
     unsafe fn alloc(&self) -> Self::Page {
-        todo!()
+        let self_clone = self.clone();
+        self.inner.borrow_mut().alloc(1, self_clone)
     }
 
     unsafe fn alloc_pages(&self, n_pages: u16) -> Self::Page {
-        todo!()
+        let self_clone = self.clone();
+        self.inner.borrow_mut().alloc(n_pages, self_clone)
     }
 
     unsafe fn free(&self, page: Self::Page) {
-        todo!()
+        self.inner.borrow_mut().free(page)
     }
 
     unsafe fn get_address_page_start(&self, addr: usize) -> usize {
-        todo!()
+        self.inner.borrow().get_address_page_start(addr)
     }
 
     unsafe fn in_static_heap(&self, addr: usize) -> bool {
-        todo!()
+        // TODO: support static objects
+        false
     }
 }
 
 impl TestPageAllocInner {
-    unsafe fn alloc(&mut self, page_alloc: TestPageAlloc) -> TestPageRef {
+    unsafe fn alloc(&mut self, n_pages: u16, page_alloc: TestPageAlloc) -> TestPageRef {
         let page = TestPage {
             contents: vec![0u8; self.page_size_bytes].into_boxed_slice(),
         };
@@ -137,7 +141,7 @@ impl TestPageAllocInner {
         }
     }
 
-    unsafe fn get_address_page(&self, addr: usize) -> TestPageRef {
+    unsafe fn get_address_page_start(&self, addr: usize) -> usize {
         let page_ref_idx = match self.page_addrs.binary_search_by_key(&addr, |(k, _)| *k) {
             Ok(idx) => idx,
             Err(0) => panic!("Page start address not in page_addrs"),
@@ -150,7 +154,7 @@ impl TestPageAllocInner {
             panic!("Page address not in allocated pages");
         }
 
-        page_ref
+        page_ref.start()
     }
 }
 
