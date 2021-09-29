@@ -93,8 +93,13 @@ impl<P: PageAlloc> Space<P> {
             self.current_page += 1;
         }
 
-        if self.hp + bytes == self.current_page().end() {
-            todo!("Large object allocation not implemented yet");
+        if self.hp + bytes > self.current_page().end() {
+            todo!(
+                "Large object allocation not implemented yet (requested size={} bytes, self.hp={:#x}, current page end={:#x})",
+                n.to_bytes().as_u32(),
+                self.hp,
+                self.current_page().end(),
+            );
         }
 
         let alloc = self.hp;
