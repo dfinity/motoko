@@ -3663,6 +3663,12 @@ module IC = struct
     Tuple.from_stack env 2
 
   let fail_assert env at =
+    let open Source in
+    let at = {
+        left = {at.left with file = Filename.basename at.left.file};
+        right = {at.right with file = Filename.basename at.right.file}
+      }
+    in
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
 
   let async_method_name = "__motoko_async_helper"
