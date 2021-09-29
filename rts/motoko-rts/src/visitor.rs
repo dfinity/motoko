@@ -103,8 +103,27 @@ pub unsafe fn visit_pointer_fields<F>(
     }
 }
 
+// This implementation is not optimized good enough, so we have a manually optimized version
+// below, for release builds.
+#[cfg(debug_assertions)]
 pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) -> bool {
-    // NB. pattern matching on `field_addr.get()` generates inefficient code
+    match (*field_addr).get() {
+        PtrOrScalar::Scalar(_) => false,
+        PtrOrScalar::Ptr(ptr) => {
+            if ptr >= heap_base {
+                true
+            } else {
+                debug_assert!((*(ptr as *mut Obj)).gc_metadata.is_static());
+                false
+            }
+        }
+    }
+}
+
+// Hand-optimized, efficient version of `pointer_to_dynamic_heap`
+#[cfg(not(debug_assertions))]
+pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) -> bool {
+    // Pattern matching on `field_addr.get()` generates inefficient code
     let field_value = (*field_addr).get_raw();
     is_ptr(field_value) && unskew(field_value as usize) >= heap_base
 }

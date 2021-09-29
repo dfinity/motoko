@@ -342,14 +342,32 @@ pub const TAG_FREE_SPACE: Tag = 31;
 // A bitmap for GC metadata. Currently only holds one bit for large objects.
 pub struct GcMetadata(u8);
 
+const STATIC_BIT_MASK: u8 = 0b1;
+const LARGE_BIT_MASK: u8 = 0b10;
+
 impl GcMetadata {
-    /// Is the object large?
-    fn large(&self) -> bool {
-        self.0 == 1
+    /// Is the object static?
+    // We don't have a `set_static` method as static bit is only set by the compiler-allocated
+    // (i.e. static) objects
+    pub fn is_static(&self) -> bool {
+        self.check_bitset_sanity();
+        self.0 & STATIC_BIT_MASK != 0
     }
 
+    /// Is the object large?
+    fn is_large(&self) -> bool {
+        self.check_bitset_sanity();
+        self.0 & LARGE_BIT_MASK != 0
+    }
+
+    /// Set the "is large" bit
     fn set_large(&mut self) {
-        (*self).0 = 1
+        self.check_bitset_sanity();
+        self.0 |= LARGE_BIT_MASK
+    }
+
+    fn check_bitset_sanity(&self) {
+        debug_assert!(self.0 >> 2 == 0);
     }
 }
 
@@ -391,7 +409,7 @@ impl Obj {
 
     /// Returns whether this is a large object
     pub unsafe fn large(self: *mut Self) -> bool {
-        (*self).gc_metadata.large()
+        (*self).gc_metadata.is_large()
     }
 
     /// Set the "large" bit
