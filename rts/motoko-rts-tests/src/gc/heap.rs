@@ -14,8 +14,8 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
     page_alloc: &mut P,
     map: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
-    continuation_table: &[ObjectIdx],
-) -> (Space<P>, usize) {
+    cont_tbl: &[ObjectIdx],
+) -> (Space<P>, *mut Value) {
     // Check test correctness: an object should appear at most once in `map`
     {
         let heap_objects: FxHashSet<ObjectIdx> = map.iter().map(|(obj, _)| *obj).collect();
@@ -28,11 +28,10 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 
     let mut space = Space::new(page_alloc.clone());
 
-    let (mutbox_ptrs, continuation_tbl_ptr_loc) =
+    let (mutbox_ptrs, cont_tbl_loc) =
         create_static_heap(&mut space, u32::try_from(roots.len()).unwrap());
 
-    let (obj_addrs, continuation_tbl_ptr) =
-        create_dynamic_heap(&mut space, map, continuation_table);
+    let (obj_addrs, cont_tbl) = create_dynamic_heap(&mut space, map, cont_tbl);
 
     // Update root MutBox fields
     for (root_idx, root_mutbox) in roots.iter().zip(mutbox_ptrs.iter()) {
@@ -42,9 +41,9 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
     }
 
     // Update continuation table ptr location
-    *(continuation_tbl_ptr_loc as *mut Value) = continuation_tbl_ptr;
+    *cont_tbl_loc = Value::from_ptr(cont_tbl as usize);
 
-    (space, continuation_tbl_ptr_loc)
+    (space, cont_tbl_loc)
 }
 
 /// Creates static part of the heap, with space left for continuation table pointer and the roots.
@@ -54,10 +53,12 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 ///    vector.
 ///
 /// 2. Pointer to the continuation table pointer.
+///
+/// Use the heap pointer of `space` to get the static heap size after calling this function.
 unsafe fn create_static_heap<P: PageAlloc>(
     space: &mut Space<P>,
     n_roots: u32,
-) -> (Vec<Value>, usize) {
+) -> (Vec<Value>, *mut Value) {
     // The layout is:
     //
     // - Array of MutBoxes for the roots (root array). This part does not need to be updated later
@@ -85,9 +86,9 @@ unsafe fn create_static_heap<P: PageAlloc>(
         mutbox_ptrs.push(mutbox);
     }
 
-    let continuation_table_pointer_loc = space.alloc_words(Words(1));
+    let cont_tbl_loc = space.alloc_words(Words(1));
 
-    (mutbox_ptrs, continuation_table_pointer_loc.get_ptr())
+    (mutbox_ptrs, cont_tbl_loc.get_ptr() as *mut Value)
 }
 
 /// Creates dynamic part of the heap. Returns:
@@ -100,7 +101,7 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
     space: &mut Space<P>,
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     continuation_table: &[ObjectIdx],
-) -> (FxHashMap<ObjectIdx, Value>, Value) {
+) -> (FxHashMap<ObjectIdx, Value>, *mut Array) {
     // First pass allocates objects and collects object addresses. Second pass fills the fields
     // with addresses collected in the first pass.
 
@@ -124,7 +125,7 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
         // Pointer fields will be set in the second pass
     }
 
-    // Add fields
+    // Second pass, add fields
     for (obj_idx, refs) in refs {
         let obj_ptr = object_ptrs.get(obj_idx).unwrap();
         let obj = obj_ptr.get_ptr() as *mut Array;
@@ -147,5 +148,5 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
         cont_tbl.set(i as u32, *obj_ptr);
     }
 
-    (object_ptrs, cont_tbl_ptr)
+    (object_ptrs, cont_tbl)
 }

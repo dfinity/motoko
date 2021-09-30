@@ -97,7 +97,7 @@ fn test_gc<P: PageAlloc>(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let (space, continuation_table_ptr_loc) =
+    let (space, cont_tbl_loc) =
         unsafe { heap::create_motoko_heap(page_alloc, refs, roots, continuation_table) };
 
     // Check `create_dynamic_heap` sanity
@@ -107,7 +107,7 @@ fn test_gc<P: PageAlloc>(
         refs,
         roots,
         continuation_table,
-        continuation_table_ptr_loc as *const Value,
+        cont_tbl_loc,
     );
 
     /*
@@ -146,7 +146,7 @@ fn check_dynamic_heap<P: PageAlloc>(
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
-    continuation_table_ptr_ptr: *const Value,
+    cont_tbl_loc: *mut Value,
 ) {
     // Maps objects to their fields
     let object_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
@@ -161,7 +161,9 @@ fn check_dynamic_heap<P: PageAlloc>(
     let mut page_idx = space.first_page();
 
     // Continuation table location
-    let continuation_table_ptr = unsafe { *continuation_table_ptr_ptr }.get_ptr();
+    let cont_tbl = unsafe { *cont_tbl_loc }.get_ptr() as *mut Array;
+    assert_eq!(unsafe { (*cont_tbl).header.tag }, TAG_ARRAY);
+    assert_eq!(unsafe { cont_tbl.len() }, continuation_table.len() as u32);
 
     // Scan the space, check that objects are not seen multiple times and have the right fields
     while page_idx <= space.last_page() {
@@ -176,7 +178,7 @@ fn check_dynamic_heap<P: PageAlloc>(
         };
 
         while scan < end {
-            if scan == continuation_table_ptr {
+            if scan == cont_tbl as usize {
                 // TODO: check continuation table
                 scan += unsafe { object_size(scan) }.to_bytes().as_usize();
                 continue;
@@ -185,7 +187,7 @@ fn check_dynamic_heap<P: PageAlloc>(
             let obj = scan as *mut Array;
             assert_eq!(unsafe { (*obj).header.tag }, TAG_ARRAY);
 
-            let tag = unsafe { obj.get(1) }.get_scalar();
+            let tag = unsafe { obj.get(0) }.get_scalar();
             let expected_fields = object_map.get(&tag).unwrap();
 
             let old = seen.insert(tag, scan);
@@ -203,7 +205,7 @@ fn check_dynamic_heap<P: PageAlloc>(
             for (field_idx, expected_field_tag) in expected_fields.iter().enumerate() {
                 // +1 to skip the tag
                 let field = unsafe { obj.get(field_idx as u32 + 1) }.get_ptr();
-                let field_tag = unsafe { (field as *mut Array).get(1) }.get_scalar();
+                let field_tag = unsafe { (field as *mut Array).get(0) }.get_scalar();
                 assert_eq!(field_tag, *expected_field_tag);
             }
 
