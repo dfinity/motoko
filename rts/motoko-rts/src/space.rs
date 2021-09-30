@@ -163,14 +163,11 @@ impl<P: PageAlloc> Space<P> {
         ptr
     }
 
-    /// Get page of an object in this space. May panic or return incorrect results if the object is
-    /// not in the space.
-    pub unsafe fn get_address_page(&self, obj: usize) -> P::Page {
-        // self.page_alloc.get_address_page(obj)
-        todo!()
-    }
-
     pub fn hp(&self) -> usize {
         self.hp
+    }
+
+    pub fn page_alloc(&self) -> &P {
+        &self.page_alloc
     }
 }

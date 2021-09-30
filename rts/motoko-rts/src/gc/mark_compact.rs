@@ -7,7 +7,7 @@ pub mod mark_stack;
 use crate::bitmap::{Bitmap, BITMAP_ITER_END};
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
-use crate::page_alloc::{Page, PageAlloc};
+use crate::page_alloc::{Page, PageAlloc, PageHeader};
 use crate::space::Space;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
@@ -133,10 +133,11 @@ unsafe fn mark_object<P: PageAlloc>(space: &Space<P>, mark_stack: &mut MarkStack
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
-    let obj_page = space.get_address_page(obj);
+    let obj_page = space.page_alloc().get_address_page_start(obj) as *mut PageHeader;
     let obj_bitmap = obj_page.get_bitmap().unwrap();
+    let obj_page_offset = obj - (obj_page.add(1) as usize);
 
-    let obj_bit_idx = (obj - obj_page.contents_start()) as u32 / WORD_SIZE;
+    let obj_bit_idx = obj_page_offset as u32 / WORD_SIZE;
 
     if obj_bitmap.get(obj_bit_idx) {
         // Already marked
