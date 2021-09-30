@@ -82,6 +82,10 @@ impl<P: PageAlloc> Space<P> {
         self.pages.get(idx.0)
     }
 
+    pub fn allocation_pointer(&self) -> usize {
+        self.hp
+    }
+
     pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes().as_usize();
 

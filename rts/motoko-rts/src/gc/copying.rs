@@ -60,7 +60,7 @@ pub unsafe fn copying_gc_internal<
 
         let page_end = page.end();
 
-        while p < page_end {
+        while p != to_space.allocation_pointer() && p != page_end {
             let size = object_size(p);
             scav(to_space, p);
             p += size.to_bytes().0 as usize;
