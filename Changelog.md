@@ -1,5 +1,41 @@
 # Motoko compiler changelog
 
+== 0.6.10 (2021-09-23)
+
+* moc
+
+  * documentation changes
+
+* motoko-base
+
+  * documentation changes
+
+== 0.6.9 (2021-09-15)
+
+* motoko-base
+
+  * add Debug.trap : Text -> None (#288)
+
+== 0.6.8 (2021-09-06)
+
+* Introduce primitives for `Int` ⇔ `Float` conversions (#2733)
+* Bump LLVM toolchain to version 12 (#2542)
+* Support extended name linker sections (#2760)
+* Fix crashing bug for formatting huge floats (#2737)
+
+== 0.6.7 (2021-08-16)
+
+* moc
+
+  *  Optimize field access by exploiting field ordering (#2708)
+  *  Fix handling of self references in mark-compact GC (#2721)
+  *  Restore CI reporting of perf-regressions (#2643)
+
+* motoko-base:
+
+  * Fix bug in `AssocList.diff` (#277)
+  * Deprecate unsafe or redundant functions in library `Option` ( `unwrap`, `assertSome`, `assertNull`) (#275)
+
 == 0.6.6 (2021-07-30)
 
 * Vastly improved garbage collection scheduling: previously Motoko runtime would do GC

@@ -1,3 +1,24 @@
+// Note [struct representation]
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// TLDR: Add `#[repr(C)]` in types used by both the runtime system and generated code, and add
+// assertions to `static_assertions` module to check that the object size and field offsets are as
+// expected.
+//
+// Rust compiler is free to reorder fields[1]. To avoid this in types that are used by both the
+// runtime system and generated code we need a `repr` attribute like `repr(C)` or `repr(packed)`.
+//
+// We can't use `repr(packed)` because it potentially introduces undefined behavior as getting
+// address (reference or pointer) of an unaligned field (or using the address) is an undefined
+// behavior in Rust. See Motoko PR #2764.
+//
+// So to avoid reordering fields without introducing undefined behaviors we use `repr(C)`. See [2]
+// for details on how `repr(C)` works. In short: it does not reorder fields. It can add padding,
+// but in our case all fields are word-sized so that's not a problem.
+//
+// [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
+// [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
+
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
@@ -16,6 +37,10 @@ pub struct Words<A>(pub A);
 impl Words<u32> {
     pub fn to_bytes(self) -> Bytes<u32> {
         Bytes(self.0 * WORD_SIZE)
+    }
+
+    pub fn as_u32(self) -> u32 {
+        self.0
     }
 
     pub fn as_usize(self) -> usize {
@@ -85,6 +110,10 @@ impl Bytes<u32> {
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
     }
 
+    pub fn as_u32(self) -> u32 {
+        self.0
+    }
+
     pub fn as_usize(self) -> usize {
         self.0 as usize
     }
@@ -124,51 +153,166 @@ impl From<Words<u32>> for Bytes<u32> {
     }
 }
 
+/// A value in a heap slot
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct SkewedPtr(pub usize);
+pub struct Value(u32);
 
-impl SkewedPtr {
-    pub unsafe fn tag(self) -> Tag {
-        (self.unskew() as *mut Obj).tag()
+/// A view of `Value` for analyzing the slot contents.
+pub enum PtrOrScalar {
+    /// Slot is a pointer to a boxed object
+    Ptr(usize),
+
+    /// Slot is an unboxed scalar value
+    Scalar(u32),
+}
+
+impl PtrOrScalar {
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, PtrOrScalar::Ptr(_))
     }
 
-    pub fn unskew(self) -> usize {
-        self.0.wrapping_add(1)
-    }
-
-    /// This is for sanity checking: a skewed pointer can't be a tagged scalar
-    pub fn is_tagged_scalar(&self) -> bool {
-        self.0 & 0b1 == 0
-    }
-
-    pub unsafe fn as_obj(self) -> *mut Obj {
-        self.unskew() as *mut Obj
-    }
-
-    pub unsafe fn as_array(self) -> *mut Array {
-        debug_assert_eq!(self.tag(), TAG_ARRAY);
-        self.unskew() as *mut Array
-    }
-
-    pub unsafe fn as_concat(self) -> *mut Concat {
-        debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.unskew() as *mut Concat
-    }
-
-    pub unsafe fn as_blob(self) -> *mut Blob {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.unskew() as *mut Blob
-    }
-
-    pub unsafe fn as_bigint(self) -> *mut BigInt {
-        debug_assert_eq!(self.tag(), TAG_BIGINT);
-        self.unskew() as *mut BigInt
+    pub fn is_scalar(&self) -> bool {
+        matches!(self, PtrOrScalar::Scalar(_))
     }
 }
 
-pub fn skew(ptr: usize) -> SkewedPtr {
-    SkewedPtr(ptr.wrapping_sub(1))
+impl Value {
+    /// Create a value from a pointer
+    pub const fn from_ptr(ptr: usize) -> Self {
+        // TODO: Update rustc to enable assertion
+        // debug_assert_eq!(ptr & 0b1, 0b0);
+        Value(skew(ptr) as u32)
+    }
+
+    /// Create a value from a scalar
+    pub const fn from_scalar(value: u32) -> Self {
+        // TODO: Update rustc to enable assertion
+        // debug_assert_eq!(value >> 31, 0);
+        Value(value << 1)
+    }
+
+    /// Create a value from a signed scalar. The scalar must be obtained with `get_signed_scalar`.
+    /// Using `get_scalar` will return an incorrect scalar.
+    pub fn from_signed_scalar(value: i32) -> Self {
+        debug_assert_eq!(value, value << 1 >> 1);
+        Value((value << 1) as u32)
+    }
+
+    /// Create a value from raw representation. Useful when e.g. temporarily writing invalid values
+    /// to object fields in garbage collection.
+    pub const fn from_raw(raw: u32) -> Self {
+        Value(raw)
+    }
+
+    /// Analyzes the value.
+    ///
+    /// Note: when using this function in performance critical code make sure to check the
+    /// generated Wasm and see if it can be improved by using `Value::get_raw`, `unskew`, etc.
+    /// rustc/LLVM generates slightly more inefficient code (compared to using functions like
+    /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
+    /// cycle.
+    pub fn get(&self) -> PtrOrScalar {
+        if self.0 & 0b1 == 0b1 {
+            PtrOrScalar::Ptr(unskew(self.0 as usize))
+        } else {
+            PtrOrScalar::Scalar(self.0 >> 1)
+        }
+    }
+
+    /// Get the raw value
+    pub fn get_raw(&self) -> u32 {
+        self.0
+    }
+
+    /// Is the value a scalar?
+    pub fn is_scalar(&self) -> bool {
+        self.get().is_scalar()
+    }
+
+    /// Is the value a pointer?
+    pub fn is_ptr(&self) -> bool {
+        self.get().is_ptr()
+    }
+
+    /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
+    /// the value is not a scalar.
+    pub fn get_scalar(&self) -> u32 {
+        debug_assert!(self.get().is_scalar());
+        self.0 >> 1
+    }
+
+    /// Assumes that the value is a signed scalar and returns the scalar value. In debug mode
+    /// panics if the value is not a scalar.
+    pub fn get_signed_scalar(&self) -> i32 {
+        debug_assert!(self.get().is_scalar());
+        self.0 as i32 >> 1
+    }
+
+    /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
+    /// the value is not a pointer.
+    pub fn get_ptr(self) -> usize {
+        debug_assert!(self.get().is_ptr());
+        unskew(self.0 as usize)
+    }
+
+    /// Get the object tag. In debug mode panics if the value is not a pointer.
+    pub unsafe fn tag(self) -> Tag {
+        debug_assert!(self.get().is_ptr());
+        (self.get_ptr() as *mut Obj).tag()
+    }
+
+    /// Get the pointer as `Obj`. In debug mode panics if the value is not a pointer.
+    pub unsafe fn as_obj(self) -> *mut Obj {
+        debug_assert!(self.get().is_ptr());
+        self.get_ptr() as *mut Obj
+    }
+
+    /// Get the pointer as `Array`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Array`.
+    pub unsafe fn as_array(self) -> *mut Array {
+        debug_assert_eq!(self.tag(), TAG_ARRAY);
+        self.get_ptr() as *mut Array
+    }
+
+    /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `Concat`.
+    pub unsafe fn as_concat(self) -> *mut Concat {
+        debug_assert_eq!(self.tag(), TAG_CONCAT);
+        self.get_ptr() as *mut Concat
+    }
+
+    /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `Blob`.
+    pub unsafe fn as_blob(self) -> *mut Blob {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.get_ptr() as *mut Blob
+    }
+
+    /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `BigInt`.
+    pub unsafe fn as_bigint(self) -> *mut BigInt {
+        debug_assert_eq!(self.tag(), TAG_BIGINT);
+        self.get_ptr() as *mut BigInt
+    }
+
+    pub fn as_tiny(self) -> i32 {
+        debug_assert!(self.is_scalar());
+        self.0 as i32 >> 1
+    }
+}
+
+/// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
+pub fn is_ptr(value: u32) -> bool {
+    value & 0b1 == 0b1
+}
+
+pub const fn skew(ptr: usize) -> usize {
+    ptr.wrapping_sub(1)
+}
+
+pub const fn unskew(value: usize) -> usize {
+    value.wrapping_add(1)
 }
 
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
@@ -176,25 +320,27 @@ pub fn skew(ptr: usize) -> SkewedPtr {
 // of an unsafe API usage).
 pub type Tag = u32;
 
+// Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
+// locations in mark-compact GC. (Reminder: objects and fields are word aligned)
 pub const TAG_OBJECT: Tag = 1;
-pub const TAG_OBJ_IND: Tag = 2;
-pub const TAG_ARRAY: Tag = 3;
-pub const TAG_BITS64: Tag = 5;
-pub const TAG_MUTBOX: Tag = 6;
-pub const TAG_CLOSURE: Tag = 7;
-pub const TAG_SOME: Tag = 8;
-pub const TAG_VARIANT: Tag = 9;
-pub const TAG_BLOB: Tag = 10;
-pub const TAG_FWD_PTR: Tag = 11;
-pub const TAG_BITS32: Tag = 12;
-pub const TAG_BIGINT: Tag = 13;
-pub const TAG_CONCAT: Tag = 14;
-pub const TAG_NULL: Tag = 15;
-pub const TAG_ONE_WORD_FILLER: Tag = 16;
-pub const TAG_FREE_SPACE: Tag = 17;
+pub const TAG_OBJ_IND: Tag = 3;
+pub const TAG_ARRAY: Tag = 5;
+pub const TAG_BITS64: Tag = 7;
+pub const TAG_MUTBOX: Tag = 9;
+pub const TAG_CLOSURE: Tag = 11;
+pub const TAG_SOME: Tag = 13;
+pub const TAG_VARIANT: Tag = 15;
+pub const TAG_BLOB: Tag = 17;
+pub const TAG_FWD_PTR: Tag = 19;
+pub const TAG_BITS32: Tag = 21;
+pub const TAG_BIGINT: Tag = 23;
+pub const TAG_CONCAT: Tag = 25;
+pub const TAG_NULL: Tag = 27;
+pub const TAG_ONE_WORD_FILLER: Tag = 29;
+pub const TAG_FREE_SPACE: Tag = 31;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
 }
@@ -215,8 +361,8 @@ impl Obj {
     }
 }
 
-#[repr(packed)]
 #[rustfmt::skip]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Array {
     pub header: Obj,
     pub len: u32, // number of elements
@@ -227,20 +373,20 @@ pub struct Array {
 }
 
 impl Array {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
-        self.offset(1) as *mut SkewedPtr // skip array header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip array header
     }
 
-    pub unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+    pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
         debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *const SkewedPtr)
+        *(slot_addr as *const Value)
     }
 
-    pub unsafe fn set(self: *mut Self, idx: u32, ptr: SkewedPtr) {
+    pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
         debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *mut SkewedPtr) = ptr;
+        *(slot_addr as *mut Value) = ptr;
     }
 
     pub unsafe fn len(self: *mut Self) -> u32 {
@@ -248,7 +394,7 @@ impl Array {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Object {
     pub header: Obj,
     pub size: u32,     // Number of elements
@@ -256,8 +402,8 @@ pub struct Object {
 }
 
 impl Object {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
-        self.add(1) as *mut SkewedPtr // skip object header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.add(1) as *mut Value // skip object header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
@@ -265,18 +411,18 @@ impl Object {
     }
 
     #[cfg(debug_assertions)]
-    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> SkewedPtr {
+    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
         *self.payload_addr().add(idx as usize)
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct ObjInd {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Closure {
     pub header: Obj,
     pub funid: u32,
@@ -285,8 +431,8 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut SkewedPtr {
-        self.offset(1) as *mut SkewedPtr // skip closure header
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip closure header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
@@ -294,7 +440,7 @@ impl Closure {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -343,13 +489,13 @@ impl Blob {
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
     pub header: Obj,
-    pub fwd: SkewedPtr,
+    pub fwd: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct BigInt {
     pub header: Obj,
     /// The data following now must describe is the `mp_int` struct.
@@ -370,7 +516,7 @@ impl BigInt {
     }
 
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
-        (ptr as *mut u32).sub(size_of::<BigInt>().0 as usize) as *mut BigInt
+        (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt
     }
 
     /// Returns pointer to the `mp_int` struct
@@ -388,68 +534,77 @@ impl BigInt {
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct MutBox {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Some {
     pub header: Obj,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
-    pub field: SkewedPtr,
+    pub field: Value,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
-    pub text1: SkewedPtr,
-    pub text2: SkewedPtr,
+    pub text1: Value,
+    pub text2: Value,
 }
 
 impl Concat {
-    pub unsafe fn text1(self: *mut Self) -> SkewedPtr {
+    pub unsafe fn text1(self: *mut Self) -> Value {
         (*self).text1
     }
 
-    pub unsafe fn text2(self: *mut Self) -> SkewedPtr {
+    pub unsafe fn text2(self: *mut Self) -> Value {
         (*self).text2
     }
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Null {
     pub header: Obj,
 }
 
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct Bits64 {
     pub header: Obj,
-    pub bits: u64,
+    // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
+    // boundary.
+    bits_lo: u32,
+    bits_hi: u32,
 }
 
-#[repr(packed)]
+impl Bits64 {
+    pub fn bits(&self) -> u64 {
+        (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
+    }
+}
+
+#[repr(C)] // See the note at the beginning of this module
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
 }
 
 /// Marks one word empty space in heap
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct OneWordFiller {
     pub header: Obj,
 }
 
 /// Marks arbitrary sized emtpy space in heap
-#[repr(packed)]
+#[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
     pub header: Obj,
     pub words: Words<u32>,

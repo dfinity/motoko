@@ -2,11 +2,6 @@
   replay ? 0,
   system ? builtins.currentSystem,
 
-  # The `drun` tool is currently not publicly available.
-  # If you have access to it, create an empty file enable-internals
-  # in this directory, and it will be used.
-  internal ? builtins.pathExists ./enable-internals,
-
   # version to embed in the release. Used by `.github/workflows/release.yml`
   releaseVersion ? null,
 }:
@@ -17,27 +12,24 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
-let only_internal = x:
-  if internal then x
-  else throw "Internal error in Motoko nix setup: Cannot use this when internal == false"; in
-
-let drun =
-  let dfinity-pkgs = import nixpkgs.sources.dfinity { inherit (nixpkgs) system; }; in
-  only_internal (dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun); in
-
 let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
-let ic-hs = ic-hs-pkgs.ic-hs; in
+let ic-ref-run =
+  # copy out the binary, to remove dependencies on the libraries
+  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
+      mkdir -p $out/bin
+      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
+  ''; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    # pulls in clang (wrapped) and clang-10 (unwrapped)
-    llvmPackages_10.clang
+    # pulls in clang (wrapped) and clang-12 (unwrapped)
+    llvmPackages_12.clang
     # pulls in wasm-ld
-    llvmPackages_10.lld
-    llvmPackages_10.bintools
+    llvmPackages_12.lld
+    llvmPackages_12.bintools
     rustc-nightly
     cargo-nightly
     xargo
@@ -49,17 +41,17 @@ let
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
     # so we do not use the nix-provided wrapper in clang
-    export WASM_CLANG="clang-10"
+    export WASM_CLANG="clang-12"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
     # that otherwise the wrapped clang would take care for us
-    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_10.clang-unwrapped.lib}"
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_12.clang-unwrapped.lib}"
 
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
-    # there we use plain clang-10. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_10}/bin/clang"
+    # there we use plain clang-12. There is no stdlib there anyways.
+    export CLANG="${nixpkgs.clang_12}/bin/clang"
   '';
 in
 
@@ -167,7 +159,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "0sy7jglz9pxw2lz0qjyplchcfn78d7789sd93xwybisamjynlniy";
+        sha256 = "0jyp3j8n5bj5cy1fd26d7h55zmc4v14qc2w8adxqwmsv5riqz41g";
         copyLockfile = true;
       };
     in
@@ -234,7 +226,7 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-hs;
+  inherit ic-ref-run;
 
   tests = let
     testDerivationArgs = {
@@ -317,7 +309,7 @@ rec {
 
     qc = testDerivation {
       buildInputs =
-        [ moc wasmtime haskellPackages.qc-motoko ] ++ nixpkgs.lib.optional internal drun;
+        [ moc wasmtime haskellPackages.qc-motoko nixpkgs.drun ];
       checkPhase = ''
 	export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
@@ -358,7 +350,7 @@ rec {
       src = test_src "perf";
       buildInputs =
         (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
-        [ moc drun ];
+        [ moc nixpkgs.drun ];
       checkPhase = ''
         patchShebangs .
         type -p moc && moc --version
@@ -380,8 +372,11 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-hs ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-hs ] ;
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
@@ -389,13 +384,8 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      inherit qc lsp unit candid;
-    } // nixpkgs.lib.optionalAttrs internal {
-      drun       = test_subdir "run-drun"   [ moc drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
-      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc drun ] ;
-      perf       = perf_subdir "perf"       [ moc drun ];
-      inherit profiling-graphs;
+      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      inherit qc lsp unit candid profiling-graphs;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -625,7 +615,7 @@ rec {
       base-tests
       base-doc
       docs
-      ic-hs
+      ic-ref-run
       shell
       check-formatting
       check-rts-formatting
@@ -689,6 +679,4 @@ rec {
     preferLocalBuild = true;
     allowSubstitutes = true;
   };
-} // nixpkgs.lib.optionalAttrs internal {
-  inherit drun;
 }

@@ -167,7 +167,7 @@ fn check_dynamic_heap(
             check_continuation_table(object_offset, continuation_table, heap);
             offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
-                .0 as usize;
+                .as_usize();
             continue;
         }
 
@@ -306,7 +306,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
         offset += WORD_SIZE;
 
         // Skip object header for idx
-        let idx_address = ptr as usize + size_of::<Array>().to_bytes().0 as usize;
+        let idx_address = ptr as usize + size_of::<Array>().to_bytes().as_usize();
         let idx = get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize));
 
         assert_eq!(idx, *obj);
@@ -316,9 +316,8 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 impl GC {
     fn run(&self, mut heap: MotokoHeap) {
         let heap_base = heap.heap_base_address() as u32;
-        let static_roots = skew(heap.static_root_array_address());
-        let continuation_table_ptr_address =
-            heap.continuation_table_ptr_address() as *mut SkewedPtr;
+        let static_roots = Value::from_ptr(heap.static_root_array_address());
+        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.clone();
         let heap_2 = heap.clone();

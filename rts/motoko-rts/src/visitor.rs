@@ -9,7 +9,7 @@ pub unsafe fn visit_pointer_fields<F>(
     heap_base: usize,
     mut visit_ptr_field: F,
 ) where
-    F: FnMut(*mut SkewedPtr),
+    F: FnMut(*mut Value),
 {
     match tag {
         TAG_OBJECT => {
@@ -103,6 +103,8 @@ pub unsafe fn visit_pointer_fields<F>(
     }
 }
 
-pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut SkewedPtr, heap_base: usize) -> bool {
-    (!(*field_addr).is_tagged_scalar()) && ((*field_addr).unskew() >= heap_base)
+pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) -> bool {
+    // NB. pattern matching on `field_addr.get()` generates inefficient code
+    let field_value = (*field_addr).get_raw();
+    is_ptr(field_value) && unskew(field_value as usize) >= heap_base
 }

@@ -20,4 +20,5 @@
 ** xref:language-manual.adoc[Language quick reference]
 ** xref:compiler-ref.adoc[Compiler reference]
 ** xref:motoko-grammar.adoc[Motoko grammar]
+** xref:overview.adoc[Concise overview of Motoko]
 ** xref:style.adoc[Motoko style guidelines]

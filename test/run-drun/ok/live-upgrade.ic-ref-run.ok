@@ -1,4 +1,4 @@
-→ update create_canister(record {dnczaeh = null})
+→ update create_canister(record {settings = null})
 ← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 debug.print: {version = 0}
@@ -27,4 +27,4 @@ debug.print: {version = 2}
 → update wait()
 ← replied: ()
 → query check(2)
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at live-upgrade/live-upgrade.mo:11.49-13.4"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at live-upgrade.mo:11.49-13.4"

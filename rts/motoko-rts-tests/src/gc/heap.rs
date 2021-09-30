@@ -20,7 +20,7 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         self.inner.borrow_mut().alloc_words(n)
     }
 }
@@ -92,6 +92,19 @@ impl MotokoHeap {
     /// Get the heap as an array. Use `offset` values returned by the methods above to read.
     pub fn heap(&self) -> Ref<Box<[u8]>> {
         Ref::map(self.inner.borrow(), |heap| &heap.heap)
+    }
+
+    /// Print heap contents to stdout, for debugging purposes.
+    #[allow(unused)]
+    pub fn dump(&self) {
+        unsafe {
+            motoko_rts::debug::dump_heap(
+                self.heap_base_address() as u32,
+                self.heap_ptr_address() as u32,
+                Value::from_ptr(self.static_root_array_address()),
+                self.continuation_table_ptr_address() as *mut Value,
+            );
+        }
     }
 }
 
@@ -180,7 +193,7 @@ impl MotokoHeapInner {
         let dynamic_heap_size_bytes = dynamic_heap_size_without_continuation_table_bytes
             + (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
-                .0 as usize;
+                .as_usize();
 
         let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
 
@@ -216,18 +229,18 @@ impl MotokoHeapInner {
         }
     }
 
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
 
         // Update heap pointer
         let old_hp = self.heap_ptr_address();
-        let new_hp = old_hp + bytes.0 as usize;
+        let new_hp = old_hp + bytes.as_usize();
         self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
 
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
 
-        skew(old_hp)
+        Value::from_ptr(old_hp)
     }
 
     unsafe fn grow_memory(&mut self, ptr: usize) {
@@ -266,12 +279,12 @@ fn heap_size_for_gc(
                 // The bitmap implementation rounds up to 64-bits to be able to read as many
                 // bits as possible in one instruction and potentially skip 64 words in the
                 // heap with single 64-bit comparison
-                (((mark_bit_bytes.0 + 7) / 8) * 8) + size_of::<Blob>().to_bytes().0
+                (((mark_bit_bytes.as_u32() + 7) / 8) * 8) + size_of::<Blob>().to_bytes().as_u32()
             };
             // In the worst case the entire heap will be pushed to the mark stack, but in tests
             // we limit the size
-            let mark_stack_words = n_objects.clamp(INIT_STACK_SIZE.0 as usize, MAX_MARK_STACK_SIZE)
-                + size_of::<Blob>().0 as usize;
+            let mark_stack_words = n_objects.clamp(INIT_STACK_SIZE.as_usize(), MAX_MARK_STACK_SIZE)
+                + size_of::<Blob>().as_usize();
 
             total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
         }
@@ -330,7 +343,7 @@ fn create_dynamic_heap(
             let field_offset = obj_offset
                 + (size_of::<Array>() + Words(1 + ref_idx as u32))
                     .to_bytes()
-                    .0 as usize;
+                    .as_usize();
             write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
         }
     }
@@ -339,8 +352,10 @@ fn create_dynamic_heap(
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let continuation_table_offset =
-        (size_of::<Array>() * n_objects as u32).to_bytes().0 as usize + n_fields * WORD_SIZE;
+    let continuation_table_offset = (size_of::<Array>() * n_objects as u32)
+        .to_bytes()
+        .as_usize()
+        + n_fields * WORD_SIZE;
 
     {
         let mut heap_offset = continuation_table_offset;
@@ -382,10 +397,10 @@ fn create_static_heap(
     write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
     // Current offset in the heap for the next static roots array element
-    let mut root_addr_offset = size_of::<Array>().to_bytes().0 as usize;
+    let mut root_addr_offset = size_of::<Array>().to_bytes().as_usize();
 
     // Current offset in the heap for the MutBox of the next root
-    let mut mutbox_offset = (size_of::<Array>().0 as usize + roots.len()) * WORD_SIZE;
+    let mut mutbox_offset = (size_of::<Array>().as_usize() + roots.len()) * WORD_SIZE;
 
     for root_address in root_addresses {
         // Add a MutBox for the object
@@ -404,7 +419,7 @@ fn create_static_heap(
         );
 
         root_addr_offset += WORD_SIZE;
-        mutbox_offset += size_of::<MutBox>().to_bytes().0 as usize;
+        mutbox_offset += size_of::<MutBox>().to_bytes().as_usize();
     }
 
     // Write continuation table pointer as the last word in static heap

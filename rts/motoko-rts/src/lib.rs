@@ -4,9 +4,9 @@
 // TODO (osa): Some of these are stabilized, we need to update rustc
 #![feature(
     arbitrary_self_types,
-    panic_info_message,
     assoc_char_funcs,
     core_intrinsics,
+    panic_info_message,
     ptr_offset_from
 )]
 
@@ -32,6 +32,7 @@ pub mod leb128;
 mod mem_utils;
 pub mod memory;
 pub mod principal_id;
+mod static_checks;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;
@@ -44,12 +45,12 @@ use types::Bytes;
 use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::SkewedPtr {
+unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
     text::text_of_str(mem, "0.1")
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::SkewedPtr {
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
     mem.alloc_words(n)
 }
 
