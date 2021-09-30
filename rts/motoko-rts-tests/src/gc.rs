@@ -179,7 +179,6 @@ fn check_dynamic_heap<P: PageAlloc>(
 
         while scan < end {
             if scan == cont_tbl_loc as usize {
-                println!("Skipping continuation table location");
                 scan += WORD_SIZE;
                 continue;
             }
@@ -192,15 +191,12 @@ fn check_dynamic_heap<P: PageAlloc>(
 
             let obj = scan as *mut Obj;
             if unsafe { obj.is_static() } {
-                println!("Skipping static object: {}", unsafe { obj.tag() });
                 scan += unsafe { object_size(scan) }.to_bytes().as_usize();
                 continue;
             }
 
             let obj = scan as *mut Array;
             assert_eq!(unsafe { (obj as *mut Obj).tag() }, TAG_ARRAY);
-
-            println!("Scanning array at {:#x}", scan);
 
             let tag = unsafe { obj.get(0) }.get_scalar();
             let expected_fields = object_map.get(&tag).unwrap();
