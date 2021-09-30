@@ -81,7 +81,7 @@ struct TestHeap {
 fn test_gcs<P: PageAlloc>(page_alloc: &mut P, heap_descr: &TestHeap) {
     for gc in &GC_IMPLS {
         test_gc(
-            page_alloc,
+            page_alloc.clone(),
             *gc,
             &heap_descr.heap,
             &heap_descr.roots,
@@ -91,14 +91,17 @@ fn test_gcs<P: PageAlloc>(page_alloc: &mut P, heap_descr: &TestHeap) {
 }
 
 fn test_gc<P: PageAlloc>(
-    page_alloc: &mut P,
+    mut page_alloc: P,
     gc: GC,
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let (space, cont_tbl_loc) =
-        unsafe { heap::create_motoko_heap(page_alloc, refs, roots, continuation_table) };
+    let heap::MotokoHeap {
+        space,
+        cont_tbl_loc,
+        root_array,
+    } = unsafe { heap::create_motoko_heap(&mut page_alloc, refs, roots, continuation_table) };
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
@@ -107,6 +110,13 @@ fn test_gc<P: PageAlloc>(
         refs,
         roots,
         continuation_table,
+        cont_tbl_loc,
+    );
+
+    gc.run(
+        page_alloc.clone(),
+        space,
+        Value::from_ptr(root_array as usize),
         cont_tbl_loc,
     );
 
@@ -318,7 +328,7 @@ impl GC {
         &self,
         page_alloc: P,
         mut space: Space<P>,
-        static_roots: Value,
+        static_root_array: Value,
         continuation_table_loc: *mut Value,
     ) -> Space<P> {
         match self {
@@ -328,7 +338,7 @@ impl GC {
                     copying_gc_internal(
                         &page_alloc,
                         &mut to_space,
-                        static_roots,
+                        static_root_array,
                         continuation_table_loc,
                         |_| {}, // note_live_size
                         |_| {}, // note_reclaimed
@@ -340,7 +350,7 @@ impl GC {
                 compacting_gc_internal(
                     &page_alloc,
                     &mut space,
-                    static_roots,
+                    static_root_array,
                     continuation_table_loc,
                     |_| {}, // note_live_size
                     |_| {}, // note_reclaimed

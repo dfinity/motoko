@@ -10,12 +10,22 @@ use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
 
+pub struct MotokoHeap<P: PageAlloc> {
+    pub space: Space<P>,
+
+    /// Pointer to the continuation table pointer
+    pub cont_tbl_loc: *mut Value,
+
+    /// Pointer to the root array
+    pub root_array: *mut Array,
+}
+
 pub unsafe fn create_motoko_heap<P: PageAlloc>(
     page_alloc: &mut P,
     map: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     cont_tbl: &[ObjectIdx],
-) -> (Space<P>, *mut Value) {
+) -> MotokoHeap<P> {
     // Check test correctness: an object should appear at most once in `map`
     {
         let heap_objects: FxHashSet<ObjectIdx> = map.iter().map(|(obj, _)| *obj).collect();
@@ -28,7 +38,7 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 
     let mut space = Space::new(page_alloc.clone());
 
-    let (mutbox_ptrs, cont_tbl_loc) =
+    let (mutbox_ptrs, cont_tbl_loc, root_array) =
         create_static_heap(&mut space, u32::try_from(roots.len()).unwrap());
 
     let (obj_addrs, cont_tbl) = create_dynamic_heap(&mut space, map, cont_tbl);
@@ -42,7 +52,11 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
     // Update continuation table ptr location
     *cont_tbl_loc = Value::from_ptr(cont_tbl as usize);
 
-    (space, cont_tbl_loc)
+    MotokoHeap {
+        space,
+        cont_tbl_loc,
+        root_array,
+    }
 }
 
 /// Creates static part of the heap, with space left for continuation table pointer and the roots.
@@ -57,7 +71,7 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 unsafe fn create_static_heap<P: PageAlloc>(
     space: &mut Space<P>,
     n_roots: u32,
-) -> (Vec<*mut MutBox>, *mut Value) {
+) -> (Vec<*mut MutBox>, *mut Value, *mut Array) {
     // The layout is:
     //
     // - Array of MutBoxes for the roots (root array). This part does not need to be updated later
@@ -70,8 +84,8 @@ unsafe fn create_static_heap<P: PageAlloc>(
 
     // Allocate the root array
     let root_array_size = Words(n_roots) + size_of::<Array>();
-    let root_array_ptr = space.alloc_words(root_array_size);
-    let root_array = root_array_ptr.get_ptr() as *mut Array;
+    let root_array_value = space.alloc_words(root_array_size);
+    let root_array = root_array_value.get_ptr() as *mut Array;
     root_array.set_tag();
     root_array.set_static();
     root_array.set_len(n_roots);
@@ -91,7 +105,11 @@ unsafe fn create_static_heap<P: PageAlloc>(
 
     let cont_tbl_loc = space.alloc_words(Words(1));
 
-    (mutbox_ptrs, cont_tbl_loc.get_ptr() as *mut Value)
+    (
+        mutbox_ptrs,
+        cont_tbl_loc.get_ptr() as *mut Value,
+        root_array,
+    )
 }
 
 /// Creates dynamic part of the heap. Returns:
