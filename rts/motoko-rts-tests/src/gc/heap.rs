@@ -34,10 +34,9 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
     let (obj_addrs, cont_tbl) = create_dynamic_heap(&mut space, map, cont_tbl);
 
     // Update root MutBox fields
-    for (root_idx, root_mutbox) in roots.iter().zip(mutbox_ptrs.iter()) {
-        let mutbox = root_mutbox.get_ptr() as *mut MutBox;
+    for (root_idx, mutbox) in roots.iter().zip(mutbox_ptrs.iter()) {
         let root_ptr = *obj_addrs.get(root_idx).unwrap();
-        (*mutbox).field = root_ptr;
+        mutbox.set_field(root_ptr);
     }
 
     // Update continuation table ptr location
@@ -58,7 +57,7 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 unsafe fn create_static_heap<P: PageAlloc>(
     space: &mut Space<P>,
     n_roots: u32,
-) -> (Vec<Value>, *mut Value) {
+) -> (Vec<*mut MutBox>, *mut Value) {
     // The layout is:
     //
     // - Array of MutBoxes for the roots (root array). This part does not need to be updated later
@@ -73,16 +72,20 @@ unsafe fn create_static_heap<P: PageAlloc>(
     let root_array_size = Words(n_roots) + size_of::<Array>();
     let root_array_ptr = space.alloc_words(root_array_size);
     let root_array = root_array_ptr.get_ptr() as *mut Array;
-    (*root_array).header.tag = TAG_ARRAY;
-    (*root_array).len = n_roots;
+    root_array.set_tag();
+    root_array.set_static();
+    root_array.set_len(n_roots);
 
     // Allocate MutBoxes for roots, add MutBoxes to the root array
     let mut mutbox_ptrs = Vec::with_capacity(n_roots as usize);
-    for i in 0..n_roots {
-        let mutbox = space.alloc_words(size_of::<MutBox>());
-        root_array.set(i, mutbox);
-        // Field unset at this point, will be updated after allocating dynamic heap
 
+    for i in 0..n_roots {
+        let mutbox_value = space.alloc_words(size_of::<MutBox>());
+        let mutbox = mutbox_value.get_ptr() as *mut MutBox;
+        mutbox.set_tag();
+        mutbox.set_static();
+        // Field unset at this point, will be updated after allocating dynamic heap
+        root_array.set(i, mutbox_value);
         mutbox_ptrs.push(mutbox);
     }
 

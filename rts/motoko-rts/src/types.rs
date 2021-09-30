@@ -355,11 +355,16 @@ const LARGE_BIT_MASK: u8 = 0b10;
 
 impl GcMetadata {
     /// Is the object static?
-    // We don't have a `set_static` method as static bit is only set by the compiler-allocated
-    // (i.e. static) objects
     pub fn is_static(&self) -> bool {
         self.check_bitset_sanity();
         self.0 & STATIC_BIT_MASK != 0
+    }
+
+    /// Set the "is static" bit. Static objects are normally allocated in compile time, this method
+    /// is only used in tests.
+    pub fn set_static(&mut self) {
+        self.check_bitset_sanity();
+        self.0 |= STATIC_BIT_MASK
     }
 
     /// Is the object large?
@@ -429,6 +434,12 @@ impl Obj {
     pub unsafe fn is_static(self: *mut Self) -> bool {
         (*self).gc_metadata.is_static()
     }
+
+    /// Set the "is static" bit. Static objects are normally allocated in compile time, this method
+    /// is only used in tests.
+    pub unsafe fn set_static(self: *mut Self) {
+        (*self).gc_metadata.set_static()
+    }
 }
 
 #[rustfmt::skip]
@@ -469,6 +480,11 @@ impl Array {
 
     pub unsafe fn set_len(self: *mut Self, len: u32) {
         (*self).len = len;
+    }
+
+    // Used in tests
+    pub unsafe fn set_static(self: *mut Self) {
+        (&mut (*self).header as *mut Obj).set_static()
     }
 }
 
@@ -638,6 +654,21 @@ impl BigInt {
 pub struct MutBox {
     pub header: Obj,
     pub field: Value,
+}
+
+impl MutBox {
+    pub unsafe fn set_tag(self: *mut Self) {
+        (&mut (*self).header as *mut Obj).set_tag(TAG_MUTBOX);
+    }
+
+    pub unsafe fn set_field(self: *mut Self, field: Value) {
+        (*self).field = field;
+    }
+
+    // Used in tests
+    pub unsafe fn set_static(self: *mut Self) {
+        (&mut (*self).header as *mut Obj).set_static()
+    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
