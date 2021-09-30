@@ -77,9 +77,9 @@ unsafe fn mark_compact<P: PageAlloc>(
         thread(continuation_table_ptr_loc);
     }
 
-    mark_stack(page_alloc, space, &mut stack);
+    mark_stack(space, &mut stack);
 
-    update_refs(page_alloc, space);
+    update_refs(space);
 
     stack.free();
 
@@ -104,13 +104,12 @@ unsafe fn mark_static_roots<P: PageAlloc>(
         // Root array should only has pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
         debug_assert!(page_alloc.in_static_heap(obj as usize)); // check that MutBox is static
-        mark_root_mutbox_fields(page_alloc, space, mark_stack, obj as *mut MutBox);
+        mark_root_mutbox_fields(space, mark_stack, obj as *mut MutBox);
     }
 }
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
-    page_alloc: &P,
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     mutbox: *mut MutBox,
@@ -149,24 +148,19 @@ unsafe fn mark_object<P: PageAlloc>(space: &Space<P>, mark_stack: &mut MarkStack
     mark_stack.push(obj, obj_tag);
 }
 
-unsafe fn mark_stack<P: PageAlloc>(
-    page_alloc: &P,
-    space: &Space<P>,
-    mark_stack: &mut MarkStack<P>,
-) {
+unsafe fn mark_stack<P: PageAlloc>(space: &Space<P>, mark_stack: &mut MarkStack<P>) {
     while let Some((obj, tag)) = mark_stack.pop() {
-        mark_fields(page_alloc, space, mark_stack, obj as *mut Obj, tag);
+        mark_fields(space, mark_stack, obj as *mut Obj, tag);
     }
 }
 
 unsafe fn mark_fields<P: PageAlloc>(
-    page_alloc: &P,
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     obj: *mut Obj,
     obj_tag: Tag,
 ) {
-    visit_pointer_fields(page_alloc, obj, obj_tag, |field_addr| {
+    visit_pointer_fields(obj, obj_tag, |field_addr| {
         let field_value = *field_addr;
         mark_object(space, mark_stack, field_value);
 
@@ -186,7 +180,7 @@ unsafe fn mark_fields<P: PageAlloc>(
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<P: PageAlloc>(page_alloc: &P, space: &Space<P>) {
+unsafe fn update_refs<P: PageAlloc>(space: &Space<P>) {
     // Next object will be moved to this page
     let mut to_page_idx = space.first_page();
 
@@ -232,7 +226,7 @@ unsafe fn update_refs<P: PageAlloc>(page_alloc: &P, space: &Space<P>) {
             }
 
             // Thread forward pointers of the object
-            thread_fwd_pointers(page_alloc, to_addr as *mut Obj);
+            thread_fwd_pointers(to_addr as *mut Obj);
 
             to_addr += obj_size.to_bytes().as_usize();
 
@@ -244,8 +238,8 @@ unsafe fn update_refs<P: PageAlloc>(page_alloc: &P, space: &Space<P>) {
 }
 
 /// Thread forwards pointers in object
-unsafe fn thread_fwd_pointers<P: PageAlloc>(page_alloc: &P, obj: *mut Obj) {
-    visit_pointer_fields(page_alloc, obj, obj.tag(), |field_addr| {
+unsafe fn thread_fwd_pointers(obj: *mut Obj) {
+    visit_pointer_fields(obj, obj.tag(), |field_addr| {
         if (*field_addr).get_ptr() > obj as usize {
             thread(field_addr)
         }

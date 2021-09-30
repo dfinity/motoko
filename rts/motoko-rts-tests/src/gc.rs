@@ -313,55 +313,40 @@ fn check_continuation_table(cont_tbl_addr: usize, cont_tbl: &[ObjectIdx]) {
     }
 }
 
-/*
 impl GC {
-    fn run(&self, mut heap: MotokoHeap) {
-        let heap_base = heap.heap_base_address() as u32;
-        let static_roots = Value::from_ptr(heap.static_root_array_address());
-        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
-
-        let heap_1 = heap.clone();
-        let heap_2 = heap.clone();
-
+    fn run<P: PageAlloc>(
+        &self,
+        page_alloc: P,
+        mut space: Space<P>,
+        static_roots: Value,
+        continuation_table_loc: *mut Value,
+    ) -> Space<P> {
         match self {
             GC::Copying => {
+                let mut to_space = unsafe { Space::new(page_alloc.clone()) };
                 unsafe {
                     copying_gc_internal(
-                        &mut heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                        &page_alloc,
+                        &mut to_space,
                         static_roots,
-                        continuation_table_ptr_address,
-                        // note_live_size
-                        |_live_size| {},
-                        // note_reclaimed
-                        |_reclaimed| {},
+                        continuation_table_loc,
+                        |_| {}, // note_live_size
+                        |_| {}, // note_reclaimed
                     );
                 }
+                to_space
             }
-
-            GC::MarkCompact => {
-                unsafe {
-                    compacting_gc_internal(
-                        &mut heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
-                        static_roots,
-                        continuation_table_ptr_address,
-                        // note_live_size
-                        |_live_size| {},
-                        // note_reclaimed
-                        |_reclaimed| {},
-                    );
-                }
-            }
+            GC::MarkCompact => unsafe {
+                compacting_gc_internal(
+                    &page_alloc,
+                    &mut space,
+                    static_roots,
+                    continuation_table_loc,
+                    |_| {}, // note_live_size
+                    |_| {}, // note_reclaimed
+                );
+                space
+            },
         }
     }
 }
-*/

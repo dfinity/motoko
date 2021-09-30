@@ -62,7 +62,7 @@ pub unsafe fn copying_gc_internal<
 
         while p < page_end {
             let size = object_size(p);
-            scav(page_alloc, to_space, p);
+            scav(to_space, p);
             p += size.to_bytes().0 as usize;
         }
 
@@ -108,10 +108,10 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     *ptr_loc = Value::from_ptr(obj_addr);
 }
 
-unsafe fn scav<P: PageAlloc>(page_alloc: &P, to_space: &mut Space<P>, obj: usize) {
+unsafe fn scav<P: PageAlloc>(to_space: &mut Space<P>, obj: usize) {
     let obj = obj as *mut Obj;
 
-    crate::visitor::visit_pointer_fields(page_alloc, obj, obj.tag(), |field_addr| {
+    crate::visitor::visit_pointer_fields(obj, obj.tag(), |field_addr| {
         evac(to_space, field_addr as usize);
     });
 }
@@ -127,6 +127,6 @@ unsafe fn evac_static_roots<P: PageAlloc>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(page_alloc, to_space, obj.get_ptr());
+        scav(to_space, obj.get_ptr());
     }
 }

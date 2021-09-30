@@ -1,15 +1,10 @@
-use crate::page_alloc::PageAlloc;
 use crate::rts_trap_with;
 use crate::types::*;
 
 /// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
-pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
-    page_alloc: &P,
-    obj: *mut Obj,
-    tag: Tag,
-    mut visit_ptr_field: F,
-) where
+pub unsafe fn visit_pointer_fields<F>(obj: *mut Obj, tag: Tag, mut visit_ptr_field: F)
+where
     F: FnMut(*mut Value),
 {
     match tag {
