@@ -93,10 +93,6 @@ impl PageAlloc for TestPageAlloc {
         self.inner.borrow().get_address_page_start(addr)
     }
 
-    unsafe fn in_static_heap(&self, addr: usize) -> bool {
-        // TODO: support static objects
-        false
-    }
 }
 
 impl TestPageAllocInner {

@@ -22,9 +22,6 @@ pub trait PageAlloc: Clone {
     /// Get the start address of the page that contains the given address. Only works on
     /// single-page pages! Can be used to get page header.
     unsafe fn get_address_page_start(&self, addr: usize) -> usize;
-
-    /// Is the address in static heap?
-    unsafe fn in_static_heap(&self, addr: usize) -> bool;
 }
 
 /// Trait for allocation units from the underlying system (Wasm, OS, ...). Page state can be held

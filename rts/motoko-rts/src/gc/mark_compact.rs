@@ -102,8 +102,8 @@ unsafe fn mark_static_roots<P: PageAlloc>(
     for i in 0..root_array.len() {
         let obj = root_array.get(i).as_obj();
         // Root array should only has pointers to other static MutBoxes
-        debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
-        debug_assert!(page_alloc.in_static_heap(obj as usize)); // check that MutBox is static
+        debug_assert_eq!(obj.tag(), TAG_MUTBOX);
+        debug_assert!(obj.is_static());
         mark_root_mutbox_fields(space, mark_stack, obj as *mut MutBox);
     }
 }

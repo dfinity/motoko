@@ -296,10 +296,6 @@ impl PageAlloc for IcPageAlloc {
         // Mask least significant bits to get Wasm page start
         addr & !(WASM_PAGE_SIZE.as_usize() - 1)
     }
-
-    unsafe fn in_static_heap(&self, addr: usize) -> bool {
-        addr < crate::get_heap_base() as usize
-    }
 }
 
 impl Page for IcPage {
