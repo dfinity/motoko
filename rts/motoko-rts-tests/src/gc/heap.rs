@@ -114,7 +114,7 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
     // Allocate objects
     for (obj_idx, refs) in refs {
         // +2 for header + tag (index)
-        let obj_size = Words(refs.len() as u32) + Words(2);
+        let obj_size = Words(refs.len() as u32) + Words(3);
         let obj_ptr = space.alloc_words(obj_size);
 
         object_ptrs.insert(*obj_idx, obj_ptr);
