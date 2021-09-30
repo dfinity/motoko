@@ -119,11 +119,13 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
 
         object_ptrs.insert(*obj_idx, obj_ptr);
 
-        let obj = obj_ptr.get_ptr() as *mut Array;
+        let array = obj_ptr.get_ptr() as *mut Array;
 
-        (*obj).header.tag = TAG_ARRAY;
-        (*obj).len = refs.len() as u32 + 1; // +1 for tag (index)
-        obj.set(0, Value::from_scalar(*obj_idx)); // tag (index)
+        array.set_tag();
+        array.set_len(refs.len() as u32 + 1); // +1 for tag
+        array.set(0, Value::from_scalar(*obj_idx)); // tag
+
+        assert!(array.get(0).is_scalar());
 
         // Pointer fields will be set in the second pass
     }
@@ -131,11 +133,11 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
     // Second pass, add fields
     for (obj_idx, refs) in refs {
         let obj_ptr = object_ptrs.get(obj_idx).unwrap();
-        let obj = obj_ptr.get_ptr() as *mut Array;
+        let array = obj_ptr.get_ptr() as *mut Array;
 
         for (ref_idx, ref_) in refs.iter().enumerate() {
             let ref_ptr = object_ptrs.get(ref_).unwrap();
-            obj.set(ref_idx as u32 + 1, *ref_ptr);
+            array.set(ref_idx as u32 + 1, *ref_ptr);
         }
     }
 
