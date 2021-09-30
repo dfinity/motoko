@@ -291,10 +291,16 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
 
+%type<Mo_def.Syntax.dec> typ_dec
+%type<Mo_def.Syntax.dec list> seplist(typ_dec,semicolon)
+%type<Mo_def.Syntax.typ_field list> seplist(stab_field,semicolon)
+%type<Mo_def.Syntax.typ_field> stab_field
+
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 %start<unit> parse_module_header (* Result passed via the Parser_lib.Imports exception *)
+%start<string -> Mo_def.Syntax.sig_> parse_sig
 
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
@@ -888,5 +894,19 @@ import_list :
 
 parse_module_header :
   | start import_list EOF {}
+
+typ_dec :
+  TYPE x=typ_id tps=typ_params_opt EQ t=typ
+    { TypD(x, tps, t) @? at $sloc }
+
+stab_field :
+  | STABLE mut=var_opt x=id COLON t=typ
+    { {id = x; typ = t; mut} @@ at $sloc }
+
+parse_sig :
+  | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
+    { let trivia = !triv_table in
+      fun filename -> { it = (ds, sfs); at = at $sloc; note = { filename; trivia }}
+    }
 
 %%

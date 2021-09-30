@@ -217,6 +217,10 @@ type prog_note = { filename : string; trivia : Trivia.triv_table }
 type prog = (prog', prog_note) Source.annotated_phrase
 and prog' = dec list
 
+(* Signatures (stable variables) *)
+
+type sig_ = (sig', prog_note) Source.annotated_phrase
+and sig' = (dec list * typ_field list)      (* type declarations & stable actor fields *)
 
 (* Compilation units *)
 
