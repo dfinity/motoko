@@ -403,6 +403,7 @@ impl Obj {
     }
 
     pub unsafe fn tag(self: *mut Self) -> Tag {
+        (*self).gc_metadata.check_bitset_sanity();
         (*self).tag
     }
 

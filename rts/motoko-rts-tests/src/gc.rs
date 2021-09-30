@@ -160,7 +160,7 @@ fn check_dynamic_heap<P: PageAlloc>(
     // Current page
     let mut page_idx = space.first_page();
 
-    // Continuation table location
+    // Continuation table
     let cont_tbl = unsafe { *cont_tbl_loc }.get_ptr() as *mut Array;
     assert_eq!(unsafe { (*cont_tbl).header.tag }, TAG_ARRAY);
     assert_eq!(unsafe { cont_tbl.len() }, continuation_table.len() as u32);
@@ -178,14 +178,29 @@ fn check_dynamic_heap<P: PageAlloc>(
         };
 
         while scan < end {
+            if scan == cont_tbl_loc as usize {
+                println!("Skipping continuation table location");
+                scan += WORD_SIZE;
+                continue;
+            }
+
             if scan == cont_tbl as usize {
                 // TODO: check continuation table
                 scan += unsafe { object_size(scan) }.to_bytes().as_usize();
                 continue;
             }
 
+            let obj = scan as *mut Obj;
+            if unsafe { obj.is_static() } {
+                println!("Skipping static object: {}", unsafe { obj.tag() });
+                scan += unsafe { object_size(scan) }.to_bytes().as_usize();
+                continue;
+            }
+
             let obj = scan as *mut Array;
-            assert_eq!(unsafe { (*obj).header.tag }, TAG_ARRAY);
+            assert_eq!(unsafe { (obj as *mut Obj).tag() }, TAG_ARRAY);
+
+            println!("Scanning array at {:#x}", scan);
 
             let tag = unsafe { obj.get(0) }.get_scalar();
             let expected_fields = object_map.get(&tag).unwrap();
