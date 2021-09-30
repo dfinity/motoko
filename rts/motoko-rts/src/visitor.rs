@@ -13,7 +13,7 @@ where
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
-                if !(*field_addr).is_ptr_to_dynamic_heap() {
+                if (*field_addr).is_ptr_to_dynamic_heap() {
                     visit_ptr_field(obj_payload.add(i as usize));
                 }
             }
@@ -24,7 +24,7 @@ where
             let array_payload = array.payload_addr();
             for i in 0..array.len() {
                 let field_addr = array_payload.add(i as usize);
-                if !(*field_addr).is_ptr_to_dynamic_heap() {
+                if (*field_addr).is_ptr_to_dynamic_heap() {
                     visit_ptr_field(field_addr);
                 }
             }
@@ -33,7 +33,7 @@ where
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if !(*field_addr).is_ptr_to_dynamic_heap() {
+            if (*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
@@ -43,7 +43,7 @@ where
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
-                if !(*field_addr).is_ptr_to_dynamic_heap() {
+                if (*field_addr).is_ptr_to_dynamic_heap() {
                     visit_ptr_field(field_addr);
                 }
             }
@@ -52,7 +52,7 @@ where
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            if !(*field_addr).is_ptr_to_dynamic_heap() {
+            if (*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
@@ -60,7 +60,7 @@ where
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            if !(*field_addr).is_ptr_to_dynamic_heap() {
+            if (*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
@@ -68,11 +68,11 @@ where
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            if !(*field1_addr).is_ptr_to_dynamic_heap() {
+            if (*field1_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field1_addr);
             }
             let field2_addr = &mut (*concat).text2;
-            if !(*field2_addr).is_ptr_to_dynamic_heap() {
+            if (*field2_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field2_addr);
             }
         }
@@ -80,7 +80,7 @@ where
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            if !(*field_addr).is_ptr_to_dynamic_heap() {
+            if (*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
