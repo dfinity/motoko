@@ -98,7 +98,7 @@ fn test_gc<P: PageAlloc>(
     continuation_table: &[ObjectIdx],
 ) {
     let heap::MotokoHeap {
-        space,
+        mut space,
         cont_tbl_loc,
         root_array,
     } = unsafe { heap::create_motoko_heap(&mut page_alloc, refs, roots, continuation_table) };
@@ -113,32 +113,23 @@ fn test_gc<P: PageAlloc>(
         cont_tbl_loc,
     );
 
-    gc.run(
-        page_alloc.clone(),
-        space,
-        Value::from_ptr(root_array as usize),
-        cont_tbl_loc,
-    );
-
-    /*
     for _ in 0..3 {
-        gc.run(heap.clone());
+        space = gc.run(
+            page_alloc.clone(),
+            space,
+            Value::from_ptr(root_array as usize),
+            cont_tbl_loc,
+        );
 
-        let heap_base_offset = heap.heap_base_offset();
-        let heap_ptr_offset = heap.heap_ptr_offset();
-        let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
         check_dynamic_heap(
+            &space,
             true, // after gc
             refs,
             roots,
             continuation_table,
-            &**heap.heap(),
-            heap_base_offset,
-            heap_ptr_offset,
-            continuation_table_ptr_offset,
+            cont_tbl_loc,
         );
     }
-    */
 }
 
 /// Check the dynamic heap:
