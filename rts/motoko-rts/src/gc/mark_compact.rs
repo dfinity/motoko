@@ -10,7 +10,7 @@ use crate::mem_utils::memcpy_words;
 use crate::page_alloc::{Page, PageAlloc};
 use crate::space::Space;
 use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+use crate::visitor::visit_pointer_fields;
 use mark_stack::MarkStack;
 
 #[cfg(feature = "ic")]
@@ -117,7 +117,7 @@ unsafe fn mark_root_mutbox_fields<P: PageAlloc>(
 ) {
     let field_addr = &mut (*mutbox).field;
     // TODO: Not sure if this check is necessary?
-    if pointer_to_dynamic_heap(page_alloc, field_addr) {
+    if (*field_addr).is_ptr_to_dynamic_heap() {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
         mark_object(space, mark_stack, *field_addr);
@@ -256,27 +256,24 @@ unsafe fn thread_fwd_pointers<P: PageAlloc>(page_alloc: &P, obj: *mut Obj) {
 unsafe fn thread(field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
     let pointed = (*field).as_obj();
-    let pointed_header = pointed.tag();
+    let pointed_header = pointed.as_word();
     *field = Value::from_raw(pointed_header);
-    (*pointed).tag = field as u32;
+    pointed.set_header_word(field as u32);
 }
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
 unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
-    let mut header = (*obj).tag;
+    let mut header = obj.as_word();
 
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
     while header & 0b1 == 0 {
-        let tmp = (*(header as *mut Obj)).tag;
+        let tmp = (header as *mut Obj).as_word();
         (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
 
-    // At the end of the chain is the original header for the object
-    debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
-
-    (*obj).tag = header;
+    obj.set_header_word(header);
 }
 
 /// Follow a chain, return object header. Does not unthread.

@@ -18,7 +18,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
-                if pointer_to_dynamic_heap(page_alloc, field_addr) {
+                if !(*field_addr).is_ptr_to_dynamic_heap() {
                     visit_ptr_field(obj_payload.add(i as usize));
                 }
             }
@@ -29,7 +29,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
             let array_payload = array.payload_addr();
             for i in 0..array.len() {
                 let field_addr = array_payload.add(i as usize);
-                if pointer_to_dynamic_heap(page_alloc, field_addr) {
+                if !(*field_addr).is_ptr_to_dynamic_heap() {
                     visit_ptr_field(field_addr);
                 }
             }
@@ -38,7 +38,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(page_alloc, field_addr) {
+            if !(*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
@@ -48,7 +48,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
-                if pointer_to_dynamic_heap(page_alloc, field_addr) {
+                if !(*field_addr).is_ptr_to_dynamic_heap() {
                     visit_ptr_field(field_addr);
                 }
             }
@@ -57,7 +57,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            if pointer_to_dynamic_heap(page_alloc, field_addr) {
+            if !(*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
@@ -65,7 +65,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            if pointer_to_dynamic_heap(page_alloc, field_addr) {
+            if !(*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
@@ -73,11 +73,11 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            if pointer_to_dynamic_heap(page_alloc, field1_addr) {
+            if !(*field1_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field1_addr);
             }
             let field2_addr = &mut (*concat).text2;
-            if pointer_to_dynamic_heap(page_alloc, field2_addr) {
+            if !(*field2_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field2_addr);
             }
         }
@@ -85,7 +85,7 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            if pointer_to_dynamic_heap(page_alloc, field_addr) {
+            if !(*field_addr).is_ptr_to_dynamic_heap() {
                 visit_ptr_field(field_addr);
             }
         }
@@ -102,13 +102,4 @@ pub unsafe fn visit_pointer_fields<P: PageAlloc, F>(
             rts_trap_with("invalid object tag in visit_pointer_fields");
         }
     }
-}
-
-pub unsafe fn pointer_to_dynamic_heap<P: PageAlloc>(
-    page_alloc: &P,
-    field_addr: *mut Value,
-) -> bool {
-    // NB. pattern matching on `field_addr.get()` generates inefficient code
-    let field_value = (*field_addr).get_raw();
-    is_ptr(field_value) && !page_alloc.in_static_heap(unskew(field_value as usize))
 }

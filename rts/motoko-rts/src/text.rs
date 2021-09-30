@@ -114,7 +114,7 @@ pub unsafe fn text_concat<P: PageAlloc>(
     // Create concat node
     let r = allocation_space.alloc_words(size_of::<Concat>());
     let r_concat = r.get_ptr() as *mut Concat;
-    (*r_concat).header.tag = TAG_CONCAT;
+    r_concat.set_tag();
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1;
     (*r_concat).text2 = s2;

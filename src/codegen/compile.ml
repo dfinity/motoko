@@ -890,11 +890,15 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
 
+  let load_field_u8 (i : int32) : G.t =
+    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Pack8, ZX)})
+
   let store_field (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
-  (* Although we occasionally want to treat two 32 bit fields as one 64 bit number *)
+  (* We occasionally want to treat two 32 bit fields as one 64 bit number *)
 
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -1191,21 +1195,27 @@ module Tagged = struct
     | OneWordFiller -> 29l
     | FreeSpace -> 31l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
-       for `CoercionFailure` and `StableSeen` *)
+       for `CoercionFailure` and `StableSeen`, and they also don't need to be
+       8-bit. *)
     | CoercionFailure -> 0xfffffffel
+    (* StableSeen need to be a value that cannot be a blob offset.
+       See Note [mutable stable values] for details. *)
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
   let header_size = 1l
   let tag_field = 0l
 
+  let static_bit_mask = 0b00000001_00000000l
+
   (* Assumes a pointer to the object on the stack *)
   let store tag =
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
 
-  let load =
-    Heap.load_field tag_field
+  let load = Heap.load_field_u8 tag_field
+
+  let load_header_word = Heap.load_field tag_field
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
@@ -1288,7 +1298,7 @@ module MutBox = struct
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
 
   let static env =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+    let tag = bytes_of_int32 (Int32.logor (Tagged.int_of_tag Tagged.MutBox) Tagged.static_bit_mask) in
     let zero = bytes_of_int32 0l in
     let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
     E.add_static_root env ptr;
@@ -1332,7 +1342,7 @@ module Opt = struct
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Null);
+      I32 (Int32.logor Tagged.(int_of_tag Null) Tagged.static_bit_mask);
     ]
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
@@ -1352,7 +1362,7 @@ module Opt = struct
             (* NB: even ?null does not require allocation: We use a static
                singleton for that: *)
             compile_unboxed_const (E.add_static env StaticBytes.[
-              I32 Tagged.(int_of_tag Some);
+              I32 (Int32.logor Tagged.(int_of_tag Some) Tagged.static_bit_mask);
               I32 (null_vanilla_lit env)
             ])
           ; Tagged.Some,
@@ -1451,7 +1461,7 @@ module Closure = struct
 
   let static_closure env fi : int32 =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Closure);
+      I32 (Int32.logor Tagged.(int_of_tag Closure) Tagged.static_bit_mask);
       I32 (E.add_fun_ptr env fi);
       I32 0l
     ]
@@ -1480,7 +1490,7 @@ module BoxedWord64 = struct
     then BitTagged.tag_const i
     else
       E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits64);
+        I32 (Int32.logor Tagged.(int_of_tag Bits64) Tagged.static_bit_mask);
         I64 i
       ]
 
@@ -1598,7 +1608,7 @@ module BoxedSmallWord = struct
     then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
       E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits32);
+        I32 (Int32.logor Tagged.(int_of_tag Bits64) Tagged.static_bit_mask);
         I32 i
       ]
 
@@ -1839,7 +1849,7 @@ module Float = struct
 
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Bits64);
+      I32 (Int32.logor Tagged.(int_of_tag Bits64) Tagged.static_bit_mask);
       I64 (Wasm.F64.to_bits f)
     ]
 
@@ -2526,7 +2536,7 @@ module BigNumLibtommath : BigNumType = struct
 
     (* cf. mp_int in tommath.h *)
     let ptr = E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag BigInt);
+      I32 (Int32.logor Tagged.(int_of_tag BigInt) Tagged.static_bit_mask);
       I32 size; (* used *)
       I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
@@ -2655,7 +2665,7 @@ module Object = struct
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Object);
+      I32 (Int32.logor Tagged.(int_of_tag Object) Tagged.static_bit_mask);
       I32 (Int32.of_int (List.length fs));
       I32 hash_ptr;
       i32s ptrs;
@@ -2817,7 +2827,7 @@ module Blob = struct
 
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Blob);
+      I32 (Int32.logor Tagged.(int_of_tag Blob) Tagged.static_bit_mask);
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -3097,7 +3107,7 @@ module Arr = struct
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Array);
+      I32 (Int32.logor Tagged.(int_of_tag Array) Tagged.static_bit_mask);
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]
@@ -4329,7 +4339,7 @@ module Serialization = struct
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
         (* Sanity check *)
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        get_x ^^ Tagged.load_header_word ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
@@ -4338,7 +4348,7 @@ module Serialization = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         E.else_trap_with env "object_size/Mut: Unexpected tag " ^^
         (* Check if we have seen this before *)
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        get_x ^^ Tagged.load_header_word ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if_ [] begin
           (* Seen before *)
           (* One byte marker, one word offset *)
@@ -4474,7 +4484,7 @@ module Serialization = struct
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load ^^ set_tag ^^
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        get_x ^^ Tagged.load_header_word ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if_ []
         begin
           (* This is the real data *)
@@ -4500,7 +4510,8 @@ module Serialization = struct
           (* Second time we see this *)
           (* Calculate relative offset *)
           let (set_offset, get_offset) = new_local env "offset" in
-          get_tag ^^ get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+          get_x ^^ Heap.load_field Tagged.tag_field ^^
+          get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0l ^^

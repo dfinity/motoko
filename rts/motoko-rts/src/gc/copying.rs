@@ -101,8 +101,8 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
-    (*fwd).header.tag = TAG_FWD_PTR;
-    (*fwd).fwd = Value::from_ptr(obj_addr);
+    fwd.set_tag();
+    fwd.set_forwarding(obj_addr);
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_addr);

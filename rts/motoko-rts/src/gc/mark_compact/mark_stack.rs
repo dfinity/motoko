@@ -85,7 +85,7 @@ impl<P: PageAlloc> MarkStack<P> {
         self.hp -= WORD_SIZE as usize * 2;
 
         let p = *(self.hp as *const usize);
-        let tag = *(self.hp as *const usize).add(1) as u32;
+        let tag = *(self.hp as *const usize).add(1) as u8;
 
         Some((p, tag))
     }

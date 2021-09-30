@@ -96,7 +96,7 @@ impl<P: PageAlloc> Space<P> {
             // In debug mode fill the slop with a filler object, to be able to check page sanity
             if cfg!(debug_assertions) {
                 if slop == 1 {
-                    *(self.hp as *mut u32) = TAG_ONE_WORD_FILLER;
+                    *(self.hp as *mut u8) = TAG_ONE_WORD_FILLER;
                 } else {
                     let free_space = self.hp as *mut FreeSpace;
                     (*free_space).header.tag = TAG_FREE_SPACE;

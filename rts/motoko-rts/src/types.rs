@@ -235,6 +235,14 @@ impl Value {
         self.get().is_ptr()
     }
 
+    /// Is the value a pointer to dynamic heap?
+    pub fn is_ptr_to_dynamic_heap(&self) -> bool {
+        match self.get() {
+            PtrOrScalar::Ptr(ptr) => !unsafe { (ptr as *mut Obj).is_static() },
+            PtrOrScalar::Scalar(_) => false,
+        }
+    }
+
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
     /// the value is not a scalar.
     pub fn get_scalar(&self) -> u32 {
@@ -318,7 +326,7 @@ pub const fn unskew(value: usize) -> usize {
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
 // tags, because of heap corruptions and other bugs (in the code generator or RTS, or maybe because
 // of an unsafe API usage).
-pub type Tag = u32;
+pub type Tag = u8;
 
 // Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
 // locations in mark-compact GC. (Reminder: objects and fields are word aligned)
@@ -339,15 +347,62 @@ pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
 
+// A bitmap for GC metadata. Currently only holds one bit for large objects.
+pub struct GcMetadata(u8);
+
+const STATIC_BIT_MASK: u8 = 0b1;
+const LARGE_BIT_MASK: u8 = 0b10;
+
+impl GcMetadata {
+    /// Is the object static?
+    // We don't have a `set_static` method as static bit is only set by the compiler-allocated
+    // (i.e. static) objects
+    pub fn is_static(&self) -> bool {
+        self.check_bitset_sanity();
+        self.0 & STATIC_BIT_MASK != 0
+    }
+
+    /// Is the object large?
+    fn is_large(&self) -> bool {
+        self.check_bitset_sanity();
+        self.0 & LARGE_BIT_MASK != 0
+    }
+
+    /// Set the "is large" bit
+    fn set_large(&mut self) {
+        self.check_bitset_sanity();
+        self.0 |= LARGE_BIT_MASK
+    }
+
+    fn check_bitset_sanity(&self) {
+        debug_assert!(self.0 >> 2 == 0);
+    }
+}
+
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
+    pub gc_metadata: GcMetadata,
+    // Add padding to make it 1 word
+    padding: u16,
 }
 
 impl Obj {
+    pub unsafe fn as_word(self: *mut Self) -> u32 {
+        *(self as *const u32)
+    }
+
+    pub unsafe fn set_header_word(self: *mut Self, header: u32) {
+        *(self as *mut u32) = header;
+    }
+
     pub unsafe fn tag(self: *mut Self) -> Tag {
         (*self).tag
+    }
+
+    pub unsafe fn set_tag(self: *mut Self, tag: Tag) {
+        (*self).tag = tag
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
@@ -358,6 +413,21 @@ impl Obj {
     pub unsafe fn as_concat(self: *mut Self) -> *mut Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
         self as *mut Concat
+    }
+
+    /// Returns whether this is a large object
+    pub unsafe fn is_large(self: *mut Self) -> bool {
+        (*self).gc_metadata.is_large()
+    }
+
+    /// Set the "large" bit
+    pub unsafe fn set_large(self: *mut Self) {
+        (*self).gc_metadata.set_large()
+    }
+
+    /// Returns whether this is a static object
+    pub unsafe fn is_static(self: *mut Self) -> bool {
+        (*self).gc_metadata.is_static()
     }
 }
 
@@ -373,6 +443,10 @@ pub struct Array {
 }
 
 impl Array {
+    pub unsafe fn set_tag(self: *mut Self) {
+        (&mut (*self).header as *mut Obj).set_tag(TAG_ARRAY);
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
@@ -391,6 +465,10 @@ impl Array {
 
     pub unsafe fn len(self: *mut Self) -> u32 {
         (*self).len
+    }
+
+    pub unsafe fn set_len(self: *mut Self, len: u32) {
+        (*self).len = len;
     }
 }
 
@@ -448,12 +526,20 @@ pub struct Blob {
 }
 
 impl Blob {
+    pub unsafe fn set_tag(self: *mut Self) {
+        (&mut (*self).header as *mut Obj).set_tag(TAG_BLOB);
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
         self.add(1) as *mut u8 // skip closure header
     }
 
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         (*self).len
+    }
+
+    pub unsafe fn set_len(self: *mut Self, len: Bytes<u32>) {
+        (*self).len = len;
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> u8 {
@@ -476,11 +562,11 @@ impl Blob {
         if slop == Words(1) {
             let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
                 as *mut OneWordFiller;
-            (*filler).header.tag = TAG_ONE_WORD_FILLER;
+            filler.set_tag();
         } else if slop != Words(0) {
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
-            (*filler).header.tag = TAG_FREE_SPACE;
+            filler.set_tag();
             (*filler).words = slop - Words(1);
         }
 
@@ -495,6 +581,16 @@ pub struct FwdPtr {
     pub fwd: Value,
 }
 
+impl FwdPtr {
+    pub unsafe fn set_tag(self: *mut Self) {
+        (&mut (*self).header as *mut Obj).set_tag(TAG_FWD_PTR);
+    }
+
+    pub unsafe fn set_forwarding(self: *mut Self, addr: usize) {
+        (*self).fwd = Value::from_ptr(addr);
+    }
+}
+
 #[repr(C)] // See the note at the beginning of this module
 pub struct BigInt {
     pub header: Obj,
@@ -507,6 +603,10 @@ pub struct BigInt {
 }
 
 impl BigInt {
+    pub unsafe fn set_tag(self: *mut Self) {
+        (&mut (*self).header as *mut Obj).set_tag(TAG_BIGINT);
+    }
+
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
@@ -562,6 +662,10 @@ pub struct Concat {
 }
 
 impl Concat {
+    pub unsafe fn set_tag(self: *mut Self) {
+        ((&mut (*self).header) as *mut Obj).set_tag(TAG_CONCAT);
+    }
+
     pub unsafe fn text1(self: *mut Self) -> Value {
         (*self).text1
     }
@@ -603,6 +707,12 @@ pub struct OneWordFiller {
     pub header: Obj,
 }
 
+impl OneWordFiller {
+    unsafe fn set_tag(self: *mut Self) {
+        ((&mut (*self).header) as *mut Obj).set_tag(TAG_ONE_WORD_FILLER);
+    }
+}
+
 /// Marks arbitrary sized emtpy space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
@@ -611,6 +721,10 @@ pub struct FreeSpace {
 }
 
 impl FreeSpace {
+    unsafe fn set_tag(self: *mut Self) {
+        ((&mut (*self).header) as *mut Obj).set_tag(TAG_FREE_SPACE);
+    }
+
     /// Size of the free space (includes object header)
     pub unsafe fn size(self: *mut Self) -> Words<u32> {
         (*self).words + size_of::<Obj>()
