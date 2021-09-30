@@ -163,8 +163,8 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
     let cont_tbl_size = continuation_table.len() + 2;
     let cont_tbl_ptr = space.alloc_words(Words(cont_tbl_size as u32));
     let cont_tbl = cont_tbl_ptr.get_ptr() as *mut Array;
-    (*cont_tbl).header.tag = TAG_ARRAY;
-    (*cont_tbl).len = continuation_table.len() as u32;
+    cont_tbl.set_tag();
+    cont_tbl.set_len(continuation_table.len() as u32);
 
     for (i, obj_idx) in continuation_table.iter().enumerate() {
         let obj_ptr = object_ptrs.get(obj_idx).unwrap();
