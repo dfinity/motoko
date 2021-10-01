@@ -97,7 +97,6 @@ dependencies = [
 name = "motoko-rts-tests"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "fxhash",
  "libc",
  "motoko-rts",

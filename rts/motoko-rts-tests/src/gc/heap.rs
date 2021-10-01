@@ -1,12 +1,10 @@
-use super::utils::{ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE};
+use super::utils::ObjectIdx;
 
 use motoko_rts::page_alloc::PageAlloc;
 use motoko_rts::space::Space;
 use motoko_rts::types::*;
 
-use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
-use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
 

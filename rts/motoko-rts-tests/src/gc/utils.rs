@@ -1,5 +1,3 @@
-use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-
 /// A unique object index, used in heap descriptions.
 ///
 /// These are written as scalar values in object payloads, so they can be at most 31 bits. Larger

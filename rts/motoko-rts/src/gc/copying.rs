@@ -18,7 +18,6 @@ unsafe fn copying_gc() {
     let mut to_space = Space::new(crate::page_alloc::ic::IcPageAlloc {});
 
     copying_gc_internal(
-        &crate::page_alloc::ic::IcPageAlloc {},
         &mut to_space,
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
@@ -37,7 +36,6 @@ pub unsafe fn copying_gc_internal<
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
-    page_alloc: &P,
     to_space: &mut Space<P>,
     static_roots: Value,
     continuation_table_loc: *mut Value,
@@ -47,7 +45,7 @@ pub unsafe fn copying_gc_internal<
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
-    evac_static_roots(page_alloc, to_space, static_roots);
+    evac_static_roots(to_space, static_roots);
 
     if (*continuation_table_loc).is_ptr() {
         evac(to_space, continuation_table_loc as usize);
@@ -118,11 +116,7 @@ unsafe fn scav<P: PageAlloc>(to_space: &mut Space<P>, obj: usize) {
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
-unsafe fn evac_static_roots<P: PageAlloc>(
-    page_alloc: &P,
-    to_space: &mut Space<P>,
-    roots: *mut Array,
-) {
+unsafe fn evac_static_roots<P: PageAlloc>(to_space: &mut Space<P>, roots: *mut Array) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {

@@ -67,7 +67,7 @@ unsafe fn mark_compact<P: PageAlloc>(
 
     let mut stack = MarkStack::new(page_alloc.clone());
 
-    mark_static_roots(page_alloc, space, &mut stack, static_roots);
+    mark_static_roots(space, &mut stack, static_roots);
 
     if (*continuation_table_ptr_loc).is_ptr() {
         // TODO: No need to check if continuation table is already marked
@@ -91,7 +91,6 @@ unsafe fn mark_compact<P: PageAlloc>(
 }
 
 unsafe fn mark_static_roots<P: PageAlloc>(
-    page_alloc: &P,
     space: &Space<P>,
     mark_stack: &mut MarkStack<P>,
     static_roots: Value,

@@ -60,7 +60,6 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 // Provided by generated code
 #[cfg(feature = "ic")]
 extern "C" {
-    pub(crate) fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> types::Value;
 }
 

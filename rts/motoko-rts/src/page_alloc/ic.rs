@@ -52,10 +52,6 @@ impl SizeClass {
     fn remove_first(&mut self) -> Option<u16> {
         self.pages.pop_first()
     }
-
-    fn empty(&self) -> bool {
-        self.pages.is_empty()
-    }
 }
 
 //

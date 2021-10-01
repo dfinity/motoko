@@ -92,7 +92,6 @@ impl PageAlloc for TestPageAlloc {
     unsafe fn get_address_page_start(&self, addr: usize) -> usize {
         self.inner.borrow().get_address_page_start(addr)
     }
-
 }
 
 impl TestPageAllocInner {
