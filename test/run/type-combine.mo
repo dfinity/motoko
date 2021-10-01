@@ -406,3 +406,56 @@ let _ : [var None -> ()] = do { let x =
     func(_ : {T : Nat}) {},
   ]; [var x[0]]
 };
+
+
+// Intersection
+do {
+  let _ : [var Int and Nat] = [var] : [var Nat];
+  let _ : [var {} and {a : Nat}] = [var] : [var {a : Nat}];
+  let _ : [var {a : Nat} and {a : Int}] = [var] : [var {a : Nat}];
+  let _ : [var {a : Nat} and {b : Nat}] = [var] : [var {a : Nat; b : Nat}];
+  let _ : [var {#} and {#a : Int}] = [var] : [var {#}];
+  let _ : [var {#a : Nat} and {#a : Int}] = [var] : [var {#a : Nat}];
+  let _ : [var {#a : Nat} and {#b : Nat}] = [var] : [var {#}];
+  let _ : [var [Nat] and [Int]] = [var] : [var [Nat]];
+  let _ : [var [var Nat] and [var Int]] = [var] : [var None];
+  let _ : [var [var Nat] and [Nat]] = [var] : [var None];
+  let _ : [var ?Nat and ?Int] = [var] : [var ?Nat];
+  let _ : [var () and {}] = [var] : [var None];
+  let _ : [var (Nat, Int) and (Int, Nat)] = [var] : [var (Nat, Nat)];
+  let _ : <A>[var A and A] -> () = func<A>(x : [var A]) {};
+  let _ : <A, B>[var A and B] -> () = func<A, B>(x : [var None]) {};
+  let _ : <A, B<:A>[var A and B] -> () = func<A, B<:A>(x : [var B]) {};
+  let _ : <A, B<:A, C<:B>[var A and C] -> () = func<A, B<:A, C<:B>(x : [var C]) {};
+  let _ : <A<:Nat, B<:Int>[var A and B] -> () = func<A<:Nat, B<:Int>(x : [var None]) {};
+  let _ : [var <A, B<:A>(Nat, Int, A, B) -> (Nat, Int, A, B) and <A, B<:A>(Int, Nat, B, A) -> (Int, Nat, B, A)] = [var] : [var <A, B<:A>(Int, Int, A, A) -> (Nat, Nat, B, B)];
+  let _ : [var <A<:Nat>() -> () and <A<:Int>() -> ()] = [var] : [var None];
+  let _ : [var Nat and Any] = [var] : [var Nat];
+  let _ : [var Nat and None] = [var] : [var None];
+};
+
+// Union
+do {
+  let _ : [var Int or Nat] = [var] : [var Int];
+  let _ : [var {} or {a : Nat}] = [var] : [var {}];
+  let _ : [var {a : Nat} or {a : Int}] = [var] : [var {a : Int}];
+  let _ : [var {a : Nat} or {b : Nat}] = [var] : [var {}];
+  let _ : [var {#} or {#a : Nat}] = [var] : [var {#a : Nat}];
+  let _ : [var {#a : Nat} or {#a : Int}] = [var] : [var {#a : Int}];
+  let _ : [var {#a : Nat} or {#b : Nat}] = [var] : [var {#a : Nat; #b : Nat}];
+  let _ : [var [Nat] or [Int]] = [var] : [var [Int]];
+  let _ : [var [var Nat] or [var Int]] = [var] : [var Any];
+  let _ : [var [var Nat] or [Nat]] = [var] : [var Any];
+  let _ : [var ?Nat and ?Int] = [var] : [var ?Nat];
+  let _ : [var () or {}] = [var] : [var Any];
+  let _ : [var (Nat, Int) or (Int, Nat)] = [var] : [var (Int, Int)];
+  let _ : <A>[var A or A] -> () = func<A>(x : [var A]) {};
+  let _ : <A, B>[var A or B] -> () = func<A, B>(x : [var Any]) {};
+  let _ : <A, B<:A>[var A or B] -> () = func<A, B<:A>(x : [var A]) {};
+  let _ : <A, B<:A, C<:B>[var A or C] -> () = func<A, B<:A, C<:B>(x : [var A]) {};
+  let _ : <A<:Nat, B<:Int>[var A or B] -> () = func<A<:Nat, B<:Int>(x : [var Int]) {};
+  let _ : [var <A, B<:A>(Nat, Int, A, B) -> (Nat, Int, A, B) or <A, B<:A>(Int, Nat, B, A) -> (Int, Nat, B, A)] = [var] : [var <A, B<:A>(Nat, Nat, B, B) -> (Int, Int, A, A)];
+  let _ : [var <A<:Nat>() -> () or <A<:Int>() -> ()] = [var] : [var Any];
+  let _ : [var Nat or Any] = [var] : [var Any];
+  let _ : [var Nat or None] = [var] : [var Nat];
+};
