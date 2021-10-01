@@ -5,20 +5,20 @@
   ```motoko
   T and U
   ```
-  produces the greatest lower bound of `T` and `U`, that is,
+  produces the greatest lower bound of types `T` and `U`, that is,
   the greatest type that is a subtype of both. Dually,
 
   ```motoko
   T or U
   ```
-  produces the least upper bound of `T` and `U`, that is,
+  produces the least upper bound of types `T` and `U`, that is,
   the smallest type that is a supertype of both.
 
   One use case of the former is "extending" an existing object type:
 
   ``` motoko
   type Point2D = {x : Float; y : Float};
-  type Point3D = Point2d and {z : Float};
+  type Point3D = Point2D and {z : Float};
   ```
   Similarly, the latter can be used to "extend" a variant type:
   ```motoko
