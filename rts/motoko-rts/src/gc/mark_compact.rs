@@ -206,7 +206,8 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>) {
 
             // Get the object header first, to be able to check whether it will fit the current page or we
             // need to move on to the next page
-            let obj_tag = get_header(p);
+            // TODO: Use two bits for object, use bitmap to get object size, remove get_tag
+            let obj_tag = get_tag(p);
             let obj_size = object_size_(p as usize, obj_tag);
 
             if to_addr + obj_size.to_bytes().as_usize() > to_page.end() {
@@ -264,7 +265,7 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     // bit to distinguish a header (tag) from a field address.
     while header & 0b1 == 0 {
         let tmp = (header as *mut Obj).as_word();
-        (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
+        *(header as *mut Value) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
 
@@ -272,12 +273,17 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
 }
 
 /// Follow a chain, return object header. Does not unthread.
-unsafe fn get_header(obj: *mut Obj) -> Tag {
-    let mut header = (*obj).tag;
-    while header > TAG_NULL {
-        header = (*(header as *mut Obj)).tag;
+unsafe fn get_tag(obj: *mut Obj) -> Tag {
+    let mut header = obj.as_word();
+    while header & 0b1 == 0 {
+        header = (header as *mut Obj).as_word();
     }
     // At the end of the chain is the original header for the object
-    debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
-    header
+    let header = Obj::from_header_word(header);
+    debug_assert!(
+        header.tag >= TAG_OBJECT && header.tag <= TAG_NULL,
+        "{}",
+        header.tag
+    );
+    header.tag
 }

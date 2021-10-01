@@ -402,6 +402,14 @@ impl Obj {
         *(self as *mut u32) = header;
     }
 
+    pub unsafe fn from_header_word(header: u32) -> Obj {
+        Obj {
+            tag: header as u8,
+            gc_metadata: GcMetadata((header >> 8) as u8),
+            padding: (header >> 16) as u16,
+        }
+    }
+
     pub unsafe fn tag(self: *mut Self) -> Tag {
         (*self).gc_metadata.check_bitset_sanity();
         (*self).tag
