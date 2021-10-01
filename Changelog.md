@@ -17,8 +17,8 @@
   One use case of the former is "extending" an existing object type:
 
   ``` motoko
-  type Point2D = {x : Float; y : Float};
-  type Point3D = Point2D and {z : Float};
+  type Person = {name : Text; address : Text};
+  type Manager = Person and {underlings : [Person]};
   ```
   Similarly, the latter can be used to "extend" a variant type:
   ```motoko
