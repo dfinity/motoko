@@ -1262,6 +1262,10 @@ and pp_typ' vs ppf t =
        fprintf ppf "@[<2>async<%a>@ %a@]"
          (pp_typ' vs) t1
          (pp_typ_nullary vs) t2)
+  | Obj (Memory, fs) ->
+    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
+      (string_of_obj_sort Actor)
+      (pp_print_list ~pp_sep:semi (pp_stab_field vs)) fs
   | Obj (s, fs) ->
     fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
       (string_of_obj_sort s)
@@ -1279,6 +1283,13 @@ and pp_field vs ppf {lab; typ; depr} =
     fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
     fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
+
+and pp_stab_field vs ppf {lab; typ; depr} =
+  match typ with
+  | Mut t' ->
+    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t' (* UNUSED - check we actually emit mut fields (since we don't need to) *)
+  | _ ->
+    fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
 and pp_tag vs ppf {lab; typ; depr} =
   match typ with
@@ -1325,6 +1336,21 @@ and pp_kind ppf k =
   let op, sbs, st = pps_of_kind k in
   fprintf ppf "%s %a%a" op sbs () st ()
 
+and pp_sig ppf t =
+  let cs = cons t in
+  let ds =
+    let cs' = ConSet.filter (fun c -> match Con.kind c with Def _ -> true | Abs _ -> false) cs in
+    ConSet.elements cs' in
+  let fs = List.map (fun c ->
+    { lab = string_of_con' [] c;
+      typ = Typ c;
+      depr = None }) ds
+  in
+  fprintf ppf "@[<v 0>@;<0 0>%a%a@;<0 0>%a;@]"
+   (pp_print_list ~pp_sep:semi (pp_field [])) fs
+   (if fs = [] then fun ppf () -> () else semi) ()
+   (pp_typ' []) t
+
 let pp_typ = pp_typ' []
 
 let rec pp_typ_expand ppf t =
@@ -1360,6 +1386,9 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_typ_expand ppf) typ
 
+let string_of_sig typ : string =
+  Format.asprintf "@[<v 0> %a@]" (fun ppf -> pp_sig ppf) typ
+
 let _ = str := string_of_typ
 
 
@@ -1378,6 +1407,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
+  val string_of_sig : typ -> string
 end
 
 

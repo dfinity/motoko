@@ -896,7 +896,7 @@ parse_module_header :
   | start import_list EOF {}
 
 typ_dec :
-  TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
 
 stab_field :
