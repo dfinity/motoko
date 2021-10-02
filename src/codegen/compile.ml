@@ -1168,24 +1168,30 @@ module Tagged = struct
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
 
-  (* Let's leave out tag 0 to trap earlier on invalid memory *)
+  (* Tags needs to have the lowest bit set, to allow distinguishing object
+     headers from heap locations (object or field addresses).
+
+     (Reminder: objects and fields are word-aligned so will have the lowest two
+     bits unset) *)
   let int_of_tag = function
     | Object -> 1l
-    | ObjInd -> 2l
-    | Array -> 3l
-    | Bits64 -> 5l
-    | MutBox -> 6l
-    | Closure -> 7l
-    | Some -> 8l
-    | Variant -> 9l
-    | Blob -> 10l
-    | Indirection -> 11l
-    | Bits32 -> 12l
-    | BigInt -> 13l
-    | Concat -> 14l
-    | Null -> 15l
-    | OneWordFiller -> 16l
-    | FreeSpace -> 17l
+    | ObjInd -> 3l
+    | Array -> 5l
+    | Bits64 -> 7l
+    | MutBox -> 9l
+    | Closure -> 11l
+    | Some -> 13l
+    | Variant -> 15l
+    | Blob -> 17l
+    | Indirection -> 19l
+    | Bits32 -> 21l
+    | BigInt -> 23l
+    | Concat -> 25l
+    | Null -> 27l
+    | OneWordFiller -> 29l
+    | FreeSpace -> 31l
+    (* Next two tags won't be seen by the GC, so no need to set the lowest bit
+       for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
@@ -1387,8 +1393,8 @@ module Variant = struct
 
   *)
 
-  let tag_field = Tagged.header_size
-  let payload_field = Int32.add Tagged.header_size 1l
+  let variant_tag_field = Tagged.header_size
+  let payload_field = Int32.add variant_tag_field 1l
 
   let hash_variant_label env : Mo_types.Type.lab -> int32 =
     E.hash env
@@ -1396,12 +1402,12 @@ module Variant = struct
   let inject env l e =
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
-  let get_tag = Heap.load_field tag_field
+  let get_variant_tag = Heap.load_field variant_tag_field
   let project = Heap.load_field payload_field
 
-  (* Test if the top of the stacks points to a variant with this label *)
+  (* Test if the top of the stack points to a variant with this label *)
   let test_is env l =
-    get_tag ^^
+    get_variant_tag ^^
     compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
@@ -3480,7 +3486,7 @@ module IC = struct
   let trap_with env s =
     Blob.lit_ptr_len env s ^^ trap_ptr_len env
 
-  let _trap_text env  =
+  let trap_text env  =
     Text.to_blob env ^^ Blob.as_ptr_len env ^^ trap_ptr_len env
 
   let default_exports env =
@@ -3649,6 +3655,12 @@ module IC = struct
     Tuple.from_stack env 2
 
   let fail_assert env at =
+    let open Source in
+    let at = {
+        left = {at.left with file = Filename.basename at.left.file};
+        right = {at.right with file = Filename.basename at.right.file}
+      }
+    in
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
 
   let async_method_name = "__motoko_async_helper"
@@ -4494,7 +4506,7 @@ module Serialization = struct
           get_offset ^^ compile_unboxed_const 0l ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
-          (* Write the office to the output buffer *)
+          (* Write the offset to the output buffer *)
           write_word32 get_offset
         end
       in
@@ -5445,7 +5457,7 @@ module Stabilization = struct
     StableMem.get_mem_size env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     G.if_ []
-      begin( (* ensure [0,..,3,...len+4) *)
+      begin (* ensure [0,..,3,...len+4) *)
         compile_unboxed_const 0l ^^
         get_len ^^
         compile_add_const 4l ^^  (* reserve one word for size *)
@@ -5460,7 +5472,7 @@ module Stabilization = struct
         compile_unboxed_const 4l ^^
         get_dst ^^
         get_len ^^
-        E.call_import env "ic0" "stable_write")
+        E.call_import env "ic0" "stable_write"
       end
       begin
         let (set_N, get_N) = new_local env "N" in
@@ -7837,6 +7849,11 @@ and compile_exp (env : E.t) ae exp =
       SR.unit,
       compile_exp_vanilla env ae e ^^
       IC.print_text env
+
+    | OtherPrim "trap", [e] ->
+      SR.unit,
+      compile_exp_vanilla env ae e ^^
+      IC.trap_text env
 
     | OtherPrim ("blobToArray"|"blobToArrayMut"), e ->
       const_sr SR.Vanilla (Arr.ofBlob env)

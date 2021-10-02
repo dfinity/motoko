@@ -37,7 +37,7 @@ fn main() {
 // Called by the RTS to panic
 #[no_mangle]
 extern "C" fn rts_trap(ptr: *const u8, len: Bytes<u32>) -> ! {
-    let msg = unsafe { std::slice::from_raw_parts(ptr, len.0 as usize) };
+    let msg = unsafe { std::slice::from_raw_parts(ptr, len.as_usize()) };
     match core::str::from_utf8(msg) {
         Err(err) => panic!(
             "rts_trap_with called with non-UTF8 string (error={:?}, string={:?})",

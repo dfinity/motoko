@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "c49a2f443d177b6486a1797ca646d8546ac7288c",
-        "sha256": "0pfnz3x4ls8asnq4x7jpp0ijiss24j2sg77bn4hg6gvbfmczp4x6",
+        "rev": "c30a8c52894e7496dc52ce7e0f02db237096a7ca",
+        "sha256": "1rp21z2c3ff0whzw04csp56kzj0dp9clqcyw4vm3g01sy9hkzcjw",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/c49a2f443d177b6486a1797ca646d8546ac7288c.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/c30a8c52894e7496dc52ce7e0f02db237096a7ca.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "e6730a3ff6d0852956fcde8b39334e546ecd6c29",
-        "sha256": "0zkikh6dg5vl270hsx0ilxkwcin47vf1yl6f8r48br4lrmk11n4k",
+        "rev": "45bd1abc8e81376d5e1c1dd6322e170e47555c57",
+        "sha256": "18i51cglq8131lyn6w2rjbhx32fbl7y62gga4cs10fdw2fmiw0d8",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/e6730a3ff6d0852956fcde8b39334e546ecd6c29.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/45bd1abc8e81376d5e1c1dd6322e170e47555c57.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -103,10 +103,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "e0ca65c81a2d7a4d82a189f1e23a48d59ad42070",
-        "sha256": "1pq9nh1d8nn3xvbdny8fafzw87mj7gsmp6pxkdl65w2g18rmcmzx",
+        "rev": "65a61b147f307d24bfd0a5cd56ce7d7b7cc61d2e",
+        "sha256": "17mirpsx5wyw262fpsd6n6m47jcgw8k2bwcp1iwdnrlzy4dhcgqh",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/e0ca65c81a2d7a4d82a189f1e23a48d59ad42070.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/65a61b147f307d24bfd0a5cd56ce7d7b7cc61d2e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {

@@ -1,12 +1,20 @@
 # Motoko compiler changelog
 
+== 0.6.10 (2021-09-23)
+
 * moc
 
-* Add runtime support for low-level, direct access to 32-bit IC stable memory (#2626)
+  * documentation changes
 
 * motoko-base
 
-  * Add StableMemory library, exposing 32-bit IC stable memory (#280)
+  * documentation changes
+
+== 0.6.9 (2021-09-15)
+
+* motoko-base
+
+  * add Debug.trap : Text -> None (#288)
 
 == 0.6.8 (2021-09-06)
 

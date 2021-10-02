@@ -50,6 +50,10 @@ func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
 func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
 func debugPrintChar(x : Char) { debugPrint (charToText x) };
 
+// Trapping
+
+func trap(x : Text) : None { (prim "trap" : Text -> None) x };
+
 // RTS stats
 
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };

@@ -2,11 +2,11 @@
 :proglang: Motoko
 :company-id: DFINITY
 
-Usage of the Internet Computer is measured, and paid for, in _cycles_.
-The {company-id} platform maintains a per canister balance of cycles
-and cycles can be transferred between canisters.
+Usage of the {IC} is measured, and paid for, in _cycles_.
+The {IC} maintains a balance of cycles per canister smart contract.
+In addition, cycles can be transferred between canisters.
 
-In {proglang}, each actor has a balance of cycles.
+In {proglang} programs targeting the {IC}, each actor represents an {IC} canister, and has an associated balance of cycles.
 The ownership of cycles can be transferred between actors.
 Cycles are selectively sent and received through messages, that is, shared function calls.
 A caller can choose to transfer cycles with a call, and a callee can choose to
@@ -26,7 +26,7 @@ provided by the link:../base-libraries/ExperimentalCycles{outfilesuffix}[Experim
 library in package `+base+`.
 
 NOTE: This library is subject to change and likely to be replaced by
-more high-level support for cycles in later versions of Motoko.
+more high-level support for cycles in later versions of {proglang}.
 
 == The `+ExperimentalCycles+` Library
 
@@ -118,7 +118,7 @@ will not exceed `+capacity+`, breaking the piggy bank.  Because the
 deposit function only accepts a portion of the available
 amount, a caller whose deposit exceeds the limit will receive an
 implicit refund of any unaccepted cycles. Refunds are automatic and
-ensured by the platform.
+ensured by the {IC} infrastructure.
 
 Since transfer of cycles is one-directional (from caller to callee),
 retrieving cycles requires the use of an explicit callback (the

@@ -39,7 +39,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
     ic::LAST_HP = ic::HP;
@@ -200,7 +200,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
             memcpy_words(p_new as usize, p as usize, p_size_words);
         }
 
-        free += p_size_words.to_bytes().0;
+        free += p_size_words.to_bytes().as_u32();
 
         // Thread forward pointers of the object
         thread_fwd_pointers(p_new as *mut Obj, heap_base);
@@ -231,16 +231,18 @@ unsafe fn thread(field: *mut Value) {
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
 unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
-    // NOTE: For this to work heap addresses need to be greater than the largest value for object
-    // headers. Currently this holds. TODO: Document this better.
     let mut header = (*obj).tag;
-    while header > TAG_NULL {
-        // TODO: is `header > TAG_NULL` the best way to distinguish a tag from a pointer?
+
+    // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
+    // bit to distinguish a header (tag) from a field address.
+    while header & 0b1 == 0 {
         let tmp = (*(header as *mut Obj)).tag;
         (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
+
     // At the end of the chain is the original header for the object
     debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+
     (*obj).tag = header;
 }
