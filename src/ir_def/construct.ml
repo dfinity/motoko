@@ -219,6 +219,12 @@ let blockE decs exp =
       note = Note.{ def with typ; eff }
     }
 
+let natE n =
+  { it = LitE (NatLit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat }
+  }
+
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;
@@ -618,8 +624,8 @@ let forE pat exp1 exp2 =
     let size = fresh_var "size" T.nat in
     let indx = fresh_var "indx" T.nat in
     letE arrv arr (
-        letE indx (LitE (NatLit 0)) (
-        letE size (callE (varE "@immut_array_size") [element_ty] arrv   [] [T.nat]) (
+        letE indx (natE Numerics.Int.zero) (
+        letE size (callE (varE ("@immut_array_size", T.Func (T.Local, T.Returns, [], T.[Array nat], [T.nat]))) [T.nat] (varE arrv)) (
             assert false
           ))
       )
