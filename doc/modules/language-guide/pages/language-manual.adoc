@@ -915,7 +915,7 @@ The intersection is _syntactic_, in that it does not consider possible instantia
 [[or-type]]
 === Union type
 
-The type expression `<typ1> or <typ2>` denotes the syntactic _union_ between its two type operands, that is, the smallest type that is a supertype of both. If both types are incompatible, the intersection is `Any`.
+The type expression `<typ1> or <typ2>` denotes the syntactic _union_ between its two type operands, that is, the smallest type that is a supertype of both. If both types are incompatible, the union is `Any`.
 
 The union is _syntactic_, in that it does not consider possible instantiations of type variables. The union of two type variables is the union of their bounds, unless the variables are equal, or one is declared to be a (direct or indirect) subtype of the other.
 

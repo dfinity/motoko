@@ -179,7 +179,7 @@ and typ t = match t.it with
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
-  | OrT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
+  | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
   | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
 
