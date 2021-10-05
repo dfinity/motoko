@@ -1,5 +1,5 @@
 use crate::constants::WORD_SIZE;
-use crate::page_alloc::{Page, PageAlloc};
+use crate::page_alloc::{LargePageHeader, Page, PageAlloc, LARGE_OBJECT_THRESHOLD, PAGE_SIZE};
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -24,6 +24,8 @@ pub struct Space<P: PageAlloc> {
     /// an allocation request is too much for the current space, rest of the current space will be
     /// accounted as allocated. (TODO: not sure about this part)
     total_alloc: usize,
+
+    large_object_pages: *mut LargePageHeader,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -46,6 +48,7 @@ impl<P: PageAlloc> Space<P> {
             current_page: 0,
             hp,
             total_alloc: 0,
+            large_object_pages: core::ptr::null_mut(),
         }
     }
 
@@ -82,7 +85,29 @@ impl<P: PageAlloc> Space<P> {
     }
 
     pub unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes().as_usize();
+        let n_bytes = n.to_bytes();
+        let bytes = n_bytes.as_usize();
+
+        if n_bytes >= LARGE_OBJECT_THRESHOLD {
+            // Divide, round up
+            let n_pages = (n_bytes + PAGE_SIZE - Bytes(1)).as_u32() / PAGE_SIZE.as_u32();
+            let page = self.page_alloc.alloc_pages(n_pages as u16);
+
+            let page_header = page.start() as *mut LargePageHeader;
+            (*page_header).next = self.large_object_pages;
+            (*page_header).prev = core::ptr::null_mut();
+            if !self.large_object_pages.is_null() {
+                (*self.large_object_pages).prev = page_header;
+            }
+            self.large_object_pages = page_header;
+
+            let page_start = page_header.add(1) as usize;
+
+            // Set "is large" bit
+            (page_start as *mut Obj).set_large();
+
+            return Value::from_ptr(page_start);
+        }
 
         let current_page_end = self.current_page().end();
 
@@ -112,16 +137,10 @@ impl<P: PageAlloc> Space<P> {
             self.current_page += 1;
         }
 
-        if self.hp + bytes > self.current_page().end() {
-            todo!(
-                "Large object allocation not implemented yet (requested size={} bytes, self.hp={:#x}, current page end={:#x})",
-                n.to_bytes().as_u32(),
-                self.hp,
-                self.current_page().end(),
-            );
-        }
+        debug_assert!(self.hp + bytes <= self.current_page().end());
 
         let alloc = self.hp;
+        (alloc as *mut Obj).clear();
 
         self.hp += bytes;
 

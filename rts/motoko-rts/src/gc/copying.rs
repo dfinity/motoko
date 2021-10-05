@@ -78,6 +78,10 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
+    if obj.is_large() {
+        return evac_large(obj);
+    }
+
     let tag = obj.tag();
 
     // Update the field if the object is already evacauted
@@ -104,6 +108,10 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_addr);
+}
+
+unsafe fn evac_large(_obj: *mut Obj) {
+    todo!("evac_large");
 }
 
 unsafe fn scav<P: PageAlloc>(to_space: &mut Space<P>, obj: usize) {

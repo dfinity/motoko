@@ -1,9 +1,15 @@
 use crate::bitmap::Bitmap;
+use crate::constants::WASM_PAGE_SIZE;
+use crate::types::Bytes;
 
 #[cfg(feature = "ic")]
 pub mod ic;
 
-pub const PAGE_SIZE: crate::types::Bytes<u32> = crate::constants::WASM_PAGE_SIZE;
+pub const PAGE_SIZE: Bytes<u32> = WASM_PAGE_SIZE;
+
+// Cannot use Div and Mul implementations of Bytes in const context, so using WASM_PAGE_SIZE.
+// LARGE_OBJECT_THRESHOLD = (PAGE_SIZE / 3) * 4
+pub const LARGE_OBJECT_THRESHOLD: Bytes<u32> = Bytes((WASM_PAGE_SIZE.0 / 4) * 3);
 
 /// Trait for page allocators. A page is a unit of allocation from the underlying systme (Wasm, OS,
 /// some kind of mock or simulation in tests etc.).
@@ -67,4 +73,9 @@ impl PageHeader {
     pub unsafe fn take_bitmap(self: *mut Self) -> Option<Bitmap> {
         (*self).bitmap.take()
     }
+}
+
+pub struct LargePageHeader {
+    pub next: *mut LargePageHeader,
+    pub prev: *mut LargePageHeader,
 }

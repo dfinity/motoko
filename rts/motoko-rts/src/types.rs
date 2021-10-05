@@ -394,6 +394,12 @@ pub struct Obj {
 }
 
 impl Obj {
+    pub unsafe fn clear(self: *mut Self) {
+        (*self).tag = 0;
+        (*self).gc_metadata = GcMetadata(0);
+        (*self).padding = 0;
+    }
+
     pub unsafe fn as_word(self: *mut Self) -> u32 {
         *(self as *const u32)
     }
