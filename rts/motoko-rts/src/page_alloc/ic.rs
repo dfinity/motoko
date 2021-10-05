@@ -40,8 +40,8 @@ impl SizeClass {
     }
 
     fn insert(&mut self, wasm_page_num: u16) {
-        let present = self.pages.insert(wasm_page_num);
-        debug_assert!(!present);
+        let not_present = self.pages.insert(wasm_page_num);
+        debug_assert!(not_present);
     }
 
     fn remove(&mut self, wasm_page_num: u16) {
