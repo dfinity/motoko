@@ -198,7 +198,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, ({it = S.CallE ({it=S.DotE (arr, proj); _}, _, _); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj e1 (exp e2)).it
+  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
@@ -240,7 +240,9 @@ and lexp' = function
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
-and sequentialForE p arr proj e1 e2 = forE p (exp { e1 with it = S.DotE (arr, { proj with it = "size" }) }) e2
+and sequentialForE p arr proj c0 c1 c2 e1 e2 =
+  forE p
+    (exp { e1 with note = {e1.note with note_typ = T.nat}; it = S.CallE ({c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat])}; it = S.DotE (arr, { proj with it = "size" })}, c1, c2) }) e2
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
