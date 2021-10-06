@@ -36,6 +36,7 @@ let
     wasmtime
     rust-bindgen
     rustfmt
+    cacert
   ];
 
   llvmEnv = ''
@@ -176,23 +177,10 @@ rec {
         export XARGO_HOME=$PWD/xargo-home
         export CARGO_HOME=$PWD/cargo-home
 
-        # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
-        mkdir -p $CARGO_HOME
-        echo "Using vendored sources from ${rustDeps}"
-        unpackFile ${rustDeps}
-        cat > $CARGO_HOME/config <<__END__
-          [source."crates-io"]
-          "replace-with" = "vendored-sources"
-
-          [source."vendored-sources"]
-          "directory" = "$(stripHash ${rustDeps})"
-        __END__
-
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
         export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-
       '';
 
       doCheck = true;
