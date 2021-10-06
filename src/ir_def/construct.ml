@@ -606,6 +606,11 @@ let loopWhileE exp1 exp2 =
         )
     )
 
+
+let countingE pat expSize expIndexing expWorker = assert false
+
+
+
 let forE pat exp1 exp2 =
   match exp1.it with
   | PrimE (CallPrim (*T.opt element_ty*)_, [{it=PrimE (CallPrim _,[{it=VarE "@immut_array_vals";_};arr]);_}; {it=PrimE _;_}]) ->
@@ -630,7 +635,7 @@ let forE pat exp1 exp2 =
           ))
       )
   | _ -> 
-  (* for p in e1 e2
+  (* for p in e1 e2s
      ~~>
      let nxt = e1.next ;
      label l loop {
