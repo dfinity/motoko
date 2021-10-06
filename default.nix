@@ -176,6 +176,7 @@ rec {
       preBuild = ''
         export XARGO_HOME=$PWD/xargo-home
         export CARGO_HOME=$PWD/cargo-home
+        export CARGO_HTTP_MULTIPLEXING=false
 
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
