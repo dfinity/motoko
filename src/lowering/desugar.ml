@@ -436,8 +436,8 @@ and array_dotE array_ty proj e =
     let f = var name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE (varE f) [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
-    | true,  "size"  -> call "@mut_array_size"    [] [T.nat]
-    | false, "size"  -> call "@immut_array_size"  [] [T.nat]
+    | true,  "size" -> call "@mut_array_size"   [] [T.nat]
+    | false, "size" -> call "@immut_array_size" [] [T.nat]
     | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
     | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
     | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []
