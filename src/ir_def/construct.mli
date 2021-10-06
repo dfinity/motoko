@@ -85,7 +85,7 @@ val immuteE: exp -> exp
 val assignE : var -> exp -> exp
 val labelE : id -> typ -> exp -> exp
 val loopE : exp -> exp
-val countingE : pat -> exp -> exp -> exp -> exp
+val countingE : pat -> exp -> exp -> (var -> exp) -> exp -> exp
 val forE : pat -> exp -> exp -> exp
 val loopWhileE : exp -> exp -> exp
 val whileE : exp -> exp -> exp

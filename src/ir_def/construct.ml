@@ -607,9 +607,13 @@ let loopWhileE exp1 exp2 =
     )
 
 
-let countingE binding arr expSize (*expIndexing*) expWorker =
+let countingE binding arr expSize expIndexing expWorker =
   let indx = fresh_var "indx" T.(Mut nat) in
-  blockE [varD indx (natE Numerics.Int.zero); letP binding expSize] (whileE (trueE ()) expWorker)
+  let size = fresh_var "size" T.nat in
+  blockE [varD indx (natE Numerics.Int.zero)
+        ; letD size expSize
+        ; letP binding (expIndexing indx)]
+    (whileE (trueE ()) expWorker)
 
 
 let forE pat exp1 exp2 =
