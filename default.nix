@@ -37,6 +37,7 @@ let
     rust-bindgen
     rustfmt
     cacert
+    git
   ];
 
   llvmEnv = ''
