@@ -607,8 +607,8 @@ let loopWhileE exp1 exp2 =
     )
 
 
-let countingE pat arr expSize (*expIndexing*) expWorker = assert false
-
+let countingE binding arr expSize (*expIndexing*) expWorker =
+  blockE [letP binding expSize] expWorker
 
 
 let forE pat exp1 exp2 =
