@@ -224,6 +224,9 @@ val default_scope_var : var
 val scope_bound : typ
 val scope_bind : bind
 
+(* Signatures *)
+
+val match_sig : field list -> field list -> bool
 
 (* Pretty printing *)
 

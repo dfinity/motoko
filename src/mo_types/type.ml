@@ -1063,6 +1063,26 @@ let default_scope_var = scope_var ""
 let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
+
+(* Signatures *)
+
+let rec match_sig tfs1 tfs2 =
+  (* Assume that tfs1 and tfs2 are sorted. *)
+  match tfs1, tfs2 with
+  | [], _ ->
+    true (* no or additional fields ok *)
+  | _, [] ->
+    false (* true ? if we allow fields to dropped *)
+  | tf1::tfs1', tf2::tfs2' ->
+    (match compare_field tf1 tf2 with
+    | 0 ->
+      sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+      match_sig tfs1' tfs2'
+    | -1 ->
+      false (* match_sig tfs1' tfs2? if we allow fields to be dropped *)
+    | _ -> true (* new field ok *)
+    )
+
 (* Pretty printing *)
 
 open Printf
