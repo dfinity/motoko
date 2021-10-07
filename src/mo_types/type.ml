@@ -1342,12 +1342,14 @@ and pp_sig ppf sig_ =
       | Def ([], Non) when Con.name c = "None" -> false                                                 | Def _ -> true
       | Abs _ -> false) cs in
     ConSet.elements cs' in
-  let fs = List.map (fun c ->
-    { lab = string_of_con' [] c;
-      typ = Typ c;
-      depr = None }) ds
+  let fs =
+    List.sort compare_field
+      (List.map (fun c ->
+        { lab = string_of_con' [] c;
+          typ = Typ c;
+          depr = None }) ds)
   in
-  let pp_fields ppf sig_ =
+  let pp_stab_fields ppf sig_ =
     fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
       (string_of_obj_sort Actor)
       (pp_print_list ~pp_sep:semi (pp_stab_field [])) sig_
@@ -1355,7 +1357,7 @@ and pp_sig ppf sig_ =
   fprintf ppf "@[<v 0>@;<0 0>%a%a@;<0 0>%a;@]"
    (pp_print_list ~pp_sep:semi (pp_field [])) fs
    (if fs = [] then fun ppf () -> () else semi) ()
-   pp_fields sig_
+   pp_stab_fields sig_
 
 
 let pp_typ = pp_typ' []
