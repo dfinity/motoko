@@ -10,6 +10,7 @@ actor {
   stable let ns = null : Nats ;
   stable let ln : List<Nat> = null : List<Nat>;
   stable let lt = null : List<Text>;
-
+  stable let lnon : List<None> = null : List<None>;
+  stable let lany : List<Any> = null : List<Any>;
 
 }

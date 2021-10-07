@@ -1262,10 +1262,6 @@ and pp_typ' vs ppf t =
        fprintf ppf "@[<2>async<%a>@ %a@]"
          (pp_typ' vs) t1
          (pp_typ_nullary vs) t2)
-  | Obj (Memory, fs) ->
-    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
-      (string_of_obj_sort Actor)
-      (pp_print_list ~pp_sep:semi (pp_stab_field vs)) fs
   | Obj (s, fs) ->
     fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
       (string_of_obj_sort s)
@@ -1336,20 +1332,31 @@ and pp_kind ppf k =
   let op, sbs, st = pps_of_kind k in
   fprintf ppf "%s %a%a" op sbs () st ()
 
-and pp_sig ppf t =
-  let cs = cons t in
+and pp_sig ppf sig_ =
+  let cs = List.fold_right cons_field sig_ ConSet.empty in
   let ds =
-    let cs' = ConSet.filter (fun c -> match Con.kind c with Def _ -> true | Abs _ -> false) cs in
+    let cs' = ConSet.filter (fun c ->
+      match Con.kind c with
+      | Def ([], Prim p) when Con.name c = string_of_prim p -> false
+      | Def ([], Any) when Con.name c = "Any" -> false
+      | Def ([], Non) when Con.name c = "None" -> false                                                 | Def _ -> true
+      | Abs _ -> false) cs in
     ConSet.elements cs' in
   let fs = List.map (fun c ->
     { lab = string_of_con' [] c;
       typ = Typ c;
       depr = None }) ds
   in
+  let pp_fields ppf sig_ =
+    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
+      (string_of_obj_sort Actor)
+      (pp_print_list ~pp_sep:semi (pp_stab_field [])) sig_
+  in
   fprintf ppf "@[<v 0>@;<0 0>%a%a@;<0 0>%a;@]"
    (pp_print_list ~pp_sep:semi (pp_field [])) fs
    (if fs = [] then fun ppf () -> () else semi) ()
-   (pp_typ' []) t
+   pp_fields sig_
+
 
 let pp_typ = pp_typ' []
 
@@ -1407,7 +1414,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_sig : typ -> string
+  val string_of_sig : field list -> string
 end
 
 

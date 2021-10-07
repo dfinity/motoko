@@ -306,10 +306,11 @@ and build_actor at self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt t; depr = None}) ids in
+  let sig_ = List.map (fun (i,t) -> T.{lab = i; typ = t; depr = None}) ids in
+  Printf.printf "%s" (T.string_of_sig sig_); (* HACK *)
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); depr = None}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
-  Printf.printf "%s" (T.string_of_sig ty); (* HACK *)
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
@@ -362,7 +363,7 @@ and stabilize stab_opt d =
   | (S.Flexible, _) ->
     ([], fun _ -> d)
   | (S.Stable, I.VarD(i, t, e)) ->
-    ([(i, t)],
+    ([(i, T.Mut t)],
      fun get_state ->
      let v = fresh_var i t in
      varD (var i (T.Mut t))

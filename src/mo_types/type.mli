@@ -243,7 +243,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_sig : typ -> string
+  val string_of_sig : field list -> string
 end
 
 module MakePretty(_ : sig val show_stamps : bool end) : Pretty
