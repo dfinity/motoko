@@ -96,6 +96,7 @@ let primE prim es =
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim -> T.nat64
     | SystemCyclesAcceptPrim -> T.nat64
+    | BinPrim (t, _) -> t
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -614,7 +615,12 @@ let countingE binding arr expSize expIndexing expWorker =
         ; letD size expSize]
     (whileE (primE (RelPrim (T.nat, Operator.LtOp))
                [varE indx; varE size])
-       (blockE [letP binding (expIndexing indx)] expWorker))
+       (blockE [letP binding (expIndexing indx)
+              ; letP wildP expWorker]
+          (assignE indx
+             (primE (BinPrim (T.nat, Operator.AddOp))
+                [ varE indx
+                ; natE (Numerics.Int.of_int 1)]))))
 
 
 let forE pat exp1 exp2 =
