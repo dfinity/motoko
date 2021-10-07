@@ -612,7 +612,8 @@ let countingE binding arr expSize expIndexing expWorker =
   let size = fresh_var "size" T.nat in
   blockE [varD indx (natE Numerics.Int.zero)
         ; letD size expSize]
-    (whileE (trueE ())
+    (whileE (primE (RelPrim (T.nat, Operator.LtOp))
+               [varE indx; varE size])
        (blockE [letP binding (expIndexing indx)] expWorker))
 
 
