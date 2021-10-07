@@ -607,8 +607,19 @@ let loopWhileE exp1 exp2 =
         )
     )
 
-
 let countingE binding arr expSize expIndexing expWorker =
+  (* when e1 = arr.vals()
+
+     for p in e1 e2
+     ~~>
+     let arr = ... ;
+     let indx = 0 ;
+     let size = arr.size() ;
+     label l loop {
+       if indx < size
+       then { let p = arr[indx]; e2; indx += 1 }
+       else { break l }
+     } *)
   let indx = fresh_var "indx" T.(Mut nat) in
   let size = fresh_var "size" T.nat in
   blockE [varD indx (natE Numerics.Int.zero)
@@ -622,31 +633,7 @@ let countingE binding arr expSize expIndexing expWorker =
                 [ varE indx
                 ; natE (Numerics.Int.of_int 1)]))))
 
-
 let forE pat exp1 exp2 =
-  match exp1.it with
-  | PrimE (CallPrim (*T.opt element_ty*)_, [{it=PrimE (CallPrim _,[{it=VarE "@immut_array_vals";_};arr]);_}; {it=PrimE _;_}]) ->
-  (* when e1 = arr.vals()
-     for p in e1 e2
-     ~~>
-     let arr = ... ;
-     let indx = 0 ;
-     let len = arr.size() ;
-     label l loop {
-       if indx < len
-       then { let p = arr[indx]; e2; indx += 1 }
-       else { break l }
-     } *)
-    let arrv = fresh_var "arr" arr.note.Note.typ in
-    let size = fresh_var "size" T.nat in
-    let indx = fresh_var "indx" T.nat in
-    letE arrv arr (
-        letE indx (natE Numerics.Int.zero) (
-        letE size (callE (varE ("@immut_array_size", T.Func (T.Local, T.Returns, [], T.[Array nat], [T.nat]))) [T.nat] (varE arrv)) (
-            assert false
-          ))
-      )
-  | _ -> 
   (* for p in e1 e2s
      ~~>
      let nxt = e1.next ;
