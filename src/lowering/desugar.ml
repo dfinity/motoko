@@ -246,7 +246,7 @@ and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   letE arrv (exp arr)
     (countingE p (varE arrv)
        (exp { e1 with note = {e1.note with note_typ = T.nat}; it = S.CallE ({c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat])}; it = S.DotE ({arr with it=S.VarE {it=id_of_var arrv;note=();at=arr.at}}, { proj with it = "size" })}, c1, c2) })
-       (fun indxv -> (exp { e1 with note = {e1.note with note_typ = T.nat}; it = S.CallE ({c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [nat], [nat])}; it = S.DotE ({arr with it=S.VarE {it=id_of_var indxv;note=();at=arr.at}}, { proj with it = "get" })}, c1, c2) }))
+       ( fun indxv -> exp {note={arr.note with note_typ=T.(as_immut (as_array arrt))}; at=arr.at;it = S.IdxE ({arr with it=S.VarE {it=id_of_var arrv;note=();at=arr.at}}, {arr with note={arr.note with note_typ=T.nat};it=S.VarE {it=id_of_var indxv;note=();at=arr.at}})})
        e2)
 
 and mut m = match m.it with
