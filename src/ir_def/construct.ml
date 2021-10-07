@@ -613,7 +613,7 @@ let countingE binding arr expSize expIndexing expWorker =
      for p in e1 e2
      ~~>
      let arr = ... ;
-     let indx = 0 ;
+     var indx = 0 ;
      let size = arr.size() ;
      label l loop {
        if indx < size
