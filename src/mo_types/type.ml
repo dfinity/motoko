@@ -1068,6 +1068,7 @@ let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 let rec match_sig tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
+  (* Should we insist on monotonic preservation of fields, or relax? *)
   match tfs1, tfs2 with
   | [], _ ->
     true (* no or additional fields ok *)
@@ -1076,8 +1077,10 @@ let rec match_sig tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-      match_sig tfs1' tfs2'
+       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+         (* should we enforce equal mutability or not? Seems unncessary
+            since upgrade is read-once *)
+       match_sig tfs1' tfs2'
     | -1 ->
       false (* match_sig tfs1' tfs2? if we allow fields to be dropped *)
     | _ -> true (* new field ok *)
