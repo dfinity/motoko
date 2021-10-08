@@ -1,0 +1,3 @@
+type-combine-forward.mo:2.18-2.19: type error [M0168], cannot compute intersection of types with forward references
+type-combine-forward.mo:8.17-8.18: type error [M0168], cannot compute union of types with forward references
+type-combine-forward.mo:14.42-14.66: type error [M0168], cannot compute intersection of types with forward references

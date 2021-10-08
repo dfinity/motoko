@@ -171,4 +171,5 @@ let error_codes : (string * string option) list =
     "M0165", None; (* Odd expected type *)
     "M0166", None; (* Type intersection results in abstract type *)
     "M0167", None; (* Type union results in bottom type *)
+    "M0168", None; (* Type union or intersection on forward types *)
   ]
