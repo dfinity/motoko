@@ -835,6 +835,8 @@ let encode (em : extended_module) =
     let motoko_sections motoko =
       custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> [])
 
+    (* TODO: candid section *)
+
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
     let close_section () = u8 0x00

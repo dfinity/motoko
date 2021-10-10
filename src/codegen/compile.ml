@@ -255,9 +255,14 @@ module E = struct
     static_memory_frozen : bool ref;
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
-      (* GC roots in static memory. (Everything that may be mutable.) *)
+    (* GC roots in static memory. (Everything that may be mutable.) *)
+
+    (* Metadata *)
+    candid : string ref;
+    sig_ : string ref;
     labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
+
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -291,6 +296,8 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    candid = ref "";
+    sig_ = ref "";
     labs = ref LabSet.empty;
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
@@ -8796,7 +8803,9 @@ and conclude_module env start_fi_o =
                  List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
       motoko = {
         labels = E.get_labs env;
-      };
+        sig_ = !(env.E.sig_);
+        };
+      candid = !(env.E.candid);
       source_mapping_url = None;
     } in
 

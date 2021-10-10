@@ -764,9 +764,12 @@ let name_section s =
 
 let motoko_section_subsection (ms : motoko_section) s =
   match u8 s with
-  | 0 -> (* module name *)
-    let labels = sized (fun _ -> vec string) s in
-    { labels = ms.labels @ labels }
+  | 0 ->
+     let labels = sized (fun _ -> vec string) s in
+     { ms with labels = ms.labels @ labels }
+  | 1 ->
+     let sig_ = string s in
+     { ms with sig_ = ms.sig_ ^ sig_ }
   | i -> error s (pos s) (Printf.sprintf "unknown motoko section subsection id %d" i)
 
 let motoko_section_content p_end s =
@@ -776,6 +779,15 @@ let is_motoko n = (n = Utf8.decode "motoko")
 
 let motoko_section s =
   custom_section is_motoko motoko_section_content empty_motoko_section s
+
+(* motoko section *)
+
+let is_candid n = (n = Utf8.decode "candid")
+
+let candid_section_content _ s = string s
+
+let candid_section s =
+  custom_section is_candid candid_section_content "" s
 
 
 (* Other custom sections *)
@@ -825,6 +837,7 @@ let module_ s =
   let name = name_section s in
   iterate skip_custom_section s;
   let motoko = motoko_section s in
+  let candid = candid_section s in
   iterate skip_custom_section s;
   require (pos s = len s) s (len s) "junk after last section";
   require (List.length func_types = List.length func_bodies)
@@ -838,6 +851,7 @@ let module_ s =
     dylink;
     name;
     motoko;
+    candid;
     source_mapping_url = None;
   }
 

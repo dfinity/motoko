@@ -348,9 +348,13 @@ and build_actor at self_id es obj_typ =
     | None -> ds in
   let candid_interface =
     Idllib.Arrange_idl.string_of_prog (Mo_idl.Mo_to_idl.of_actor_type obj_typ) in
+  let meta =
+    I.{did = candid_interface;
+       sig_ = T.string_of_sig sig_} in
   let (interface_d, interface_f) = export_interface candid_interface in
   I.ActorE (interface_d @ ds', interface_f @ fs,
-    { I.pre =
+     { meta;
+       I.pre =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
         blockE
           ((match call_system_func_opt "preupgrade" es with

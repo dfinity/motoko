@@ -40,11 +40,15 @@ type dylink_section = {
 
 type motoko_section = {
   labels : string list;
+  sig_ : string;
 }
 
 let empty_motoko_section = {
-    labels = []
-  };
+    labels = [];
+    sig_ = "";
+  }
+
+let empty_candid_section = ""
 
 type extended_module = {
   (* The non-custom sections *)
@@ -55,6 +59,8 @@ type extended_module = {
   dylink : dylink_section option;
   (* motoko section *)
   motoko : motoko_section;
+  (* candid section *)
+  candid : string (* option?*);
   (* source map section *)
   source_mapping_url : string option;
 }

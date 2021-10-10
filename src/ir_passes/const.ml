@@ -159,7 +159,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false
-    | ActorE (ds, fs, {pre; post}, _typ) ->
+    | ActorE (ds, fs, {meta; pre; post}, _typ) ->
       (* this may well be “the” top-level actor, so don’t update lvl here *)
       let (env', _) = decs lvl env ds in
       exp_ lvl env' pre;
@@ -217,7 +217,7 @@ and block lvl env (ds, body) =
 and comp_unit = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> decs_ TopLvl M.empty ds
-  | ActorU (as_opt, ds, fs, {pre; post}, typ) ->
+  | ActorU (as_opt, ds, fs, {meta; pre; post}, typ) ->
     let env = match as_opt with
       | None -> M.empty
       | Some as_ -> args TopLvl M.empty as_
