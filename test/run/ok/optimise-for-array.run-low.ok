@@ -4,5 +4,8 @@ hello
 mutable
 world
 hello
+mutable
+world
+hello
 immutable
 world
