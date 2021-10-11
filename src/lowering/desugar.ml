@@ -244,14 +244,15 @@ and lexp' = function
 and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
   let body arrv arrb =
-    exp { it = WhileE ({ it = LitE (ref (BoolLit true)); at = no_region; note = Type.{ note_typ = Prim Bool; note_eff = Triv } }, e2); at = no_region; note = T.{ note_typ = unit; note_eff = Triv } } in
+    { it = WhileE ({ it = LitE (ref (BoolLit true)); at = no_region; note = Type.{ note_typ = Prim Bool; note_eff = Triv } }, e2); at = no_region; note = T.{ note_typ = unit; note_eff = Triv } } in
   let arr_ir = exp arr in
   match arr_ir.it with
-  | I.VarE _ -> body arr_ir arr
+  | I.VarE _ -> exp (body arr_ir arr)
   | _ -> let arrv = fresh_var "arr" arrt in
-         letE arrv arr_ir (body (varE arrv) { arr with it = S.VarE { it = id_of_var arrv;
-                                                                     note = ();
-                                                                     at = arr.at }})
+         let arrb = { arr with it = S.VarE { it = id_of_var arrv;
+                                             note = ();
+                                             at = arr.at }} in
+         exp {it = BlockE ([LetD (arrv, arr)], body (varE arrv) arrb); at = e2.at; note = T.{ note_typ = unit; note_eff = Triv }  }
 
 and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
