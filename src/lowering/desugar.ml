@@ -198,6 +198,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
+  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE0  (pat p) arr proj c0 c1 c2 e1 e2).it
   | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
@@ -239,6 +240,18 @@ and lexp' = function
   | S.DotE (e, x) -> I.DotLE (exp e, x.it)
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
+
+and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
+  let arrt = arr.note.S.note_typ in
+  let body arrv arrb =
+    exp { it = WhileE ({ it = LitE (ref (BoolLit true)); at = no_region; note = Type.{ note_typ = Prim Bool; note_eff = Triv } }, e2); at = no_region; note = T.{ note_typ = unit; note_eff = Triv } } in
+  let arr_ir = exp arr in
+  match arr_ir.it with
+  | I.VarE _ -> body arr_ir arr
+  | _ -> let arrv = fresh_var "arr" arrt in
+         letE arrv arr_ir (body (varE arrv) { arr with it = S.VarE { it = id_of_var arrv;
+                                                                     note = ();
+                                                                     at = arr.at }})
 
 and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
