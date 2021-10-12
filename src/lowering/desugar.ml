@@ -249,8 +249,11 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
   let atE2 s = { e2 with it = s; note = unit } in
   let body arrv arrb =
     let cond = { it = LitE (ref (BoolLit true)); at = no_region; note = bool } in
+    let indx = fresh_var "indx" T.(Mut nat) in
+    let size = fresh_var "size" T.nat in
     atE2 (BlockE [
-              { it = LetD (p, arr); at = e1.at; note = unit };
+              { it = VarD ({ it = id_of_var indx; at = e1.at; note = () }, { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = T.nat; note_eff = Triv } }); at = e1.at; note = unit };
+              { it = LetD (p, arr); at = arr.at; note = unit };
               { it = ExpD (atE2 (WhileE (cond, e2)))
               ; note = unit
               ; at = e2.at } ]) in
