@@ -198,7 +198,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE0  (pat p) arr proj c0 c1 c2 e1 e2).it
+  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE0 p arr proj c0 c1 c2 e1 e2).it
   | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
@@ -250,9 +250,10 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
   let body arrv arrb =
     let cond = { it = LitE (ref (BoolLit true)); at = no_region; note = bool } in
     atE2 (BlockE [
-               { it = ExpD (atE2 (WhileE (cond, e2)))
-               ; note = unit
-               ; at = e2.at } ]) in
+              { it = LetD (p, arr); at = e1.at; note = unit };
+              { it = ExpD (atE2 (WhileE (cond, e2)))
+              ; note = unit
+              ; at = e2.at } ]) in
   let arr_ir = exp arr in
   match arr_ir.it with
   | I.VarE _ -> exp (body arr_ir arr)
