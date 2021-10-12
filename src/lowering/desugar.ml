@@ -246,7 +246,7 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
   let unit = T.{ note_typ = unit; note_eff = Triv } in
   let bool = T.{ note_typ = bool; note_eff = Triv } in
   let atE2 s = { e2 with it = s; note = unit } in
-  let body arrv arrb =
+  let body arrb =
     let cond = { it = LitE (ref (BoolLit true)); at = no_region; note = bool } in
     let size = fresh_var "size" T.nat in
     let size_exp = { e1 with note = { e1.note with note_typ = T.nat };
@@ -267,14 +267,13 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
               { it = ExpD (atE2 (WhileE (cond, e2)))
               ; note = unit
               ; at = e2.at } ]) in
-  let arr_ir = exp arr in
-  match arr_ir.it with
-  | I.VarE _ -> exp (body arr_ir arr)
+  match (exp arr).it with
+  | I.VarE _ -> exp (body arr)
   | _ -> let arrv = fresh_var "arr" arrt in
          let arrb = { arr with it = S.VarE { it = id_of_var arrv;
                                              note = ();
                                              at = arr.at }} in
-         exp {it = BlockE [{it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = ()}; note = typ_of_var arrv; at = e1.at }, arr); at = arr.at; note = unit }; {it = ExpD (body (varE arrv) arrb); at = e2.at; note = unit}]; at = e2.at; note = unit }
+         exp {it = BlockE [{it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = ()}; note = typ_of_var arrv; at = e1.at }, arr); at = arr.at; note = unit }; {it = ExpD (body arrb); at = e2.at; note = unit}]; at = e2.at; note = unit }
 
 and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
