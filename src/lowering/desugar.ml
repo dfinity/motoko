@@ -245,16 +245,15 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
   let unit = T.{ note_typ = unit; note_eff = Triv } in
   let bool = T.{ note_typ = bool; note_eff = Triv } in
-  let atE1 s = { e1 with it = s; note = unit } in
   let atE2 s = { e2 with it = s; note = unit } in
   let body arrv arrb =
     let cond = { it = LitE (ref (BoolLit true)); at = no_region; note = bool } in
     let size = fresh_var "size" T.nat in
-    let indx = fresh_var "indx" T.nat in
     let size_exp = { e1 with note = { e1.note with note_typ = T.nat };
                              it = S.CallE ({c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat])};
                                                     it = S.DotE (arrb, { proj with it = "size" })},
                                            c1, c2) } in
+    let indx = fresh_var "indx" T.nat in
     let elem_exp = { note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
                      at = arr.at;
                      it = IdxE (arrb, { arr with note = { arr.note with note_typ = T.nat };
@@ -263,7 +262,7 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
                                                              at = arr.at }})} in
     atE2 (BlockE [
               { it = LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = ()}; note = typ_of_var size; at = e1.at }, size_exp); at = e1.at; note = unit };
-              { it = VarD ({ it = id_of_var indx; at = e1.at; note = () }, { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = Triv } }); at = e1.at; note = unit };
+              { it = VarD ({ it = id_of_var indx; at = e1.at; note = () }, { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } }); at = e1.at; note = unit };
               { it = LetD (p, elem_exp); at = arr.at; note = unit };
               { it = ExpD (atE2 (WhileE (cond, e2)))
               ; note = unit
