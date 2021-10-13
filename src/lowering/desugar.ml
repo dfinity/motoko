@@ -249,26 +249,26 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
     let dec_atE1 d = { it = d; at = e1.at; note = unit } in
     let dec_atE2 d = { it = d; at = e2.at; note = unit } in
     let size = fresh_var "size" T.nat in
-    let size_var = { e1 with note = { arr.note with note_typ = T.nat };
-                             it = VarE { it = id_of_var size;
-                                         note = ();
-                                         at = e1.at }} in
+    let size_var = T.{ e1 with note = { note_typ = nat; note_eff = Triv };
+                               it = VarE { it = id_of_var size;
+                                           note = ();
+                                           at = e1.at }} in
     let size_exp = { e1 with note = { e1.note with note_typ = T.nat };
                              it = S.CallE ({c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat])};
                                                     it = S.DotE (arrb, { proj with it = "size" })},
                                            c1, c2) } in
     let indx = fresh_var "indx" T.nat in
-    let indx_var = { e1 with note = { arr.note with note_typ = T.nat };
-                             it = VarE { it = id_of_var indx;
-                                         note = ();
-                                         at = e1.at }} in
+    let indx_var = T.{ e1 with note = { note_typ = nat; note_eff = Triv };
+                               it = VarE { it = id_of_var indx;
+                                           note = ();
+                                           at = e1.at }} in
     let zero = { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
     let one = { it = LitE (ref (NatLit (Numerics.Int.of_int 1))); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
     let elem_exp = { note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
                      at = arr.at;
                      it = IdxE (arrb, indx_var)} in
     let indx_next = { it = BinE (ref (typ_of_var indx), indx_var, AddOp, one); at = no_region; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
-    let indx_lvar = { indx_var with note = { arr.note with note_typ = T.(Mut nat) } } in
+    let indx_lvar = T.{ indx_var with note = { note_typ = Mut nat; note_eff = Triv } } in
     let cond = T.{ it = RelE (ref nat, indx_var, LtOp, size_var); at = e1.at; note = { note_typ = bool; note_eff = Triv } } in
     atE2 (BlockE [
               dec_atE1 (LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = () }; note = typ_of_var size; at = e1.at }, size_exp));
