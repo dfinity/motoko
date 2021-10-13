@@ -248,7 +248,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
   let atE2' s = { e2 with it = s; note = e2.note } in
   let body arrb =
     let dec_atE1 d = { it = d; at = e1.at; note = unit } in
-    let dec_atE2 d = { it = d; at = e2.at; note = unit } in
+    let _dec_atE2 d = { it = d; at = e2.at; note = unit } in
     let dec_atE2' d = { it = d; at = e2.at; note = e2.note } in
     let size = fresh_var "size" T.nat in
     let size_var = T.{ e1 with note = { note_typ = nat; note_eff = Triv };
