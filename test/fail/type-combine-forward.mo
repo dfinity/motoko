@@ -21,3 +21,18 @@ do {
   type B = {};
   type C = {};
 };
+
+do {
+  type A = (B, B);
+  type B = A and (A, A);
+};
+
+do {
+  type A = B and {};
+  type B = {b : A};
+};
+
+do {
+  type A = {a : B};
+  type B = A and {};
+};

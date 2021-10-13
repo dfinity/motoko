@@ -481,7 +481,7 @@ and check_typ' env typ : T.typ =
     let t2 = check_typ env typ2 in
     let t = try T.glb t1 t2 with T.PreEncountered ->
       error env typ2.at "M0168"
-        "cannot compute intersection of types with forward references"
+        "cannot compute intersection of types containing recursive or forward references to other type definitions"
     in
     if not env.pre && T.sub t T.Non && not (T.sub t1 T.Non || T.sub t2 T.Non) then
       warn env typ.at "M0166"
@@ -495,7 +495,7 @@ and check_typ' env typ : T.typ =
     let t2 = check_typ env typ2 in
     let t = try T.lub t1 t2 with T.PreEncountered ->
       error env typ2.at "M0168"
-        "cannot compute union of types with forward references"
+        "cannot compute union of types containing recursive or forward references to other type definitions"
     in
     if not env.pre && T.sub T.Any t && not (T.sub T.Any t1 || T.sub T.Any t2) then
       warn env typ.at "M0167"
