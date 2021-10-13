@@ -10,7 +10,7 @@ let ($$) head inner = Node (head, inner)
 and id i = Atom i.it
 and tag i = Atom ("#" ^ i.it)
 
-let rec exp e = match e.it with
+let rec exp e = decorate_eff e.note (match e.it with
   | VarE x              -> "VarE"      $$ [id x]
   | LitE l              -> "LitE"      $$ [lit !l]
   | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
@@ -64,7 +64,7 @@ let rec exp e = match e.it with
   | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
-  | IgnoreE e           -> "IgnoreE" $$ [exp e]
+  | IgnoreE e           -> "IgnoreE" $$ [exp e])
 
 and inst inst = match inst.it with
   | None -> []
@@ -181,7 +181,7 @@ and typ t = match t.it with
   | ParT t -> "ParT" $$ [typ t]
   | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
 
-and dec d = match d.it with
+and dec d = decorate_eff d.note (match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
@@ -192,6 +192,10 @@ and dec d = match d.it with
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
       obj_sort s; id i'
-    ] @ List.map dec_field dfs
+    ] @ List.map dec_field dfs)
 
 and prog prog = "Prog" $$ List.map dec prog.it
+
+and decorate_eff = function
+  | { note_eff = Type.Await; _ } -> fun s -> "@" $$ [s]
+  | _ -> fun s -> s

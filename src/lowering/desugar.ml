@@ -286,7 +286,8 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
          let arrb = { arr with it = S.VarE { it = id_of_var arrv;
                                              note = ();
                                              at = arr.at }} in
-         {it = BlockE [{it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = ()}; note = typ_of_var arrv; at = e1.at }, arr); at = arr.at; note = unit }; {it = ExpD (body arrb); at = e2.at; note = unit}]; at = e2.at; note = unit }
+         let unit' = { unit with note_eff = e2.note.note_eff } in
+         {it = BlockE [{it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = ()}; note = typ_of_var arrv; at = e1.at }, arr); at = arr.at; note = unit }; {it = ExpD (body arrb); at = e2.at; note = unit' }]; at = e2.at; note = unit' }
 
 and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
