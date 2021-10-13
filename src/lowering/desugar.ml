@@ -245,9 +245,11 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
   let unit = T.{ note_typ = unit; note_eff = Triv } in
   let atE2 s = { e2 with it = s; note = unit } in
+  let atE2' s = { e2 with it = s; note = e2.note } in
   let body arrb =
     let dec_atE1 d = { it = d; at = e1.at; note = unit } in
     let dec_atE2 d = { it = d; at = e2.at; note = unit } in
+    let dec_atE2' d = { it = d; at = e2.at; note = e2.note } in
     let size = fresh_var "size" T.nat in
     let size_var = T.{ e1 with note = { note_typ = nat; note_eff = Triv };
                                it = VarE { it = id_of_var size;
@@ -273,10 +275,10 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
     atE2 (BlockE [
               dec_atE1 (LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = () }; note = typ_of_var size; at = e1.at }, size_exp));
               dec_atE1 (VarD ({ it = id_of_var indx; at = e1.at; note = () }, zero));
-              dec_atE2 (ExpD (atE2 (WhileE (cond, atE2 (
+              dec_atE2' (ExpD (atE2 (WhileE (cond, atE2' (
                   BlockE [
                       { it = LetD (p, elem_exp); at = p.at; note = unit };
-                      dec_atE2 (ExpD e2);
+                      dec_atE2' (ExpD e2);
                       { it = ExpD (atE2 (AssignE (indx_lvar, indx_next))) ; note = unit ; at = no_region }])))))]) in
   match (exp arr).it with
   | I.VarE _ -> body arr
