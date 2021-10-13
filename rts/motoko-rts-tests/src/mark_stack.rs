@@ -23,14 +23,7 @@ fn test_push_pop() {
 
     proptest_runner
         .run(&(0u32..1000u32), |n_objs| {
-            // We test with sizes 1 KiB 1 KiB - one word to test handling unusable one-word space
-            // at the end of a mark stack page
-            let mut page_alloc = TestPageAlloc::new(1024); // 1 KiB
-            if let Err(err) = test_(&mut page_alloc, n_objs) {
-                return Err(err);
-            }
-
-            let mut page_alloc = TestPageAlloc::new(1020);
+            let mut page_alloc = TestPageAlloc::new();
             test_(&mut page_alloc, n_objs)
         })
         .unwrap();

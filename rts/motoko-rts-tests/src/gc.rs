@@ -26,7 +26,7 @@ pub fn test() {
 
     // TODO: Add more tests
 
-    let mut page_alloc = TestPageAlloc::new(1024);
+    let mut page_alloc = TestPageAlloc::new();
 
     for test_heap in test_heaps() {
         test_gcs(&mut page_alloc, &test_heap);

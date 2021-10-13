@@ -31,7 +31,7 @@ unsafe extern "C" fn mp_realloc(
 pub unsafe fn test() {
     println!("Testing BigInt ...");
 
-    let page_alloc = TestPageAlloc::new(1024);
+    let page_alloc = TestPageAlloc::new();
     ALLOCATION_SPACE = Some(Space::new(page_alloc));
 
     assert!(bigint_eq(

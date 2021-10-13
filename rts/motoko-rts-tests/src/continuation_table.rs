@@ -16,7 +16,7 @@ pub unsafe fn test() {
     // Array will be doubled 3 times, so 256 + 512 + 1024 + 2048 = 3840 words, plus each array will
     // have 2 word header.
     // TODO: Implement large (more than page size) object allocation
-    let heap = TestPageAlloc::new(Words(3848).to_bytes().as_usize());
+    let heap = TestPageAlloc::new();
     let mut space = Space::new(heap);
 
     let mut references: [u32; N] = [0; N];

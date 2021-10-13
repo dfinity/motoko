@@ -7,8 +7,6 @@ use alloc::collections::btree_set::BTreeSet;
 use alloc::vec::Vec;
 use core::arch::wasm32;
 
-pub const IC_PAGE_SIZE: crate::types::Bytes<u32> = crate::constants::WASM_PAGE_SIZE;
-
 /// A `PageAlloc` implementation for the IC
 #[derive(Clone)]
 pub struct IcPageAlloc {}

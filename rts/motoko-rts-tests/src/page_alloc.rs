@@ -1,5 +1,5 @@
 use motoko_rts::bitmap::Bitmap;
-use motoko_rts::page_alloc::{Page, PageAlloc, PageHeader};
+use motoko_rts::page_alloc::{Page, PageAlloc, PageHeader, PAGE_SIZE};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -11,9 +11,6 @@ pub struct TestPageAlloc {
 }
 
 struct TestPageAllocInner {
-    /// Size of a page, including headers.
-    page_size_bytes: usize,
-
     // TODO: Maybe use a vector with free slots, for lookup efficiency?
     pages: HashMap<TestPageRef, TestPage>,
 
@@ -52,19 +49,17 @@ struct TestPage {
 }
 
 impl TestPageAlloc {
-    pub fn new(page_size_bytes: usize) -> TestPageAlloc {
+    pub fn new() -> TestPageAlloc {
         // Should have enough space in a page for the header + more (TODO)
-        assert!(page_size_bytes > std::mem::size_of::<PageHeader>());
         TestPageAlloc {
-            inner: Rc::new(RefCell::new(TestPageAllocInner::new(page_size_bytes))),
+            inner: Rc::new(RefCell::new(TestPageAllocInner::new())),
         }
     }
 }
 
 impl TestPageAllocInner {
-    fn new(page_size_bytes: usize) -> TestPageAllocInner {
+    fn new() -> TestPageAllocInner {
         TestPageAllocInner {
-            page_size_bytes,
             pages: HashMap::new(),
             page_addrs: vec![],
             n_total_pages: 0,
@@ -97,7 +92,7 @@ impl PageAlloc for TestPageAlloc {
 impl TestPageAllocInner {
     unsafe fn alloc(&mut self, n_pages: u16, page_alloc: TestPageAlloc) -> TestPageRef {
         let page = TestPage {
-            contents: vec![0u8; self.page_size_bytes].into_boxed_slice(),
+            contents: vec![0u8; PAGE_SIZE.as_usize()].into_boxed_slice(),
         };
 
         let page_start = page.contents_start();
@@ -225,7 +220,7 @@ impl TestPage {
     }
 
     unsafe fn end(&self, page_alloc: &TestPageAlloc) -> usize {
-        self.start() + page_alloc.inner.borrow().page_size_bytes
+        self.start() + PAGE_SIZE.as_usize()
     }
 
     unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {

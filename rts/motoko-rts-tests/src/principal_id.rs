@@ -8,7 +8,7 @@ use motoko_rts::types::Bytes;
 pub unsafe fn test() {
     println!("Testing principal id encoding ...");
 
-    let page_alloc = TestPageAlloc::new(1024);
+    let page_alloc = TestPageAlloc::new();
     let mut space = Space::new(page_alloc);
 
     //

@@ -49,7 +49,7 @@ impl<'a, P: PageAlloc> Iterator for TextIter<'a, P> {
 pub unsafe fn test() {
     println!("Testing text and text iterators ...");
 
-    let page_alloc = TestPageAlloc::new(1024);
+    let page_alloc = TestPageAlloc::new();
     let mut space = Space::new(page_alloc.clone());
 
     println!("  Testing decode_code_point and text_singleton for ASCII");
