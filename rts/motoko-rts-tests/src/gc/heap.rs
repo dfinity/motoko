@@ -146,14 +146,30 @@ unsafe fn create_dynamic_heap<P: PageAlloc>(
         // Pointer fields will be set in the second pass
     }
 
+    // Remove `mut`
+    let object_ptrs = object_ptrs;
+
+    // dbg!(&object_ptrs);
+    // dbg!(&object_ptrs as *const _ as usize);
+
     // Second pass, add fields
     for (obj_idx, refs) in refs {
+        // dbg!(&object_ptrs);
+
         let obj_ptr = object_ptrs.get(obj_idx).unwrap();
         let array = obj_ptr.get_ptr() as *mut Array;
 
         for (ref_idx, ref_) in refs.iter().enumerate() {
-            let ref_ptr = object_ptrs.get(ref_).unwrap();
+            // dbg!(&object_ptrs);
+
+            let ref_ptr = object_ptrs.get(ref_).unwrap_or_else(|| {
+                panic!("Could not find {} in object_ptrs: {:?}", ref_, object_ptrs)
+            });
+
+            // dbg!(&object_ptrs);
+            // dbg!(ref_idx);
             array.set(ref_idx as u32 + 1, *ref_ptr);
+            // dbg!(&object_ptrs);
         }
     }
 

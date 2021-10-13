@@ -189,4 +189,30 @@ impl<P: PageAlloc> Space<P> {
     pub fn page_alloc(&self) -> &P {
         &self.page_alloc
     }
+
+    pub fn iter_large_pages(&self) -> impl Iterator<Item = *mut Obj> {
+        LargeObjectIter {
+            page: self.large_object_pages,
+        }
+    }
+}
+
+pub struct LargeObjectIter {
+    page: *mut LargePageHeader,
+}
+
+impl Iterator for LargeObjectIter {
+    type Item = *mut Obj;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.page.is_null() {
+            return None;
+        }
+
+        let page = self.page;
+        self.page = unsafe { (*self.page).next };
+
+        // Skip header
+        Some(unsafe { page.add(1) } as *mut Obj)
+    }
 }

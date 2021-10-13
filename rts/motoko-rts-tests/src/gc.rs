@@ -197,35 +197,17 @@ fn check_dynamic_heap<P: PageAlloc>(
                 continue;
             }
 
-            let obj = scan as *mut Array;
-            assert_eq!(unsafe { (obj as *mut Obj).tag() }, TAG_ARRAY);
-
-            let tag = unsafe { obj.get(0) }.get_scalar();
-            let expected_fields = object_map.get(&tag).unwrap();
-
-            let old = seen.insert(tag, scan);
-            if let Some(old) = old {
-                panic!(
-                    "Object with tag {} is seen twice: {:#x}, {:#x}",
-                    tag, old, scan
-                );
-            }
-
-            // +1 for the tag
-            assert_eq!(unsafe { obj.len() }, expected_fields.len() as u32 + 1);
-
-            // Check that the fields are as expected
-            for (field_idx, expected_field_tag) in expected_fields.iter().enumerate() {
-                // +1 to skip the tag
-                let field = unsafe { obj.get(field_idx as u32 + 1) }.get_ptr();
-                let field_tag = unsafe { (field as *mut Array).get(0) }.get_scalar();
-                assert_eq!(field_tag, *expected_field_tag);
-            }
+            check_object(obj, &object_map, &mut seen);
 
             scan += unsafe { object_size(scan) }.to_bytes().as_usize();
         }
 
         page_idx = page_idx.next();
+    }
+
+    // Scan large objects
+    for large_object in space.iter_large_pages() {
+        check_object(large_object as *mut Obj, &object_map, &mut seen);
     }
 
     // At this point we've checked that all seen objects point to the expected objects (as
@@ -275,6 +257,37 @@ fn check_dynamic_heap<P: PageAlloc>(
 
     if !error_message.is_empty() {
         panic!("{}", error_message);
+    }
+}
+
+fn check_object(
+    obj: *mut Obj,
+    object_map: &FxHashMap<ObjectIdx, &[ObjectIdx]>,
+    seen: &mut FxHashMap<ObjectIdx, usize>,
+) {
+    let obj = obj as *mut Array;
+    assert_eq!(unsafe { (obj as *mut Obj).tag() }, TAG_ARRAY);
+
+    let tag = unsafe { obj.get(0) }.get_scalar();
+    let expected_fields = object_map.get(&tag).unwrap();
+
+    let old = seen.insert(tag, obj as usize);
+    if let Some(old) = old {
+        panic!(
+            "Object with tag {} is seen twice: {:#x}, {:#x}",
+            tag, old, obj as usize
+        );
+    }
+
+    // +1 for the tag
+    assert_eq!(unsafe { obj.len() }, expected_fields.len() as u32 + 1);
+
+    // Check that the fields are as expected
+    for (field_idx, expected_field_tag) in expected_fields.iter().enumerate() {
+        // +1 to skip the tag
+        let field = unsafe { obj.get(field_idx as u32 + 1) }.get_ptr();
+        let field_tag = unsafe { (field as *mut Array).get(0) }.get_scalar();
+        assert_eq!(field_tag, *expected_field_tag);
     }
 }
 
