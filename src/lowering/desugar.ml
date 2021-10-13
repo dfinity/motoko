@@ -268,6 +268,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                      at = arr.at;
                      it = IdxE (arrb, indx_var)} in
     let indx_next = { it = BinE (ref (typ_of_var indx), indx_var, AddOp, one); at = no_region; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
+    let indx_lvar = { indx_var with note = { arr.note with note_typ = T.(Mut nat) } } in
     let cond = T.{ it = RelE (ref nat, indx_var, LtOp, size_var); at = e1.at; note = { note_typ = bool; note_eff = Triv } } in
     atE2 (BlockE [
               dec_atE1 (LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = () }; note = typ_of_var size; at = e1.at }, size_exp));
@@ -276,7 +277,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                   BlockE [
                       { it = LetD (p, elem_exp); at = p.at; note = unit };
                       dec_atE2 (ExpD e2);
-                      { it = ExpD (atE2 (AssignE (indx_var, indx_next))) ; note = unit ; at = no_region }])))))]) in
+                      { it = ExpD (atE2 (AssignE (indx_lvar, indx_next))) ; note = unit ; at = no_region }])))))]) in
   match (exp arr).it with
   | I.VarE _ -> body arr
   | _ -> let arrv = fresh_var "arr" arrt in
