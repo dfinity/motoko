@@ -92,7 +92,7 @@ impl PageAlloc for TestPageAlloc {
 impl TestPageAllocInner {
     unsafe fn alloc(&mut self, n_pages: u16, page_alloc: TestPageAlloc) -> TestPageRef {
         let page = TestPage {
-            contents: vec![0u8; PAGE_SIZE.as_usize()].into_boxed_slice(),
+            contents: vec![0u8; PAGE_SIZE.as_usize() * usize::from(n_pages)].into_boxed_slice(),
         };
 
         let page_start = page.contents_start();
