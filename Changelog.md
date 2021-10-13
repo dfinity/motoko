@@ -26,6 +26,9 @@
   type Weekday = Workday or {#sat; #sun};
   ```
 
+== 0.6.11 (2021-10-08)
+
+* Assertion error messages are now reproducible (#2821)
 
 == 0.6.10 (2021-09-23)
 
