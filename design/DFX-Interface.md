@@ -69,14 +69,6 @@ not create `another/path/`.
 
 Compiler warnings and errors are reported to `stderr`. Nothing writes to `stdout`.
 
-Compiling Motoko Files to IDL
------------------------------
-
-As the previous point, but passing `--idl` to `moc`.
-
-The IDL generation does not issue any warnings.
-
-
 Resolving Canister aliases
 --------------------------
 
@@ -99,22 +91,27 @@ This file informs Motoko about the interface of that canister. It could be the o
 
 Open problem: how to resolve mutual canister imports.
 
-Compiling IDL Files to JS
--------------------------
+Exporting Canister Metadata
+---------------------------
 
-In order to compile an IDL file, `dfx` invokes `didc` with
+The compiler generates various metadata about the canister via command line flags.
+The compiled Wasm module also includes the metadata in the custom sections.
 
-    didc --js some/path/input.did -o another/path/output.js
+* Candid interface.
+  + Compiler flag `--idl` generates the Candid interface for the canister. The main service
+    is always a service constructor, which contains the initialization arguments for installing the canister.
+  + Custom section `icp:public candid` stores the interface for the running (initialized) canister, which removes
+    the initializatio arguments. This custom section is publicly accessible.
+  + Custom section `icp:private init_args` stores the initialization arguments. The argument types can refer to
+    types defined in the `icp:public candid` custom section. This custom section is only accessible by the controllers
+    of the canister.
+* Stable variable.
+  + Compiler flag `--print-stable-vars` generates the signatures for stable variables.
+  + Custom section `icp:private stable_vars` stores the signatures for stable variables. This custom section is
+    only accessible by the controllers of the canister.
 
-This _reads_ `some/path/input.did` and any `.did` file referenced by
-`some/path/input.did`.
-
-No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
-
-This _writes_ to `another/path/output.js`, but has no other effect. It does
-not create `another/path/`.
-
-Compiler warnings and errors are reported to `stderr`. Nothing writes to `stdout`.
+We store the metadata in the Wasm module, so that dfx can compare the current and new type signatures to ensure
+canister upgrade is safe.
 
 Invoking the IDE
 ----------------
