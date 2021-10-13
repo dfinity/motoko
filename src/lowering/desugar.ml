@@ -247,6 +247,8 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
   let bool = T.{ note_typ = bool; note_eff = Triv } in
   let atE2 s = { e2 with it = s; note = unit } in
   let body arrb =
+    let dec_atE1 d = { it = d; at = e1.at; note = unit } in
+    let dec_atE2 d = { it = d; at = e2.at; note = unit } in
     let cond = { it = LitE (ref (BoolLit true)); at = no_region; note = bool } in
     let size = fresh_var "size" T.nat in
     let size_exp = { e1 with note = { e1.note with note_typ = T.nat };
@@ -265,15 +267,13 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
                      it = IdxE (arrb, indx_var)} in
     let indx_next = { it = BinE (ref (typ_of_var indx), indx_var, AddOp, one); at = no_region; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
     atE2 (BlockE [
-              { it = LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = ()}; note = typ_of_var size; at = e1.at }, size_exp); at = e1.at; note = unit };
-              { it = VarD ({ it = id_of_var indx; at = e1.at; note = () }, zero); at = e1.at; note = unit };
-              { it = LetD (p, elem_exp); at = arr.at; note = unit };
-              { it = ExpD (atE2 (WhileE (cond, e2)))
-              ; note = unit
-              ; at = e2.at };
-              { it = ExpD (atE2 (AssignE (indx_var, indx_next)))
-              ; note = unit
-              ; at = no_region }]) in
+              dec_atE1 (LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = ()}; note = typ_of_var size; at = e1.at }, size_exp));
+              dec_atE1 (VarD ({ it = id_of_var indx; at = e1.at; note = () }, zero));
+              dec_atE2 (ExpD (atE2 (WhileE (cond, atE2 (
+                  BlockE [
+                      { it = LetD (p, elem_exp); at = arr.at; note = unit };
+                      dec_atE2 (ExpD e2);
+                      { it = ExpD (atE2 (AssignE (indx_var, indx_next))) ; note = unit ; at = no_region }])))))]) in
   match (exp arr).it with
   | I.VarE _ -> exp (body arr)
   | _ -> let arrv = fresh_var "arr" arrt in
