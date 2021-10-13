@@ -254,19 +254,26 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
                                                     it = S.DotE (arrb, { proj with it = "size" })},
                                            c1, c2) } in
     let indx = fresh_var "indx" T.nat in
+    let indx_var = { e1 with note = { arr.note with note_typ = T.nat };
+                             it = VarE { it = id_of_var indx;
+                                         note = ();
+                                         at = e1.at }} in
+    let zero = { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
+    let one = { it = LitE (ref (NatLit (Numerics.Int.of_int 1))); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
     let elem_exp = { note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
                      at = arr.at;
-                     it = IdxE (arrb, { arr with note = { arr.note with note_typ = T.nat };
-                                                 it = VarE { it = id_of_var indx;
-                                                             note = ();
-                                                             at = arr.at }})} in
+                     it = IdxE (arrb, indx_var)} in
+    let indx_next = { it = BinE (ref (typ_of_var indx), indx_var, AddOp, one); at = no_region; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
     atE2 (BlockE [
               { it = LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = ()}; note = typ_of_var size; at = e1.at }, size_exp); at = e1.at; note = unit };
-              { it = VarD ({ it = id_of_var indx; at = e1.at; note = () }, { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } }); at = e1.at; note = unit };
+              { it = VarD ({ it = id_of_var indx; at = e1.at; note = () }, zero); at = e1.at; note = unit };
               { it = LetD (p, elem_exp); at = arr.at; note = unit };
               { it = ExpD (atE2 (WhileE (cond, e2)))
               ; note = unit
-              ; at = e2.at } ]) in
+              ; at = e2.at };
+              { it = ExpD (atE2 (AssignE (indx_var, indx_next)))
+              ; note = unit
+              ; at = no_region }]) in
   match (exp arr).it with
   | I.VarE _ -> exp (body arr)
   | _ -> let arrv = fresh_var "arr" arrt in
