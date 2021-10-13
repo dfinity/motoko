@@ -633,6 +633,8 @@ let str = ref (fun _ -> failwith "")
 
 (* Equivalence & Subtyping *)
 
+exception PreEncountered
+
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
 let rel_list p rel eq xs1 xs2 =
@@ -644,7 +646,7 @@ let rec rel_typ rel eq t1 t2 =
   match t1, t2 with
   (* Second-class types first, since they mustn't relate to Any/Non *)
   | Pre, _ | _, Pre ->
-    assert false
+    raise PreEncountered
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
@@ -945,7 +947,7 @@ let rec combine rel lubs glbs t1 t2 =
   | _ ->
     match t1, t2 with
     | Pre, _ | _, Pre ->
-      assert false
+      raise PreEncountered
     | Mut _, _ | _, Mut _
     | Typ _, _ | _, Typ _ ->
       raise Mismatch

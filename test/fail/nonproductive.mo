@@ -110,3 +110,15 @@ do {
   class C<A>() { type D = A;};
 };
 
+do {
+  type A = A and A;
+};
+
+do {
+  type A = A or A;
+};
+
+do {
+  type A = B and B;
+  type B = A or A;
+};

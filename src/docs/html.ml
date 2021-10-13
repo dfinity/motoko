@@ -130,6 +130,10 @@ let rec html_of_type : env -> Syntax.typ -> t =
   | Syntax.ArrayT (mut, ty) ->
       string "[" ++ html_of_mut mut ++ html_of_type env ty ++ string "]"
   | Syntax.AsyncT (_scope, typ) -> keyword "async " ++ html_of_type env typ
+  | Syntax.AndT (typ1, typ2) ->
+      html_of_type env typ1 ++ string " and " ++ html_of_type env typ2
+  | Syntax.OrT (typ1, typ2) ->
+      html_of_type env typ1 ++ string " or " ++ html_of_type env typ2
   | Syntax.ObjT (obj_sort, fields) ->
       html_of_obj_sort obj_sort
       ++ string "{ "
