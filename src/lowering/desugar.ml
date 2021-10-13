@@ -198,7 +198,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE0 p arr proj c0 c1 c2 e1 e2).it
+  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (exp (rewrite_for_to_while p arr proj c0 c1 c2 e1 e2)).it
   | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
@@ -241,7 +241,7 @@ and lexp' = function
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
-and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
+and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
   let unit = T.{ note_typ = unit; note_eff = Triv } in
   let bool = T.{ note_typ = bool; note_eff = Triv } in
@@ -271,16 +271,16 @@ and sequentialForE0 p arr proj c0 c1 c2 e1 e2 =
               dec_atE1 (VarD ({ it = id_of_var indx; at = e1.at; note = () }, zero));
               dec_atE2 (ExpD (atE2 (WhileE (cond, atE2 (
                   BlockE [
-                      { it = LetD (p, elem_exp); at = arr.at; note = unit };
+                      { it = LetD (p, elem_exp); at = p.at; note = unit };
                       dec_atE2 (ExpD e2);
                       { it = ExpD (atE2 (AssignE (indx_var, indx_next))) ; note = unit ; at = no_region }])))))]) in
   match (exp arr).it with
-  | I.VarE _ -> exp (body arr)
+  | I.VarE _ -> body arr
   | _ -> let arrv = fresh_var "arr" arrt in
          let arrb = { arr with it = S.VarE { it = id_of_var arrv;
                                              note = ();
                                              at = arr.at }} in
-         exp {it = BlockE [{it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = ()}; note = typ_of_var arrv; at = e1.at }, arr); at = arr.at; note = unit }; {it = ExpD (body arrb); at = e2.at; note = unit}]; at = e2.at; note = unit }
+         {it = BlockE [{it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = ()}; note = typ_of_var arrv; at = e1.at }, arr); at = arr.at; note = unit }; {it = ExpD (body arrb); at = e2.at; note = unit}]; at = e2.at; note = unit }
 
 and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
