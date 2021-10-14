@@ -601,7 +601,7 @@ let loopWhileE exp1 exp2 =
     )
 
 let forE pat exp1 exp2 =
-  (* for p in e1 e2s
+  (* for p in e1 e2
      ~~>
      let nxt = e1.next ;
      label l loop {
