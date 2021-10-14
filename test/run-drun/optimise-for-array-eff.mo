@@ -4,7 +4,7 @@ for (check1 in (await async ["effect", "hello", "world"]).vals()) { Prim.debugPr
 
 for (check2 in ["hello", "world", "effect"].vals()) { await async { Prim.debugPrint check2 } };
 
-let array = ["effect", "hello", "world"];
+let array = ["hello", "bound", "world"];
 
 for (check3 in (await async array).vals()) { Prim.debugPrint check3 };
 
