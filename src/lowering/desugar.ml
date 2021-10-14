@@ -272,10 +272,10 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
     let indx_next = { it = BinE (ref (typ_of_var indx), indx_var, AddOp, one); at = no_region; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
     let indx_lvar = T.{ indx_var with note = { note_typ = Mut nat; note_eff = Triv } } in
     let cond = T.{ it = RelE (ref nat, indx_var, LtOp, size_var); at = e1.at; note = { note_typ = bool; note_eff = Triv } } in
-    atE2 (BlockE [
+    atE2' (BlockE [
               dec_atE1 (LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = () }; note = typ_of_var size; at = e1.at }, size_exp));
               dec_atE1 (VarD ({ it = id_of_var indx; at = e1.at; note = () }, zero));
-              dec_atE2' (ExpD (atE2 (WhileE (cond, atE2' (
+              dec_atE2' (ExpD (atE2' (WhileE (cond, atE2' (
                   BlockE [
                       { it = LetD (p, elem_exp); at = p.at; note = unit };
                       dec_atE2' (ExpD e2);
