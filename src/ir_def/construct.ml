@@ -91,7 +91,6 @@ let primE prim es =
     | ICStableWrite _ -> T.unit
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
-    | BinPrim (t, _) -> t
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
