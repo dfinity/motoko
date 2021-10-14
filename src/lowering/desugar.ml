@@ -35,7 +35,7 @@ let apply_sign op l = Syntax.(match op, l with
 let phrase f x = { x with it = f x.it }
 
 let typ_note : S.typ_note -> Note.t =
-  fun {S.note_typ;S.note_eff} -> Note.{def with typ = note_typ; eff = note_eff}
+  fun S.{ note_typ; note_eff } -> Note.{ def with typ = note_typ; eff = note_eff }
 
 let phrase' f x =
   { x with it = f x.at x.note x.it }
