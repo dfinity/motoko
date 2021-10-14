@@ -116,7 +116,7 @@ let selfRefE typ =
 let assertE e =
   { it = PrimE (AssertPrim, [e]);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff e}
+    note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
 
@@ -645,10 +645,10 @@ let forE pat exp1 exp2 =
      } *)
   let lab = fresh_id "done" () in
   let ty1 = exp1.note.Note.typ in
-  let _, tfs = T.as_obj_sub ["next"] ty1 in
-  let tnxt = T.lookup_val_field "next" tfs in
+  let _, tfs = T.as_obj_sub [nextN] ty1 in
+  let tnxt = T.lookup_val_field nextN tfs in
   let nxt = fresh_var "nxt" tnxt in
-  letE nxt (dotE exp1 (nameN "next") tnxt) (
+  letE nxt (dotE exp1 nextN tnxt) (
     labelE lab T.unit (
       loopE (
         switch_optE (callE (varE nxt) [] (tupE []))
