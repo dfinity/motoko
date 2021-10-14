@@ -35,8 +35,3 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK:      local.set $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
-
-
-//for (check4 in (await async {["hello", "immutable", "world"]}).vals()) { Prim.debugPrint check4 };
-
-//for (check5 in ["hello", "immutable", "world"].vals()) { await async { Prim.debugPrint check5 } }
