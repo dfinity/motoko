@@ -39,4 +39,4 @@ for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint c
 
 //for (check4 in (await async {["hello", "immutable", "world"]}).vals()) { Prim.debugPrint check4 };
 
-for (check5 in ["hello", "immutable", "world"].vals()) { await async { Prim.debugPrint check5 } }
+//for (check5 in ["hello", "immutable", "world"].vals()) { await async { Prim.debugPrint check5 } }
