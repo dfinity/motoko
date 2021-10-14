@@ -268,9 +268,10 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                it = VarE { it = id_of_var size;
                                            note = ();
                                            at = e1.at }} in
-    let size_exp = { e1 with note = { e1.note with note_typ = T.nat };
-                             it = S.CallE ({c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat])};
-                                                    it = S.DotE (arrb, { proj with it = "size" })},
+    let size_exp = { e1 with note = { arr.note with note_typ = T.nat; note_eff = Triv };
+                             it = S.CallE ({ c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat]);
+                                                                            note_eff = Triv };
+                                                     it = S.DotE (arrb, { proj with it = "size" })},
                                            c1, c2) } in
     let indx = fresh_var "indx" T.nat in
     let indx_var = T.{ e1 with note = { note_typ = nat; note_eff = Triv };
@@ -279,7 +280,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                            at = e1.at }} in
     let zero = { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
     let one = { it = LitE (ref (NatLit (Numerics.Int.of_int 1))); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
-    let elem_exp = { note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
+    let elem_exp = { note = T.{ arr.note with note_typ = as_immut (as_array arrt); note_eff = Triv };
                      at = arr.at;
                      it = IdxE (arrb, indx_var)} in
     let indx_next = { it = BinE (ref (typ_of_var indx), indx_var, AddOp, one); at = no_region; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
@@ -298,16 +299,18 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
   | _ -> let arrv = fresh_var "arr" arrt in
          let arrb = { arr with it = S.VarE { it = id_of_var arrv;
                                              note = ();
-                                             at = arr.at }} in
+                                             at = arr.at };
+                               note = { arr.note with note_eff = Triv } } in
          let unit' = { unit with note_eff = arr.note.note_eff } in
-         let unit'' = { unit with note_eff = e2.note.note_eff } in
+         let while_body = body arrb in
+         let unit'' = while_body.note in
          let unit''' = { unit with note_eff = Ir_effect.max_eff unit'.note_eff unit''.note_eff } in
          { it = BlockE [{ it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = () };
                                        note = typ_of_var arrv; at = e1.at },
                                      arr);
                           at = arr.at;
                           note = unit' };
-                        { it = ExpD (body arrb); at = e2.at; note = unit'' }];
+                        { it = ExpD while_body; at = e2.at; note = unit'' }];
            at = e2.at;
            note = unit''' }
 
