@@ -198,8 +198,9 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (exp (rewrite_for_to_while p arr proj c0 c1 c2 e1 e2)).it
-  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
+  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2)
+      when T.is_array arr.note.S.note_typ && proj.it = "vals"
+    -> (exp (rewrite_for_to_while p arr proj c0 c1 c2 e1 e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
@@ -242,6 +243,18 @@ and lexp' = function
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
 and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
+  (* when e1 = arr.vals() in the expression
+
+     for p in e1 e2
+     ~~>
+     let arr = ... ;
+     var indx = 0 ;
+     let size = arr.size() ;
+     label l loop {
+       if indx < size
+       then { let p = arr[indx]; e2; indx += 1 }
+       else { break l }
+     } *)
   let arrt = arr.note.S.note_typ in
   let unit = T.{ note_typ = unit; note_eff = Triv } in
   let atE2 s = { e2 with it = s; note = unit } in
@@ -288,32 +301,6 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                              at = arr.at }} in
          let unit' = { unit with note_eff = e2.note.note_eff } in
          {it = BlockE [{it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = ()}; note = typ_of_var arrv; at = e1.at }, arr); at = arr.at; note = unit }; {it = ExpD (body arrb); at = e2.at; note = unit' }]; at = e2.at; note = unit' }
-
-and sequentialForE p arr proj c0 c1 c2 e1 e2 =
-  let arrt = arr.note.S.note_typ in
-  let body arrv arrb =
-    (countingE p arrv
-       (exp
-          { e1 with note = {e1.note with note_typ = T.nat};
-                    it = S.CallE ({c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat])};
-                                           it = S.DotE (arrb, { proj with it = "size" })},
-                                  c1, c2) })
-       (fun indxv ->
-         exp
-           {note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
-            at = arr.at;
-            it = S.IdxE (arrb, { arr with note = { arr.note with note_typ = T.nat };
-                                          it = S.VarE { it = id_of_var indxv;
-                                                        note = ();
-                                                        at=arr.at }})})
-       e2) in
-  let arr_ir = exp arr in
-  match arr_ir.it with
-  | I.VarE _ -> body arr_ir arr
-  | _ -> let arrv = fresh_var "arr" arrt in
-         letE arrv arr_ir (body (varE arrv) { arr with it = S.VarE { it = id_of_var arrv;
-                                                                     note = ();
-                                                                     at = arr.at }})
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
