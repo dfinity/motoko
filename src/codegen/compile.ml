@@ -6044,7 +6044,7 @@ module Var = struct
 end (* Var *)
 
 (* Calling well-known prelude functions *)
-(* FIX ME: calling into the prelude will not work if we ever need to compile a program
+(* FIXME: calling into the prelude will not work if we ever need to compile a program
    that requires top-level cps conversion;
    use new prims instead *)
 module Internals = struct
@@ -6053,7 +6053,7 @@ module Internals = struct
     | Some (VarEnv.Const(_, Const.Fun mk_fi)) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi ())))
-    | _ -> assert false
+    | _ -> failwith var
 
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
