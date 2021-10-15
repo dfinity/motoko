@@ -268,7 +268,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                it = VarE { it = id_of_var size;
                                            note = ();
                                            at = e1.at }} in
-    let size_exp = { e1 with note = { arr.note with note_typ = T.nat; note_eff = Triv };
+    let size_exp = { e1 with note = { arr.note with note_typ = T.nat; note_eff = T.Triv };
                              it = S.CallE ({ c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat]);
                                                                             note_eff = Triv };
                                                      it = S.DotE (arrb, { proj with it = "size" })},
@@ -300,7 +300,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
          let arrb = { arr with it = S.VarE { it = id_of_var arrv;
                                              note = ();
                                              at = arr.at };
-                               note = { arr.note with note_eff = Triv } } in
+                               note = { arr.note with note_eff = T.Triv } } in
          let unit' = { unit with note_eff = arr.note.note_eff } in
          let while_body = body arrb in
          let unit'' = while_body.note in
