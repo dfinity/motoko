@@ -198,7 +198,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2)
+  | S.(ForE (p, ({it=CallE (({it=DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2))
       when T.is_array arr.note.S.note_typ && proj.it = "vals"
     -> (exp (rewrite_for_to_while p arr proj c0 c1 c2 e1 e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
