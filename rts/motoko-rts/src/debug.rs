@@ -110,7 +110,7 @@ unsafe fn print_heap(heap_start: u32, heap_end: u32) {
         write_buf.reset();
 
         let obj_size = object_size(p as usize);
-        p += obj_size.to_bytes().0;
+        p += obj_size.to_bytes().as_u32();
         i += obj_size;
     }
 }
@@ -175,7 +175,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BITS64 => {
             let bits64 = obj as *const Bits64;
-            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
+            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits());
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
@@ -200,7 +200,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BLOB => {
             let blob = obj as *const Blob;
-            let _ = write!(buf, "<Blob len={:#x}>", (*blob).len.0);
+            let _ = write!(buf, "<Blob len={:#x}>", (*blob).len.as_u32());
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
@@ -219,7 +219,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
-                (*concat).n_bytes.0,
+                (*concat).n_bytes.as_u32(),
                 (*concat).text1.get_raw(),
                 (*concat).text2.get_raw()
             );
@@ -229,7 +229,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_FREE_SPACE => {
             let free_space = obj as *const FreeSpace;
-            let _ = write!(buf, "<Free space {} words>", (*free_space).words.0);
+            let _ = write!(buf, "<Free space {} words>", (*free_space).words.as_u32());
         }
         other => {
             let _ = write!(buf, "<??? {} ???>", other);

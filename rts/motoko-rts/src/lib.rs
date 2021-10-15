@@ -32,6 +32,7 @@ pub mod leb128;
 mod mem_utils;
 pub mod memory;
 pub mod principal_id;
+mod static_checks;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;

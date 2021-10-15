@@ -116,6 +116,14 @@ let rec plain_of_typ : Buffer.t -> render_functions -> Syntax.typ -> unit =
   | Syntax.AsyncT (_scope, typ) ->
       bprintf buf "async ";
       plain_of_typ buf rf typ
+  | Syntax.AndT (typ1, typ2) ->
+      plain_of_typ buf rf typ1;
+      bprintf buf " and ";
+      plain_of_typ buf rf typ2
+  | Syntax.OrT (typ1, typ2) ->
+      plain_of_typ buf rf typ1;
+      bprintf buf " or ";
+      plain_of_typ buf rf typ2
   | Syntax.ParT typ ->
       bprintf buf "(";
       plain_of_typ buf rf typ;

@@ -10,6 +10,10 @@ pkgs:
       # 2. run nix-build -A drun nix/
       # 3. copy the “expected” hash from the output into this file
       # 4. commit and push
+
+      # To automate this, try running the following in the nix/ directory
+      # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
+
       cargoSha256 = "0656lxdlr05cjkla1blvpqlxywk7shasiwmycz10nqykdrs4gfgf";
 
       nativeBuildInputs = with pkgs; [

@@ -3,15 +3,16 @@
 :base: https://github.com/dfinity/motoko-base[base]
 :!page-repl:
 
-== Different ways to represent errors in Motoko ==
-. Option
-. Result
-. Asynchronous Exceptions
+There are three primary ways to represent and handle errors values in {proglang}:
+
+- Option values (with a non-informative `null` indicated _some_ error);
+- `Result` variants (with a descriptive `#err value` providing more information about the error); and
+- `Error` values (that, in an asynchronous context, can be thrown and caught - similar to exceptions - and contain a numeric code and message).
 
 == Our Example API ==
 Let's assume we're building an API for a Todo application and want to expose a function that lets a user mark one of their Todo's as *Done*.
 To keep it simple we'll accept a `TodoId` and return an `Int` that represents how many seconds the Todo has been open.
-We're also assuming we're running in our own canister so we return an async value.
+We're also assuming we're running in our own actor so we return an async value.
 If nothing would ever go wrong that would leave us with the following API:
 
 [source.no-repl, motoko]
@@ -41,7 +42,7 @@ We now realize that there are conditions under which marking a Todo as done fail
 * The `id` could reference a non-existing Todo
 * The Todo might already be marked as done
 
-We'll now talk about the different ways to communicate these errors in Motoko and slowly improve our solution.
+We'll now talk about the different ways to communicate these errors in {proglang} and slowly improve our solution.
 
 
 == What error type to prefer ==
@@ -156,14 +157,14 @@ The {base} library exposes a collection of higher-order functions from the `Opti
 === Converting back and forth between Option/Result ===
 Sometimes you'll want to move between Options and Results.
 A Hashmap lookup returns `+null+` on failure and that's fine, but maybe the caller has more context and can turn that lookup failure into a meaningful `+Result+`.
-At other times you don't need the additional information a `+Result+ provides and just want to convert all `#err` cases into `null`.
+At other times you don't need the additional information a `+Result+` provides and just want to convert all `#err` cases into `null`.
 For these situations {base} provides the `fromOption` and `toOption` functions in the `Result` module.
 
 == Asynchronous Errors ==
 
-The last way of dealing with errors in Motoko is to use asynchronous `Error` handling, a restricted form of the exception handling familiar from other languages.
+The last way of dealing with errors in {proglang} is to use asynchronous `Error` handling, a restricted form of the exception handling familiar from other languages.
 Unlike the exceptions of other languages, {proglang}  _errors_ values, can only be thrown and caught in asynchronous contexts, typically the body of a `shared` function or `async` expression. Non-`shared` functions cannot employ structured error handling.
-This means you can exit a shared function by `throw`ing an `Error` value and `+try+`  some code calling a shared function on another canister, `catch`ing its failure as a result of type `Error`, but you can't use these error handling constructs in regular code, outside of an asynchronous context.
+This means you can exit a shared function by ``throw``ing an `Error` value and `+try+`  some code calling a shared function on another actor, ``catch``ing its failure as a result of type `Error`, but you can't use these error handling constructs in regular code, outside of an asynchronous context.
 
 Asynchronous ``Error``s should generally only be used to signal unexpected failures that you cannot recover from, and that you don't expect many consumers of your API to handle. If a failure should be handled by your caller you should make it explicit in your signature by returning a `Result` instead. For completeness here is the `markDone` example with exceptions:
 
