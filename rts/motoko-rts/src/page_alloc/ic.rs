@@ -50,6 +50,10 @@ impl SizeClass {
     fn remove_first(&mut self) -> Option<u16> {
         self.pages.pop_first()
     }
+
+    fn is_empty(&self) -> bool {
+        self.pages.is_empty()
+    }
 }
 
 //
@@ -146,6 +150,11 @@ impl PageAlloc for IcPageAlloc {
             Some(size_class) => {
                 // TODO: Improve error msg
                 let page = size_class.remove_first().unwrap();
+
+                // Remove the size class if it's empty
+                if size_class.is_empty() {
+                    FREE_PAGES_SIZE_SORTED.remove(0);
+                }
 
                 // Page removed from size-sorted list, remove from addr-sorted list
                 remove_free_page_addr_sorted(page);
