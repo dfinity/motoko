@@ -25,7 +25,7 @@ pub struct Space<P: PageAlloc> {
     /// accounted as allocated. (TODO: not sure about this part)
     total_alloc: usize,
 
-    large_object_pages: *mut LargePageHeader,
+    pub(crate) large_object_pages: *mut LargePageHeader,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -154,6 +154,8 @@ impl<P: PageAlloc> Space<P> {
         for page in self.pages.drain(..) {
             self.page_alloc.free(page);
         }
+
+        // TODO: Free large objects
     }
 
     pub unsafe fn alloc_array(&mut self, len: u32) -> Value {

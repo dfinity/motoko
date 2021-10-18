@@ -155,7 +155,7 @@ impl From<Words<u32>> for Bytes<u32> {
 
 /// A value in a heap slot
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Value(u32);
 
 /// A view of `Value` for analyzing the slot contents.
@@ -352,6 +352,7 @@ pub struct GcMetadata(u8);
 
 const STATIC_BIT_MASK: u8 = 0b1;
 const LARGE_BIT_MASK: u8 = 0b10;
+const LARGE_MARK_BIT_MASK: u8 = 0b100;
 
 impl GcMetadata {
     /// Is the object static?
@@ -381,6 +382,31 @@ impl GcMetadata {
 
     fn check_bitset_sanity(&self) {
         debug_assert!(self.0 >> 2 == 0);
+    }
+
+    fn is_marked(&self) -> bool {
+        debug_assert!(self.is_large());
+        self.0 & LARGE_MARK_BIT_MASK != 0
+    }
+
+    fn mark_large(&mut self) {
+        // We should only mark large objects
+        debug_assert!(self.is_large());
+
+        // Don't mark multiple times
+        debug_assert!(!self.is_marked());
+
+        self.0 |= LARGE_MARK_BIT_MASK;
+    }
+
+    fn unmark_large(&mut self) {
+        // We only use the mark bit for large objects
+        debug_assert!(self.is_large());
+
+        // Only unmark already marked objects
+        debug_assert!(self.is_marked());
+
+        self.0 &= !LARGE_MARK_BIT_MASK;
     }
 }
 
@@ -454,6 +480,18 @@ impl Obj {
     /// is only used in tests.
     pub unsafe fn set_static(self: *mut Self) {
         (*self).gc_metadata.set_static()
+    }
+
+    pub unsafe fn is_marked(self: *mut Self) -> bool {
+        (*self).gc_metadata.is_marked()
+    }
+
+    pub unsafe fn mark_large(self: *mut Self) {
+        (*self).gc_metadata.mark_large()
+    }
+
+    pub unsafe fn unmark_large(self: *mut Self) {
+        (*self).gc_metadata.unmark_large()
     }
 }
 

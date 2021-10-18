@@ -1,6 +1,6 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
-use crate::page_alloc::{Page, PageAlloc};
+use crate::page_alloc::{LargePageHeader, Page, PageAlloc};
 use crate::space::Space;
 use crate::types::*;
 
@@ -52,24 +52,56 @@ pub unsafe fn copying_gc_internal<
     }
 
     // Scavenge to-space
+
+    // Current page we're scavenging
     let mut to_space_page_idx = to_space.first_page();
-    while let Some(page) = to_space.get_page(to_space_page_idx) {
-        let mut p = page.contents_start();
 
-        let page_end = page.end();
+    // Scavenge more?
+    let mut work = true;
 
-        while p != to_space.allocation_pointer() && p != page_end {
-            let size = object_size(p);
-            scav(to_space, p);
-            p += size.to_bytes().0 as usize;
+    while work {
+        work = false;
+
+        while let Some(page) = to_space.get_page(to_space_page_idx) {
+            // Where we're at in the current page we're scavenging
+            let mut p = page.contents_start();
+
+            // Where the current page ends
+            let page_end = page.end();
+
+            // Scavenge until the end of the current page
+            // NB. when we're scavenging the last page allocation pointer changes as we scavenge
+            while p != to_space.allocation_pointer() && p != page_end {
+                let size = object_size(p);
+                scav(to_space, p);
+                p += size.to_bytes().0 as usize;
+            }
+
+            let next_page_idx = to_space_page_idx.next();
+
+            if to_space.get_page(next_page_idx).is_none() {
+                // Current page is the last page. We may need to scavenge this page more after
+                // evacuating large objects, so don't bump page index yet.
+                break;
+            } else {
+                to_space_page_idx = next_page_idx;
+            }
         }
 
-        to_space_page_idx = to_space_page_idx.next();
+        // Scavenge to-space large objects. If we evacuate in this step then we need to scavenge
+        // newly evacuated objects.
+        // TODO: No need to scavenge all of the large objects, just the new allocation will be
+        // enough. We will need to maintain a "new large objects" list for this, and move scavenged
+        // large objects to `to_space.large_object_pages`.
+        for large_object in to_space.iter_large_pages() {
+            work |= scav(to_space, large_object as usize);
+        }
     }
 }
 
-/// Evacuate (copy) an object in from-space to to-space.
-unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
+/// Evacuate (copy) an object in from-space to to-space. Returns `false` when the object does not
+/// need evacuated (already evacuated, or a "filler" object).
+unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) -> bool {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
@@ -79,7 +111,7 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
     if obj.is_large() {
-        return evac_large(obj);
+        return evac_large(to_space, obj);
     }
 
     let tag = obj.tag();
@@ -88,9 +120,9 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
     if tag == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
-        return;
+        return false; // already evacuated
     } else if tag == TAG_ONE_WORD_FILLER || tag == TAG_FREE_SPACE {
-        return;
+        return false; // nothing to evacuate
     }
 
     let obj_size = object_size(obj as usize);
@@ -108,18 +140,52 @@ unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) {
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_addr);
+
+    true
 }
 
-unsafe fn evac_large(_obj: *mut Obj) {
-    todo!("evac_large");
+/// Returns `false` when the object is already evacuated.
+unsafe fn evac_large<P: PageAlloc>(to_space: &mut Space<P>, obj: *mut Obj) -> bool {
+    if obj.is_marked() {
+        return false;
+    }
+
+    // Object not marked, it should be in from-space large object list. Mark it and move it to
+    // to-space large object list.
+    obj.mark_large();
+
+    let page_header = (obj as *mut LargePageHeader).sub(1);
+
+    if !(*page_header).prev.is_null() {
+        debug_assert_eq!((*(*page_header).prev).next, page_header);
+        (*(*page_header).prev).next = (*page_header).next;
+    }
+
+    if !(*page_header).next.is_null() {
+        debug_assert_eq!((*(*page_header).next).prev, page_header);
+        (*(*page_header).next).prev = (*page_header).prev;
+    }
+
+    (*page_header).prev = core::ptr::null_mut();
+    (*page_header).next = to_space.large_object_pages;
+    if !(*to_space).large_object_pages.is_null() {
+        (*(*to_space).large_object_pages).prev = page_header;
+    }
+
+    true
 }
 
-unsafe fn scav<P: PageAlloc>(to_space: &mut Space<P>, obj: usize) {
+/// Returns `false` when nothing is evacuated.
+unsafe fn scav<P: PageAlloc>(to_space: &mut Space<P>, obj: usize) -> bool {
     let obj = obj as *mut Obj;
 
+    let mut evacuated = false;
+
     crate::visitor::visit_pointer_fields(obj, obj.tag(), |field_addr| {
-        evac(to_space, field_addr as usize);
+        evacuated |= evac(to_space, field_addr as usize);
     });
+
+    evacuated
 }
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of

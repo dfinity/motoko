@@ -76,6 +76,6 @@ impl PageHeader {
 }
 
 pub struct LargePageHeader {
-    pub next: *mut LargePageHeader,
     pub prev: *mut LargePageHeader,
+    pub next: *mut LargePageHeader,
 }
