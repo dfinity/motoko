@@ -52,8 +52,9 @@ In order to compile a Motoko file, `dfx` invokes `moc` with
     moc some/path/input.mo            \
         -o another/path/output.wasm   \
         { --package pkgname pkgpath } \
-        { --actor-alias alias url }
-        [ --actor-idl actorpath ]
+        { --actor-alias alias url }   \
+        [ --actor-idl actorpath ]     \
+        { --public-metadata name }
 
 This _reads_ the following files
  * `some/path/input.mo`
@@ -95,23 +96,24 @@ Exporting Canister Metadata
 ---------------------------
 
 The compiler generates various metadata about the canister via command line flags.
-The compiled Wasm module also includes the metadata in the custom sections.
+The compiled Wasm module also includes these metadata in the custom sections.
+The compiler flag `--public-metadata <name>` controls if the custom section is publicly accessible.
+If `<name>` is in the `public-metadata` flag, the custom section name will be `icp:public <name>`.
+Otherwise, it will be `icp:private <name>`.
 
 * Candid interface.
   + Compiler flag `--idl` generates the Candid interface for the canister. The main service
     is always a service constructor, which contains the initialization arguments for installing the canister.
-  + Custom section `icp:public candid` stores the interface for the running (initialized) canister, which removes
-    the initializatio arguments. This custom section is publicly accessible.
-  + Custom section `icp:private init_args` stores the initialization arguments. The argument types can refer to
-    types defined in the `icp:public candid` custom section. This custom section is only accessible by the controllers
-    of the canister.
+  + Custom section `candid:service` stores the interface for the running (initialized) canister, which removes
+    the initializatio arguments.
+  + Custom section `candid:args` stores the initialization arguments. The argument types can refer to
+    types defined in the `candid:service` custom section.
 * Stable variable.
-  + Compiler flag `--print-stable-vars` generates the signatures for stable variables.
-  + Custom section `icp:private stable_vars` stores the signatures for stable variables. This custom section is
-    only accessible by the controllers of the canister.
+  + Compiler flag `--print-stable-types` generates the signatures for stable variables.
+  + Custom section `motoko:stable-types` stores the signatures for stable variables.
 
-We store the metadata in the Wasm module, so that dfx can compare the current and new type signatures to ensure
-canister upgrade is safe.
+The above metadata is stored in the Wasm module, and is only accessible by the controllers of the canister, unless the
+metadata name is specified in the `--public-metadata` flag.
 
 Invoking the IDE
 ----------------
