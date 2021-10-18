@@ -9,7 +9,7 @@ syntax2.mo:2.1-2.4: syntax error [M0001], unexpected token 'let', expected one o
   <unassign> <exp(ob)>
   <relop> <exp_bin(ob)>
   . <id>
-  : <typ>
+  : <typ_nobin>
   <binop> <exp_bin(ob)>
   <binassign> <exp(ob)>
   and <exp_bin(ob)>
