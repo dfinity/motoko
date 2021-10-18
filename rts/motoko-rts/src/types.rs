@@ -381,7 +381,7 @@ impl GcMetadata {
     }
 
     fn check_bitset_sanity(&self) {
-        debug_assert!(self.0 >> 2 == 0);
+        debug_assert!(self.0 >> 3 == 0);
     }
 
     fn is_marked(&self) -> bool {

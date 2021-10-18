@@ -171,6 +171,7 @@ unsafe fn evac_large<P: PageAlloc>(to_space: &mut Space<P>, obj: *mut Obj) -> bo
     if !(*to_space).large_object_pages.is_null() {
         (*(*to_space).large_object_pages).prev = page_header;
     }
+    (*to_space).large_object_pages = page_header;
 
     true
 }
