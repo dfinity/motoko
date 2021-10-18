@@ -385,11 +385,15 @@ impl GcMetadata {
     }
 
     fn is_marked(&self) -> bool {
+        self.check_bitset_sanity();
+
         debug_assert!(self.is_large());
         self.0 & LARGE_MARK_BIT_MASK != 0
     }
 
     fn mark_large(&mut self) {
+        self.check_bitset_sanity();
+
         // We should only mark large objects
         debug_assert!(self.is_large());
 
@@ -400,11 +404,10 @@ impl GcMetadata {
     }
 
     fn unmark_large(&mut self) {
-        // We only use the mark bit for large objects
-        debug_assert!(self.is_large());
+        self.check_bitset_sanity();
 
-        // Only unmark already marked objects
-        debug_assert!(self.is_marked());
+        // Only use the mark bit for large objects
+        debug_assert!(self.is_large());
 
         self.0 &= !LARGE_MARK_BIT_MASK;
     }

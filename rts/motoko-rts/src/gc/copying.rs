@@ -18,6 +18,7 @@ unsafe fn copying_gc() {
     let mut to_space = Space::new(crate::page_alloc::ic::IcPageAlloc {});
 
     copying_gc_internal(
+        crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap(),
         &mut to_space,
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
@@ -36,12 +37,18 @@ pub unsafe fn copying_gc_internal<
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
+    from_space: &Space<P>,
     to_space: &mut Space<P>,
     static_roots: Value,
     continuation_table_loc: *mut Value,
     _note_live_size: NoteLiveSize,
     _note_reclaimed: NoteReclaimed,
 ) {
+    // Reset mark bits of large objects
+    for large_object in from_space.iter_large_pages() {
+        large_object.unmark_large();
+    }
+
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
