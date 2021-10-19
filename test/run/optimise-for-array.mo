@@ -35,3 +35,19 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK:      local.set $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
+
+
+// CHECK:      i32.const 84
+// CHECK:      call $B_add
+// CHECK-NEXT: call $B_eq
+// CHECK-NEXT: if
+// CHECK-NEXT: loop
+// CHECK-NEXT: br 0
+// CHECK-NEXT: end
+// CHECK-NEXT: unreachable
+// CHECK-NEXT: else
+// bottom iteration expression is treated fairly
+var c = 42;
+if (c == c + 1) {
+    for (check4 in (loop {}).vals()) { Prim.debugPrint check4 }
+}
