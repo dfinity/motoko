@@ -219,6 +219,12 @@ let blockE decs exp =
       note = Note.{ def with typ; eff }
     }
 
+let natE n =
+  { it = LitE (NatLit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat }
+  }
+
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;
@@ -599,6 +605,32 @@ let loopWhileE exp1 exp2 =
             )
         )
     )
+
+let countingE binding arr expSize expIndexing expWorker =
+  (* when e1 = arr.vals()
+
+     for p in e1 e2
+     ~~>
+     let arr = ... ;
+     var indx = 0 ;
+     let size = arr.size() ;
+     label l loop {
+       if indx < size
+       then { let p = arr[indx]; e2; indx += 1 }
+       else { break l }
+     } *)
+  let indx = fresh_var "indx" T.(Mut nat) in
+  let size = fresh_var "size" T.nat in
+  blockE [varD indx (natE Numerics.Int.zero)
+        ; letD size expSize]
+    (whileE (primE (RelPrim (T.nat, Operator.LtOp))
+               [varE indx; varE size])
+       (blockE [letP binding (expIndexing indx)
+              ; letP wildP expWorker]
+          (assignE indx
+             (primE (BinPrim (T.nat, Operator.AddOp))
+                [ varE indx
+                ; natE (Numerics.Int.of_int 1)]))))
 
 let forE pat exp1 exp2 =
   (* for p in e1 e2

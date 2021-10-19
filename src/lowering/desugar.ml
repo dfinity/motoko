@@ -198,9 +198,10 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.(ForE (p, ({it=CallE (({it=DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2))
+  (*| S.(ForE (p, ({it=CallE (({it=DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2))
       when T.is_array arr.note.S.note_typ && proj.it = "vals"
-    -> (exp (rewrite_for_to_while p arr proj c0 c1 c2 e1 e2)).it
+    -> (exp (rewrite_for_to_while p arr proj c0 c1 c2 e1 e2)).it *)
+  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
@@ -312,6 +313,41 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                         { it = ExpD while_body; at = e2.at; note = unit'' }];
            at = e2.at;
            note = unit''' }
+
+and sequentialForE p arr proj c0 c1 c2 e1 e2 =
+  let arrt = arr.note.S.note_typ in
+  let body arrv arrb =
+    let expSize =
+      exp { e1 with note = T.{ e1.note with note_typ = nat; note_eff = Triv };
+                    it = S.CallE ({ c0 with note = T.{ c0.note with note_typ = Func (Local, Returns, [], [], [nat]) };
+                                            it = S.DotE (arrb, { proj with it = "size" }) },
+                                  c1, c2) } in
+    let indx = fresh_var "indx" T.(Mut nat) in
+    let expIndexing = exp
+           { note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
+             at = arr.at;
+             it = S.IdxE (arrb, { arr with note = T.{ arr.note with note_typ = nat; note_eff = Triv };
+                                           it = S.VarE { it = id_of_var indx;
+                                                         note = ();
+                                                         at = arr.at } }) } in
+    let size = fresh_var "size" T.nat in
+    blockE [varD indx (natE Numerics.Int.zero)
+          ; letD size expSize]
+      (whileE (primE (RelPrim (T.nat, Operator.LtOp))
+                 [varE indx; varE size])
+         (blockE [letP p expIndexing
+                ; letP wildP e2]
+            (assignE indx
+               (primE (BinPrim (T.nat, Operator.AddOp))
+                  [ varE indx
+                  ; natE (Numerics.Int.of_int 1)])))) in
+  let arr_ir = exp arr in
+  match arr_ir.it with
+  | I.VarE _ -> body arr_ir arr
+  | _ -> let arrv = fresh_var "arr" arrt in
+         letE arrv arr_ir (body (varE arrv) { arr with it = S.VarE { it = id_of_var arrv;
+                                                                     note = ();
+                                                                     at = arr.at }})
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
