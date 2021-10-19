@@ -242,7 +242,7 @@ and lexp' = function
   | S.DotE (e, x) -> I.DotLE (exp e, x.it)
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
-
+(*
 and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
   (* when e1 = arr.vals() in the expression
 
@@ -313,17 +313,29 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                         { it = ExpD while_body; at = e2.at; note = unit'' }];
            at = e2.at;
            note = unit''' }
-
+         *)
 and sequentialForE p arr proj c0 c1 c2 e1 e2 =
+  (* when e1 = arr.vals() in the expression
+
+     for p in e1 e2
+     ~~>
+     let arr = ... ;
+     let size = arr.size() ;
+     var indx = 0 ;
+     label l loop {
+       if indx < size
+       then { let p = arr[indx]; e2; indx += 1 }
+       else { break l }
+     } *)
   let arrt = arr.note.S.note_typ in
-  let body arrv arrb =
-    let expSize =
+  let body arrb =
+    let size_exp =
       exp { e1 with note = T.{ e1.note with note_typ = nat; note_eff = Triv };
                     it = S.CallE ({ c0 with note = T.{ c0.note with note_typ = Func (Local, Returns, [], [], [nat]) };
                                             it = S.DotE (arrb, { proj with it = "size" }) },
                                   c1, c2) } in
     let indx = fresh_var "indx" T.(Mut nat) in
-    let expIndexing = exp
+    let indexing_exp = exp
            { note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
              at = arr.at;
              it = S.IdxE (arrb, { arr with note = T.{ arr.note with note_typ = nat; note_eff = Triv };
@@ -332,22 +344,21 @@ and sequentialForE p arr proj c0 c1 c2 e1 e2 =
                                                          at = arr.at } }) } in
     let size = fresh_var "size" T.nat in
     blockE [varD indx (natE Numerics.Int.zero)
-          ; letD size expSize]
-      (whileE (primE (RelPrim (T.nat, Operator.LtOp))
+          ; letD size size_exp]
+      (whileE (primE (Ir_def.Ir.RelPrim (T.nat, Operator.LtOp))
                  [varE indx; varE size])
-         (blockE [letP p expIndexing
+         (blockE [letP p indexing_exp
                 ; letP wildP e2]
             (assignE indx
-               (primE (BinPrim (T.nat, Operator.AddOp))
+               (primE (Ir_def.Ir.BinPrim (T.nat, Operator.AddOp))
                   [ varE indx
                   ; natE (Numerics.Int.of_int 1)])))) in
   let arr_ir = exp arr in
   match arr_ir.it with
-  | I.VarE _ -> body arr_ir arr
+  | I.VarE _ -> body arr
   | _ -> let arrv = fresh_var "arr" arrt in
-         letE arrv arr_ir (body (varE arrv) { arr with it = S.VarE { it = id_of_var arrv;
-                                                                     note = ();
-                                                                     at = arr.at }})
+         letE arrv arr_ir
+           (body { arr with it = S.VarE { it = id_of_var arrv; note = (); at = arr.at }})
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
