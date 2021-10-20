@@ -63,4 +63,10 @@ if (c == c + 1) {
 // typed bottom iteration expression is treated fairly
 if (c == c + 1) {
     for (check5 in ((loop {}) : [Text]).vals()) { Prim.debugPrint check5 }
-}
+};
+
+let check6 = [var "hello", "immutable", "world"];
+check6[1] := "mutable";
+// `check6` being a `VarE` already and iteration variable is named identically
+// this passes the IR type check, which demonstrates that no name capture happens
+for (check6 in check6.vals()) { ignore check6 }

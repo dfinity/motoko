@@ -282,7 +282,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                   ; natE (Numerics.Nat.of_int 1)])))) in
   let arr_ir = exp arr in
   match arr_ir.it with
-  | I.VarE _ -> body arr
+  | I.VarE v when p.it <> I.VarP v -> body arr
   | _ ->
     let arrv = fresh_var "arr" arr_typ in
     letE arrv arr_ir
