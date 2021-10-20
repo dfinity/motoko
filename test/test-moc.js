@@ -38,8 +38,7 @@ WebAssembly.compile(empty_wasm_ic.code);
 assert.notEqual(empty_wasm_plain.code, empty_wasm_ic.code);
 
 moc.Motoko.removeFile('empty.mo');
-const removed = moc.Motoko.compileWasm('ic', 'empty.mo');
-assert.deepStrictEqual(removed, {});
+assert.fail(moc.Motoko.compileWasm('ic', 'empty.mo'));
 
 // Check if error messages are correctly returned
 const bad_result = moc.Motoko.compileWasm('ic', 'bad.mo');
