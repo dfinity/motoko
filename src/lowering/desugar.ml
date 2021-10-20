@@ -330,15 +330,16 @@ and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   let arrt = arr.note.S.note_typ in
   let body arrb =
     let size_exp =
-      exp { e1 with note = T.{ e1.note with note_typ = nat; note_eff = Triv };
-                    it = S.CallE ({ c0 with note = T.{ c0.note with note_typ = Func (Local, Returns, [], [], [nat]) };
+      exp { e1 with note = T.{ note_typ = nat; note_eff = Triv };
+                    it = S.CallE ({ c0 with note = T.{ note_typ = Func (Local, Returns, [], [], [nat]);
+                                                       note_eff = Triv };
                                             it = S.DotE (arrb, { proj with it = "size" }) },
                                   c1, c2) } in
     let indx = fresh_var "indx" T.(Mut nat) in
     let indexing_exp = exp
-           { note = { arr.note with note_typ = T.(as_immut (as_array arrt)) };
+           { note = T.{ note_typ = as_immut (as_array arrt); note_eff = Triv };
              at = arr.at;
-             it = S.IdxE (arrb, { arr with note = T.{ arr.note with note_typ = nat; note_eff = Triv };
+             it = S.IdxE (arrb, { arr with note = T.{ note_typ = nat; note_eff = Triv };
                                            it = S.VarE { it = id_of_var indx;
                                                          note = ();
                                                          at = arr.at } }) } in
@@ -358,7 +359,8 @@ and sequentialForE p arr proj c0 c1 c2 e1 e2 =
   | I.VarE _ -> body arr
   | _ -> let arrv = fresh_var "arr" arrt in
          letE arrv arr_ir
-           (body { arr with it = S.VarE { it = id_of_var arrv; note = (); at = arr.at }})
+           (body { arr with it = S.VarE { it = id_of_var arrv; note = (); at = arr.at };
+                            note = { arr.note with note_eff = T.Triv } })
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
