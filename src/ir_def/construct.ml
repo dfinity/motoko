@@ -610,7 +610,7 @@ let loopWhileE exp1 exp2 =
 let countingE binding arr expSize expIndexing expWorker =
   (* when e1 = arr.vals()
 
-     for p in e1 e2
+     for (p in e1) e2
      ~~>
      let arr = ... ;
      var indx = 0 ;
