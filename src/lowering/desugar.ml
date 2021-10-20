@@ -275,7 +275,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
       (whileE (primE (Ir_def.Ir.RelPrim (T.nat, LtOp))
                  [varE indx; varE size])
          (blockE [ letP p indexing_exp
-                 ; letP wildP e2]
+                 ; expD e2]
             (assignE indx
                (primE (Ir_def.Ir.BinPrim (T.nat, AddOp))
                   [ varE indx
