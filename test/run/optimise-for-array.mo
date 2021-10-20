@@ -50,4 +50,17 @@ for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint c
 var c = 42;
 if (c == c + 1) {
     for (check4 in (loop {}).vals()) { Prim.debugPrint check4 }
+};
+
+// CHECK:      call $B_add
+// CHECK-NEXT: call $B_eq
+// CHECK-NEXT: if
+// CHECK-NEXT: loop
+// CHECK-NEXT: br 0
+// CHECK-NEXT: end
+// CHECK-NEXT: unreachable
+// CHECK-NEXT: else
+// typed bottom iteration expression is treated fairly
+if (c == c + 1) {
+    for (check5 in ((loop {}) : [Text]).vals()) { Prim.debugPrint check5 }
 }
