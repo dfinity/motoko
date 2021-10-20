@@ -198,10 +198,9 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  (*| S.(ForE (p, ({it=CallE (({it=DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2))
+  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2)
       when T.is_array arr.note.S.note_typ && proj.it = "vals"
-    -> (exp (rewrite_for_to_while p arr proj c0 c1 c2 e1 e2)).it *)
-  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2) when T.is_array arr.note.S.note_typ && proj.it = "vals"-> (sequentialForE  (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
+    -> (rewrite_for_to_while (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
@@ -242,13 +241,11 @@ and lexp' = function
   | S.DotE (e, x) -> I.DotLE (exp e, x.it)
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
-(*
+
 and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
-  (* when e1 = arr.vals() in the expression
-
-     for p in e1 e2
+  (* for p in e1 e2 when e1 = ⟨...array-typed...⟩.vals()
      ~~>
-     let arr = ... ;
+     let arr = ⟨...array-typed...⟩ ;
      let size = arr.size() ;
      var indx = 0 ;
      label l loop {
@@ -256,111 +253,41 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
        then { let p = arr[indx]; e2; indx += 1 }
        else { break l }
      } *)
-  let arrt = arr.note.S.note_typ in
-  let unit = T.{ note_typ = unit; note_eff = Triv } in
-  let atE2 s = { e2 with it = s; note = unit } in
-  let atE2' s = { e2 with it = s; note = e2.note } in
-  let body arrb =
-    let dec_atE1 d = { it = d; at = e1.at; note = unit } in
-    let dec_atE2' d = { it = d; at = e2.at; note = e2.note } in
-    let size = fresh_var "size" T.nat in
-    let size_var = T.{ e1 with note = { note_typ = nat; note_eff = Triv };
-                               it = VarE { it = id_of_var size;
-                                           note = ();
-                                           at = e1.at }} in
-    let size_exp = { e1 with note = { arr.note with note_typ = T.nat; note_eff = T.Triv };
-                             it = S.CallE ({ c0 with note = T.{c0.note with note_typ = Func (Local, Returns, [], [], [nat]);
-                                                                            note_eff = Triv };
-                                                     it = S.DotE (arrb, { proj with it = "size" })},
-                                           c1, c2) } in
-    let indx = fresh_var "indx" T.nat in
-    let indx_var = T.{ e1 with note = { note_typ = nat; note_eff = Triv };
-                               it = VarE { it = id_of_var indx;
-                                           note = ();
-                                           at = e1.at }} in
-    let zero = { it = LitE (ref (NatLit Numerics.Int.zero)); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
-    let one = { it = LitE (ref (NatLit (Numerics.Int.of_int 1))); at = e1.at; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
-    let elem_exp = { note = T.{ arr.note with note_typ = as_immut (as_array arrt); note_eff = Triv };
-                     at = arr.at;
-                     it = IdxE (arrb, indx_var)} in
-    let indx_next = { it = BinE (ref (typ_of_var indx), indx_var, AddOp, one); at = no_region; note = { note_typ = typ_of_var indx; note_eff = T.Triv } } in
-    let indx_lvar = T.{ indx_var with note = { note_typ = Mut nat; note_eff = Triv } } in
-    let cond = T.{ it = RelE (ref nat, indx_var, LtOp, size_var); at = e1.at; note = { note_typ = bool; note_eff = Triv } } in
-    atE2' (BlockE [
-              dec_atE1 (LetD ({ it = VarP { it = id_of_var size; at = e1.at; note = () }; note = typ_of_var size; at = e1.at }, size_exp));
-              dec_atE1 (VarD ({ it = id_of_var indx; at = e1.at; note = () }, zero));
-              dec_atE2' (ExpD (atE2' (WhileE (cond, atE2' (
-                  BlockE [
-                      { it = LetD (p, elem_exp); at = p.at; note = unit };
-                      dec_atE2' (ExpD e2);
-                      { it = ExpD (atE2 (AssignE (indx_lvar, indx_next))) ; note = unit ; at = no_region }])))))]) in
-  match (exp arr).it with
-  | I.VarE _ -> body arr
-  | _ -> let arrv = fresh_var "arr" arrt in
-         let arrb = { arr with it = S.VarE { it = id_of_var arrv;
-                                             note = ();
-                                             at = arr.at };
-                               note = { arr.note with note_eff = T.Triv } } in
-         let unit' = { unit with note_eff = arr.note.note_eff } in
-         let while_body = body arrb in
-         let unit'' = while_body.note in
-         let unit''' = { unit with note_eff = Ir_effect.max_eff unit'.note_eff unit''.note_eff } in
-         { it = BlockE [{ it = LetD ({ it = VarP { it = id_of_var arrv; at = arr.at; note = () };
-                                       note = typ_of_var arrv; at = e1.at },
-                                     arr);
-                          at = arr.at;
-                          note = unit' };
-                        { it = ExpD while_body; at = e2.at; note = unit'' }];
-           at = e2.at;
-           note = unit''' }
-         *)
-and sequentialForE p arr proj c0 c1 c2 e1 e2 =
-  (* when e1 = arr.vals() in the expression
-
-     for p in e1 e2
-     ~~>
-     let arr = ... ;
-     let size = arr.size() ;
-     var indx = 0 ;
-     label l loop {
-       if indx < size
-       then { let p = arr[indx]; e2; indx += 1 }
-       else { break l }
-     } *)
-  let arrt = arr.note.S.note_typ in
+  let arr_typ = arr.note.note_typ in
+  let triv t = { note_typ = t; note_eff = T.Triv } in
   let body arrb =
     let size_exp =
-      exp { e1 with note = T.{ note_typ = nat; note_eff = Triv };
-                    it = S.CallE ({ c0 with note = T.{ note_typ = Func (Local, Returns, [], [], [nat]);
-                                                       note_eff = Triv };
-                                            it = S.DotE (arrb, { proj with it = "size" }) },
-                                  c1, c2) } in
+      exp { e1 with note = triv T.nat;
+                    it = CallE ({ c0 with note = triv T.(Func (Local, Returns, [], [], [nat]));
+                                          it = DotE (arrb, { proj with it = "size" }) },
+                                c1, c2) } in
     let indx = fresh_var "indx" T.(Mut nat) in
     let indexing_exp = exp
-           { note = T.{ note_typ = as_immut (as_array arrt); note_eff = Triv };
+           { note = triv T.(as_immut (as_array arr_typ));
              at = arr.at;
-             it = S.IdxE (arrb, { arr with note = T.{ note_typ = nat; note_eff = Triv };
-                                           it = S.VarE { it = id_of_var indx;
-                                                         note = ();
-                                                         at = arr.at } }) } in
+             it = IdxE (arrb, { arr with note = triv T.nat;
+                                         it = VarE { it = id_of_var indx;
+                                                     note = ();
+                                                     at = arr.at } }) } in
     let size = fresh_var "size" T.nat in
-    blockE [varD indx (natE Numerics.Int.zero)
-          ; letD size size_exp]
-      (whileE (primE (Ir_def.Ir.RelPrim (T.nat, Operator.LtOp))
+    blockE [ letD size size_exp
+           ; varD indx (natE Numerics.Int.zero)]
+      (whileE (primE (Ir_def.Ir.RelPrim (T.nat, LtOp))
                  [varE indx; varE size])
-         (blockE [letP p indexing_exp
-                ; letP wildP e2]
+         (blockE [ letP p indexing_exp
+                 ; letP wildP e2]
             (assignE indx
-               (primE (Ir_def.Ir.BinPrim (T.nat, Operator.AddOp))
+               (primE (Ir_def.Ir.BinPrim (T.nat, AddOp))
                   [ varE indx
                   ; natE (Numerics.Int.of_int 1)])))) in
   let arr_ir = exp arr in
   match arr_ir.it with
   | I.VarE _ -> body arr
-  | _ -> let arrv = fresh_var "arr" arrt in
-         letE arrv arr_ir
-           (body { arr with it = S.VarE { it = id_of_var arrv; note = (); at = arr.at };
-                            note = { arr.note with note_eff = T.Triv } })
+  | _ ->
+    let arrv = fresh_var "arr" arr_typ in
+    letE arrv arr_ir
+      (body { arr with it = VarE { it = id_of_var arrv; note = (); at = arr.at };
+                       note = triv arr.note.note_typ })
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
