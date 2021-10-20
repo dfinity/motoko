@@ -77,7 +77,7 @@ let js_save_file filename content =
   let filename = Js.to_string filename in
   let content = Js.to_string content in
   try Sys_js.create_file ~name:filename ~content:content
-  with _ -> Sys_js.update_file ~name:filename ~content:content  
+  with _ -> Sys_js.update_file ~name:filename ~content:content
 
 let js_remove_file filename = Sys.remove (Js.to_string filename)
 let js_rename_file oldpath newpath = Sys.rename (Js.to_string oldpath) (Js.to_string newpath)
