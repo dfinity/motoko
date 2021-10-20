@@ -3,7 +3,7 @@ open Source
 open Mo_config
 
 module Js = Js_of_ocaml.Js
-module Sys_js = Js_of_ocaml.Sys_js          
+module Sys_js = Js_of_ocaml.Sys_js
 
 let position_of_pos pos =
   object%js
@@ -76,8 +76,12 @@ let js_compile_wasm mode source =
 let js_save_file filename content =
   let filename = Js.to_string filename in
   let content = Js.to_string content in
-  try Sys_js.create_file ~name:filename ~content:content
-  with _ -> Sys_js.update_file ~name:filename ~content:content
+  if Sys.file_exists filename
+  then Sys_js.create_file ~name:filename ~content:content
+  else Sys_js.update_file ~name:filename ~content:content
+
+let js_remove_file filename = Sys.remove (Js.to_string filename)
+let js_rename_file oldpath newpath = Sys.rename (Js.to_string oldpath) (Js.to_string newpath)
 
 let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
