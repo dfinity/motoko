@@ -271,7 +271,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                                      at = arr.at } }) } in
     let size = fresh_var "size" T.nat in
     blockE [ letD size size_exp
-           ; varD indx (natE Numerics.Int.zero)]
+           ; varD indx (natE Numerics.Nat.zero)]
       (whileE (primE (Ir_def.Ir.RelPrim (T.nat, LtOp))
                  [varE indx; varE size])
          (blockE [ letP p indexing_exp
@@ -279,7 +279,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
             (assignE indx
                (primE (Ir_def.Ir.BinPrim (T.nat, AddOp))
                   [ varE indx
-                  ; natE (Numerics.Int.of_int 1)])))) in
+                  ; natE (Numerics.Nat.of_int 1)])))) in
   let arr_ir = exp arr in
   match arr_ir.it with
   | I.VarE _ -> body arr
