@@ -77,11 +77,12 @@ let js_save_file filename content =
   let filename = Js.to_string filename in
   let content = Js.to_string content in
   if Sys.file_exists filename
-  then Sys_js.create_file ~name:filename ~content:content
-  else Sys_js.update_file ~name:filename ~content:content
+  then Sys_js.update_file ~name:filename ~content:content
+  else Sys_js.create_file ~name:filename ~content:content
 
 let js_remove_file filename = Sys.remove (Js.to_string filename)
 let js_rename_file oldpath newpath = Sys.rename (Js.to_string oldpath) (Js.to_string newpath)
+let js_read_dir path = Sys.readdir (Js.to_string path)
 
 let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
