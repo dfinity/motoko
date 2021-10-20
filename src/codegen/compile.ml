@@ -6053,7 +6053,7 @@ module Internals = struct
     | Some (VarEnv.Const(_, Const.Fun mk_fi)) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi ())))
-    | _ -> failwith var
+    | _ -> assert false
 
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
