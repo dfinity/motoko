@@ -198,7 +198,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, ({it=S.CallE (({it=S.DotE (arr, proj); _} as c0), c1, c2); _} as e1), e2)
+  | S.ForE (p, ({it=S.CallE ({it=S.DotE (arr, proj); at=c0; _}, c1, c2); _} as e1), e2)
       when T.is_array arr.note.S.note_typ && proj.it = "vals"
     -> (rewrite_for_to_while (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
@@ -258,8 +258,9 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
   let body arrb =
     let size_exp =
       exp { e1 with note = triv T.nat;
-                    it = CallE ({ c0 with note = triv T.(Func (Local, Returns, [], [], [nat]));
-                                          it = DotE (arrb, { proj with it = "size" }) },
+                    it = CallE ({ note = triv T.(Func (Local, Returns, [], [], [nat]));
+                                  it = DotE (arrb, { proj with it = "size" });
+                                  at = c0 },
                                 c1, c2) } in
     let indx = fresh_var "indx" T.(Mut nat) in
     let indexing_exp = primE Ir_def.Ir.IdxPrim [exp arrb; varE indx] in
