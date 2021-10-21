@@ -22,11 +22,12 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
-// CHECK:      call $@mut_array_size
-// CHECK:      call $B_lt
-// CHECK:      local.get $array
-// CHECK:      local.set $check2
-// `arr` being a `VarE` already
+// DON'T-CHECK:      call $@mut_array_size
+// DON'T-CHECK:      call $B_lt
+// DON'T-CHECK:      local.get $array
+// DON'T-CHECK:      local.set $check2
+// `arr` being a `VarE` already (but we rebind anyway, otherwise we open can of worms)
+// later when we have path compression for variables in the backend, we can bring this back
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
 // CHECK:      call $@immut_array_size

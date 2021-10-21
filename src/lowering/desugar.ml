@@ -254,39 +254,34 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
        else { break l }
      } *)
   let arr_typ = arr.note.note_typ in
-  let triv t = { note_typ = t; note_eff = T.Triv } in
-  let body arrb =
-    let size_exp =
-      exp { e1 with note = { note_typ = T.nat; note_eff = c2.note.note_eff };
-                    it = CallE ({ note = { note_typ = T.(Func (Local, Returns, [], [], [nat]));
-                                           note_eff = c2.note.note_eff };
-                                  it = DotE (arrb, { proj with it = "size" });
-                                  at = c0 },
-                                c1, c2) } in
-    let indx = fresh_var "indx" T.(Mut nat) in
-    let indexing_exp = match proj.it with
-      | "vals" -> primE I.IdxPrim [exp arrb; varE indx]
-      | "keys" -> varE indx
-      | _ -> assert false in
-    let size = fresh_var "size" T.nat in
-    blockE [ letD size size_exp
-           ; varD indx (natE Numerics.Nat.zero)]
-      (whileE (primE (I.RelPrim (T.nat, LtOp))
-                 [varE indx; varE size])
-         (blockE [ letP p indexing_exp
-                 ; expD e2]
-            (assignE indx
-               (primE (I.BinPrim (T.nat, AddOp))
-                  [ varE indx
-                  ; natE (Numerics.Nat.of_int 1)])))) in
-  let arr_ir = exp arr in
-  match arr_ir.it with
-  | I.VarE v when p.it <> I.VarP v -> body arr
-  | _ ->
-    let arrv = fresh_var "arr" arr_typ in
-    letE arrv arr_ir
-      (body { arr with it = VarE { it = id_of_var arrv; note = (); at = arr.at };
-                       note = triv arr.note.note_typ })
+  let arrv = fresh_var "arr" arr_typ in
+  let size_exp =
+    let arr_bind =
+      { arr with it = VarE { it = id_of_var arrv; note = (); at = arr.at };
+                 note = { note_typ = arr.note.note_typ; note_eff = T.Triv } } in
+    exp { e1 with note = { note_typ = T.nat; note_eff = c2.note.note_eff };
+                  it = CallE ({ note = { note_typ = T.(Func (Local, Returns, [], [], [nat]));
+                                         note_eff = c2.note.note_eff };
+                                it = DotE (arr_bind, { proj with it = "size" });
+                                at = c0 },
+                              c1, c2) } in
+  let indx = fresh_var "indx" T.(Mut nat) in
+  let indexing_exp = match proj.it with
+    | "vals" -> primE I.IdxPrim [varE arrv; varE indx]
+    | "keys" -> varE indx
+    | _ -> assert false in
+  let size = fresh_var "size" T.nat in
+  letE arrv (exp arr)
+    (blockE [ letD size size_exp
+            ; varD indx (natE Numerics.Nat.zero)]
+       (whileE (primE (I.RelPrim (T.nat, LtOp))
+                  [varE indx; varE size])
+          (blockE [ letP p indexing_exp
+                  ; expD e2]
+             (assignE indx
+                (primE (I.BinPrim (T.nat, AddOp))
+                   [ varE indx
+                   ; natE (Numerics.Nat.of_int 1)])))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
