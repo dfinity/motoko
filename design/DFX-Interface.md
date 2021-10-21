@@ -105,11 +105,11 @@ Otherwise, it will be `icp:private <name>`.
   + Compiler flag `--idl` generates the Candid interface for the canister. The main service
     is always a service constructor, which contains the initialization arguments for installing the canister.
   + Custom section `candid:service` stores the interface for the running (initialized) canister, which removes
-    the initializatio arguments.
+    the initialization arguments.
   + Custom section `candid:args` stores the initialization arguments. The argument types can refer to
     types defined in the `candid:service` custom section.
 * Stable variable.
-  + Compiler flag `--print-stable-types` generates the signatures for stable variables.
+  + Compiler flag `--stable-types` generates the signatures for stable variables.
   + Custom section `motoko:stable-types` stores the signatures for stable variables.
 
 The above metadata is stored in the Wasm module, and is only accessible by the controllers of the canister, unless the
