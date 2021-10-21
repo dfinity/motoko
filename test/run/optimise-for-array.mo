@@ -69,4 +69,7 @@ let check6 = [var "hello", "immutable", "world"];
 check6[1] := "mutable";
 // `check6` being a `VarE` already and iteration variable is named identically
 // this passes the IR type check, which demonstrates that no name capture happens
-for (check6 in check6.vals()) { ignore check6 }
+for (check6 in check6.vals()) { ignore check6 };
+
+// argument to vals can have an effect too, expect it
+for (check7 in [].vals(Prim.debugPrint "want to see you")) { ignore check7 }
