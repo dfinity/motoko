@@ -262,13 +262,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                           it = DotE (arrb, { proj with it = "size" }) },
                                 c1, c2) } in
     let indx = fresh_var "indx" T.(Mut nat) in
-    let indexing_exp = exp
-           { note = triv T.(as_immut (as_array arr_typ));
-             at = arr.at;
-             it = IdxE (arrb, { arr with note = triv T.nat;
-                                         it = VarE { it = id_of_var indx;
-                                                     note = ();
-                                                     at = arr.at } }) } in
+    let indexing_exp = (primE Ir_def.Ir.IdxPrim [exp arrb; varE indx]) in
     let size = fresh_var "size" T.nat in
     blockE [ letD size size_exp
            ; varD indx (natE Numerics.Nat.zero)]
