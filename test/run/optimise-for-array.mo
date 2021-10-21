@@ -72,4 +72,4 @@ check6[1] := "mutable";
 for (check6 in check6.vals()) { ignore check6 };
 
 // argument to vals can have an effect too, expect it
-for (check7 in [].vals(Prim.debugPrint "want to see you")) { ignore check7 }
+for (check7 in [].vals(Prim.debugPrint "want to see you")) { }
