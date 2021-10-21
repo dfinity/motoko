@@ -257,8 +257,9 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
   let triv t = { note_typ = t; note_eff = T.Triv } in
   let body arrb =
     let size_exp =
-      exp { e1 with note = triv T.nat;
-                    it = CallE ({ note = triv T.(Func (Local, Returns, [], [], [nat]));
+      exp { e1 with note = { note_typ = T.nat; note_eff = c2.note.note_eff };
+                    it = CallE ({ note = { note_typ = T.(Func (Local, Returns, [], [], [nat]));
+                                           note_eff = c2.note.note_eff };
                                   it = DotE (arrb, { proj with it = "size" });
                                   at = c0 },
                                 c1, c2) } in

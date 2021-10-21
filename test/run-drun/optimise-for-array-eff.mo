@@ -10,7 +10,9 @@ actor a {
 
     for (check3 in (await async array).vals()) { Prim.debugPrint check3 };
 
-    for (check4 in array.vals()) { await async { Prim.debugPrint check4 } }
+    for (check4 in array.vals()) { await async { Prim.debugPrint check4 } };
+
+    for (_ in array.vals(await async ())) { }
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
