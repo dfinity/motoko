@@ -264,16 +264,16 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                   at = c0 },
                                 c1, c2) } in
     let indx = fresh_var "indx" T.(Mut nat) in
-    let indexing_exp = primE Ir_def.Ir.IdxPrim [exp arrb; varE indx] in
+    let indexing_exp = primE I.IdxPrim [exp arrb; varE indx] in
     let size = fresh_var "size" T.nat in
     blockE [ letD size size_exp
            ; varD indx (natE Numerics.Nat.zero)]
-      (whileE (primE (Ir_def.Ir.RelPrim (T.nat, LtOp))
+      (whileE (primE (I.RelPrim (T.nat, LtOp))
                  [varE indx; varE size])
          (blockE [ letP p indexing_exp
                  ; expD e2]
             (assignE indx
-               (primE (Ir_def.Ir.BinPrim (T.nat, AddOp))
+               (primE (I.BinPrim (T.nat, AddOp))
                   [ varE indx
                   ; natE (Numerics.Nat.of_int 1)])))) in
   let arr_ir = exp arr in
