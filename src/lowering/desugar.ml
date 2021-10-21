@@ -199,7 +199,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, ({it=S.CallE ({it=S.DotE (arr, proj); at=c0; _}, c1, c2); _} as e1), e2)
-      when T.is_array arr.note.S.note_typ && proj.it = "vals"
+      when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "keys")
     -> (rewrite_for_to_while (pat p) arr proj c0 c1 c2 e1 (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
@@ -264,7 +264,10 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
                                   at = c0 },
                                 c1, c2) } in
     let indx = fresh_var "indx" T.(Mut nat) in
-    let indexing_exp = primE I.IdxPrim [exp arrb; varE indx] in
+    let indexing_exp = match proj.it with
+      | "vals" -> primE I.IdxPrim [exp arrb; varE indx]
+      | "keys" -> varE indx
+      | _ -> assert false in
     let size = fresh_var "size" T.nat in
     blockE [ letD size size_exp
            ; varD indx (natE Numerics.Nat.zero)]

@@ -72,4 +72,17 @@ check6[1] := "mutable";
 for (check6 in check6.vals()) { ignore check6 };
 
 // argument to vals can have an effect too, expect it
-for (check7 in [].vals(Prim.debugPrint "want to see you")) { }
+for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
+
+// CHECK:      local.set $num8
+// CHECK:      call $@immut_array_size
+// CHECK:      call $B_lt
+// CHECK-NOT:  call $Array.idx_bigint
+// CHECK:      local.tee $check8
+// CHECK-NEXT: local.get $num8
+// CHECK-NEXT: call $B_add
+var num8 = 42;
+num8 := 25;
+// `keys` is even easier to rewrite, as the "indexing expression" is just the
+// indexing variable itself
+for (check8 in ["hello", "keyed", "world"].keys()) { ignore (check8 + num8) };
