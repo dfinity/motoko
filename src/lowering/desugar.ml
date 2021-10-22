@@ -243,7 +243,7 @@ and lexp' = function
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
 and rewrite_for_to_while p arr proj c2 e2 =
-  (* for (p in e1) e2 when e1 = (arr_exp : [_]).proj(c2), proj in {"keys", "vals"}
+  (* for (p in (arr_exp : [_]).proj(c1)) e2 when proj in {"keys", "vals"}
      ~~>
      let arr = arr_exp ;
      let size = arr.size(c2) ;
