@@ -1544,7 +1544,7 @@ module Word64 = struct
 
         (* handle exp == 0 *)
         get_exp ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-        E.if_ env [I64Type] get_acc (* done *)
+        G.if1 I64Type get_acc (* done *)
         begin
           E.loop_ env [] begin
             (* Are we done? *)
@@ -6764,7 +6764,7 @@ let additiveInt64_shortcut fast env get_a get_b slow =
   get_b ^^ get_b ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^ compile_shrU64_const 63L ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Or)) ^^
   G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  E.if_ env [I64Type]
+  G.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
@@ -6773,28 +6773,28 @@ let mulInt64_shortcut fast env get_a get_b slow =
   get_b ^^ get_b ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
   compile_const_64 65L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
-  E.if_ env [I64Type]
+  G.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
 let powInt64_shortcut fast env get_a get_b slow =
   get_b ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  E.if_ env [I64Type]
+  G.if1 I64Type
     (compile_const_64 1L) (* ^0 *)
     begin (* ^(1+n) *)
       get_a ^^ compile_const_64 (-1L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
-      E.if_ env [I64Type]
+      G.if1 I64Type
         begin (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
           get_b ^^ compile_const_64 1L ^^
           G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-          E.if_ env [I64Type]
+          G.if1 I64Type
             (compile_const_64 1L)
             get_a
         end
         begin
           get_a ^^ compile_shrS64_const 1L ^^
           G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-          E.if_ env [I64Type]
+          G.if1 I64Type
             get_a (* {0,1}^(1+n) *)
             begin
               get_b ^^ compile_const_64 64L ^^
@@ -6803,7 +6803,7 @@ let powInt64_shortcut fast env get_a get_b slow =
               G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 63L ^^
               get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
               compile_const_64 (-63L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
-              E.if_ env [I64Type]
+              G.if1 I64Type
                 (get_a ^^ get_b ^^ fast)
                 slow
             end
@@ -6838,7 +6838,7 @@ let additiveNat64_shortcut fast env get_a get_b slow =
   get_b ^^ compile_shrU64_const 62L ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Or)) ^^
   G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  E.if_ env [I64Type]
+  G.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
@@ -6847,24 +6847,24 @@ let mulNat64_shortcut fast env get_a get_b slow =
   get_b ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
   compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
-  E.if_ env [I64Type]
+  G.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
 let powNat64_shortcut fast env get_a get_b slow =
   get_b ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  E.if_ env [I64Type]
+  G.if1 I64Type
     (compile_const_64 1L) (* ^0 *)
     begin (* ^(1+n) *)
       get_a ^^ compile_shrU64_const 1L ^^
       G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-      E.if_ env [I64Type]
+      G.if1 I64Type
         get_a (* {0,1}^(1+n) *)
         begin
           get_b ^^ compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
           get_a ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 64L ^^
           get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^ compile_const_64 (-64L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
-          E.if_ env [I64Type]
+          G.if1 I64Type
             (get_a ^^ get_b ^^ fast)
             slow
         end
