@@ -2,7 +2,7 @@
 
 * `for` loops over arrays are now converted to more efficient
   index-based iteration (#2831). This can result in significant cycle
-  savings for tight loops.
+  savings for tight loops, as well as slightly less memory usage.
 
 * Add type union and intersection. The type expression
 
