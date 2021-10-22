@@ -271,17 +271,18 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
     | "keys" -> varE indx
     | _ -> assert false in
   let size = fresh_var "size" T.nat in
-  letE arrv (exp arr)
-    (blockE [ letD size size_exp
-            ; varD indx (natE Numerics.Nat.zero)]
-       (whileE (primE (I.RelPrim (T.nat, LtOp))
-                  [varE indx; varE size])
-          (blockE [ letP p indexing_exp
-                  ; expD e2]
-             (assignE indx
-                (primE (I.BinPrim (T.nat, AddOp))
-                   [ varE indx
-                   ; natE (Numerics.Nat.of_int 1)])))))
+  blockE
+    [ letD arrv (exp arr)
+    ; letD size size_exp
+    ; varD indx (natE Numerics.Nat.zero)]
+    (whileE (primE (I.RelPrim (T.nat, LtOp))
+               [varE indx; varE size])
+       (blockE [ letP p indexing_exp
+               ; expD e2]
+          (assignE indx
+             (primE (I.BinPrim (T.nat, AddOp))
+                [ varE indx
+                ; natE (Numerics.Nat.of_int 1)]))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
