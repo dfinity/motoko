@@ -99,7 +99,7 @@ The compiler generates various metadata about the canister via command line flag
 The compiled Wasm module also includes these metadata in the custom sections.
 The compiler flag `--public-metadata <name>` controls if the custom section is publicly accessible.
 If `<name>` is in the `public-metadata` flag, the custom section name will be `icp:public <name>`.
-Otherwise, it will be `icp:private <name>`.
+Otherwise, it will be `icp:private <name>`. The `--public-metadata` flag applies to the imported actor classes as well.
 
 * Candid interface.
   + Compiler flag `--idl` generates the Candid interface for the canister. The main service
@@ -122,7 +122,7 @@ In order to start the language server, `dfx` invokes
 
     mo-ide --canister-main some/path/main.mo \
         { --package pkgname pkgpath }        \
-        { --actor-alias alias url }
+        { --actor-alias alias url }          \
         [ --actor-idl actorpath ]
 
 with `stdin` and `stdout` connected to the LSP client.
@@ -139,6 +139,7 @@ The command
 prints to the standard output all URLs _directly_ imported by
 `some/path/input.mo`, one per line. Each line outputs the original
 URL, and optionally a full path if `moc` can resolve the URL, separated by a space.
+If the URL is a local import of actor class, the output appends " class" at the end of the line.
 For example,
 
     mo:base/List
@@ -146,6 +147,7 @@ For example,
     ic:em77e-bvlzu-aq
     canister:alias
     ./local_import some/path/local_import.mo
+    ./bucket some/path/bucket.mo class
     ./runtime some/path/runtime.wasm
 
 This _reads_ only `some/path/input.mo`, and writes no files.
