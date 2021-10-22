@@ -198,9 +198,9 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, {it=S.CallE ({it=S.DotE (arr, proj); _}, _, c2); _}, e2)
+  | S.ForE (p, {it=S.CallE ({it=S.DotE (arr, proj); _}, _, e1); _}, e2)
       when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "keys")
-    -> (rewrite_for_to_while (pat p) arr proj c2 e2).it
+    -> (transform_for_to_while p arr proj e1 e2).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
@@ -242,20 +242,20 @@ and lexp' = function
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
-and rewrite_for_to_while p arr proj c2 e2 =
-  (* for (p in (arr_exp : [_]).proj(c1)) e2 when proj in {"keys", "vals"}
+and transform_for_to_while p arr_exp proj e1 e2 =
+  (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals"}
      ~~>
      let arr = arr_exp ;
-     let size = arr.size(c2) ;
+     let size = arr.size(e1) ;
      var indx = 0 ;
      label l loop {
        if indx < size
        then { let p = arr[indx]; e2; indx += 1 }
        else { break l }
      } *)
-  let arr_typ = arr.note.note_typ in
+  let arr_typ = arr_exp.note.note_typ in
   let arrv = fresh_var "arr" arr_typ in
-  let size_exp = array_dotE arr_typ "size" (varE arrv) -*- exp c2 in
+  let size_exp = array_dotE arr_typ "size" (varE arrv) -*- exp e1 in
   let indx = fresh_var "indx" T.(Mut nat) in
   let indexing_exp = match proj.it with
     | "vals" -> primE I.IdxPrim [varE arrv; varE indx]
@@ -263,12 +263,12 @@ and rewrite_for_to_while p arr proj c2 e2 =
     | _ -> assert false in
   let size = fresh_var "size" T.nat in
   blockE
-    [ letD arrv (exp arr)
+    [ letD arrv (exp arr_exp)
     ; letD size size_exp
     ; varD indx (natE Numerics.Nat.zero)]
     (whileE (primE (I.RelPrim (T.nat, LtOp))
                [varE indx; varE size])
-       (blockE [ letP p indexing_exp
+       (blockE [ letP (pat p) indexing_exp
                ; expD (exp e2)]
           (assignE indx
              (primE (I.BinPrim (T.nat, AddOp))
