@@ -450,12 +450,11 @@ module E = struct
     | ts -> VarBlockType (nr (func_type env (FuncType ([], ts))))
 
   let if_ env tys thn els = G.if_ (as_block_type env tys) thn els
-  let loop_ env tys bdy = G.loop_ (as_block_type env tys) bdy
   let block_ env tys bdy = G.block_ (as_block_type env tys) bdy
 
   let trap_with env msg = env.trap_with env msg
-  let then_trap_with env msg = if_ env [] (trap_with env msg) G.nop
-  let else_trap_with env msg = if_ env [] G.nop (trap_with env msg)
+  let then_trap_with env msg = G.if0 (trap_with env msg) G.nop
+  let else_trap_with env msg = G.if0 G.nop (trap_with env msg)
 
   let reserve_static_memory (env : t) size : int32 =
     if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
@@ -610,7 +609,7 @@ let new_float_local env name =
 
 (* Iterates while cond is true. *)
 let compile_while env cond body =
-    E.loop_ env [] (
+    G.loop0 (
       cond ^^ G.if0 (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
@@ -1546,7 +1545,7 @@ module Word64 = struct
         get_exp ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
         G.if1 I64Type get_acc (* done *)
         begin
-          E.loop_ env [] begin
+          G.loop0 begin
             (* Are we done? *)
             get_exp ^^ compile_const_64 1L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
             G.if0 G.nop (* done *)
@@ -1764,7 +1763,7 @@ module TaggedSmallWord = struct
         get_exp ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
         G.if1 I32Type get_acc (* done *)
         begin
-          E.loop_ env [] begin
+          G.loop0 begin
             (* Are we done? *)
             get_exp ^^ compile_unboxed_const 1l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
             G.if0 G.nop (* done *)
@@ -2742,7 +2741,7 @@ module Object = struct
       get_x ^^
       compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
       set_x ^^
-      E.loop_ env [] (
+      G.loop0 (
           get_h_ptr ^^ load_unskewed_ptr ^^
           get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if0
@@ -8136,7 +8135,7 @@ and compile_exp (env : E.t) ae exp =
   | LoopE e ->
     SR.Unreachable,
     let ae' = VarEnv.{ ae with lvl = NotTopLvl } in
-    E.loop_ env [] (compile_exp_unit env ae' e ^^ G.i (Br (nr 0l))
+    G.loop0 (compile_exp_unit env ae' e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable

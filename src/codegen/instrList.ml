@@ -159,9 +159,9 @@ let block_ (ty : block_type) (body : t) : t =
 let block0 = block_ (ValBlockType None)
 let block1 ty = block_ (ValBlockType (Some ty))
 
-let loop_ (ty : block_type) (body : t) : t =
+let loop0 (body : t) : t =
   fun d pos rest ->
-    (Loop (ty, to_nested_list d pos body) @@ pos) :: rest
+    (Loop (ValBlockType None, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
