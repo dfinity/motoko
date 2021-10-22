@@ -255,16 +255,7 @@ and rewrite_for_to_while p arr proj c0 c1 c2 e1 e2 =
      } *)
   let arr_typ = arr.note.note_typ in
   let arrv = fresh_var "arr" arr_typ in
-  let size_exp =
-    let arr_bind =
-      { arr with it = VarE { it = id_of_var arrv; note = (); at = arr.at };
-                 note = { note_typ = arr.note.note_typ; note_eff = T.Triv } } in
-    exp { e1 with note = { note_typ = T.nat; note_eff = c2.note.note_eff };
-                  it = CallE ({ note = { note_typ = T.(Func (Local, Returns, [], [], [nat]));
-                                         note_eff = c2.note.note_eff };
-                                it = DotE (arr_bind, { proj with it = "size" });
-                                at = c0 },
-                              c1, c2) } in
+  let size_exp = array_dotE arr_typ "size" (varE arrv) -*- exp c2 in
   let indx = fresh_var "indx" T.(Mut nat) in
   let indexing_exp = match proj.it with
     | "vals" -> primE I.IdxPrim [varE arrv; varE indx]
