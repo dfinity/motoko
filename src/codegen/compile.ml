@@ -8803,9 +8803,12 @@ and conclude_module env start_fi_o =
                  List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
       motoko = {
         labels = E.get_labs env;
-        sig_ = !(env.E.sig_);
+        sig_ = Some (false, !(env.E.sig_)); (* TODO: set public bit from flags *)
         };
-      candid = !(env.E.candid);
+      candid = { (* TODO: embed candid *)
+        args = None;
+        service = None;
+      };
       source_mapping_url = None;
     } in
 
