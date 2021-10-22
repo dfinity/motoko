@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* `for` loops over arrays are now converted to more efficient
+  index-based iteration (#2831). This can result in significant cycle
+  savings for tight loops.
+
 * Add type union and intersection. The type expression
 
   ```motoko
