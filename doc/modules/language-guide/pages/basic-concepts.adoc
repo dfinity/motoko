@@ -44,7 +44,7 @@ In preparing for that discussion, we discuss programs in this chapter and in lin
 Rather, these tiny programs illustrate snippets of {proglang} for writing those services, and each can (usually) be run on its own as a (non-service) {proglang} program, possibly with some printed terminal output.
 
 The examples in this section illustrate basic principles using simple expressions, such as arithmetic.
-For an overview of the full expression syntax of {proglang}, see the link:langauge-manual{outfilesuffix[Lanaguage quick reference].
+For an overview of the full expression syntax of {proglang}, see the link:language-manual{outfilesuffix}[Language quick reference].
 
 As a starting point, the following code snippet consists of two declarations — for the variables `x` and `y` — followed by an expression to form a single program:
 

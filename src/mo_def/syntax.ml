@@ -48,6 +48,8 @@ and typ' =
   | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of scope * typ                          (* future *)
+  | AndT of typ * typ                              (* intersection *)
+  | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
   | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
 

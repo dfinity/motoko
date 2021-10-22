@@ -1,5 +1,35 @@
 # Motoko compiler changelog
 
+* Add type union and intersection. The type expression
+
+  ```motoko
+  T and U
+  ```
+  produces the greatest lower bound of types `T` and `U`, that is,
+  the greatest type that is a subtype of both. Dually,
+
+  ```motoko
+  T or U
+  ```
+  produces the least upper bound of types `T` and `U`, that is,
+  the smallest type that is a supertype of both.
+
+  One use case of the former is "extending" an existing object type:
+
+  ``` motoko
+  type Person = {name : Text; address : Text};
+  type Manager = Person and {underlings : [Person]};
+  ```
+  Similarly, the latter can be used to "extend" a variant type:
+  ```motoko
+  type Workday = {#mon; #tue; #wed; #thu; #fri};
+  type Weekday = Workday or {#sat; #sun};
+  ```
+
+== 0.6.11 (2021-10-08)
+
+* Assertion error messages are now reproducible (#2821)
+
 == 0.6.10 (2021-09-23)
 
 * moc
