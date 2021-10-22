@@ -35,7 +35,7 @@ let apply_sign op l = Syntax.(match op, l with
 let phrase f x = { x with it = f x.it }
 
 let typ_note : S.typ_note -> Note.t =
-  fun {S.note_typ;S.note_eff} -> Note.{def with typ = note_typ; eff = note_eff}
+  fun S.{ note_typ; note_eff } -> Note.{ def with typ = note_typ; eff = note_eff }
 
 let phrase' f x =
   { x with it = f x.at x.note x.it }
@@ -198,6 +198,9 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
+  | S.ForE (p, {it=S.CallE ({it=S.DotE (arr, proj); _}, _, e1); _}, e2)
+      when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "keys")
+    -> (transform_for_to_while p arr proj e1 e2).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
@@ -238,6 +241,39 @@ and lexp' = function
   | S.DotE (e, x) -> I.DotLE (exp e, x.it)
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
+
+and transform_for_to_while p arr_exp proj e1 e2 =
+  (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals"}
+     ~~>
+     let arr = arr_exp ;
+     let size = arr.size(e1) ;
+     var indx = 0 ;
+     label l loop {
+       if indx < size
+       then { let p = arr[indx]; e2; indx += 1 }
+       else { break l }
+     } *)
+  let arr_typ = arr_exp.note.note_typ in
+  let arrv = fresh_var "arr" arr_typ in
+  let size_exp = array_dotE arr_typ "size" (varE arrv) -*- exp e1 in
+  let indx = fresh_var "indx" T.(Mut nat) in
+  let indexing_exp = match proj.it with
+    | "vals" -> primE I.IdxPrim [varE arrv; varE indx]
+    | "keys" -> varE indx
+    | _ -> assert false in
+  let size = fresh_var "size" T.nat in
+  blockE
+    [ letD arrv (exp arr_exp)
+    ; letD size size_exp
+    ; varD indx (natE Numerics.Nat.zero)]
+    (whileE (primE (I.RelPrim (T.nat, LtOp))
+               [varE indx; varE size])
+       (blockE [ letP (pat p) indexing_exp
+               ; expD (exp e2)]
+          (assignE indx
+             (primE (I.BinPrim (T.nat, AddOp))
+                [ varE indx
+                ; natE (Numerics.Nat.of_int 1)]))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
@@ -436,8 +472,8 @@ and array_dotE array_ty proj e =
     let f = var name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE (varE f) [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
-    | true,  "size"  -> call "@mut_array_size"    [] [T.nat]
-    | false, "size"  -> call "@immut_array_size"  [] [T.nat]
+    | true,  "size" -> call "@mut_array_size"   [] [T.nat]
+    | false, "size" -> call "@immut_array_size" [] [T.nat]
     | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
     | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
     | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []

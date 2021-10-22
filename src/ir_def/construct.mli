@@ -60,6 +60,7 @@ val projE : exp -> int -> exp
 val optE : exp -> exp
 val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
+val natE : Mo_values.Numerics.Nat.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
