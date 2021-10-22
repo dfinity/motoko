@@ -8710,6 +8710,10 @@ and main_actor as_opt mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.post);
     IC.export_upgrade_methods env;
 
+    (* Export metadata *)
+    env.E.sig_ := up.meta.sig_;
+    assert (!env.E.sig_ <> "");
+
     (* Deserialize any arguments *)
     begin match as_opt with
      | None
