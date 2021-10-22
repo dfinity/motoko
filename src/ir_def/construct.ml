@@ -453,7 +453,7 @@ let thenE exp1 exp2 = blockE [expD exp1] exp2
 let ignoreE exp =
   if typ exp = T.unit
   then exp
-  else thenE exp (tupE [])
+  else thenE exp (unitE ())
 
 
 (* Mono-morphic function expression *)
@@ -584,7 +584,7 @@ let whileE exp1 exp2 =
       loopE (
           ifE exp1
             exp2
-            (breakE lab (tupE []))
+            (breakE lab (unitE ()))
             T.unit
         )
     )
@@ -601,8 +601,8 @@ let loopWhileE exp1 exp2 =
       loopE (
           thenE exp1
             ( ifE exp2
-               (tupE [])
-               (breakE lab (tupE []))
+               (unitE ())
+               (breakE lab (unitE ()))
                T.unit
             )
         )
@@ -626,8 +626,8 @@ let forE pat exp1 exp2 =
   letE nxt (dotE exp1 nextN tnxt) (
     labelE lab T.unit (
       loopE (
-        switch_optE (callE (varE nxt) [] (tupE []))
-          (breakE lab (tupE []))
+        switch_optE (callE (varE nxt) [] (unitE ()))
+          (breakE lab (unitE ()))
           pat exp2 T.unit
       )
     )
