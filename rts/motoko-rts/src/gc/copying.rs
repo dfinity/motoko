@@ -1,3 +1,4 @@
+use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
 use crate::types::*;
@@ -27,7 +28,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
     ic::LAST_HP = ic::HP;
@@ -72,7 +73,7 @@ pub unsafe fn copying_gc_internal<
     while p < get_hp() {
         let size = object_size(p);
         scav(mem, begin_from_space, begin_to_space, p);
-        p += size.to_bytes().0 as usize;
+        p += size.to_bytes().as_usize();
     }
 
     let end_to_space = get_hp();
@@ -124,6 +125,9 @@ unsafe fn evac<M: Memory>(
     let ptr_loc = ptr_loc as *mut Value;
 
     let obj = (*ptr_loc).as_obj();
+
+    // Check object alignment to avoid undefined behavior. See also static_checks module.
+    debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
     // Update the field if the object is already evacauted
     if obj.tag() == TAG_FWD_PTR {

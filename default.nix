@@ -25,11 +25,11 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    # pulls in clang (wrapped) and clang-10 (unwrapped)
-    llvmPackages_10.clang
+    # pulls in clang (wrapped) and clang-12 (unwrapped)
+    llvmPackages_12.clang
     # pulls in wasm-ld
-    llvmPackages_10.lld
-    llvmPackages_10.bintools
+    llvmPackages_12.lld
+    llvmPackages_12.bintools
     rustc-nightly
     cargo-nightly
     xargo
@@ -41,17 +41,17 @@ let
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
     # so we do not use the nix-provided wrapper in clang
-    export WASM_CLANG="clang-10"
+    export WASM_CLANG="clang-12"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
     # that otherwise the wrapped clang would take care for us
-    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_10.clang-unwrapped.lib}"
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_12.clang-unwrapped.lib}"
 
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
-    # there we use plain clang-10. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_10}/bin/clang"
+    # there we use plain clang-12. There is no stdlib there anyways.
+    export CLANG="${nixpkgs.clang_12}/bin/clang"
   '';
 in
 
@@ -159,7 +159,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "0sy7jglz9pxw2lz0qjyplchcfn78d7789sd93xwybisamjynlniy";
+        sha256 = "0jyp3j8n5bj5cy1fd26d7h55zmc4v14qc2w8adxqwmsv5riqz41g";
         copyLockfile = true;
       };
     in
@@ -649,6 +649,7 @@ rec {
           nixpkgs.ocamlformat
           nixpkgs.ocamlPackages.utop
           nixpkgs.niv
+          nixpkgs.rlwrap # for `rlwrap moc`
         ]
       ));
 

@@ -598,29 +598,38 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
 
 (* Concatenation of modules *)
 
-let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : extended_module =
-  assert (m2.start = None);
+let join_modules
+      (em1 : extended_module) (m2 : module_') (ns2 : name_section)
+      (type_indices : (Wasm.Types.func_type, int32) Hashtbl.t) : extended_module =
   let m1 = em1.module_ in
-  { em1 with
-    module_ = {
-      types = m1.types @ m2.types;
-      globals = m1.globals @ m2.globals;
-      tables = m1.tables @ m2.tables;
-      memories = m1.memories @ m2.memories;
-      funcs = m1.funcs @ m2.funcs;
-      start = m1.start;
-      elems = m1.elems @ m2.elems;
-      data = m1.data @ m2.data;
-      imports = m1.imports @ m2.imports;
-      exports = m1.exports @ m2.exports;
-    };
-    name = {
-      em1.name with
-      function_names = em1.name.function_names @ ns2.function_names;
-      locals_names = em1.name.locals_names @ ns2.locals_names;
+  let joined = 
+    { em1 with
+      module_ = {
+        types = m1.types @ m2.types;
+        globals = m1.globals @ m2.globals;
+        tables = m1.tables @ m2.tables;
+        memories = m1.memories @ m2.memories;
+        funcs = m1.funcs @ m2.funcs;
+        start = m1.start;
+        elems = m1.elems @ m2.elems;
+        data = m1.data @ m2.data;
+        imports = m1.imports @ m2.imports;
+        exports = m1.exports @ m2.exports;
       };
-    motoko = em1.motoko;
-  }
+      name = {
+        em1.name with
+        function_names = em1.name.function_names @ ns2.function_names;
+        locals_names = em1.name.locals_names @ ns2.locals_names;
+      };
+      motoko = em1.motoko;
+    }
+  in
+  (* If second module has a start, prepend it to the first module's start.
+     OK to use `Hashtbl.find` below as the first module will have a start, so
+     we'll have the unit function in the type section already. *)
+  match m2.start with
+  | None -> joined
+  | Some fi -> prepend_to_start fi.it (Hashtbl.find type_indices (Wasm.Types.FuncType ([], []))) joined
 
 (* The main linking function *)
 
@@ -873,8 +882,6 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
   in
 
-  assert (dm2.globals = []);
-
   let new_table_size =
     Int32.add (Int32.add lib_table_start dylink.table_size) (Int32.of_int (List.length got_func_imports))
   in
@@ -904,6 +911,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> remove_fun_imports_name_section fun_resolved21
     |> rename_funcs_name_section funs2
     )
+    type_indices
   |> add_call_ctors
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
   in

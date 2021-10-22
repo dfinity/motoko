@@ -11,8 +11,8 @@ class Cx() {
   public let x = 1;
 };
 
-let wrong1 : [Ctx] = [ Ctx(), Cx() ]; //wrong
-let wrong2 : [Ctx] = [ Ctx(), Ct() ]; //wrong
+let wrong1 : [Ctx] = [ Ctx(), Cx() ]; // wrong
+let wrong2 : [Ctx] = [ Ctx(), Ct() ]; // wrong
 
 let ox =
   [ object { public type T = Int; public let x = 1 },

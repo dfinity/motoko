@@ -5,8 +5,16 @@ pkgs:
 
       src = pkgs.sources.ic + "/rs";
 
-      # update this after dependency changes
-      cargoSha256 = "0xg4wf6m103kn0kqgc4bfdz343lwhi5d3lx14xhq3b5jrnzk30a4";
+      # update this after bumping the dfinity/ic pin.
+      # 1. change the hash to something arbitrary (e.g. flip one digit to 0)
+      # 2. run nix-build -A drun nix/
+      # 3. copy the “expected” hash from the output into this file
+      # 4. commit and push
+
+      # To automate this, try running the following in the nix/ directory
+      # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
+
+      cargoSha256 = "0656lxdlr05cjkla1blvpqlxywk7shasiwmycz10nqykdrs4gfgf";
 
       nativeBuildInputs = with pkgs; [
         pkg-config

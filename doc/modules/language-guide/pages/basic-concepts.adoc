@@ -4,7 +4,9 @@
 
 {proglang} is designed for distributed programming with actors.
 
-Before you begin writing programs for distributed processing using actors, you should be familiar with a few of the basic building blocks of any programming language and with {proglang} in particular. 
+When programming on the Internet Computer in {proglang}, each **actor** represents an **{IC} canister smart contract** with a Candid interface, whether written in {proglang}, Rust, Wasm or some other language that compiles to Wasm. Within {proglang}, we use the term *actor* to refer to any canister, authored in any language that deploys to the {IC}. The role of {proglang} is to make these actors easy to author, and easy to use programmatically, once deployed.
+
+Before you begin writing distributed applications using actors, you should be familiar with a few of the basic building blocks of any programming language and with {proglang} in particular.
 To get you started, this section introduces the following key concepts and terms that are used throughout the remainder of the documentation and that are essential to learning to program in {proglang}:
 
 * program
@@ -42,9 +44,9 @@ In preparing for that discussion, we discuss programs in this chapter and in lin
 Rather, these tiny programs illustrate snippets of {proglang} for writing those services, and each can (usually) be run on its own as a (non-service) {proglang} program, possibly with some printed terminal output.
 
 The examples in this section illustrate basic principles using simple expressions, such as arithmetic.
-For an overview of the full expression syntax of {proglang}, see the link:langauge-manual{outfilesuffix[Lanaguage quick reference].
+For an overview of the full expression syntax of {proglang}, see the link:language-manual{outfilesuffix}[Language quick reference].
 
-As a starting point, the following code snippet consists of two declarations—for the variables `x` and `y`—followed by an expression to form a single program:
+As a starting point, the following code snippet consists of two declarations — for the variables `x` and `y` — followed by an expression to form a single program:
 
 [source, motoko]
 ....
@@ -142,7 +144,7 @@ In so doing, we produce the following expression, which is also a program:
 1 * (1 + 1) + 1
 ....
 
-This is also a valid program—of the same type and with the same behavior (result value `3`)—as the original program.
+This is also a valid program — of the same type and with the same behavior (result value `3`) — as the original program.
 
 We can also form a single expression using a block.
 
@@ -221,9 +223,9 @@ As a broader language overview, however, we briefly summarize the other value fo
 {proglang} permits the following primitive value forms:
 
  - Boolean values (`true` and `false`).
- - Integers (...,`-2`, `-1`, `0`, `1`, `2`, ...); Bounded and _unbounded_ variants.
- - Natural numbers (`0`, `1`, `2`, ...); Bounded and _unbounded_ variants.
- - Text values --- strings of unicode characters.
+ - Integers (...,`-2`, `-1`, `0`, `1`, `2`, ...) - bounded and _unbounded_ variants.
+ - Natural numbers (`0`, `1`, `2`, ...) - bounded and _unbounded_ variants.
+ - Text values - strings of unicode characters.
 
 By default, **integers** and **natural numbers** are _unbounded_ and do not overflow.
 Instead, they use representations that grow to accommodate any finite number.
@@ -261,11 +263,11 @@ In practical terms, like `void`, the unit value usually carries zero representat
 
 Unlike the `void` type, there _is_ a unit value, but like the `void` return value, the unit value carries no values internally, and as such, it always carries zero _information_.
 
-Another mathematical way to think of the unit value is as a tuple with no elements---the nullary ("`zero-ary`") tuple. There is only one value with these properties, so it is mathematically unique, and thus need not be represented at runtime.
+Another mathematical way to think of the unit value is as a tuple with no elements - the nullary ("`zero-ary`") tuple. There is only one value with these properties, so it is mathematically unique, and thus need not be represented at runtime.
 
 === Natural numbers
 
-The members of this type consist of the usual values ---`0`, `1`, `2`, ...----but, as in mathematics, the members of are not bound to a special maximum size.
+The members of this type consist of the usual values - `0`, `1`, `2`, ... - but, as in mathematics, the members of are not bound to a special maximum size.
 Rather, the runtime representation of these values accommodates arbitrary-sized numbers, making their "overflow" (nearly) impossible.
 (_nearly_ because it is the same event as running out of program memory, which can always happen for some programs in extreme situations).
 
@@ -462,14 +464,82 @@ P.unreachable()
 As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
 
 [[overview-traps]]
-=== Execution traps stop the program
+=== Traps due to execution failure
 
-Each form above is a simple wrapper around the always-fail use of the link:language-manual{outfilesuffix}#exp-assert[assert primitive]:
+Some errors, such as division by zero, out-of-bounds array indexing, and pattern match failure are not prevented by the type system, but can cause dynamic failures called _traps_.
 
 [source, motoko]
 ....
-assert false
+1/0; // traps due to division by 0
 ....
 
-Dynamically, we call this program-halting behavior a _program(-generated) trap_, and we say that the program _traps_ when it executes this code.
-It will cease to progress further.
+[source, motoko]
+....
+let a = ["hello", "world"];
+a[2]; // traps due to out-of-bounds indexing
+....
+
+[source, motoko]
+....
+let true = false; // pattern match failure
+....
+
+We say that code _traps_ when its exection causes a _trap_.
+
+Execution of code is aborted at the first trap and makes no further progress.
+
+NOTE: Traps that occur within actor messages are more subtle: they don't abort the entire actor, but prevent that particular message from proceeding, rolling back any yet uncommitted state changes. Other messages on the actor will continue execution.
+
+[[overview-debug-trap]]
+=== Explicit traps
+
+Occasionally it can be useful to force an unconditional trap, with a user-defined message.
+
+The `Debug` library provides the function `trap(t)` for this purpose, which can be used in any context.
+
+[source, motoko]
+....
+import Debug "mo:base/Debug";
+
+Debug.trap("oops!");
+....
+
+
+[source, motoko]
+....
+import Debug "mo:base/Debug";
+
+let swear : Text = Debug.trap("oh my!");
+....
+
+
+(The `Prelude` functions `nyi()`, `unreachable()` and `xxx()` discussed above are simple wrappers around `Debug.trap`.)
+
+[[overview-assertions]]
+=== Assertions
+
+Assertions allow you to conditionally trap when some Boolean test fails to hold,
+but continue execution otherwise. For example,
+
+[source, motoko]
+....
+let n = 65535;
+assert n % 2 == 0; // traps when n not even
+....
+
+[source, motoko]
+....
+assert false; // unconditionally traps
+....
+
+
+[source, motoko]
+....
+import Debug "mo:base/Debug";
+
+assert 1 > 0; // never traps
+Debug.print "bingo!";
+....
+
+Because an assertion may succeed, and thus proceed with execution,
+it may only be used in context where a value of type `()` is expected.
