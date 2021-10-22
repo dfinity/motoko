@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+== 0.6.12 (2021-10-22)
+
 * `for` loops over arrays are now converted to more efficient
   index-based iteration (#2831). This can result in significant cycle
   savings for tight loops, as well as slightly less memory usage.
