@@ -87,3 +87,8 @@ num8 := 25;
 // `keys` is even easier to rewrite, as the "indexing expression" is just the
 // indexing variable itself
 for (check8 in ["hello", "keyed", "world"].keys()) { ignore (check8 + num8) };
+
+
+func f9<A>(array : [A]) {
+for (check9 in array.keys()) { }
+}
