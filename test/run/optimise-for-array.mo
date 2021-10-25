@@ -12,7 +12,7 @@ import Prim "mo:⛔";
 // CHECK:      local.get $check0
 // CHECK-NEXT: call $debugPrint
 // CHECK:      i32.const 2
-// CHECK-NEXT: call $B_add
+// CHECK-NEXT: i32.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
 // CHECK-NOT:  call $@mut_array_size

@@ -473,6 +473,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | NextArrayOffset, [exp] ->
+      typ exp <: T.nat
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with

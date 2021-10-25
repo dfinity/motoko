@@ -271,9 +271,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
        (blockE [ letP (pat p) indexing_exp
                ; expD (exp e2)]
           (assignE indx
-             (primE (I.BinPrim (T.nat, AddOp))
-                [ varE indx
-                ; natE (Numerics.Nat.of_int 1)]))))
+             (primE I.NextArrayOffset [varE indx]))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const

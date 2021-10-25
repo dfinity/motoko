@@ -110,6 +110,7 @@ and prim =
   | ActorDotPrim of Type.lab          (* actor field access *)
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
+  | NextArrayOffset                   (* advance array offset *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
   | AwaitPrim                         (* await *)
@@ -240,7 +241,8 @@ let map_prim t_typ t_id p =
   | DotPrim _
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
-  | IdxPrim -> p
+  | IdxPrim
+  | NextArrayOffset -> p
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim

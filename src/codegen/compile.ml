@@ -7449,6 +7449,10 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e2 ^^ (* idx *)
       Arr.idx_bigint env ^^
       load_ptr
+    | NextArrayOffset, [e]  ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
+      compile_add_const 2l (*FIXME: this is a small bignum 1*)
 
     | BreakPrim name, [e] ->
       let d = VarEnv.get_label_depth ae name in
