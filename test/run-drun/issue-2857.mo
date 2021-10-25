@@ -45,7 +45,7 @@ module TestModule {
     };
 
 
-    func f (e: Parent: Child ) : () {       };
+    // func f (e: Parent: Child ) : () {       };
 
     func isItABugOrAFeature () : Entity<Parent> {
         {
