@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "c95eb237959c1fda43c4e77b5b742ba2f474a6d9",
-        "sha256": "04n6c34hy4mxm97w73846zpn74d92nxq8xvjpna1vg8q0py2im47",
+        "rev": "a432156f24faa16d387c9d36815f7ddc5d50e09f",
+        "sha256": "05gxisx5sr77vj6m08a3f71sypjmhadr2pcg5873mwfg3s553x5d",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/c95eb237959c1fda43c4e77b5b742ba2f474a6d9.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/a432156f24faa16d387c9d36815f7ddc5d50e09f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "45bd1abc8e81376d5e1c1dd6322e170e47555c57",
-        "sha256": "18i51cglq8131lyn6w2rjbhx32fbl7y62gga4cs10fdw2fmiw0d8",
+        "rev": "219bf8eb5ab2537f13aaa8207e34ba7b8dee56b1",
+        "sha256": "0xb36acnigkzykrzmm11d9mi34ivsqvgqv0xn2m3c3m4x5ynwgyv",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/45bd1abc8e81376d5e1c1dd6322e170e47555c57.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/219bf8eb5ab2537f13aaa8207e34ba7b8dee56b1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -129,10 +129,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "0510159186dd2ef46e5464484fbdf119393afa58",
-        "sha256": "1c6r5ldkh71v6acsfhni7f9sxvi7xrqzshcwd8w0hl2rrqyzi58w",
+        "rev": "6070a8ee799f629cb1d0004821f77ceed94d3992",
+        "sha256": "1lv3bh83f3f6caq5lk6bgpbq8zdd2xpw54xryccg1mxx8l5dadmq",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/0510159186dd2ef46e5464484fbdf119393afa58.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/6070a8ee799f629cb1d0004821f77ceed94d3992.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
