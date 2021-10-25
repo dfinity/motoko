@@ -7459,6 +7459,13 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae sr e1 ^^
       compile_exp_as env ae sr e2 ^^
       code
+    | DerefArrayOffset, [e1; e2] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+      compile_exp_vanilla env ae e2 ^^ (* idx *)
+      compile_shl_const 1l ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      Arr.(load_field 0l)
 
     | BreakPrim name, [e] ->
       let d = VarEnv.get_label_depth ae name in

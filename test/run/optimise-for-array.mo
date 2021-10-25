@@ -7,8 +7,9 @@ import Prim "mo:⛔";
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
-// CHECK:      call $Array.idx_bigint
-// CHECK:      local.set $check0
+// CHECK:      i32.add
+// CHECK-NEXT: i32.load offset=9
+// CHECK-NEXT: local.set $check0
 // CHECK:      local.get $check0
 // CHECK-NEXT: call $debugPrint
 // CHECK:      i32.const 2
@@ -20,8 +21,9 @@ for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
-// CHECK:      call $Array.idx_bigint
-// CHECK:      local.set $check1
+// CHECK:      i32.add
+// CHECK-NEXT: i32.load offset=9
+// CHECK-NEXT: local.set $check1
 // CHECK:      local.get $check1
 // CHECK-NEXT: call $debugPrint
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
@@ -44,8 +46,9 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
-// CHECK:      call $Array.idx_bigint
-// CHECK:      local.set $check3
+// CHECK:      i32.add
+// CHECK-NEXT: i32.load offset=9
+// CHECK-NEXT: local.set $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 
@@ -94,7 +97,7 @@ for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
-// CHECK-NOT:  call $Array.idx_bigint
+// CHECK-NOT:  i32.add
 // CHECK:      local.tee $check8
 // CHECK-NEXT: local.get $num8
 // CHECK-NEXT: call $B_add

@@ -464,7 +464,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       List.iter (fun e -> typ e <: t0) exps;
       let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
       t1 <: t
-    | IdxPrim, [exp1; exp2] ->
+    | (IdxPrim | DerefArrayOffset), [exp1; exp2] ->
       let t1 = T.promote (typ exp1) in
       let t2 = try T.as_array_sub t1 with
                | Invalid_argument _ ->

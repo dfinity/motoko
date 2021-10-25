@@ -89,7 +89,7 @@ let primE prim es =
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
     | ICStableWrite _ -> T.unit
-    | IdxPrim -> T.(as_immut (as_array (List.hd es).note.Note.typ))
+    | (IdxPrim | DerefArrayOffset) -> T.(as_immut (as_array (List.hd es).note.Note.typ))
     | NextArrayOffset -> T.nat
     | ValidArrayOffset -> T.bool
     | IcUrlOfBlob -> T.text

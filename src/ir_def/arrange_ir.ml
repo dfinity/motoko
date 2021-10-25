@@ -64,6 +64,7 @@ and prim = function
   | IdxPrim           -> Atom "IdxPrim"
   | NextArrayOffset   -> Atom "NextArrayOffset"
   | ValidArrayOffset  -> Atom "ValidArrayOffset"
+  | DerefArrayOffset  -> Atom "DerefArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
   | AwaitPrim         -> Atom "AwaitPrim"

@@ -258,7 +258,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
   let size_exp = array_dotE arr_typ "size" (varE arrv) -*- exp e1 in
   let indx = fresh_var "indx" T.(Mut nat) in
   let indexing_exp = match proj.it with
-    | "vals" -> primE I.IdxPrim [varE arrv; varE indx]
+    | "vals" -> primE I.DerefArrayOffset [varE arrv; varE indx]
     | "keys" -> varE indx
     | _ -> assert false in
   let size = fresh_var "size" T.nat in
