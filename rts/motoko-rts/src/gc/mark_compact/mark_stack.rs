@@ -1,7 +1,7 @@
 //! A mark stack implementation for garbage collection.
 
 use crate::constants::WORD_SIZE;
-use crate::page_alloc::{Page, PageAlloc};
+use crate::page_alloc::{PageAlloc, WasmPage};
 use crate::types::Tag;
 
 use alloc::vec;
@@ -10,7 +10,7 @@ use core::convert::TryFrom;
 
 pub struct MarkStack<P: PageAlloc> {
     /// Pages allocated so far. Never empty. Always push to and pop from the last page.
-    pages: Vec<P::Page>,
+    pages: Vec<WasmPage>,
 
     /// Page allocator used to allocate new mark stack pages
     page_alloc: P,
@@ -37,7 +37,7 @@ impl<P: PageAlloc> MarkStack<P> {
         }
     }
 
-    fn current_page(&self) -> &P::Page {
+    fn current_page(&self) -> &WasmPage {
         self.pages.last().unwrap()
     }
 

@@ -7,7 +7,7 @@ pub mod mark_stack;
 use crate::bitmap::{Bitmap, BITMAP_ITER_END};
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
-use crate::page_alloc::{Page, PageAlloc, PageHeader};
+use crate::page_alloc::{PageAlloc, PageHeader};
 use crate::space::Space;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;

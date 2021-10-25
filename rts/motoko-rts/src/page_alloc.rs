@@ -1,3 +1,5 @@
+mod free_lists;
+
 use crate::bitmap::Bitmap;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::types::Bytes;
@@ -11,49 +13,65 @@ pub const PAGE_SIZE: Bytes<u32> = WASM_PAGE_SIZE;
 // LARGE_OBJECT_THRESHOLD = (PAGE_SIZE / 3) * 4
 pub const LARGE_OBJECT_THRESHOLD: Bytes<u32> = Bytes((WASM_PAGE_SIZE.0 / 4) * 3);
 
+#[derive(Debug, Clone, Copy)]
+pub struct WasmPage {
+    /// Wasm page number, i.e. value returned by `memory_grow` instruction
+    pub page_num: u16,
+
+    /// Number of pages
+    pub n_pages: u16,
+}
+
 /// Trait for page allocators. A page is a unit of allocation from the underlying systme (Wasm, OS,
 /// some kind of mock or simulation in tests etc.).
 pub trait PageAlloc: Clone {
-    type Page: Page;
-
     /// Allocate single page
-    unsafe fn alloc(&self) -> Self::Page;
+    unsafe fn alloc(&self) -> WasmPage;
 
     /// Allocate given number of consecutive pages
-    unsafe fn alloc_pages(&self, n_pages: u16) -> Self::Page;
+    unsafe fn alloc_pages(&self, n_pages: u16) -> WasmPage;
 
     /// Free a page
-    unsafe fn free(&self, page: Self::Page);
+    unsafe fn free(&self, page: WasmPage);
 
     /// Get the start address of the page that contains the given address. Only works on
     /// single-page pages! Can be used to get page header.
     unsafe fn get_address_page_start(&self, addr: usize) -> usize;
 }
 
-/// Trait for allocation units from the underlying system (Wasm, OS, ...). Page state can be held
-/// withing the pages, or externally (e.g. in an array indexed by a page), or a combination of
-/// both.
-pub trait Page: Clone {
+impl WasmPage {
     /// Get the start of this page
-    unsafe fn start(&self) -> usize;
+    pub unsafe fn start(&self) -> usize {
+        usize::from(self.page_num) * WASM_PAGE_SIZE.as_usize()
+    }
 
     /// Get the start of this page after the page header (e.g. linked list fields)
-    unsafe fn contents_start(&self) -> usize;
+    pub unsafe fn contents_start(&self) -> usize {
+        (self.start() as *const PageHeader).add(1) as usize
+    }
 
     /// Get the end (exclusive) of this page
-    unsafe fn end(&self) -> usize;
+    pub unsafe fn end(&self) -> usize {
+        (usize::from(self.page_num) + 1) * WASM_PAGE_SIZE.as_usize()
+    }
 
     /// Size of the page, excluding any headers
-    unsafe fn size(&self) -> usize {
+    pub unsafe fn size(&self) -> usize {
         self.end() - self.contents_start()
     }
 
-    unsafe fn get_bitmap(&self) -> Option<*mut Bitmap>;
+    pub unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
+        (self.start() as *mut PageHeader).get_bitmap()
+    }
 
-    unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>);
+    pub unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>) {
+        (self.start() as *mut PageHeader).set_bitmap(bitmap)
+    }
 
     /// `Option::take` for the bitmap field
-    unsafe fn take_bitmap(&self) -> Option<Bitmap>;
+    pub unsafe fn take_bitmap(&self) -> Option<Bitmap> {
+        (self.start() as *mut PageHeader).take_bitmap()
+    }
 }
 
 pub struct PageHeader {
