@@ -17,6 +17,9 @@ actor Test {
     // let reject  = (func f (e: Parent: Child ) : () {       }) : Parent -> () ;
     let accept  = (func (e: Parent: Child ) : () {       }) : Parent -> () ; // accepted! WTF?
 
+
+    // let reject = (do {func foo (e: Parent: Child ) : () {       };foo}) : Parent -> () ; // rejected
+
 /*
     func isItABugOrAFeatureRejected () :
       Parent -> ()
