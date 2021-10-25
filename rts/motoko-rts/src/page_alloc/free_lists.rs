@@ -1,9 +1,9 @@
-use super::{Page, PageHeader, WASM_PAGE_SIZE, Bitmap};
+use super::{Bitmap, Page, PageHeader, WASM_PAGE_SIZE};
 
 use alloc::collections::btree_set::BTreeSet;
 use alloc::vec::Vec;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WasmPage {
     /// Wasm page number, i.e. value returned by `memory_grow` instruction
     pub page_num: u16,
@@ -38,11 +38,12 @@ impl Page for WasmPage {
     }
 }
 
-#[derive(Debug)]
-struct SizeClass {
-    n_pages: u16,
+// Public for testing
+#[derive(Debug, PartialEq, Eq)]
+pub struct SizeClass {
+    pub n_pages: u16,
     // Set of Wasm pages
-    pages: BTreeSet<u16>,
+    pub pages: BTreeSet<u16>,
 }
 
 impl SizeClass {
@@ -74,7 +75,8 @@ impl SizeClass {
 
 /// Free pages sorted by start address (Wasm page num). Used to find pages to merge.
 // TODO: Make this a `BTreeSet` after updating rustc (currently BTreeSet::new is not const)
-static mut FREE_PAGES_ADDR_SORTED: Vec<WasmPage> = Vec::new();
+// Public for testing
+pub static mut FREE_PAGES_ADDR_SORTED: Vec<WasmPage> = Vec::new();
 
 unsafe fn get_page_num_idx(wasm_page_num: u16) -> Result<usize, usize> {
     FREE_PAGES_ADDR_SORTED.binary_search_by_key(&wasm_page_num, |page| page.page_num)
@@ -101,7 +103,8 @@ unsafe fn remove_free_page_addr_sorted(wasm_page_num: u16) {
 
 /// Free pages reverse-sorted by region size and start address (or Wasm page num), used to allocate.
 // TODO: Make this a `BTreeSet` after updating rustc (currently BTreeSet::new is not const)
-static mut FREE_PAGES_SIZE_SORTED: Vec<SizeClass> = Vec::new();
+// Public for testing
+pub static mut FREE_PAGES_SIZE_SORTED: Vec<SizeClass> = Vec::new();
 
 unsafe fn get_size_class_idx(n_pages: u16) -> Result<usize, usize> {
     FREE_PAGES_SIZE_SORTED.binary_search_by_key(&n_pages, |size_class| size_class.n_pages)
@@ -130,6 +133,12 @@ unsafe fn remove_free_size_sorted(wasm_page_num: u16, n_pages: u16) {
             n_pages
         ),
     }
+}
+
+// For testing: clears free lists.
+pub unsafe fn clear() {
+    FREE_PAGES_SIZE_SORTED.clear();
+    FREE_PAGES_ADDR_SORTED.clear();
 }
 
 /// Allocate single page

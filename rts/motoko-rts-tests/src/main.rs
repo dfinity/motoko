@@ -4,6 +4,7 @@ mod bigint;
 mod bitmap;
 mod continuation_table;
 mod crc32;
+mod free_lists;
 mod gc;
 mod leb128;
 mod mark_stack;
@@ -25,6 +26,7 @@ fn main() {
         bitmap::test();
         continuation_table::test();
         crc32::test();
+        free_lists::test();
         gc::test();
         leb128::test();
         mark_stack::test();

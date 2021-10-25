@@ -1,4 +1,5 @@
-mod free_lists;
+// Public for testing
+pub mod free_lists;
 
 use crate::bitmap::Bitmap;
 use crate::constants::WASM_PAGE_SIZE;
