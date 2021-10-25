@@ -7452,7 +7452,7 @@ and compile_exp (env : E.t) ae exp =
     | NextArrayOffset, [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
-      compile_add_const 2l (*FIXME: this is a small bignum 1*)
+      compile_add_const Arr.element_size
     | ValidArrayOffset, [e1; e2] ->
       let sr, code = compile_relop env Type.(Prim Nat16) Operator.LtOp in
       SR.bool,
@@ -7463,14 +7463,13 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* offset to array *)
       compile_exp_vanilla env ae e2 ^^ (* idx *)
-      compile_shl_const 1l ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       Arr.(load_field 0l)
     | GetPastArrayOffset, [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* array *)
       Heap.load_field Arr.len_field ^^
-      compile_shl_const 1l
+      compile_shl_const 2l
       (* BigNum.from_word32 env FIXME: see OtherPrim "array_len" *)
 
     | BreakPrim name, [e] ->

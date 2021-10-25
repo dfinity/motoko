@@ -4,7 +4,7 @@ import Prim "mo:⛔";
 
 // CHECK-NOT:  call $@immut_array_size
 // CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 1
+// CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
@@ -12,13 +12,13 @@ import Prim "mo:⛔";
 // CHECK-NEXT: local.set $check0
 // CHECK:      local.get $check0
 // CHECK-NEXT: call $debugPrint
-// CHECK:      i32.const 2
+// CHECK:      i32.const 4
 // CHECK-NEXT: i32.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
 // CHECK-NOT:  call $@mut_array_size
 // CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 1
+// CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
@@ -32,7 +32,7 @@ let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
 // CHECK-NOT:   call $@immut_array_size
 // CHECK:       i32.load offset=5
-// CHECK-NEXT:  i32.const 1
+// CHECK-NEXT:  i32.const 2
 // CHECK-NEXT:  i32.shl
 // DON'T-CHECK: i32.lt_u
 // DON'T-CHECK: local.get $array
@@ -43,7 +43,7 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 
 // CHECK-NOT:  call $@immut_array_size
 // CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 1
+// CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
@@ -88,7 +88,7 @@ check6[1] := "mutable";
 for (check6 in check6.vals()) { ignore check6 };
 
 // CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 1
+// CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
@@ -96,7 +96,7 @@ for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 // CHECK:      local.set $num8
 // CHECK-NOT:  call $@immut_array_size
 // CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 1
+// CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK-NOT:  i32.add
