@@ -7466,6 +7466,12 @@ and compile_exp (env : E.t) ae exp =
       compile_shl_const 1l ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       Arr.(load_field 0l)
+    | GetPastArrayOffset, [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^ (* array *)
+      Heap.load_field Arr.len_field ^^
+      compile_shl_const 1l
+      (* BigNum.from_word32 env FIXME: see OtherPrim "array_len" *)
 
     | BreakPrim name, [e] ->
       let d = VarEnv.get_label_depth ae name in

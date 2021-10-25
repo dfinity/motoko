@@ -113,6 +113,7 @@ and prim =
   | NextArrayOffset                   (* advance array offset *)
   | ValidArrayOffset                  (* verify array offset *)
   | DerefArrayOffset                  (* array offset indexing *)
+  | GetPastArrayOffset                (* array offset past the last element *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
   | AwaitPrim                         (* await *)
@@ -246,7 +247,8 @@ let map_prim t_typ t_id p =
   | IdxPrim
   | NextArrayOffset
   | ValidArrayOffset
-  | DerefArrayOffset -> p
+  | DerefArrayOffset
+  | GetPastArrayOffset -> p
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim

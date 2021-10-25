@@ -87,7 +87,9 @@ check6[1] := "mutable";
 // this passes the IR type check, which demonstrates that no name capture happens
 for (check6 in check6.vals()) { ignore check6 };
 
-// CHECK:      call $@immut_array_size
+// CHECK:      i32.load offset=5
+// CHECK-NEXT: i32.const 1
+// CHECK-NEXT: i32.shl
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
