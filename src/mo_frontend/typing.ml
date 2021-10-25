@@ -1817,7 +1817,7 @@ and check_pat' env t pat : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t pat1
+    check_pat env t' pat1
   | ParP pat1 ->
     check_pat env t pat1
 
