@@ -475,6 +475,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.as_immut t2 <: t
     | NextArrayOffset, [exp] ->
       typ exp <: T.nat
+    | ValidArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.nat;
+      typ exp2 <: T.nat
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with

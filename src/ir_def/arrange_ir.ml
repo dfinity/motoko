@@ -63,6 +63,7 @@ and prim = function
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
   | NextArrayOffset   -> Atom "NextArrayOffset"
+  | ValidArrayOffset  -> Atom "ValidArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
   | AwaitPrim         -> Atom "AwaitPrim"

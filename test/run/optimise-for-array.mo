@@ -6,7 +6,7 @@ import Prim "mo:⛔";
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
-// CHECK:      call $B_lt
+// CHECK:      i32.lt_u
 // CHECK:      call $Array.idx_bigint
 // CHECK:      local.set $check0
 // CHECK:      local.get $check0
@@ -19,7 +19,7 @@ for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
-// CHECK:      call $B_lt
+// CHECK:      i32.lt_u
 // CHECK:      call $Array.idx_bigint
 // CHECK:      local.set $check1
 // CHECK:      local.get $check1
@@ -32,7 +32,7 @@ array[1] := "mutable";
 // CHECK:       i32.load offset=5
 // CHECK-NEXT:  i32.const 1
 // CHECK-NEXT:  i32.shl
-// DON'T-CHECK: call $B_lt
+// DON'T-CHECK: i32.lt_u
 // DON'T-CHECK: local.get $array
 // DON'T-CHECK: local.set $check2
 // `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
@@ -43,7 +43,7 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
-// CHECK:      call $B_lt
+// CHECK:      i32.lt_u
 // CHECK:      call $Array.idx_bigint
 // CHECK:      local.set $check3
 // interfering parentheses don't disturb us
@@ -93,7 +93,7 @@ for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
-// CHECK:      call $B_lt
+// CHECK:      i32.lt_u
 // CHECK-NOT:  call $Array.idx_bigint
 // CHECK:      local.tee $check8
 // CHECK-NEXT: local.get $num8

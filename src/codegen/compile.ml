@@ -7443,16 +7443,22 @@ and compile_exp (env : E.t) ae exp =
     | ArrayPrim (m, t), es ->
       SR.Vanilla,
       Arr.lit env (List.map (compile_exp_vanilla env ae) es)
-    | IdxPrim, [e1; e2]  ->
+    | IdxPrim, [e1; e2] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* offset to array *)
       compile_exp_vanilla env ae e2 ^^ (* idx *)
       Arr.idx_bigint env ^^
       load_ptr
-    | NextArrayOffset, [e]  ->
+    | NextArrayOffset, [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
       compile_add_const 2l (*FIXME: this is a small bignum 1*)
+    | ValidArrayOffset, [e1; e2] ->
+      let sr, code = compile_relop env Type.(Prim Nat16) Operator.LtOp in
+      SR.bool,
+      compile_exp_as env ae sr e1 ^^
+      compile_exp_as env ae sr e2 ^^
+      code
 
     | BreakPrim name, [e] ->
       let d = VarEnv.get_label_depth ae name in

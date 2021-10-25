@@ -91,6 +91,7 @@ let primE prim es =
     | ICStableWrite _ -> T.unit
     | IdxPrim -> T.(as_immut (as_array (List.hd es).note.Note.typ))
     | NextArrayOffset -> T.nat
+    | ValidArrayOffset -> T.bool
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
     | BinPrim (t, _) -> t

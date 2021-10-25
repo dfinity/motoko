@@ -266,7 +266,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
     [ letD arrv (exp arr_exp)
     ; letD size size_exp
     ; varD indx (natE Numerics.Nat.zero)]
-    (whileE (primE (I.RelPrim (T.nat, LtOp))
+    (whileE (primE I.ValidArrayOffset
                [varE indx; varE size])
        (blockE [ letP (pat p) indexing_exp
                ; expD (exp e2)]
