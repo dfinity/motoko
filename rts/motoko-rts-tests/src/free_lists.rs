@@ -4,8 +4,10 @@ pub unsafe fn test() {
     println!("Testing free list functions ...");
 
     simple();
-    simple_coalesce();
-    simple_multiple_pages();
+    coalesce_left();
+    coalesce_right();
+    allocate_and_coalesce_multiple_pages();
+    split_large_pages();
 }
 
 unsafe fn simple() {
@@ -33,16 +35,52 @@ unsafe fn simple() {
     );
 }
 
-unsafe fn simple_coalesce() {
+unsafe fn coalesce_left() {
     clear();
+
     let page1 = alloc(|n_pages| {
         assert_eq!(n_pages, 1);
         1
     });
+
     let page2 = alloc(|n_pages| {
         assert_eq!(n_pages, 1);
         2
     });
+
+    free(page2);
+    free(page1);
+
+    assert_eq!(
+        FREE_PAGES_ADDR_SORTED,
+        vec![WasmPage {
+            page_num: 1,
+            n_pages: 2,
+        }]
+    );
+
+    assert_eq!(
+        FREE_PAGES_SIZE_SORTED,
+        vec![SizeClass {
+            n_pages: 2,
+            pages: [1u16].iter().copied().collect()
+        }]
+    );
+}
+
+unsafe fn coalesce_right() {
+    clear();
+
+    let page1 = alloc(|n_pages| {
+        assert_eq!(n_pages, 1);
+        1
+    });
+
+    let page2 = alloc(|n_pages| {
+        assert_eq!(n_pages, 1);
+        2
+    });
+
     free(page1);
     free(page2);
 
@@ -63,7 +101,7 @@ unsafe fn simple_coalesce() {
     );
 }
 
-unsafe fn simple_multiple_pages() {
+unsafe fn allocate_and_coalesce_multiple_pages() {
     clear();
 
     let page1 = alloc_pages(
@@ -157,6 +195,55 @@ unsafe fn simple_multiple_pages() {
         vec![WasmPage {
             page_num: 0,
             n_pages: 7
+        }]
+    );
+}
+
+unsafe fn split_large_pages() {
+    clear();
+
+    // Populate free lists
+    free(alloc_pages(|_| 0, 10));
+
+    // Allocate 10 small pages without calling memory.grow
+    let mut pages = vec![];
+    for page_num in 0..10 {
+        let page = alloc(|_| panic!("memory.grow called"));
+        assert_eq!(
+            page,
+            WasmPage {
+                page_num,
+                n_pages: 1
+            }
+        );
+        pages.push(page);
+    }
+
+    // Free small pages in some random order
+    free(pages[3]);
+    free(pages[4]);
+    free(pages[1]);
+    free(pages[2]);
+    free(pages[5]);
+    free(pages[9]);
+    free(pages[8]);
+    free(pages[7]);
+    free(pages[6]);
+    free(pages[0]);
+
+    assert_eq!(
+        FREE_PAGES_SIZE_SORTED,
+        vec![SizeClass {
+            n_pages: 10,
+            pages: [0].iter().copied().collect()
+        }]
+    );
+
+    assert_eq!(
+        FREE_PAGES_ADDR_SORTED,
+        vec![WasmPage {
+            page_num: 0,
+            n_pages: 10
         }]
     );
 }
