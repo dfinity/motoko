@@ -124,14 +124,16 @@ unsafe fn add_free_page_size_sorted(wasm_page_num: u16, n_pages: u16) {
 }
 
 unsafe fn remove_free_size_sorted(wasm_page_num: u16, n_pages: u16) {
-    match get_size_class_idx(n_pages) {
-        Ok(size_class_idx) => {
-            FREE_PAGES_SIZE_SORTED[size_class_idx].remove(wasm_page_num);
-        }
-        Err(_) => panic!(
+    let size_class_idx = get_size_class_idx(n_pages).unwrap_or_else(|_| {
+        panic!(
             "remove_free_size_sorted: No size class for {} pages",
             n_pages
-        ),
+        )
+    });
+    let size_class = &mut FREE_PAGES_SIZE_SORTED[size_class_idx];
+    size_class.remove(wasm_page_num);
+    if size_class.is_empty() {
+        FREE_PAGES_SIZE_SORTED.remove(size_class_idx);
     }
 }
 
