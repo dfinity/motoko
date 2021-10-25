@@ -341,6 +341,7 @@ impl GC {
                 let mut to_space = unsafe { Space::new(page_alloc.clone()) };
                 unsafe {
                     copying_gc_internal(
+                        &space,
                         &mut to_space,
                         static_root_array,
                         continuation_table_loc,

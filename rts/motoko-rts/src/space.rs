@@ -1,5 +1,5 @@
 use crate::constants::WORD_SIZE;
-use crate::page_alloc::{LargePageHeader, PageAlloc, WasmPage, LARGE_OBJECT_THRESHOLD, PAGE_SIZE};
+use crate::page_alloc::{LargePageHeader, Page, PageAlloc, LARGE_OBJECT_THRESHOLD, PAGE_SIZE};
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -12,7 +12,7 @@ pub struct Space<P: PageAlloc> {
     page_alloc: P,
 
     /// Pages in the space
-    pages: Vec<WasmPage>,
+    pages: Vec<P::Page>,
 
     /// Index of the current page
     current_page: usize,
@@ -56,11 +56,11 @@ impl<P: PageAlloc> Space<P> {
         self.total_alloc
     }
 
-    pub fn iter_pages(&self) -> impl Iterator<Item = &WasmPage> {
+    pub fn iter_pages(&self) -> impl Iterator<Item = &P::Page> {
         self.pages.iter()
     }
 
-    fn current_page(&self) -> &WasmPage {
+    fn current_page(&self) -> &P::Page {
         &self.pages[self.current_page]
     }
 
@@ -76,7 +76,7 @@ impl<P: PageAlloc> Space<P> {
         PageIdx(self.current_page)
     }
 
-    pub fn get_page(&self, idx: PageIdx) -> Option<&WasmPage> {
+    pub fn get_page(&self, idx: PageIdx) -> Option<&P::Page> {
         self.pages.get(idx.0)
     }
 

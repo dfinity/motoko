@@ -1,7 +1,42 @@
-use super::WasmPage;
+use super::{Page, PageHeader, WASM_PAGE_SIZE, Bitmap};
 
 use alloc::collections::btree_set::BTreeSet;
 use alloc::vec::Vec;
+
+#[derive(Debug, Clone, Copy)]
+pub struct WasmPage {
+    /// Wasm page number, i.e. value returned by `memory_grow` instruction
+    pub page_num: u16,
+
+    /// Number of pages
+    pub n_pages: u16,
+}
+
+impl Page for WasmPage {
+    unsafe fn start(&self) -> usize {
+        usize::from(self.page_num) * WASM_PAGE_SIZE.as_usize()
+    }
+
+    unsafe fn contents_start(&self) -> usize {
+        (self.start() as *const PageHeader).add(1) as usize
+    }
+
+    unsafe fn end(&self) -> usize {
+        (usize::from(self.page_num) + 1) * WASM_PAGE_SIZE.as_usize()
+    }
+
+    unsafe fn get_bitmap(&self) -> Option<*mut Bitmap> {
+        (self.start() as *mut PageHeader).get_bitmap()
+    }
+
+    unsafe fn set_bitmap(&self, bitmap: Option<Bitmap>) {
+        (self.start() as *mut PageHeader).set_bitmap(bitmap)
+    }
+
+    unsafe fn take_bitmap(&self) -> Option<Bitmap> {
+        (self.start() as *mut PageHeader).take_bitmap()
+    }
+}
 
 #[derive(Debug)]
 struct SizeClass {

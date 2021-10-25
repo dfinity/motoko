@@ -1,6 +1,6 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
-use crate::page_alloc::{LargePageHeader, PageAlloc};
+use crate::page_alloc::{LargePageHeader, Page, PageAlloc};
 use crate::space::Space;
 use crate::types::*;
 

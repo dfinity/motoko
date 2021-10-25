@@ -1,5 +1,5 @@
-use super::free_lists;
-use super::{PageAlloc, WasmPage};
+use super::free_lists::{self, WasmPage};
+use super::PageAlloc;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 
@@ -21,6 +21,8 @@ fn alloc_wasm_pages(n_pages: u16) -> u16 {
 }
 
 impl PageAlloc for IcPageAlloc {
+    type Page = WasmPage;
+
     unsafe fn alloc(&self) -> WasmPage {
         free_lists::alloc(alloc_wasm_pages)
     }
