@@ -35,7 +35,7 @@ array[1] := "mutable";
 // DON'T-CHECK: call $B_lt
 // DON'T-CHECK: local.get $array
 // DON'T-CHECK: local.set $check2
-// `arr` being a `VarE` already (but we rebind anyway, otherwise we open can of worms)
+// `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
 // later when we have path compression for variables in the backend, we can bring this back
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
