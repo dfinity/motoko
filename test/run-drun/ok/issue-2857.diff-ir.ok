@@ -1,0 +1,6 @@
+--- issue-2857.run
++++ issue-2857.run-ir
+@@ -0,0 +1,3 @@
++ 
++ 
++ actor {};parsedcheckedmatched
