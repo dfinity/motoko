@@ -197,9 +197,12 @@ where
     match get_size_class_idx(n_pages) {
         Ok(size_class_idx) => {
             // TODO: Improve err msg
-            let page_num = FREE_PAGES_SIZE_SORTED[size_class_idx]
-                .remove_first()
-                .unwrap();
+            let size_class = &mut FREE_PAGES_SIZE_SORTED[size_class_idx];
+            let page_num = size_class.remove_first().unwrap();
+
+            if size_class.is_empty() {
+                FREE_PAGES_SIZE_SORTED.remove(size_class_idx);
+            }
 
             let page = WasmPage { page_num, n_pages };
 
@@ -276,7 +279,11 @@ pub unsafe fn free(page: WasmPage) {
     } else {
         // Remove coalesced pages from free lists
         let mut total_pages = page.n_pages;
-        let coalesced_wasm_page_num = FREE_PAGES_ADDR_SORTED[coalesce_start].page_num;
+
+        let coalesced_wasm_page_num = core::cmp::min(
+            FREE_PAGES_ADDR_SORTED[coalesce_start].page_num,
+            page.page_num,
+        );
 
         let coalesced_pages: Vec<WasmPage> = FREE_PAGES_ADDR_SORTED
             .drain(coalesce_start..coalesce_end)

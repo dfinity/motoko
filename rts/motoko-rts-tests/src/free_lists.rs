@@ -5,11 +5,15 @@ pub unsafe fn test() {
 
     simple();
     simple_coalesce();
+    simple_multiple_pages();
 }
 
 unsafe fn simple() {
     clear();
-    let page = alloc(|n_pages| 1);
+    let page = alloc(|n_pages| {
+        assert_eq!(n_pages, 1);
+        1
+    });
     free(page);
 
     assert_eq!(
@@ -31,8 +35,14 @@ unsafe fn simple() {
 
 unsafe fn simple_coalesce() {
     clear();
-    let page1 = alloc(|n_pages| 1);
-    let page2 = alloc(|n_pages| 2);
+    let page1 = alloc(|n_pages| {
+        assert_eq!(n_pages, 1);
+        1
+    });
+    let page2 = alloc(|n_pages| {
+        assert_eq!(n_pages, 1);
+        2
+    });
     free(page1);
     free(page2);
 
@@ -49,6 +59,104 @@ unsafe fn simple_coalesce() {
         vec![SizeClass {
             n_pages: 2,
             pages: [1u16].iter().copied().collect()
+        }]
+    );
+}
+
+unsafe fn simple_multiple_pages() {
+    clear();
+
+    let page1 = alloc_pages(
+        |n_pages| {
+            assert_eq!(n_pages, 5);
+            0
+        },
+        5,
+    );
+
+    free(page1);
+
+    assert_eq!(
+        FREE_PAGES_SIZE_SORTED,
+        vec![SizeClass {
+            n_pages: 5,
+            pages: [0].iter().copied().collect()
+        }]
+    );
+
+    assert_eq!(
+        FREE_PAGES_ADDR_SORTED,
+        vec![WasmPage {
+            page_num: 0,
+            n_pages: 5
+        }]
+    );
+
+    // Second time we allocate same number of pages the old page should be returned
+    let page2 = alloc_pages(
+        |n_pages| panic!("memory.grow called, n_pages={}", n_pages),
+        5,
+    );
+
+    assert_eq!(page1, page2);
+
+    assert_eq!(FREE_PAGES_SIZE_SORTED, vec![]);
+    assert_eq!(FREE_PAGES_ADDR_SORTED, vec![]);
+
+    let page3 = alloc(|_| 5);
+    let page4 = alloc(|_| 6);
+
+    free(page3);
+
+    assert_eq!(
+        FREE_PAGES_SIZE_SORTED,
+        vec![SizeClass {
+            n_pages: 1,
+            pages: [5].iter().copied().collect()
+        }]
+    );
+
+    assert_eq!(
+        FREE_PAGES_ADDR_SORTED,
+        vec![WasmPage {
+            page_num: 5,
+            n_pages: 1
+        }]
+    );
+
+    free(page4);
+
+    assert_eq!(
+        FREE_PAGES_SIZE_SORTED,
+        vec![SizeClass {
+            n_pages: 2,
+            pages: [5].iter().copied().collect()
+        }]
+    );
+
+    assert_eq!(
+        FREE_PAGES_ADDR_SORTED,
+        vec![WasmPage {
+            page_num: 5,
+            n_pages: 2
+        }]
+    );
+
+    free(page2);
+
+    assert_eq!(
+        FREE_PAGES_SIZE_SORTED,
+        vec![SizeClass {
+            n_pages: 7,
+            pages: [0].iter().copied().collect()
+        }]
+    );
+
+    assert_eq!(
+        FREE_PAGES_ADDR_SORTED,
+        vec![WasmPage {
+            page_num: 0,
+            n_pages: 7
         }]
     );
 }
