@@ -154,18 +154,8 @@ in
 rec {
   rts =
     let
-      # We run this on motoko-rts-tests, to get the union of all
-      # dependencies
-      rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
-        name = "motoko-rts-deps";
-        src = subpath ./rts;
-        sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "0jyp3j8n5bj5cy1fd26d7h55zmc4v14qc2w8adxqwmsv5riqz41g";
-        copyLockfile = true;
-      };
-
       cargoLockUtils = nixpkgs.callPackage ./cargo-lock-utils {
-        inherit nixpkgs;
+        pkgs = nixpkgs;
       };
 
       rustCompilerDepsVendor = rust: sha256:
@@ -206,8 +196,7 @@ rec {
           outputHashMode = "recursive";
         };
 
-        # TODO (osa): no idea what this is
-        rustCargoDepsHash = "sha256-TezWQCk2wwzEy5Y9zPvSH5++o8KKTZZJ86d5zxQ/yQ4=";
+        rustCargoDepsHash = "1fi69r3cm4xsfbqiqhl50i53pslcv0bf4icx66wpjf82c29jxlhl";
 
         rustCompilerDeps = rustCompilerDepsVendor nixpkgs.rustc-nightly rustCargoDepsHash;
 
@@ -226,9 +215,11 @@ rec {
           };
 
         cargoProjectDeps = nixpkgs.rustPlatform.fetchCargoTarball {
-          src = ./rts/motoko-rts-tests;
-          name = "motoko-rts-tests-0.1.0";
-          sha256 = "sha256-dNKH7p9JI47WiqNHH/HYkTrtv0VlyyolOX/nRGcbB/g=";
+          name = "motoko-rts-deps";
+          src = subpath ./rts;
+          sourceRoot = "rts/motoko-rts-tests";
+          sha256 = "129gfmn96vm7di903pxirg7zybl83q6nkwiqr3rsy7l1q8667kxx";
+          copyLockfile = true;
         };
 
         cargoProjectDepsUnpacked = nixpkgs.stdenvNoCC.mkDerivation {
@@ -258,10 +249,21 @@ rec {
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
         export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-        export RUSTDEPS=$(stripHash ${rustDeps})
+
+        # This replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
+        mkdir -p $CARGO_HOME
+        echo "Using vendored sources from ${cargoProjectDeps}"
+        unpackFile ${cargoDeps}
+        cat > $CARGO_HOME/config <<__END__
+          [source."crates-io"]
+          "replace-with" = "vendored-sources"
+          [source."vendored-sources"]
+          "directory" = "$(stripHash ${cargoDeps})"
+        __END__
 
         tree . -d -L 3
       '';
+        # export RUSTDEPS=$(stripHash ${rustDeps})
 
       doCheck = true;
 
@@ -278,8 +280,8 @@ rec {
       # This needs to be self-contained. Remove mention of
       # nix path in debug message.
       preFixup = ''
-        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       '';
+        # remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       allowedRequisites = [];
     };
 
