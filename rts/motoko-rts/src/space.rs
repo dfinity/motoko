@@ -112,21 +112,21 @@ impl<P: PageAlloc> Space<P> {
         let current_page_end = self.current_page().end();
 
         if self.hp + bytes > current_page_end {
-            let slop = current_page_end - self.hp;
+            let slop_bytes = Bytes((current_page_end - self.hp) as u32);
+            debug_assert_eq!(slop_bytes.as_u32() % WORD_SIZE, 0);
+            let slop_words = slop_bytes.to_words();
 
             // Rest of the page is considered allocated
-            self.total_alloc += slop;
+            self.total_alloc += slop_bytes.as_usize();
 
             // In debug mode fill the slop with a filler object, to be able to check page sanity
             if cfg!(debug_assertions) {
-                if slop == 1 {
+                if slop_words == Words(1) {
                     *(self.hp as *mut u8) = TAG_ONE_WORD_FILLER;
                 } else {
                     let free_space = self.hp as *mut FreeSpace;
                     (*free_space).header.tag = TAG_FREE_SPACE;
-                    let slop = slop as u32;
-                    assert_eq!(slop % WORD_SIZE, 0);
-                    (*free_space).words = Bytes(slop).to_words();
+                    (*free_space).words = slop_words;
                 }
             }
 
