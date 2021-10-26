@@ -194,61 +194,6 @@ rec {
         export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
         export RUSTDEPS=$(stripHash ${rustDeps})
 
-        # Vendoring deps that `cargo vendor` cannot vendor
-        python3 ${./vendor.py} compiler_builtins 0.1.49
-        mv compiler_builtins-0.1.49 $RUSTDEPS/compiler_builtins-0.1.49
-
-        python3 ${./vendor.py} cfg-if 0.1.10
-        mv cfg-if-0.1.10 $RUSTDEPS/cfg-if-0.1.10
-
-        python3 ${./vendor.py} getopts 0.2.21
-        mv getopts-0.2.21 $RUSTDEPS/getopts
-
-        python3 ${./vendor.py} libc 0.2.99
-        mv libc-0.2.99 $RUSTDEPS/libc-0.2.99
-
-        python3 ${./vendor.py} unicode-width 0.1.8
-        mv unicode-width-0.1.8 $RUSTDEPS/unicode-width
-
-        python3 ${./vendor.py} addr2line 0.16.0
-        mv addr2line-0.16.0 $RUSTDEPS/addr2line
-
-        python3 ${./vendor.py} hashbrown 0.11.0
-        mv hashbrown-0.11.0 $RUSTDEPS/hashbrown
-
-        python3 ${./vendor.py} miniz_oxide 0.4.0
-        mv miniz_oxide-0.4.0 $RUSTDEPS/miniz_oxide
-
-        python3 ${./vendor.py} object 0.26.1
-        mv object-0.26.1 $RUSTDEPS/object
-
-        python3 ${./vendor.py} rustc-demangle 0.1.21
-        mv rustc-demangle-0.1.21 $RUSTDEPS/rustc-demangle
-
-        python3 ${./vendor.py} hermit-abi 0.1.19
-        mv hermit-abi-0.1.19 $RUSTDEPS/hermit-abi
-
-        python3 ${./vendor.py} dlmalloc 0.2.1
-        mv dlmalloc-0.2.1 $RUSTDEPS/dlmalloc
-
-        python3 ${./vendor.py} wasi 0.9.0+wasi-snapshot-preview1
-        mv wasi-0.9.0+wasi-snapshot-preview1 $RUSTDEPS/wasi+wasi-snapshot-preview1
-
-        python3 ${./vendor.py} fortanix-sgx-abi 0.3.3
-        mv fortanix-sgx-abi-0.3.3 $RUSTDEPS/fortanix-sgx-abi
-
-        python3 ${./vendor.py} cc 1.0.69
-        mv cc-1.0.69 $RUSTDEPS/cc
-
-        python3 ${./vendor.py} gimli 0.25.0
-        mv gimli-0.25.0 $RUSTDEPS/gimli
-
-        python3 ${./vendor.py} adler 0.2.3
-        mv adler-0.2.3 $RUSTDEPS/adler
-
-        python3 ${./vendor.py} memchr 2.4.1
-        mv memchr-2.4.1 $RUSTDEPS/memchr
-
         tree . -d -L 3
       '';
 
