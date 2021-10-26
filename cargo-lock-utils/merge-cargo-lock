@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+import toml
+import sys
+
+source, rust = sys.argv[1:3]
+
+with open(source) as f:
+    origin_content = toml.load(f)
+
+with open(rust) as f:
+    rust_content = toml.load(f)
+
+# first rewrite rust dependencies to make sure they are version pinned
+package_versions = {}
+for p in rust_content['package']:
+    if p['name'] in package_versions:
+        package_versions[p['name']].append(p['version'])
+    else:
+        package_versions[p['name']] = [p['version']]
+
+for p in rust_content['package']:
+    if 'dependencies' in p:
+        deps = []
+        for dep in p['dependencies']:
+            if ' ' in dep:
+                deps.append(dep)
+            else:
+                deps.append(dep + " " + package_versions[dep][0])
+        p['dependencies'] = deps
+
+# do the same with the origin ones
+origin_packages = set()
+package_versions = {}
+for p in origin_content['package']:
+    origin_packages.add((p['name'], p['version']))
+
+    if p['name'] in package_versions:
+        package_versions[p['name']].append(p['version'])
+    else:
+        package_versions[p['name']] = [p['version']]
+
+for p in origin_content['package']:
+    if 'dependencies' in p:
+        deps = []
+        for dep in p['dependencies']:
+            if ' ' in dep:
+                deps.append(dep)
+            else:
+                deps.append(dep + " " + package_versions[dep][0])
+        p['dependencies'] = deps
+
+
+# then merge the rust in the origin ones
+# to do that, we can't add the same dependency twice.
+# TODO: do we need to care about the dependencies? (make it a super set?)
+for p in rust_content['package']:
+    tup = (p['name'], p['version'])
+    if tup not in origin_packages:
+        origin_content['package'].append(p)
+
+output = toml.dumps(origin_content)
+print(output)
