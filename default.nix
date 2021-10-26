@@ -196,7 +196,7 @@ rec {
           outputHashMode = "recursive";
         };
 
-        rustCargoDepsHash = "1fi69r3cm4xsfbqiqhl50i53pslcv0bf4icx66wpjf82c29jxlhl";
+        rustCargoDepsHash = "0rpq3gjvd8px7vkyrby9gwa6y95g64zxa462aph56lfq2lkzxz41";
 
         rustCompilerDeps = rustCompilerDepsVendor nixpkgs.rustc-nightly rustCargoDepsHash;
 

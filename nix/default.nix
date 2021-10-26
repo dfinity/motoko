@@ -51,7 +51,7 @@ let
         # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;
-          rust-channel = moz_overlay.rustChannelOf { date = "2021-08-29"; channel = "nightly"; };
+          rust-channel = moz_overlay.rustChannelOf { date = "2021-10-25"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
