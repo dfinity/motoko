@@ -199,6 +199,7 @@ val eq_kind : kind -> kind -> bool
 val sub : typ -> typ -> bool
 val compatible : typ -> typ -> bool
 
+exception PreEncountered
 val lub : typ -> typ -> typ
 val glb : typ -> typ -> typ
 

@@ -476,6 +476,34 @@ and check_typ' env typ : T.typ =
       (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
+  | AndT (typ1, typ2) ->
+    let t1 = check_typ env typ1 in
+    let t2 = check_typ env typ2 in
+    let t = try T.glb t1 t2 with T.PreEncountered ->
+      error env typ2.at "M0168"
+        "cannot compute intersection of types containing recursive or forward references to other type definitions"
+    in
+    if not env.pre && T.sub t T.Non && not (T.sub t1 T.Non || T.sub t2 T.Non) then
+      warn env typ.at "M0166"
+        "this intersection results in type%a\nbecause operand types are inconsistent,\nleft operand is%a\nright operand is%a"
+        display_typ t
+        display_typ_expand t1
+        display_typ_expand t2;
+    t
+  | OrT (typ1, typ2) ->
+    let t1 = check_typ env typ1 in
+    let t2 = check_typ env typ2 in
+    let t = try T.lub t1 t2 with T.PreEncountered ->
+      error env typ2.at "M0168"
+        "cannot compute union of types containing recursive or forward references to other type definitions"
+    in
+    if not env.pre && T.sub T.Any t && not (T.sub T.Any t1 || T.sub T.Any t2) then
+      warn env typ.at "M0167"
+        "this union results in type%a\nbecause operand types are inconsistent,\nleft operand is%a\nright operand is%a"
+        display_typ t
+        display_typ_expand t1
+        display_typ_expand t2;
+    t
   | ParT typ ->
     check_typ env typ
   | NamedT (_, typ) ->
