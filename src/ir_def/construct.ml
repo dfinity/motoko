@@ -90,9 +90,9 @@ let primE prim es =
     | ICStableRead t -> t
     | ICStableWrite _ -> T.unit
     | (IdxPrim | DerefArrayOffset) -> T.(as_immut (as_array (List.hd es).note.Note.typ))
-    | NextArrayOffset -> T.nat
+    | NextArrayOffset _ -> T.nat
     | ValidArrayOffset -> T.bool
-    | GetPastArrayOffset -> T.nat
+    | GetPastArrayOffset _ -> T.nat
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
     | BinPrim (t, _) -> t

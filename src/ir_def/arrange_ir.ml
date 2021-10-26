@@ -62,10 +62,10 @@ and prim = function
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
-  | NextArrayOffset   -> Atom "NextArrayOffset"
+  | NextArrayOffset _ -> Atom "NextArrayOffset"
   | ValidArrayOffset  -> Atom "ValidArrayOffset"
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
-  | GetPastArrayOffset -> Atom "GetPastArrayOffset"
+  | GetPastArrayOffset _ -> Atom "GetPastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
   | AwaitPrim         -> Atom "AwaitPrim"

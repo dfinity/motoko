@@ -255,7 +255,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
      } *)
   let arr_typ = arr_exp.note.note_typ in
   let arrv = fresh_var "arr" arr_typ in
-  let size_exp = primE I.GetPastArrayOffset [varE arrv] in
+  let size_exp = primE (I.GetPastArrayOffset proj.it) [varE arrv] in
   let indx = fresh_var "indx" T.(Mut nat) in
   let indexing_exp = match proj.it with
     | "vals" -> primE I.DerefArrayOffset [varE arrv; varE indx]
@@ -272,7 +272,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
        (blockE [ letP (pat p) indexing_exp
                ; expD (exp e2)]
           (assignE indx
-             (primE I.NextArrayOffset [varE indx]))))
+             (primE (I.NextArrayOffset proj.it) [varE indx]))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const

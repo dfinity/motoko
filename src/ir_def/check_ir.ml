@@ -473,7 +473,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
-    | GetPastArrayOffset, [exp1] ->
+    | GetPastArrayOffset _, [exp1] ->
       (*let t1 = T.promote (typ exp1) in
       let t2 = try T.as_array_sub t1 with
                | Invalid_argument _ ->
@@ -482,7 +482,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       FIXME typ exp1 <: T.as_immut t2;*)
       T.nat <: t
-    | NextArrayOffset, [exp] ->
+    | NextArrayOffset _, [exp] ->
       typ exp <: T.nat
     | ValidArrayOffset, [exp1; exp2] ->
       typ exp1 <: T.nat;

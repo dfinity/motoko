@@ -354,11 +354,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | (IdxPrim | DerefArrayOffset), [v1; v2] ->
         k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
-      | NextArrayOffset, [v1] ->
+      | NextArrayOffset _, [v1] ->
         k (V.Int Numerics.Nat.(of_int ((to_int (V.as_int v1)) + 1)))
       | ValidArrayOffset, [v1; v2] ->
         k (V.Bool Numerics.Nat.(to_int (V.as_int v1) < to_int (V.as_int v2)))
-      | GetPastArrayOffset, [v1] ->
+      | GetPastArrayOffset _, [v1] ->
         k (V.Int Numerics.Nat.(of_int (Array.length (V.as_array v1))))
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1

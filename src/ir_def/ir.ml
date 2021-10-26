@@ -110,10 +110,10 @@ and prim =
   | ActorDotPrim of Type.lab          (* actor field access *)
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
-  | NextArrayOffset                   (* advance array offset *)
+  | NextArrayOffset of string         (* advance array offset *)
   | ValidArrayOffset                  (* verify array offset *)
   | DerefArrayOffset                  (* array offset indexing *)
-  | GetPastArrayOffset                (* array offset past the last element *)
+  | GetPastArrayOffset of string      (* array offset past the last element *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
   | AwaitPrim                         (* await *)
@@ -245,10 +245,10 @@ let map_prim t_typ t_id p =
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
   | IdxPrim
-  | NextArrayOffset
+  | NextArrayOffset _
   | ValidArrayOffset
   | DerefArrayOffset
-  | GetPastArrayOffset -> p
+  | GetPastArrayOffset _ -> p
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim

@@ -7338,11 +7338,11 @@ and compile_exp (env : E.t) ae exp =
 
     begin match p, es with
     (* Calls *)
-    | CallPrim _, [{it=PrimE (CallPrim _, [{it=VarE ("@immut_array_size" | "@mut_array_size");_}; e1]);_}; {it=PrimE (TupPrim, []);_}] ->
+    (*| CallPrim _, [{it=PrimE (CallPrim _, [{it=VarE ("@immut_array_size" | "@mut_array_size");_}; e1]);_}; {it=PrimE (TupPrim, []);_}] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^
       Heap.load_field Arr.len_field ^^
-      compile_shl_const 1l
+      compile_shl_const 1l*)
     | CallPrim _, [e1; e2] ->
       let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.Note.typ in
       let n_args = List.length arg_tys in
@@ -7449,10 +7449,11 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e2 ^^ (* idx *)
       Arr.idx_bigint env ^^
       load_ptr
-    | NextArrayOffset, [e] ->
+    | NextArrayOffset purpose, [e] ->
+      let spacing = if purpose = "vals" then Arr.element_size else 1l in
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
-      compile_add_const Arr.element_size
+      compile_add_const spacing
     | ValidArrayOffset, [e1; e2] ->
       let sr, code = compile_relop env Type.(Prim Nat16) Operator.LtOp in
       SR.bool,
@@ -7465,11 +7466,12 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e2 ^^ (* idx *)
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       Arr.(load_field 0l)
-    | GetPastArrayOffset, [e] ->
+    | GetPastArrayOffset purpose, [e] ->
+      let shift = if purpose = "vals" then 2l else 1l in
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* array *)
       Heap.load_field Arr.len_field ^^
-      compile_shl_const 2l
+      compile_shl_const shift
       (* BigNum.from_word32 env FIXME: see OtherPrim "array_len" *)
 
     | BreakPrim name, [e] ->
