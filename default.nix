@@ -163,30 +163,96 @@ rec {
         sha256 = "0jyp3j8n5bj5cy1fd26d7h55zmc4v14qc2w8adxqwmsv5riqz41g";
         copyLockfile = true;
       };
+
+      cargoLockUtils = nixpkgs.callPackage ./cargo-lock-utils {
+        inherit nixpkgs;
+      };
+
+      rustCompilerDepsVendor = rust: sha256:
+        nixpkgs.stdenvNoCC.mkDerivation {
+          name = "rust-deps";
+          version = rust.name;
+
+          nativeBuildInputs = with nixpkgs; [
+            curl
+          ];
+
+          buildCommand = ''
+            mkdir downloads
+            cd downloads
+            curlVersion=$(curl -V | head -1 | cut -d' ' -f2)
+            curl=(
+               curl
+               --location
+               --max-redir 20
+               --retry 3
+               --user-agent "curl/$curlVersion Nixpkgs/$nixpkgsVersion"
+               --insecure
+            )
+            ${cargoLockUtils}/bin/list-cargo-lock ${rust}/lib/rustlib/src/rust/Cargo.lock | while read url name checksum; do
+              "''${curl[@]}" "$url" | tar xz
+              (
+                 cd $name;
+                 ${cargoLockUtils}/bin/compute-checksum "$(pwd)" "$checksum" > .cargo-checksum.json
+              )
+            done
+            mkdir $out
+            cp -r * $out/
+            cp ${rust}/lib/rustlib/src/rust/Cargo.lock $out/
+          '';
+
+          outputHashAlgo = "sha256";
+          outputHash = sha256;
+          outputHashMode = "recursive";
+        };
+
+        # TODO (osa): no idea what this is
+        rustCargoDepsHash = "sha256-TezWQCk2wwzEy5Y9zPvSH5++o8KKTZZJ86d5zxQ/yQ4=";
+
+        rustCompilerDeps = rustCompilerDepsVendor nixpkgs.rustc-nightly rustCargoDepsHash;
+
+        mergeCargo = projectCargoLock: rustCargoLock:
+          nixpkgs.stdenvNoCC.mkDerivation {
+            name = "merged-cargo-vendors";
+
+            buildCommand = ''
+              mkdir -p $out
+              find ${projectCargoLock} -mindepth 1 -maxdepth 1 -type d \
+                  -exec ln -sf {} $out/ \;
+              find ${rustCargoLock} -mindepth 1 -maxdepth 1 -type d \
+                  -exec ln -sf {} $out/ \;
+              cp ${projectCargoLock}/Cargo.lock $out/
+            '';
+          };
+
+        cargoProjectDeps = nixpkgs.rustPlatform.fetchCargoTarball {
+          src = ./rts/motoko-rts-tests;
+          name = "motoko-rts-tests-0.1.0";
+          sha256 = "sha256-dNKH7p9JI47WiqNHH/HYkTrtv0VlyyolOX/nRGcbB/g=";
+        };
+
+        cargoProjectDepsUnpacked = nixpkgs.stdenvNoCC.mkDerivation {
+          name = cargoProjectDeps.name + "-unpacked";
+          buildCommand = ''
+            tar xf ${cargoProjectDeps}
+            mv *.tar.gz $out
+          '';
+        };
+
+        cargoDeps = mergeCargo cargoProjectDepsUnpacked rustCompilerDeps;
     in
 
     stdenv.mkDerivation {
       name = "moc-rts";
 
       src = subpath ./rts;
+
       nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo nixpkgs.cacert ];
 
       buildInputs = rtsBuildInputs;
 
       preBuild = ''
         export CARGO_HOME=$PWD/cargo-home
-
-        # This replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
-        mkdir -p $CARGO_HOME
-        echo "Using vendored sources from ${rustDeps}"
-        unpackFile ${rustDeps}
-        cat > $CARGO_HOME/config <<__END__
-          [source."crates-io"]
-          "replace-with" = "vendored-sources"
-
-          [source."vendored-sources"]
-          "directory" = "$(stripHash ${rustDeps})"
-        __END__
 
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
