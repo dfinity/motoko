@@ -109,7 +109,7 @@ num8 := 25;
 // indexing variable itself
 for (check8 in ["hello", "keyed", "world"].keys()) { ignore (check8 + num8) };
 
-
+// polymorphic arrays should still work
 func f9<A>(array : [A]) {
 for (check9 in array.keys()) { }
 }
