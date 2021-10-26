@@ -96,7 +96,7 @@ for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 // CHECK:      local.set $num8
 // CHECK-NOT:  call $@immut_array_size
 // CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
+// CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK-NOT:  i32.add
