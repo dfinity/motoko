@@ -37,6 +37,11 @@ let
     rustfmt
     python3
     tree
+  ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
+    libiconv
+    # The following are usually also necessary:
+    # pkgs.darwin.apple_sdk.frameworks.Security
+    # pkgs.darwin.apple_sdk.frameworks.CoreFoundation
   ];
 
   llvmEnv = ''
