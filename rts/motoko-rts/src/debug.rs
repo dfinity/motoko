@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
+use crate::page_alloc::{Page, PageAlloc};
 use crate::print::*;
+use crate::space::Space;
 use crate::types::*;
 
 use core::fmt::Write;
@@ -20,15 +22,10 @@ unsafe extern "C" fn print_value(value: Value) {
     print(&write_buf);
 }
 
-pub unsafe fn dump_heap(
-    heap_base: u32,
-    hp: u32,
-    static_roots: Value,
-    continuation_table_loc: *mut Value,
-) {
+pub unsafe fn dump_space<P: PageAlloc>(space: &Space<P>, static_roots: Value, continuation_table_loc: *mut Value) {
     print_continuation_table(continuation_table_loc);
     print_static_roots(static_roots);
-    print_heap(heap_base, hp);
+    print_space(space);
 }
 
 pub(crate) unsafe fn print_continuation_table(closure_tbl_loc: *mut Value) {
@@ -90,28 +87,26 @@ pub(crate) unsafe fn print_static_roots(static_roots: Value) {
     println!(50, "End of static roots");
 }
 
-unsafe fn print_heap(heap_start: u32, heap_end: u32) {
-    println!(
-        200,
-        "Heap start={:#x}, heap end={:#x}, size={} bytes",
-        heap_start,
-        heap_end,
-        heap_end - heap_start
-    );
-
+unsafe fn print_space<P: PageAlloc>(space: &Space<P>) {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
-    let mut p = heap_start;
-    let mut i: Words<u32> = Words(0);
-    while p < heap_end {
-        print_boxed_object(&mut write_buf, p as usize);
-        print(&write_buf);
-        write_buf.reset();
+    for page in space.iter_pages() {
+        let mut p = page.contents_start();
+        let page_end = page.end();
 
-        let obj_size = object_size(p as usize);
-        p += obj_size.to_bytes().as_u32();
-        i += obj_size;
+        loop {
+            if p == space.allocation_pointer() || p == page_end {
+                break;
+            }
+
+            print_boxed_object(&mut write_buf, p as usize);
+            print(&write_buf);
+            write_buf.reset();
+
+            let obj_size = object_size(p as usize);
+            p += obj_size.to_bytes().as_usize();
+        }
     }
 }
 
@@ -133,12 +128,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     match tag {
         TAG_OBJECT => {
             let object = obj as *mut Object;
-            let _ = write!(
-                buf,
-                "<Object size={:#x} hash_ptr={:#x} field=[",
-                (*object).size,
-                (*object).hash_ptr
-            );
+            let _ = write!(buf, "<Object size={:#x} hash_ptr={:#x} field=[", (*object).size, (*object).hash_ptr);
             for i in 0..object.size() {
                 let val = object.get(i);
                 let _ = write!(buf, "{:#x}", val.get_raw());
@@ -191,12 +181,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_VARIANT => {
             let variant = obj as *const Variant;
-            let _ = write!(
-                buf,
-                "<Variant tag={:#x} field={:#x}>",
-                (*variant).tag,
-                (*variant).field.get_raw()
-            );
+            let _ = write!(buf, "<Variant tag={:#x} field={:#x}>", (*variant).tag, (*variant).field.get_raw());
         }
         TAG_BLOB => {
             let blob = obj as *const Blob;
@@ -216,13 +201,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_CONCAT => {
             let concat = obj as *const Concat;
-            let _ = write!(
-                buf,
-                "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
-                (*concat).n_bytes.as_u32(),
-                (*concat).text1.get_raw(),
-                (*concat).text2.get_raw()
-            );
+            let _ = write!(buf, "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>", (*concat).n_bytes.as_u32(), (*concat).text1.get_raw(), (*concat).text2.get_raw());
         }
         TAG_ONE_WORD_FILLER => {
             let _ = write!(buf, "<One word filler>",);
