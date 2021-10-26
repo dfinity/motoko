@@ -260,10 +260,7 @@ rec {
           [source."vendored-sources"]
           "directory" = "$(stripHash ${cargoDeps})"
         __END__
-
-        tree . -d -L 3
       '';
-        # export RUSTDEPS=$(stripHash ${rustDeps})
 
       doCheck = true;
 
@@ -277,11 +274,16 @@ rec {
         cp mo-rts-debug.wasm $out/rts
       '';
 
-      # This needs to be self-contained. Remove mention of
-      # nix path in debug message.
+      # This needs to be self-contained. Remove mention of nix path in debug
+      # message.
       preFixup = ''
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${cargoDeps} \
+          -t ${cargoProjectDepsUnpacked} \
+          -t ${rustCompilerDeps} \
+          $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       '';
-        # remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       allowedRequisites = [];
     };
 
