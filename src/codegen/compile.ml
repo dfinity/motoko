@@ -1965,6 +1965,7 @@ sig
   val truncate_to_word64 : E.t -> G.t
 
   (* unsigned word to SR.Vanilla *)
+  val from_word30 : E.t -> G.t
   val from_word32 : E.t -> G.t
   val from_word64 : E.t -> G.t
 
@@ -2418,6 +2419,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_signed_word64 env)
 
+  let from_word30 env =
+    compile_shl_const 1l
+
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^
@@ -2479,6 +2483,7 @@ module BigNumLibtommath : BigNumType = struct
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
+  let from_word30 env = E.call_import env "rts" "bigint_of_word32"
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
@@ -7467,12 +7472,14 @@ and compile_exp (env : E.t) ae exp =
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       Arr.(load_field 0l)
     | GetPastArrayOffset purpose, [e] ->
-      let shift = if purpose = "vals" then 2l else 1l in
+      let shift =
+        if purpose = "vals"
+        then compile_shl_const 2l
+        else BigNum.from_word30 env in
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* array *)
       Heap.load_field Arr.len_field ^^
-      compile_shl_const shift
-      (* BigNum.from_word32 env FIXME: see OtherPrim "array_len" *)
+      shift
 
     | BreakPrim name, [e] ->
       let d = VarEnv.get_label_depth ae name in
@@ -7643,7 +7650,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Heap.load_field Arr.len_field ^^
-      BigNum.from_word32 env
+      BigNum.from_word30 env
 
     | OtherPrim "text_len", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len env
