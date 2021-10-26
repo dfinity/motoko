@@ -7450,7 +7450,7 @@ and compile_exp (env : E.t) ae exp =
       Arr.idx_bigint env ^^
       load_ptr
     | NextArrayOffset purpose, [e] ->
-      let spacing = if purpose = "vals" then Arr.element_size else 1l in
+      let spacing = if purpose = "vals" then Arr.element_size else 2l in
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
       compile_add_const spacing
