@@ -144,9 +144,9 @@ pub unsafe fn clear() {
 }
 
 /// Allocate single page
-pub unsafe fn alloc<GrowMemory>(grow_memory: GrowMemory) -> WasmPage
+pub unsafe fn alloc<GrowMemory>(mut grow_memory: GrowMemory) -> WasmPage
 where
-    GrowMemory: Fn(u16) -> u16, // Wasm memory.grow
+    GrowMemory: FnMut(u16) -> u16, // Wasm memory.grow
 {
     // Get the smallest page
     match FREE_PAGES_SIZE_SORTED.get_mut(0) {
@@ -189,9 +189,9 @@ where
 }
 
 /// Allocate multiple pages
-pub unsafe fn alloc_pages<GrowMemory>(grow_memory: GrowMemory, n_pages: u16) -> WasmPage
+pub unsafe fn alloc_pages<GrowMemory>(mut grow_memory: GrowMemory, n_pages: u16) -> WasmPage
 where
-    GrowMemory: Fn(u16) -> u16, // Wasm memory.grow
+    GrowMemory: FnMut(u16) -> u16, // Wasm memory.grow
 {
     // Get the size class with n_pages or the smallest size class larger than n_pages
     match get_size_class_idx(n_pages) {

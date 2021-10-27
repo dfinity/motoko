@@ -1,3 +1,5 @@
+mod random;
+
 use motoko_rts::page_alloc::free_lists::*;
 
 pub unsafe fn test() {
@@ -8,6 +10,15 @@ pub unsafe fn test() {
     coalesce_right();
     allocate_and_coalesce_multiple_pages();
     split_large_pages();
+
+    println!("  Testing random free list operations...");
+
+    let max_seed = 1000;
+    for seed in 0..max_seed {
+        print!("\r{}/{}", seed + 1, max_seed);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        random::random_free_list_ops(seed, 100);
+    }
 }
 
 unsafe fn simple() {
