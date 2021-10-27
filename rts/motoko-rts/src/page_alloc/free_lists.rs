@@ -148,44 +148,8 @@ pub unsafe fn alloc<GrowMemory>(mut grow_memory: GrowMemory) -> WasmPage
 where
     GrowMemory: FnMut(u16) -> u16, // Wasm memory.grow
 {
-    // Get the smallest page
-    match FREE_PAGES_SIZE_SORTED.get_mut(0) {
-        None => {
-            let page_num = grow_memory(1);
-            WasmPage {
-                page_num,
-                n_pages: 1,
-            }
-        }
-        Some(size_class) => {
-            // TODO: Improve error msg
-            let page = size_class.remove_first().unwrap();
-
-            // Remove the size class if it's empty
-            if size_class.is_empty() {
-                FREE_PAGES_SIZE_SORTED.remove(0);
-            }
-
-            // Page removed from size-sorted list, remove from addr-sorted list
-            remove_free_page_addr_sorted(page);
-
-            if size_class.n_pages > 1 {
-                // Page too big: split it, add the unused part to free lists
-                let free_page = WasmPage {
-                    page_num: page + 1,
-                    n_pages: size_class.n_pages - 1,
-                };
-
-                add_free_page_size_sorted(free_page.page_num, free_page.n_pages);
-                add_free_page_addr_sorted(free_page);
-            }
-
-            WasmPage {
-                page_num: page,
-                n_pages: 1,
-            }
-        }
-    }
+    // TODO: For single page allocs we always use the first free list, not need to binary search
+    alloc_pages(grow_memory, 1)
 }
 
 /// Allocate multiple pages
@@ -221,6 +185,11 @@ where
 
                 // TODO: Improve err msg
                 let page = size_class.remove_first().unwrap();
+
+                // Remove the size class if it's empty
+                if size_class.is_empty() {
+                    FREE_PAGES_SIZE_SORTED.remove(size_class_idx);
+                }
 
                 remove_free_page_addr_sorted(page);
 
