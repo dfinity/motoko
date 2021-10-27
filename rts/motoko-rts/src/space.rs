@@ -126,7 +126,7 @@ impl<P: PageAlloc> Space<P> {
                 } else {
                     let free_space = self.hp as *mut FreeSpace;
                     (*free_space).header.tag = TAG_FREE_SPACE;
-                    (*free_space).words = slop_words;
+                    (*free_space).words = slop_words - Words(1);
                 }
             }
 
