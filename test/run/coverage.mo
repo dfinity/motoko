@@ -113,3 +113,76 @@ func test(t : Lam) : Nat = switch (t) {
 };
 
 assert (test(#le(1, #va 0, #app(#va 0, #va 1))) == 999);
+
+
+// Patterns redundant through various forms of subtyping
+
+func g(e : {#}) {
+  switch 0 {
+    case (-1) {};
+    case _ {};
+  };
+  switch 0 {
+    case (-1 : Int) {};
+    case _ {};
+  };
+  switch 0 {
+    case (-1 : Int : Nat) {};
+    case _ {};
+  };
+  switch 0 {
+    case (-1 : Nat) {};
+    case _ {};
+  };
+
+  switch null {
+    case (?_) {};
+    case null {};
+  };
+  switch null {
+    case (?_ : ?Nat) {};
+    case null {};
+  };
+  switch null {
+    case (?_ : ?Nat : Null) {};
+    case null {};
+  };
+  switch null {
+    case (?_ : Null) {};
+    case null {};
+  };
+
+  switch (#a) {
+    case (#b) {};
+    case (#a) {};
+  };
+  switch (#a) {
+    case (#b : {#a; #b}) {};
+    case (#a) {};
+  };
+  switch (#a) {
+    case (#b : {#a; #b} : {#a}) {};
+    case (#a) {};
+  };
+  switch (#a) {
+    case (#b : {#a}) {};
+    case (#a) {};
+  };
+
+  switch e {
+    case (#a) {};
+  };
+  switch e {
+    case (#a : {#a}) {};
+  };
+  switch e {
+    case (#a : {#a} : {#}) {};
+  };
+  switch e {
+    case (#a : {#}) {};
+  };
+
+  let (-1 or _) = 0;
+  let (?_ or _) = null;
+  let (#a or _) = #b;
+};
