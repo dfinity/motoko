@@ -17,8 +17,9 @@ pub unsafe fn test() {
     for seed in 0..max_seed {
         print!("\r{}/{}", seed + 1, max_seed);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        random::random_free_list_ops(seed, 100);
+        random::random_free_list_ops(seed, 1000);
     }
+    println!();
 }
 
 unsafe fn simple() {
