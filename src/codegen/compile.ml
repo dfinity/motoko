@@ -8716,16 +8716,16 @@ and main_actor as_opt mod_env ds fs up =
     (* Export metadata *)
     env.E.stable_types :=
       Some (
-        List.mem "motoko:stable-types"
-          !Flags.public_metadata_names, up.meta.sig_);
+        List.mem "motoko:stable-types" !Flags.public_metadata_names,
+        up.meta.sig_);
     env.E.service :=
       Some (
-        List.mem "candid:service"
-          !Flags.public_metadata_names, up.meta.candid.service);
+        List.mem "candid:service" !Flags.public_metadata_names,
+        up.meta.candid.service);
     env.E.args :=
       Some (
-        List.mem "candid:args"
-          !Flags.public_metadata_names, up.meta.candid.args);
+        List.mem "candid:args" !Flags.public_metadata_names,
+        up.meta.candid.args);
 
     (* Deserialize any arguments *)
     begin match as_opt with

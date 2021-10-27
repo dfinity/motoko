@@ -880,7 +880,7 @@ let module_ s =
   iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
-  (* TODO: allow candid/motoko sections anywhere, not just here *)
+  (* TODO: allow candid/motoko sections anywhere, not just here, in this order *)
   let candid = candid_sections s in
   iterate skip_custom_section s;
   let motoko = motoko_sections s in

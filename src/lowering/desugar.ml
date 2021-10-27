@@ -3,7 +3,7 @@ open Mo_def
 open Mo_types
 open Mo_values
 open Syntax
-open Mo_frontend
+(* open Mo_frontend *)
 
 open Source
 open Operator
@@ -281,13 +281,12 @@ and call_system_func_opt name es =
       -> Some (callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
 
-and build_candid args_opt obj_typ =
-    let (args, prog) = Mo_idl.Mo_to_idl.of_service_type args_opt obj_typ in
-    let service =
-      Idllib.Arrange_idl.string_of_prog prog in
-    let args =
-      Idllib.Arrange_idl.string_of_args args in
-    I.{args; service}
+and build_candid ts obj_typ =
+  let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
+  I.{
+   args = Idllib.Arrange_idl.string_of_args args;
+   service = Idllib.Arrange_idl.string_of_prog prog;
+  }
 
 and export_interface txt =
   (* This is probably a temporary hack. *)
@@ -320,6 +319,7 @@ and build_actor at ts self_id es obj_typ =
   let sig_ = List.sort T.compare_field
     (List.map (fun (i,t) -> T.{lab = i; typ = t; depr = None}) ids)
   in
+(*  
   Printf.printf "%s" (T.string_of_sig sig_); (* HACK *)
   (match Stability.parse_sig (Prelude.prelude ^ T.string_of_sig sig_) "<sig>" with
    | Ok (syn_sig_, msgs) ->
@@ -333,6 +333,7 @@ and build_actor at ts self_id es obj_typ =
         Printf.printf "matched";
       | Error msgs ->  Diag.print_messages msgs)
    | Error msgs -> Diag.print_messages msgs);
+ *)
   let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); depr = None}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
@@ -357,8 +358,8 @@ and build_actor at ts self_id es obj_typ =
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
   let meta =
-    I.{candid = candid;
-       sig_ = T.string_of_sig sig_} in
+    I.{ candid = candid;
+        sig_ = T.string_of_sig sig_} in
   let (interface_d, interface_f) = export_interface candid.I.service in
   I.ActorE (interface_d @ ds', interface_f @ fs,
      { meta;

@@ -216,4 +216,3 @@ let of_service_type ts t : I.typ list * I.prog =
   let prog = I.{decs = decs; actor = actor} in
   args,
   {it = prog; at = no_region; note = ""}
-    
