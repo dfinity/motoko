@@ -82,8 +82,13 @@ and upgrade = {
   post : exp
 }
 
+and candid = {
+    args : string;
+    service : string;
+  }
+
 and meta = {
-    did : string;  (* Candid (of actor, never service) *)
+    candid : candid;  (* Candid (of actor, never service) *)
     sig_ : string  (* Motoko stable signature *)
   }
 

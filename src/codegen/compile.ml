@@ -8721,7 +8721,11 @@ and main_actor as_opt mod_env ds fs up =
     env.E.service :=
       Some (
         List.mem "candid:service"
-          !Flags.public_metadata_names, up.meta.did);
+          !Flags.public_metadata_names, up.meta.candid.service);
+    env.E.args :=
+      Some (
+        List.mem "candid:args"
+          !Flags.public_metadata_names, up.meta.candid.args);
 
     (* Deserialize any arguments *)
     begin match as_opt with
