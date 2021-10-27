@@ -169,22 +169,67 @@ do {
     case (#a) {};
   };
 
-  func h(e : {#}) {
-    switch e {
-      case (#a) {};
-    };
-    switch e {
-      case (#a : {#a}) {};
-    };
-    switch e {
-      case (#a : {#a} : {#}) {};
-    };
-    switch e {
-      case (#a : {#}) {};
-    };
-  };
-
   let (-1 or _) = 0;
   let (?_ or _) = null;
   let (#a or _) = #b;
+};
+
+
+func h(e : {#}) {
+  switch e {
+    case (#a) {};
+  };
+  switch e {
+    case (#a : {#a}) {};
+  };
+  switch e {
+    case (#a : {#a} : {#}) {};
+  };
+  switch e {
+    case (#a : {#}) {};
+  };
+
+  // Same as above but non-exhaustive
+  switch 0 {
+    case (-1) {};
+  };
+  switch 0 {
+    case (-1 : Int) {};
+  };
+  switch 0 {
+    case (-1 : Int : Nat) {};
+  };
+  switch 0 {
+    case (-1 : Nat) {};
+  };
+
+  switch null {
+    case (?_) {};
+  };
+  switch null {
+    case (?_ : ?Nat) {};
+  };
+  switch null {
+    case (?_ : ?Nat : Null) {};
+  };
+  switch null {
+    case (?_ : Null) {};
+  };
+
+  switch (#a) {
+    case (#b) {};
+  };
+  switch (#a) {
+    case (#b : {#a; #b}) {};
+  };
+  switch (#a) {
+    case (#b : {#a; #b} : {#a}) {};
+  };
+  switch (#a) {
+    case (#b : {#a}) {};
+  };
+
+  let -1 = 0;
+  let ?_ = null;
+  let #a = #b;
 };
