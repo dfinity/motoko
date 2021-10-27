@@ -84,7 +84,10 @@ unsafe fn get_page_num_idx(wasm_page_num: u16) -> Result<usize, usize> {
 
 unsafe fn add_free_page_addr_sorted(page: WasmPage) {
     match get_page_num_idx(page.page_num) {
-        Ok(_) => panic!("add_free_page_addr_sorted: page already in free list"),
+        Ok(_) => panic!(
+            "add_free_page_addr_sorted: page {:?} already in free list",
+            page
+        ),
         Err(idx) => FREE_PAGES_ADDR_SORTED.insert(idx, page),
     }
 }
@@ -186,17 +189,24 @@ where
                 // TODO: Improve err msg
                 let page = size_class.remove_first().unwrap();
 
-                // Remove the size class if it's empty
-                if size_class.is_empty() {
-                    FREE_PAGES_SIZE_SORTED.remove(size_class_idx);
-                }
-
                 remove_free_page_addr_sorted(page);
 
                 let free_page = WasmPage {
                     page_num: page + n_pages,
                     n_pages: size_class.n_pages - n_pages,
                 };
+
+                // Remove the size class if it's empty
+                //
+                // NOTE: We can't mutate `FREE_PAGES_SIZE_SORTED` while `size_class` is in use as
+                // `size_class` borrows from it. It turns out references borrowing from `static
+                // mut` are not properly borrow checked. Demo:
+                // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=a4aa8358ff4a7e24b20aa6f9c01d4acd
+                //
+                // TODO: Maybe we should stop using `static mut` and pass parameters?
+                if size_class.is_empty() {
+                    FREE_PAGES_SIZE_SORTED.remove(size_class_idx);
+                }
 
                 add_free_page_size_sorted(free_page.page_num, free_page.n_pages);
                 add_free_page_addr_sorted(free_page);
