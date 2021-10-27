@@ -278,26 +278,33 @@ fn check_object(
     object_map: &FxHashMap<ObjectIdx, &[ObjectIdx]>,
     seen: &mut FxHashMap<ObjectIdx, usize>,
 ) {
+    let tag = unsafe { obj.tag() };
+    if tag == TAG_ONE_WORD_FILLER || tag == TAG_FREE_SPACE {
+        return;
+    }
+
+    assert_eq!(tag, TAG_ARRAY);
+
     let obj = obj as *mut Array;
-    assert_eq!(unsafe { (obj as *mut Obj).tag() }, TAG_ARRAY);
 
-    let tag = unsafe { obj.get(0) }.get_scalar();
-    let expected_fields = object_map.get(&tag).unwrap();
+    let idx = unsafe { obj.get(0) }.get_scalar();
 
-    let old = seen.insert(tag, obj as usize);
+    let expected_fields = object_map.get(&idx).unwrap();
+
+    let old = seen.insert(idx, obj as usize);
     if let Some(old) = old {
         panic!(
-            "Object with tag {} is seen twice: {:#x}, {:#x}",
-            tag, old, obj as usize
+            "Object with idx {} is seen twice: {:#x}, {:#x}",
+            idx, old, obj as usize
         );
     }
 
-    // +1 for the tag
+    // +1 for the idx
     assert_eq!(unsafe { obj.len() }, expected_fields.len() as u32 + 1);
 
     // Check that the fields are as expected
     for (field_idx, expected_field_tag) in expected_fields.iter().enumerate() {
-        // +1 to skip the tag
+        // +1 to skip the idx
         let field = unsafe { obj.get(field_idx as u32 + 1) }.get_ptr();
         let field_tag = unsafe { (field as *mut Array).get(0) }.get_scalar();
         assert_eq!(field_tag, *expected_field_tag);
