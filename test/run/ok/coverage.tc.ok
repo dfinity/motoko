@@ -99,9 +99,9 @@ coverage.mo:74.3-78.4: warning [M0145], this switch of type
 does not cover value
   #leaf(0 or 1 or _)
 coverage.mo:109.8-109.47: warning [M0146], this pattern is never matched
-coverage.mo:185.8-185.10: warning [M0146], this pattern is never matched
-coverage.mo:186.8-186.10: warning [M0146], this pattern is never matched
 coverage.mo:187.8-187.10: warning [M0146], this pattern is never matched
+coverage.mo:188.8-188.10: warning [M0146], this pattern is never matched
+coverage.mo:189.8-189.10: warning [M0146], this pattern is never matched
 coverage.mo:122.11-122.13: warning [M0146], this pattern is never matched
 coverage.mo:126.11-126.13: warning [M0146], this pattern is never matched
 coverage.mo:130.11-130.13: warning [M0146], this pattern is never matched
@@ -114,7 +114,7 @@ coverage.mo:156.11-156.13: warning [M0146], this pattern is never matched
 coverage.mo:160.11-160.13: warning [M0146], this pattern is never matched
 coverage.mo:164.11-164.13: warning [M0146], this pattern is never matched
 coverage.mo:168.11-168.13: warning [M0146], this pattern is never matched
-coverage.mo:173.10-173.14: warning [M0146], this pattern is never matched
-coverage.mo:176.10-176.21: warning [M0146], this pattern is never matched
-coverage.mo:179.10-179.27: warning [M0146], this pattern is never matched
-coverage.mo:182.10-182.20: warning [M0146], this pattern is never matched
+coverage.mo:174.12-174.16: warning [M0146], this pattern is never matched
+coverage.mo:177.12-177.23: warning [M0146], this pattern is never matched
+coverage.mo:180.12-180.29: warning [M0146], this pattern is never matched
+coverage.mo:183.12-183.22: warning [M0146], this pattern is never matched

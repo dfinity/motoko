@@ -117,7 +117,7 @@ assert (test(#le(1, #va 0, #app(#va 0, #va 1))) == 999);
 
 // Patterns redundant through various forms of subtyping
 
-func g(e : {#}) {
+do {
   switch 0 {
     case (-1) {};
     case _ {};
@@ -169,17 +169,19 @@ func g(e : {#}) {
     case (#a) {};
   };
 
-  switch e {
-    case (#a) {};
-  };
-  switch e {
-    case (#a : {#a}) {};
-  };
-  switch e {
-    case (#a : {#a} : {#}) {};
-  };
-  switch e {
-    case (#a : {#}) {};
+  func h(e : {#}) {
+    switch e {
+      case (#a) {};
+    };
+    switch e {
+      case (#a : {#a}) {};
+    };
+    switch e {
+      case (#a : {#a} : {#}) {};
+    };
+    switch e {
+      case (#a : {#}) {};
+    };
   };
 
   let (-1 or _) = 0;
