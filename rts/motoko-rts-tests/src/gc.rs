@@ -36,9 +36,12 @@ pub fn test() {
 
     println!("  Testing random heaps...");
     test_random_heap(&mut page_alloc, 14, 180);
-    // for seed in 0..100 {
-    //     test_random_heap(&mut page_alloc, seed);
-    // }
+    for seed in 0..100 {
+        print!("\r{}/100", seed);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        test_random_heap(&mut page_alloc, seed, 500);
+    }
+    println!();
 }
 
 fn test_heaps() -> Vec<TestHeap> {

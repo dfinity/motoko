@@ -11,9 +11,6 @@ fn rand_bool(rng: &mut Rand32) -> bool {
 }
 
 pub(super) fn generate(seed: u64, max_objects: u32) -> TestHeap {
-    dbg!(seed);
-    dbg!(max_objects);
-
     let mut rng = Rand32::new(seed);
 
     let n_objects = rng.rand_range(0..max_objects + 1);
