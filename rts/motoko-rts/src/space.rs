@@ -119,8 +119,8 @@ impl<P: PageAlloc> Space<P> {
             // Rest of the page is considered allocated
             self.total_alloc += slop_bytes.as_usize();
 
-            // In debug mode fill the slop with a filler object, to be able to check page sanity
-            if cfg!(debug_assertions) && slop_words != Words(0) {
+            // Fill the unused space in this page, to be able to scavenge it
+            if slop_words != Words(0) {
                 if slop_words == Words(1) {
                     *(self.hp as *mut u8) = TAG_ONE_WORD_FILLER;
                 } else {
