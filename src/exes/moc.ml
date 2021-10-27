@@ -62,8 +62,13 @@ let argspec = [
   "--profile-file", Arg.Set_string Flags.profile_file, "<file>  set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, "<string>  prefix each profile line with the given string ";
   "--profile-field",
-  Arg.String (fun n -> Flags.(profile_field_names := n :: !profile_field_names)),
-  "<field>  profile file includes the given field from the program result ";
+    Arg.String (fun n -> Flags.(profile_field_names := n :: !profile_field_names)),
+      "<field>  profile file includes the given field from the program result ";
+
+  "--public-metadata",
+    Arg.String (fun n -> Flags.(public_metadata_names := n :: !public_metadata_names)),
+      "<name>  emit icp custom section <name> (if any) as `public` (default is `private`) ";
+
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
@@ -194,6 +199,21 @@ let process_profiler_flags () =
   ProfilerFlags.profile_field_names := !Flags.profile_field_names;
   ()
 
+let process_public_metadata_names () =
+  let valid_metadata_names =
+    ["candid:args";
+     "candid:service";
+     "motoko:stable-types"]
+  in
+  List.iter
+    (fun s ->
+       if not (List.mem s valid_metadata_names) then
+         eprintf "moc: --public-metadata argument %s must be one of %s"
+           s
+           (String.concat ", " valid_metadata_names);
+         exit 1)
+    (!Flags.public_metadata_names)
+
 let () =
   (*
   Sys.catch_break true; - enable to get stacktrace on interrupt
@@ -210,6 +230,7 @@ let () =
   end;
 
   process_profiler_flags ();
+  process_public_metadata_names ();
   try
     process_files !args
   with

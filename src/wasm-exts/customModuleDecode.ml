@@ -812,8 +812,8 @@ let is_motoko n = (n = Utf8.decode "motoko")
 let string_content _ s = string s
 
 let motoko_sections s =
-  let sig_ = icp_custom_section "motoko:stable-types" string_content None s in
-  custom_section is_motoko motoko_section_content { empty_motoko_sections with sig_} s
+  let stable_types = icp_custom_section "motoko:stable-types" string_content None s in
+  custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types} s
 
 (* Candid sections *)
 

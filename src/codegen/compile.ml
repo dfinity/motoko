@@ -3,7 +3,7 @@ This module is the backend of the Motoko compiler. It takes a program in
 the intermediate representation (ir.ml), and produces a WebAssembly module,
 with Internet Computer extensions (customModule.ml). An important helper module is
 instrList.ml, which provides a more convenient way of assembling WebAssembly
-instruction lists, as it takes care of (1) source locations and (2) labels.
+instruction lists, as it takes care of (1) source locations and (2) labels
 
 This file is split up in a number of modules, purely for namespacing and
 grouping. Every module has a high-level prose comment explaining the concept;
@@ -258,8 +258,9 @@ module E = struct
     (* GC roots in static memory. (Everything that may be mutable.) *)
 
     (* Metadata *)
-    candid : string ref;
-    sig_ : string ref;
+    args : (bool * string) option ref;
+    service : (bool * string) option ref;
+    stable_types : (bool * string) option ref;
     labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
 
@@ -296,8 +297,10 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
-    candid = ref "";
-    sig_ = ref "";
+    (* Metadata *)
+    args = ref None;
+    service = ref None;
+    stable_types = ref None;
     labs = ref LabSet.empty;
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
@@ -8711,8 +8714,14 @@ and main_actor as_opt mod_env ds fs up =
     IC.export_upgrade_methods env;
 
     (* Export metadata *)
-    env.E.sig_ := up.meta.sig_;
-    assert (!env.E.sig_ <> "");
+    env.E.stable_types :=
+      Some (
+        List.mem "motoko:stable-types"
+          !Flags.public_metadata_names, up.meta.sig_);
+    env.E.service :=
+      Some (
+        List.mem "candid:service"
+          !Flags.public_metadata_names, up.meta.did);
 
     (* Deserialize any arguments *)
     begin match as_opt with
@@ -8807,11 +8816,11 @@ and conclude_module env start_fi_o =
                  List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
       motoko = {
         labels = E.get_labs env;
-        sig_ = Some (false, !(env.E.sig_)); (* TODO: set public bit from flags *)
-        };
-      candid = { (* TODO: embed candid *)
-        args = None;
-        service = None;
+        stable_types = !(env.E.stable_types);
+      };
+      candid = {
+        args = !(env.E.args);
+        service = !(env.E.service);
       };
       source_mapping_url = None;
     } in

@@ -845,7 +845,7 @@ let encode (em : extended_module) =
       string s
 
     let motoko_sections motoko =
-      icp_custom_section "motoko:stable-types" stable_types_body motoko.sig_;
+      icp_custom_section "motoko:stable-types" stable_types_body motoko.stable_types;
       custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> []) (* TODO: make an icp_section *)
 
     let candid_sections candid =

@@ -40,7 +40,7 @@ type dylink_section = {
 
 type motoko_sections = {
   labels : string list;
-  sig_ : (bool * string) option;
+  stable_types : (bool * string) option;
 }
 
 type candid_sections = {
@@ -50,10 +50,13 @@ type candid_sections = {
 
 let empty_motoko_sections = {
   labels = [];
-  sig_ = None;
+  stable_types = None;
 }
 
-let empty_candid_section = ""
+let empty_candid_sections = {
+  args = None;
+  service = None;
+}
 
 type extended_module = {
   (* The non-custom sections *)
