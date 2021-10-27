@@ -8,6 +8,7 @@ edition = "2018"
 fxhash = "0.2.1"
 libc = { version = "0.2.81", default_features = false }
 motoko-rts = { path = "../motoko-rts/native" }
+oorandom = "11.1.3"
 proptest = { version = "1.0.0", default-features = false, features = ["std"] }
 
 # This is not a dep of tests but we have it here as we use this file to vendor

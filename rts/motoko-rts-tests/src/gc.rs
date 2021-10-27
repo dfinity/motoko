@@ -6,6 +6,7 @@
 // To convert an offset into an address, add heap array's address to the offset.
 
 mod heap;
+mod random;
 mod utils;
 
 use crate::page_alloc::TestPageAlloc;
@@ -28,9 +29,16 @@ pub fn test() {
 
     let mut page_alloc = TestPageAlloc::new();
 
+    println!("  Testing predefined heaps...");
     for test_heap in test_heaps() {
         test_gcs(&mut page_alloc, &test_heap);
     }
+
+    println!("  Testing random heaps...");
+    test_random_heap(&mut page_alloc, 14, 180);
+    // for seed in 0..100 {
+    //     test_random_heap(&mut page_alloc, seed);
+    // }
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -65,6 +73,11 @@ fn test_heaps() -> Vec<TestHeap> {
             continuation_table: vec![],
         },
     ]
+}
+
+fn test_random_heap<P: PageAlloc>(page_alloc: &mut P, seed: u64, max_objects: u32) {
+    let random_heap = random::generate(seed, max_objects);
+    test_gcs(page_alloc, &random_heap);
 }
 
 // All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
