@@ -7343,11 +7343,6 @@ and compile_exp (env : E.t) ae exp =
 
     begin match p, es with
     (* Calls *)
-    (*| CallPrim _, [{it=PrimE (CallPrim _, [{it=VarE ("@immut_array_size" | "@mut_array_size");_}; e1]);_}; {it=PrimE (TupPrim, []);_}] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e1 ^^
-      Heap.load_field Arr.len_field ^^
-      compile_shl_const 1l*)
     | CallPrim _, [e1; e2] ->
       let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.Note.typ in
       let n_args = List.length arg_tys in
