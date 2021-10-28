@@ -10,7 +10,6 @@ features are
 open Wasm_exts.Ast
 open Wasm.Source
 open Wasm.Values
-open Wasm.Types
 
 let combine_shifts const op = function
   | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->
@@ -146,22 +145,23 @@ let with_region (pos : Source.region) (body : t) : t =
 
 (* Depths-managing combinators *)
 
-let as_block_type : stack_type -> block_type = function
-  | [] -> ValBlockType None
-  | [t] -> ValBlockType (Some t)
-  | _ -> raise (Invalid_argument "instrList block combinators do not support multi-value yet")
-
-let if_ (ty : stack_type) (thn : t) (els : t) : t =
+let if_ (ty : block_type) (thn : t) (els : t) : t =
   fun d pos rest ->
-    (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
+    (If (ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
 
-let block_ (ty : stack_type) (body : t) : t =
-  fun d pos rest ->
-    (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+(* Shortcuts for unary and nullary variants *)
+let if0 = if_ (ValBlockType None)
+let if1 ty = if_ (ValBlockType (Some ty))
 
-let loop_ (ty : stack_type) (body : t) : t =
+let block_ (ty : block_type) (body : t) : t =
   fun d pos rest ->
-    (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+    (Block (ty, to_nested_list d pos body) @@ pos) :: rest
+let block0 = block_ (ValBlockType None)
+let block1 ty = block_ (ValBlockType (Some ty))
+
+let loop0 (body : t) : t =
+  fun d pos rest ->
+    (Loop (ValBlockType None, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
@@ -186,8 +186,8 @@ let branch_to_ (p : depth) : t =
 
 (* Convenience combinators *)
 
-let labeled_block_ (ty : stack_type) depth (body : t) : t =
-  block_ ty (remember_depth depth body)
+let labeled_block1 ty depth (body : t) : t =
+  block1 ty (remember_depth depth body)
 
 (* Obtain the setter from a known variable's getter *)
 
