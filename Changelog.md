@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-* BREAKING CHANGE:
+* BREAKING CHANGE (Minor):
   Tightened typing for type-annotated patterns (including function parameters)
   to prevent some cases of unintended and counter-intuitive type propagation.
 
