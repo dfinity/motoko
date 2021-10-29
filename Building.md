@@ -57,7 +57,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        == 0.6.13 (2021-10-31)
+        ## 0.6.13 (2021-10-31)
 
    with today’s date.
 
