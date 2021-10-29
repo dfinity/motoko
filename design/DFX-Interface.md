@@ -102,14 +102,14 @@ If `<name>` is in the `public-metadata` flag, the custom section name will be `i
 Otherwise, it will be `icp:private <name>`. The `--public-metadata` flag applies to the imported actor classes as well.
 
 * Candid interface.
-  + Compiler flag `--idl` generates the Candid interface for the canister. The main service
+  + Compiler flag `--idl` generates the Candid interface for the entry actor. The main service
     is always a service constructor, which contains the initialization arguments for installing the canister.
   + Custom section `candid:service` stores the interface for the running (initialized) canister, which removes
     the initialization arguments.
   + Custom section `candid:args` stores the initialization arguments. The argument types can refer to
     types defined in the `candid:service` custom section.
 * Stable variable.
-  + Compiler flag `--stable-types` generates the signatures for stable variables.
+  + Compiler flag `--stable-types` generates the signatures for stable variables for the entry actor.
   + Custom section `motoko:stable-types` stores the signatures for stable variables.
 
 The above metadata is stored in the Wasm module, and is only accessible by the controllers of the canister, unless the
@@ -139,7 +139,6 @@ The command
 prints to the standard output all URLs _directly_ imported by
 `some/path/input.mo`, one per line. Each line outputs the original
 URL, and optionally a full path if `moc` can resolve the URL, separated by a space.
-If the URL is a local import of actor class, the output appends " class" at the end of the line.
 For example,
 
     mo:base/List
@@ -147,7 +146,6 @@ For example,
     ic:em77e-bvlzu-aq
     canister:alias
     ./local_import some/path/local_import.mo
-    ./bucket some/path/bucket.mo class
     ./runtime some/path/runtime.wasm
 
 This _reads_ only `some/path/input.mo`, and writes no files.
