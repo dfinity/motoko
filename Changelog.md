@@ -1,5 +1,24 @@
 # Motoko compiler changelog
 
+* BREAKING CHANGE (Minor):
+  Tightened typing for type-annotated patterns (including function parameters)
+  to prevent some cases of unintended and counter-intuitive type propagation.
+
+  This may break some rare programs that were accidentally relying on that
+  propagation. For example, the indexing `xs[i]` in the following snippet
+  happend to type-check before, because `i` was given the more precise
+  type `Nat` (inferred from `run`'s parameter type), regardless of the
+  overly liberal declaration as an `Int`:
+
+  ```motoko
+  func run(f : Nat -> Text) {...};
+  let xs = ["a", "b", "c"];
+  run(func(i : Int) { xs[i] });
+  ```
+  This no longer works, `i` has to be declared as `Nat` (or the type omitted).
+
+  If you encounter such cases, please adjust the type annotation.
+
 ## 0.6.12 (2021-10-22)
 
 * `for` loops over arrays are now converted to more efficient
