@@ -88,7 +88,7 @@ and candid = {
   }
 
 and meta = {
-    candid : candid;  (* Candid (of actor, never service) *)
+    candid : candid;  (* Candid (of service, never actor class) *)
     sig_ : string  (* Motoko stable signature *)
   }
 
