@@ -8,6 +8,5 @@ setup(name='cargo-lock-utils',
       scripts=[
         'compute-checksum',
         'list-cargo-lock',
-        'merge-cargo-lock',
       ],
      )
