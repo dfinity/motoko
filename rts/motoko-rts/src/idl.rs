@@ -268,6 +268,23 @@ unsafe fn skip_text(buf: *mut Buf) {
     utf8_validate(p as *const _, len);
 }
 
+unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) {
+    if count == 0 { return; }
+    let ptr_before = (*buf).ptr;
+    skip_any(buf, typtbl, t, 0);
+    let ptr_after = (*buf).ptr;
+    if ptr_after == ptr_before {
+        // this looks like a vec null bomb, or equivalent, where skip_any
+        // makes no progress. No point in calling it over and over again.
+        // (This is easier to detect this way than by analyzing the type table,
+        // where we’d have to chase single-field-records.)
+        return;
+    }
+    for _ in 1..count {
+        skip_any(buf, typtbl, t, 0);
+    }
+}
+
 // Assumes buf is the encoding of type t, and fast-forwards past that
 // Assumes all type references in the typtbl are already checked
 //
@@ -330,9 +347,8 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
             }
             IDL_CON_vec => {
                 let it = sleb128_decode(&mut tb);
-                for _ in 0..leb128_decode(buf) {
-                    skip_any(buf, typtbl, it, 0);
-                }
+                let count = leb128_decode(buf);
+                skip_any_vec(buf, typtbl, it, count);
             }
             IDL_CON_record => {
                 for _ in 0..leb128_decode(&mut tb) {
