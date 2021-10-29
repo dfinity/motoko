@@ -159,7 +159,6 @@ let print_deps (file : string) : unit =
       | Some path -> Printf.printf "%s %s\n" url path
     ) imports
 
-
 (* Checking *)
 
 let infer_prog senv prog : (Type.typ * Scope.scope) Diag.result =
@@ -227,6 +226,15 @@ let prelude, initial_stat_env0 =
 let internals, initial_stat_env =
   check_builtin "internals" Prelude.internals initial_stat_env0
 
+(* Compatibility *)
+
+let compatible pre post : bool Diag.result =
+  let open Diag.Syntax in
+  let* p1 = Stability.parse_sig_from_file pre in
+  let* p2 = Stability.parse_sig_from_file post in
+  let* s1 = Typing.check_sig initial_stat_env0 p1 in
+  let* s2 = Typing.check_sig initial_stat_env0 p2 in
+  Diag.return (Type.match_sig s1 s2)
 
 (* The prim module *)
 

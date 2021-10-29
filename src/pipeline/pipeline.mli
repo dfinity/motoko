@@ -15,6 +15,8 @@ val print_deps: string -> unit
 val check_files  : string list -> unit Diag.result
 val check_files' : parse_fn -> string list -> unit Diag.result
 
+val compatible : string -> string -> bool Diag.result
+
 val generate_idl : string list -> Idllib.Syntax.prog Diag.result
 
 val initial_stat_env : Scope.scope

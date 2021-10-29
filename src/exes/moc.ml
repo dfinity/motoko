@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compile | Run | Interact | Idl | PrintDeps | Explain
+type mode = Default | Check | Compatible | Compile | Run | Interact | Idl | PrintDeps | Explain
 
 let mode = ref Default
 let args = ref []
@@ -27,6 +27,7 @@ let link = ref true
 let interpret_ir = ref false
 let gen_source_map = ref false
 let explain_code = ref ""
+let stable_types = ref false
 
 let argspec = [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -34,6 +35,13 @@ let argspec = [
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
+  "--compatible",
+    Arg.Tuple [
+      Arg.String (fun fp -> Flags.pre_ref := Some fp);
+      Arg.String (fun fp -> Flags.post_ref := Some fp);
+      Arg.Unit (set_mode Compatible);
+      ],
+   "<pre> <post> test upgrade compatibility between stable-type signatures <pre> and <post>";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
   "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
   "--explain", Arg.String (fun c -> explain_code := c; set_mode Explain ()), " provides a detailed explanation of an error message";
@@ -106,6 +114,10 @@ let argspec = [
     (fun () -> Flags.sanity := true),
   " enable sanity checking in the RTS and generated code";
 
+  "--stable-types",
+  Arg.Unit (fun () -> stable_types := true),
+  " emit signature of stable types to .sig file";
+
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.compacting_gc := true),
   " link with compacting GC instead of copying GC";
@@ -145,6 +157,14 @@ let process_files files : unit =
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
+  | Compatible ->
+    begin
+      match (!Flags.pre_ref, !Flags.post_ref) with
+      | Some pre, Some post ->
+        let b = Diag.run (Pipeline.compatible pre post) in
+        if b then exit 0 else exit 1
+      | _ -> assert false
+    end
   | Idl ->
     set_out_file files ".did";
     let prog = Diag.run (Pipeline.generate_idl files) in
@@ -169,7 +189,18 @@ let process_files files : unit =
     if !gen_source_map then begin
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
+    end;
+
+    if !stable_types then begin
+      let sig_file = Filename.remove_extension (Filename.basename !out_file) ^ ".sig" in
+      CustomModule.(
+        match module_.motoko.stable_types with
+        | Some (_, txt) ->
+          let oc_ = open_out sig_file in
+          output_string oc_ txt; close_out oc_
+        | _ -> ())
     end
+
   | PrintDeps -> begin
      match files with
      | [file] -> Pipeline.print_deps file

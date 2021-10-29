@@ -18,11 +18,22 @@ let parse_with mode lexer parser name : Syntax.sig_ Diag.result =
 
 let parse_sig s name  =
   let open Diag.Syntax in
-  let mode = {Lexer.privileged = true} in (* TODO: make false *)
+  let mode = {Lexer.privileged = false} in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_sig in
   let* sig_ = parse_with mode lexer parse name in
   Diag.return sig_
+
+let parse_sig_from_file filename : Syntax.sig_ Diag.result =
+  let ic = Stdlib.open_in filename in
+  Diag.finally (fun () -> close_in ic) (
+    let open Diag.Syntax in
+    let mode = {Lexer.privileged = false} in
+    let lexer = Lexing.from_channel ic in
+    let parse = Parser.Incremental.parse_sig in
+    let* sig_ = parse_with mode lexer parse filename in
+    Diag.return sig_
+  )
 
 
 
