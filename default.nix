@@ -35,7 +35,6 @@ let
     xargo
     wasmtime
     rust-bindgen
-    rustfmt
   ];
 
   llvmEnv = ''
@@ -494,6 +493,7 @@ rec {
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
     checkPhase = ''
+      echo "If this fails, run `make -C rts format`"
       cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
       cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
     '';
@@ -643,6 +643,7 @@ rec {
         rts.buildInputs ++
         js.moc.buildInputs ++
         docs.buildInputs ++
+        check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           nixpkgs.ocamlPackages.merlin

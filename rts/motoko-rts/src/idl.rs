@@ -269,7 +269,9 @@ unsafe fn skip_text(buf: *mut Buf) {
 }
 
 unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) {
-    if count == 0 { return; }
+    if count == 0 {
+        return;
+    }
     let ptr_before = (*buf).ptr;
     skip_any(buf, typtbl, t, 0);
     let ptr_after = (*buf).ptr;
