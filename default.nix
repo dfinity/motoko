@@ -237,11 +237,6 @@ rec {
       preBuild = ''
         export CARGO_HOME=$PWD/cargo-home
 
-        ${llvmEnv}
-        export TOMMATHSRC=${nixpkgs.sources.libtommath}
-        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
-        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-
         # This replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
         mkdir -p $CARGO_HOME
         echo "Using vendored sources from ${rtsDeps}"
@@ -253,6 +248,11 @@ rec {
           [source."vendored-sources"]
           "directory" = "$(stripHash ${allDeps})"
         __END__
+
+        ${llvmEnv}
+        export TOMMATHSRC=${nixpkgs.sources.libtommath}
+        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
       '';
 
       doCheck = true;
