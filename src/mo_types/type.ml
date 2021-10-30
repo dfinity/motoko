@@ -438,16 +438,26 @@ let is_immutable_obj obj_type =
   List.for_all (fun f -> not (is_mut f.typ)) fields
 
 
-let lookup_val_field l tfs =
+let lookup_val_field_opt l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
-  | Some tf -> tf.typ
+  | Some tf -> Some tf.typ
+  | None -> None
+
+let lookup_typ_field_opt l tfs =
+  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
+  match List.find_opt is_lab tfs with
+  | Some {typ = Typ c; _} -> Some c
+  | _ -> None
+
+let lookup_val_field l tfs =
+  match lookup_val_field_opt l tfs with
+  | Some t -> t
   | None -> invalid "lookup_val_field"
 
 let lookup_typ_field l tfs =
-  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
-  match List.find_opt is_lab tfs with
-  | Some {typ = Typ c; _} -> c
+  match lookup_typ_field_opt l tfs with
+  | Some c -> c
   | _ -> invalid "lookup_typ_field"
 
 
@@ -462,6 +472,7 @@ let lookup_typ_deprecation l tfs =
   match List.find_opt is_lab tfs with
   | Some tf -> tf.depr
   | _ -> invalid "lookup_typ_deprecation"
+
 
 (* Span *)
 
@@ -481,6 +492,7 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
+
 
 (* Collecting type constructors *)
 
