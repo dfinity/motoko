@@ -23,7 +23,7 @@ jobs:
         uses: knl/niv-updater-action@60f23607814cf4f2e80a1e32ee74f8323897d09e
         with:
           # might be too noisy
-          whitelist: 'ic-ref,musl-wasi,niv'
+          whitelist: 'ic-ref,musl-wasi'
           labels: |
             automerge-squash
           keep_updating: true
