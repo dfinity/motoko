@@ -27,11 +27,6 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
-        # add a newer version of niv
-        (self: super: {
-           niv = (import self.sources.niv { pkgs = super; }).niv;
-        })
-
         # Selecting the ocaml version
         # (self: super: { ocamlPackages = super.ocamlPackages; })
 
