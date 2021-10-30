@@ -58,25 +58,23 @@ See `motoko-rts/src/bigint.rs` for the technical details.
 Rust build
 ----------
 
-The Rust parts are built from `motoko-rts`, using `cargo`.
-
-To build this in nix, we need pre-fetch some dependencies. This works in
+To build Motoko RTS in nix we need pre-fetch Rust dependencies. This works in
 `nix-build` by:
 
- * Building a directory with vendored sources in `default.nix` (see
-   `cargoProjectDeps`)
+ * Building a directory with vendored sources in `default.nix`
 
  * Configuring `cargo` to use that vendored directory (see `preBuild`)
 
 If you change dependencies (e.g. bump versions, add more crates),
 
- 1. Add them to `Cargo.toml`
- 2. Make sure that `Cargo.lock` is up to date
- 3. In `default.nix`, invalidate the `sha256` of `cargoProjectDeps` (e.g.
-    change one character)
- 4. Run `nix-build -A rts`. You should get an error message about the actual
+ 1. Make sure that `motoko-rts-tests/Cargo.lock` is up to date. This can be
+    done by running `cargo build --target=wasm32-wasi` in `motoko-rts-tests/`
+    directory.
+ 2. In `default.nix`, invalidate the `sha256` of `rtsDeps` (e.g. change one
+    character)
+ 3. Run `nix-build -A rts`. You should get an error message about the actual
     checksum.
- 5. Set that as `sha256` of `cargoProjectDeps` in `default.nix`
+ 4. Set that as `sha256` of `rtsDeps` in `default.nix`
 
 Warning: nix will happily use a stale version of the dependencies if you do not
 do step 3.
