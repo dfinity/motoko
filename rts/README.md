@@ -60,10 +60,11 @@ Rust build
 
 The Rust parts are built from `motoko-rts`, using `cargo`.
 
-To build this in nix, we need pre-fetch some dependencies (currently `libc`).
-This works in `nix-build` by:
+To build this in nix, we need pre-fetch some dependencies. This works in
+`nix-build` by:
 
- * Building a directory with vendored sources in `default.nix` (see `rustDeps`)
+ * Building a directory with vendored sources in `default.nix` (see
+   `cargoProjectDeps`)
 
  * Configuring `cargo` to use that vendored directory (see `preBuild`)
 
@@ -71,14 +72,23 @@ If you change dependencies (e.g. bump versions, add more crates),
 
  1. Add them to `Cargo.toml`
  2. Make sure that `Cargo.lock` is up to date
- 3. In `default.nix`, invalidate the `sha256` of `rustDeps` (e.g. change one
-    character)
+ 3. In `default.nix`, invalidate the `sha256` of `cargoProjectDeps` (e.g.
+    change one character)
  4. Run `nix-build -A rts`. You should get an error message about the actual
     checksum.
- 5. Set that as `sha256` of `rustDeps` in `default.nix`
+ 5. Set that as `sha256` of `cargoProjectDeps` in `default.nix`
 
 Warning: nix will happily use a stale version of the dependencies if you do not
 do step 3.
+
+**Updating rustc**:
+
+1. Update Rust version in `nix/default.nix`, in the line with
+   `moz_overlay.rustChannelOf { ... }`.
+2. Invalidate `rustCargoDeps` in `default.nix`.
+3. Run `nix-build -A rts`. You should get an error message about the expected
+   value of `rustCargoDeps`.
+4. Update `rustCargoDeps` with the expected value in the error message.
 
 Running RTS tests
 -----------------

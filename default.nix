@@ -159,83 +159,71 @@ in
 rec {
   rts =
     let
-      cargoLockUtils = nixpkgs.callPackage ./cargo-lock-utils {
-        pkgs = nixpkgs;
+      # Build Rust package cargo-vendor-tools
+      cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
+        name = "cargo-vendor-tools";
+        src = ./rts/cargo-vendor-tools;
+        cargoSha256 = "0zi3fiq9sy6c9dv7fd2xc9lan85d16gfax47n6g6f5q5c1zb5r47";
       };
 
-      rustCompilerDepsVendor = rust: sha256:
+      # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
+      vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
+
+      # Vendors Rust std deps in the output directory
+      rustStdDepsVendor = rust: sha256: nixpkgs.stdenvNoCC.mkDerivation {
+        name = "rustc-std-deps";
+
+        nativeBuildInputs = with nixpkgs; [
+          curl
+        ];
+
+        buildCommand = ''
+          mkdir $out
+          cd $out
+          ${vendorRustStdDeps} ${rust} .
+        '';
+
+        outputHash = sha256;
+        outputHashAlgo = "sha256";
+        outputHashMode = "recursive";
+      };
+
+      # SHA256 of Rust std deps
+      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
+
+      # Vendor directory for Rust std deps
+      rustStdDeps = rustStdDepsVendor nixpkgs.rustc-nightly rustStdDepsHash;
+
+      # Vendor tarball of the RTS
+      rtsDeps = nixpkgs.rustPlatform.fetchCargoTarball {
+        name = "motoko-rts-deps";
+        src = subpath ./rts;
+        sourceRoot = "rts/motoko-rts-tests";
+        sha256 = "129gfmn96vm7di903pxirg7zybl83q6nkwiqr3rsy7l1q8667kxx";
+        copyLockfile = true;
+      };
+
+      # Unpacked RTS deps
+      rtsDepsUnpacked = nixpkgs.stdenvNoCC.mkDerivation {
+        name = rtsDeps.name + "-unpacked";
+        buildCommand = ''
+          tar xf ${rtsDeps}
+          mv *.tar.gz $out
+        '';
+      };
+
+      mergeDeps = rtsDeps: rustStdDeps:
         nixpkgs.stdenvNoCC.mkDerivation {
-          name = "rust-deps";
-          version = rust.name;
-
-          nativeBuildInputs = with nixpkgs; [
-            curl
-          ];
+          name = "merged-rust-deps";
 
           buildCommand = ''
-            mkdir downloads
-            cd downloads
-            curlVersion=$(curl -V | head -1 | cut -d' ' -f2)
-            curl=(
-               curl
-               --location
-               --max-redir 20
-               --retry 3
-               --user-agent "curl/$curlVersion Nixpkgs/$nixpkgsVersion"
-               --insecure
-            )
-            ${cargoLockUtils}/bin/list-cargo-lock ${rust}/lib/rustlib/src/rust/Cargo.lock | while read url name checksum; do
-              "''${curl[@]}" "$url" | tar xz
-              (
-                 cd $name;
-                 ${cargoLockUtils}/bin/compute-checksum "$(pwd)" "$checksum" > .cargo-checksum.json
-              )
-            done
-            mkdir $out
-            cp -r * $out/
-            cp ${rust}/lib/rustlib/src/rust/Cargo.lock $out/
-          '';
-
-          outputHashAlgo = "sha256";
-          outputHash = sha256;
-          outputHashMode = "recursive";
-        };
-
-        rustCargoDepsHash = "0rpq3gjvd8px7vkyrby9gwa6y95g64zxa462aph56lfq2lkzxz41";
-
-        rustCompilerDeps = rustCompilerDepsVendor nixpkgs.rustc-nightly rustCargoDepsHash;
-
-        mergeCargo = projectCargoLock: rustCargoLock:
-          nixpkgs.stdenvNoCC.mkDerivation {
-            name = "merged-cargo-vendors";
-
-            buildCommand = ''
-              mkdir -p $out
-              find ${projectCargoLock} -mindepth 1 -maxdepth 1 -type d \
-                  -exec ln -sf {} $out/ \;
-              find ${rustCargoLock} -mindepth 1 -maxdepth 1 -type d \
-                  -exec ln -sf {} $out/ \;
-              cp ${projectCargoLock}/Cargo.lock $out/
-            '';
-          };
-
-        cargoProjectDeps = nixpkgs.rustPlatform.fetchCargoTarball {
-          name = "motoko-rts-deps";
-          src = subpath ./rts;
-          sourceRoot = "rts/motoko-rts-tests";
-          sha256 = "129gfmn96vm7di903pxirg7zybl83q6nkwiqr3rsy7l1q8667kxx";
-          copyLockfile = true;
-        };
-
-        cargoProjectDepsUnpacked = nixpkgs.stdenvNoCC.mkDerivation {
-          name = cargoProjectDeps.name + "-unpacked";
-          buildCommand = ''
-            tar xf ${cargoProjectDeps}
-            mv *.tar.gz $out
+            mkdir -p $out
+            cp -r ${rtsDeps}/* $out/
+            cp -r ${rustStdDeps}/* $out/
           '';
         };
 
-        cargoDeps = mergeCargo cargoProjectDepsUnpacked rustCompilerDeps;
+      allDeps = mergeDeps rtsDepsUnpacked rustStdDeps;
     in
 
     stdenv.mkDerivation {
@@ -257,13 +245,14 @@ rec {
 
         # This replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
         mkdir -p $CARGO_HOME
-        echo "Using vendored sources from ${cargoProjectDeps}"
-        unpackFile ${cargoDeps}
+        echo "Using vendored sources from ${rtsDeps}"
+        unpackFile ${allDeps}
         cat > $CARGO_HOME/config <<__END__
           [source."crates-io"]
           "replace-with" = "vendored-sources"
+
           [source."vendored-sources"]
-          "directory" = "$(stripHash ${cargoDeps})"
+          "directory" = "$(stripHash ${allDeps})"
         __END__
       '';
 
@@ -284,11 +273,11 @@ rec {
       preFixup = ''
         remove-references-to \
           -t ${nixpkgs.rustc-nightly} \
-          -t ${cargoDeps} \
-          -t ${cargoProjectDepsUnpacked} \
-          -t ${rustCompilerDeps} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
           $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       '';
+
       allowedRequisites = [];
     };
 
