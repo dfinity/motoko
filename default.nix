@@ -211,6 +211,7 @@ rec {
         '';
       };
 
+      # Merges two vendor directories (just copies dir contents into $out)
       mergeDeps = rtsDeps: rustStdDeps:
         nixpkgs.stdenvNoCC.mkDerivation {
           name = "merged-rust-deps";
@@ -222,6 +223,8 @@ rec {
           '';
         };
 
+      # All dependencies needed to build the RTS, including Rust std deps, to
+      # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
       allDeps = mergeDeps rtsDepsUnpacked rustStdDeps;
     in
 
