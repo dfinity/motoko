@@ -85,10 +85,10 @@ do step 3.
 
 1. Update Rust version in `nix/default.nix`, in the line with
    `moz_overlay.rustChannelOf { ... }`.
-2. Invalidate `rustCargoDeps` in `default.nix`.
+2. Invalidate `rustStdDepsHash` in `default.nix`.
 3. Run `nix-build -A rts`. You should get an error message about the expected
-   value of `rustCargoDeps`.
-4. Update `rustCargoDeps` with the expected value in the error message.
+   value of `rustStdDepsHash`.
+4. Update `rustStdDepsHash` with the expected value in the error message.
 
 Running RTS tests
 -----------------
