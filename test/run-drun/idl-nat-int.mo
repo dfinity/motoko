@@ -5,7 +5,7 @@ actor {
     Prim.abs x
   };
   public query func absolutes(xs:[Int]) : async [Nat] {
-    Prim.Array_tabulate<Nat>(xs.size(), func (i:Int) : Nat = Prim.abs(xs[i]))
+    Prim.Array_tabulate<Nat>(xs.size(), func (i:Nat) : Nat = Prim.abs(xs[i]))
   };
 }
 

@@ -224,11 +224,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 
 
 $(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
+	cd motoko-rts && cargo build --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
 $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
+	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 #
@@ -275,6 +275,11 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 		--whole-archive \
 		$+
 
+
+format:
+	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
+	cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml
+
 clean:
 	rm -rf \
 	  _build \
@@ -282,5 +287,4 @@ clean:
 	  mo-rts-debug.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
-	  motoko-rts/xargo-home \
 	  motoko-rts/cargo-home
