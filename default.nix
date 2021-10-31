@@ -32,9 +32,11 @@ let
     llvmPackages_12.bintools
     rustc-nightly
     cargo-nightly
-    xargo
     wasmtime
     rust-bindgen
+    python3
+  ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
+    libiconv
   ];
 
   llvmEnv = ''
@@ -152,46 +154,97 @@ in
 rec {
   rts =
     let
-      # We run this on motoko-rts-tests, to get the union of all
-      # dependencies
-      rustDeps = nixpkgs.rustPlatform-nightly.fetchCargoTarball {
+      # Build Rust package cargo-vendor-tools
+      cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
+        name = "cargo-vendor-tools";
+        src = ./rts/cargo-vendor-tools;
+        cargoSha256 = "0zi3fiq9sy6c9dv7fd2xc9lan85d16gfax47n6g6f5q5c1zb5r47";
+      };
+
+      # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
+      vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
+
+      # SHA256 of Rust std deps
+      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
+
+      # Vendor directory for Rust std deps
+      rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
+        name = "rustc-std-deps";
+
+        nativeBuildInputs = with nixpkgs; [
+          curl
+        ];
+
+        buildCommand = ''
+          mkdir $out
+          cd $out
+          ${vendorRustStdDeps} ${nixpkgs.rustc-nightly} .
+        '';
+
+        outputHash = rustStdDepsHash;
+        outputHashAlgo = "sha256";
+        outputHashMode = "recursive";
+      };
+
+      # Vendor tarball of the RTS
+      rtsDeps = nixpkgs.rustPlatform.fetchCargoTarball {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "0jyp3j8n5bj5cy1fd26d7h55zmc4v14qc2w8adxqwmsv5riqz41g";
+        sha256 = "129gfmn96vm7di903pxirg7zybl83q6nkwiqr3rsy7l1q8667kxx";
         copyLockfile = true;
       };
+
+      # Unpacked RTS deps
+      rtsDepsUnpacked = nixpkgs.stdenvNoCC.mkDerivation {
+        name = rtsDeps.name + "-unpacked";
+        buildCommand = ''
+          tar xf ${rtsDeps}
+          mv *.tar.gz $out
+        '';
+      };
+
+      # All dependencies needed to build the RTS, including Rust std deps, to
+      # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
+      allDeps = nixpkgs.stdenvNoCC.mkDerivation {
+          name = "merged-rust-deps";
+
+          buildCommand = ''
+            mkdir -p $out
+            cp -r ${rtsDepsUnpacked}/* $out/
+            cp -r ${rustStdDeps}/* $out/
+          '';
+        };
     in
 
     stdenv.mkDerivation {
       name = "moc-rts";
 
       src = subpath ./rts;
-      nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo ];
+
+      nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo nixpkgs.cacert ];
 
       buildInputs = rtsBuildInputs;
 
       preBuild = ''
-        export XARGO_HOME=$PWD/xargo-home
         export CARGO_HOME=$PWD/cargo-home
 
-        # this replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
+        # This replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
         mkdir -p $CARGO_HOME
-        echo "Using vendored sources from ${rustDeps}"
-        unpackFile ${rustDeps}
+        echo "Using vendored sources from ${rtsDeps}"
+        unpackFile ${allDeps}
         cat > $CARGO_HOME/config <<__END__
           [source."crates-io"]
           "replace-with" = "vendored-sources"
 
           [source."vendored-sources"]
-          "directory" = "$(stripHash ${rustDeps})"
+          "directory" = "$(stripHash ${allDeps})"
         __END__
 
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
         export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
-
       '';
 
       doCheck = true;
@@ -206,11 +259,16 @@ rec {
         cp mo-rts-debug.wasm $out/rts
       '';
 
-      # This needs to be self-contained. Remove mention of
-      # nix path in debug message.
+      # This needs to be self-contained. Remove mention of nix path in debug
+      # message.
       preFixup = ''
-        remove-references-to -t ${nixpkgs.rustc-nightly} -t ${rustDeps} $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
       '';
+
       allowedRequisites = [];
     };
 
@@ -440,7 +498,6 @@ rec {
 
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
-  inherit (nixpkgs) xargo;
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
