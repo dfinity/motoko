@@ -17,9 +17,12 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Update drun cargo hash
-      run: cd nix; nix run -f . nix-update -c nix-update --version=skip drun
+      run: |
+        export NIX_PATH=nixpkgs=$GITHUB_WORKSPACE/nix'
+        echo $NIX_PATH
+        cd nix
+        nix run -f . nix-update -c nix-update --version=skip drun
       env:
-        NIX_PATH: nixpkgs='${{ env.GITHUB_WORKSPACE }}/nix'
     - name: Commit changes
       uses: EndBug/add-and-commit@v7.4.0
       if: ${{ github.event_name == 'pull_request' && matrix.start-flag == ''}}
