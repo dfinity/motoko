@@ -22,7 +22,6 @@ jobs:
         echo $NIX_PATH
         cd nix
         nix run -f . nix-update -c nix-update --version=skip drun
-      env:
     - name: Commit changes
       uses: EndBug/add-and-commit@v7.4.0
       if: ${{ github.event_name == 'pull_request' && matrix.start-flag == ''}}
