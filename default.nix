@@ -35,12 +35,8 @@ let
     wasmtime
     rust-bindgen
     python3
-    tree
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
-    # The following are usually also necessary:
-    # pkgs.darwin.apple_sdk.frameworks.Security
-    # pkgs.darwin.apple_sdk.frameworks.CoreFoundation
   ];
 
   llvmEnv = ''
@@ -168,8 +164,11 @@ rec {
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
-      # Vendors Rust std deps in the output directory
-      rustStdDepsVendor = rust: sha256: nixpkgs.stdenvNoCC.mkDerivation {
+      # SHA256 of Rust std deps
+      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
+
+      # Vendor directory for Rust std deps
+      rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
         name = "rustc-std-deps";
 
         nativeBuildInputs = with nixpkgs; [
@@ -179,19 +178,13 @@ rec {
         buildCommand = ''
           mkdir $out
           cd $out
-          ${vendorRustStdDeps} ${rust} .
+          ${vendorRustStdDeps} ${nixpkgs.rustc-nightly} .
         '';
 
-        outputHash = sha256;
+        outputHash = rustStdDepsHash;
         outputHashAlgo = "sha256";
         outputHashMode = "recursive";
       };
-
-      # SHA256 of Rust std deps
-      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
-
-      # Vendor directory for Rust std deps
-      rustStdDeps = rustStdDepsVendor nixpkgs.rustc-nightly rustStdDepsHash;
 
       # Vendor tarball of the RTS
       rtsDeps = nixpkgs.rustPlatform.fetchCargoTarball {
@@ -211,21 +204,17 @@ rec {
         '';
       };
 
-      # Merges two vendor directories (just copies dir contents into $out)
-      mergeDeps = rtsDeps: rustStdDeps:
-        nixpkgs.stdenvNoCC.mkDerivation {
+      # All dependencies needed to build the RTS, including Rust std deps, to
+      # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
+      allDeps = nixpkgs.stdenvNoCC.mkDerivation {
           name = "merged-rust-deps";
 
           buildCommand = ''
             mkdir -p $out
-            cp -r ${rtsDeps}/* $out/
+            cp -r ${rtsDepsUnpacked}/* $out/
             cp -r ${rustStdDeps}/* $out/
           '';
         };
-
-      # All dependencies needed to build the RTS, including Rust std deps, to
-      # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
-      allDeps = mergeDeps rtsDepsUnpacked rustStdDeps;
     in
 
     stdenv.mkDerivation {
