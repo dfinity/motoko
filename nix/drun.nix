@@ -14,7 +14,7 @@ pkgs:
       # To automate this, try running the following in the nix/ directory
       # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
 
-      cargoSha256 = "0656lxdlr05cjkla1blvpqlxywk7sha0iwmycz10nqykdrs4gfgf";
+      cargoSha256 = "sha256-7rlHdG7TYwvCZ77yqBXUZ3LfKb6brqDolKyATFunphg=";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
