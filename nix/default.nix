@@ -43,9 +43,9 @@ let
           }
         )
 
-        # newer nix-update
         ( self: super: {
-          nix-update = import self.sources.nix-update { pkgs = self; };
+          # newer nix-update, until we have a version of nixpkgs that has at least 0.5.0
+          nix-update = self.python3Packages.callPackage ./nix-update.nix {};
         })
 
         # Rust nightly
