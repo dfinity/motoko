@@ -1,0 +1,30 @@
+name: Update nix hashes
+
+on:
+  push:
+
+jobs:
+  update-hash:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        # This is needed to be able to push and trigger CI with that push
+        token: ${{ secrets.NIV_UPDATER_TOKEN }}
+    - uses: cachix/install-nix-action@v13
+    - uses: cachix/cachix-action@v10
+      with:
+        name: ic-hs-test
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Update drun cargo hash
+      run: cd nix; nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
+    - name: Commit changes
+      uses: EndBug/add-and-commit@v7.4.0
+      if: ${{ github.event_name == 'pull_request' && matrix.start-flag == ''}}
+      with:
+        author_name: Nix hash updater
+        author_email: "<nobody@example.com>"
+        message: "Updating nix hashes"
+        # do not pull: if this branch is behind, then we might as well let
+        # the pushing fail
+        pull: "NO-PULL"
