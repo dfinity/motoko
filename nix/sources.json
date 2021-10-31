@@ -96,6 +96,18 @@
         "url": "https://github.com/WebAssembly/wasi-libc/archive/5ccfab77b097a5d0184f91184952158aa5904c8d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "nix-update": {
+        "branch": "master",
+        "description": "Swiss-knife for updating nix packages.",
+        "homepage": "",
+        "owner": "Mic92",
+        "repo": "nix-update",
+        "rev": "52582817e8c6474c23b2855aa4bed2b53e708741",
+        "sha256": "1dr10awxqfdmv3dwnwskfpymjsplzvlq3c4rxlvypyv3r1gj23rm",
+        "type": "tarball",
+        "url": "https://github.com/Mic92/nix-update/archive/52582817e8c6474c23b2855aa4bed2b53e708741.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "nixpkgs": {
         "branch": "release-21.05",
         "builtin": true,

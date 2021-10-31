@@ -43,6 +43,11 @@ let
           }
         )
 
+        # newer nix-update
+        ( self: super: {
+          nix-update = import self.sources.nix-update { pkgs = self; };
+        })
+
         # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;

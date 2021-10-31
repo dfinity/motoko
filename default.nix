@@ -650,6 +650,7 @@ rec {
           nixpkgs.ocamlformat
           nixpkgs.ocamlPackages.utop
           nixpkgs.niv
+          nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
         ]
       ));
