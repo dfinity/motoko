@@ -1073,7 +1073,7 @@ let rec match_sig tfs1 tfs2 =
   | [], _ ->
     true (* no or additional fields ok *)
   | _, [] ->
-    false (* true ? if we allow fields to dropped *)
+    false (* true, should we allow fields to dropped *)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
@@ -1082,7 +1082,7 @@ let rec match_sig tfs1 tfs2 =
             since upgrade is read-once *)
        match_sig tfs1' tfs2'
     | -1 ->
-      false (* match_sig tfs1' tfs2? if we allow fields to be dropped *)
+      false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
     | _ -> true (* new field ok *)
     )
 
@@ -1306,7 +1306,7 @@ and pp_field vs ppf {lab; typ; depr} =
 and pp_stab_field vs ppf {lab; typ; depr} =
   match typ with
   | Mut t' ->
-    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t' (* UNUSED - check we actually emit mut fields (since we don't need to) *)
+    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
