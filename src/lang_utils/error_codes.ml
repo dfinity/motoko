@@ -119,7 +119,7 @@ let error_codes : (string * string option) list =
     "M0113", None; (* Object pattern cannot consume type *)
     "M0114", None; (* Object pattern cannot consume actor type *)
     "M0115", None; (* Option pattern cannot consume type *)
-    "M0116", None; (* Variant pattern cannot consume type *)
+    (* "M0116" DEFUNCT Variant pattern cannot consume type *)
     "M0117", None; (* Pattern cannot consume type *)
     "M0118", None; (* Tuple pattern size mismatch *)
     "M0119", None; (* Object field is not contained in type *)

@@ -1757,22 +1757,24 @@ and check_pat' env t pat : Scope.val_env =
     T.Env.singleton id.it t
   | LitP lit ->
     if not env.pre then begin
-      if T.opaque t then
+      let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
+      if T.opaque t' then
         error env pat.at "M0110" "literal pattern cannot consume expected type%a"
           display_typ_expand t;
-      if T.sub t T.Non
+      if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t lit pat.at
+      else check_lit env t' lit pat.at
     end;
     T.Env.empty
   | SignP (op, lit) ->
     if not env.pre then begin
+      let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
       if not (Operator.has_unop op (T.promote t)) then
         error env pat.at "M0111" "operator pattern cannot consume expected type%a"
           display_typ_expand t;
-      if T.sub t T.Non
+      if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t lit pat.at
+      else check_lit env t' lit pat.at
     end;
     T.Env.empty
   | TupP pats ->
@@ -1799,10 +1801,9 @@ and check_pat' env t pat : Scope.val_env =
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
-      try T.lookup_val_field id.it (T.as_variant_sub id.it t)
-      with Invalid_argument _ | Not_found ->
-        error env pat.at "M0116" "variant pattern cannot consume expected type%a"
-          display_typ_expand t
+      match T.lookup_val_field_opt id.it (T.as_variant_sub id.it t) with
+      | Some t1 -> t1
+      | None -> T.Non
     in check_pat env t1 pat1
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
@@ -1817,7 +1818,7 @@ and check_pat' env t pat : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t pat1
+    check_pat env t' pat1
   | ParP pat1 ->
     check_pat env t pat1
 

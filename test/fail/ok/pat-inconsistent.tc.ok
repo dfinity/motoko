@@ -126,7 +126,7 @@ left consumes
   {#A : Nat}
 right consumes
   {#A : Any}
-pat-inconsistent.mo:42.9-42.11: type error [M0116], variant pattern cannot consume expected type
+pat-inconsistent.mo:42.9-42.16: type error [M0113], object pattern cannot consume expected type
   {#A}
 pat-inconsistent.mo:49.8-49.9: type error [M0050], literal of type
   Nat
