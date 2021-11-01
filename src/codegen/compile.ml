@@ -4775,6 +4775,20 @@ module Serialization = struct
         get_x
       in
 
+      let read_principal () =
+        let (set_len, get_len) = new_local env "len" in
+        let (set_x, get_x) = new_local env "x" in
+        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+
+        get_len ^^ compile_unboxed_const 23l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+        E.else_trap_with env "IDL error: principal too long" ^^
+
+        get_len ^^ Blob.alloc env ^^ set_x ^^
+        get_x ^^ Blob.payload_ptr_unskewed ^^
+        ReadBuf.read_blob env get_data_buf get_len ^^
+        get_x
+      in
+
       let read_text () =
         let (set_len, get_len) = new_local env "len" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
@@ -4790,7 +4804,7 @@ module Serialization = struct
       let read_actor_data () =
         read_byte_tagged
           [ E.trap_with env "IDL error: unexpected actor reference"
-          ; read_blob ()
+          ; read_principal ()
           ]
       in
 
@@ -5028,7 +5042,7 @@ module Serialization = struct
         begin
           read_byte_tagged
             [ E.trap_with env "IDL error: unexpected principal reference"
-            ; read_blob ()
+            ; read_principal ()
             ]
         end
       | Prim Text ->
