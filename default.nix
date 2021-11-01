@@ -206,15 +206,13 @@ rec {
 
       # All dependencies needed to build the RTS, including Rust std deps, to
       # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
-      allDeps = nixpkgs.stdenvNoCC.mkDerivation {
-          name = "merged-rust-deps";
-
-          buildCommand = ''
-            mkdir -p $out
-            cp -r ${rtsDepsUnpacked}/* $out/
-            cp -r ${rustStdDeps}/* $out/
-          '';
-        };
+      allDeps = nixpkgs.symlinkJoin {
+        name = "merged-rust-deps";
+        paths = [
+          rtsDepsUnpacked
+          rustStdDeps
+        ];
+      };
     in
 
     stdenv.mkDerivation {
