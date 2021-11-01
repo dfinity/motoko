@@ -18,7 +18,7 @@ unsafe fn should_do_gc() -> bool {
 
     // Regardless of other parameters (`HEAP_GROWTH_FACTOR`, `SMALL_HEAP_DELTA`) we want to do GC
     // if `HP` is more than this amount.
-    const MAX_HP_FOR_GC: u64 = 1 * 1024 * 1024 * 1024; // 3 GiB
+    const MAX_HP_FOR_GC: u64 = 3 * 1024 * 1024 * 1024; // 3 GiB
 
     let heap_limit = min(
         max(
