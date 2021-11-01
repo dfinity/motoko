@@ -207,6 +207,7 @@ let string_of_symbol symbol : string =
   | X (N N_typ_bind) -> "<typ_bind>"
   | X (N N_typ_field) -> "<typ_field>"
   | X (N N_typ_item) -> "<typ_item>"
+  | X (N N_typ_nobin) -> "<typ_nobin>"
   | X (N N_typ_nullary) -> "<typ_nullary>"
   | X (N N_typ_obj) -> "<typ_obj>"
   | X (N N_typ_pre) -> "<typ_pre>"

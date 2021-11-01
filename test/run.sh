@@ -391,7 +391,7 @@ do
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then
-        $ECHO "skipped (no drun)";
+        $ECHO "skipped (no $runner)";
         continue
       fi
 

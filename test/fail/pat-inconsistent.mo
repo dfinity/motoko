@@ -39,7 +39,7 @@ do { let _ = func(#A(5) or #A(_ : Any)) {}; };
 // No coverage check for ill-typed cases
 switch (#A : {#A}) {
   case (#A) {};
-  case (#B : {#A; #B}) {};
+  case ({B = _}) {};
   case _ {};
   case _ {};
 };

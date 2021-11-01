@@ -146,10 +146,13 @@ val as_seq : typ -> typ list (* This needs to go away *)
 val seq_of_tup : typ -> typ list
 val arity : typ -> int
 
+
 (* Fields *)
 
 val lookup_val_field : string -> field list -> typ
 val lookup_typ_field : string -> field list -> con
+val lookup_val_field_opt : string -> field list -> typ option
+val lookup_typ_field_opt : string -> field list -> con option
 
 val lookup_val_deprecation : string -> field list -> string option
 val lookup_typ_deprecation : string -> field list -> string option
@@ -164,9 +167,11 @@ val set_kind : con -> kind -> unit
 module ConEnv : Env.S with type key = con
 module ConSet : Dom.S with type elt = con
 
+
 (* Sets *)
 
 module S : Set.S with type elt = typ
+
 
 (* Normalization and Classification *)
 
@@ -191,6 +196,7 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
+
 (* Equivalence and Subtyping *)
 
 val eq : typ -> typ -> bool
@@ -199,6 +205,7 @@ val eq_kind : kind -> kind -> bool
 val sub : typ -> typ -> bool
 val compatible : typ -> typ -> bool
 
+exception PreEncountered
 val lub : typ -> typ -> typ
 val glb : typ -> typ -> typ
 
