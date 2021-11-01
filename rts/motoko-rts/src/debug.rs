@@ -22,7 +22,11 @@ unsafe extern "C" fn print_value(value: Value) {
     print(&write_buf);
 }
 
-pub unsafe fn dump_space<P: PageAlloc>(space: &Space<P>, static_roots: Value, continuation_table_loc: *mut Value) {
+pub unsafe fn dump_space<P: PageAlloc>(
+    space: &Space<P>,
+    static_roots: Value,
+    continuation_table_loc: *mut Value,
+) {
     print_continuation_table(continuation_table_loc);
     print_static_roots(static_roots);
     print_space(space);
@@ -128,7 +132,12 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     match tag {
         TAG_OBJECT => {
             let object = obj as *mut Object;
-            let _ = write!(buf, "<Object size={:#x} hash_ptr={:#x} field=[", (*object).size, (*object).hash_ptr);
+            let _ = write!(
+                buf,
+                "<Object size={:#x} hash_ptr={:#x} field=[",
+                (*object).size,
+                (*object).hash_ptr
+            );
             for i in 0..object.size() {
                 let val = object.get(i);
                 let _ = write!(buf, "{:#x}", val.get_raw());
@@ -181,7 +190,12 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_VARIANT => {
             let variant = obj as *const Variant;
-            let _ = write!(buf, "<Variant tag={:#x} field={:#x}>", (*variant).tag, (*variant).field.get_raw());
+            let _ = write!(
+                buf,
+                "<Variant tag={:#x} field={:#x}>",
+                (*variant).tag,
+                (*variant).field.get_raw()
+            );
         }
         TAG_BLOB => {
             let blob = obj as *const Blob;
@@ -201,7 +215,13 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_CONCAT => {
             let concat = obj as *const Concat;
-            let _ = write!(buf, "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>", (*concat).n_bytes.as_u32(), (*concat).text1.get_raw(), (*concat).text2.get_raw());
+            let _ = write!(
+                buf,
+                "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
+                (*concat).n_bytes.as_u32(),
+                (*concat).text1.get_raw(),
+                (*concat).text2.get_raw()
+            );
         }
         TAG_ONE_WORD_FILLER => {
             let _ = write!(buf, "<One word filler>",);

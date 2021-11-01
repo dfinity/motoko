@@ -38,7 +38,7 @@ pub fn test() {
     test_random_heap(&mut page_alloc, 14, 180);
     let max_seed = 100;
     for seed in 0..max_seed {
-        print!("\r{}/{}", seed+1, max_seed);
+        print!("\r{}/{}", seed + 1, max_seed);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
         test_random_heap(&mut page_alloc, seed, 500);
     }

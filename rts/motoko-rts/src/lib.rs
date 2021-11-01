@@ -7,7 +7,7 @@
     arbitrary_self_types,
     core_intrinsics,
     map_first_last,
-    panic_info_message,
+    panic_info_message
 )]
 
 #[macro_use]
