@@ -351,9 +351,6 @@ and build_actor at ts self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let sig_ = List.sort T.compare_field
-    (List.map (fun (i,t) -> T.{lab = i; typ = t; depr = None}) ids)
-  in
   let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); depr = None}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
