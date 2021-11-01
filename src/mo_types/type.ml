@@ -1362,7 +1362,8 @@ and pp_sig ppf sig_ =
       match Con.kind c with
       | Def ([], Prim p) when Con.name c = string_of_prim p -> false
       | Def ([], Any) when Con.name c = "Any" -> false
-      | Def ([], Non) when Con.name c = "None" -> false                                                 | Def _ -> true
+      | Def ([], Non) when Con.name c = "None" -> false                                                 
+      | Def _ -> true
       | Abs _ -> false) cs in
     ConSet.elements cs' in
   let fs =

@@ -3,7 +3,6 @@ open Mo_def
 open Mo_types
 open Mo_values
 open Syntax
-open Mo_frontend
 
 open Source
 open Operator
@@ -310,19 +309,6 @@ and build_actor at self_id es obj_typ =
   let sig_ = List.sort T.compare_field
     (List.map (fun (i,t) -> T.{lab = i; typ = t; depr = None}) ids)
   in
-  Printf.printf "%s" (T.string_of_sig sig_); (* HACK *)
-  (match Stability.parse_sig (Prelude.prelude ^ T.string_of_sig sig_) "<sig>" with
-   | Ok (syn_sig_, msgs) ->
-     (Printf.printf "parsed";
-      Diag.print_messages msgs;
-      match Typing.check_sig Typing.initial_scope syn_sig_ with
-      | Ok (sig_', msgs) ->
-        Printf.printf "checked";
-        Diag.print_messages msgs;
-        assert (T.match_sig sig_ sig_');
-        Printf.printf "matched";
-      | Error msgs ->  Diag.print_messages msgs)
-   | Error msgs -> Diag.print_messages msgs);
   let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); depr = None}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in

@@ -2579,7 +2579,7 @@ let check_sig scope sig_ : (T.field list) Diag.result =
       recover_opt
         (fun (decs, sfs) ->
           let env = env_of_scope msgs scope in
-          let scope = infer_block_decs env decs sig_.at in (* better region *)
+          let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
           check_ids env "object type" "field"
             (List.map (fun (field : typ_field) -> field.it.id) sfs);

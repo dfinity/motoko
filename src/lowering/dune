@@ -1,4 +1,4 @@
 (library
   (name lowering)
-  (libraries lib mo_config mo_def ir_def mo_idl idllib mo_frontend prelude)
+  (libraries lib mo_config mo_def ir_def mo_idl idllib)
 )

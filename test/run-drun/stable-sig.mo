@@ -1,4 +1,3 @@
-import Prim "mo:⛔";
 actor {
 
   type Nats = ?(Nat,Nats);
