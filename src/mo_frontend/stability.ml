@@ -1,6 +1,5 @@
 open Mo_def
 
-(*module Pretty = Type.MakePretty(struct let show_stamps = true end); *)
 
 let parse_with mode lexer parser name : Syntax.sig_ Diag.result =
   let open Diag.Syntax in

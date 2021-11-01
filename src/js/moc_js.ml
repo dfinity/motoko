@@ -13,6 +13,9 @@ let () =
   Js.export "Motoko"
     (object%js
       method saveFile name content = js_save_file name content
+      method removeFile name = js_remove_file name
+      method renameFile oldpath newpath = js_rename_file oldpath newpath
+      method readDir path = js_read_dir path
       method addPackage package dir = add_package package dir
       method clearPackage () = clear_package ()
       method setActorAliases entries = set_actor_aliases entries

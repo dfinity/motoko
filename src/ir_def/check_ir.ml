@@ -938,7 +938,8 @@ and check_pat env pat : val_env =
     T.Env.empty
   | LitP lit ->
     let t1 = T.Prim (type_lit env lit pat.at) in
-    t <: t1;
+    let t1' = if T.eq t1 T.nat then T.int else t1 in  (* account for subtyping *)
+    t <: t1';
     T.Env.empty
   | TupP pats ->
     let ve = check_pats pat.at env pats T.Env.empty in
@@ -987,7 +988,9 @@ and check_pat_field env t (pf : pat_field) =
 
 and check_pat_tag env t l pat =
   let (<:) = check_sub env pat.at in
-  T.lookup_val_field l (T.as_variant_sub l t) <: pat.note
+  match T.lookup_val_field_opt l (T.as_variant_sub l t) with
+  | Some t -> t <: pat.note
+  | None -> ()
 
 (* Objects *)
 
