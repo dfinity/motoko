@@ -496,8 +496,10 @@ rec {
 
   inherit (nixpkgs) wabt wasmtime wasm;
 
-  filecheck = nixpkgs.linkFarm "FileCheck"
-    [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
+  filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
+    mkdir -p $out/bin
+    cp ${nixpkgs.llvm}/bin/FileCheck $out/bin
+  '';
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
