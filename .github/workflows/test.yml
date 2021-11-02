@@ -62,8 +62,10 @@ jobs:
         comment-author: 'github-actions[bot]'
         body-includes: '<!-- perf comment -->'
 
+    # Forks can't add comments so this job does not run on forks, see
+    # motoko#2864.
     - name: Create or update performance comment
-      if: runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       uses: peter-evans/create-or-update-comment@v1
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
