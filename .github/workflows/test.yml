@@ -17,7 +17,10 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v13
+    - uses: cachix/install-nix-action@v14.1
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
