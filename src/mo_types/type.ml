@@ -1376,7 +1376,7 @@ and pp_sig ppf sig_ =
       match Con.kind c with
       | Def ([], Prim p) when Con.name c = string_of_prim p -> false
       | Def ([], Any) when Con.name c = "Any" -> false
-      | Def ([], Non) when Con.name c = "None" -> false                                                 
+      | Def ([], Non) when Con.name c = "None" -> false
       | Def _ -> true
       | Abs _ -> false) cs in
     ConSet.elements cs' in
@@ -1392,11 +1392,10 @@ and pp_sig ppf sig_ =
       (string_of_obj_sort Actor)
       (pp_print_list ~pp_sep:semi (pp_stab_field [])) sig_
   in
-  fprintf ppf "@[<v 0>@;<0 0>%a%a@;<0 0>%a;@]"
+  fprintf ppf "@[<v 0>%a%a%a;@]"
    (pp_print_list ~pp_sep:semi (pp_field [])) fs
    (if fs = [] then fun ppf () -> () else semi) ()
    pp_stab_fields sig_
-
 
 let pp_typ = pp_typ' []
 
@@ -1434,7 +1433,7 @@ let string_of_typ_expand typ : string =
     pp_typ_expand ppf) typ
 
 let string_of_sig typ : string =
-  Format.asprintf "@[<v 0> %a@]" (fun ppf -> pp_sig ppf) typ
+  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> pp_sig ppf) typ
 
 let _ = str := string_of_typ
 
