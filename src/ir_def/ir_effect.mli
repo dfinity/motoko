@@ -3,7 +3,7 @@ open Mo_types.Type
 
 val max_eff : eff -> eff -> eff
 
-(* (incremental)  effect inference on IR *)
+(* (incremental) effect inference on IR *)
 
 val typ : ('a, Note.t) annotated_phrase -> typ
 val eff : ('a, Note.t) annotated_phrase -> eff

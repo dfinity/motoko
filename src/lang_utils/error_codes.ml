@@ -119,7 +119,7 @@ let error_codes : (string * string option) list =
     "M0113", None; (* Object pattern cannot consume type *)
     "M0114", None; (* Object pattern cannot consume actor type *)
     "M0115", None; (* Option pattern cannot consume type *)
-    "M0116", None; (* Variant pattern cannot consume type *)
+    (* "M0116" DEFUNCT Variant pattern cannot consume type *)
     "M0117", None; (* Pattern cannot consume type *)
     "M0118", None; (* Tuple pattern size mismatch *)
     "M0119", None; (* Object field is not contained in type *)
@@ -166,7 +166,10 @@ let error_codes : (string * string option) list =
     "M0160", None;
     "M0161", None; (* Candid float32 type cannot be imported as a Motoko type *)
     "M0162", None; (* Candid service constructor type not supported as Motoko type *)
-    "M0163", None; (* cannot import a Candid service constructor *)
-    "M0164", None; (* unknown record or variant label in textual representation *)
-    "M0165", None; (* odd expected type *)
+    "M0163", None; (* Cannot import a Candid service constructor *)
+    "M0164", None; (* Unknown record or variant label in textual representation *)
+    "M0165", None; (* Odd expected type *)
+    "M0166", None; (* Type intersection results in abstract type *)
+    "M0167", None; (* Type union results in bottom type *)
+    "M0168", None; (* Type union or intersection on forward types *)
   ]

@@ -476,6 +476,34 @@ and check_typ' env typ : T.typ =
       (List.map (fun (field : typ_field) -> field.it.id) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
+  | AndT (typ1, typ2) ->
+    let t1 = check_typ env typ1 in
+    let t2 = check_typ env typ2 in
+    let t = try T.glb t1 t2 with T.PreEncountered ->
+      error env typ2.at "M0168"
+        "cannot compute intersection of types containing recursive or forward references to other type definitions"
+    in
+    if not env.pre && T.sub t T.Non && not (T.sub t1 T.Non || T.sub t2 T.Non) then
+      warn env typ.at "M0166"
+        "this intersection results in type%a\nbecause operand types are inconsistent,\nleft operand is%a\nright operand is%a"
+        display_typ t
+        display_typ_expand t1
+        display_typ_expand t2;
+    t
+  | OrT (typ1, typ2) ->
+    let t1 = check_typ env typ1 in
+    let t2 = check_typ env typ2 in
+    let t = try T.lub t1 t2 with T.PreEncountered ->
+      error env typ2.at "M0168"
+        "cannot compute union of types containing recursive or forward references to other type definitions"
+    in
+    if not env.pre && T.sub T.Any t && not (T.sub T.Any t1 || T.sub T.Any t2) then
+      warn env typ.at "M0167"
+        "this union results in type%a\nbecause operand types are inconsistent,\nleft operand is%a\nright operand is%a"
+        display_typ t
+        display_typ_expand t1
+        display_typ_expand t2;
+    t
   | ParT typ ->
     check_typ env typ
   | NamedT (_, typ) ->
@@ -1729,22 +1757,24 @@ and check_pat' env t pat : Scope.val_env =
     T.Env.singleton id.it t
   | LitP lit ->
     if not env.pre then begin
-      if T.opaque t then
+      let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
+      if T.opaque t' then
         error env pat.at "M0110" "literal pattern cannot consume expected type%a"
           display_typ_expand t;
-      if T.sub t T.Non
+      if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t lit pat.at
+      else check_lit env t' lit pat.at
     end;
     T.Env.empty
   | SignP (op, lit) ->
     if not env.pre then begin
+      let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
       if not (Operator.has_unop op (T.promote t)) then
         error env pat.at "M0111" "operator pattern cannot consume expected type%a"
           display_typ_expand t;
-      if T.sub t T.Non
+      if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t lit pat.at
+      else check_lit env t' lit pat.at
     end;
     T.Env.empty
   | TupP pats ->
@@ -1771,10 +1801,9 @@ and check_pat' env t pat : Scope.val_env =
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
-      try T.lookup_val_field id.it (T.as_variant_sub id.it t)
-      with Invalid_argument _ | Not_found ->
-        error env pat.at "M0116" "variant pattern cannot consume expected type%a"
-          display_typ_expand t
+      match T.lookup_val_field_opt id.it (T.as_variant_sub id.it t) with
+      | Some t1 -> t1
+      | None -> T.Non
     in check_pat env t1 pat1
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
@@ -1789,7 +1818,7 @@ and check_pat' env t pat : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t pat1
+    check_pat env t' pat1
   | ParP pat1 ->
     check_pat env t pat1
 
@@ -2579,7 +2608,7 @@ let check_sig scope sig_ : (T.field list) Diag.result =
       recover_opt
         (fun (decs, sfs) ->
           let env = env_of_scope msgs scope in
-          let scope = infer_block_decs env decs sig_.at in (* better region *)
+          let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
           check_ids env "object type" "field"
             (List.map (fun (field : typ_field) -> field.it.id) sfs);

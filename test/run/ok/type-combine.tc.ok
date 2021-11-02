@@ -1,0 +1,77 @@
+type-combine.mo:421.16-421.39: warning [M0166], this intersection results in type
+  None
+because operand types are inconsistent,
+left operand is
+  [var Nat]
+right operand is
+  [var Int]
+type-combine.mo:422.16-422.35: warning [M0166], this intersection results in type
+  None
+because operand types are inconsistent,
+left operand is
+  [var Nat]
+right operand is
+  [Nat]
+type-combine.mo:424.16-424.25: warning [M0166], this intersection results in type
+  None
+because operand types are inconsistent,
+left operand is
+  ()
+right operand is
+  {}
+type-combine.mo:427.22-427.29: warning [M0166], this intersection results in type
+  None
+because operand types are inconsistent,
+left operand is
+  A/68
+right operand is
+  B/38
+type-combine.mo:430.32-430.39: warning [M0166], this intersection results in type
+  None
+because operand types are inconsistent,
+left operand is
+  A/71
+right operand is
+  B/41
+type-combine.mo:432.16-432.53: warning [M0166], this intersection results in type
+  None
+because operand types are inconsistent,
+left operand is
+  <A <: Nat>() -> ()
+right operand is
+  <A <: Int>() -> ()
+type-combine.mo:447.16-447.38: warning [M0167], this union results in type
+  Any
+because operand types are inconsistent,
+left operand is
+  [var Nat]
+right operand is
+  [var Int]
+type-combine.mo:448.16-448.34: warning [M0167], this union results in type
+  Any
+because operand types are inconsistent,
+left operand is
+  [var Nat]
+right operand is
+  [Nat]
+type-combine.mo:450.16-450.24: warning [M0167], this union results in type
+  Any
+because operand types are inconsistent,
+left operand is
+  ()
+right operand is
+  {}
+type-combine.mo:453.22-453.28: warning [M0167], this union results in type
+  Any
+because operand types are inconsistent,
+left operand is
+  A/99
+right operand is
+  B/60
+type-combine.mo:458.16-458.52: warning [M0167], this union results in type
+  Any
+because operand types are inconsistent,
+left operand is
+  <A <: Nat>() -> ()
+right operand is
+  <A <: Int>() -> ()

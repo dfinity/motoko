@@ -27,11 +27,6 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
-        # add a newer version of niv
-        (self: super: {
-           niv = (import self.sources.niv { pkgs = super; }).niv;
-        })
-
         # Selecting the ocaml version
         # (self: super: { ocamlPackages = super.ocamlPackages; })
 
@@ -51,7 +46,7 @@ let
         # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;
-          rust-channel = moz_overlay.rustChannelOf { date = "2020-07-22"; channel = "nightly"; };
+          rust-channel = moz_overlay.rustChannelOf { date = "2021-10-25"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
@@ -67,7 +62,6 @@ let
             rustc = rustc-nightly;
             cargo = cargo-nightly;
           };
-          xargo = self.callPackage ./xargo.nix {};
         })
 
         # wasm-profiler

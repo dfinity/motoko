@@ -438,16 +438,26 @@ let is_immutable_obj obj_type =
   List.for_all (fun f -> not (is_mut f.typ)) fields
 
 
-let lookup_val_field l tfs =
+let lookup_val_field_opt l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
-  | Some tf -> tf.typ
+  | Some tf -> Some tf.typ
+  | None -> None
+
+let lookup_typ_field_opt l tfs =
+  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
+  match List.find_opt is_lab tfs with
+  | Some {typ = Typ c; _} -> Some c
+  | _ -> None
+
+let lookup_val_field l tfs =
+  match lookup_val_field_opt l tfs with
+  | Some t -> t
   | None -> invalid "lookup_val_field"
 
 let lookup_typ_field l tfs =
-  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
-  match List.find_opt is_lab tfs with
-  | Some {typ = Typ c; _} -> c
+  match lookup_typ_field_opt l tfs with
+  | Some c -> c
   | _ -> invalid "lookup_typ_field"
 
 
@@ -462,6 +472,7 @@ let lookup_typ_deprecation l tfs =
   match List.find_opt is_lab tfs with
   | Some tf -> tf.depr
   | _ -> invalid "lookup_typ_deprecation"
+
 
 (* Span *)
 
@@ -481,6 +492,7 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
+
 
 (* Collecting type constructors *)
 
@@ -633,6 +645,8 @@ let str = ref (fun _ -> failwith "")
 
 (* Equivalence & Subtyping *)
 
+exception PreEncountered
+
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
 let rel_list p rel eq xs1 xs2 =
@@ -644,7 +658,7 @@ let rec rel_typ rel eq t1 t2 =
   match t1, t2 with
   (* Second-class types first, since they mustn't relate to Any/Non *)
   | Pre, _ | _, Pre ->
-    assert false
+    raise PreEncountered
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
@@ -945,7 +959,7 @@ let rec combine rel lubs glbs t1 t2 =
   | _ ->
     match t1, t2 with
     | Pre, _ | _, Pre ->
-      assert false
+      raise PreEncountered
     | Mut _, _ | _, Mut _
     | Typ _, _ | _, Typ _ ->
       raise Mismatch
@@ -1073,7 +1087,7 @@ let rec match_sig tfs1 tfs2 =
   | [], _ ->
     true (* no or additional fields ok *)
   | _, [] ->
-    false (* true ? if we allow fields to dropped *)
+    false (* true, should we allow fields to dropped *)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
@@ -1082,7 +1096,7 @@ let rec match_sig tfs1 tfs2 =
             since upgrade is read-once *)
        match_sig tfs1' tfs2'
     | -1 ->
-      false (* match_sig tfs1' tfs2? if we allow fields to be dropped *)
+      false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
     | _ -> true (* new field ok *)
     )
 
@@ -1306,7 +1320,7 @@ and pp_field vs ppf {lab; typ; depr} =
 and pp_stab_field vs ppf {lab; typ; depr} =
   match typ with
   | Mut t' ->
-    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t' (* UNUSED - check we actually emit mut fields (since we don't need to) *)
+    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
@@ -1362,7 +1376,8 @@ and pp_sig ppf sig_ =
       match Con.kind c with
       | Def ([], Prim p) when Con.name c = string_of_prim p -> false
       | Def ([], Any) when Con.name c = "Any" -> false
-      | Def ([], Non) when Con.name c = "None" -> false                                                 | Def _ -> true
+      | Def ([], Non) when Con.name c = "None" -> false                                                 
+      | Def _ -> true
       | Abs _ -> false) cs in
     ConSet.elements cs' in
   let fs =

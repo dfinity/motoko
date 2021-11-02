@@ -24,7 +24,7 @@ jobs:
       id: read_changelog
       run: |
         export VERSION='${{ steps.get_version.outputs.VERSION }}'
-        perl -0777 -ne '/^# Motoko compiler changelog\n\n== (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^==/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
+        perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
         cat changelog-extract.md
         # need to mangle to use with set-output, see https://github.com/svenstaro/upload-release-action/pull/49/files
         r="$(cat changelog-extract.md)"
@@ -46,7 +46,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v12
+    - uses: cachix/install-nix-action@v14.1
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command
     - uses: cachix/cachix-action@v10
       with:
         name: ic-hs-test
