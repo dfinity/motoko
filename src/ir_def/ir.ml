@@ -110,10 +110,6 @@ and prim =
   | ActorDotPrim of Type.lab          (* actor field access *)
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
-  | NextArrayOffset of string         (* advance array offset *)
-  | ValidArrayOffset                  (* verify array offset *)
-  | DerefArrayOffset                  (* array offset indexing *)
-  | GetPastArrayOffset of string      (* array offset past the last element *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
   | AwaitPrim                         (* await *)
@@ -132,6 +128,11 @@ and prim =
   | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
+  (* Array field iteration/access *)
+  | NextArrayOffset of spacing        (* advance array offset *)
+  | ValidArrayOffset                  (* verify array offset *)
+  | DerefArrayOffset                  (* array offset indexing *)
+  | GetPastArrayOffset of spacing     (* array offset past the last element *)
   (* Funds *)
   | SystemCyclesAddPrim
   | SystemCyclesAcceptPrim
@@ -152,13 +153,14 @@ and prim =
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
 
+and spacing = One | ElementSize        (* increment units when iterating over arrays *)
 
 (* Declarations *)
 
 and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                          (* immutable *)
-  | VarD of id * Type.typ * exp                           (* mutable *)
+  | VarD of id * Type.typ * exp                (* mutable *)
 
 (* Literals *)
 

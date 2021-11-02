@@ -7473,28 +7473,30 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e2 ^^ (* idx *)
       Arr.idx_bigint env ^^
       load_ptr
-    | NextArrayOffset purpose, [e] ->
-      let spacing = if purpose = "vals" then Arr.element_size else 2l in
+    | NextArrayOffset spacing, [e] ->
+      let advance_by =
+        match spacing with
+        | ElementSize -> Arr.element_size
+        | One -> 2l (* 1 : Nat *) in
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
-      compile_add_const spacing
+      compile_add_const advance_by
     | ValidArrayOffset, [e1; e2] ->
-      let sr, code = compile_relop env Type.(Prim Nat16) Operator.LtOp in
       SR.bool,
-      compile_exp_as env ae sr e1 ^^
-      compile_exp_as env ae sr e2 ^^
-      code
+      compile_exp_vanilla env ae e1 ^^
+      compile_exp_vanilla env ae e2 ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU))
     | DerefArrayOffset, [e1; e2] ->
       SR.Vanilla,
-      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-      compile_exp_vanilla env ae e2 ^^ (* idx *)
+      compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
+      compile_exp_vanilla env ae e2 ^^ (* byte offset *)
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Arr.(load_field 0l)
-    | GetPastArrayOffset purpose, [e] ->
+      Arr.(load_field 0l)              (* loads the element at the byte offset *)
+    | GetPastArrayOffset spacing, [e] ->
       let shift =
-        if purpose = "vals"
-        then compile_shl_const 2l
-        else BigNum.from_word30 env in
+        match spacing with
+        | ElementSize -> compile_shl_const 2l (* effectively a multiplication by word_size *)
+        | One -> BigNum.from_word30 env in    (* make it to compact bignum *)
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* array *)
       Heap.load_field Arr.len_field ^^
