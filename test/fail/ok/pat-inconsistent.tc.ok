@@ -100,7 +100,7 @@ pat-inconsistent.mo:32.22-32.35: type error [M0104], pattern branches have incom
 left consumes
   Text
 right consumes
-  A/9
+  A/7
 pat-inconsistent.mo:33.19-33.43: type error [M0104], pattern branches have incompatible types,
 left consumes
   Any

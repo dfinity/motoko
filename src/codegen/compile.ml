@@ -7669,13 +7669,6 @@ and compile_exp (env : E.t) ae exp =
       Serialization.deserialize_from_blob false env ts
 
     (* Other prims, unary *)
-
-    | OtherPrim "array_len", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Heap.load_field Arr.len_field ^^
-      BigNum.from_word30 env
-
     | OtherPrim "text_len", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len env
     | OtherPrim "text_iter", [e] ->

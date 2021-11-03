@@ -2,7 +2,6 @@ import Prim "mo:⛔";
 
 // CHECK: (local $check0 i32)
 
-// CHECK-NOT:  call $@immut_array_size
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
@@ -16,7 +15,6 @@ import Prim "mo:⛔";
 // CHECK-NEXT: i32.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
-// CHECK-NOT:  call $@mut_array_size
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
@@ -30,7 +28,6 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
-// CHECK-NOT:   call $@immut_array_size
 // CHECK:       i32.load offset=5
 // CHECK-NEXT:  i32.const 2
 // CHECK-NEXT:  i32.shl
@@ -41,7 +38,6 @@ array[1] := "mutable";
 // later when we have path compression for variables in the backend, we can bring this back
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
-// CHECK-NOT:  call $@immut_array_size
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 2
 // CHECK-NEXT: i32.shl
@@ -94,7 +90,6 @@ for (check6 in check6.vals()) { ignore check6 };
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
 // CHECK:      local.set $num8
-// CHECK-NOT:  call $@immut_array_size
 // CHECK:      i32.load offset=5
 // CHECK-NEXT: i32.const 1
 // CHECK-NEXT: i32.shl

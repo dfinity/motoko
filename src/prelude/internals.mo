@@ -37,10 +37,6 @@ func @immut_array_get<A>(xs : [A]) : Nat -> A =
   func (n : Nat) : A = xs[n];
 func @mut_array_get<A>(xs : [var A]) : Nat -> A =
   func (n : Nat) : A = xs[n];
-func @immut_array_size<A>(xs : [A]) : () -> Nat =
-  func () : Nat = (prim "array_len" : [A] -> Nat) xs;
-func @mut_array_size<A>(xs : [var A]) : () -> Nat =
-  func () : Nat = (prim "array_len" : [var A] -> Nat) xs;
 func @mut_array_put<A>(xs : [var A]) : (Nat, A) -> () =
   func (n : Nat, x : A) = (xs[n] := x);
 func @immut_array_keys<A>(xs : [A]) : () -> @Iter<Nat> =

@@ -1,1 +1,1 @@
-cyclic-bound1.mo:3.8-3.14: type error [M0043], type parameter A/9 has cyclic bounds A/9 <: A/9
+cyclic-bound1.mo:3.8-3.14: type error [M0043], type parameter A/7 has cyclic bounds A/7 <: A/7
