@@ -181,10 +181,16 @@ and exp' at note = function
     I.PrimE (I.GetCertificate, [])
   (* Other *)
   | S.CallE ({it=S.DotE (e1, x);_}, _, e2) when T.is_array e1.note.S.note_typ && x.it = "size" ->
-    let arr = fresh_var "arr" e1.note.S.note_typ in
-    (blockE [ letD arr (exp e1)
-            ; expD (exp e2)]
-       (primE I.(GetPastArrayOffset One) [varE arr])).it
+    let e1', e2' = exp e1, exp e2 in
+    (match e2'.it with
+     | I.(PrimE (TupPrim, [])) ->
+       primE I.(GetPastArrayOffset One) [e1']
+     | _ ->
+       let arr = fresh_var "arr" e1.note.S.note_typ in
+       blockE [ letD arr e1'
+              ; expD e2']
+         (primE I.(GetPastArrayOffset One) [varE arr])
+    ).it
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
