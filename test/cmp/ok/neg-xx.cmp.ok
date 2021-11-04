@@ -1,0 +1,2 @@
+files/xx.sig:3.10-3.11: type error [M0018], duplicate field name x in object type
+FALSE
