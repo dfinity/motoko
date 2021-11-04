@@ -250,9 +250,9 @@ unsafe extern "C" fn bigint_of_int64(j: i64) -> Value {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
-    // handle fast path: these numbers (when rounded towards zero: `j as i32`)
-    // can be represented as `Int` without resorting to heap allocation,
-    // i.e. >= 0xc0000000 and <= 0x3fffffff
+    // handle fast path: some numbers (when rounded towards zero by `j as i32`)
+    // can be represented as `Int` without resorting to heap allocation, i.e.
+    // in the range `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`
     if j < 1073741824.0 && j > -1073741825.0 {
         return Value::from_signed_scalar(j as i32);
     }
