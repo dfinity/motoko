@@ -1,4 +1,4 @@
-(unknown location): M0170 error [Compatibility], stable variable z of previous type
+(unknown location): Compatibility error [M0170], stable variable z of previous type
   Text
 cannot be consumed at new type
   Bool

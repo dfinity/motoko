@@ -17,14 +17,14 @@ let display_typ_expand = Lib.Format.display Type.pp_typ_expand
 
 let error_discard s tf =
   Diag.add_msg s
-    (Diag.error_message Source.no_region cat "M0169"
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be discarded; promote to `Any` instead"
+    (Diag.error_message Source.no_region "M0169" cat
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be discarded; promote to type `Any` instead"
         tf.lab
         display_typ tf.typ))
 
 let error_sub s tf1 tf2 =
   Diag.add_msg s
-    (Diag.error_message Source.no_region cat "M0170"
+    (Diag.error_message Source.no_region "M0170" cat
       (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at new type%a"
         tf1.lab
         display_typ_expand tf1.typ
@@ -32,7 +32,7 @@ let error_sub s tf1 tf2 =
 
 let warn_mut s tf1 tf2 =
   Diag.add_msg s
-    (Diag.warning_message Source.no_region cat "M0171"
+    (Diag.warning_message Source.no_region "M0171" cat
       (Format.asprintf "stable variable %s changes mutability from previous type%a\nto new type %a"
          tf1.lab
          display_typ_expand tf1.typ

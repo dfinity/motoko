@@ -1,8 +1,8 @@
-(unknown location): M0170 error [Compatibility], stable variable ln of previous type
+(unknown location): Compatibility error [M0170], stable variable ln of previous type
   List<Int> = ?(Int, List<Int>)
 cannot be consumed at new type
   List/1<Nat> = ?(Nat, List/1<Nat>)
-(unknown location): M0170 error [Compatibility], stable variable lnn of previous type
+(unknown location): Compatibility error [M0170], stable variable lnn of previous type
   List<(Int, Int)> = ?((Int, Int), List<(Int, Int)>)
 cannot be consumed at new type
   List/1<(Nat, Nat)> = ?((Nat, Nat), List/1<(Nat, Nat)>)

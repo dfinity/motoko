@@ -1,4 +1,4 @@
-(unknown location): warning [Compatibility], stable variable x changes mutability from previous type
+(unknown location): warning [M0171], stable variable x changes mutability from previous type
   var Nat
 to new type 
   Nat
