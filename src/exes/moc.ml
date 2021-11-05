@@ -161,8 +161,8 @@ let process_files files : unit =
     begin
       match (!Flags.pre_ref, !Flags.post_ref) with
       | Some pre, Some post ->
-        let b = Diag.run (Pipeline.compatible pre post) in
-        if b then exit 0 else exit 1
+        Diag.run (Pipeline.compatible pre post); (* exit 1 when errors *)
+        exit 0;
       | _ -> assert false
     end
   | Idl ->

@@ -1,0 +1,2 @@
+(unknown location):  error [Compatibility], field z of previous type Text cannot be consumed at new type Bool
+FALSE

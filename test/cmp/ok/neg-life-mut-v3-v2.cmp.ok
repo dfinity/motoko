@@ -1,1 +1,2 @@
+(unknown location):  error [Compatibility], field state of previous type var {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}; #v3 : {offset : Nat32; size : Nat}} cannot be consumed at new type var {#v1 : [[var Cell/1]]; #v2 : {bits : [var Nat64]; size : Nat}}
 FALSE

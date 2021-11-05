@@ -1090,14 +1090,16 @@ let rec match_sig tfs1 tfs2 =
     false (* true, should we allow fields to dropped *)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
-    | 0 ->
+     | 0 ->
        sub (as_immut tf1.typ) (as_immut tf2.typ) &&
          (* should we enforce equal mutability or not? Seems unncessary
             since upgrade is read-once *)
        match_sig tfs1' tfs2'
-    | -1 ->
-      false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
-    | _ -> true (* new field ok *)
+     | -1 ->
+       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
+     | _ ->
+       (* new field ok *)
+       match_sig tfs1 tfs2'
     )
 
 (* Pretty printing *)

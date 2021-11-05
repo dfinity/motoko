@@ -1,1 +1,3 @@
+(unknown location):  error [Compatibility], field ln of previous type List<Int> cannot be consumed at new type List/1<Nat>
+(unknown location):  error [Compatibility], field lnn of previous type List<(Int, Int)> cannot be consumed at new type List/1<(Nat, Nat)>
 FALSE

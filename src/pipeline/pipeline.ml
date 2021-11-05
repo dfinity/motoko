@@ -86,20 +86,25 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let parse_with mode lexer parser name : Syntax.prog Diag.result =
+let generic_parse_with mode lexer parser name : _ Diag.result =
   phase "Parsing" name;
   let open Diag.Syntax in
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
   (* a back door to enable the `prim` syntax, for our test suite *)
   let tokenizer, triv_table = Lexer.tokenizer mode lexer in
-  let* mk_prog =
+  let* mk_syntax =
     try
       Parser_lib.triv_table := triv_table;
       Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
     with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
-  let prog = mk_prog name in
+  let phrase = mk_syntax name in
+  Diag.return phrase
+
+let parse_with mode lexer parser name : Syntax.prog Diag.result =
+  let open Diag.Syntax in
+  let* prog = generic_parse_with mode lexer parser name in
   dump_prog Flags.dump_parse prog;
   Diag.return prog
 
@@ -228,13 +233,32 @@ let internals, initial_stat_env =
 
 (* Compatibility *)
 
-let compatible pre post : bool Diag.result =
+let _parse_sig s name  =
   let open Diag.Syntax in
-  let* p1 = Stability.parse_sig_from_file pre in
-  let* p2 = Stability.parse_sig_from_file post in
+  let mode = {Lexer.privileged = false} in
+  let lexer = Lexing.from_string s in
+  let parse = Parser.Incremental.parse_sig in
+  let* sig_ = generic_parse_with mode lexer parse name in
+  Diag.return sig_
+
+let parse_sig_from_file filename : Syntax.sig_ Diag.result =
+  let ic = Stdlib.open_in filename in
+  Diag.finally (fun () -> close_in ic) (
+    let open Diag.Syntax in
+    let mode = {Lexer.privileged = false} in
+    let lexer = Lexing.from_channel ic in
+    let parse = Parser.Incremental.parse_sig in
+    let* sig_ = generic_parse_with mode lexer parse filename in
+    Diag.return sig_
+  )
+
+let compatible pre post : unit Diag.result =
+  let open Diag.Syntax in
+  let* p1 = parse_sig_from_file pre in
+  let* p2 = parse_sig_from_file post in
   let* s1 = Typing.check_sig initial_stat_env0 p1 in
   let* s2 = Typing.check_sig initial_stat_env0 p2 in
-  Diag.return (Type.match_sig s1 s2)
+  Stability.match_sig s1 s2
 
 (* The prim module *)
 
