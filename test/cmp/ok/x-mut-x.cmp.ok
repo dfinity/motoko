@@ -1,2 +1,5 @@
-(unknown location): warning [Compatibility], change in mutability of field x from Nat to var Nat
+(unknown location): warning [Compatibility], stable variable x changes mutability from previous type
+  Nat
+to new type 
+  var Nat
 TRUE

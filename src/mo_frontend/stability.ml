@@ -1,7 +1,9 @@
 open Mo_types
 
 open Type
-(* Signatures *)
+
+
+(* Signature matching *)
 
 let cat = "Compatibility"
 
@@ -9,20 +11,32 @@ let cat = "Compatibility"
    c.f. (simpler) Types.match_sig.
 *)
 
+let display_typ = Lib.Format.display Type.pp_typ
+
+let display_typ_expand = Lib.Format.display Type.pp_typ_expand
+
 let error_discard s tf =
   Diag.add_msg s
-    (Diag.error_message Source.no_region "" ""
-       (Printf.sprintf "field %s of previous type %s cannot be discarded; promote to `Any` instead" tf.lab (Type.string_of_typ tf.typ)))
+    (Diag.error_message Source.no_region cat "M0169"
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be discarded; promote to `Any` instead"
+        tf.lab
+        display_typ tf.typ))
 
 let error_sub s tf1 tf2 =
   Diag.add_msg s
-    (Diag.error_message Source.no_region cat ""
-      (Printf.sprintf "field %s of previous type %s cannot be consumed at new type %s" tf1.lab (Type.string_of_typ tf1.typ) (Type.string_of_typ tf2.typ)))
+    (Diag.error_message Source.no_region cat "M0170"
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at new type%a"
+        tf1.lab
+        display_typ_expand tf1.typ
+        display_typ_expand tf2.typ))
 
 let warn_mut s tf1 tf2 =
   Diag.add_msg s
-   (Diag.warning_message Source.no_region cat ""
-     (Printf.sprintf "change in mutability of field %s from previous type %s to new type %s" tf1.lab (Type.string_of_typ tf1.typ) (Type.string_of_typ tf2.typ)))
+    (Diag.warning_message Source.no_region cat "M0171"
+      (Format.asprintf "stable variable %s changes mutability from previous type%a\nto new type %a"
+         tf1.lab
+         display_typ_expand tf1.typ
+         display_typ_expand tf2.typ))
 
 let match_sig tfs1 tfs2 : unit Diag.result =
   (* Assume that tfs1 and tfs2 are sorted. *)
