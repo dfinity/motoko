@@ -800,8 +800,8 @@ let name_section s =
 let motoko_section_subsection (ms : motoko_sections) s =
   match u8 s with
   | 0 ->
-     let labels = sized (fun _ -> vec string) s in
-     { ms with labels = ms.labels @ labels }
+    let labels = sized (fun _ -> vec string) s in
+    { ms with labels = ms.labels @ labels }
   | i -> error s (pos s) (Printf.sprintf "unknown motoko section subsection id %d" i)
 
 let motoko_section_content p_end s =
@@ -826,7 +826,7 @@ let candid_sections s =
 
 let candid_service_name = icp_name "candid:service"
 let candid_args_name = icp_name "candid:args"
-let motoko_stable_types_name = icp_name "candid:stable-types"
+let motoko_stable_types_name = icp_name "motoko:stable-types"
 
 let is_icp icp_name n = icp_name n <> None
 
