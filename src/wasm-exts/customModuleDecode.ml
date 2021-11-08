@@ -7,6 +7,12 @@ The changes are:
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
+
+TODO:
+ The treatment of known custom sections is suboptimal and assumes
+ they appear once, in a fixed relative order.
+ It would be better to just rescan the whole binary for each such section,
+ re-using the original custom section decoder from the reference implementation.
 *)
 
 module Error = Wasm.Error
@@ -45,6 +51,7 @@ let peek s = if eos s then None else Some (read s)
 let get s = check 1 s; let b = read s in skip 1 s; b
 let get_string n s = let i = pos s in skip n s; String.sub s.bytes i n
 
+let checkpoint s = let p = !(s.pos) in fun () -> s.pos := p
 
 (* Errors *)
 
@@ -664,7 +671,7 @@ let data_section s =
 (* Custom sections *)
 
 let custom_section (name_pred : int list -> bool) (f : int -> stream -> 'a) (default : 'a) (s : stream) =
-  let p = pos s in
+  let rewind = checkpoint s in
   match id s with
   | Some `CustomSection ->
     ignore (u8 s);
@@ -677,7 +684,7 @@ let custom_section (name_pred : int list -> bool) (f : int -> stream -> 'a) (def
       require (pos s = sec_end) s sec_start "custom section size mismatch";
       x
     else begin (* wrong custom section, rewind *)
-      s.pos := p;
+      rewind ();
       default
     end
   | Some _ -> default
@@ -695,7 +702,7 @@ let icp_name suffix =
     else None
 
 let icp_custom_section n (f : int -> stream -> 'a) (default : (bool * 'a) option) (s : stream) =
-  let p = pos s in
+  let rewind = checkpoint s in
   match id s with
   | Some `CustomSection ->
     ignore (u8 s);
@@ -712,7 +719,7 @@ let icp_custom_section n (f : int -> stream -> 'a) (default : (bool * 'a) option
       require (pos s = sec_end) s sec_start "custom section size mismatch";
       Some (b, x)
     | None -> begin (* wrong custom section, rewind *)
-      s.pos := p;
+      rewind ();
       default
       end
     end
