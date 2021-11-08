@@ -3,7 +3,7 @@ This module is the backend of the Motoko compiler. It takes a program in
 the intermediate representation (ir.ml), and produces a WebAssembly module,
 with Internet Computer extensions (customModule.ml). An important helper module is
 instrList.ml, which provides a more convenient way of assembling WebAssembly
-instruction lists, as it takes care of (1) source locations and (2) labels
+instruction lists, as it takes care of (1) source locations and (2) labels.
 
 This file is split up in a number of modules, purely for namespacing and
 grouping. Every module has a high-level prose comment explaining the concept;
@@ -255,7 +255,7 @@ module E = struct
     static_memory_frozen : bool ref;
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
-    (* GC roots in static memory. (Everything that may be mutable.) *)
+      (* GC roots in static memory. (Everything that may be mutable.) *)
 
     (* Metadata *)
     args : (bool * string) option ref;
