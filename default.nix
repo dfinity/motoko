@@ -338,9 +338,9 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks";
       });
 
-    compacting_gc_subdir = dir: deps:
+    copying_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+          EXTRA_MOC_ARGS = "--sanity-checks --copying-gc";
       });
 
     perf_subdir = dir: deps:
@@ -428,10 +428,10 @@ rec {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      ic-ref-run-copying-gc = copying_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-copying-gc = copying_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         [ mo-ld ];
