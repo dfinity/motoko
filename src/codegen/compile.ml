@@ -7491,7 +7491,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
       compile_exp_vanilla env ae e2 ^^ (* byte offset *)
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      Arr.(load_field 0l)              (* loads the element at the byte offset *)
+      Arr.load_field 0l            (* loads the element at the byte offset *)
     | GetPastArrayOffset spacing, [e] ->
       let shift =
         match spacing with
