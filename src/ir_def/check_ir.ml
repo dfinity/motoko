@@ -482,7 +482,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
              (T.string_of_typ_expand t1));
       T.nat <: t
     | NextArrayOffset _, [exp1] ->
-      typ exp1 <: T.nat
+      typ exp1 <: T.nat;
+      T.nat <: t
     | ValidArrayOffset, [exp1; exp2] ->
       typ exp1 <: T.nat;
       typ exp2 <: T.nat;
