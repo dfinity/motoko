@@ -1,4 +1,4 @@
-use crate::constants::{WASM_HEAP_SIZE, WORD_SIZE};
+use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
 use crate::types::*;
@@ -10,7 +10,7 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
     // Half of the heap.
     // NB. This expression is evaluated in compile time to a constant.
     let max_live: Bytes<u64> =
-        Bytes(u64::from((WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
+        Bytes(u64::from((crate::constants::WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
 
     if super::should_do_gc(max_live) {
         copying_gc(mem);

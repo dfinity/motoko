@@ -8,7 +8,7 @@ pub mod mark_stack;
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
-use crate::constants::{WASM_HEAP_SIZE, WORD_SIZE};
+use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
@@ -20,7 +20,8 @@ use motoko_rts_macros::ic_mem_fn;
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
     let slack: u64 = 512 * 1024 * 1024;
-    let heap_size_bytes: u64 = u64::from(WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
+    let heap_size_bytes: u64 =
+        u64::from(crate::constants::WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
     // Larger than necessary to keep things simple
     let max_bitmap_size_bytes = heap_size_bytes / 32;
     // NB. `max_live` is evaluated in compile time to a constant
