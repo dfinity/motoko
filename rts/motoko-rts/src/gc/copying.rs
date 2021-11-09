@@ -7,7 +7,9 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
-    if super::should_do_gc() {
+    const MAX_LIVE: Bytes<u64> = Bytes(2 * 1024 * 1024 * 1024); // 2 GiB
+
+    if super::should_do_gc(MAX_LIVE) {
         copying_gc(mem);
     }
 }

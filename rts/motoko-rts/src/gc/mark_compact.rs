@@ -18,7 +18,11 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
-    if super::should_do_gc() {
+    // Mark stack ignored. Max. bitmap can be 130,150,524 bytes.
+    // (x + x / 32 = 4 GiB, x = 4,164,816,771, x/32 = 130,150,524)
+    const MAX_LIVE: Bytes<u64> = Bytes(4_164_816_771);
+
+    if super::should_do_gc(MAX_LIVE) {
         compacting_gc(mem);
     }
 }
