@@ -6,6 +6,7 @@
 // To convert an offset into an address, add heap array's address to the offset.
 
 mod heap;
+mod random;
 mod utils;
 
 use heap::MotokoHeap;
@@ -22,11 +23,19 @@ use fxhash::{FxHashMap, FxHashSet};
 pub fn test() {
     println!("Testing garbage collection ...");
 
-    // TODO: Add more tests
-
+    println!("  Testing pre-defined heaps...");
     for test_heap in test_heaps() {
         test_gcs(&test_heap);
     }
+
+    println!("  Testing random heaps...");
+    let max_seed = 100;
+    for seed in 0..max_seed {
+        print!("\r{}/{}", seed + 1, max_seed);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        test_random_heap(seed, 180);
+    }
+    print!("\r");
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -61,6 +70,11 @@ fn test_heaps() -> Vec<TestHeap> {
             continuation_table: vec![],
         },
     ]
+}
+
+fn test_random_heap(seed: u64, max_objects: u32) {
+    let random_heap = random::generate(seed, max_objects);
+    test_gcs(&random_heap);
 }
 
 // All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
