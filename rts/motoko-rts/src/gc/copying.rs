@@ -1,4 +1,4 @@
-use crate::constants::WORD_SIZE;
+use crate::constants::{WASM_HEAP_SIZE, WORD_SIZE};
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
 use crate::types::*;
@@ -7,9 +7,12 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
-    const MAX_LIVE: Bytes<u64> = Bytes(2 * 1024 * 1024 * 1024); // 2 GiB
+    // Half of the heap.
+    // NB. This expression is evaluated in compile time to a constant.
+    let max_live: Bytes<u64> =
+        Bytes(u64::from((WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
 
-    if super::should_do_gc(MAX_LIVE) {
+    if super::should_do_gc(max_live) {
         copying_gc(mem);
     }
 }
