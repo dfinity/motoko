@@ -8,7 +8,7 @@ pub mod mark_stack;
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
-use crate::constants::WORD_SIZE;
+use crate::constants::{WASM_HEAP_SIZE, WORD_SIZE};
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
@@ -19,10 +19,13 @@ use motoko_rts_macros::ic_mem_fn;
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // Mark stack ignored. Max. bitmap can be 130,150,524 bytes.
-    // (x + x / 32 = 4 GiB, x = 4,164,816,771, x/32 = 130,150,524)
-    const MAX_LIVE: Bytes<u64> = Bytes(4_164_816_771);
+    // (x + x/32 = 4 GiB, x = 4,164,816,771, x/32 = 130,150,524)
+    // NB. `max_live` below is evaluated in compile time to a constant
+    let heap_size_bytes: u64 = u64::from(WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
+    let max_mark_stack_size_bytes: u64 = 130_150_524;
+    let max_live: Bytes<u64> = Bytes(heap_size_bytes - max_mark_stack_size_bytes);
 
-    if super::should_do_gc(MAX_LIVE) {
+    if super::should_do_gc(max_live) {
         compacting_gc(mem);
     }
 }
