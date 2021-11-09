@@ -84,7 +84,7 @@ let varLE (id, typ) =
 let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
-    | ICReplyPrim _ -> T.Non
+    | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
@@ -100,7 +100,7 @@ let primE prim es =
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
-    | SystemCyclesAvailablePrim -> T.nat64
+    | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
