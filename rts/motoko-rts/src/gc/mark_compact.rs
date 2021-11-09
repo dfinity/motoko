@@ -20,13 +20,13 @@ use motoko_rts_macros::ic_mem_fn;
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
     let slack: u64 = 512 * 1024 * 1024;
-    // x + slack + x/32 = 4 GiB, x = 3,644,214,675, x/32 = 113,881,708
+    // x + slack + x/32 = heap_size
     // (Reminder: one word in bitmap covers 32 words in heap)
     // NB. `max_live` below is evaluated in compile time to a constant
     let heap_size_bytes: u64 = u64::from(WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
-    let max_bitmap_size_bytes: u64 = 113_881_708;
-    let max_live: Bytes<u64> =
-        Bytes(heap_size_bytes - slack - max_bitmap_size_bytes);
+    let x: u64 = ((heap_size_bytes * 32) - (slack * 32)) / 33;
+    let max_bitmap_size_bytes = x / 32;
+    let max_live: Bytes<u64> = Bytes(heap_size_bytes - slack - max_bitmap_size_bytes);
 
     if super::should_do_gc(max_live) {
         compacting_gc(mem);
