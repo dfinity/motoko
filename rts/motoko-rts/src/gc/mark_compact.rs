@@ -18,12 +18,15 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
-    // Mark stack ignored. Max. bitmap can be 130,150,524 bytes.
-    // (x + x/32 = 4 GiB, x = 4,164,816,771, x/32 = 130,150,524)
+    // Mark stack assumed to be at most 512 MiB.
+    let max_mark_stack_size_bytes: u64 = 512 * 1024 * 1024;
+    // x + max_mark_stack_size + x/32 = 4 GiB, x = 3,644,214,675, x/32 = 113,881,708
+    // (Reminder: one word in bitmap covers 32 words in heap)
     // NB. `max_live` below is evaluated in compile time to a constant
     let heap_size_bytes: u64 = u64::from(WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
-    let max_mark_stack_size_bytes: u64 = 130_150_524;
-    let max_live: Bytes<u64> = Bytes(heap_size_bytes - max_mark_stack_size_bytes);
+    let max_bitmap_size_bytes: u64 = 113_881_708;
+    let max_live: Bytes<u64> =
+        Bytes(heap_size_bytes - max_mark_stack_size_bytes - max_bitmap_size_bytes);
 
     if super::should_do_gc(max_live) {
         compacting_gc(mem);
