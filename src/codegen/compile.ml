@@ -7496,7 +7496,7 @@ and compile_exp (env : E.t) ae exp =
       let shift =
         match spacing with
         | ElementSize -> compile_shl_const 2l (* effectively a multiplication by word_size *)
-        | One -> BigNum.from_word30 env in    (* make it to compact bignum *)
+        | One -> BigNum.from_word30 env in    (* make it a compact bignum *)
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^ (* array *)
       Heap.load_field Arr.len_field ^^
