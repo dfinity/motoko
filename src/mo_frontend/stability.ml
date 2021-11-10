@@ -7,7 +7,7 @@ open Type
 let cat = "Compatibility"
 
 (* signature matching with multiple error reporting
-   c.f. (simpler) Types.match_sig.
+   c.f. (simpler) Types.match_stab_sig.
 *)
 
 let display_typ = Lib.Format.display Type.pp_typ
