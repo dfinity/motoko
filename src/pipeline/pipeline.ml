@@ -232,9 +232,9 @@ let compatible pre post : bool Diag.result =
   let open Diag.Syntax in
   let* p1 = Stability.parse_sig_from_file pre in
   let* p2 = Stability.parse_sig_from_file post in
-  let* s1 = Typing.check_sig initial_stat_env0 p1 in
-  let* s2 = Typing.check_sig initial_stat_env0 p2 in
-  Diag.return (Type.match_sig s1 s2)
+  let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
+  let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
+  Diag.return (Type.match_stab_sig s1 s2)
 
 (* The prim module *)
 
