@@ -1078,9 +1078,9 @@ let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 
-(* Signatures *)
+(* Stable signatures *)
 
-let rec match_sig tfs1 tfs2 =
+let rec match_stable_sig tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   (* Should we insist on monotonic preservation of fields, or relax? *)
   match tfs1, tfs2 with
