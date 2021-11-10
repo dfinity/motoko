@@ -300,7 +300,7 @@ and objblock s dec_fields =
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 %start<unit> parse_module_header (* Result passed via the Parser_lib.Imports exception *)
-%start<string -> Mo_def.Syntax.sig_> parse_sig
+%start<string -> Mo_def.Syntax.stab_sig> parse_stab_sig
 
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
@@ -911,7 +911,7 @@ stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
 
-parse_sig :
+parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
     { let trivia = !triv_table in
       fun filename -> { it = (ds, sfs); at = at $sloc; note = { filename; trivia }}

@@ -1078,23 +1078,23 @@ let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 
-(* Signatures *)
+(* Stable signatures *)
 
-let rec match_sig tfs1 tfs2 =
+let rec match_stab_sig tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   (* Should we insist on monotonic preservation of fields, or relax? *)
   match tfs1, tfs2 with
   | [], _ ->
     true (* no or additional fields ok *)
   | _, [] ->
-    false (* true, should we allow fields to dropped *)
+    false (* true, should we allow fields to be dropped *)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
        sub (as_immut tf1.typ) (as_immut tf2.typ) &&
          (* should we enforce equal mutability or not? Seems unncessary
             since upgrade is read-once *)
-       match_sig tfs1' tfs2'
+       match_stab_sig tfs1' tfs2'
     | -1 ->
       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
     | _ -> true (* new field ok *)
@@ -1369,7 +1369,7 @@ and pp_kind ppf k =
   let op, sbs, st = pps_of_kind k in
   fprintf ppf "%s %a%a" op sbs () st ()
 
-and pp_sig ppf sig_ =
+and pp_stab_sig ppf sig_ =
   let cs = List.fold_right cons_field sig_ ConSet.empty in
   let ds =
     let cs' = ConSet.filter (fun c ->
@@ -1393,9 +1393,9 @@ and pp_sig ppf sig_ =
       (pp_print_list ~pp_sep:semi (pp_stab_field [])) sig_
   in
   fprintf ppf "@[<v 0>@;<0 0>%a%a@;<0 0>%a;@]"
-   (pp_print_list ~pp_sep:semi (pp_field [])) fs
-   (if fs = [] then fun ppf () -> () else semi) ()
-   pp_stab_fields sig_
+    (pp_print_list ~pp_sep:semi (pp_field [])) fs
+    (if fs = [] then fun ppf () -> () else semi) ()
+    pp_stab_fields sig_
 
 
 let pp_typ = pp_typ' []
@@ -1433,8 +1433,8 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_typ_expand ppf) typ
 
-let string_of_sig typ : string =
-  Format.asprintf "@[<v 0> %a@]" (fun ppf -> pp_sig ppf) typ
+let string_of_stab_sig typ : string =
+  Format.asprintf "@[<v 0> %a@]" (fun ppf -> pp_stab_sig ppf) typ
 
 let _ = str := string_of_typ
 
@@ -1454,7 +1454,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_sig : field list -> string
+  val string_of_stab_sig : field list -> string
 end
 
 
