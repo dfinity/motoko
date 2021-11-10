@@ -15,7 +15,7 @@ let parse_with mode lexer parser name : Syntax.sig_ Diag.result =
   let sig_ = mk_sig name in
   Diag.return sig_
 
-let parse_sig s name  =
+let parse_stab_sig s name  =
   let open Diag.Syntax in
   let mode = {Lexer.privileged = true} in (* TODO: make false *)
   let lexer = Lexing.from_string s in
