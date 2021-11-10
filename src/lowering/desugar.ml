@@ -379,7 +379,7 @@ and build_actor at ts self_id es obj_typ =
     | None -> ds in
   let meta =
     I.{ candid = candid;
-        sig_ = T.string_of_sig sig_} in
+        sig_ = T.string_of_stab_sig sig_} in
   let (interface_d, interface_f) = export_interface candid.I.service in
   I.ActorE (interface_d @ ds', interface_f @ fs,
      { meta;
