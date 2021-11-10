@@ -172,7 +172,7 @@ let string_of_symbol symbol : string =
   | X (N N_parse_module_header) -> "<parse_module_header>"
   | X (N N_parse_prog) -> "<parse_prog>"
   | X (N N_parse_prog_interactive) -> "<parse_prog_interactive>"
-  | X (N N_parse_sig) -> "<parse_sig>"
+  | X (N N_parse_stab_sig) -> "<parse_stab_sig>"
   | X (N N_pat) -> "<pat>"
   | X (N N_pat_bin) -> "<pat_bin>"
   | X (N N_pat_field) -> "<pat_field>"

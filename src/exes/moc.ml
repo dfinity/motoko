@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compatible | Compile | Run | Interact | Idl | PrintDeps | Explain
+type mode = Default | Check | StableCompatible | Compile | Run | Interact | Idl | PrintDeps | Explain
 
 let mode = ref Default
 let args = ref []
@@ -39,7 +39,7 @@ let argspec = [
     Arg.Tuple [
       Arg.String (fun fp -> Flags.pre_ref := Some fp);
       Arg.String (fun fp -> Flags.post_ref := Some fp);
-      Arg.Unit (set_mode Compatible);
+      Arg.Unit (set_mode StableCompatible);
       ],
    "<pre> <post> test upgrade compatibility between stable-type signatures <pre> and <post>";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
@@ -157,11 +157,11 @@ let process_files files : unit =
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
-  | Compatible ->
+  | StableCompatible ->
     begin
       match (!Flags.pre_ref, !Flags.post_ref) with
       | Some pre, Some post ->
-        Diag.run (Pipeline.compatible pre post); (* exit 1 when errors *)
+        Diag.run (Pipeline.stable_compatible pre post); (* exit 1 when errors *)
         exit 0;
       | _ -> assert false
     end

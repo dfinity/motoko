@@ -2,7 +2,6 @@ open Mo_types
 
 open Type
 
-
 (* Signature matching *)
 
 let cat = "Compatibility"
@@ -38,7 +37,7 @@ let warn_mut s tf1 tf2 =
          display_typ_expand tf1.typ
          display_typ_expand tf2.typ))
 
-let match_sig tfs1 tfs2 : unit Diag.result =
+let match_stab_sig tfs1 tfs2 : unit Diag.result =
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = Diag.with_message_store (fun s ->
     (* Should we insist on monotonic preservation of fields, or relax? *)
@@ -69,8 +68,8 @@ let match_sig tfs1 tfs2 : unit Diag.result =
   (* cross check with simpler definition *)
   match res with
   | Ok _ ->
-    assert (Type.match_sig tfs1 tfs2);
+    assert (Type.match_stab_sig tfs1 tfs2);
     res
   | Error _ ->
-    assert (not (Type.match_sig tfs1 tfs2));
+    assert (not (Type.match_stab_sig tfs1 tfs2));
     res

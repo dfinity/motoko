@@ -2602,7 +2602,7 @@ let check_lib scope lib : Scope.t Diag.result =
         ) lib
     )
 
-let check_sig scope sig_ : (T.field list) Diag.result =
+let check_stab_sig scope sig_ : (T.field list) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt

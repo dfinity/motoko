@@ -231,34 +231,35 @@ let prelude, initial_stat_env0 =
 let internals, initial_stat_env =
   check_builtin "internals" Prelude.internals initial_stat_env0
 
-(* Compatibility *)
+(* Stable compatibility *)
 
-let _parse_sig s name  =
+
+let _parse_stab_sig s name  =
   let open Diag.Syntax in
   let mode = {Lexer.privileged = false} in
   let lexer = Lexing.from_string s in
-  let parse = Parser.Incremental.parse_sig in
+  let parse = Parser.Incremental.parse_stab_sig in
   let* sig_ = generic_parse_with mode lexer parse name in
   Diag.return sig_
 
-let parse_sig_from_file filename : Syntax.sig_ Diag.result =
+let parse_stab_sig_from_file filename : Syntax.stab_sig Diag.result =
   let ic = Stdlib.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
     let mode = {Lexer.privileged = false} in
     let lexer = Lexing.from_channel ic in
-    let parse = Parser.Incremental.parse_sig in
+    let parse = Parser.Incremental.parse_stab_sig in
     let* sig_ = generic_parse_with mode lexer parse filename in
     Diag.return sig_
   )
 
-let compatible pre post : unit Diag.result =
+let stable_compatible pre post : unit Diag.result =
   let open Diag.Syntax in
-  let* p1 = parse_sig_from_file pre in
-  let* p2 = parse_sig_from_file post in
-  let* s1 = Typing.check_sig initial_stat_env0 p1 in
-  let* s2 = Typing.check_sig initial_stat_env0 p2 in
-  Stability.match_sig s1 s2
+  let* p1 = parse_stab_sig_from_file pre in
+  let* p2 = parse_stab_sig_from_file post in
+  let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
+  let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
+  Stability.match_stab_sig s1 s2
 
 (* The prim module *)
 

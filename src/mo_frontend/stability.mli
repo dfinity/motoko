@@ -6,4 +6,4 @@ open Mo_types
    c.f. (simpler) Types.match_sig.
 *)
 
-val match_sig : Type.field list -> Type.field list -> unit Diag.result
+val match_stab_sig : Type.field list -> Type.field list -> unit Diag.result
