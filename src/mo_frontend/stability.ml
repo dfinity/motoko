@@ -1,7 +1,7 @@
 open Mo_def
 
 
-let parse_with mode lexer parser name : Syntax.sig_ Diag.result =
+let parse_with mode lexer parser name : Syntax.stab_sig Diag.result =
   let open Diag.Syntax in
   lexer.Lexing.lex_curr_p <-
     {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
@@ -15,11 +15,11 @@ let parse_with mode lexer parser name : Syntax.sig_ Diag.result =
   let sig_ = mk_sig name in
   Diag.return sig_
 
-let parse_sig s name  =
+let parse_stab_sig s name  =
   let open Diag.Syntax in
   let mode = {Lexer.privileged = false} in
   let lexer = Lexing.from_string s in
-  let parse = Parser.Incremental.parse_sig in
+  let parse = Parser.Incremental.parse_stab_sig in
   let* sig_ = parse_with mode lexer parse name in
   Diag.return sig_
 
