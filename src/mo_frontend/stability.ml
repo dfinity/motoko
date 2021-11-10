@@ -57,7 +57,7 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
             if not (sub (as_immut tf1.typ) (as_immut tf2.typ)) then
               error_sub s tf1 tf2;
             go tfs1' tfs2'
-       | -1 ->
+        | -1 ->
           error_discard s tf1;
           go tfs1' tfs2'
         | _ ->
