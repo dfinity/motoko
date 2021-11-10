@@ -226,9 +226,9 @@ let prelude, initial_stat_env0 =
 let internals, initial_stat_env =
   check_builtin "internals" Prelude.internals initial_stat_env0
 
-(* Compatibility *)
+(* Stable compatibility *)
 
-let compatible pre post : bool Diag.result =
+let stable_compatible pre post : bool Diag.result =
   let open Diag.Syntax in
   let* p1 = Stability.parse_sig_from_file pre in
   let* p2 = Stability.parse_sig_from_file post in
