@@ -116,7 +116,7 @@ let argspec = [
 
   "--stable-types",
   Arg.Unit (fun () -> stable_types := true),
-  " emit signature of stable types to .sig file";
+  " emit signature of stable types to .most file";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.compacting_gc := true),
@@ -196,7 +196,7 @@ let process_files files : unit =
           (if Filename.extension !out_file <> "" then
              Filename.remove_extension !out_file
            else !out_file)
-          ^ ".sig" in
+          ^ ".most" in
       CustomModule.(
         match module_.motoko.stable_types with
         | Some (_, txt) ->
