@@ -303,13 +303,5 @@
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
 
-<typ_dec> ::= 
-    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-
-<stab_field> ::= 
-    'stable' 'var'? <id> ':' <typ>
-
-<parse_stab_sig> ::= 
-    <list(<typ_dec>, ';')> 'actor' '{' <list(<stab_field>, ';')> '}'
 
 
