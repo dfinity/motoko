@@ -1,5 +1,5 @@
-(unknown location): warning [M0171], stable variable x changes mutability from previous type
+(unknown location): Compatibility error [M0171], stable variable x changes mutability from previous type
   Nat
 to new type 
   var Nat
-TRUE
+FALSE

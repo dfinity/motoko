@@ -1091,6 +1091,7 @@ let rec match_stab_sig tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
+       is_mut tf1.typ = is_mut tf2.typ &&
        sub (as_immut tf1.typ) (as_immut tf2.typ) &&
          (* should we enforce equal mutability or not? Seems unncessary
             since upgrade is read-once *)

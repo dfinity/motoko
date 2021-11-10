@@ -29,9 +29,9 @@ let error_sub s tf1 tf2 =
         display_typ_expand tf1.typ
         display_typ_expand tf2.typ))
 
-let warn_mut s tf1 tf2 =
+let error_mut s tf1 tf2 =
   Diag.add_msg s
-    (Diag.warning_message Source.no_region "M0171" cat
+    (Diag.error_message Source.no_region "M0171" cat
       (Format.asprintf "stable variable %s changes mutability from previous type%a\nto new type %a"
          tf1.lab
          display_typ_expand tf1.typ
@@ -50,10 +50,10 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
       | tf1::tfs1', tf2::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
-           (* Sshould we enforce equal mutability or not?
+           (* Should we enforce equal mutability or not?
               Seems unnecessary since upgrade is read-once *)
             if Type.is_mut tf1.typ <> Type.is_mut tf2.typ then
-              warn_mut s tf1 tf2;
+              error_mut s tf1 tf2;
             if not (sub (as_immut tf1.typ) (as_immut tf2.typ)) then
               error_sub s tf1 tf2;
             go tfs1' tfs2'
