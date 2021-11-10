@@ -309,7 +309,7 @@
 <stab_field> ::= 
     'stable' 'var'? <id> ':' <typ>
 
-<parse_sig> ::= 
+<parse_stab_sig> ::= 
     <list(<typ_dec>, ';')> 'actor' '{' <list(<stab_field>, ';')> '}'
 
 

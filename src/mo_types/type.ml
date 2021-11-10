@@ -1080,7 +1080,7 @@ let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 (* Stable signatures *)
 
-let rec match_stable_sig tfs1 tfs2 =
+let rec match_stab_sig tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   (* Should we insist on monotonic preservation of fields, or relax? *)
   match tfs1, tfs2 with
@@ -1094,7 +1094,7 @@ let rec match_stable_sig tfs1 tfs2 =
        sub (as_immut tf1.typ) (as_immut tf2.typ) &&
          (* should we enforce equal mutability or not? Seems unncessary
             since upgrade is read-once *)
-       match_sig tfs1' tfs2'
+       match_stab_sig tfs1' tfs2'
     | -1 ->
       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
     | _ -> true (* new field ok *)
@@ -1433,8 +1433,8 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_typ_expand ppf) typ
 
-let string_of_sig typ : string =
-  Format.asprintf "@[<v 0> %a@]" (fun ppf -> pp_sig ppf) typ
+let string_of_stab_sig typ : string =
+  Format.asprintf "@[<v 0> %a@]" (fun ppf -> pp_stab_sig ppf) typ
 
 let _ = str := string_of_typ
 
