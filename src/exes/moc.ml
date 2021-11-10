@@ -35,7 +35,7 @@ let argspec = [
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  "--compatible",
+  "--stable-compatible",
     Arg.Tuple [
       Arg.String (fun fp -> Flags.pre_ref := Some fp);
       Arg.String (fun fp -> Flags.post_ref := Some fp);

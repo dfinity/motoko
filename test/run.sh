@@ -478,7 +478,7 @@ do
     # files in cmp
     # Compatibility check
     $ECHO -n " [cmp]"
-    moc --compatible $(<$base.cmp) > $out/$base.cmp 2>&1
+    moc --stable-compatible $(<$base.cmp) > $out/$base.cmp 2>&1
     succeeded=$?
     if [ "$succeeded" -eq 0 ]
     then
