@@ -4,7 +4,9 @@ open Mo_types
 open Value
 open Numerics
 
-let as_big_int = function
+type trap = { trap : 'a. string -> 'a  }
+
+let as_big_int trap = function
   | Type.Nat -> fun v -> Nat.to_big_int (as_int v)
   | Type.Int -> fun v -> Int.to_big_int (as_int v)
   | Type.Nat8 -> fun v -> Nat8.to_big_int (as_nat8 v)
@@ -16,9 +18,9 @@ let as_big_int = function
   | Type.Int32 -> fun v -> Int_32.to_big_int (as_int32 v)
   | Type.Int64 -> fun v -> Int_64.to_big_int (as_int64 v)
   | Type.Char -> fun v -> Big_int.big_int_of_int (as_char v)
-  | t -> raise (Invalid_argument ("Value.as_big_int: " ^ Type.string_of_typ (Type.Prim t)))
+  | t -> trap.trap ("Value.as_big_int: " ^ Type.string_of_typ (Type.Prim t))
 
-let of_big_int_trap = function
+let of_big_int_trap trap = function
   | Type.Nat -> fun i -> Int (Nat.of_big_int i)
   | Type.Int -> fun i -> Int (Int.of_big_int i)
   | Type.Nat8 -> fun i -> Nat8 (Nat8.of_big_int i)
@@ -31,10 +33,10 @@ let of_big_int_trap = function
   | Type.Int64 -> fun i -> Int64 (Int_64.of_big_int i)
   | Type.Char -> fun i ->
     let i = Big_int.int_of_big_int i in
-    if i < 0xD800 || i >= 0xE000 && i < 0x110000 then Char i else raise (Invalid_argument "character value out of bounds")
-  | t -> raise (Invalid_argument ("Value.of_big_int_trap: " ^ Type.string_of_typ (Type.Prim t)))
+    if i < 0xD800 || i >= 0xE000 && i < 0x110000 then Char i else trap.trap "character value out of bounds"
+  | t -> trap.trap ("Value.of_big_int_trap: " ^ Type.string_of_typ (Type.Prim t))
 
-let of_big_int_wrap = function
+let of_big_int_wrap trap = function
   | Type.Nat8 -> fun i -> Nat8 (Nat8.wrapping_of_big_int i)
   | Type.Nat16 -> fun i -> Nat16 (Nat16.wrapping_of_big_int i)
   | Type.Nat32 -> fun i -> Nat32 (Nat32.wrapping_of_big_int i)
@@ -43,14 +45,14 @@ let of_big_int_wrap = function
   | Type.Int16 -> fun i -> Int16 (Int_16.wrapping_of_big_int i)
   | Type.Int32 -> fun i -> Int32 (Int_32.wrapping_of_big_int i)
   | Type.Int64 -> fun i -> Int64 (Int_64.wrapping_of_big_int i)
-  | t -> raise (Invalid_argument ("Value.of_big_int_wrap: " ^ Type.string_of_typ (Type.Prim t)))
+  | t -> trap.trap ("Value.of_big_int_wrap: " ^ Type.string_of_typ (Type.Prim t))
 
 (*
 Wrapping numeric conversions are all specified uniformly by going through bigint
 *)
 
 (* Trapping conversions (the num_conv_t1_t2 prim used in prelude/prelude.ml) *)
-let num_conv_trap_prim t1 t2 =
+let num_conv_trap_prim trap t1 t2 =
   let module T = Type in
   match t1, t2 with
   | T.Nat, T.(T.Nat8|Nat16|Nat32|Nat64)
@@ -58,7 +60,7 @@ let num_conv_trap_prim t1 t2 =
   | T.(Nat8|Nat16|Nat32|Nat64), T.Nat
   | T.(Int8|Int16|Int32|Int64), T.Int
   | T.Nat32, T.Char
-  -> fun v -> of_big_int_trap t2 (as_big_int t1 v)
+  -> fun v -> of_big_int_trap trap t2 (as_big_int trap t1 v)
 
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (bigint_of_double (as_float v)))
   | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
@@ -72,10 +74,10 @@ let num_conv_trap_prim t1 t2 =
 It is the responsibility of prelude/prelude.ml to define num_wrap_t1_t2 only
 for suitable types t1 and t2
 *)
-let num_conv_wrap_prim t1 t2 =
-  fun v -> of_big_int_wrap t2 (as_big_int t1 v)
+let num_conv_wrap_prim trap t1 t2 =
+  fun v -> of_big_int_wrap trap t2 (as_big_int trap t1 v)
 
-let prim =
+let prim trap =
   let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
   let via_float2 f v w = Float.(Float (of_float (f (to_float (as_float v)) (to_float (as_float w))))) in
   let unpack_nat8 v = Nat8.to_int (as_nat8 v) in
@@ -185,7 +187,7 @@ let prim =
                                in k (Text str)
   | "print" -> fun _ v k -> Printf.printf "%s\n%!" (as_text v); k unit
   | "trap" -> fun _ v k ->
-    raise (Invalid_argument ("explicit trap: "^ (as_text v)))
+    trap.trap ("explicit trap: " ^ (as_text v))
   | "rts_version" -> fun _ v k -> as_unit v; k (Text "0.1")
   | "rts_heap_size" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
@@ -262,7 +264,7 @@ let prim =
     | [_;_;s1;s2] ->
       let p1 = Type.prim s1 in
       let p2 = Type.prim s2 in
-      fun env v k -> k (num_conv_trap_prim p1 p2 v)
+      fun env v k -> k (num_conv_trap_prim trap p1 p2 v)
     | _ -> assert false
     end
 
@@ -271,7 +273,7 @@ let prim =
     | [_;_;s1;s2] ->
       let p1 = Type.prim s1 in
       let p2 = Type.prim s2 in
-      fun env v k -> k (num_conv_wrap_prim p1 p2 v)
+      fun env v k -> k (num_conv_wrap_prim trap p1 p2 v)
     | _ -> assert false
     end
 
@@ -318,4 +320,4 @@ let prim =
   | "encodeUtf8" ->
       fun _ v k -> k (Blob (as_text v))
 
-  | s -> raise (Invalid_argument ("Value.prim: " ^ s))
+  | s -> trap.trap ("Value.prim: " ^ s)

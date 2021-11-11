@@ -371,9 +371,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
-    k (V.Func (CC.call_conv_of_typ exp.note.note_typ, fun env v k ->
-      try Prim.prim s env v k
-      with Invalid_argument s -> trap exp.at "%s" s
+    k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
+       Prim.prim { Prim.trap = trap exp.at "%s" } s
     ))
   | VarE id ->
     begin match Lib.Promise.value_opt (find id.it env.vals) with
