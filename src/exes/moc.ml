@@ -242,11 +242,13 @@ let process_public_metadata_names () =
   in
   List.iter
     (fun s ->
-       if not (List.mem s valid_metadata_names) then
-         eprintf "moc: --public-metadata argument %s must be one of %s"
-           s
-           (String.concat ", " valid_metadata_names);
-         exit 1)
+      if not (List.mem s valid_metadata_names) then
+        begin
+          eprintf "moc: --public-metadata argument %s must be one of %s"
+            s
+            (String.concat ", " valid_metadata_names);
+          exit 1
+        end)
     (!Flags.public_metadata_names)
 
 let () =
