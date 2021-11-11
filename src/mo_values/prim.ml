@@ -75,7 +75,7 @@ let num_conv_trap_prim trap t1 t2 =
   | T.Float, T.Int -> fun v -> Int (Int.of_big_int (bigint_of_double (as_float v)))
   | T.Int, T.Float -> fun v -> Float (Wasm.F64.of_float (Big_int.float_of_big_int (Int.to_big_int (as_int v))))
 
-  | t1, t2 -> raise (Invalid_argument T.("Value.num_conv_trap_prim: " ^ string_of_typ (Prim t1) ^ string_of_typ (Prim t2) ))
+  | t1, t2 -> trap.trap T.("Value.num_conv_trap_prim: " ^ string_of_typ (Prim t1) ^ string_of_typ (Prim t2))
 
 (*
 It is the responsibility of prelude/prelude.ml to define num_wrap_t1_t2 only
@@ -96,7 +96,7 @@ let prim trap =
     | 1 -> sprintf "%.*e" prec
     | 2 -> sprintf "%.*g" prec
     | 3 -> sprintf "%.*h" prec
-    | _ -> fun _ -> raise (Invalid_argument "float_formatter: unrecognised mode") in
+    | _ -> fun _ -> trap.trap "float_formatter: unrecognised mode" in
   function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
