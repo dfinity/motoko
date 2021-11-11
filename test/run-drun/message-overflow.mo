@@ -10,7 +10,7 @@ actor a {
    };
 
    public func go () : async () {
-      let n = toN(10000, null);
+      let n = toN(50000, null);
       await m(n);
    };
 
