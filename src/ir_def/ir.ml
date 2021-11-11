@@ -139,6 +139,11 @@ and prim =
   | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
+  (* Array field iteration/access *)
+  | NextArrayOffset of spacing        (* advance array offset *)
+  | ValidArrayOffset                  (* verify array offset *)
+  | DerefArrayOffset                  (* array offset indexing *)
+  | GetPastArrayOffset of spacing     (* array offset past the last element *)
   (* Funds *)
   | SystemCyclesAddPrim
   | SystemCyclesAcceptPrim
@@ -159,13 +164,14 @@ and prim =
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
 
+and spacing = One | ElementSize        (* increment units when iterating over arrays *)
 
 (* Declarations *)
 
 and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                          (* immutable *)
-  | VarD of id * Type.typ * exp                           (* mutable *)
+  | VarD of id * Type.typ * exp                (* mutable *)
 
 (* Literals *)
 
@@ -251,7 +257,11 @@ let map_prim t_typ t_id p =
   | DotPrim _
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
-  | IdxPrim -> p
+  | IdxPrim
+  | NextArrayOffset _
+  | ValidArrayOffset
+  | DerefArrayOffset
+  | GetPastArrayOffset _ -> p
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim
