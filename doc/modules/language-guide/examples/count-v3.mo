@@ -7,7 +7,7 @@ actor Counter {
     return value;
   };
 
-  public func reset() : async () {
-    value := 0;
+  public query func read() : async Nat {
+    return value;
   }
 }

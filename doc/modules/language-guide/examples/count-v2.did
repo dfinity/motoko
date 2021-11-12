@@ -1,4 +1,4 @@
 service : {
   inc: () -> (int);
-  reset: () -> ();
+  read: () -> (int) query;
 }

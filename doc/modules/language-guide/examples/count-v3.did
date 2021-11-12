@@ -1,4 +1,4 @@
 service : {
   inc: () -> (nat);
-  reset: () -> ();
+  read: () -> (nat) query;
 }

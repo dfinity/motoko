@@ -1,4 +1,4 @@
-== Adding Stabilizers to Motoko
+== Upgrade Compatibility
 
 The following is a simple example of how to declare a stateful counter
 that can be upgraded while preserving the counter's state:
