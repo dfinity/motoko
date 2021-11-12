@@ -1,4 +1,4 @@
-= Adding Stabilizers to Motoko
+== Adding Stabilizers to Motoko
 
 The following is a simple example of how to declare a stateful counter
 that can be upgraded while preserving the counter's state:
@@ -8,15 +8,17 @@ that can be upgraded while preserving the counter's state:
 include::../examples/count-v0.mo[]
 ....
 
+```
 0 -inc()->
 1 -inc()->
 2 -upgrade->
 0 -inc()->  // OOPS!
-1 ...
+1
+```
 
 Every time we upgrade the counter (say with itself), it's state is lost.
 
-Let's make the state `stable`.
+Let's make the state +stable+ (across upgrades).
 
 [source, motoko]
 ....
@@ -25,61 +27,118 @@ include::../examples/count-v1.mo[]
 
 Now the state is preserved across upgrades.
 
+=== Marking state +stable+
+```
+0 -inc()->
+1 -inc()->
+2 -upgrade->
+2 -inc()->
+3 -inc()-> ...
+```
+=== Evolving the candid interface:
+
 Let's extend the API - old clients still satisfied, new ones get
-extra features (reset).
+extra features (the +reset+ query).
 
 [source, motoko]
 ....
 include::../examples/count-v2.mo[]
 ....
 
+=== Changing the stable interface
+
 Let's refactor and upgrade (shouldn't break our clients)
+
+The counter is always positive, use a +Nat+!
 
 [source, motoko]
 ....
 include::../examples/count-v3.mo[]
 ....
 
-BOOM! The unthinkable has happened: state is lost by a silent reset.
+```
+v2:
+3 -upgrade v3->
+0 -inc()-> // 0 != 4 !
+1 -inc()-> ...
+```
 
-Why? The external API evolved just fine.
-...But the stable API did not.
+BOOM!
 
-An upgrade must be able to consume any stable variables from its predecessor or run the initializer for new stable variables.
+Code replaced, but counter is back to 0.
+
+The unthinkable has happened: state was lost in an upgrade.
+
+=== What gives?
+
+The Candid API evolved just fine (to Candid subtypes).
+
+...but the stable API did not.
+
+An upgrade must be able to:
+* consume any stable variable value from its predecessor
+* or run the initializer for new stable variables.
 
 Since `Int </: Nat`, the upgrade logic discards the saved `Int` (what if it was `-1`?) and continues to runs the initializer instead.
 
 What's worse, the upgrade silently succeeded, resetting the counter to 0.
 
+=== Stable signatures:
+
 A stable variable signature looks like the insides of an {proglang} actor type:
 
 [source.no-repl, motoko]
 ....
-actor {
-  stable var value : Nat;
-};
+include::../examples/count-v2.most[]
 ....
 
 [source.no-repl, motoko]
 ....
-actor {
-  stable var value : Int;
-};
+include::../examples/count-v3.most[]
 ....
-
 
 In the last upgrade, the Candid change is safe,
 but the stable variable change is unsafe.
 
-Motoko now provides command-line args to emit and check stable sigatures for compatibility, and embed candid and stable signatures in custom sections.
+A old `Int` cannot always be consumed as an `Int`.
 
-To upgrade from cur.wasm to nxt.wasm check +both+ Candid interface and stable variables are "compatible"
+=== Tooling
+
+Motoko (now) provides command-line args to emit and check stable sigatures (and candid) for upgrade compatibility (as a file and in wasm custom sections).
+
+To upgrade from +cur.wasm+ to +nxt.wasm+ check +both+ Candid interface and stable variables are "compatible"
 
 ....
 didc check nxt.did cur.did  // nxt <: cur
 moc --stable-compatible cur.sig nxt.sig  // cur <<: nxt
 ....
 
-Eventually, dfx should be able to query the IC for a canister's dual interfaces and check full compatibility.
+Eventually, dfx should be able to query the IC
+for a canister's dual interfaces and check compatibility.
 
+=== Why are we seeing data-loss only now?
+
+A side-effect of a revision to Candid (used for stabilizing variables):
+
+* Previously, upgrades from count-v2 to count-v2 would fail (no data loss).
+* Candid revision meant upgrade would now succeed, but with data loss.
+
+=== The right solution
+
+What if we really do want to change `value` to `Nat`.
+
+Solution: introduce a new stable variable, `newValue`, initialized from the old one:
+
+[source.no-repl, motoko]
+....
+include::../examples/count-v4.moc[]
+....
+
+
+[source.no-repl, motoko]
+....
+include::../examples/count-v4.most[]
+....
+
+(Or use a variant from the start...)
 
