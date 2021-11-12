@@ -69,6 +69,16 @@ let arg2E t = varE (arg2Var t)
 let define_eq : T.typ -> Ir.exp -> Ir.dec = fun t e ->
   Construct.nary_funcD (eq_var_for t) [arg1Var t; arg2Var t] e
 
+let define_eq_mat : T.typ -> Ir.exp -> Ir.dec = fun t e ->
+  Construct.nary_funcD
+    (eq_var_for t)
+    [arg1Var t; arg2Var t]
+    (ifE
+       (primE SameReference [arg1E t; arg2E t])
+       (trueE ())
+       e
+       T.bool)
+
 let array_eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e1 e2 ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [eq_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.bool]) in
@@ -143,7 +153,8 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
   | T.Variant fs ->
-    define_eq t (
+    (* FIXME: when list/tree-like, i.e. non-flat type *)
+    define_eq_mat t (
       (* switching on the diagonal *)
       { it = SwitchE
         ( tupE [arg1E t; arg2E t],
