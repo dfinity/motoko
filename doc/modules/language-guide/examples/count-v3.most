@@ -1,0 +1,1 @@
+actor {stable var value : Nat};

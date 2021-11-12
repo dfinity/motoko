@@ -1,0 +1,85 @@
+= Adding Stabilizers to Motoko
+
+The following is a simple example of how to declare a stateful counter
+that can be upgraded while preserving the counter's state:
+
+[source, motoko]
+....
+include::../examples/count-v0.mo[]
+....
+
+0 -inc()->
+1 -inc()->
+2 -upgrade->
+0 -inc()->  // OOPS!
+1 ...
+
+Every time we upgrade the counter (say with itself), it's state is lost.
+
+Let's make the state `stable`.
+
+[source, motoko]
+....
+include::../examples/count-v1.mo[]
+....
+
+Now the state is preserved across upgrades.
+
+Let's extend the API - old clients still satisfied, new ones get
+extra features (reset).
+
+[source, motoko]
+....
+include::../examples/count-v2.mo[]
+....
+
+Let's refactor and upgrade (shouldn't break our clients)
+
+[source, motoko]
+....
+include::../examples/count-v3.mo[]
+....
+
+BOOM! The unthinkable has happened: state is lost by a silent reset.
+
+Why? The external API evolved just fine.
+...But the stable API did not.
+
+An upgrade must be able to consume any stable variables from its predecessor or run the initializer for new stable variables.
+
+Since `Int </: Nat`, the upgrade logic discards the saved `Int` (what if it was `-1`?) and continues to runs the initializer instead.
+
+What's worse, the upgrade silently succeeded, resetting the counter to 0.
+
+A stable variable signature looks like the insides of an {proglang} actor type:
+
+[source.no-repl, motoko]
+....
+actor {
+  stable var value : Nat;
+};
+....
+
+[source.no-repl, motoko]
+....
+actor {
+  stable var value : Int;
+};
+....
+
+
+In the last upgrade, the Candid change is safe,
+but the stable variable change is unsafe.
+
+Motoko now provides command-line args to emit and check stable sigatures for compatibility, and embed candid and stable signatures in custom sections.
+
+To upgrade from cur.wasm to nxt.wasm check +both+ Candid interface and stable variables are "compatible"
+
+....
+didc check nxt.did cur.did  // nxt <: cur
+moc --stable-compatible cur.sig nxt.sig  // cur <<: nxt
+....
+
+Eventually, dfx should be able to query the IC for a canister's dual interfaces and check full compatibility.
+
+
