@@ -488,6 +488,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: T.nat;
       typ exp2 <: T.nat;
       T.bool <: t
+    | SameReference, [exp1; exp2] ->
+      (*FIXME typ exp1 <: T.nat;
+      typ exp2 <: T.nat;*)
+      T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with

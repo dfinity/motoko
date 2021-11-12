@@ -92,7 +92,8 @@ let primE prim es =
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | NextArrayOffset _ -> T.nat
-    | ValidArrayOffset -> T.bool
+    | ValidArrayOffset
+    | SameReference -> T.bool
     | GetPastArrayOffset _ -> T.nat
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
