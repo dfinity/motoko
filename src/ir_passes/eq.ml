@@ -57,7 +57,7 @@ let eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t e1 e2 ->
   then blockE [expD (ignoreE e1); expD (ignoreE e2)] (trueE ())
   else if Check_ir.has_prim_eq t
   then primE (RelPrim (t, Operator.EqOp)) [e1; e2]
-  else varE (eq_var_for t) -*- (tupE [e1; e2])
+  else varE (eq_var_for t) -*- tupE [e1; e2]
 
 (* Construction helpers *)
 
