@@ -38,7 +38,7 @@ Now the state is preserved across upgrades.
 === Evolving the candid interface:
 
 Let's extend the API - old clients still satisfied, new ones get
-extra features (the +reset+ query).
+extra features (the +read+ query).
 
 [source, motoko]
 ....
@@ -76,10 +76,11 @@ The Candid API evolved just fine (to Candid subtypes).
 ...but the stable API did not.
 
 An upgrade must be able to:
+
 * consume any stable variable value from its predecessor
 * or run the initializer for new stable variables.
 
-Since `Int </: Nat`, the upgrade logic discards the saved `Int` (what if it was `-1`?) and continues to runs the initializer instead.
+Since `Int </: Nat`, the upgrade logic discards the saved `Int` (what if it was `-1`?) and re-runs the initializer instead.
 
 What's worse, the upgrade silently succeeded, resetting the counter to 0.
 
@@ -131,7 +132,7 @@ Solution: introduce a new stable variable, `newValue`, initialized from the old 
 
 [source.no-repl, motoko]
 ....
-include::../examples/count-v4.moc[]
+include::../examples/count-v4.mo[]
 ....
 
 
