@@ -1391,7 +1391,7 @@ and pp_stab_sig ppf sig_ =
           depr = None }) ds)
   in
   let pp_stab_fields ppf sig_ =
-    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
+    fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
       (string_of_obj_sort Actor)
       (pp_print_list ~pp_sep:semi (pp_stab_field [])) sig_
   in
