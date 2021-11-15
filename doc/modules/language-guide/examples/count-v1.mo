@@ -1,4 +1,4 @@
-actor Counter {
+actor Counter_v1 {
 
   stable var value : Int = 0;
 

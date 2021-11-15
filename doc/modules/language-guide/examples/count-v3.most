@@ -1,1 +1,3 @@
-actor {stable var value : Nat};
+actor {
+  stable var value : Nat
+};

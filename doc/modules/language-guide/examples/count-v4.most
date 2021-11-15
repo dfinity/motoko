@@ -1,1 +1,4 @@
-actor {stable var newValue : Nat; stable var value : Int};
+actor {
+  stable var newValue : Nat;
+  stable var value : Int
+};

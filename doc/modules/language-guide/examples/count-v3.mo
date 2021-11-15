@@ -1,4 +1,4 @@
-actor Counter {
+actor Counter_v3 {
 
   stable var value : Nat = 0;
 

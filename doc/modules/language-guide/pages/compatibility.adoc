@@ -61,7 +61,7 @@ include::../examples/count-v2.mo[]
 
 === Changing the stable interface
 
-Obersvation: the counter is always positive, use a +Nat+!
+Obersvation: the counter is always positive, use a `Nat`!
 
 Let's refactor and upgrade (shouldn't break our clients)
 
@@ -202,6 +202,17 @@ To upgrade from `cur.wasm` to `nxt.wasm` we need check +both+ Candid interface a
 ....
 didc check nxt.did cur.did  // nxt <: cur
 moc --stable-compatible cur.most nxt.most  // cur <<: nxt
+....
+
+E.g.
+
+[source]
+....
+> moc --stable-compatible count-v2.most count-v3.most 
+(unknown location): Compatibility error [M0170], stable variable value of previous type
+  var Int
+cannot be consumed at new type
+  var Nat
 ....
 
 == Metadata Sections
