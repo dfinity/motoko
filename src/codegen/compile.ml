@@ -7495,6 +7495,13 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e1 ^^
       compile_exp_vanilla env ae e2 ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+    | SameVariantTag _, [e1; e2] ->
+      SR.bool,
+      compile_exp_vanilla env ae e1 ^^
+      Variant.get_variant_tag ^^
+      compile_exp_vanilla env ae e2 ^^
+      Variant.get_variant_tag ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq))
     | DerefArrayOffset, [e1; e2] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)

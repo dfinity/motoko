@@ -67,6 +67,7 @@ and prim = function
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
   | GetPastArrayOffset _ -> Atom "GetPastArrayOffset"
   | SameReference     -> Atom "SameReference"
+  | SameVariantTag t  -> "SameVariantTag"  $$ [typ t]
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
   | AwaitPrim         -> Atom "AwaitPrim"

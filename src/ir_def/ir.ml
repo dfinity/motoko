@@ -133,8 +133,9 @@ and prim =
   | ValidArrayOffset                  (* verify array offset *)
   | DerefArrayOffset                  (* array offset indexing *)
   | GetPastArrayOffset of spacing     (* array offset past the last element *)
-  (* Material equality *)
+  (* Material/Variant equality *)
   | SameReference                     (* raw pointer equality *)
+  | SameVariantTag of Type.typ        (* raw variant tag equality *)
   (* Funds *)
   | SystemCyclesAddPrim
   | SystemCyclesAcceptPrim
@@ -254,6 +255,7 @@ let map_prim t_typ t_id p =
   | DerefArrayOffset
   | GetPastArrayOffset _
   | SameReference -> p
+  | SameVariantTag t -> SameVariantTag (t_typ t)
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim

@@ -493,6 +493,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t1 <: t2;
       t2 <: t1; (* i.e. t1 = t2 *)
       T.bool <: t
+    | SameVariantTag tv, [exp1; exp2] ->
+      typ exp1 <: tv;
+      typ exp2 <: tv;
+      T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
