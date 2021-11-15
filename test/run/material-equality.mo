@@ -13,8 +13,10 @@ func bar() {
 
 // CHECK: (func $foo
 // CHECK: call $@eq<v_ant:u_vari:u_>
+// CHECK: call $@eq<v_ant:u_vari:u_>
 func foo() {
-    ignore (v1 == w1)
+    assert v1 == w1;
+    assert #vari != w1
 };
 
 foo();

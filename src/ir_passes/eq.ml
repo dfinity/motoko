@@ -69,14 +69,14 @@ let arg2E t = varE (arg2Var t)
 let define_eq : T.typ -> Ir.exp -> Ir.dec = fun t e ->
   Construct.nary_funcD (eq_var_for t) [arg1Var t; arg2Var t] e
 
-let define_eq_mat : T.typ -> Ir.exp -> Ir.dec = fun t e ->
+let define_eq_variant : T.typ -> Ir.exp -> Ir.dec = fun t e ->
   Construct.nary_funcD
     (eq_var_for t)
     [arg1Var t; arg2Var t]
     (ifE
        (primE SameReference [arg1E t; arg2E t])
        (trueE ())
-       e
+       (ifE (primE (SameVariantTag t) [arg1E t; arg2E t]) e (falseE ()) T.bool)
        T.bool)
 
 let array_eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e1 e2 ->
@@ -154,7 +154,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
   | T.Variant fs ->
     (* FIXME: when list/tree-like, i.e. non-flat type *)
-    define_eq_mat t (
+    define_eq_variant t (
       (* switching on the diagonal *)
       { it = SwitchE
         ( tupE [arg1E t; arg2E t],
