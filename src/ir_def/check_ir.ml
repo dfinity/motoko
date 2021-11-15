@@ -464,7 +464,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       List.iter (fun e -> typ e <: t0) exps;
       let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
       t1 <: t
-    | IdxPrim, [exp1; exp2] ->
+    | (IdxPrim | DerefArrayOffset), [exp1; exp2] ->
       let t1 = T.promote (typ exp1) in
       let t2 = try T.as_array_sub t1 with
                | Invalid_argument _ ->
@@ -473,6 +473,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | GetPastArrayOffset _, [exp1] ->
+      let t1 = T.promote (typ exp1) in
+      ignore
+        (try T.as_array_sub t1 with
+         | Invalid_argument _ ->
+           error env exp1.at "expected array type, but expression produces type\n  %s"
+             (T.string_of_typ_expand t1));
+      T.nat <: t
+    | NextArrayOffset _, [exp1] ->
+      typ exp1 <: T.nat;
+      T.nat <: t
+    | ValidArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.nat;
+      typ exp2 <: T.nat;
+      T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with

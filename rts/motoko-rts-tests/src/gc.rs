@@ -25,8 +25,6 @@ use fxhash::{FxHashMap, FxHashSet};
 pub fn test() {
     println!("Testing garbage collection ...");
 
-    // TODO: Add more tests
-
     let mut page_alloc = TestPageAlloc::new();
 
     println!("  Testing predefined heaps...");
@@ -35,14 +33,13 @@ pub fn test() {
     }
 
     println!("  Testing random heaps...");
-    test_random_heap(&mut page_alloc, 14, 180);
     let max_seed = 100;
     for seed in 0..max_seed {
         print!("\r{}/{}", seed + 1, max_seed);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        test_random_heap(&mut page_alloc, seed, 500);
+        test_random_heap(&mut page_alloc, seed, 180);
     }
-    println!();
+    print!("\r");
 }
 
 fn test_heaps() -> Vec<TestHeap> {

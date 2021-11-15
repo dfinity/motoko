@@ -16,7 +16,19 @@ use mark_stack::MarkStack;
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe fn schedule_compacting_gc() {
-    if super::should_do_gc(crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap()) {
+    // 512 MiB slack for mark stack + allocation area for the next message
+    let slack: u64 = 512 * 1024 * 1024;
+    let heap_size_bytes: u64 =
+        u64::from(crate::constants::WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
+    // Larger than necessary to keep things simple
+    let max_bitmap_size_bytes = heap_size_bytes / 32;
+    // NB. `max_live` is evaluated in compile time to a constant
+    let max_live: Bytes<u64> = Bytes(heap_size_bytes - slack - max_bitmap_size_bytes);
+
+    if super::should_do_gc(
+        crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap(),
+        max_live,
+    ) {
         compacting_gc();
     }
 }

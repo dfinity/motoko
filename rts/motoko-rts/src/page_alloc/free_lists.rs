@@ -147,7 +147,7 @@ pub unsafe fn clear() {
 }
 
 /// Allocate single page
-pub unsafe fn alloc<GrowMemory>(mut grow_memory: GrowMemory) -> WasmPage
+pub unsafe fn alloc<GrowMemory>(grow_memory: GrowMemory) -> WasmPage
 where
     GrowMemory: FnMut(u16) -> u16, // Wasm memory.grow
 {

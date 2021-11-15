@@ -7,7 +7,13 @@ use crate::types::*;
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe fn schedule_copying_gc() {
-    if super::should_do_gc(crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap()) {
+    let max_live: Bytes<u64> =
+        Bytes(u64::from((crate::constants::WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
+
+    if super::should_do_gc(
+        crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap(),
+        max_live,
+    ) {
         copying_gc();
     }
 }

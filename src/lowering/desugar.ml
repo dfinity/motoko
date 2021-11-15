@@ -255,25 +255,24 @@ and transform_for_to_while p arr_exp proj e1 e2 =
      } *)
   let arr_typ = arr_exp.note.note_typ in
   let arrv = fresh_var "arr" arr_typ in
-  let size_exp = array_dotE arr_typ "size" (varE arrv) -*- exp e1 in
   let indx = fresh_var "indx" T.(Mut nat) in
-  let indexing_exp = match proj.it with
-    | "vals" -> primE I.IdxPrim [varE arrv; varE indx]
-    | "keys" -> varE indx
+  let spacing, indexing_exp = match proj.it with
+    | "vals" -> I.ElementSize, primE I.DerefArrayOffset [varE arrv; varE indx]
+    | "keys" -> I.One, varE indx
     | _ -> assert false in
+  let size_exp = primE I.(GetPastArrayOffset spacing) [varE arrv] in
   let size = fresh_var "size" T.nat in
   blockE
     [ letD arrv (exp arr_exp)
+    ; expD (exp e1)
     ; letD size size_exp
     ; varD indx (natE Numerics.Nat.zero)]
-    (whileE (primE (I.RelPrim (T.nat, LtOp))
+    (whileE (primE I.ValidArrayOffset
                [varE indx; varE size])
        (blockE [ letP (pat p) indexing_exp
                ; expD (exp e2)]
           (assignE indx
-             (primE (I.BinPrim (T.nat, AddOp))
-                [ varE indx
-                ; natE (Numerics.Nat.of_int 1)]))))
+             (primE I.(NextArrayOffset spacing) [varE indx]))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
