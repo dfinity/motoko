@@ -100,19 +100,16 @@ What's worse, the upgrade silently "succeeded", resetting the counter to `0`.
 
 === Stable type signatures
 
-A stable type signature looks like the insides of an Motoko actor type:
+A stable type signature looks like the "insides" of an Motoko actor type.
+
+For example, ``v2``'s stable types:
 
 [source.no-repl, motoko]
 ....
 include::../examples/count-v2.most[]
 ....
 
-To upgrade from ``v2``'s stable types:
-[source.no-repl, motoko]
-....
-include::../examples/count-v2.most[] 
-....
-to ``v3``'s stable types:
+An upgrade from ``v2`` to ``v3``'s stable types:
 [source.no-repl, motoko]
 ....
 include::../examples/count-v3.most[]
@@ -120,13 +117,18 @@ include::../examples/count-v3.most[]
 
 requires consuming an `Int` as a `Nat`: a _type error_.
 
-=== Interface Evolution
+=== Dual Interface Evolution
+
+An upgrade is safe provided:
+
+* the candid interface evolves to a subtype (old client remains satisfied); and
+* the stable type interface evolves to a compatible one (old variables can be consumed at a supertype, new ones added)
 
 [cols="1,5,5"]
 |===
 | version
-| candid type
-| stable sig
+| candid interface
+| stable type interface
 
 | v0
 a|
@@ -193,8 +195,8 @@ include::../examples/count-v3.most[]
 
 Motoko compiler (`moc`) now supports:
 
-* `moc --stable-types ...` emits stable types to  `.most` file
-* `moc --stable-compatible <pre> <post>` check two `.most` files for upgrade compatibility 
+* `moc --stable-types ...` emits stable types to a `.most` file
+* `moc --stable-compatible <pre> <post>` checks two `.most` files for upgrade compatibility 
 
 To upgrade from `cur.wasm` to `nxt.wasm` we need check +both+ Candid interface and stable variables are "compatible"
 
@@ -204,11 +206,11 @@ didc check nxt.did cur.did  // nxt <: cur
 moc --stable-compatible cur.most nxt.most  // cur <<: nxt
 ....
 
-E.g.
+E.g. the upgrade from `v2` to `v3` fails this check:
 
 [source]
 ....
-> moc --stable-compatible count-v2.most count-v3.most 
+> moc --stable-compatible v2.most v3.most 
 (unknown location): Compatibility error [M0170], stable variable value of previous type
   var Int
 cannot be consumed at new type
