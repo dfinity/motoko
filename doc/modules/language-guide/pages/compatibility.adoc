@@ -1,91 +1,93 @@
-== Upgrade Compatibility
+== Verifying Upgrade Compatibility
 
-The following is a simple example of how to declare a stateful counter
-that can be upgraded while preserving the counter's state:
+The following is a simple example of how to declare a stateful counter.
 
 [source, motoko]
 ....
 include::../examples/count-v0.mo[]
 ....
 
-```
-0 -inc()->
-1 -inc()->
-2 -upgrade->
-0 -inc()->  // OOPS!
-1
-```
+Unfortunately, when  we upgrade this counter (say with itself), it's state is lost.
 
-Every time we upgrade the counter (say with itself), it's state is lost.
+|===
+| version | state | status | call 
+| v0 | 0 | &check; | inc()  
+| v0 | 1 | &check; | inc() 
+| v0 | 2 | &check; | upgrade(v0) 
+| v0 | #0# | #&cross;#  | inc()  
+| v0 | 1 |  |
+|===
 
 === Marking state +stable+
 
-Let's make the state +stable+ (across upgrades).
+In Motoko, we can declare the state to be +stable+ (across upgrades).
 
 [source, motoko]
 ....
 include::../examples/count-v1.mo[]
 ....
 
-Now the state is preserved across upgrades.
+Now the state _is_ retained across upgrades.
 
-```
-v1:
-0 -inc()->
-1 -inc()->
-2 -upgrade to v1->
-2 -inc()->
-3 -inc()-> ...
-```
+
+|===
+| version | state | status | call 
+| v1 | 0 | &check; | inc()  
+| v1 | 1 | &check; | inc()  
+| v1 | 2 | &check; | upgrade(v1) 
+| v1 | 2 | #&check;# | inc() 
+| v1 | 3 | |
+|===
+
+
 === Evolving the candid interface:
 
 Let's extend the API - old clients still satisfied, new ones get
-extra features (the +read+ query).
+extra features (the `read` query).
 
 [source, motoko]
 ....
 include::../examples/count-v2.mo[]
 ....
 
-```
-v1:
-0 -inc()->
-1 -inc()->
-2 -upgrade to v2->
-2 -inc()->
-3 -read()-> ...
-```
+
+|===
+| version | state | status | call 
+| v1 | 3 | &check; | inc() 
+| v1 | 4 | &check; | upgrade(v2) 
+| v2 | 4 | #&check;# | inc() 
+| v2 | 5 | &check; | read() 
+|===
 
 === Changing the stable interface
 
+Obersvation: the counter is always positive, use a +Nat+!
+
 Let's refactor and upgrade (shouldn't break our clients)
 
-The counter is always positive, use a +Nat+!
 
 [source, motoko]
 ....
 include::../examples/count-v3.mo[]
 ....
 
-```
-v2:
-3 -inc()->
-4 -upgrade v3->
-0 -inc()-> // state reverts to 0!
-1 -read()-> ...
-```
+|===
+| version | state | status | call 
+| v2| 5 | &check; |  inc() 
+| v2 | 6  | &check; | upgrade(v3)
+| v3 | #0# | #&cross;# | inc() 
+| v3 | 1 | &check; | read()
+|===
 
 BOOM!
 
-Code replaced, but counter is back to 0.
+Code updated, but counter is back to 0.
 
-DANGER: _The unthinkable has happened_: state was lost in an upgrade.
+_The unthinkable has happened_: state was lost in an upgrade.
 
 === What gives?
 
-The Candid API evolved just fine (to Candid subtypes).
-
-...but the stable API did not.
+The Candid API evolved just fine (to Candid subtypes) ...but the stable types did not.
 
 An upgrade must be able to:
 
@@ -94,28 +96,31 @@ An upgrade must be able to:
 
 Since `Int </: Nat`, the upgrade logic discards the saved `Int` (what if it was `-1`?) and re-runs the initializer instead.
 
-What's worse, the upgrade silently succeeded, resetting the counter to 0.
+What's worse, the upgrade silently "succeeded", resetting the counter to `0`.
 
-=== Stable signatures:
+=== Stable type signatures
 
-A stable variable signature looks like the insides of an {proglang} actor type:
+A stable type signature looks like the insides of an Motoko actor type:
 
 [source.no-repl, motoko]
 ....
 include::../examples/count-v2.most[]
 ....
 
+To upgrade from ``v2``'s stable types:
+[source.no-repl, motoko]
+....
+include::../examples/count-v2.most[] 
+....
+to ``v3``'s stable types:
 [source.no-repl, motoko]
 ....
 include::../examples/count-v3.most[]
 ....
 
-In the last upgrade, the Candid change is safe,
-but the stable variable change is unsafe.
+requires consuming an `Int` as a `Nat`: a _type error_.
 
-A old `Int` cannot always be consumed as an `Int`.
-
-=== Evolution
+=== Interface Evolution
 
 [cols="1,5,5"]
 |===
@@ -186,25 +191,36 @@ include::../examples/count-v3.most[]
 
 === Tooling
 
-Motoko (now) provides command-line args to emit and check stable sigatures (and candid) for upgrade compatibility (as a file and in wasm custom sections).
+Motoko compiler (`moc`) now supports:
 
-To upgrade from +cur.wasm+ to +nxt.wasm+ check +both+ Candid interface and stable variables are "compatible"
+* `moc --stable-types ...` emits stable types to  `.most` file
+* `moc --stable-compatible <pre> <post>` check two `.most` files for upgrade compatibility 
 
+To upgrade from `cur.wasm` to `nxt.wasm` we need check +both+ Candid interface and stable variables are "compatible"
+
+[source]
 ....
 didc check nxt.did cur.did  // nxt <: cur
-moc --stable-compatible cur.sig nxt.sig  // cur <<: nxt
+moc --stable-compatible cur.most nxt.most  // cur <<: nxt
 ....
 
-Eventually, dfx should be able to query the IC
-for a canister's dual interfaces and check compatibility.
+== Metadata Sections
+
+Motoko embeds `.did` and `.most` files as wasm _custom sections_, for use by other tools, e.g. dfx.
+
+In future, `dfx canister upgrade` will:
+
+* query the IC for a canister's dual interfaces, and
+* check compatibility of the intalled and new binary.
 
 === Why are we seeing data-loss only now?
 
 A side-effect of a revision to Candid (used for stabilizing variables):
 
-* Previously, upgrades from count-v2 to count-v2 would fail (no data loss).
-* Candid revision meant upgrade would now succeed, but with data loss.
+* Previously, upgrades from `v2.wasm` to `v3.wasm` would fail and roll-back (no data loss).
+* Candid revision meant upgrade would now "succeed", but _with_ data loss.
 
+(fail safe vs silent failure)
 
 === The right solution
 
