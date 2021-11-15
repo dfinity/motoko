@@ -363,7 +363,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | SameReference, [v1; v2] ->
         k (V.Bool (v1 == v2))
       | SameVariantTag _, [v1; v2] ->
-        k (V.Bool (fst (V.as_variant v1) == fst (V.as_variant v2)))
+        k (V.Bool (fst (V.as_variant v1) = fst (V.as_variant v2)))
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
