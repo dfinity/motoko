@@ -841,16 +841,17 @@ let encode (em : extended_module) =
     let motoko_section_body labels =
       section 0 (vec string) labels (labels <> [])
 
-    let stable_types_body s =
-      string s
+    let utf8 bs =
+      ignore (Wasm.Utf8.decode bs);  (* assert well-formedness *)
+      put_string s bs
 
     let motoko_sections motoko =
-      icp_custom_section "motoko:stable-types" stable_types_body motoko.stable_types;
+      icp_custom_section "motoko:stable-types" utf8 motoko.stable_types;
       custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> []) (* TODO: make an icp_section *)
 
     let candid_sections candid =
-      icp_custom_section "candid:service" string candid.service;
-      icp_custom_section "candid:args" string candid.args
+      icp_custom_section "candid:service" utf8 candid.service;
+      icp_custom_section "candid:args" utf8 candid.args
 
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)

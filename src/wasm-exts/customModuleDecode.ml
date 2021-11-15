@@ -817,17 +817,24 @@ let motoko_section_content p_end s =
 
 let is_motoko n = (n = Utf8.decode "motoko")
 
-let string_content _ s = string s
+let utf8 sec_end s =
+  let pos = pos s in
+  let bytes = get_string (sec_end - pos) s in
+  try
+    let _ = Utf8.decode (string s) in
+    bytes
+  with Utf8.Utf8 ->
+    error s pos "malformed UTF-8 encoding"
 
 let motoko_sections s =
-  let stable_types = icp_custom_section "motoko:stable-types" string_content None s in
+  let stable_types = icp_custom_section "motoko:stable-types" utf8 None s in
   custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types} s
 
 (* Candid sections *)
 
 let candid_sections s =
-  let service = icp_custom_section "candid:service" string_content None s in
-  let args = icp_custom_section "candid:args" string_content None s in
+  let service = icp_custom_section "candid:service" utf8 None s in
+  let args = icp_custom_section "candid:args" utf8 None s in
   { service; args }
 
 (* Other custom sections *)
