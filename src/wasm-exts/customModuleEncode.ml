@@ -842,11 +842,8 @@ let encode (em : extended_module) =
       section 0 (vec string) labels (labels <> [])
 
     let utf8 bs =
-      try
-        let _ = Wasm.Utf8.decode bs in
-        put_string s bs
-      with Wasm.Utf8.Utf8 ->
-        assert false
+      ignore (Wasm.Utf8.decode bs);  (* assert well-formedness *)
+      put_string s bs
 
     let motoko_sections motoko =
       icp_custom_section "motoko:stable-types" utf8 motoko.stable_types;
