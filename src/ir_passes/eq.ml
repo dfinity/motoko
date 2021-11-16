@@ -152,8 +152,11 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
       ) fs)
     ),
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
+  | T.Variant fs when List.for_all T.(fun f -> is_unit (normalize f.typ)) fs ->
+    (* enum-like, i.e. flat variant *)
+    define_eq_variant t (trueE ()),
+    List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Variant fs ->
-    (* FIXME: when list/tree-like, i.e. non-flat type *)
     define_eq_variant t (
       (* switching on the diagonal *)
       { it = SwitchE
