@@ -7,7 +7,5 @@ actor Counter_v3 {
     return value;
   };
 
-  public query func read() : async Nat {
-    return value;
-  }
+  public query func read() : async Nat { return value; }
 }

@@ -6,5 +6,4 @@ actor Counter_v1 {
     value += 1;
     return value;
   };
-
 }
