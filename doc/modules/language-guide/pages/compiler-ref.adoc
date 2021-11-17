@@ -40,7 +40,9 @@ You can use the following options with the `+moc+` command.
 
 |`+--check+` |Performs type checking only.
 
-|`+--compacting-gc+` |Link with compacting GC instead of copying GC.
+|`+--compacting-gc+` | Use compacting GC (default)
+
+|`+--copying-gc+` | Use copying GC
 
 |`+--debug+` |Respects debug expressions in the source (the default).
 
@@ -97,6 +99,10 @@ You can use the following options with the `+moc+` command.
 |`+--release+` |Ignores debug expressions in the source.
 
 //|`+--sanity-checks+` |Enable sanity checking in the runtime system and generated code (for compiler development only).
+
+| `--stable-types` |Emit signature of stable types to .most file
+
+| `--stable-compatible <pre> <post>` |Test upgrade compatibility between stable-type signatures <pre> and <post>
 
 |`+-t+` |Activates tracing in interpreter.
 

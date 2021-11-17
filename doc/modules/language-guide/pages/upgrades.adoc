@@ -41,18 +41,6 @@ that can be upgraded while preserving the counter's value:
 include::../examples/StableCounter.mo[]
 ....
 
-////
-The representation for stable variable signatures looks like a {proglang} actor type:
-
-[source.no-repl, motoko]
-....
-actor {
-  stable x : Nat;
-  stable var y : Int;
-  stable z : [var Nat];
-};
-....
-////
 
 NOTE: You can only use the `+stable+` or `+flexible+` modifier on `+let+` and `+var+` declarations that are **actor fields**. You cannot use these modifiers anywhere else in your program.
 
@@ -118,6 +106,53 @@ Note that the type of `+entries+`, being just an array of `+Text+` and `+Nat+` p
 In this example, the `+preupgrade+` system method simply writes the current `+map+` entries to `+entries+` before `+entries+` is saved to stable memory.
 The `+postupgrade+` system method resets `+entries+` to the empty array after `+map+` has been populated from `+entries+` to free space.
 
+== Stable type signatures
+
+The collection of stable variable declarations in an actor can be summarized in stable signature.
+
+The textual representation of an actor's stable signature resembles the internals of a {proglang} actor type:
+
+[source.no-repl, motoko]
+....
+actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};
+....
+
+It specifies the names, types and mutability of the actor's stable fields, possibly preceded by relevant Motoko type declarations.
+
+TIP: You can emit the stable signature of the main actor or actor class to a `.most` file using `moc` compiler option `--stable-types`.
+
+A stable signature, `<stab-sig1>`, is _stable-compatible_ with signature `<stab-sig2>`, if, and only,
+
+* every immutable field `stable <id> : T` in `<stab-sig1>` has a matching field `stable <id> : U` in `<stab-sig2>` with `T <: U`.
+* every mutable field `stable var <id> : T` in `<stab-sig1>` has a matching field `stable var <id> : U` in `<stab-sig2>` with `T <: U`.
+
+Note that `<stab-sig2>` may contain additional fields.
+
+The subtyping condition on stable fields ensures that the final value of a name field can be consumed as the initial value of that field in the upgraded code.
+
+TIP: You can check the stable-compatiblity of two `.most` files, `cur.most` and `nxt.most` (containing stable signatures), using `moc` compiler option `--stable-compatible cur.most nxt.most`.
+
+NOTE: The +stable-compatible_ relation is quite conservative. In future, it may be relaxed to accommodate a change in field mutability
+and/or abandoning fields from `<stab-sig1>` (but with a warning).
+
+== Upgrade safety
+
+Before upgrading a canister, you should ensure that the upgrade is safe and will not
+
+* break existing clients (due to a Candid interface change); or
+* discard Motoko stable state (due to an incompatible change in stable declarations)
+
+A {proglang} canister upgrade is safe provided:
+
+* the canister's Candid interface evolves to a Candid subtype; and
+* the canisters's Motoko stable signature evolves to a _stable-compatible_ one.
+
 == Upgrading the compiled program
 
 After you have deployed a {proglang} program with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade the deployed code. For information about upgrading the deployed program, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister].
+
+//// TODO mention check
