@@ -160,7 +160,7 @@ The `didc` tool is available at https://github.com/dfinity/candid.
 
 == Metadata sections
 
-The Motoko compiler embeds the Candid interface and _stable signature_
+The Motoko compiler embeds the Candid interface and stable signature
 of a canister as canister metadata, recorded in additional Wasm custom
 sections of a compiled binary.
 
