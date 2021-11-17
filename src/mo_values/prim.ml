@@ -197,8 +197,6 @@ let prim =
   | "crc32Hash" -> fun _ v k -> let s = as_blob v in
     let i = Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)) in
     k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 i)))
-  | "array_len" -> fun _ v k ->
-    k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_blob v))))
   | "blob_vals_iter" -> fun _ v k ->
