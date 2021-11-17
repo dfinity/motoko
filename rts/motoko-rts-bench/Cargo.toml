@@ -1,0 +1,11 @@
+[package]
+name = "motoko-rts-bench"
+version = "0.1.0"
+authors = ["dfinity <sdk@dfinity.org>"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.4.3"
+fxhash = "0.2.1"
+libc = { version = "0.2.81", default_features = false }
+motoko-rts = { path = "../motoko-rts/native" }
