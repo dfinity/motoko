@@ -1,11 +1,11 @@
 actor Counter_v2 {
 
-  stable var value : Int = 0;
+  stable var state : Int = 0;
 
   public func inc() : async Int {
-    value += 1;
-    return value;
+    state += 1;
+    return state;
   };
 
-  public query func read() : async Int { return value; }
+  public query func read() : async Int { return state; }
 }

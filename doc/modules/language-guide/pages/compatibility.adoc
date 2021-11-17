@@ -22,7 +22,7 @@ include::../examples/count-v0.mo[]
 Unfortunately, when we upgrade this counter (say with itself), its state is lost.
 
 |===
-| version | state | status | call
+| version | state | success | call
 | v0 | 0 | &check; | inc()
 | v0 | 1 | &check; | inc()
 | v0 | 2 | &check; | upgrade(v0)
@@ -30,7 +30,7 @@ Unfortunately, when we upgrade this counter (say with itself), its state is lost
 | v0 | 1 |  |
 |===
 
-=== A _stable_ counter
+=== A stable counter
 
 In Motoko, we can declare variables to be +stable+ (across upgrades).
 
@@ -39,11 +39,12 @@ In Motoko, we can declare variables to be +stable+ (across upgrades).
 include::../examples/count-v1.mo[]
 ....
 
-This counter's state is _retained_ across upgrades.
+Because it's `stable`, this counter's `state` is _retained_ across upgrades.
 
+(If not marked `stable`, `state` would restart from `0` on upgrade).
 
 |===
-| version | state | status | call
+| version | state | success | call
 | v1 | 0 | &check; | inc()
 | v1 | 1 | &check; | inc()
 | v1 | 2 | &check; | upgrade(v1)
@@ -64,7 +65,7 @@ include::../examples/count-v2.mo[]
 
 
 |===
-| version | state | status | call
+| version | state | success | call
 | v1 | 3 | &check; | inc()
 | v1 | 4 | &check; | upgrade(v2)
 | v2 | 4 | #&check;# | inc()
@@ -81,7 +82,7 @@ include::../examples/count-v3.mo[]
 ....
 
 |===
-| version | state | status | call
+| version | state | success | call
 | v2| 5 | &check; |  inc()
 | v2 | 6  | &check; | upgrade(v3)
 | v3 | #0# | #&cross;# | inc()
@@ -222,7 +223,7 @@ E.g. the upgrade from `v2` to `v3` fails this check:
 [source.no-repl]
 ....
 > moc --stable-compatible v2.most v3.most
-(unknown location): Compatibility error [M0170], stable variable value of previous type
+(unknown location): Compatibility error [M0170], stable variable state of previous type
   var Int
 cannot be consumed at new type
   var Nat
@@ -281,9 +282,9 @@ A side-effect of a revision to Candid (used for stabilizing variables):
 
 === The right solution
 
-What if we really do want to change `value` to `Nat`.
+What if we really do want to change `state` to `Nat`.
 
-Solution: introduce a new stable variable, `newValue`, initialized from the old one:
+Solution: introduce a new stable variable, `newState`, initialized from the old one:
 
 [source.no-repl, motoko]
 ....
