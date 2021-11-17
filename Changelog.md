@@ -19,12 +19,12 @@
 
   If you encounter such cases, please adjust the type annotation.
 
-* Garbage collection scheduling algorithm is improved once again, and the
+* The garbage collection scheduling algorithm is improved once again, and the
   default garbage collection algorithm is now mark-compact. This change
   significantly reduces garbage collection overhead in terms of cycles, and
   canisters can now have close to 4 GiB live data (previously 2 GiB).
 
-  Previously mark-compact algorithm was behind the flag `--compacting-gc`. This
+  Previously, the mark-compact algorithm was behind the optional flag `--compacting-gc`. This
   flag is now the default, and a new flag `--copying-gc` is added to switch
   back to the old garbage collection algorithm. Note that `--copying-gc` should
   not be necessary as the new default is much more efficient.
