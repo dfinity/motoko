@@ -113,3 +113,8 @@ for (check8 in ["hello", "keyed", "world"].keys()) { ignore (check8 + num8) };
 func f9<A>(array : [A]) {
   for (check9 in array.keys()) { }
 }
+
+// make sure that one-byte-sized elements still work
+var sum10 : Nat8 = 0;
+for (check10 in ([3, 5, 7, 11] : [Nat8]).vals()) { sum10 += check10 };
+assert sum10 == 26
