@@ -145,15 +145,14 @@ and/or abandoning fields from `<stab-sig1>` (but with a warning).
 Before upgrading a deployed canister, you should ensure that the upgrade is safe and will not
 
 * break existing clients (due to a Candid interface change); or
-* discard Motoko stable state (due to an incompatible change in stable declarations)
+* discard Motoko stable state (due to an incompatible change in stable declarations).
 
 A {proglang} canister upgrade is safe provided:
 
 * the canister's Candid interface evolves to a Candid subtype; and
 * the canister's Motoko stable signature evolves to a _stable-compatible_ one.
 
-Upgrade safety does not guarantee that the upgrade process will succeed (it can still fail due to resource constraints). However, it should at least ensure that a successful upgrade will not break Candid type compatibility with existing clients or unexpectedly lose data that
-was marked `stable`.
+Upgrade safety does not guarantee that the upgrade process will succeed (it can still fail due to resource constraints). However, it should at least ensure that a successful upgrade will not break Candid type compatibility with existing clients or unexpectedly lose data that was marked `stable`.
 
 TIP: You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using  the `didc` tool with option  `--check nxt.did cur.did`.
 The `didc` tool is available at https://github.com/dfinity/candid.
@@ -167,10 +166,10 @@ sections of a compiled binary.
 This metadata can be selectively exposed by the IC and used
 by tools such as `dfx` to verify upgrade compatibility.
 
-== Upgrading the compiled program
+== Upgrading a deployed actor or canister smart contract
 
-After you have deployed a {proglang} actor with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade an already deployed version. For information about upgrading a deployed canister, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister].
+After you have deployed a {proglang} actor with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade an already deployed version. For information about upgrading a deployed canister, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister smart contract].
 
 
-An upcoming version of `+dfx+` will, if possible, check the safety of an upgrade by comparing the Candid and (for Motoko canisters only) the stable signatures embedded in the deployed binary and upgrade binary, and abort the upgrade request when unsafe.
+An upcoming version of `+dfx+` will, if appropriate, check the safety of an upgrade by comparing the Candid and (for Motoko canisters only) the stable signatures embedded in the deployed binary and upgrade binary, and abort the upgrade request when unsafe.
 
