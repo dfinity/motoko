@@ -132,11 +132,11 @@ A stable signature, `<stab-sig1>`, is _stable-compatible_ with signature `<stab-
 
 Note that `<stab-sig2>` may contain additional fields.
 
-The subtyping condition on stable fields ensures that the final value of a name field can be consumed as the initial value of that field in the upgraded code.
+The subtyping condition on stable fields ensures that the final value of some field can be consumed as the initial value of that field in the upgraded code.
 
 TIP: You can check the stable-compatiblity of two `.most` files, `cur.most` and `nxt.most` (containing stable signatures), using `moc` compiler option `--stable-compatible cur.most nxt.most`.
 
-NOTE: The +stable-compatible_ relation is quite conservative. In future, it may be relaxed to accommodate a change in field mutability
+NOTE: The _stable-compatible_ relation is quite conservative. In future, it may be relaxed to accommodate a change in field mutability
 and/or abandoning fields from `<stab-sig1>` (but with a warning).
 
 == Upgrade safety
