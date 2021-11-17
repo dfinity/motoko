@@ -203,11 +203,8 @@ let process_files files : unit =
     end;
 
     if !stable_types then begin
-      let sig_file =
-          (if Filename.extension !out_file <> "" then
-             Filename.remove_extension !out_file
-           else !out_file)
-          ^ ".most" in
+      let sig_file = Filename.remove_extension !out_file ^ ".most"
+      in
       CustomModule.(
         match module_.motoko.stable_types with
         | Some (_, txt) ->
