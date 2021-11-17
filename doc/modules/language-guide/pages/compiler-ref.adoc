@@ -84,6 +84,8 @@ You can use the following options with the `+moc+` command.
 
 |`+--package <package-name> <package-path>+` |Specifies a package-name package-path pair, separated by a space.
 
+|`+--public-metadata <name>+` |Emit icp custom section <name> (candid:args or candid:service or motoko:stable-types) as `public` (default is `private`)
+
 |`+--print-deps+` |Prints the dependencies for a given source file.
 
 //|`+--profile+` |Activates profiling counters in interpreters.

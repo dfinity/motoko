@@ -29,6 +29,11 @@ let gen_source_map = ref false
 let explain_code = ref ""
 let stable_types = ref false
 
+let valid_metadata_names =
+    ["candid:args";
+     "candid:service";
+     "motoko:stable-types"]
+
 let argspec = [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
@@ -75,7 +80,9 @@ let argspec = [
 
   "--public-metadata",
     Arg.String (fun n -> Flags.(public_metadata_names := n :: !public_metadata_names)),
-      "<name>  emit icp custom section <name> (if any) as `public` (default is `private`) ";
+    "<name>  emit icp custom section <name> (" ^
+      String.concat " or " valid_metadata_names ^
+      ") as `public` (default is `private`)";
 
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
@@ -239,11 +246,6 @@ let process_profiler_flags () =
   ()
 
 let process_public_metadata_names () =
-  let valid_metadata_names =
-    ["candid:args";
-     "candid:service";
-     "motoko:stable-types"]
-  in
   List.iter
     (fun s ->
       if not (List.mem s valid_metadata_names) then
