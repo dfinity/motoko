@@ -125,6 +125,9 @@ The command
 checks if the stable interface can evolve from `old.most` to `new.most` in
 a type safe way without unintentional data loss.
 
+If the check succeeds, nothing will be printed. 
+If the check fails, the error message will be printed in stderr and the command returns with exit code 1.
+
 Invoking the IDE
 ----------------
 
