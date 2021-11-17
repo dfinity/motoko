@@ -2297,10 +2297,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_a ^^ get_b ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
         G.if1 I32Type
-          (compile_unboxed_const (Bool.vanilla_lit true))
+          (Bool.lit true)
           (get_a ^^ get_b ^^
            BitTagged.if_both_tagged_scalar env [I32Type]
-             (compile_unboxed_const (Bool.vanilla_lit false))
+             (Bool.lit false)
              begin
                get_a ^^ BitTagged.if_tagged_scalar env [I32Type]
                  (get_a ^^ extend_and_box64 env)
