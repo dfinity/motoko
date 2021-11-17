@@ -115,6 +115,16 @@ Otherwise, it will be `icp:private <name>`. The `--public-metadata` flag applies
 The above metadata is stored in the Wasm module, and is only accessible by the controllers of the canister, unless the
 metadata name is specified in the `--public-metadata` flag.
 
+Checking stable type compatibility
+----------------------------------
+
+The command
+
+    moc --stable-compatible old.most new.most
+
+checks if the stable interface can evolve from `old.most` to `new.most` in
+a type safe way without unintentional data loss.
+
 Invoking the IDE
 ----------------
 
