@@ -112,7 +112,7 @@ for (check8 in ["hello", "keyed", "world"].keys()) { ignore (check8 + num8) };
 // polymorphic arrays should still work
 func f9<A>(array : [A]) {
   for (check9 in array.keys()) { }
-}
+};
 
 // make sure that one-byte-sized elements still work
 var sum10 : Nat8 = 0;
