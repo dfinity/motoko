@@ -154,7 +154,7 @@ A {proglang} canister upgrade is safe provided:
 
 Upgrade safety does not guarantee that the upgrade process will succeed (it can still fail due to resource constraints). However, it should at least ensure that a successful upgrade will not break Candid type compatibility with existing clients or unexpectedly lose data that was marked `stable`.
 
-TIP: You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using  the `didc` tool with option  `--check nxt.did cur.did`.
+TIP: You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using  the `didc` tool with argument `check nxt.did cur.did`.
 The `didc` tool is available at https://github.com/dfinity/candid.
 
 == Metadata sections
