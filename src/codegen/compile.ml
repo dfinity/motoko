@@ -152,6 +152,7 @@ module SR = struct
     | Const of Const.t
 
   let unreachable : t = Unreachable Noisy
+
   let unit = UnboxedTuple 0
 
   let bool = UnboxedBool
@@ -5833,12 +5834,11 @@ module StackRep = struct
       Arr.vanilla_lit env ptrs
     | Const.Lit l -> materialize_lit env l
 
-  let adjust env (sr_in : t) sr_out =
-    if eq sr_in sr_out
-    then G.nop
-    else match sr_in, sr_out with
-    | Unreachable _, Unreachable _ -> G.nop
-    | Unreachable Silent, _ -> (fun _ _ _ -> [])
+  let adjust env (sr_in : t) (sr_out : t) =
+    match sr_in, sr_out with
+    | _, _ when eq sr_in sr_out -> G.nop
+    | Unreachable Silent, _ -> fun _ _ _ -> []
+    | Unreachable Noisy, Unreachable Noisy -> G.nop
     | Unreachable Noisy, _ -> G.i Unreachable
 
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
