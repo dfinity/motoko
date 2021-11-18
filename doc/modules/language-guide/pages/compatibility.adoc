@@ -132,8 +132,12 @@ An upgrade is safe provided:
 * the candid interface evolves to a subtype; and
 * the stable interface evolves to a compatible one (variable to supertype or new)
 
-////
-// include below if desired
+[cols="1,5,5"]
+|===
+| version
+| candid interface
+| stable type interface
+
 | v0
 a|
 [source.no-repl, candid]
@@ -149,14 +153,6 @@ include::../examples/count-v0.most[]
 |
 | +:>+ &check;
 | +<<:+ &check;
-
-////
-
-[cols="1,5,5"]
-|===
-| version
-| candid interface
-| stable type interface
 
 | v1
 a|
