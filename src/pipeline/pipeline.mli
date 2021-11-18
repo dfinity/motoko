@@ -17,6 +17,8 @@ val check_files' : parse_fn -> string list -> unit Diag.result
 
 val stable_compatible : string -> string -> unit Diag.result
 
+val generate_idl : string list -> Idllib.Syntax.prog Diag.result
+
 val initial_stat_env : Scope.scope
 val chase_imports : parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->
   (Syntax.lib list * Scope.scope) Diag.result

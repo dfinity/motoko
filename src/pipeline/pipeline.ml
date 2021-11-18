@@ -474,6 +474,14 @@ let check_files' parsefn files : check_result =
 let check_files files : check_result =
   check_files' parse_file files
 
+(* Generate IDL *)
+
+let generate_idl files : Idllib.Syntax.prog Diag.result =
+  let open Diag.Syntax in
+  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
+  let* () = Typing.check_actors senv progs in
+  Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
+
 (* Running *)
 
 let run_files files : unit option =
