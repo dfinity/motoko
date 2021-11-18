@@ -133,7 +133,7 @@ and prim =
   | ValidArrayOffset                  (* verify array offset *)
   | DerefArrayOffset                  (* array offset indexing *)
   | GetPastArrayOffset of spacing     (* array offset past the last element *)
-  (* Material/Variant equality *)
+  (* Physical/Variant equality *)
   | SameReference                     (* raw pointer equality *)
   | SameVariantTag of Type.typ        (* raw variant tag equality *)
   (* Funds *)
