@@ -60,7 +60,7 @@ You can use the following options with the `+moc+` command.
 
 |`+-Werror+` |Treat warnings as errors.
 
-|`+--idl+` |Generates the interface description language specification.
+|`+--idl+` | Compile binary and emit Candid IDL specification to `.did` file.
 
 |`+-i+` |Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).
 
@@ -102,7 +102,7 @@ You can use the following options with the `+moc+` command.
 
 //|`+--sanity-checks+` |Enable sanity checking in the runtime system and generated code (for compiler development only).
 
-| `--stable-types` |Emit signature of stable types to .most file
+| `--stable-types` |Compile binary and emit signature of stable types to `.most` file.
 
 | `--stable-compatible <pre> <post>` |Test upgrade compatibility between stable-type signatures <pre> and <post>
 
