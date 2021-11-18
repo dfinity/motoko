@@ -137,7 +137,7 @@ The subtyping condition on stable fields ensures that the final value of some fi
 
 TIP: You can check the stable-compatiblity of two `.most` files, `cur.most` and `nxt.most` (containing stable signatures), using `moc` compiler option `--stable-compatible cur.most nxt.most`.
 
-NOTE: The _stable-compatible_ relation is quite conservative. In future, it may be relaxed to accommodate a change in field mutability
+NOTE: The _stable-compatible_ relation is quite conservative. In the future, it may be relaxed to accommodate a change in field mutability
 and/or abandoning fields from `<stab-sig1>` (but with a warning).
 
 == Upgrade safety
