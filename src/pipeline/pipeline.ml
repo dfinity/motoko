@@ -474,14 +474,6 @@ let check_files' parsefn files : check_result =
 let check_files files : check_result =
   check_files' parse_file files
 
-(* Generate IDL *)
-
-let generate_idl files : Idllib.Syntax.prog Diag.result =
-  let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
-  Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
-
 (* Running *)
 
 let run_files files : unit option =
@@ -636,7 +628,7 @@ let load_as_rts () =
   let rts = if !Flags.sanity then Rts.wasm_debug else Rts.wasm in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
-type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
+type compile_result = (Idllib.Syntax.prog * Wasm_exts.CustomModule.extended_module) Diag.result
 
 (* This transforms the flat list of libs (some of which are classes)
    into a list of imported libs and (compiled) classes *)
@@ -677,7 +669,8 @@ let compile_files mode do_link files : compile_result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
   let* () = Typing.check_actors senv progs in
-  Diag.return (compile_progs mode do_link libs progs)
+  let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
+  Diag.return (idl, compile_progs mode do_link libs progs)
 
 
 (* Interpretation (IR) *)

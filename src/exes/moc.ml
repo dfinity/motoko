@@ -10,14 +10,14 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | StableCompatible | Compile | Run | Interact | Idl | PrintDeps | Explain
+type mode = Default | Check | StableCompatible | Compile | Run | Interact | PrintDeps | Explain
 
 let mode = ref Default
 let args = ref []
 let add_arg source = args := !args @ [source]
 
 let set_mode m () =
-  if !mode <> Default then begin
+  if !mode <> Default && !mode <> m then begin
     eprintf "moc: multiple execution modes specified"; exit 1
   end;
   mode := m
@@ -28,6 +28,7 @@ let interpret_ir = ref false
 let gen_source_map = ref false
 let explain_code = ref ""
 let stable_types = ref false
+let idl = ref false
 
 let valid_metadata_names =
     ["candid:args";
@@ -46,8 +47,11 @@ let argspec = [
       Arg.String (fun fp -> Flags.post_ref := Some fp);
       Arg.Unit (set_mode StableCompatible);
       ],
-   "<pre> <post> test upgrade compatibility between stable-type signatures <pre> and <post>";
-  "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
+    "<pre> <post> test upgrade compatibility between stable-type signatures <pre> and <post>";
+  "--idl", Arg.Unit (fun () ->
+    idl := true;
+    set_mode Compile ()), (* HACK to support dfx 0.8.3 or earlier *)
+      " compile and emit Candid IDL specification to `.did` file";
   "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
   "--explain", Arg.String (fun c -> explain_code := c; set_mode Explain ()), " provides a detailed explanation of an error message";
   "-o", Arg.Set_string out_file, "<file>  output file";
@@ -122,8 +126,10 @@ let argspec = [
   " enable sanity checking in the RTS and generated code";
 
   "--stable-types",
-  Arg.Unit (fun () -> stable_types := true),
-  " emit signature of stable types to .most file";
+  Arg.Unit (fun () ->
+    stable_types := true;
+    set_mode Compile ()), (* similar to --idl *)
+      " compile and emit signature of stable types to `.most` file";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
@@ -176,16 +182,10 @@ let process_files files : unit =
         exit 0;
       | _ -> assert false
     end
-  | Idl ->
-    set_out_file files ".did";
-    let prog = Diag.run (Pipeline.generate_idl files) in
-    let oc = open_out !out_file in
-    let idl_code = Idllib.Arrange_idl.string_of_prog prog in
-    output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";
     let source_map_file = !out_file ^ ".map" in
-    let module_ = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
+    let (idl_prog, module_) = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
     let module_ = CustomModule.{ module_ with
       source_mapping_url =
         if !gen_source_map
@@ -200,6 +200,13 @@ let process_files files : unit =
     if !gen_source_map then begin
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
+      end;
+
+    if !idl then begin
+      let did_file = Filename.remove_extension !out_file ^ ".did" in
+      let oc = open_out did_file in
+      let idl_code = Idllib.Arrange_idl.string_of_prog idl_prog in
+      output_string oc idl_code; close_out oc
     end;
 
     if !stable_types then begin
@@ -262,7 +269,7 @@ let () =
   Internal_error.setup_handler ();
   Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
-  Flags.compiled := (!mode = Compile || !mode = Idl);
+  Flags.compiled := !mode = Compile;
 
   if !Flags.warnings_are_errors && (not !Flags.print_warnings)
   then begin
