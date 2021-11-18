@@ -148,10 +148,10 @@ module SR = struct
     | UnboxedWord64
     | UnboxedWord32
     | UnboxedFloat64
-    | UnreachableX of unreachable
+    | Unreachable of unreachable
     | Const of Const.t
 
-  let unreachable = UnreachableX Noisy
+  let unreachable = Unreachable Noisy
   let unit = UnboxedTuple 0
 
   let bool = UnboxedBool
@@ -5752,7 +5752,7 @@ module StackRep = struct
       if n > 1 then assert !Flags.multi_value;
       Lib.List.make n I32Type
     | Const _ -> []
-    | UnreachableX _ -> []
+    | Unreachable _ -> []
 
   let to_string = function
     | Vanilla -> "Vanilla"
@@ -5761,14 +5761,14 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedFloat64 -> "UnboxedFloat64"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
-    | UnreachableX Silent -> "Dead"
-    | UnreachableX Noisy -> "Unreachable"
+    | Unreachable Silent -> "Dead"
+    | Unreachable Noisy -> "Unreachable"
     | Const _ -> "Const"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | _, _ when SR.eq sr1 sr2 -> sr1
-    | UnreachableX Noisy, sr2 -> sr2
-    | sr1, UnreachableX Noisy -> sr1
+    | Unreachable Noisy, sr2 -> sr2
+    | sr1, Unreachable Noisy -> sr1
     | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
@@ -5803,7 +5803,7 @@ module StackRep = struct
     match sr_in with
     | Vanilla | UnboxedBool | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | Const _ | UnreachableX _ -> G.nop
+    | Const _ | Unreachable _ -> G.nop
 
   (* Materializes a Const.lit: If necessary, puts
      bytes into static memory, and returns a vanilla value.
@@ -5837,9 +5837,9 @@ module StackRep = struct
     if eq sr_in sr_out
     then G.nop
     else match sr_in, sr_out with
-    | UnreachableX _, UnreachableX _ -> G.nop
-    | UnreachableX Silent, _ -> (fun _ _ _ -> [])
-    | UnreachableX Noisy, _ -> G.i Unreachable
+    | Unreachable _, Unreachable _ -> G.nop
+    | Unreachable Silent, _ -> (fun _ _ _ -> [])
+    | Unreachable Noisy, _ -> G.i Unreachable
 
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
@@ -7539,7 +7539,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
       FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
       G.i Return
-    | UnreachablePrim true, [] -> SR.(UnreachableX Silent), G.nop
+    | UnreachablePrim true, [] -> SR.(Unreachable Silent), G.nop
     | UnreachablePrim false, [] -> SR.unreachable, G.nop
 
     (* Numeric conversions *)
