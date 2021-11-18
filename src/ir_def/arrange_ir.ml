@@ -50,15 +50,15 @@ and args = function
 and arg a = Atom a.it
 
 and prim = function
-  | CallPrim ts       -> "CallPrim" $$ List.map typ ts
+  | CallPrim ts       -> "CallPrim"   $$ List.map typ ts
   | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
   | TupPrim           -> Atom "TupPrim"
   | ProjPrim i        -> "ProjPrim"   $$ [Atom (string_of_int i)]
   | OptPrim           -> Atom "OptPrim"
-  | TagPrim i         -> "TagE" $$ [id i]
-  | DotPrim n         -> "DotPrim" $$ [Atom n]
+  | TagPrim i         -> "TagE"       $$ [id i]
+  | DotPrim n         -> "DotPrim"    $$ [Atom n]
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
@@ -67,18 +67,20 @@ and prim = function
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
   | GetPastArrayOffset _ -> Atom "GetPastArrayOffset"
   | SameReference     -> Atom "SameReference"
-  | SameVariantTag t  -> "SameVariantTag"  $$ [typ t]
+  | SameVariantTag t  -> "SameVariantTag" $$ [typ t]
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
   | AwaitPrim         -> Atom "AwaitPrim"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
-  | ShowPrim t        -> "ShowPrim" $$ [typ t]
+  | UnreachablePrim true -> Atom "UnreachablePrim dead"
+  | UnreachablePrim _ -> Atom "UnreachablePrim"
+  | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | SerializePrim t   -> "SerializePrim" $$ List.map typ t
   | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
   | NumConvWrapPrim (t1, t2) -> "NumConvWrapPrim" $$ [prim_ty t1; prim_ty t2]
   | NumConvTrapPrim (t1, t2) -> "NumConvTrapPrim" $$ [prim_ty t1; prim_ty t2]
-  | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
+  | CastPrim (t1, t2) -> "CastPrim"   $$ [typ t1; typ t2]
   | DecodeUtf8        -> Atom "DecodeUtf8"
   | EncodeUtf8        -> Atom "EncodeUtf8"
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
@@ -94,8 +96,8 @@ and prim = function
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait t        -> "CPSAwait" $$ [typ t]
-  | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | CPSAwait t        -> "CPSAwait"   $$ [typ t]
+  | CPSAsync t        -> "CPSAsync"   $$ [typ t]
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"

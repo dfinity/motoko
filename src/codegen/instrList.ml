@@ -84,6 +84,9 @@ let optimize : instr list -> instr list = fun is ->
     (* `If` blocks after negation can swap legs *)
     | { it = Test (I32 I32Op.Eqz); _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
       go l' ({i with it = If (res,else_,then_)} :: r')
+    (* `If` blocks with empty legs is just a `drop`
+    | { it = If (res,[],[{ it = Loop _; _ };{ it = Unreachable; _ }]); _ } as i :: l', r' ->
+      go l' ({i with it = Drop} :: r') *)
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Constant shifts can be combined *)

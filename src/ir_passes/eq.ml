@@ -74,7 +74,7 @@ let define_eq_variant : T.typ -> Ir.exp -> Ir.dec = fun t e ->
     (eq_var_for t)
     [arg1Var t; arg2Var t]
     (ifE
-       (primE SameReference [arg1E t; arg2E t])
+       (falseE () (*primE SameReference [arg1E t; arg2E t]*))
        (trueE ())
        (ifE (primE (SameVariantTag t) [arg1E t; arg2E t]) e (falseE ()) T.bool)
        T.bool)
@@ -177,7 +177,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
                 exp = eq_func_body t' (varE y1) (varE y2);
               }; at = no_region; note = ()
             }) deep @
-            [ { it = { pat = wildP; exp = (if flat = [] then unreachableE else trueE) () };
+            [ { it = { pat = wildP; exp = (if flat = [] then deadE else trueE) () };
                 at = no_region; note = () } ]
         );
       at = no_region;

@@ -102,6 +102,7 @@ val define_idE : id -> mut -> exp -> exp
 val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
 val unreachableE : unit -> exp
+val deadE : unit -> exp
 
 (* Declarations *)
 

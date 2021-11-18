@@ -648,7 +648,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
          the environment and see if this lines up. *)
       t1 <: t;
     | SystemTimePrim, [] ->
-      T.(Prim Nat64) <: t;
+      T.nat64 <: t;
+    | UnreachablePrim _, [] ->
+      T.Non <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
       T.nat64 <: t
