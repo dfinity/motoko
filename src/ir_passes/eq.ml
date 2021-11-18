@@ -88,6 +88,8 @@ let array_eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f
 
 (* Returns the new declarations, as well as a list of further types it needs *)
 
+let is_flat_alt f = T.(is_unit (normalize f.typ))
+
 let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   match t with
   (* Function wrappers around primitive types *)
@@ -152,11 +154,13 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
       ) fs)
     ),
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
-  | T.Variant fs when List.for_all T.(fun f -> is_unit (normalize f.typ)) fs ->
+  | T.Variant fs when List.for_all is_flat_alt fs ->
     (* enum-like, i.e. flat variant *)
     define_eq_variant t (trueE ()),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Variant fs ->
+    let flat, deep = List.partition is_flat_alt fs in
+    assert (deep <> []);
     define_eq_variant t (
       (* switching on the diagonal *)
       { it = SwitchE
@@ -172,9 +176,11 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
                   ]; at = no_region; note = T.Tup [t;t] };
                 exp = eq_func_body t' (varE y1) (varE y2);
               }; at = no_region; note = ()
-            }) fs @
-            [ { it = { pat = wildP; exp = falseE () };
-                at = no_region; note = () } ]
+            }) deep @
+            if flat <> []
+            then [ { it = { pat = wildP; exp = trueE () };
+                     at = no_region; note = () } ]
+            else []
         );
       at = no_region;
       note = Note.{ def with typ = T.bool }

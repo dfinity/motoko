@@ -19,5 +19,17 @@ func foo() {
     assert #vari != w1
 };
 
+type Y = { #good; #bad : Text };
+let y : Y = #good;
+var z : Y = y;
+
+// CHECK: (func $quux
+// CHECK: call $@eq<v_bad:t_good:u_>
+func quux() {
+    assert y == z;
+    assert z != #bad "Dunno!"
+};
+
+quux();
 foo();
 bar()
