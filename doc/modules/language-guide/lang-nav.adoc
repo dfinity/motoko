@@ -16,6 +16,7 @@
 ** xref:caller-id.adoc[Principals and caller identification]
 ** xref:cycles.adoc[Managing cycles]
 ** xref:upgrades.adoc[Stable variables and upgrade methods]
+** xref:compatibility.adoc[Upgrade compatibility]
 //** xref:advanced-discussion.adoc[Advanced discussion topics]
 ** xref:language-manual.adoc[Language quick reference]
 ** xref:compiler-ref.adoc[Compiler reference]

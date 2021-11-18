@@ -1,0 +1,4 @@
+actor {
+  stable var newState : Nat;
+  stable var state : Int
+};
