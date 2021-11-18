@@ -5766,12 +5766,6 @@ module StackRep = struct
     | Const _ -> "Const"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
-    | UnreachableX Silent, sr2 ->
-      failwith (Printf.sprintf "Invalid stack rep join (Silent, %s)\n"
-        (to_string sr2)); sr2
-    | sr1, UnreachableX Silent ->
-      failwith (Printf.sprintf "Invalid stack rep join (%s, Silent)\n"
-        (to_string sr1)); sr1
     | _, _ when SR.eq sr1 sr2 -> sr1
     | UnreachableX Noisy, sr2 -> sr2
     | sr1, UnreachableX Noisy -> sr1
