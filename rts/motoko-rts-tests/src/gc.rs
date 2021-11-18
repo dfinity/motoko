@@ -32,18 +32,18 @@ pub fn test() {
         test_gcs(&mut page_alloc, &test_heap);
     }
 
-    println!("  Testing random heaps...");
-    let max_seed = 100;
-    for seed in 0..max_seed {
-        print!("\r{}/{}", seed + 1, max_seed);
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        test_random_heap(&mut page_alloc, seed, 180);
-    }
-    print!("\r");
+    // println!("  Testing random heaps...");
+    // let max_seed = 100;
+    // for seed in 0..max_seed {
+    //     print!("\r{}/{}", seed + 1, max_seed);
+    //     std::io::Write::flush(&mut std::io::stdout()).unwrap();
+    //     test_random_heap(&mut page_alloc, seed, 180);
+    // }
+    // print!("\r");
 }
 
 fn test_heaps() -> Vec<TestHeap> {
-    vec![
+    let mut tests = vec![
         // Just a random test that covers a bunch of cases:
         // - Self references
         // - Unreachable objects
@@ -73,7 +73,18 @@ fn test_heaps() -> Vec<TestHeap> {
             roots: vec![2],
             continuation_table: vec![],
         },
-    ]
+    ];
+
+    // Large object root
+    // let large_object_root = vec![0u32; 13_000];
+    // let large_object_unreachable = vec![0u32; 13_000];
+    // tests.push(TestHeap {
+    //     heap: vec![(0, large_object_root), (1, large_object_unreachable)],
+    //     roots: vec![0],
+    //     continuation_table: vec![],
+    // });
+
+    tests
 }
 
 fn test_random_heap<P: PageAlloc>(page_alloc: &mut P, seed: u64, max_objects: u32) {
@@ -113,9 +124,8 @@ fn test_gc<P: PageAlloc>(
     continuation_table: &[ObjectIdx],
 ) {
     let heap::MotokoHeap {
+        static_heap,
         mut space,
-        cont_tbl_loc,
-        root_array,
     } = unsafe { heap::create_motoko_heap(&mut page_alloc, refs, roots, continuation_table) };
 
     // Check `create_dynamic_heap` sanity
@@ -125,15 +135,15 @@ fn test_gc<P: PageAlloc>(
         refs,
         roots,
         continuation_table,
-        cont_tbl_loc,
+        static_heap.cont_tbl_loc,
     );
 
     for _ in 0..3 {
         space = gc.run(
             page_alloc.clone(),
             space,
-            Value::from_ptr(root_array as usize),
-            cont_tbl_loc,
+            Value::from_ptr(static_heap.root_array as usize),
+            static_heap.cont_tbl_loc,
         );
 
         check_dynamic_heap(
@@ -142,7 +152,7 @@ fn test_gc<P: PageAlloc>(
             refs,
             roots,
             continuation_table,
-            cont_tbl_loc,
+            static_heap.cont_tbl_loc,
         );
     }
 }
@@ -369,6 +379,7 @@ impl GC {
                         |_| {}, // note_live_size
                         |_| {}, // note_reclaimed
                     );
+                    space.free();
                 }
                 to_space
             }

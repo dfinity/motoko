@@ -1,15 +1,24 @@
 use super::utils::ObjectIdx;
 
+use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::page_alloc::PageAlloc;
 use motoko_rts::space::Space;
 use motoko_rts::types::*;
 
+use std::alloc::Layout;
 use std::convert::TryFrom;
 
 use fxhash::{FxHashMap, FxHashSet};
 
 pub struct MotokoHeap<P: PageAlloc> {
+    pub static_heap: StaticHeap,
     pub space: Space<P>,
+}
+
+pub struct StaticHeap {
+    pub mem: *mut u8,
+    pub layout: Layout,
+    pub mutbox_ptrs: Vec<*mut MutBox>,
 
     /// Pointer to the continuation table pointer
     pub cont_tbl_loc: *mut Value,
@@ -36,25 +45,20 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 
     let mut space = Space::new(page_alloc.clone());
 
-    let (mutbox_ptrs, cont_tbl_loc, root_array) =
-        create_static_heap(&mut space, u32::try_from(roots.len()).unwrap());
+    let static_heap = create_static_heap(&mut space, u32::try_from(roots.len()).unwrap());
 
     let (obj_addrs, cont_tbl) = create_dynamic_heap(&mut space, map, cont_tbl);
 
     // Update root MutBox fields
-    for (root_idx, mutbox) in roots.iter().zip(mutbox_ptrs.iter()) {
+    for (root_idx, mutbox) in roots.iter().zip(&static_heap.mutbox_ptrs) {
         let root_ptr = *obj_addrs.get(root_idx).unwrap();
         mutbox.set_field(root_ptr);
     }
 
     // Update continuation table ptr location
-    *cont_tbl_loc = Value::from_ptr(cont_tbl as usize);
+    *static_heap.cont_tbl_loc = Value::from_ptr(cont_tbl as usize);
 
-    MotokoHeap {
-        space,
-        cont_tbl_loc,
-        root_array,
-    }
+    MotokoHeap { static_heap, space }
 }
 
 /// Creates static part of the heap, with space left for continuation table pointer and the roots.
@@ -66,10 +70,7 @@ pub unsafe fn create_motoko_heap<P: PageAlloc>(
 /// 2. Pointer to the continuation table pointer.
 ///
 /// Use the heap pointer of `space` to get the static heap size after calling this function.
-unsafe fn create_static_heap<P: PageAlloc>(
-    space: &mut Space<P>,
-    n_roots: u32,
-) -> (Vec<*mut MutBox>, *mut Value, *mut Array) {
+unsafe fn create_static_heap<P: PageAlloc>(space: &mut Space<P>, n_roots: u32) -> StaticHeap {
     // The layout is:
     //
     // - Array of MutBoxes for the roots (root array). This part does not need to be updated later
@@ -80,10 +81,22 @@ unsafe fn create_static_heap<P: PageAlloc>(
     // - Continuation table pointer. This location needs to be updated with the location of
     //   continuation table in dynamic heap.
 
-    // Allocate the root array
     let root_array_size = Words(n_roots) + size_of::<Array>();
-    let root_array_value = space.alloc_words(root_array_size);
-    let root_array = root_array_value.get_ptr() as *mut Array;
+    let mutbox_size = size_of::<MutBox>() * n_roots;
+    let cont_tbl_loc_size = Words(1);
+
+    let total_size = root_array_size + mutbox_size + cont_tbl_loc_size;
+
+    let static_heap_layout =
+        Layout::from_size_align(total_size.to_bytes().as_usize(), WORD_SIZE as usize).unwrap();
+
+    let static_heap: *mut u8 = std::alloc::alloc(static_heap_layout);
+    assert!(!static_heap.is_null());
+
+    libc::memset(static_heap as *mut _, 0, total_size.to_bytes().as_usize());
+
+    // Allocate the root array
+    let root_array = static_heap as *mut Array;
     root_array.set_tag();
     root_array.set_static();
     root_array.set_len(n_roots);
@@ -91,23 +104,28 @@ unsafe fn create_static_heap<P: PageAlloc>(
     // Allocate MutBoxes for roots, add MutBoxes to the root array
     let mut mutbox_ptrs = Vec::with_capacity(n_roots as usize);
 
+    let mut mutbox_addr: usize = static_heap.add(root_array_size.to_bytes().as_usize()) as usize;
     for i in 0..n_roots {
-        let mutbox_value = space.alloc_words(size_of::<MutBox>());
-        let mutbox = mutbox_value.get_ptr() as *mut MutBox;
+        let mutbox = mutbox_addr as *mut MutBox;
         mutbox.set_tag();
         mutbox.set_static();
+
         // Field unset at this point, will be updated after allocating dynamic heap
-        root_array.set(i, mutbox_value);
+        root_array.set(i, Value::from_ptr(mutbox_addr));
         mutbox_ptrs.push(mutbox);
+
+        mutbox_addr += size_of::<MutBox>().to_bytes().as_usize();
     }
 
-    let cont_tbl_loc = space.alloc_words(Words(1));
+    let cont_tbl_loc = mutbox_addr as *mut Value;
 
-    (
+    StaticHeap {
+        mem: static_heap,
+        layout: static_heap_layout,
         mutbox_ptrs,
-        cont_tbl_loc.get_ptr() as *mut Value,
+        cont_tbl_loc,
         root_array,
-    )
+    }
 }
 
 /// Creates dynamic part of the heap. Returns:
