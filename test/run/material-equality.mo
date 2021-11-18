@@ -30,6 +30,18 @@ func quux() {
     assert z != #bad "Dunno!"
 };
 
+type Z = { #left : Int; #right : Text };
+let y1 : Z = #left 42;
+var z1 : Z = y1;
+
+// CHECK: (func $boom
+// CHECK: call $@eq<v_left:I_right:t_>
+func boom() {
+    assert y1 == z1;
+    assert z1 != #right "Dunno!"
+};
+
+boom();
 quux();
 foo();
 bar()
