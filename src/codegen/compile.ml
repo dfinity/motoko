@@ -1584,7 +1584,7 @@ module Word64 = struct
         get_n ^^ get_exp ^^ compile_unsigned_pow env
       )
 
-  let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  let _compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   let compile_relop env i64op = G.i (Compare (Wasm.Values.I64 i64op))
 
 end (* BoxedWord64 *)
@@ -2291,7 +2291,26 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             slow env
           end)
 
-  let compile_eq = try_comp_unbox2 "B_eq" Word64.compile_eq Num.compile_eq
+  let compile_eq env =
+    Func.share_code2 env "B_eq" (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b ->
+        get_a ^^ get_b ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if1 I32Type
+          (Bool.lit true)
+          (get_a ^^ get_b ^^
+           BitTagged.if_both_tagged_scalar env [I32Type]
+             (Bool.lit false)
+             begin
+               get_a ^^ BitTagged.if_tagged_scalar env [I32Type]
+                 (get_a ^^ extend_and_box64 env)
+                 get_a ^^
+               get_b ^^ BitTagged.if_tagged_scalar env [I32Type]
+                 (get_b ^^ extend_and_box64 env)
+                 get_b ^^
+               Num.compile_eq env
+             end))
+
   let compile_relop env bigintop =
     try_comp_unbox2 (name_from_relop bigintop)
       (fun env' -> Word64.compile_relop env' (i64op_from_relop bigintop))
