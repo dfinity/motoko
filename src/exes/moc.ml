@@ -50,7 +50,7 @@ let argspec = [
     "<pre> <post> test upgrade compatibility between stable-type signatures <pre> and <post>";
   "--idl", Arg.Unit (fun () ->
     idl := true;
-    set_mode Compile ()), (* HACK to support dfx 0.8.3 or earlier *)
+    set_mode Compile ()), (* similar to --stable-types *)
       " compile and emit Candid IDL specification to `.did` file";
   "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
   "--explain", Arg.String (fun c -> explain_code := c; set_mode Explain ()), " provides a detailed explanation of an error message";
