@@ -151,7 +151,7 @@ module SR = struct
     | Unreachable of unreachable
     | Const of Const.t
 
-  let unreachable = Unreachable Noisy
+  let unreachable : t = Unreachable Noisy
   let unit = UnboxedTuple 0
 
   let bool = UnboxedBool
