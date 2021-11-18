@@ -77,9 +77,20 @@ and exp' =
   | TryE of exp * case list                    (* try/catch *)
 
 and upgrade = {
+  meta : meta;
   pre : exp;
   post : exp
 }
+
+and candid = {
+    args : string;
+    service : string;
+  }
+
+and meta = {
+    candid : candid;  (* Candid (of service, never actor class) *)
+    sig_ : string  (* Motoko stable signature *)
+  }
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
