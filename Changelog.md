@@ -1,5 +1,26 @@
 # Motoko compiler changelog
 
+* moc:
+
+  * The compiler now embeds the existing Candid interface  and  new
+  _stable signature_ of a canister in additional Wasm custom sections,
+  to be selectively exposed by the IC, and to be used by tools such as `dfx`
+  to verify upgrade compatibility (see extended documentation).
+
+  New compiler options:
+
+    * `--public-metadata <name>`: emit icp custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types`) as `public` (default is `private`)
+    * `--stable-types`: emit signature of stable types to `.most` file
+    * `--stable-compatible <pre> <post>`: test upgrade compatibility between stable-type signatures  `<pre>` and `<post>`
+
+  A Motoko canister upgrade is safe provided:
+
+    * the canister's Candid interface evolves to a Candid subtype; and
+    * the canister's Motoko stable signature evolves to a _stable-compatible_ one.
+
+  (Candid subtyping can be verified using tool `didc` available at:
+   https://github.com/dfinity/candid.)
+
 * BREAKING CHANGE (Minor):
   Tightened typing for type-annotated patterns (including function parameters)
   to prevent some cases of unintended and counter-intuitive type propagation.
