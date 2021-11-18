@@ -156,7 +156,14 @@ impl<P: PageAlloc> Space<P> {
             self.page_alloc.free(page);
         }
 
-        // TODO: Free large objects
+        let mut large_object = self.large_object_pages;
+        self.large_object_pages = core::ptr::null_mut(); // optional
+
+        while !large_object.is_null() {
+            let next = (*large_object).next;
+            self.page_alloc.free_large(large_object);
+            large_object = next;
+        }
     }
 
     pub unsafe fn alloc_array(&mut self, len: u32) -> Value {
