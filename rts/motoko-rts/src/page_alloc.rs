@@ -28,6 +28,9 @@ pub trait PageAlloc: Clone {
     /// Free a page
     unsafe fn free(&self, page: Self::Page);
 
+    /// Free a large page (i.e. multiple consecutive pages)
+    unsafe fn free_large(&self, header: *const LargePageHeader);
+
     /// Get the start address of the page that contains the given address. Only works on
     /// single-page pages! Can be used to get page header.
     unsafe fn get_address_page_start(&self, addr: usize) -> usize;
@@ -37,6 +40,9 @@ pub trait PageAlloc: Clone {
 /// withing the pages, or externally (e.g. in an array indexed by a page), or a combination of
 /// both.
 pub trait Page: Clone {
+    // TODO FIXME
+    fn page_idx(&self) -> u16;
+
     /// Get the start of this page
     unsafe fn start(&self) -> usize;
 
@@ -81,4 +87,5 @@ impl PageHeader {
 pub struct LargePageHeader {
     pub prev: *mut LargePageHeader,
     pub next: *mut LargePageHeader,
+    pub n_pages: u16,
 }

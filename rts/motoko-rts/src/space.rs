@@ -90,12 +90,13 @@ impl<P: PageAlloc> Space<P> {
 
         if n_bytes >= LARGE_OBJECT_THRESHOLD {
             // Divide, round up
-            let n_pages = (n_bytes + PAGE_SIZE - Bytes(1)).as_u32() / PAGE_SIZE.as_u32();
-            let page = self.page_alloc.alloc_pages(n_pages as u16);
+            let n_pages = ((n_bytes + PAGE_SIZE - Bytes(1)).as_u32() / PAGE_SIZE.as_u32()) as u16;
+            let page = self.page_alloc.alloc_pages(n_pages);
 
             let page_header = page.start() as *mut LargePageHeader;
             (*page_header).next = self.large_object_pages;
             (*page_header).prev = core::ptr::null_mut();
+            (*page_header).n_pages = n_pages;
             if !self.large_object_pages.is_null() {
                 (*self.large_object_pages).prev = page_header;
             }

@@ -1,5 +1,5 @@
 use super::free_lists::{self, WasmPage};
-use super::PageAlloc;
+use super::{LargePageHeader, PageAlloc};
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 
@@ -33,6 +33,15 @@ impl PageAlloc for IcPageAlloc {
 
     unsafe fn free(&self, page: WasmPage) {
         free_lists::free(page)
+    }
+
+    unsafe fn free_large(&self, header: *const LargePageHeader) {
+        let page = WasmPage {
+            page_num: (header as usize / WASM_PAGE_SIZE.as_usize()) as u16,
+            n_pages: (*header).n_pages,
+        };
+
+        self.free(page);
     }
 
     unsafe fn get_address_page_start(&self, addr: usize) -> usize {

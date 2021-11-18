@@ -1,8 +1,9 @@
 use motoko_rts::bitmap::Bitmap;
-use motoko_rts::page_alloc::{Page, PageAlloc, PageHeader, PAGE_SIZE};
+use motoko_rts::page_alloc::{LargePageHeader, Page, PageAlloc, PageHeader, PAGE_SIZE};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -14,7 +15,8 @@ struct TestPageAllocInner {
     // TODO: Maybe use a vector with free slots, for lookup efficiency?
     pages: HashMap<TestPageRef, TestPage>,
 
-    /// Start addresses of currently in-use pages. Used to implement `get_address_page`.
+    /// Start addresses of currently in-use pages. Used to implement `get_address_page` and
+    /// `free_large`.
     // TODO: None of the binary search trees in Rust's std provide methods for finding previous
     // element of a given one, so using a sorted `Vec` which provides a binary search method.
     page_addrs: Vec<(usize, TestPageRef)>,
@@ -84,6 +86,10 @@ impl PageAlloc for TestPageAlloc {
         self.inner.borrow_mut().free(page)
     }
 
+    unsafe fn free_large(&self, header: *const LargePageHeader) {
+        self.inner.borrow_mut().free_large(header)
+    }
+
     unsafe fn get_address_page_start(&self, addr: usize) -> usize {
         self.inner.borrow().get_address_page_start(addr)
     }
@@ -131,6 +137,22 @@ impl TestPageAllocInner {
         }
     }
 
+    unsafe fn free_large(&mut self, header: *const LargePageHeader) {
+        let page_start = header as usize;
+        let page_idx = match self
+            .page_addrs
+            .binary_search_by_key(&page_start, |(k, _)| *k)
+        {
+            Ok(page_idx) => page_idx,
+            Err(_) => panic!(
+                "TestPageAlloc::free_large: page {:#x} is not in page_addrs",
+                page_start
+            ),
+        };
+
+        self.free(self.page_addrs[page_idx].1.clone());
+    }
+
     unsafe fn get_address_page_start(&self, addr: usize) -> usize {
         let page_ref_idx = match self.page_addrs.binary_search_by_key(&addr, |(k, _)| *k) {
             Ok(idx) => idx,
@@ -149,6 +171,10 @@ impl TestPageAllocInner {
 }
 
 impl Page for TestPageRef {
+    fn page_idx(&self) -> u16 {
+        u16::try_from(self.page_idx).unwrap()
+    }
+
     unsafe fn start(&self) -> usize {
         self.page_alloc
             .inner
