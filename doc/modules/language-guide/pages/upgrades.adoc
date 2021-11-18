@@ -126,7 +126,7 @@ It specifies the names, types and mutability of the actor's stable fields, possi
 
 TIP: You can emit the stable signature of the main actor or actor class to a `.most` file using `moc` compiler option `--stable-types`. You should never need to author your own `.most` file.
 
-A stable signature, `<stab-sig1>`, is _stable-compatible_ with signature `<stab-sig2>`, if, and only,
+A stable signature, `<stab-sig1>`, is _stable-compatible_ with signature `<stab-sig2>` (the upgrade), if, and only,
 
 * every immutable field `stable <id> : T` in `<stab-sig1>` has a matching field `stable <id> : U` in `<stab-sig2>` with `T <: U`.
 * every mutable field `stable var <id> : T` in `<stab-sig1>` has a matching field `stable var <id> : U` in `<stab-sig2>` with `T <: U`.
