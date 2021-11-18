@@ -133,6 +133,7 @@ end (* Const *)
 module SR = struct
   (* This goes with the StackRep module, but we need the types earlier *)
 
+  type unreachable = Silent | Noisy
 
   (* Value representation on the stack:
 
@@ -147,10 +148,10 @@ module SR = struct
     | UnboxedWord64
     | UnboxedWord32
     | UnboxedFloat64
-    | UnreachableX
+    | UnreachableX of unreachable
     | Const of Const.t
 
-  let unreachable = UnreachableX
+  let unreachable = UnreachableX Noisy
   let unit = UnboxedTuple 0
 
   let bool = UnboxedBool
@@ -5751,7 +5752,7 @@ module StackRep = struct
       if n > 1 then assert !Flags.multi_value;
       Lib.List.make n I32Type
     | Const _ -> []
-    | UnreachableX -> []
+    | UnreachableX _ -> []
 
   let to_string = function
     | Vanilla -> "Vanilla"
@@ -5760,13 +5761,20 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedFloat64 -> "UnboxedFloat64"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
-    | UnreachableX -> "Unreachable"
+    | UnreachableX Silent -> "Dead"
+    | UnreachableX Noisy -> "Unreachable"
     | Const _ -> "Const"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
+    | UnreachableX Silent, sr2 ->
+      failwith (Printf.sprintf "Invalid stack rep join (Silent, %s)\n"
+        (to_string sr2)); sr2
+    | sr1, UnreachableX Silent ->
+      failwith (Printf.sprintf "Invalid stack rep join (%s, Silent)\n"
+        (to_string sr1)); sr1
     | _, _ when SR.eq sr1 sr2 -> sr1
-    | UnreachableX, sr2 -> sr2
-    | sr1, UnreachableX -> sr1
+    | UnreachableX Noisy, sr2 -> sr2
+    | sr1, UnreachableX Noisy -> sr1
     | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
@@ -5801,7 +5809,7 @@ module StackRep = struct
     match sr_in with
     | Vanilla | UnboxedBool | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | Const _ | UnreachableX -> G.nop
+    | Const _ | UnreachableX _ -> G.nop
 
   (* Materializes a Const.lit: If necessary, puts
      bytes into static memory, and returns a vanilla value.
@@ -5835,8 +5843,9 @@ module StackRep = struct
     if eq sr_in sr_out
     then G.nop
     else match sr_in, sr_out with
-    | UnreachableX, UnreachableX -> G.nop
-    | UnreachableX, _ -> G.i Unreachable
+    | UnreachableX _, UnreachableX _ -> G.nop
+    | UnreachableX Silent, _ -> (fun _ _ _ -> [])
+    | UnreachableX Noisy, _ -> G.i Unreachable
 
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
@@ -7536,7 +7545,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
       FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
       G.i Return
-    | UnreachablePrim true, [] -> SR.UnboxedTuple 0, G.nop
+    | UnreachablePrim true, [] -> SR.(UnreachableX Silent), G.nop
     | UnreachablePrim false, [] -> SR.unreachable, G.nop
 
     (* Numeric conversions *)
@@ -8180,7 +8189,7 @@ and compile_exp (env : E.t) ae exp =
     let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.relax (StackRep.join sr1 sr2) in
+    let sr = StackRep.(relax (join sr1 sr2)) in
     sr,
     code_scrut ^^
     E.if_ env
@@ -8190,7 +8199,7 @@ and compile_exp (env : E.t) ae exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-    let (sr, code2) = compile_exp env ae' exp in
+    let sr, code2 = compile_exp env ae' exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
