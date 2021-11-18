@@ -177,10 +177,8 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
                 exp = eq_func_body t' (varE y1) (varE y2);
               }; at = no_region; note = ()
             }) deep @
-            if flat <> []
-            then [ { it = { pat = wildP; exp = trueE () };
-                     at = no_region; note = () } ]
-            else []
+            [ { it = { pat = wildP; exp = (if flat = [] then unreachableE else trueE) () };
+                at = no_region; note = () } ]
         );
       at = no_region;
       note = Note.{ def with typ = T.bool }
