@@ -14,7 +14,6 @@ jobs:
   # This will fail for non-release tags.
   changelog:
     runs-on: 'ubuntu-latest'
-    if: github.ref != 'refs/heads/gabor/release-tinker'
     steps:
     - uses: actions/checkout@v2
 
@@ -25,6 +24,7 @@ jobs:
 
     - name: Extract changelog
       id: read_changelog
+      if: github.ref != 'refs/heads/gabor/release-tinker'
       run: |
         export VERSION='${{ steps.get_version.outputs.VERSION }}'
         perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
