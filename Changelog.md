@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.6.13 (2021-11-19)
+## 0.6.14 (2021-11-19)
 
 * moc:
 
@@ -42,11 +42,15 @@
 
   If you encounter such cases, please adjust the type annotation.
 
+* Improved garbage collection scheduling
+
 * Miscellaneous performance improvements
   - code generation for `for`-loops over arrays has improved
   - slightly sped up `Int` equality comparisons
 
-* Improved garbage collection scheduling
+## 0.6.13 (2021-11-19)
+
+*Pulled*
 
 ## 0.6.12 (2021-10-22)
 
