@@ -14,7 +14,7 @@ jobs:
   # This will fail for non-release tags.
   changelog:
     runs-on: 'ubuntu-latest'
-    if: on.push.tags
+    if: github.ref != 'refs/heads/gabor/release-tinker'
     steps:
     - uses: actions/checkout@v2
 
