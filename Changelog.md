@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.6.13 (2021-11-19)
+
 * moc:
 
   * The compiler now embeds the existing Candid interface  and  new
@@ -9,7 +11,7 @@
 
   New compiler options:
 
-    * `--public-metadata <name>`: emit icp custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types`) as `public` (default is `private`)
+    * `--public-metadata <name>`: emit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types`) as `public` (default is `private`)
     * `--stable-types`: emit signature of stable types to `.most` file
     * `--stable-compatible <pre> <post>`: test upgrade compatibility between stable-type signatures  `<pre>` and `<post>`
 
@@ -50,6 +52,10 @@
   flag is now the default, and a new flag `--copying-gc` is added to switch
   back to the old garbage collection algorithm. Note that `--copying-gc` should
   not be necessary as the new default is much more efficient.
+
+* Miscellaneous performance improvements
+  - code generation for `for`-loops over arrays has improved
+  - slightly sped up `Int` equality comparisons
 
 ## 0.6.12 (2021-10-22)
 
