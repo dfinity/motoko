@@ -68,6 +68,7 @@ jobs:
   # Now build the release on both linux and darwin, with the version number set
   practice-build:
     if: github.ref == 'refs/heads/gabor/release-tinker'
+    needs: changelog
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
