@@ -40,9 +40,9 @@ You can use the following options with the `+moc+` command.
 
 |`+--check+` |Performs type checking only.
 
-|`+--compacting-gc+` | Use compacting GC (default)
+|`+--compacting-gc+` | Use compacting GC
 
-|`+--copying-gc+` | Use copying GC
+|`+--copying-gc+` | Use copying GC (default)
 
 |`+--debug+` |Respects debug expressions in the source (the default).
 
