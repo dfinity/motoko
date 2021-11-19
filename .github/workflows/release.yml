@@ -1,7 +1,10 @@
 name: release
 
-# We trigger this on all tags. The job will fail for tags that don’t have a
-# changelog entry, so that seems good enough
+# We trigger this on all tags and on the `master` branch. The job
+# `changelog` will fail for tags that don’t have a
+# changelog entry, so that seems good enough.
+# For `master` this check is skipped as well as uploads.
+
 on:
   push:
     tags:
