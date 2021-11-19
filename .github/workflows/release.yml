@@ -75,7 +75,7 @@ jobs:
     - uses: cachix/cachix-action@v10
       with:
         name: ic-hs-test
-        # authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - run: cachix watch-store ic-hs-test &
     - name: "nix-build"
       # these are the dependencies listed in release-files. Sorry for the duplication
