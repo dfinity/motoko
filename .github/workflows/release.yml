@@ -53,7 +53,7 @@ jobs:
         extra_nix_config: |
           experimental-features = nix-command
     - uses: cachix/cachix-action@v10
-      if: true
+      if: false
       with:
         name: ic-hs-test
         # authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
