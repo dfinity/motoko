@@ -64,6 +64,8 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - run: cachix watch-store ic-hs-test &
     - name: "nix-build"
+      env:
+        GC_DONT_GC: 1 # otherwise `nix` crash on macOS
       # these are the dependencies listed in release-files. Sorry for the duplication
       run: |
         nix-build --max-jobs 1 --argstr releaseVersion ${{needs.changelog.outputs.version}} \
@@ -73,7 +75,7 @@ jobs:
   # build product to the cachix cache, as we cannot build the darwin products on
   # linux
   release:
-    if: false # startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: 'ubuntu-latest'
     needs: [ changelog, build ]
     steps:
