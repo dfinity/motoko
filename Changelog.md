@@ -1,10 +1,8 @@
 # Motoko compiler changelog
 
-## 0.6.13 (2021-11-19)
+## 0.6.14 (2021-11-19)
 
-* moc:
-
-  * The compiler now embeds the existing Candid interface  and  new
+* The compiler now embeds the existing Candid interface  and  new
   _stable signature_ of a canister in additional Wasm custom sections,
   to be selectively exposed by the IC, and to be used by tools such as `dfx`
   to verify upgrade compatibility (see extended documentation).
@@ -42,20 +40,15 @@
 
   If you encounter such cases, please adjust the type annotation.
 
-* The garbage collection scheduling algorithm is improved once again, and the
-  default garbage collection algorithm is now mark-compact. This change
-  significantly reduces garbage collection overhead in terms of frequency of
-  garbage collections, and canisters can now have close to 4 GiB live data
-  (previously 2 GiB).
-
-  Previously, the mark-compact algorithm was behind the optional flag `--compacting-gc`. This
-  flag is now the default, and a new flag `--copying-gc` is added to switch
-  back to the old garbage collection algorithm. Note that `--copying-gc` should
-  not be necessary as the new default is much more efficient.
+* Improved garbage collection scheduling
 
 * Miscellaneous performance improvements
   - code generation for `for`-loops over arrays has improved
   - slightly sped up `Int` equality comparisons
+
+## 0.6.13 (2021-11-19)
+
+*Pulled*
 
 ## 0.6.12 (2021-10-22)
 
