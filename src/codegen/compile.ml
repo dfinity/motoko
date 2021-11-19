@@ -519,13 +519,9 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying") "_gc" *)
-    let gc_fn = match !Flags.gc_strategy with
-    | Mo_config.Flags.MarkCompact -> "compacting"
-    | Mo_config.Flags.Copying -> "copying"
-    in
+    let gc_fn = if !Flags.compacting_gc then "compacting_gc" else "copying_gc" in
     let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
-    call_import env "rts" (gc_fn ^ "_gc")
+    call_import env "rts" gc_fn
 end
 
 

@@ -4,8 +4,6 @@ module M = Map.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
-type gc_strategy = MarkCompact | Copying
-
 let trace = ref false
 let verbose = ref false
 let print_warnings = ref true
@@ -35,5 +33,5 @@ let public_metadata_names : string list ref = ref []
 let compiled = ref false
 let error_detail = ref 2
 let sanity = ref false
-let gc_strategy = ref MarkCompact
+let compacting_gc = ref false
 let force_gc = ref false
