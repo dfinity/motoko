@@ -2,9 +2,7 @@
 
 ## 0.6.14 (2021-11-19)
 
-* moc:
-
-  * The compiler now embeds the existing Candid interface  and  new
+* The compiler now embeds the existing Candid interface  and  new
   _stable signature_ of a canister in additional Wasm custom sections,
   to be selectively exposed by the IC, and to be used by tools such as `dfx`
   to verify upgrade compatibility (see extended documentation).
