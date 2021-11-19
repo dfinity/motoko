@@ -132,8 +132,12 @@ let argspec = [
       " compile and emit signature of stable types to `.most` file";
 
   "--compacting-gc",
-  Arg.Unit (fun () -> Flags.compacting_gc := true),
-  " link with compacting GC instead of copying GC";
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
+  " use compacting GC";
+
+  "--copying-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
+  " use copying GC (default)";
 
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
