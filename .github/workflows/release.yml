@@ -10,7 +10,7 @@ on:
     tags:
     - '*'
     branches:
-    - 'gabor/release-tinker'
+    - 'master'
 
 jobs:
   # first check that the changelog is in good order and extract the changelog
