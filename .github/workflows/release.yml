@@ -6,12 +6,15 @@ on:
   push:
     tags:
     - '*'
+    branches:
+    - 'gabor/release-tinker'
 
 jobs:
   # first check that the changelog is in good order and extract the changelog
   # This will fail for non-release tags.
   changelog:
     runs-on: 'ubuntu-latest'
+    if: on.push.tags
     steps:
     - uses: actions/checkout@v2
 
@@ -66,9 +69,7 @@ jobs:
   # linux
   release:
     runs-on: 'ubuntu-latest'
-    needs:
-    - changelog
-    - build
+    needs: [ changelog, build ]
     steps:
     - uses: actions/checkout@v2
     - uses: cachix/install-nix-action@v15
