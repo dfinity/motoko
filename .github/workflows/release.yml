@@ -68,6 +68,7 @@ jobs:
   # build product to the nix cache, as we cannot build the darwin products on
   # linux
   release:
+    if: false
     runs-on: 'ubuntu-latest'
     needs: [ changelog, build ]
     steps:
