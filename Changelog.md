@@ -599,3 +599,8 @@
 ## 0.1 (2020-07-20)
 
 * Beginning of the changelog. Released with dfx-0.6.0.
+
+
+## 0.0.0 (2021-11-19)
+
+just a test
