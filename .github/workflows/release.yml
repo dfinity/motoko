@@ -64,7 +64,7 @@ jobs:
     - run: cachix watch-store ic-hs-test &
     - name: "nix-build"
       env:
-        GC_DONT_GC: 0 # ${{ startsWith(matrix.os, 'macos-') }} # otherwise `nix` crash on macOS
+        GC_DONT_GC: ${{ 1 == startsWith(matrix.os, 'macos-') }} # otherwise `nix` crash on macOS
       # these are the dependencies listed in release-files. Sorry for the duplication
       run: |
         nix-build --max-jobs 1 --argstr releaseVersion ${{needs.changelog.outputs.version}} \
