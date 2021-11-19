@@ -1,9 +1,5 @@
 # Motoko compiler changelog
 
-## 0.0.0 (2021-11-19)
-
-just a test x
-
 ## 0.6.13 (2021-11-19)
 
 * moc:
