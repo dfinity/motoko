@@ -118,7 +118,7 @@ let rec exp e : f = match e.it with
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
-and system {meta; preupgrade; postupgrade} = under_lambda (exp preupgrade) ++ under_lambda (exp postupgrade)
+and system {meta; preupgrade; postupgrade; heartbeat} = under_lambda (exp preupgrade) ++ under_lambda (exp postupgrade) ++ under_lambda (exp heartbeat)
 
 and exps es : f = unions exp es
 

@@ -398,7 +398,10 @@ and build_actor at ts self_id es obj_typ =
                         note = f.T.typ }
                     ) fields vs)
                  ty]));
-        I.postupgrade = match call_system_func_opt "postupgrade" es with
+        I.postupgrade = (match call_system_func_opt "postupgrade" es with
+                 | Some call -> call
+                 | None -> tupE []);
+        I.heartbeat = match call_system_func_opt "heartbeat" es with
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)

@@ -3581,6 +3581,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
       })
 
+  let export_heartbeat env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let empty_f = Func.of_body env [] [] (fun env ->
+      G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
+      E.collect_garbage env
+    ) in
+    let fi = E.add_fun env "canister_heartbeat" empty_f in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_heartbeat";
+      edesc = nr (FuncExport (nr fi))
+      })
+
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
@@ -8840,6 +8852,18 @@ and main_actor as_opt mod_env ds fs up =
       Some (
         List.mem "candid:args" !Flags.public_metadata_names,
         up.meta.candid.args);
+
+    (* Export heartbeat *)
+    begin match up.heartbeat.it with
+      | Ir.PrimE (_, exps) ->
+        if exps <> [] then
+          begin
+            Func.define_built_in env "heartbeat_exp" [] [] (fun env ->
+              compile_exp_as env ae2 SR.unit up.heartbeat);
+            IC.export_heartbeat env;
+          end;
+      | _ -> ()
+    end;
 
     (* Deserialize any arguments *)
     begin match as_opt with

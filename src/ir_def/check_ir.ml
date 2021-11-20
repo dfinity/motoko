@@ -772,7 +772,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, { preupgrade; postupgrade; meta }, t0) ->
+  | ActorE (ds, fs, { preupgrade; postupgrade; meta; heartbeat }, t0) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -780,6 +780,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_decs env'' ds;
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
+    (* TODO: check_exp env'' heartbeat; *)
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
@@ -1092,7 +1093,7 @@ let check_comp_unit env = function
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds
-  | ActorU (as_opt, ds, fs, { preupgrade; postupgrade; meta}, t0) ->
+  | ActorU (as_opt, ds, fs, { preupgrade; postupgrade; meta; heartbeat }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1107,6 +1108,7 @@ let check_comp_unit env = function
     check_decs env'' ds;
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
+    (* TODO: check_exp env'' heartbeat; *)
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
