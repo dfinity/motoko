@@ -292,15 +292,15 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, {meta; pre; post}, typ) ->
+  | ActorE (ds, fields, {meta; preupgrade; postupgrade}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
-    let pre' = t_exp env1 pre in
-    let post' = t_exp env1 post in
+    let preupgrade' = t_exp env1 preupgrade in
+    let postupgrade' = t_exp env1 postupgrade in
     let decls = show_decls !(env1.params) in
-    ActorE (decls @ ds', fields, {meta; pre = pre'; post = post'}, typ)
+    ActorE (decls @ ds', fields, {meta; preupgrade = preupgrade'; postupgrade = postupgrade'}, typ)
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function
@@ -328,13 +328,13 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = show_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {meta; pre; post}, typ) ->
+  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
-    let pre' = t_exp env pre in
-    let post' = t_exp env post in
+    let preupgrade' = t_exp env preupgrade in
+    let postupgrade' = t_exp env postupgrade in
     let decls = show_decls !(env.params) in
-    ActorU (as_opt, decls @ ds', fields, {meta; pre = pre'; post = post'}, typ)
+    ActorU (as_opt, decls @ ds', fields, {meta; preupgrade = preupgrade'; postupgrade = postupgrade'}, typ)
 
 (* Entry point for the program transformation *)
 
