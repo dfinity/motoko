@@ -32,14 +32,14 @@ pub fn test() {
         test_gcs(&mut page_alloc, &test_heap);
     }
 
-    // println!("  Testing random heaps...");
-    // let max_seed = 100;
-    // for seed in 0..max_seed {
-    //     print!("\r{}/{}", seed + 1, max_seed);
-    //     std::io::Write::flush(&mut std::io::stdout()).unwrap();
-    //     test_random_heap(&mut page_alloc, seed, 180);
-    // }
-    // print!("\r");
+    println!("  Testing random heaps...");
+    let max_seed = 100;
+    for seed in 0..max_seed {
+        print!("\r{}/{}", seed + 1, max_seed);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        test_random_heap(&mut page_alloc, seed, 180);
+    }
+    print!("\r");
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -76,13 +76,13 @@ fn test_heaps() -> Vec<TestHeap> {
     ];
 
     // Large object root
-    // let large_object_root = vec![0u32; 13_000];
-    // let large_object_unreachable = vec![0u32; 13_000];
-    // tests.push(TestHeap {
-    //     heap: vec![(0, large_object_root), (1, large_object_unreachable)],
-    //     roots: vec![0],
-    //     continuation_table: vec![],
-    // });
+    let large_object_root = vec![0u32; 13_000];
+    let large_object_unreachable = vec![0u32; 13_000];
+    tests.push(TestHeap {
+        heap: vec![(0, large_object_root), (1, large_object_unreachable)],
+        roots: vec![0],
+        continuation_table: vec![],
+    });
 
     tests
 }
@@ -372,7 +372,7 @@ impl GC {
                 let mut to_space = unsafe { Space::new(page_alloc.clone()) };
                 unsafe {
                     copying_gc_internal(
-                        &space,
+                        &mut space,
                         &mut to_space,
                         static_root_array,
                         continuation_table_loc,

@@ -19,7 +19,7 @@ pub unsafe fn test() {
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
         random::random_free_list_ops(seed, 1000);
     }
-    println!();
+    print!("\r");
 }
 
 unsafe fn simple() {
