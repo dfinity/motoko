@@ -256,8 +256,14 @@ module E = struct
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
+
+    (* Metadata *)
+    args : (bool * string) option ref;
+    service : (bool * string) option ref;
+    stable_types : (bool * string) option ref;
     labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
+
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -291,6 +297,10 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    (* Metadata *)
+    args = ref None;
+    service = ref None;
+    stable_types = ref None;
     labs = ref LabSet.empty;
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
@@ -8797,6 +8807,20 @@ and main_actor as_opt mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.post);
     IC.export_upgrade_methods env;
 
+    (* Export metadata *)
+    env.E.stable_types :=
+      Some (
+        List.mem "motoko:stable-types" !Flags.public_metadata_names,
+        up.meta.sig_);
+    env.E.service :=
+      Some (
+        List.mem "candid:service" !Flags.public_metadata_names,
+        up.meta.candid.service);
+    env.E.args :=
+      Some (
+        List.mem "candid:args" !Flags.public_metadata_names,
+        up.meta.candid.args);
+
     (* Deserialize any arguments *)
     begin match as_opt with
      | None
@@ -8890,6 +8914,11 @@ and conclude_module env start_fi_o =
                  List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
       motoko = {
         labels = E.get_labs env;
+        stable_types = !(env.E.stable_types);
+      };
+      candid = {
+        args = !(env.E.args);
+        service = !(env.E.service);
       };
       source_mapping_url = None;
     } in

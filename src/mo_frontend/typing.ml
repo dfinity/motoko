@@ -2601,3 +2601,27 @@ let check_lib scope lib : Scope.t Diag.result =
           Scope.lib lib.note.filename imp_typ
         ) lib
     )
+
+let check_stab_sig scope sig_ : (T.field list) Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun (decs, sfs) ->
+          let env = env_of_scope msgs scope in
+          let scope = infer_block_decs env decs sig_.at in
+          let env1 = adjoin env scope in
+          check_ids env "object type" "field"
+            (List.map (fun (field : typ_field) -> field.it.id) sfs);
+          let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
+          let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
+          List.iter (fun (typ_field : Syntax.typ_field) ->
+            let t = typ_field.it.typ.note in
+            if not (T.stable t) then
+              error env typ_field.it.id.at "M0131" "variable %s is declared stable but has non-stable type%a"
+                typ_field.it.id.it
+                display_typ t) sfs;
+          List.sort T.compare_field fs
+        ) sig_.it
+    )
+
+

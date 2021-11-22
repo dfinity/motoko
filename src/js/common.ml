@@ -65,7 +65,7 @@ let js_compile_wasm mode source =
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
   js_result (Pipeline.compile_files mode true [Js.to_string source])
-    (fun m ->
+    (fun (_, m) ->
       let (_, wasm) = CustomModuleEncode.encode m in
       let constructor = Js.Unsafe.global##._Uint8Array in
       let code = constructor##from

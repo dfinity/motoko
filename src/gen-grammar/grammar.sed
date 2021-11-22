@@ -10,6 +10,9 @@ s/<id>/ID/g
 /^<parse_prog_interactive> ::=/,+3d
 /^<import_list> ::=/,+2d
 /^<parse_module_header> ::=/,+2d
+/^<stab_field> ::=/,+2d
+/^<typ_dec> ::=/,+2d
+/^<parse_stab_sig> ::=/,+2d
 /.*PRIM.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d

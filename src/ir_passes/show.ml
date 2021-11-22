@@ -292,7 +292,7 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, {pre; post}, typ) ->
+  | ActorE (ds, fields, {meta; pre; post}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
@@ -300,7 +300,7 @@ and t_exp' env = function
     let pre' = t_exp env1 pre in
     let post' = t_exp env1 post in
     let decls = show_decls !(env1.params) in
-    ActorE (decls @ ds', fields, {pre = pre'; post = post'}, typ)
+    ActorE (decls @ ds', fields, {meta; pre = pre'; post = post'}, typ)
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function
@@ -328,13 +328,13 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = show_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {pre; post}, typ) ->
+  | ActorU (as_opt, ds, fields, {meta; pre; post}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
     let pre' = t_exp env pre in
     let post' = t_exp env post in
     let decls = show_decls !(env.params) in
-    ActorU (as_opt, decls @ ds', fields, {pre = pre'; post = post'}, typ)
+    ActorU (as_opt, decls @ ds', fields, {meta; pre = pre'; post = post'}, typ)
 
 (* Entry point for the program transformation *)
 

@@ -1077,6 +1077,32 @@ let default_scope_var = scope_var ""
 let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
+
+(* Stable signatures *)
+
+let rec match_stab_sig tfs1 tfs2 =
+  (* Assume that tfs1 and tfs2 are sorted. *)
+  (* Should we insist on monotonic preservation of fields, or relax? *)
+  match tfs1, tfs2 with
+  | [], _ ->
+    true (* no or additional fields ok *)
+  | _, [] ->
+    false (* true, should we allow fields to be dropped *)
+  | tf1::tfs1', tf2::tfs2' ->
+    (match compare_field tf1 tf2 with
+     | 0 ->
+       is_mut tf1.typ = is_mut tf2.typ &&
+       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+         (* should we enforce equal mutability or not? Seems unncessary
+            since upgrade is read-once *)
+       match_stab_sig tfs1' tfs2'
+     | -1 ->
+       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
+     | _ ->
+       (* new field ok *)
+       match_stab_sig tfs1 tfs2'
+    )
+
 (* Pretty printing *)
 
 open Printf
@@ -1294,6 +1320,13 @@ and pp_field vs ppf {lab; typ; depr} =
   | _ ->
     fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
 
+and pp_stab_field vs ppf {lab; typ; depr} =
+  match typ with
+  | Mut t' ->
+    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
+  | _ ->
+    fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
+
 and pp_tag vs ppf {lab; typ; depr} =
   match typ with
   | Tup [] -> fprintf ppf "#%s" lab
@@ -1339,6 +1372,34 @@ and pp_kind ppf k =
   let op, sbs, st = pps_of_kind k in
   fprintf ppf "%s %a%a" op sbs () st ()
 
+and pp_stab_sig ppf sig_ =
+  let cs = List.fold_right cons_field sig_ ConSet.empty in
+  let ds =
+    let cs' = ConSet.filter (fun c ->
+      match Con.kind c with
+      | Def ([], Prim p) when Con.name c = string_of_prim p -> false
+      | Def ([], Any) when Con.name c = "Any" -> false
+      | Def ([], Non) when Con.name c = "None" -> false
+      | Def _ -> true
+      | Abs _ -> false) cs in
+    ConSet.elements cs' in
+  let fs =
+    List.sort compare_field
+      (List.map (fun c ->
+        { lab = string_of_con' [] c;
+          typ = Typ c;
+          depr = None }) ds)
+  in
+  let pp_stab_fields ppf sig_ =
+    fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
+      (string_of_obj_sort Actor)
+      (pp_print_list ~pp_sep:semi (pp_stab_field [])) sig_
+  in
+  fprintf ppf "@[<v 0>%a%a%a;@]"
+   (pp_print_list ~pp_sep:semi (pp_field [])) fs
+   (if fs = [] then fun ppf () -> () else semi) ()
+   pp_stab_fields sig_
+
 let pp_typ = pp_typ' []
 
 let rec pp_typ_expand ppf t =
@@ -1374,6 +1435,9 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_typ_expand ppf) typ
 
+let string_of_stab_sig typ : string =
+  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> pp_stab_sig ppf) typ
+
 let _ = str := string_of_typ
 
 
@@ -1392,6 +1456,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
+  val string_of_stab_sig : field list -> string
 end
 
 

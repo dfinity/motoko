@@ -119,9 +119,10 @@ and t_exp' context exp' =
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
-  | ActorE (ds, ids, { pre; post }, t) ->
+  | ActorE (ds, ids, { meta; pre; post }, t) ->
     ActorE (t_decs context ds, ids,
-      { pre = t_exp LabelEnv.empty pre;
+      { meta;
+        pre = t_exp LabelEnv.empty pre;
         post = t_exp LabelEnv.empty post},
       t)
   | NewObjE (sort, ids, typ) -> exp'
@@ -524,9 +525,10 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { pre; post }, t) ->
+  | ActorU (as_opt, ds, ids, { meta; pre; post }, t) ->
     ActorU (as_opt, t_decs context ds, ids,
-      { pre = t_exp LabelEnv.empty pre;
+      { meta;
+        pre = t_exp LabelEnv.empty pre;
         post = t_exp LabelEnv.empty post},
       t)
 
