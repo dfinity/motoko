@@ -37,7 +37,7 @@ pub fn test() {
     for seed in 0..max_seed {
         print!("\r{}/{}", seed + 1, max_seed);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        test_random_heap(&mut page_alloc, seed, 180);
+        test_random_heap(&mut page_alloc, seed, 180, 10);
     }
     print!("\r");
 }
@@ -87,8 +87,13 @@ fn test_heaps() -> Vec<TestHeap> {
     tests
 }
 
-fn test_random_heap<P: PageAlloc>(page_alloc: &mut P, seed: u64, max_objects: u32) {
-    let random_heap = random::generate(seed, max_objects);
+fn test_random_heap<P: PageAlloc>(
+    page_alloc: &mut P,
+    seed: u64,
+    max_small_objects: u32,
+    max_large_objects: u32,
+) {
+    let random_heap = random::generate(seed, max_small_objects, max_large_objects);
     test_gcs(page_alloc, &random_heap);
 }
 

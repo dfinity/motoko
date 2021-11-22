@@ -10,12 +10,17 @@ fn rand_bool(rng: &mut Rand32) -> bool {
     rng.rand_range(0..2) == 1
 }
 
-pub(super) fn generate(seed: u64, max_objects: u32) -> TestHeap {
+pub(super) fn generate(seed: u64, max_small_objects: u32, max_large_objects: u32) -> TestHeap {
     let mut rng = Rand32::new(seed);
 
-    let n_objects = rng.rand_range(0..max_objects + 1);
+    let n_small_objects = rng.rand_range(0..max_small_objects + 1);
+    let n_large_objects = rng.rand_range(0..max_large_objects + 1);
+    let n_total_objects = n_small_objects + n_large_objects;
 
-    let roots: Vec<ObjectIdx> = (0..n_objects)
+    let all_objects = (0..n_total_objects);
+
+    let roots: Vec<ObjectIdx> = all_objects
+        .clone()
         .filter_map(|obj_idx| {
             if rand_bool(&mut rng) {
                 Some(obj_idx)
@@ -25,19 +30,20 @@ pub(super) fn generate(seed: u64, max_objects: u32) -> TestHeap {
         })
         .collect();
 
-    let heap: Vec<(ObjectIdx, Vec<ObjectIdx>)> = (0..n_objects)
+    let heap: Vec<(ObjectIdx, Vec<ObjectIdx>)> = all_objects
+        .clone()
         .map(|obj_idx| {
-            let n_fields = rng.rand_range(0..n_objects);
+            let n_fields = if obj_idx < n_small_objects {
+                // Small object
+                rng.rand_range(0..100)
+            } else {
+                // Large object. Allocate min. amount of fields to make a large object, to avoid
+                // allocation huge amounts.
+                12288
+            };
 
             let field_values = (0..n_fields)
-                .filter_map(|_field_idx| {
-                    let field_value = rng.rand_range(0..n_objects);
-                    if field_value == obj_idx {
-                        None
-                    } else {
-                        Some(field_value)
-                    }
-                })
+                .map(|_field_idx| rng.rand_range(0..n_total_objects))
                 .collect::<Vec<ObjectIdx>>();
 
             (obj_idx, field_values)
@@ -45,7 +51,7 @@ pub(super) fn generate(seed: u64, max_objects: u32) -> TestHeap {
         .collect();
 
     // Same as roots
-    let continuation_table: Vec<ObjectIdx> = (0..n_objects)
+    let continuation_table: Vec<ObjectIdx> = all_objects
         .filter_map(|obj_idx| {
             if rand_bool(&mut rng) {
                 Some(obj_idx)
