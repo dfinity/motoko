@@ -92,7 +92,7 @@ branch to the `next-moc` branch.
 * `git switch -c $USER/update-moc-0.6.$MOC_MINOR`
 * Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
   to the new released version:
-  `perl -pi -e "s/moc_version: \"0\.6\.[0-9]*\"/moc_version: \"0.6.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
+  `perl -pi -e "s/moc_version: \"0\.6\.\\d+\"/moc_version: \"0.6.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
 * `git add .github/ && git commit -m "Motoko 0.6.$MOC_MINOR"`
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
