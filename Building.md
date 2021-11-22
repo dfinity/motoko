@@ -90,8 +90,8 @@ branch to the `next-moc` branch.
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
 * `git switch -c $USER/update-moc-0.6.$MOC_MINOR`
-* Update the `moc_version` env variable in `.github/workflows/ci.yml`
-  and `.github/workflows/package-set.yml` to the new released version:
+* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
+  to the new released version:
   `perl -pi -e "s/moc_version: \"0\.6\.[0-9]*\"/moc_version: \"0.6.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
 * `git add .github/ && git commit -m "Motoko 0.6.$MOC_MINOR"`
 
