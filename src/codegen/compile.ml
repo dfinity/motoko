@@ -8783,7 +8783,7 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Compile the declarations *)
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
-      (Freevars.captured_vars (Freevars.system up))
+      Freevars.(captured_vars (system up))
     in
 
     (* Export the public functions *)
