@@ -101,7 +101,7 @@ impl TestPageAllocInner {
             contents: vec![0u8; PAGE_SIZE.as_usize() * usize::from(n_pages)].into_boxed_slice(),
         };
 
-        let page_start = page.contents_start();
+        let page_start = page.start();
 
         let page_idx = self.n_total_pages;
         self.n_total_pages += 1;
@@ -124,8 +124,9 @@ impl TestPageAllocInner {
     }
 
     unsafe fn free(&mut self, page: TestPageRef) {
-        let page = self.pages.remove(&page).unwrap();
-        let page_start = page.contents_start();
+        let mut page = self.pages.remove(&page).unwrap();
+        page.contents.fill(0);
+        let page_start = page.start();
         match self
             .page_addrs
             .binary_search_by_key(&page_start, |(k, _)| *k)
@@ -145,8 +146,12 @@ impl TestPageAllocInner {
         {
             Ok(page_idx) => page_idx,
             Err(_) => panic!(
-                "TestPageAlloc::free_large: page {:#x} is not in page_addrs",
-                page_start
+                "TestPageAlloc::free_large: page {:#x} is not in page_addrs, page_addrs={:?}",
+                page_start,
+                self.page_addrs
+                    .iter()
+                    .map(|(page_start_addr, _)| format!("{:#x}", page_start_addr))
+                    .collect::<Vec<_>>(),
             ),
         };
 
