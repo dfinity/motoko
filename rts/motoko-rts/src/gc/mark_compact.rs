@@ -5,7 +5,7 @@
 pub mod bitmap;
 pub mod mark_stack;
 
-use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
+use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, translate_bitmap, BITMAP_ITER_END};
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use crate::constants::WORD_SIZE;
@@ -99,6 +99,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     let mem_size = Bytes(heap_end - heap_base);
 
     alloc_bitmap(mem, mem_size);
+    translate_bitmap(heap_base / WORD_SIZE);
     alloc_mark_stack(mem);
 
     mark_static_roots(mem, static_roots, heap_base);
@@ -139,7 +140,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value, heap_base: u32) {
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);
 
-    let obj_idx = (obj - heap_base) / WORD_SIZE;
+    let obj_idx = obj / WORD_SIZE;
 
     if get_bit(obj_idx) {
         // Already marked

@@ -24,17 +24,22 @@ pub unsafe fn free_bitmap() {
     BITMAP_PTR = core::ptr::null_mut();
 }
 
-pub unsafe fn get_bit(idx: u32) -> bool {
+/// Move the bitmap base such that accessing `idx`
+/// will touch the beginning of the bitmap.
+pub unsafe fn translate_bitmap(idx: u32) {
     let byte_idx = idx / 8;
+    BITMAP_PTR = BITMAP_PTR.sub(byte_idx as usize)
+}
+
+pub unsafe fn get_bit(idx: u32) -> bool {
+    let (byte_idx, bit_idx) = (idx / 8, idx % 8);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
-    let bit_idx = idx % 8;
     (byte >> bit_idx) & 0b1 == 0b1
 }
 
 pub unsafe fn set_bit(idx: u32) {
-    let byte_idx = idx / 8;
+    let (byte_idx, bit_idx) = (idx / 8, idx % 8);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
-    let bit_idx = idx % 8;
     let new_byte = byte | (0b1 << bit_idx);
     *BITMAP_PTR.add(byte_idx as usize) = new_byte;
 }
