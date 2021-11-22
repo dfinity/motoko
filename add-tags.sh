@@ -15,7 +15,8 @@ set -e
 
 git -C "$1" fetch --tags
 # 0.5.10 was the first where we have motoko-base via motoko
-for tag in $(git -C "$1" tag --contains 0.5.10 | sort -V)
+# 0.8.4 is the first where motoko is removed from sources.json (and we need to ddo something else)
+for tag in $(git -C "$1" tag --contains 0.5.10 --no-contains 0.8.4 | sort -V)
 do
   mo_rev="$(git -C "$1" show "$tag:nix/sources.json" | jq -r .motoko.rev)"
   base_rev="$(git -C "$2" show "$mo_rev:nix/sources.json" | jq -r .'["motoko-base"]'.rev)"
@@ -23,6 +24,17 @@ do
   git -C "$2" tag -f "sdk-$tag" "$mo_rev"
   git -C "$3" tag -f "dfx-$tag" "$base_rev"
 done
+
+for tag in $(git -C "$1" tag --contains 0.8.4 | sort -V)
+do
+  mo_rev="$(git -C "$1" show "$tag:nix/sources.json" | jq -r .'[
+"motoko-x86_64-linux"]'.version)"
+  base_rev="$(git -C "$2" show "$mo_rev:nix/sources.json" | jq -r .'["motoko-base"]'.rev)"
+  echo "$tag: motoko $mo_rev, motoko-base $base_rev"
+  git -C "$2" tag -f "sdk-$tag" "$mo_rev"
+  git -C "$3" tag -f "dfx-$tag" "$base_rev"
+done
+
 
 git -C "$2" push --tags
 git -C "$3" push --tags
