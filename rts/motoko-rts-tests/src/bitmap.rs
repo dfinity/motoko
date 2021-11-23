@@ -68,7 +68,8 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
     unsafe {
         alloc_bitmap(
             mem,
-            Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE), 0 // TODO: test with static heap
+            Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE),
+            0, // TODO: test with static heap
         );
 
         for bit in &bits {
@@ -99,7 +100,7 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
             last_bit = Some(bit);
         }
 
-	free_bitmap()
+        free_bitmap()
     }
 
     Ok(())
@@ -157,7 +158,7 @@ fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
             ));
         }
 
-	free_bitmap()
+        free_bitmap()
     }
 
     Ok(())

@@ -131,7 +131,8 @@ impl BitmapIter {
                 return BITMAP_ITER_END;
             }
             self.current_word = unsafe {
-                *(BITMAP_PTR.add(BITMAP_COMPENSATION) as *const u64).add(self.current_word_idx as usize)
+                *(BITMAP_PTR.add(BITMAP_COMPENSATION) as *const u64)
+                    .add(self.current_word_idx as usize)
             };
             self.bits_left = 64;
         }
