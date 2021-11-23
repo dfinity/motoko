@@ -24,13 +24,23 @@ pub(crate) static mut LAST_HP: u32 = 0;
 
 // Provided by generated code
 extern "C" {
-    pub(crate) fn get_heap_base() -> u32;
+    fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> Value;
+}
+
+pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
+    assert!(false);
+    // align to 32 bytes
+    HP = ((get_heap_base() + 31) / 32) * 32;
+    assert_eq!(HP, 1);
+    HP
 }
 
 #[no_mangle]
 unsafe extern "C" fn init() {
-    HP = get_heap_base() as u32;
+    assert!(false);
+    HP = get_aligned_heap_base();
+    assert_eq!(HP, 1);
     LAST_HP = HP;
 }
 
@@ -51,7 +61,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_heap_base())
+    Bytes(HP - get_aligned_heap_base())
 }
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The

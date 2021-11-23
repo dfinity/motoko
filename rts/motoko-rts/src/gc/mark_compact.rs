@@ -38,9 +38,11 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
+    //ic::init();
+
     compacting_gc_internal(
         mem,
-        ic::get_heap_base(),
+        ic::get_aligned_heap_base(),
         // get_hp
         || ic::HP as usize,
         // set_hp
@@ -72,6 +74,9 @@ pub unsafe fn compacting_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
+    assert_eq!(heap_base % 32, 0);
+    assert_eq!(heap_base / WORD_SIZE % 8, 0);
+
     let old_hp = get_hp() as u32;
 
     mark_compact(
@@ -135,7 +140,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
     }
 }
 
-unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value, heap_base: u32) {
+unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value, _heap_base: u32) {
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
 

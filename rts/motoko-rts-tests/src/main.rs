@@ -1,4 +1,4 @@
-#![feature(map_first_last)]
+#![feature(map_first_last, allocator_api)]
 
 mod bigint;
 mod bitmap;

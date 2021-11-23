@@ -6,8 +6,10 @@ use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
+use std::alloc::*;
 use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
+use std::ptr::NonNull;
 use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
@@ -90,7 +92,7 @@ impl MotokoHeap {
     }
 
     /// Get the heap as an array. Use `offset` values returned by the methods above to read.
-    pub fn heap(&self) -> Ref<Box<[u8]>> {
+    pub(crate) fn heap(&self) -> Ref<Box<[u8], Aligned32Bytes>> {
         Ref::map(self.inner.borrow(), |heap| &heap.heap)
     }
 
@@ -108,10 +110,38 @@ impl MotokoHeap {
     }
 }
 
+pub(crate) struct Aligned32Bytes {}
+
+unsafe impl Allocator for Aligned32Bytes {
+    fn allocate(&self, layout_unaligned: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        //assert_eq!(layout_unaligned.size(), 232);
+        assert_eq!(layout_unaligned.align(), 1);
+	//let overhead = Layout::for_value(&[1; 0]);
+	let overhead = Layout::from_size_align(16, 8).unwrap();
+        assert_eq!(overhead.size(), 16);
+        assert_eq!(overhead.align(), 8);
+        //let layout = Layout::from_size_align(layout_unaligned.size() + 32 - overhead.size(), 32).unwrap();
+	let layout = layout_unaligned.align_to(32).unwrap();
+        unsafe {
+	    let ptr = std::alloc::alloc(layout); //.add(overhead.size());
+	    assert_eq!(ptr as usize % 32, 0);
+            let slice = std::slice::from_raw_parts_mut(
+                ptr,
+                layout_unaligned.size(),
+            );
+	    assert_eq!(slice.len(), layout_unaligned.size());
+            Ok(NonNull::new(slice).unwrap())
+        }
+    }
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        dealloc(ptr.as_ptr(), layout.align_to(32).unwrap())
+    }
+}
+
 struct MotokoHeapInner {
     /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
     /// (all pointers would have to be updated).
-    heap: Box<[u8]>,
+    heap: Box<[u8], Aligned32Bytes>,
 
     /// Where the dynamic heap starts
     heap_base_offset: usize,
@@ -196,7 +226,8 @@ impl MotokoHeapInner {
                 .as_usize();
 
         let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
-
+	let static_heap_size_aligned_bytes = (static_heap_size_bytes + 31) / 32 * 32;
+	
         let heap_size = heap_size_for_gc(
             gc,
             static_heap_size_bytes,
@@ -204,25 +235,33 @@ impl MotokoHeapInner {
             map.len(),
         );
 
-        let mut heap: Vec<u8> = vec![0; heap_size];
+        let mut heap: Vec<u8, Aligned32Bytes> = Vec::with_capacity_in(heap_size + (static_heap_size_aligned_bytes - static_heap_size_bytes), Aligned32Bytes {});
+        //let mut heap: Vec<u8> = vec![0; heap_size];
+	heap.resize(heap_size + (static_heap_size_aligned_bytes - static_heap_size_bytes), 0);
+	//assert_eq!(heap.len(), heap_size);
+	assert_eq!(&mut heap[static_heap_size_aligned_bytes] as *mut u8 as usize % 32, 0);
 
         // Maps `ObjectIdx`s into their offsets in the heap
         let object_addrs: FxHashMap<ObjectIdx, usize> =
-            create_dynamic_heap(map, continuation_table, &mut heap[static_heap_size_bytes..]);
+            create_dynamic_heap(map, continuation_table, &mut heap[static_heap_size_aligned_bytes..]);
 
         // Closure table pointer is the last word in static heap
-        let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
+        let continuation_table_ptr_offset = static_heap_size_aligned_bytes - WORD_SIZE;
         create_static_heap(
             roots,
             &object_addrs,
             continuation_table_ptr_offset,
             static_heap_size_bytes + dynamic_heap_size_without_continuation_table_bytes,
-            &mut heap[..static_heap_size_bytes],
+            &mut heap[..static_heap_size_aligned_bytes],
         );
 
+	let boxed_slice = heap.into_boxed_slice();
+	let heap_start = boxed_slice.as_ptr() as usize;
+	//assert_eq!(heap_start, 0);
+	assert_eq!(heap_start % 32, 0);
         MotokoHeapInner {
-            heap: heap.into_boxed_slice(),
-            heap_base_offset: static_heap_size_bytes,
+            heap: boxed_slice,
+            heap_base_offset: static_heap_size_aligned_bytes,
             heap_ptr_offset: total_heap_size_bytes,
             static_root_array_offset: 0,
             continuation_table_ptr_offset: continuation_table_ptr_offset,

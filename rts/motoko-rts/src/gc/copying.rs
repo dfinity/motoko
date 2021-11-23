@@ -23,7 +23,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
     copying_gc_internal(
         mem,
-        ic::get_heap_base(),
+        ic::get_aligned_heap_base(),
         // get_hp
         || ic::HP as usize,
         // set_hp

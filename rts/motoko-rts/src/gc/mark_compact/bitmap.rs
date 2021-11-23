@@ -4,6 +4,7 @@ use crate::types::{size_of, Blob, Bytes, Obj};
 
 /// Current bitmap
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
+static mut BITMAP_BASE: usize = 0;
 
 pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>) {
     // We will have at most this many objects in the heap, each requiring a bit
@@ -22,23 +23,28 @@ pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>) {
 
 pub unsafe fn free_bitmap() {
     BITMAP_PTR = core::ptr::null_mut();
+    BITMAP_BASE = 0
 }
 
 /// Move the bitmap base such that accessing `idx`
 /// will touch the beginning of the bitmap.
 pub unsafe fn translate_bitmap(idx: u32) {
-    let byte_idx = idx / 8;
-    BITMAP_PTR = BITMAP_PTR.sub(byte_idx as usize)
+    let (byte_idx, bit_idx) = (idx / 8, idx % 8);
+    assert_eq!(bit_idx, 0);
+    BITMAP_BASE = byte_idx as usize;
+    BITMAP_PTR = BITMAP_PTR.sub(BITMAP_BASE);
 }
 
 pub unsafe fn get_bit(idx: u32) -> bool {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
+    debug_assert!(byte_idx as usize >= BITMAP_BASE);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
-    (byte >> bit_idx) & 0b1 == 0b1
+    (byte >> bit_idx) & 0b1 == 0b1 // TODO IDEA: != 0 (faster, also below!)
 }
 
 pub unsafe fn set_bit(idx: u32) {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
+    debug_assert!(byte_idx as usize >= BITMAP_BASE);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
     let new_byte = byte | (0b1 << bit_idx);
     *BITMAP_PTR.add(byte_idx as usize) = new_byte;
@@ -59,7 +65,8 @@ pub struct BitmapIter {
 }
 
 pub unsafe fn iter_bits() -> BitmapIter {
-    let blob_len_bytes = (BITMAP_PTR.sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Obj)
+    let bitmap = BITMAP_PTR.add(BITMAP_BASE);
+    let blob_len_bytes = (bitmap.sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Obj)
         .as_blob()
         .len()
         .as_u32();
@@ -71,7 +78,7 @@ pub unsafe fn iter_bits() -> BitmapIter {
     let current_word = if blob_len_64bit_words == 0 {
         0
     } else {
-        *(BITMAP_PTR as *const u64)
+        *(bitmap as *const u64)
     };
 
     BitmapIter {
@@ -105,7 +112,9 @@ impl BitmapIter {
 
             // Inner loop iterates bits in the current word
             while self.current_word != 0 {
-                if self.current_word & 0b1 == 0b1 {
+                if self.current_word & 0b1 == 0b1
+                /* TODO */
+                {
                     let bit_idx = (self.current_word_idx * 64) + (64 - self.bits_left);
                     self.current_word >>= 1;
                     self.bits_left -= 1;
@@ -122,8 +131,9 @@ impl BitmapIter {
             if self.current_word_idx == self.size {
                 return BITMAP_ITER_END;
             }
-            self.current_word =
-                unsafe { *(BITMAP_PTR as *const u64).add(self.current_word_idx as usize) };
+            self.current_word = unsafe {
+                *(BITMAP_PTR.add(BITMAP_BASE) as *const u64).add(self.current_word_idx as usize)
+            };
             self.bits_left = 64;
         }
     }
