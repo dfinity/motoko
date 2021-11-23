@@ -72,6 +72,8 @@ pub unsafe fn compacting_gc_internal<
 ) {
     let old_hp = get_hp() as u32;
 
+    assert_eq!(heap_base % 32, 0);
+
     mark_compact(
         mem,
         set_hp,
@@ -105,7 +107,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     if (*continuation_table_ptr_loc).is_ptr() {
         // TODO: No need to check if continuation table is already marked
-        mark_object(mem, *continuation_table_ptr_loc, heap_base);
+        mark_object(mem, *continuation_table_ptr_loc);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
         // it will be readable when we unthread continuation table
         thread(continuation_table_ptr_loc);
@@ -132,7 +134,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
     }
 }
 
-unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value, _heap_base: u32) {
+unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
 
@@ -159,7 +161,7 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
         let field_value = *field_addr;
-        mark_object(mem, field_value, heap_base);
+        mark_object(mem, field_value);
 
         // Thread if backwards or self pointer
         if field_value.get_ptr() <= obj as usize {
@@ -175,7 +177,7 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         // TODO: We should be able to omit the "already marked" check here as no two root MutBox
         // can point to the same object (I think)
-        mark_object(mem, *field_addr, heap_base);
+        mark_object(mem, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);

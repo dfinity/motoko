@@ -8,13 +8,11 @@ static mut BITMAP_COMPENSATION: usize = 0;
 static mut BITMAP_SIZE: u32 = 0;
 
 pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_prefix_words: u32) {
+    assert_eq!(heap_prefix_words % 8, 0);
     // We will have at most this many objects in the heap, each requiring a bit
     let n_bits = heap_size.to_words().as_u32();
-    // Additional bits needed to account for
-    // unaligned heap start address
-    let prefix_bits = heap_prefix_words % 8;
     // Each byte will hold 8 bits.
-    BITMAP_SIZE = (prefix_bits + n_bits + 7) / 8;
+    BITMAP_SIZE = (n_bits + 7) / 8;
     // Also round allocation up to 8-bytes to make iteration efficient. We want to be able to read
     // 64 bits in a single read and check as many bits as possible with a single `word != 0`.
     let bitmap_bytes = Bytes(((BITMAP_SIZE + 7) / 8) * 8);
