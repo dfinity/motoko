@@ -38,8 +38,6 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
-    //ic::init();
-
     compacting_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
