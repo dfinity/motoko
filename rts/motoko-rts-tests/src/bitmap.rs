@@ -2,7 +2,7 @@ use crate::memory::TestMemory;
 
 use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::gc::mark_compact::bitmap::{
-    alloc_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
+    alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
 };
 use motoko_rts::memory::Memory;
 use motoko_rts::types::{Bytes, Words};
@@ -68,7 +68,7 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
     unsafe {
         alloc_bitmap(
             mem,
-            Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE),
+            Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE), 0 // TODO: test with static heap
         );
 
         for bit in &bits {
@@ -98,6 +98,8 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
 
             last_bit = Some(bit);
         }
+
+	free_bitmap()
     }
 
     Ok(())
@@ -111,7 +113,7 @@ fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
     .to_bytes();
 
     unsafe {
-        alloc_bitmap(mem, heap_size);
+        alloc_bitmap(mem, heap_size, 0); // TODO: test with static heap
 
         for bit in bits.iter() {
             set_bit(u32::from(*bit));
@@ -154,6 +156,8 @@ fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
                 .into(),
             ));
         }
+
+	free_bitmap()
     }
 
     Ok(())

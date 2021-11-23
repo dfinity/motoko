@@ -4,47 +4,46 @@ use crate::types::{size_of, Blob, Bytes, Obj};
 
 /// Current bitmap
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
-static mut BITMAP_BASE: usize = 0;
+static mut BITMAP_COMPENSATION: usize = 0;
+static mut BITMAP_SIZE: u32 = 0;
 
-pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>) {
+pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_prefix_words: u32) {
     // We will have at most this many objects in the heap, each requiring a bit
     let n_bits = heap_size.to_words().as_u32();
+    // Additional bits needed to account for
+    // unaligned heap start address
+    let prefix_bits = heap_prefix_words % 8;
     // Each byte will hold 8 bits.
-    let bitmap_bytes = (n_bits + 7) / 8;
+    BITMAP_SIZE = (prefix_bits + n_bits + 7) / 8;
     // Also round allocation up to 8-bytes to make iteration efficient. We want to be able to read
     // 64 bits in a single read and check as many bits as possible with a single `word != 0`.
-    let bitmap_bytes = Bytes(((bitmap_bytes + 7) / 8) * 8);
+    let bitmap_bytes = Bytes(((BITMAP_SIZE + 7) / 8) * 8);
     // Allocating an actual object here as otherwise dump_heap gets confused
     let blob = alloc_blob(mem, bitmap_bytes).get_ptr() as *mut Blob;
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
-    BITMAP_PTR = blob.payload_addr()
+    BITMAP_COMPENSATION = (heap_prefix_words / 8) as usize;
+    BITMAP_PTR = blob.payload_addr().sub(BITMAP_COMPENSATION)
 }
 
 pub unsafe fn free_bitmap() {
     BITMAP_PTR = core::ptr::null_mut();
-    BITMAP_BASE = 0
-}
-
-/// Move the bitmap base such that accessing `idx`
-/// will touch the beginning of the bitmap.
-pub unsafe fn translate_bitmap(idx: u32) {
-    let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    assert_eq!(bit_idx, 0);
-    BITMAP_BASE = byte_idx as usize;
-    BITMAP_PTR = BITMAP_PTR.sub(BITMAP_BASE);
+    BITMAP_SIZE = 0;
+    BITMAP_COMPENSATION = 0
 }
 
 pub unsafe fn get_bit(idx: u32) -> bool {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    debug_assert!(byte_idx as usize >= BITMAP_BASE);
+    debug_assert!(byte_idx as usize >= BITMAP_COMPENSATION);
+    debug_assert!(BITMAP_COMPENSATION + BITMAP_SIZE as usize > byte_idx as usize);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
     (byte >> bit_idx) & 0b1 == 0b1 // TODO IDEA: != 0 (faster, also below!)
 }
 
 pub unsafe fn set_bit(idx: u32) {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    debug_assert!(byte_idx as usize >= BITMAP_BASE);
+    debug_assert!(byte_idx as usize >= BITMAP_COMPENSATION);
+    debug_assert!(BITMAP_COMPENSATION + BITMAP_SIZE as usize > byte_idx as usize);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
     let new_byte = byte | (0b1 << bit_idx);
     *BITMAP_PTR.add(byte_idx as usize) = new_byte;
@@ -65,7 +64,7 @@ pub struct BitmapIter {
 }
 
 pub unsafe fn iter_bits() -> BitmapIter {
-    let bitmap = BITMAP_PTR.add(BITMAP_BASE);
+    let bitmap = BITMAP_PTR.add(BITMAP_COMPENSATION);
     let blob_len_bytes = (bitmap.sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Obj)
         .as_blob()
         .len()
@@ -132,7 +131,7 @@ impl BitmapIter {
                 return BITMAP_ITER_END;
             }
             self.current_word = unsafe {
-                *(BITMAP_PTR.add(BITMAP_BASE) as *const u64).add(self.current_word_idx as usize)
+                *(BITMAP_PTR.add(BITMAP_COMPENSATION) as *const u64).add(self.current_word_idx as usize)
             };
             self.bits_left = 64;
         }

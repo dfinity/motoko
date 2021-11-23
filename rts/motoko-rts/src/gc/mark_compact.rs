@@ -6,7 +6,7 @@ pub mod bitmap;
 pub mod mark_stack;
 
 use bitmap::{
-    alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, translate_bitmap, BITMAP_ITER_END,
+    alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
 };
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
@@ -103,8 +103,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 ) {
     let mem_size = Bytes(heap_end - heap_base);
 
-    alloc_bitmap(mem, mem_size);
-    translate_bitmap(heap_base / WORD_SIZE);
+    alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
     alloc_mark_stack(mem);
 
     mark_static_roots(mem, static_roots, heap_base);
