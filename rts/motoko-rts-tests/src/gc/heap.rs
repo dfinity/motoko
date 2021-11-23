@@ -212,7 +212,8 @@ impl MotokoHeapInner {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
         // continuation table pointer.
-        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
+        let static_heap_size_bytes_unaligned = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
+	let static_heap_size_bytes = (static_heap_size_bytes_unaligned + 31) / 32 * 32;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
             let object_headers_words = map.len() * 3;
@@ -226,7 +227,6 @@ impl MotokoHeapInner {
                 .as_usize();
 
         let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
-	let static_heap_size_aligned_bytes = (static_heap_size_bytes + 31) / 32 * 32;
 	
         let heap_size = heap_size_for_gc(
             gc,
@@ -235,24 +235,23 @@ impl MotokoHeapInner {
             map.len(),
         );
 
-        let mut heap: Vec<u8, Aligned32Bytes> = Vec::with_capacity_in(heap_size + (static_heap_size_aligned_bytes - static_heap_size_bytes), Aligned32Bytes {});
-        //let mut heap: Vec<u8> = vec![0; heap_size];
-	heap.resize(heap_size + (static_heap_size_aligned_bytes - static_heap_size_bytes), 0);
-	//assert_eq!(heap.len(), heap_size);
-	assert_eq!(&mut heap[static_heap_size_aligned_bytes] as *mut u8 as usize % 32, 0);
+        let mut heap: Vec<u8, Aligned32Bytes> = Vec::with_capacity_in(heap_size, Aligned32Bytes {});
+	heap.resize(heap_size, 0);
+	assert_eq!(heap.len(), heap_size);
+	assert_eq!(&mut heap[static_heap_size_bytes] as *mut u8 as usize % 32, 0);
 
         // Maps `ObjectIdx`s into their offsets in the heap
         let object_addrs: FxHashMap<ObjectIdx, usize> =
-            create_dynamic_heap(map, continuation_table, &mut heap[static_heap_size_aligned_bytes..]);
+            create_dynamic_heap(map, continuation_table, &mut heap[static_heap_size_bytes..]);
 
         // Closure table pointer is the last word in static heap
-        let continuation_table_ptr_offset = static_heap_size_aligned_bytes - WORD_SIZE;
+        let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
         create_static_heap(
             roots,
             &object_addrs,
             continuation_table_ptr_offset,
             static_heap_size_bytes + dynamic_heap_size_without_continuation_table_bytes,
-            &mut heap[..static_heap_size_aligned_bytes],
+            &mut heap[..static_heap_size_bytes],
         );
 
 	let boxed_slice = heap.into_boxed_slice();
@@ -261,7 +260,7 @@ impl MotokoHeapInner {
 	assert_eq!(heap_start % 32, 0);
         MotokoHeapInner {
             heap: boxed_slice,
-            heap_base_offset: static_heap_size_aligned_bytes,
+            heap_base_offset: static_heap_size_bytes,
             heap_ptr_offset: total_heap_size_bytes,
             static_root_array_offset: 0,
             continuation_table_ptr_offset: continuation_table_ptr_offset,
