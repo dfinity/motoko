@@ -29,18 +29,16 @@ extern "C" {
 }
 
 pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
-    assert!(false);
     // align to 32 bytes
-    HP = ((get_heap_base() + 31) / 32) * 32;
-    assert_eq!(HP, 1);
-    HP
+    let hb = ((get_heap_base() + 31) / 32) * 32;
+    assert_eq!(hb % 32, 0);
+    hb
 }
 
 #[no_mangle]
 unsafe extern "C" fn init() {
-    assert!(false);
     HP = get_aligned_heap_base();
-    assert_eq!(HP, 1);
+    assert_eq!(HP % 32, 0);
     LAST_HP = HP;
 }
 
