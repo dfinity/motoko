@@ -70,9 +70,6 @@ pub unsafe fn compacting_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    assert_eq!(heap_base % 32, 0);
-    assert_eq!(heap_base / WORD_SIZE % 8, 0);
-
     let old_hp = get_hp() as u32;
 
     mark_compact(
