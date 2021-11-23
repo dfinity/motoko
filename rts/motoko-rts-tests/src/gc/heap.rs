@@ -116,20 +116,17 @@ unsafe impl Allocator for Aligned32Bytes {
     fn allocate(&self, layout_unaligned: Layout) -> Result<NonNull<[u8]>, AllocError> {
         //assert_eq!(layout_unaligned.size(), 232);
         assert_eq!(layout_unaligned.align(), 1);
-	//let overhead = Layout::for_value(&[1; 0]);
-	let overhead = Layout::from_size_align(16, 8).unwrap();
+        //let overhead = Layout::for_value(&[1; 0]);
+        let overhead = Layout::from_size_align(16, 8).unwrap();
         assert_eq!(overhead.size(), 16);
         assert_eq!(overhead.align(), 8);
         //let layout = Layout::from_size_align(layout_unaligned.size() + 32 - overhead.size(), 32).unwrap();
-	let layout = layout_unaligned.align_to(32).unwrap();
+        let layout = layout_unaligned.align_to(32).unwrap();
         unsafe {
-	    let ptr = std::alloc::alloc(layout); //.add(overhead.size());
-	    assert_eq!(ptr as usize % 32, 0);
-            let slice = std::slice::from_raw_parts_mut(
-                ptr,
-                layout_unaligned.size(),
-            );
-	    assert_eq!(slice.len(), layout_unaligned.size());
+            let ptr = std::alloc::alloc(layout); //.add(overhead.size());
+            assert_eq!(ptr as usize % 32, 0);
+            let slice = std::slice::from_raw_parts_mut(ptr, layout_unaligned.size());
+            assert_eq!(slice.len(), layout_unaligned.size());
             Ok(NonNull::new(slice).unwrap())
         }
     }
@@ -212,8 +209,9 @@ impl MotokoHeapInner {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
         // continuation table pointer.
-        let static_heap_size_bytes_unaligned = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
-	let static_heap_size_bytes = (static_heap_size_bytes_unaligned + 31) / 32 * 32;
+        let static_heap_size_bytes_unaligned =
+            (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
+        let static_heap_size_bytes = (static_heap_size_bytes_unaligned + 31) / 32 * 32;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
             let object_headers_words = map.len() * 3;
@@ -227,7 +225,7 @@ impl MotokoHeapInner {
                 .as_usize();
 
         let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
-	
+
         let heap_size = heap_size_for_gc(
             gc,
             static_heap_size_bytes,
@@ -236,9 +234,12 @@ impl MotokoHeapInner {
         );
 
         let mut heap: Vec<u8, Aligned32Bytes> = Vec::with_capacity_in(heap_size, Aligned32Bytes {});
-	heap.resize(heap_size, 0);
-	assert_eq!(heap.len(), heap_size);
-	assert_eq!(&mut heap[static_heap_size_bytes] as *mut u8 as usize % 32, 0);
+        heap.resize(heap_size, 0);
+        assert_eq!(heap.len(), heap_size);
+        assert_eq!(
+            &mut heap[static_heap_size_bytes] as *mut u8 as usize % 32,
+            0
+        );
 
         // Maps `ObjectIdx`s into their offsets in the heap
         let object_addrs: FxHashMap<ObjectIdx, usize> =
@@ -254,10 +255,10 @@ impl MotokoHeapInner {
             &mut heap[..static_heap_size_bytes],
         );
 
-	let boxed_slice = heap.into_boxed_slice();
-	let heap_start = boxed_slice.as_ptr() as usize;
-	//assert_eq!(heap_start, 0);
-	assert_eq!(heap_start % 32, 0);
+        let boxed_slice = heap.into_boxed_slice();
+        let heap_start = boxed_slice.as_ptr() as usize;
+        //assert_eq!(heap_start, 0);
+        assert_eq!(heap_start % 32, 0);
         MotokoHeapInner {
             heap: boxed_slice,
             heap_base_offset: static_heap_size_bytes,
