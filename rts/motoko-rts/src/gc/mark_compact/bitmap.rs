@@ -8,7 +8,7 @@ static mut BITMAP_COMPENSATION: usize = 0;
 static mut BITMAP_SIZE: u32 = 0;
 
 pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_prefix_words: u32) {
-    assert_eq!(heap_prefix_words % 8, 0);
+    debug_assert_eq!(heap_prefix_words % 8, 0);
     // We will have at most this many objects in the heap, each requiring a bit
     let n_bits = heap_size.to_words().as_u32();
     // Each byte will hold 8 bits.
