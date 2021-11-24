@@ -35,7 +35,7 @@ pub unsafe fn get_bit(idx: u32) -> bool {
     debug_assert!(byte_idx as usize >= BITMAP_COMPENSATION);
     debug_assert!(BITMAP_COMPENSATION + BITMAP_SIZE as usize > byte_idx as usize);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
-    (byte >> bit_idx) & 0b1 == 0b1 // TODO IDEA: != 0 (faster, also below!)
+    (byte >> bit_idx) & 0b1 != 0
 }
 
 pub unsafe fn set_bit(idx: u32) {
@@ -109,9 +109,7 @@ impl BitmapIter {
 
             // Inner loop iterates bits in the current word
             while self.current_word != 0 {
-                if self.current_word & 0b1 == 0b1
-                /* TODO */
-                {
+                if self.current_word & 0b1 != 0 {
                     let bit_idx = (self.current_word_idx * 64) + (64 - self.bits_left);
                     self.current_word >>= 1;
                     self.bits_left -= 1;
