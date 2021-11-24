@@ -100,7 +100,7 @@ impl BitmapIter {
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_word_idx <= self.size);
-        let bitmap = BITMAP_PTR.add(BITMAP_COMPENSATION);
+        let bitmap = unsafe { BITMAP_PTR.add(BITMAP_COMPENSATION) };
 
         // Outer loop iterates 64-bit words
         loop {
