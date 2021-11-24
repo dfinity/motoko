@@ -32,12 +32,23 @@ pub fn test() {
         test_gcs(&mut page_alloc, &test_heap);
     }
 
+    let fields = vec![0; 12285];
+
+    let test_heap = TestHeap {
+        heap: vec![(0, vec![]), (1, fields)],
+        roots: vec![1],
+        continuation_table: vec![],
+    };
+
+    test_gcs(&mut page_alloc, &test_heap);
+
     println!("  Testing random heaps...");
+    test_random_heap(&mut page_alloc, 60, 180, 10);
     let max_seed = 100;
     for seed in 0..max_seed {
         print!("\r{}/{}", seed + 1, max_seed);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        test_random_heap(&mut page_alloc, seed, 180, 10);
+        test_random_heap(&mut page_alloc, seed, 160, 10);
     }
     print!("\r");
 }
@@ -144,6 +155,18 @@ fn test_gc<P: PageAlloc>(
     );
 
     for _ in 0..3 {
+        // println!("######## Heap before GC");
+
+        // unsafe {
+        //     motoko_rts::debug::dump_space(
+        //         &space,
+        //         Value::from_ptr(static_heap.root_array as usize),
+        //         static_heap.cont_tbl_loc,
+        //     );
+        // }
+
+        // println!("######### End of heap");
+
         space = gc.run(
             page_alloc.clone(),
             space,

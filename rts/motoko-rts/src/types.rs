@@ -825,6 +825,8 @@ pub unsafe fn object_size(obj: usize) -> Words<u32> {
 }
 
 pub(crate) unsafe fn object_size_(obj: usize, tag: Tag) -> Words<u32> {
+    // println!(100, "object_size_({:#x})", obj);
+
     let obj = obj as *mut Obj;
     match tag {
         TAG_OBJECT => {

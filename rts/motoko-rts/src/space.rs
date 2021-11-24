@@ -26,6 +26,7 @@ pub struct Space<P: PageAlloc> {
     total_alloc: usize,
 
     pub(crate) large_object_pages: *mut LargePageHeader,
+    pub(crate) evacuated_large_object_pages: *mut LargePageHeader,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,6 +50,7 @@ impl<P: PageAlloc> Space<P> {
             hp,
             total_alloc: 0,
             large_object_pages: core::ptr::null_mut(),
+            evacuated_large_object_pages: core::ptr::null_mut(),
         }
     }
 
@@ -76,8 +78,8 @@ impl<P: PageAlloc> Space<P> {
         PageIdx(self.current_page)
     }
 
-    pub fn get_page(&self, idx: PageIdx) -> Option<&P::Page> {
-        self.pages.get(idx.0)
+    pub fn get_page(&self, idx: PageIdx) -> Option<P::Page> {
+        self.pages.get(idx.0).cloned()
     }
 
     pub fn allocation_pointer(&self) -> usize {
@@ -203,6 +205,12 @@ impl<P: PageAlloc> Space<P> {
     pub fn iter_large_pages(&self) -> impl Iterator<Item = *mut Obj> {
         LargeObjectIter {
             page: self.large_object_pages,
+        }
+    }
+
+    pub fn iter_evacuated_large_pages(&self) -> impl Iterator<Item = *mut Obj> {
+        LargeObjectIter {
+            page: self.evacuated_large_object_pages,
         }
     }
 }

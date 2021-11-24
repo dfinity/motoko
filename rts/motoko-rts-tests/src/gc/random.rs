@@ -39,7 +39,11 @@ pub(super) fn generate(seed: u64, max_small_objects: u32, max_large_objects: u32
             } else {
                 // Large object. Allocate min. amount of fields to make a large object, to avoid
                 // allocation huge amounts.
-                12288
+                // 12,285 = large object size (12,288)
+                //              - 1 (object header)
+                //              - 1 (array size field)
+                //              - 1 (object tag field)
+                12285
             };
 
             let field_values = (0..n_fields)

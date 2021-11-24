@@ -72,48 +72,63 @@ pub unsafe fn copying_gc_internal<
     // Scavenge more?
     let mut work = true;
 
-    while work {
-        work = false;
+    // A space will have at least one page, so the `unwrap` below does not fail.
+    let mut scav_page = to_space.get_page(to_space_page_idx).unwrap();
+    let mut scav_ptr = scav_page.contents_start();
 
-        while let Some(page) = to_space.get_page(to_space_page_idx) {
-            // Where we're at in the current page we're scavenging
-            let mut p = page.contents_start();
+    loop {
+        // Scavenge from where we left to the end of the space
+        while scav_ptr != to_space.allocation_pointer() && scav_ptr != scav_page.end() {
+            let size = object_size(scav_ptr);
+            scav(from_space, to_space, scav_ptr);
+            scav_ptr += size.to_bytes().as_usize();
+        }
 
-            // Where the current page ends
-            let page_end = page.end();
-
-            // Scavenge until the end of the current page
-            // NB. when we're scavenging the last page allocation pointer changes as we scavenge
-            while p != to_space.allocation_pointer() && p != page_end {
-                let size = object_size(p);
-                scav(from_space, to_space, p);
-                p += size.to_bytes().0 as usize;
-            }
-
+        // If we're at the end of the current page move on to the next page
+        if scav_ptr == scav_page.end() {
             let next_page_idx = to_space_page_idx.next();
-
-            if to_space.get_page(next_page_idx).is_none() {
-                // Current page is the last page. We may need to scavenge this page more after
-                // evacuating large objects, so don't bump page index yet.
-                break;
-            } else {
-                to_space_page_idx = next_page_idx;
+            if let Some(page) = to_space.get_page(next_page_idx) {
+                scav_page = page;
+                scav_ptr = scav_page.contents_start();
+                continue;
             }
         }
 
-        // Scavenge to-space large objects. If we evacuate in this step then we need to scavenge
-        // newly evacuated objects.
-        // TODO: No need to scavenge all of the large objects, just the new allocation will be
-        // enough. We will need to maintain a "new large objects" list for this, and move scavenged
-        // large objects to `to_space.large_object_pages`.
-        for large_object in to_space.iter_large_pages() {
-            work |= scav(from_space, to_space, large_object as usize);
+        // Otherwise we finished scavenging to-space, scavenge large objects, and loop if we
+        // evacuated anything
+        let mut did_work = false;
+
+        let mut evacuated_large_objects = to_space.iter_evacuated_large_pages();
+        let mut large_object: Option<*mut Obj> = evacuated_large_objects.next();
+        while let Some(large_object_) = large_object {
+            // println!(100, "Scavenging large object {:#x}", large_object_ as usize);
+            did_work |= scav(from_space, to_space, large_object_ as usize);
+            large_object = evacuated_large_objects.next();
+
+            let mut large_object_header = (large_object_ as *mut LargePageHeader).sub(1);
+
+            // Check for obvious cycles -- this caught a bug before
+            debug_assert_ne!((*large_object_header).next, large_object_header);
+            debug_assert_ne!((*large_object_header).prev, large_object_header);
+
+            (*large_object_header).next = to_space.large_object_pages;
+            if !to_space.large_object_pages.is_null() {
+                (*to_space.large_object_pages).prev = large_object_header;
+            }
+            (*large_object_header).prev = core::ptr::null_mut();
+            to_space.large_object_pages = large_object_header;
+        }
+
+        to_space.evacuated_large_object_pages = core::ptr::null_mut();
+
+        if !did_work {
+            break;
         }
     }
 }
 
 /// Evacuate (copy) an object in from-space to to-space. Returns `false` when the object does not
-/// need evacuated (already evacuated, or a "filler" object).
+/// need to be evacuated (already evacuated, or a filler object).
 unsafe fn evac<P: PageAlloc>(
     from_space: &mut Space<P>,
     to_space: &mut Space<P>,
@@ -194,11 +209,11 @@ unsafe fn evac_large<P: PageAlloc>(
     }
 
     (*page_header).prev = core::ptr::null_mut();
-    (*page_header).next = to_space.large_object_pages;
-    if !(*to_space).large_object_pages.is_null() {
-        (*(*to_space).large_object_pages).prev = page_header;
+    (*page_header).next = to_space.evacuated_large_object_pages;
+    if !(*to_space).evacuated_large_object_pages.is_null() {
+        (*(*to_space).evacuated_large_object_pages).prev = page_header;
     }
-    (*to_space).large_object_pages = page_header;
+    (*to_space).evacuated_large_object_pages = page_header;
 
     true
 }
