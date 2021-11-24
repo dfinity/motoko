@@ -33,7 +33,7 @@ is divisible by 32 (implying that `heap_prefix_words % 8 == 0`). Otherwise the
 `/%8`-operation on the DH's starting address will not yield the least significant bit
 in the BM, and thus the sweep operation will be off.
 
-## Example calculation:
+## Example calculation
 
 Assume the DH is at 0x80000. The BM thus could be at 0x80004.
 Since the heap_prefix_words is 0x20000, BITMAP_PTR = 0x80004 - 0x20000 / 8 = 0x7c004.
