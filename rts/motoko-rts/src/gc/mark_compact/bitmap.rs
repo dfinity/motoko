@@ -2,12 +2,55 @@ use crate::mem_utils::memzero;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{size_of, Blob, Bytes, Obj};
 
+/* How the Wasm-heap maps to the bitmap
+
+  +---- Rts stack ----+---- Motoko statics ----+---- Dynamic heap --~~--+ Heap end
+                  (prefix words)               | BM |   <- bitmap lives here
+                                              /      \
+                                             /        \
+                                            /...bits...\ each bit corresponds to a word
+                                                         in the dynamic heap
+
+When marking, we pass an absolute pointer (i.e. address space relative), for speed.
+Internally the bitmap is kept in a (non-moving) blob at the start of the dynamic heap (DH).
+To efficiently mark the right bit in the bitmap, we maintain a pointer that points
+_before the start of the bitmap_ such that using the `/%8`-operation on the DH
+absolute word number will address the right bit:
+
+       +---- BITMAP_PTR
+       v
+       |          (forbidden)             |...................... bitmap ................|
+       |   heap_prefix_words / 8 bytes    |                 heap_size / 32 bytes
+       |       BITMAP_COMPENSATION        |                     BITMAP_SIZE
+
+Debug assertions guard the forbidden bytes from access, as this area physically overlaps
+with the Motoko static heap.
+
+## The alignment caveat
+
+For this scheme to work, it is essential that the start of the DH is an address that
+is divisible by 32 (implying that `heap_prefix_words % 8 == 0`). Otherwise the
+`/%8`-operation on the DH's starting address will not yield the least significant bit
+in the BM, and thus the sweep operation will be off.
+
+## Example calculation:
+
+Assume the DH is at 0x80000. The BM thus could be at 0x80004.
+Since the heap_prefix_words is 0x20000, BITMAP_PTR = 0x80004 - 0x20000 / 8 = 0x7c004.
+
+Now let's mark the address 0x80548 in the DH. Its absolute word number is 0x20152.
+The `(0x20152 / 8, 0x20152 % 8)`-rule gives a bit position 2 with byte offset 0x402a,
+thus we mark bit 2 in byte 0x7c004+0x402a = 0x8002e, which is physically in the BM.
+
+ */
+
 /// Current bitmap
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
 static mut BITMAP_COMPENSATION: usize = 0;
 static mut BITMAP_SIZE: u32 = 0;
 
 pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_prefix_words: u32) {
+    // see Note "How the Wasm-heap maps to the bitmap" above
     debug_assert_eq!(heap_prefix_words % 8, 0);
     // We will have at most this many objects in the heap, each requiring a bit
     let n_bits = heap_size.to_words().as_u32();
