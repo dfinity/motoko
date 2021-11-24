@@ -15,7 +15,7 @@ set -e
 
 git -C "$1" fetch --tags
 # 0.5.10 was the first where we have motoko-base via motoko
-# 0.8.4 is the first where motoko is removed from sources.json (and we need to ddo something else)
+# 0.8.4 is the first where motoko is removed from sources.json (and we need to do something else)
 for tag in $(git -C "$1" tag --contains 0.5.10 --no-contains 0.8.4 | sort -V)
 do
   mo_rev="$(git -C "$1" show "$tag:nix/sources.json" | jq -r .motoko.rev)"
