@@ -25,8 +25,8 @@ pub struct Space<P: PageAlloc> {
     /// accounted as allocated. (TODO: not sure about this part)
     total_alloc: usize,
 
-    pub(crate) large_object_pages: *mut LargePageHeader,
-    pub(crate) evacuated_large_object_pages: *mut LargePageHeader,
+    pub large_object_pages: Vec<*mut LargePageHeader>,
+    pub evacuated_large_object_pages: Vec<*mut LargePageHeader>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,8 +49,8 @@ impl<P: PageAlloc> Space<P> {
             current_page: 0,
             hp,
             total_alloc: 0,
-            large_object_pages: core::ptr::null_mut(),
-            evacuated_large_object_pages: core::ptr::null_mut(),
+            large_object_pages: vec![],
+            evacuated_large_object_pages: vec![],
         }
     }
 
@@ -96,13 +96,9 @@ impl<P: PageAlloc> Space<P> {
             let page = self.page_alloc.alloc_pages(n_pages);
 
             let page_header = page.start() as *mut LargePageHeader;
-            (*page_header).next = self.large_object_pages;
-            (*page_header).prev = core::ptr::null_mut();
             (*page_header).n_pages = n_pages;
-            if !self.large_object_pages.is_null() {
-                (*self.large_object_pages).prev = page_header;
-            }
-            self.large_object_pages = page_header;
+
+            self.large_object_pages.push(page_header);
 
             let page_start = page_header.add(1) as usize;
 
@@ -154,18 +150,28 @@ impl<P: PageAlloc> Space<P> {
 
     /// Free all pages of the space. The space itself should not be used afterwards.
     pub unsafe fn free(&mut self) {
+        debug_assert!(self.evacuated_large_object_pages.is_empty());
+
         for page in self.pages.drain(..) {
             self.page_alloc.free(page);
         }
 
-        let mut large_object = self.large_object_pages;
-        self.large_object_pages = core::ptr::null_mut(); // optional
-
-        while !large_object.is_null() {
-            let next = (*large_object).next;
-            self.page_alloc.free_large(large_object);
-            large_object = next;
+        for large_object in self.large_object_pages.drain(..) {
+            let obj = large_object.add(1) as *mut Obj;
+            debug_assert!(obj.is_large());
+            if !obj.is_marked() {
+                self.page_alloc.free_large(large_object);
+            }
         }
+
+        // let mut large_object = self.large_object_pages;
+        // self.large_object_pages = core::ptr::null_mut(); // optional
+
+        // while !large_object.is_null() {
+        //     let next = (*large_object).next;
+        //     self.page_alloc.free_large(large_object);
+        //     large_object = next;
+        // }
     }
 
     pub unsafe fn alloc_array(&mut self, len: u32) -> Value {
@@ -200,37 +206,5 @@ impl<P: PageAlloc> Space<P> {
 
     pub fn page_alloc(&self) -> &P {
         &self.page_alloc
-    }
-
-    pub fn iter_large_pages(&self) -> impl Iterator<Item = *mut Obj> {
-        LargeObjectIter {
-            page: self.large_object_pages,
-        }
-    }
-
-    pub fn iter_evacuated_large_pages(&self) -> impl Iterator<Item = *mut Obj> {
-        LargeObjectIter {
-            page: self.evacuated_large_object_pages,
-        }
-    }
-}
-
-pub struct LargeObjectIter {
-    page: *mut LargePageHeader,
-}
-
-impl Iterator for LargeObjectIter {
-    type Item = *mut Obj;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.page.is_null() {
-            return None;
-        }
-
-        let page = self.page;
-        self.page = unsafe { (*self.page).next };
-
-        // Skip header
-        Some(unsafe { page.add(1) } as *mut Obj)
     }
 }

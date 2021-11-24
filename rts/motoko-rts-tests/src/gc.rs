@@ -32,19 +32,35 @@ pub fn test() {
         test_gcs(&mut page_alloc, &test_heap);
     }
 
-    let fields = vec![0; 12285];
+    {
+        let fields = vec![0; 12285];
 
-    let test_heap = TestHeap {
-        heap: vec![(0, vec![]), (1, fields)],
-        roots: vec![1],
-        continuation_table: vec![],
-    };
+        let test_heap = TestHeap {
+            heap: vec![(0, vec![]), (1, fields)],
+            roots: vec![1],
+            continuation_table: vec![],
+        };
 
-    test_gcs(&mut page_alloc, &test_heap);
+        test_gcs(&mut page_alloc, &test_heap);
+    }
+
+    {
+        let fields0 = vec![0; 12285];
+        let fields1 = vec![1; 12285];
+
+        let heap = TestHeap {
+            heap: vec![(0, vec![]), (1, fields0), (2, fields1)],
+            roots: vec![2],
+            continuation_table: vec![],
+        };
+
+        test_gcs(&mut page_alloc, &heap);
+    }
 
     println!("  Testing random heaps...");
-    test_random_heap(&mut page_alloc, 60, 180, 10);
-    let max_seed = 100;
+    test_random_heap(&mut page_alloc, 60, 180, 15);
+    test_random_heap(&mut page_alloc, 209, 160, 10);
+    let max_seed = 1500;
     for seed in 0..max_seed {
         print!("\r{}/{}", seed + 1, max_seed);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
@@ -155,17 +171,17 @@ fn test_gc<P: PageAlloc>(
     );
 
     for _ in 0..3 {
-        // println!("######## Heap before GC");
+        //println!("######## Heap before GC");
 
-        // unsafe {
-        //     motoko_rts::debug::dump_space(
-        //         &space,
-        //         Value::from_ptr(static_heap.root_array as usize),
-        //         static_heap.cont_tbl_loc,
-        //     );
-        // }
+        //unsafe {
+        //    motoko_rts::debug::dump_space(
+        //        &space,
+        //        Value::from_ptr(static_heap.root_array as usize),
+        //        static_heap.cont_tbl_loc,
+        //    );
+        //}
 
-        // println!("######### End of heap");
+        //println!("######### End of heap");
 
         space = gc.run(
             page_alloc.clone(),
@@ -258,8 +274,12 @@ fn check_dynamic_heap<P: PageAlloc>(
     }
 
     // Scan large objects
-    for large_object in space.iter_large_pages() {
-        check_object(large_object as *mut Obj, &object_map, &mut seen);
+    for large_object_page in space.large_object_pages.iter() {
+        check_object(
+            unsafe { large_object_page.add(1) } as *mut Obj,
+            &object_map,
+            &mut seen,
+        );
     }
 
     // At this point we've checked that all seen objects point to the expected objects (as
@@ -317,6 +337,8 @@ fn check_object(
     object_map: &FxHashMap<ObjectIdx, &[ObjectIdx]>,
     seen: &mut FxHashMap<ObjectIdx, usize>,
 ) {
+    // println!("Checking object {:#x}", obj as usize);
+
     let tag = unsafe { obj.tag() };
     if tag == TAG_ONE_WORD_FILLER || tag == TAG_FREE_SPACE {
         return;

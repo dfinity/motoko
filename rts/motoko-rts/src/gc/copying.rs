@@ -51,8 +51,8 @@ pub unsafe fn copying_gc_internal<
     _note_reclaimed: NoteReclaimed,
 ) {
     // Reset mark bits of large objects
-    for large_object in from_space.iter_large_pages() {
-        large_object.unmark_large();
+    for large_object_page in from_space.large_object_pages.iter() {
+        (large_object_page.add(1) as *mut Obj).unmark_large();
     }
 
     let static_roots = static_roots.as_array();
@@ -98,31 +98,17 @@ pub unsafe fn copying_gc_internal<
         // evacuated anything
         let mut did_work = false;
 
-        let mut evacuated_large_objects = to_space.iter_evacuated_large_pages();
-        let mut large_object: Option<*mut Obj> = evacuated_large_objects.next();
-        while let Some(large_object_) = large_object {
-            // println!(100, "Scavenging large object {:#x}", large_object_ as usize);
-            did_work |= scav(from_space, to_space, large_object_ as usize);
-            large_object = evacuated_large_objects.next();
-
-            let mut large_object_header = (large_object_ as *mut LargePageHeader).sub(1);
-
-            // Check for obvious cycles -- this caught a bug before
-            debug_assert_ne!((*large_object_header).next, large_object_header);
-            debug_assert_ne!((*large_object_header).prev, large_object_header);
-
-            (*large_object_header).next = to_space.large_object_pages;
-            if !to_space.large_object_pages.is_null() {
-                (*to_space.large_object_pages).prev = large_object_header;
-            }
-            (*large_object_header).prev = core::ptr::null_mut();
-            to_space.large_object_pages = large_object_header;
+        for large_page_header in core::mem::take(&mut to_space.evacuated_large_object_pages) {
+            let large_object = large_page_header.add(1) as *mut Obj;
+            // println!(100, "Scavenging large object {:#x}", large_object as usize);
+            did_work |= scav(from_space, to_space, large_object as usize);
+            to_space.large_object_pages.push(large_page_header);
         }
-
-        to_space.evacuated_large_object_pages = core::ptr::null_mut();
 
         if !did_work {
             break;
+        } else {
+            // println!(100, "Looping");
         }
     }
 }
@@ -190,30 +176,11 @@ unsafe fn evac_large<P: PageAlloc>(
     // to-space large object list.
     obj.mark_large();
 
+    // println!(100, "Evacuating large object {:#x}", obj as usize);
+
     let page_header = (obj as *mut LargePageHeader).sub(1);
 
-    if (*page_header).prev.is_null() {
-        debug_assert_eq!((*from_space).large_object_pages, page_header);
-        (*from_space).large_object_pages = (*page_header).next;
-        if !(*page_header).next.is_null() {
-            debug_assert_eq!((*(*page_header).next).prev, page_header);
-            (*(*page_header).next).prev = core::ptr::null_mut();
-        }
-    } else {
-        debug_assert_eq!((*(*page_header).prev).next, page_header);
-        (*(*page_header).prev).next = (*page_header).next;
-        if !(*page_header).next.is_null() {
-            debug_assert_eq!((*(*page_header).next).prev, page_header);
-            (*(*page_header).next).prev = (*page_header).prev;
-        }
-    }
-
-    (*page_header).prev = core::ptr::null_mut();
-    (*page_header).next = to_space.evacuated_large_object_pages;
-    if !(*to_space).evacuated_large_object_pages.is_null() {
-        (*(*to_space).evacuated_large_object_pages).prev = page_header;
-    }
-    (*to_space).evacuated_large_object_pages = page_header;
+    to_space.evacuated_large_object_pages.push(page_header);
 
     true
 }
