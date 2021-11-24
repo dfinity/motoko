@@ -3398,6 +3398,7 @@ module IC = struct
   (* IC-specific stuff: System imports, databufs etc. *)
 
   let i32s n = Lib.List.make n I32Type
+  let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
@@ -3432,7 +3433,16 @@ module IC = struct
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
       E.add_func_import env "ic0" "stable_size" [] [I32Type];
       E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
+      (match E.mode env with
+      | Flags.RefMode  ->
+        E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
+        E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
+        E.add_func_import env "ic0" "stable64_size" [] [I64Type];
+        E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
+      | _ -> ()
+      );
       E.add_func_import env "ic0" "time" [] [I64Type];
+
       ()
 
   let system_imports env =
