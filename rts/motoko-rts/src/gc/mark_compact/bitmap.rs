@@ -107,10 +107,8 @@ pub struct BitmapIter {
     /// Current 64-bit word in the bitmap that we're iterating. We read in 64-bit chunks to be able
     /// to check as many bits as possible with a single `word != 0`.
     current_word: u64,
-    /// Bits checked in the current 64-bit word. Used to compute index of a bit in the bitmap. We
-    /// can't use a global index here as we don't know how much to bump it when `current_word` is
-    /// 0 and we move to the next 64-bit word.
-    bits_visited: u32,
+    /// How many leading bits are initially zeroed in the current_word
+    leading_zeros: u32,
 }
 
 pub unsafe fn iter_bits() -> BitmapIter {
@@ -133,7 +131,7 @@ pub unsafe fn iter_bits() -> BitmapIter {
         size: blob_len_bytes * 8,
         current_bit_idx: 0,
         current_word,
-        bits_visited: 0,
+        leading_zeros: current_word.leading_zeros(),
     }
 }
 
@@ -161,25 +159,25 @@ impl BitmapIter {
             // Inner loop iterates bits in the current word
             while self.current_word != 0 {
                 if self.current_word & 0b1 != 0 {
-                    let bit_idx = self.current_bit_idx + self.bits_visited;
+                    let bit_idx = self.current_bit_idx;
                     self.current_word >>= 1;
-                    self.bits_visited += 1;
+                    self.current_bit_idx += 1;
                     return bit_idx;
                 } else {
                     let shift_amt = self.current_word.trailing_zeros();
                     self.current_word >>= shift_amt;
-                    self.bits_visited += shift_amt;
+                    self.current_bit_idx += shift_amt;
                 }
             }
 
             // Move on to next word
-            self.current_bit_idx += 64;
+            self.current_bit_idx += self.leading_zeros;
             if self.current_bit_idx == self.size {
                 return BITMAP_ITER_END;
             }
             self.current_word =
                 unsafe { *(BITMAP_PTR as *const u64).add(self.current_bit_idx as usize / 64) };
-            self.bits_visited = 0;
+            self.leading_zeros = self.current_word.leading_zeros();
         }
     }
 }
