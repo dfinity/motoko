@@ -27,10 +27,10 @@
         "homepage": "",
         "owner": "ggreif",
         "repo": "ic",
-        "rev": "c44bac49c086ea8b0de25ec98290be61dc508033",
-        "sha256": "1gif14vqs6q9xncdhix8yvv76iwh65a4nbb7bwxki0nlfjjv09v8",
+        "rev": "82b3e2ada578dd7fa662d038b4f9618b8d4a0ba8",
+        "sha256": "0k3n7gp751j9nvffllj17x082wg6xlgns7hyyhnifhh53ydm7dlk",
         "type": "tarball",
-        "url": "https://github.com/ggreif/ic/archive/c44bac49c086ea8b0de25ec98290be61dc508033.tar.gz",
+        "url": "https://github.com/ggreif/ic/archive/82b3e2ada578dd7fa662d038b4f9618b8d4a0ba8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
