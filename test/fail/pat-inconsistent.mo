@@ -49,3 +49,17 @@ switch (true : Bool) {
   case 1 {};
   case false {};
 };
+
+switch (true : Bool) {
+  case (#geese) {};
+};
+
+// Coverage check for disjoint variants
+switch (#sparrows : { #sparrows }) {
+  case (#geese) {};
+};
+
+func absurd(birds : {#}) =
+  switch birds {
+    case (#geese) {};
+  };
