@@ -49,3 +49,7 @@ switch (true : Bool) {
   case 1 {};
   case false {};
 };
+
+switch (true : Bool) {
+  case (#geese) {};
+};
