@@ -17,7 +17,7 @@ To efficiently mark the right bit in the bitmap, we maintain a pointer that poin
 _before the start of the bitmap_ such that using the `/%8`-operation on the DH
 absolute word number will address the right bit:
 
-       +---- BITMAP_PTR
+       +---- BITMAP_FORBIDDEN_PTR
        v
        |          (forbidden)             |...................... bitmap ................|
        |   heap_prefix_words / 8 bytes    |                 heap_size / 32 bytes
@@ -36,7 +36,7 @@ in the BM, and thus the sweep operation will be off.
 ## Example calculation
 
 Assume the DH is at 0x80000. The BM thus could be at 0x80004.
-Since the heap_prefix_words is 0x20000, BITMAP_PTR = 0x80004 - 0x20000 / 8 = 0x7c004.
+Since the heap_prefix_words is 0x20000, BITMAP_FORBIDDEN_PTR = 0x80004 - 0x20000 / 8 = 0x7c004.
 
 Now let's mark the address 0x80548 in the DH. Its absolute word number is 0x20152.
 The `(0x20152 / 8, 0x20152 % 8)`-rule gives a bit position 2 with byte offset 0x402a,
@@ -45,7 +45,7 @@ thus we mark bit 2 in byte 0x7c004+0x402a = 0x8002e, which is physically in the 
  */
 
 /// Current bitmap
-static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
+static mut BITMAP_FORBIDDEN_PTR: *mut u8 = core::ptr::null_mut();
 static mut BITMAP_COMPENSATION: usize = 0;
 static mut BITMAP_SIZE: u32 = 0;
 
@@ -69,11 +69,11 @@ pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_p
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
     BITMAP_COMPENSATION = (heap_prefix_words / 8) as usize;
-    BITMAP_PTR = blob.payload_addr().sub(BITMAP_COMPENSATION)
+    BITMAP_FORBIDDEN_PTR = blob.payload_addr().sub(BITMAP_COMPENSATION)
 }
 
 pub unsafe fn free_bitmap() {
-    BITMAP_PTR = core::ptr::null_mut();
+    BITMAP_FORBIDDEN_PTR = core::ptr::null_mut();
     BITMAP_SIZE = 0;
     BITMAP_COMPENSATION = 0
 }
@@ -84,7 +84,7 @@ pub unsafe fn get_bit(idx: u32) -> bool {
     debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
     #[cfg(debug_assertions)]
     debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
-    let byte = *BITMAP_PTR.add(byte_idx as usize);
+    let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize);
     (byte >> bit_idx) & 0b1 != 0
 }
 
@@ -94,9 +94,9 @@ pub unsafe fn set_bit(idx: u32) {
     debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
     #[cfg(debug_assertions)]
     debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
-    let byte = *BITMAP_PTR.add(byte_idx as usize);
+    let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize);
     let new_byte = byte | (0b1 << bit_idx);
-    *BITMAP_PTR.add(byte_idx as usize) = new_byte;
+    *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize) = new_byte;
 }
 
 pub struct BitmapIter {
@@ -114,7 +114,7 @@ pub struct BitmapIter {
 }
 
 pub unsafe fn iter_bits() -> BitmapIter {
-    let bitmap = BITMAP_PTR.add(BITMAP_COMPENSATION);
+    let bitmap = BITMAP_FORBIDDEN_PTR.add(BITMAP_COMPENSATION);
     let blob_len_bytes = (bitmap.sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Obj)
         .as_blob()
         .len()
@@ -152,7 +152,7 @@ impl BitmapIter {
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_word_idx <= self.size);
-        let bitmap = unsafe { BITMAP_PTR.add(BITMAP_COMPENSATION) };
+        let bitmap = unsafe { BITMAP_FORBIDDEN_PTR.add(BITMAP_COMPENSATION) };
 
         // Outer loop iterates 64-bit words
         loop {
