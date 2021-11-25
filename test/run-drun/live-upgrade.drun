@@ -1,3 +1,6 @@
+# TODO: in-appropriate test for drun due to scheduling optimization, rewrite!
+# SKIP drun
+
 install $ID live-upgrade/live-upgrade.mo ""
 query $ID check "DIDL\x00\x01\x7d\x00"
 upgrade $ID live-upgrade/live-upgrade.mo ""
