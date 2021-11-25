@@ -58,19 +58,16 @@ pub unsafe fn copying_gc_internal<
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
-    evac_static_roots(from_space, to_space, static_roots);
+    evac_static_roots(to_space, static_roots);
 
     if (*continuation_table_loc).is_ptr() {
-        evac(from_space, to_space, continuation_table_loc as usize);
+        evac(to_space, continuation_table_loc as usize);
     }
 
     // Scavenge to-space
 
     // Current page we're scavenging
     let mut to_space_page_idx = to_space.first_page();
-
-    // Scavenge more?
-    let mut work = true;
 
     // A space will have at least one page, so the `unwrap` below does not fail.
     let mut scav_page = to_space.get_page(to_space_page_idx).unwrap();
@@ -80,7 +77,7 @@ pub unsafe fn copying_gc_internal<
         // Scavenge from where we left to the end of the space
         while scav_ptr != to_space.allocation_pointer() && scav_ptr != scav_page.end() {
             let size = object_size(scav_ptr);
-            scav(from_space, to_space, scav_ptr);
+            scav(to_space, scav_ptr);
             scav_ptr += size.to_bytes().as_usize();
         }
 
@@ -88,6 +85,7 @@ pub unsafe fn copying_gc_internal<
         if scav_ptr == scav_page.end() {
             let next_page_idx = to_space_page_idx.next();
             if let Some(page) = to_space.get_page(next_page_idx) {
+                to_space_page_idx = next_page_idx;
                 scav_page = page;
                 scav_ptr = scav_page.contents_start();
                 continue;
@@ -101,7 +99,7 @@ pub unsafe fn copying_gc_internal<
         for large_page_header in core::mem::take(&mut to_space.evacuated_large_object_pages) {
             let large_object = large_page_header.add(1) as *mut Obj;
             // println!(100, "Scavenging large object {:#x}", large_object as usize);
-            did_work |= scav(from_space, to_space, large_object as usize);
+            did_work |= scav(to_space, large_object as usize);
             to_space.large_object_pages.push(large_page_header);
         }
 
@@ -116,7 +114,6 @@ pub unsafe fn copying_gc_internal<
 /// Evacuate (copy) an object in from-space to to-space. Returns `false` when the object does not
 /// need to be evacuated (already evacuated, or a filler object).
 unsafe fn evac<P: PageAlloc>(
-    from_space: &mut Space<P>,
     to_space: &mut Space<P>,
     ptr_loc: usize,
 ) -> bool {
@@ -129,7 +126,7 @@ unsafe fn evac<P: PageAlloc>(
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
     if obj.is_large() {
-        return evac_large(from_space, to_space, obj);
+        return evac_large(to_space, obj);
     }
 
     let tag = obj.tag();
@@ -164,7 +161,6 @@ unsafe fn evac<P: PageAlloc>(
 
 /// Returns `false` when the object is already evacuated.
 unsafe fn evac_large<P: PageAlloc>(
-    from_space: &mut Space<P>,
     to_space: &mut Space<P>,
     obj: *mut Obj,
 ) -> bool {
@@ -187,7 +183,6 @@ unsafe fn evac_large<P: PageAlloc>(
 
 /// Returns `false` when nothing is evacuated.
 unsafe fn scav<P: PageAlloc>(
-    from_space: &mut Space<P>,
     to_space: &mut Space<P>,
     obj: usize,
 ) -> bool {
@@ -196,7 +191,7 @@ unsafe fn scav<P: PageAlloc>(
     let mut evacuated = false;
 
     crate::visitor::visit_pointer_fields(obj, obj.tag(), |field_addr| {
-        evacuated |= evac(from_space, to_space, field_addr as usize);
+        evacuated |= evac(to_space, field_addr as usize);
     });
 
     evacuated
@@ -205,7 +200,6 @@ unsafe fn scav<P: PageAlloc>(
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
 unsafe fn evac_static_roots<P: PageAlloc>(
-    from_space: &mut Space<P>,
     to_space: &mut Space<P>,
     roots: *mut Array,
 ) {
@@ -213,6 +207,6 @@ unsafe fn evac_static_roots<P: PageAlloc>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(from_space, to_space, obj.get_ptr());
+        scav(to_space, obj.get_ptr());
     }
 }

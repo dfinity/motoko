@@ -86,5 +86,5 @@ impl PageHeader {
 
 pub struct LargePageHeader {
     pub n_pages: u16,
-    unused: u16, // TODO: This is to make sure page contents start at a word boundary
+    _unused: u16, // TODO: This is to make sure page contents start at a word boundary
 }
