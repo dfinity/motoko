@@ -49,6 +49,11 @@ static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
 static mut BITMAP_COMPENSATION: usize = 0;
 static mut BITMAP_SIZE: u32 = 0;
 
+#[cfg(debug_assertions)]
+fn get_bitmap_forbidden_size() -> usize {
+    unsafe { BITMAP_COMPENSATION }
+}
+
 pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_prefix_words: u32) {
     // See Note "How the Wasm-heap maps to the bitmap" above
     debug_assert_eq!(heap_prefix_words % 8, 0);
@@ -75,16 +80,20 @@ pub unsafe fn free_bitmap() {
 
 pub unsafe fn get_bit(idx: u32) -> bool {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    debug_assert!(byte_idx as usize >= BITMAP_COMPENSATION);
-    debug_assert!(BITMAP_COMPENSATION + BITMAP_SIZE as usize > byte_idx as usize);
+    #[cfg(debug_assertions)]
+    debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
+    #[cfg(debug_assertions)]
+    debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
     (byte >> bit_idx) & 0b1 != 0
 }
 
 pub unsafe fn set_bit(idx: u32) {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    debug_assert!(byte_idx as usize >= BITMAP_COMPENSATION);
-    debug_assert!(BITMAP_COMPENSATION + BITMAP_SIZE as usize > byte_idx as usize);
+    #[cfg(debug_assertions)]
+    debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
+    #[cfg(debug_assertions)]
+    debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
     let byte = *BITMAP_PTR.add(byte_idx as usize);
     let new_byte = byte | (0b1 << bit_idx);
     *BITMAP_PTR.add(byte_idx as usize) = new_byte;
