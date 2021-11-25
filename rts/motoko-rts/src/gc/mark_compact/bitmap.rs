@@ -100,10 +100,10 @@ pub unsafe fn set_bit(idx: u32) {
 }
 
 pub struct BitmapIter {
-    /// Size of the bitmap, in 64-bit words words. Does not change after initialization.
+    /// Size of the bitmap, in bits. Does not change after initialization.
     size: u32,
-    /// Current 64-bit word index
-    current_word_idx: u32,
+    /// Current bit index
+    current_bit_idx: u32,
     /// Current 64-bit word in the bitmap that we're iterating. We read in 64-bit chunks to be able
     /// to check as many bits as possible with a single `word != 0`.
     current_word: u64,
@@ -130,8 +130,8 @@ pub unsafe fn iter_bits() -> BitmapIter {
     };
 
     BitmapIter {
-        size: blob_len_64bit_words,
-        current_word_idx: 0,
+        size: blob_len_bytes * 8,
+        current_bit_idx: 0,
         current_word,
         bits_left: 64,
     }
@@ -150,18 +150,18 @@ pub const BITMAP_ITER_END: u32 = 1024 * 1024 * 1024;
 impl BitmapIter {
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
-        debug_assert!(self.current_word_idx <= self.size);
+        debug_assert!(self.current_bit_idx <= self.size);
 
         // Outer loop iterates 64-bit words
         loop {
-            if self.current_word == 0 && self.current_word_idx == self.size {
+            if self.current_word == 0 && self.current_bit_idx == self.size {
                 return BITMAP_ITER_END;
             }
 
             // Inner loop iterates bits in the current word
             while self.current_word != 0 {
                 if self.current_word & 0b1 != 0 {
-                    let bit_idx = (self.current_word_idx * 64) + (64 - self.bits_left);
+                    let bit_idx = self.current_bit_idx + 64 - self.bits_left;
                     self.current_word >>= 1;
                     self.bits_left -= 1;
                     return bit_idx;
@@ -173,12 +173,12 @@ impl BitmapIter {
             }
 
             // Move on to next word
-            self.current_word_idx += 1;
-            if self.current_word_idx == self.size {
+            self.current_bit_idx += 64;
+            if self.current_bit_idx == self.size {
                 return BITMAP_ITER_END;
             }
             self.current_word =
-                unsafe { *(BITMAP_PTR as *const u64).add(self.current_word_idx as usize) };
+                unsafe { *(BITMAP_PTR as *const u64).add(self.current_bit_idx as usize / 64) };
             self.bits_left = 64;
         }
     }
