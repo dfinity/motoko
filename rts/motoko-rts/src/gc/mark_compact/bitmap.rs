@@ -19,7 +19,7 @@ absolute word number will address the right bit:
 
        +---- BITMAP_FORBIDDEN_PTR         +---- BITMAP_PTR
        v                                  v
-       ,          (forbidden)             +...................... bitmap ................+
+       ,          (forbidden)             ,...................... bitmap ................,
        |   heap_prefix_words / 8 bytes    |                 heap_size / 32 bytes         |
        |   get_bitmap_forbidden_size()    |                     BITMAP_SIZE              |
 
