@@ -199,7 +199,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
-        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
+        let p = (bit * WORD_SIZE) as *mut Obj;
         let p_new = free;
 
         // Update backwards references to the object's new location and restore object header

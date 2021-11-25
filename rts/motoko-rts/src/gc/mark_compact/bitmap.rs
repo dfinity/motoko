@@ -127,9 +127,12 @@ pub unsafe fn iter_bits() -> BitmapIter {
         *(BITMAP_PTR as *const u64)
     };
 
+    debug_assert!(BITMAP_PTR as usize >= BITMAP_FORBIDDEN_PTR as usize);
+    let forbidden_bits = (BITMAP_PTR as usize - BITMAP_FORBIDDEN_PTR as usize) as u32 * 8;
+
     BitmapIter {
-        size: blob_len_bytes * 8,
-        current_bit_idx: 0,
+        size: blob_len_bytes * 8 + forbidden_bits,
+        current_bit_idx: forbidden_bits,
         current_word,
         leading_zeros: current_word.leading_zeros(),
     }
