@@ -1801,7 +1801,7 @@ and check_pat' env t pat : Scope.val_env =
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 = try
-        match T.lookup_val_field_opt id.it (T.as_variant_sub id.it t) with
+     match T.lookup_val_field_opt id.it (T.as_variant_sub id.it t) with
         | Some t1 -> t1
         | None -> T.Non
       with Invalid_argument _ ->
