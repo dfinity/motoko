@@ -132,3 +132,5 @@ pat-inconsistent.mo:49.8-49.9: type error [M0050], literal of type
   Nat
 does not have expected type
   Bool
+pat-inconsistent.mo:54.9-54.15: type error [M0116], variant pattern cannot consume expected type
+  Bool
