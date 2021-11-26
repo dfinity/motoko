@@ -24,7 +24,7 @@ pub(crate) static mut LAST_HP: u32 = 0;
 
 // Provided by generated code
 extern "C" {
-    fn get_heap_base() -> u32;
+    pub(crate) fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> Value;
 }
 
