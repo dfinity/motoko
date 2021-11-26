@@ -141,5 +141,5 @@ After that you will have csv files that you can compare.
 
 Most of the time I simply do `nvim -d <csv1> <csv2>`.
 
-I have a Rust program to generate plots for instructions, dirtied pages etc.
+I have a Rust program to generates plots for instructions, dirtied pages etc.
 for CSV files. I will make it public soon.
