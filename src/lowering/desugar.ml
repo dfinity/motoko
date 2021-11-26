@@ -382,7 +382,7 @@ and build_actor at ts self_id es obj_typ =
   let (interface_d, interface_f) = export_interface candid.I.service in
   I.ActorE (interface_d @ ds', interface_f @ fs,
      { meta;
-       I.pre =
+       I.preupgrade =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
         blockE
           ((match call_system_func_opt "preupgrade" es with
@@ -398,7 +398,7 @@ and build_actor at ts self_id es obj_typ =
                         note = f.T.typ }
                     ) fields vs)
                  ty]));
-        I.post = match call_system_func_opt "postupgrade" es with
+        I.postupgrade = match call_system_func_opt "postupgrade" es with
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)
