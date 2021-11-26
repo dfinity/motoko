@@ -178,8 +178,9 @@ impl BitmapIter {
             if self.current_bit_idx == self.size {
                 return BITMAP_ITER_END;
             }
-            self.current_word =
-                unsafe { *(BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / 8) as *const u64) };
+            self.current_word = unsafe {
+                *(BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / 8) as *const u64)
+            };
             self.leading_zeros = self.current_word.leading_zeros();
         }
     }
