@@ -4,12 +4,14 @@ use crate::types::{size_of, Blob, Bytes, Obj};
 
 /* How the Wasm-heap maps to the bitmap
 
-  +---- Rts stack ----+---- Motoko statics ----+---- Dynamic heap --~~--+ Heap end
-                  (prefix words)               | BM |   <- bitmap lives here
-                                              /      \
-                                             /        \
-                                            /...bits...\ each bit corresponds to a word
-                                                         in the dynamic heap
+  +---- Rts stack ----+---- Motoko statics ----+---- Dynamic heap --~~--+ Heap limit
+                  (prefix words)                   bitmap lives here -> | BM |
+                                                                       /      \
+                                                                      /        \
+                                     each bit corresponds to a word: /...bits...\
+                                          in the dynamic heap
+
+## Marking with absolute addresses
 
 When marking, we pass an absolute pointer (i.e. address space relative), for speed.
 Internally the bitmap is kept in a (non-moving) blob at the start of the dynamic heap (DH).
