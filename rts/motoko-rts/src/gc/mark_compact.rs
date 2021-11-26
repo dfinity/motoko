@@ -109,7 +109,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         // TODO: No need to check if continuation table is already marked
         mark_object(mem, *continuation_table_ptr_loc);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
-        // it will be readable when we unthread continuation table
+        // it will be readable when we unthread the continuation table
         thread(continuation_table_ptr_loc);
     }
 
