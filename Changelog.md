@@ -1,5 +1,10 @@
 # Motoko compiler changelog
 
+## 0.6.15 (2021-11-26)
+
+* Fixes crash when (ill-typed) `switch` expression on non-variant
+  value has variant alternatives (#2934)
+
 ## 0.6.14 (2021-11-19)
 
 * The compiler now embeds the existing Candid interface  and  new
