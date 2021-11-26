@@ -53,15 +53,15 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.13) are:
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.16) are:
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        ## 0.6.13 (2021-10-31)
+        ## 0.6.16 (2021-12-01)
 
    with today’s date.
 
- * Define a shell variable `export MOC_MINOR=15`
+ * Define a shell variable `export MOC_MINOR=16`
 
  * Look at `git log --first-parent 0.6.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
