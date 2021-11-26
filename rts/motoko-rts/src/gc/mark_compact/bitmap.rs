@@ -148,19 +148,19 @@ pub unsafe fn iter_bits() -> BitmapIter {
 //
 // (We actually need less bits than that as when the heap is full we can't allocate bitmap and mark
 // stack and can't do GC)
-pub const BITMAP_ITER_END: u32 = 1024 * 1024 * 1024;
+pub const BITMAP_ITER_END: u32 = u32::MAX;
 
 impl BitmapIter {
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_bit_idx <= self.size);
 
+        if self.current_bit_idx == self.size {
+            return BITMAP_ITER_END;
+        }
+
         // Outer loop iterates 64-bit words
         loop {
-            if self.current_word == 0 && self.current_bit_idx == self.size {
-                return BITMAP_ITER_END;
-            }
-
             // Inner loop iterates bits in the current word
             while self.current_word != 0 {
                 if self.current_word & 0b1 != 0 {
