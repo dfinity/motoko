@@ -19,11 +19,21 @@ To efficiently mark the right bit in the bitmap, we maintain a pointer that poin
 _before the start of the bitmap_ such that using the `/%8`-operation on the DH
 absolute word number will address the right bit:
 
+
        +---- BITMAP_FORBIDDEN_PTR         +---- BITMAP_PTR
        v                                  v
-       ,          (forbidden)             ,...................... bitmap ................,
-       |   heap_prefix_words / 8 bytes    |                 heap_size / 32 bytes         |
-       |   get_bitmap_forbidden_size()    |                     BITMAP_SIZE              |
+       ,          (forbidden)             ,...................... bitmap ..........~~....,
+       |   heap_prefix_words / 8 bytes    |               heap_size / 32 bytes           |
+       |   get_bitmap_forbidden_size()    |                   BITMAP_SIZE                |
+       ^                                  ^                                              ^
+      /           ^^^^^^^^^^^              \                                             |
+     /            corresponds               \                 ^^^^^^^^^^^               /
+    /                                        \                corresponds              /
+   /                                          \                                       /
+  +---- Rts stack ----+---- Motoko statics ----+--------- Dynamic heap ----------~~--+
+                                               !
+                                               ! 32-byte aligned
+
 
 Debug assertions guard the forbidden bytes from access, as this area physically overlaps
 with the Motoko static heap.
