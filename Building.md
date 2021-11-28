@@ -97,7 +97,8 @@ branch to the `next-moc` branch.
 * You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
-squash merge) once CI passes.
+squash merge) once CI passes. It will eventually be imported into this
+repo by a scheduled `niv-updater-action`.
 
 ## Profile the compiler
 
