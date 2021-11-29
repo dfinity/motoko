@@ -20,8 +20,8 @@ debug.print: client: refund(3)
 debug.print: refunding: 4
 debug.print: client: refund(2)
 debug.print: refunding: 3
-debug.print: client: refund(1)
 debug.print: refunding: 2
+debug.print: client: refund(1)
 debug.print: refunding: 1
 debug.print: client: refunded: 1
 debug.print: client: refunded: 2
