@@ -8,7 +8,7 @@ use crate::types::{size_of, Blob, Bytes, Obj};
                   (prefix words)                   bitmap lives here -> | BM |
                                                                        /      \
                                                                       /        \
-                                     each bit corresponds to a word: /...bits...\
+                                       each bit represents a word -> /...bits...\
                                           in the dynamic heap
 
 ## Marking with absolute addresses
@@ -35,8 +35,8 @@ absolute word number will address the right bit:
                                                ! 32-byte aligned
 
 
-Debug assertions guard the forbidden bytes from access, as this area physically overlaps
-with the Motoko dynamic heap.
+Debug assertions guard the forbidden bytes from access, as this area potentially
+physically overlaps with the Motoko dynamic heap.
 
 ## The alignment caveat
 
@@ -47,8 +47,9 @@ in the BM, and thus the sweep operation will be off.
 
 ## Example calculation
 
-Assume the DH is at 0x80000. The BM thus could be at 0xB0004.
-Since the heap_prefix_words is 0x20000, BITMAP_FORBIDDEN_PTR = 0xB0004 - 0x20000 / 8 = 0xAC004.
+Assume the DH is at 0x80000. Assume heap limit being at 0xB0000. Then the BM thus
+could be placed at 0xB0004. Since the heap_prefix_words is 0x20000,
+BITMAP_FORBIDDEN_PTR = 0xB0004 - 0x20000 / 8 = 0xAC004.
 
 Now let's mark the address 0x80548 in the DH. Its absolute word number is 0x20152.
 The `(0x20152 / 8, 0x20152 % 8)`-rule gives a bit position 2 with byte offset 0x402A,
