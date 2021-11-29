@@ -119,8 +119,8 @@ fn test_gc(
         heap.continuation_table_ptr_offset(),
     );
 
-    for _ in 0..0 {
-        gc.run(heap.clone()); /* FIXME: not alignment-preserving! */
+    for _ in 0..3 {
+        gc.run(heap.clone());
 
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
