@@ -186,7 +186,7 @@ impl BitmapIter {
                 }
             }
 
-            // Move on to next word
+            // Move on to next word (always 64-bit boundary)
             self.current_bit_idx += self.leading_zeros;
             if self.current_bit_idx == self.size {
                 return BITMAP_ITER_END;
