@@ -36,7 +36,7 @@ absolute word number will address the right bit:
 
 
 Debug assertions guard the forbidden bytes from access, as this area physically overlaps
-with the Motoko static heap.
+with the Motoko dynamic heap.
 
 ## The alignment caveat
 
@@ -47,12 +47,12 @@ in the BM, and thus the sweep operation will be off.
 
 ## Example calculation
 
-Assume the DH is at 0x80000. The BM thus could be at 0x80004.
-Since the heap_prefix_words is 0x20000, BITMAP_FORBIDDEN_PTR = 0x80004 - 0x20000 / 8 = 0x7c004.
+Assume the DH is at 0x80000. The BM thus could be at 0xB0004.
+Since the heap_prefix_words is 0x20000, BITMAP_FORBIDDEN_PTR = 0xB0004 - 0x20000 / 8 = 0xAC004.
 
 Now let's mark the address 0x80548 in the DH. Its absolute word number is 0x20152.
-The `(0x20152 / 8, 0x20152 % 8)`-rule gives a bit position 2 with byte offset 0x402a,
-thus we mark bit 2 in byte 0x7c004+0x402a = 0x8002e, which is physically in the BM.
+The `(0x20152 / 8, 0x20152 % 8)`-rule gives a bit position 2 with byte offset 0x402A,
+thus we mark bit 2 in byte 0xAC004 + 0x402A = 0xB002E, which is physically in the BM.
 
  */
 
