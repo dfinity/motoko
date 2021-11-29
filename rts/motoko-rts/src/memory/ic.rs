@@ -34,8 +34,12 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn init() {
-    HP = get_aligned_heap_base();
+unsafe extern "C" fn init(align: bool) {
+    HP = if align {
+        get_aligned_heap_base()
+    } else {
+        get_heap_base()
+    };
     LAST_HP = HP;
 }
 
