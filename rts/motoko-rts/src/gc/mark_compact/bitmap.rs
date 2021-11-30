@@ -13,11 +13,11 @@ use crate::types::{size_of, Blob, Bytes, Obj};
 
 ## Marking with absolute addresses
 
-When marking, we pass an absolute pointer (i.e. address space relative), for speed.
-Internally the bitmap is kept in a (non-moving) blob behind the dynamic heap (DH).
-To efficiently mark the right bit in the bitmap, we maintain a pointer that points
-_before the start of the bitmap_ such that using the `/%8`-operation on the DH
-absolute word number will address the right bit:
+When marking, we need to map an address to a bit in the bitmap. Internally the
+bitmap is kept in a (non-moving) blob after the dynamic heap (DH). To
+efficiently mark the right bit in the bitmap, we maintain a pointer that points
+_before the start of the bitmap_ such that `address / 8` and `address % 8`
+will address the right bit:
 
 
        +---- BITMAP_FORBIDDEN_PTR         +---- BITMAP_PTR
