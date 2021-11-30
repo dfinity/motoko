@@ -48,8 +48,8 @@ least significant bit in the BM.
 ## Example calculation
 
 Assume the DH is at 0x80000. Assume heap limit being at 0xB0000. Then the BM thus
-could be placed at 0xB0004. Since the heap_prefix_words is 0x20000,
-BITMAP_FORBIDDEN_PTR = 0xB0004 - 0x20000 / 8 = 0xAC004.
+could be placed at 0xB0008. Since the heap_prefix_words is 0x20000,
+BITMAP_FORBIDDEN_PTR = 0xB0008 - 0x20000 / 8 = 0xAC008.
 
 Now let's mark the address 0x80548 in the DH. Its absolute word number is 0x20152.
 The `(0x20152 / 8, 0x20152 % 8)`-rule gives a bit position 2 with byte offset 0x402A,
