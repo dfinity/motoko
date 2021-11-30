@@ -36,7 +36,7 @@ will address the right bit:
 
 
 Debug assertions guard the forbidden bytes from access, as this area potentially
-physically overlaps with the Motoko dynamic heap.
+overlaps with the Motoko dynamic heap.
 
 ## The alignment caveat
 
