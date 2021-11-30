@@ -211,7 +211,7 @@ impl MotokoHeapInner {
         // MarkCompact assumes that the dynamic heap starts at a 32-byte multiple
         let realign = match gc {
             GC::Copying => 0,
-            GC::MarkCompact => (32 - heap.as_ptr() as usize % 32) % 32,
+            GC::MarkCompact => (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32,
         };
         assert_eq!(realign % 4, 0);
 
