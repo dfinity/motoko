@@ -62,7 +62,6 @@ static mut BITMAP_FORBIDDEN_PTR: *mut u8 = core::ptr::null_mut();
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
 static mut BITMAP_SIZE: u32 = 0;
 
-#[cfg(debug_assertions)]
 unsafe fn get_bitmap_forbidden_size() -> usize {
     BITMAP_PTR as usize - BITMAP_FORBIDDEN_PTR as usize
 }
@@ -93,9 +92,7 @@ pub unsafe fn free_bitmap() {
 
 pub unsafe fn get_bit(idx: u32) -> bool {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    #[cfg(debug_assertions)]
     debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
-    #[cfg(debug_assertions)]
     debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
     let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize);
     (byte >> bit_idx) & 0b1 != 0
@@ -103,9 +100,7 @@ pub unsafe fn get_bit(idx: u32) -> bool {
 
 pub unsafe fn set_bit(idx: u32) {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    #[cfg(debug_assertions)]
     debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
-    #[cfg(debug_assertions)]
     debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
     let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize);
     let new_byte = byte | (0b1 << bit_idx);
@@ -141,7 +136,7 @@ pub unsafe fn iter_bits() -> BitmapIter {
     };
 
     debug_assert!(BITMAP_PTR as usize >= BITMAP_FORBIDDEN_PTR as usize);
-    let forbidden_bits = (BITMAP_PTR as usize - BITMAP_FORBIDDEN_PTR as usize) as u32 * 8;
+    let forbidden_bits = get_bitmap_forbidden_size() as u32 * 8;
 
     BitmapIter {
         size: blob_len_bytes * 8 + forbidden_bits,
