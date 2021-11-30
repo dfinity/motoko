@@ -53,7 +53,7 @@ BITMAP_FORBIDDEN_PTR = 0xB0008 - 0x20000 / 8 = 0xAC008.
 
 Now let's mark the address 0x80548 in the DH. Its absolute word number is 0x20152.
 The `(0x20152 / 8, 0x20152 % 8)`-rule gives a bit position 2 with byte offset 0x402A,
-thus we mark bit 2 in byte 0xAC004 + 0x402A = 0xB002E, which is physically in the BM.
+thus we mark bit 2 in byte 0xAC004 + 0x402A = 0xB002E, which is in the BM.
 
  */
 
