@@ -41,9 +41,9 @@ overlaps with the Motoko dynamic heap.
 ## The alignment caveat
 
 For this scheme to work, it is essential that the start of the DH is an address that
-is divisible by 32 (implying that `heap_prefix_words % 8 == 0`). Otherwise the
-`/%8`-operation on the DH's starting address will not yield the least significant bit
-in the BM, and thus the sweep operation will be off.
+is divisible by 32 (`heap_prefix_words % 8 == 0`). Otherwise the `address / 8`
+and `address % 8` operations on the DH's starting address will not yield the
+least significant bit in the BM.
 
 ## Example calculation
 
