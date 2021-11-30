@@ -127,7 +127,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).as_obj();
-        // Root array should only has pointers to other static MutBoxes
+        // Root array should only have pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
         debug_assert!((obj as u32) < heap_base); // check that MutBox is static
         mark_root_mutbox_fields(mem, obj as *mut MutBox, heap_base);
