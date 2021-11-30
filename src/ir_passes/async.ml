@@ -374,8 +374,8 @@ let transform mode prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, {meta; pre; post}, typ) ->
-      ActorE (t_decs ds, t_fields fs, {meta; pre = t_exp pre; post = t_exp post}, t_typ typ)
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade}, typ) ->
+      ActorE (t_decs ds, t_fields fs, {meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade}, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
@@ -444,9 +444,9 @@ let transform mode prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; pre; post}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
-        { meta; pre = t_exp pre; post = t_exp post }, t_typ t)
+        { meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade }, t_typ t)
 
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in

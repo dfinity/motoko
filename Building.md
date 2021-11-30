@@ -123,6 +123,11 @@ build system.)
    _pass_ it the path to the binary.)
 
 
+## Benchmarking the RTS
+
+Specifically some advanced techniques to obtain performance deltas for the
+GC can be found in `rts/Benchmarking.md`.
+
 ## Updating Haskell Packages
 
 When the `.cabal` file of a Haskell package is changed you need to make sure the
