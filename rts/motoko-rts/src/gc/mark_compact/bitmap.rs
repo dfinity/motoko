@@ -4,7 +4,7 @@ use crate::types::{size_of, Blob, Bytes, Obj};
 
 /* How the Wasm-heap maps to the bitmap
 
-  +---- RTS stack ----+---- Motoko statics ----+---- Dynamic heap --~~--+ Heap limit
+  +---- RTS stack ----+---- Motoko statics ----+---- Dynamic heap ------+ Heap limit
                   (prefix words)                   bitmap lives here -> | BM |
                                                                        /      \
                                                                       /        \
