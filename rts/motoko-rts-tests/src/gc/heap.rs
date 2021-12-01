@@ -206,7 +206,7 @@ impl MotokoHeapInner {
 
         // The Worst-case unalignment w.r.t. 32-byte alignment is 28 (assuming
         // that we have general word alignment). So we over-allocate 28 bytes.
-        let mut heap: Vec<u8> = vec![0; heap_size + 28];
+        let mut heap = vec![0u8; heap_size + 28];
 
         // MarkCompact assumes that the dynamic heap starts at a 32-byte multiple
         let realign = match gc {

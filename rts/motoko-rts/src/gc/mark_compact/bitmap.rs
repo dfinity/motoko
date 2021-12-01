@@ -167,8 +167,8 @@ impl BitmapIter {
 
         // Outer loop iterates 64-bit words
         loop {
-            // Inner loop iterates bits in the current word
-            while self.current_word != 0 {
+            // Inner conditional examines the least significant bit(s) in the current word
+            if self.current_word != 0 {
                 if self.current_word & 0b1 != 0 {
                     let bit_idx = self.current_bit_idx;
                     self.current_word >>= 1;
@@ -177,7 +177,10 @@ impl BitmapIter {
                 } else {
                     let shift_amt = self.current_word.trailing_zeros();
                     self.current_word >>= shift_amt;
-                    self.current_bit_idx += shift_amt;
+                    self.current_word >>= 1;
+                    let bit_idx = self.current_bit_idx + shift_amt;
+                    self.current_bit_idx = bit_idx + 1;
+                    return bit_idx;
                 }
             }
 
