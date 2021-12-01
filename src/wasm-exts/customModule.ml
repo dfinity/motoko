@@ -38,13 +38,25 @@ type dylink_section = {
   needed_dynlibs : string list;
 }
 
-type motoko_section = {
+type motoko_sections = {
   labels : string list;
+  stable_types : (bool * string) option;
 }
 
-let empty_motoko_section = {
-    labels = []
-  };
+type candid_sections = {
+  args : (bool * string) option;
+  service : (bool * string) option;
+}
+
+let empty_motoko_sections = {
+  labels = [];
+  stable_types = None;
+}
+
+let empty_candid_sections = {
+  args = None;
+  service = None;
+}
 
 type extended_module = {
   (* The non-custom sections *)
@@ -53,8 +65,10 @@ type extended_module = {
   name : name_section;
   (* dylib section *)
   dylink : dylink_section option;
-  (* motoko section *)
-  motoko : motoko_section;
+  (* candid sections *)
+  candid : candid_sections;
+  (* motoko sections *)
+  motoko : motoko_sections;
   (* source map section *)
   source_mapping_url : string option;
 }

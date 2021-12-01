@@ -57,11 +57,11 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        == 0.6.13 (2021-10-31)
+        ## 0.6.13 (2021-10-31)
 
    with today’s date.
 
- * Define a shell variable `export MOC_MINOR=13`
+ * Define a shell variable `export MOC_MINOR=15`
 
  * Look at `git log --first-parent 0.6.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
@@ -89,9 +89,10 @@ branch to the `next-moc` branch.
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
-* `git switch -c username/update-moc-0.6.$MOC_MINOR`
-* Update the `moc_version` env variable in `.github/workflows/ci.yml`
-  and `.github/workflows/package-set.yml` to the new released version
+* `git switch -c $USER/update-moc-0.6.$MOC_MINOR`
+* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
+  to the new released version:
+  `perl -pi -e "s/moc_version: \"0\.6\.\\d+\"/moc_version: \"0.6.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
 * `git add .github/ && git commit -m "Motoko 0.6.$MOC_MINOR"`
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
@@ -119,6 +120,11 @@ build system.)
    (Note that you have to _run_ this in the directory with `gmon.out`, but
    _pass_ it the path to the binary.)
 
+
+## Benchmarking the RTS
+
+Specifically some advanced techniques to obtain performance deltas for the
+GC can be found in `rts/Benchmarking.md`.
 
 ## Updating Haskell Packages
 

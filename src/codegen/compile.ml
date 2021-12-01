@@ -256,8 +256,14 @@ module E = struct
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
+
+    (* Metadata *)
+    args : (bool * string) option ref;
+    service : (bool * string) option ref;
+    stable_types : (bool * string) option ref;
     labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
+
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -291,6 +297,10 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    (* Metadata *)
+    args = ref None;
+    service = ref None;
+    stable_types = ref None;
     labs = ref LabSet.empty;
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
@@ -509,9 +519,13 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    let gc_fn = if !Flags.compacting_gc then "compacting_gc" else "copying_gc" in
+    (* GC function name = "schedule_"? ("compacting" | "copying") "_gc" *)
+    let gc_fn = match !Flags.gc_strategy with
+    | Mo_config.Flags.MarkCompact -> "compacting"
+    | Mo_config.Flags.Copying -> "copying"
+    in
     let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
-    call_import env "rts" gc_fn
+    call_import env "rts" (gc_fn ^ "_gc")
 end
 
 
@@ -850,7 +864,7 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
-    E.add_func_import env "rts" "init" [] [];
+    E.add_func_import env "rts" "init" [I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     ()
@@ -1580,7 +1594,7 @@ module Word64 = struct
         get_n ^^ get_exp ^^ compile_unsigned_pow env
       )
 
-  let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  let _compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   let compile_relop env i64op = G.i (Compare (Wasm.Values.I64 i64op))
 
 end (* BoxedWord64 *)
@@ -1973,6 +1987,7 @@ sig
   val truncate_to_word64 : E.t -> G.t
 
   (* unsigned word to SR.Vanilla *)
+  val from_word30 : E.t -> G.t
   val from_word32 : E.t -> G.t
   val from_word64 : E.t -> G.t
 
@@ -2286,7 +2301,26 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             slow env
           end)
 
-  let compile_eq = try_comp_unbox2 "B_eq" Word64.compile_eq Num.compile_eq
+  let compile_eq env =
+    Func.share_code2 env "B_eq" (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b ->
+        get_a ^^ get_b ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        G.if1 I32Type
+          (Bool.lit true)
+          (get_a ^^ get_b ^^
+           BitTagged.if_both_tagged_scalar env [I32Type]
+             (Bool.lit false)
+             begin
+               get_a ^^ BitTagged.if_tagged_scalar env [I32Type]
+                 (get_a ^^ extend_and_box64 env)
+                 get_a ^^
+               get_b ^^ BitTagged.if_tagged_scalar env [I32Type]
+                 (get_b ^^ extend_and_box64 env)
+                 get_b ^^
+               Num.compile_eq env
+             end))
+
   let compile_relop env bigintop =
     try_comp_unbox2 (name_from_relop bigintop)
       (fun env' -> Word64.compile_relop env' (i64op_from_relop bigintop))
@@ -2426,6 +2460,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_signed_word64 env)
 
+  let from_word30 env =
+    compile_shl_const 1l
+
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^
@@ -2487,6 +2524,7 @@ module BigNumLibtommath : BigNumType = struct
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
+  let from_word30 env = E.call_import env "rts" "bigint_of_word32"
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
@@ -4775,6 +4813,23 @@ module Serialization = struct
         get_x
       in
 
+      let read_principal () =
+        let (set_len, get_len) = new_local env "len" in
+        let (set_x, get_x) = new_local env "x" in
+        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+
+        (* at most 29 bytes, according to
+           https://sdk.dfinity.org/docs/interface-spec/index.html#principal
+        *)
+        get_len ^^ compile_unboxed_const 29l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+        E.else_trap_with env "IDL error: principal too long" ^^
+
+        get_len ^^ Blob.alloc env ^^ set_x ^^
+        get_x ^^ Blob.payload_ptr_unskewed ^^
+        ReadBuf.read_blob env get_data_buf get_len ^^
+        get_x
+      in
+
       let read_text () =
         let (set_len, get_len) = new_local env "len" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
@@ -4790,7 +4845,7 @@ module Serialization = struct
       let read_actor_data () =
         read_byte_tagged
           [ E.trap_with env "IDL error: unexpected actor reference"
-          ; read_blob ()
+          ; read_principal ()
           ]
       in
 
@@ -5028,7 +5083,7 @@ module Serialization = struct
         begin
           read_byte_tagged
             [ E.trap_with env "IDL error: unexpected principal reference"
-            ; read_blob ()
+            ; read_principal ()
             ]
         end
       | Prim Text ->
@@ -7445,12 +7500,43 @@ and compile_exp (env : E.t) ae exp =
     | ArrayPrim (m, t), es ->
       SR.Vanilla,
       Arr.lit env (List.map (compile_exp_vanilla env ae) es)
-    | IdxPrim, [e1; e2]  ->
+    | IdxPrim, [e1; e2] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* offset to array *)
       compile_exp_vanilla env ae e2 ^^ (* idx *)
       Arr.idx_bigint env ^^
       load_ptr
+    | NextArrayOffset spacing, [e] ->
+      let advance_by =
+        match spacing with
+        | ElementSize -> Arr.element_size
+        | One -> 2l (* 1 : Nat *) in
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
+      compile_add_const advance_by
+    | ValidArrayOffset, [e1; e2] ->
+      SR.bool,
+      compile_exp_vanilla env ae e1 ^^
+      compile_exp_vanilla env ae e2 ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+    | DerefArrayOffset, [e1; e2] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
+      compile_exp_vanilla env ae e2 ^^ (* byte offset *)
+      (* Note: the below two lines compile to `i32.add; i32.load offset=9`,
+         thus together also unskewing the pointer and skipping administrative
+         fields, effectively arriving at the desired element *)
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      Arr.load_field 0l                (* loads the element at the byte offset *)
+    | GetPastArrayOffset spacing, [e] ->
+      let shift =
+        match spacing with
+        | ElementSize -> compile_shl_const 2l (* effectively a multiplication by word_size *)
+        | One -> BigNum.from_word30 env in    (* make it a compact bignum *)
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^ (* array *)
+      Heap.load_field Arr.len_field ^^
+      shift
 
     | BreakPrim name, [e] ->
       let d = VarEnv.get_label_depth ae name in
@@ -7621,7 +7707,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Heap.load_field Arr.len_field ^^
-      BigNum.from_word32 env
+      BigNum.from_word30 env
 
     | OtherPrim "text_len", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len env
@@ -8697,7 +8783,7 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Compile the declarations *)
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
-      (Freevars.captured_vars (Freevars.upgrade up))
+      Freevars.(captured_vars (system up))
     in
 
     (* Export the public functions *)
@@ -8705,10 +8791,24 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Export upgrade hooks *)
     Func.define_built_in env "pre_exp" [] [] (fun env ->
-      compile_exp_as env ae2 SR.unit up.pre);
+      compile_exp_as env ae2 SR.unit up.preupgrade);
     Func.define_built_in env "post_exp" [] [] (fun env ->
-      compile_exp_as env ae2 SR.unit up.post);
+      compile_exp_as env ae2 SR.unit up.postupgrade);
     IC.export_upgrade_methods env;
+
+    (* Export metadata *)
+    env.E.stable_types :=
+      Some (
+        List.mem "motoko:stable-types" !Flags.public_metadata_names,
+        up.meta.sig_);
+    env.E.service :=
+      Some (
+        List.mem "candid:service" !Flags.public_metadata_names,
+        up.meta.candid.service);
+    env.E.args :=
+      Some (
+        List.mem "candid:args" !Flags.public_metadata_names,
+        up.meta.candid.args);
 
     (* Deserialize any arguments *)
     begin match as_opt with
@@ -8746,6 +8846,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
     E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->
@@ -8803,6 +8904,11 @@ and conclude_module env start_fi_o =
                  List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
       motoko = {
         labels = E.get_labs env;
+        stable_types = !(env.E.stable_types);
+      };
+      candid = {
+        args = !(env.E.args);
+        service = !(env.E.service);
       };
       source_mapping_url = None;
     } in

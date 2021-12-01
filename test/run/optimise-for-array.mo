@@ -2,38 +2,53 @@ import Prim "mo:⛔";
 
 // CHECK: (local $check0 i32)
 
-// CHECK:      call $@immut_array_size
-// CHECK:      call $B_lt
-// CHECK:      call $Array.idx_bigint
-// CHECK:      local.set $check0
+// CHECK-NOT:  call $@immut_array_size
+// CHECK:      i32.load offset=5
+// CHECK-NEXT: i32.const 2
+// CHECK-NEXT: i32.shl
+// CHECK:      i32.lt_u
+// CHECK:      i32.add
+// CHECK-NEXT: i32.load offset=9
+// CHECK-NEXT: local.set $check0
 // CHECK:      local.get $check0
 // CHECK-NEXT: call $debugPrint
-// CHECK:      i32.const 2
-// CHECK-NEXT: call $B_add
+// CHECK:      i32.const 4
+// CHECK-NEXT: i32.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
-// CHECK:      call $@mut_array_size
-// CHECK:      call $B_lt
-// CHECK:      call $Array.idx_bigint
-// CHECK:      local.set $check1
+// CHECK-NOT:  call $@mut_array_size
+// CHECK:      i32.load offset=5
+// CHECK-NEXT: i32.const 2
+// CHECK-NEXT: i32.shl
+// CHECK:      i32.lt_u
+// CHECK:      i32.add
+// CHECK-NEXT: i32.load offset=9
+// CHECK-NEXT: local.set $check1
 // CHECK:      local.get $check1
 // CHECK-NEXT: call $debugPrint
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
 
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
-// DON'T-CHECK:      call $@mut_array_size
-// DON'T-CHECK:      call $B_lt
-// DON'T-CHECK:      local.get $array
-// DON'T-CHECK:      local.set $check2
-// `arr` being a `VarE` already (but we rebind anyway, otherwise we open can of worms)
+// CHECK-NOT:   call $@immut_array_size
+// CHECK:       i32.load offset=5
+// CHECK-NEXT:  i32.const 2
+// CHECK-NEXT:  i32.shl
+// DON'T-CHECK: i32.lt_u
+// DON'T-CHECK: local.get $array
+// DON'T-CHECK: local.set $check2
+// `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
 // later when we have path compression for variables in the backend, we can bring this back
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
-// CHECK:      call $@immut_array_size
-// CHECK:      call $B_lt
-// CHECK:      call $Array.idx_bigint
-// CHECK:      local.set $check3
+// CHECK-NOT:  call $@immut_array_size
+// CHECK:      i32.load offset=5
+// CHECK-NEXT: i32.const 2
+// CHECK-NEXT: i32.shl
+// CHECK:      i32.lt_u
+// CHECK:      i32.add
+// CHECK-NEXT: i32.load offset=9
+// CHECK-NEXT: local.set $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 
@@ -72,13 +87,19 @@ check6[1] := "mutable";
 // this passes the IR type check, which demonstrates that no name capture happens
 for (check6 in check6.vals()) { ignore check6 };
 
+// CHECK:      i32.load offset=5
+// CHECK-NEXT: i32.const 2
+// CHECK-NEXT: i32.shl
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
 // CHECK:      local.set $num8
-// CHECK:      call $@immut_array_size
-// CHECK:      call $B_lt
-// CHECK-NOT:  call $Array.idx_bigint
+// CHECK-NOT:  call $@immut_array_size
+// CHECK:      i32.load offset=5
+// CHECK-NEXT: i32.const 1
+// CHECK-NEXT: i32.shl
+// CHECK:      i32.lt_u
+// CHECK-NOT:  i32.add
 // CHECK:      local.tee $check8
 // CHECK-NEXT: local.get $num8
 // CHECK-NEXT: call $B_add
@@ -88,7 +109,12 @@ num8 := 25;
 // indexing variable itself
 for (check8 in ["hello", "keyed", "world"].keys()) { ignore (check8 + num8) };
 
-
+// polymorphic arrays should still work
 func f9<A>(array : [A]) {
-for (check9 in array.keys()) { }
-}
+  for (check9 in array.keys()) { }
+};
+
+// make sure that one-byte-sized elements still work
+var sum10 : Nat8 = 0;
+for (check10 in ([3, 5, 7, 11] : [Nat8]).vals()) { sum10 += check10 };
+assert sum10 == 26

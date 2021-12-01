@@ -7,6 +7,12 @@ The changes are:
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
+
+TODO:
+ The treatment of known custom sections is suboptimal and assumes
+ they appear once, in a fixed relative order.
+ It would be better to just rescan the whole binary for each such section,
+ re-using the original custom section decoder from the reference implementation.
 *)
 
 module Error = Wasm.Error
@@ -44,6 +50,8 @@ let read s = Char.code (s.bytes.[!(s.pos)])
 let peek s = if eos s then None else Some (read s)
 let get s = check 1 s; let b = read s in skip 1 s; b
 let get_string n s = let i = pos s in skip n s; String.sub s.bytes i n
+
+let checkpoint s = let p = !(s.pos) in fun () -> s.pos := p
 
 
 (* Errors *)
@@ -664,7 +672,7 @@ let data_section s =
 (* Custom sections *)
 
 let custom_section (name_pred : int list -> bool) (f : int -> stream -> 'a) (default : 'a) (s : stream) =
-  let p = pos s in
+  let rewind = checkpoint s in
   match id s with
   | Some `CustomSection ->
     ignore (u8 s);
@@ -677,12 +685,47 @@ let custom_section (name_pred : int list -> bool) (f : int -> stream -> 'a) (def
       require (pos s = sec_end) s sec_start "custom section size mismatch";
       x
     else begin (* wrong custom section, rewind *)
-      s.pos := p;
+      rewind ();
       default
     end
   | Some _ -> default
   | _ -> default
 
+
+let icp_name suffix =
+  let public_name = Utf8.decode ("icp:public " ^ suffix) in
+  let private_name = Utf8.decode ("icp:private " ^ suffix) in
+  fun name ->
+    if public_name = name then
+      Some true
+    else if private_name = name then
+      Some false
+    else None
+
+let icp_custom_section n (f : int -> stream -> 'a) (default : (bool * 'a) option) (s : stream) =
+  let rewind = checkpoint s in
+  match id s with
+  | Some `CustomSection ->
+    ignore (u8 s);
+    let sec_size = len32 s in
+    let sec_start = pos s in
+    let sec_end = sec_start + sec_size in
+    let name = name s in
+    let opt = icp_name n name in
+    begin
+    match opt with
+    | Some b ->
+      (* this is the right custom section *)
+      let x = f sec_end s in
+      require (pos s = sec_end) s sec_start "custom section size mismatch";
+      Some (b, x)
+    | None -> begin (* wrong custom section, rewind *)
+      rewind ();
+      default
+      end
+    end
+  | Some _ -> default
+  | _ -> default
 
 (* Dylink section *)
 
@@ -760,27 +803,55 @@ let is_name n = (n = Utf8.decode "name")
 let name_section s =
   custom_section is_name name_section_content empty_name_section s
 
-(* motoko section *)
+(* Motoko sections *)
 
-let motoko_section_subsection (ms : motoko_section) s =
+let motoko_section_subsection (ms : motoko_sections) s =
   match u8 s with
-  | 0 -> (* module name *)
+  | 0 ->
     let labels = sized (fun _ -> vec string) s in
-    { labels = ms.labels @ labels }
+    { ms with labels = ms.labels @ labels }
   | i -> error s (pos s) (Printf.sprintf "unknown motoko section subsection id %d" i)
 
 let motoko_section_content p_end s =
-  repeat_until p_end s empty_motoko_section motoko_section_subsection
+  repeat_until p_end s empty_motoko_sections motoko_section_subsection
 
 let is_motoko n = (n = Utf8.decode "motoko")
 
-let motoko_section s =
-  custom_section is_motoko motoko_section_content empty_motoko_section s
+let utf8 sec_end s =
+  let pos = pos s in
+  let bytes = get_string (sec_end - pos) s in
+  try
+    let _ = Utf8.decode (string s) in
+    bytes
+  with Utf8.Utf8 ->
+    error s pos "malformed UTF-8 encoding"
 
+let motoko_sections s =
+  let stable_types = icp_custom_section "motoko:stable-types" utf8 None s in
+  custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types} s
+
+(* Candid sections *)
+
+let candid_sections s =
+  let service = icp_custom_section "candid:service" utf8 None s in
+  let args = icp_custom_section "candid:args" utf8 None s in
+  { service; args }
 
 (* Other custom sections *)
 
-let is_unknown n = not (is_dylink n || is_name n)
+let candid_service_name = icp_name "candid:service"
+let candid_args_name = icp_name "candid:args"
+let motoko_stable_types_name = icp_name "motoko:stable-types"
+
+let is_icp icp_name n = icp_name n <> None
+
+let is_unknown n = not (
+  is_dylink n ||
+  is_name n ||
+  is_motoko n ||
+  is_icp candid_service_name n ||
+  is_icp candid_args_name n ||
+  is_icp motoko_stable_types_name n)
 
 let skip_custom sec_end s =
   skip (sec_end - pos s) s;
@@ -824,7 +895,10 @@ let module_ s =
   iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
-  let motoko = motoko_section s in
+  (* TODO: allow candid/motoko sections anywhere, not just here, in this order *)
+  let candid = candid_sections s in
+  iterate skip_custom_section s;
+  let motoko = motoko_sections s in
   iterate skip_custom_section s;
   require (pos s = len s) s (len s) "junk after last section";
   require (List.length func_types = List.length func_bodies)
@@ -838,6 +912,7 @@ let module_ s =
     dylink;
     name;
     motoko;
+    candid;
     source_mapping_url = None;
   }
 
