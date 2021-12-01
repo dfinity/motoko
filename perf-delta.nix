@@ -36,7 +36,7 @@ let
         do
           # ignore all errors
           echo -n $file
-          if timeout 10s moc $file -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
+          if timeout 10s moc $file --force-gc --compacting-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
           then echo " failed (ignored)"
           else echo " ok"
           fi

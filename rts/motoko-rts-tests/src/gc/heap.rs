@@ -204,11 +204,23 @@ impl MotokoHeapInner {
             map.len(),
         );
 
-        let mut heap: Vec<u8> = vec![0; heap_size];
+        // The Worst-case unalignment w.r.t. 32-byte alignment is 28 (assuming
+        // that we have general word alignment). So we over-allocate 28 bytes.
+        let mut heap: Vec<u8> = vec![0; heap_size + 28];
+
+        // MarkCompact assumes that the dynamic heap starts at a 32-byte multiple
+        let realign = match gc {
+            GC::Copying => 0,
+            GC::MarkCompact => (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32,
+        };
+        assert_eq!(realign % 4, 0);
 
         // Maps `ObjectIdx`s into their offsets in the heap
-        let object_addrs: FxHashMap<ObjectIdx, usize> =
-            create_dynamic_heap(map, continuation_table, &mut heap[static_heap_size_bytes..]);
+        let object_addrs: FxHashMap<ObjectIdx, usize> = create_dynamic_heap(
+            map,
+            continuation_table,
+            &mut heap[static_heap_size_bytes + realign..heap_size + realign],
+        );
 
         // Closure table pointer is the last word in static heap
         let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
@@ -217,15 +229,15 @@ impl MotokoHeapInner {
             &object_addrs,
             continuation_table_ptr_offset,
             static_heap_size_bytes + dynamic_heap_size_without_continuation_table_bytes,
-            &mut heap[..static_heap_size_bytes],
+            &mut heap[realign..static_heap_size_bytes + realign],
         );
 
         MotokoHeapInner {
             heap: heap.into_boxed_slice(),
-            heap_base_offset: static_heap_size_bytes,
-            heap_ptr_offset: total_heap_size_bytes,
-            static_root_array_offset: 0,
-            continuation_table_ptr_offset: continuation_table_ptr_offset,
+            heap_base_offset: static_heap_size_bytes + realign,
+            heap_ptr_offset: total_heap_size_bytes + realign,
+            static_root_array_offset: realign,
+            continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
         }
     }
 
