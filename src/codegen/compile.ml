@@ -1630,7 +1630,7 @@ module BoxedSmallWord = struct
     then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
       E.add_static env StaticBytes.[
-        I32 (Int32.logor Tagged.(int_of_tag Bits64) Tagged.static_bit_mask);
+        I32 (Int32.logor Tagged.(int_of_tag Bits32) Tagged.static_bit_mask);
         I32 i
       ]
 
