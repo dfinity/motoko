@@ -103,6 +103,7 @@ impl<P: PageAlloc> Space<P> {
             let page_start = page_header.add(1) as usize;
 
             // Set "is large" bit
+            (page_start as *mut Obj).clear();
             (page_start as *mut Obj).set_large();
 
             return Value::from_ptr(page_start);
