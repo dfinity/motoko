@@ -186,6 +186,7 @@ impl BitmapIter {
 
             // Move on to next word (always 64-bit boundary)
             self.current_bit_idx += self.leading_zeros;
+	    unsafe { debug_assert_eq!((self.current_bit_idx - get_bitmap_forbidden_size() as u32 * 8) % 64, 0) }
             if self.current_bit_idx == self.size {
                 return BITMAP_ITER_END;
             }
