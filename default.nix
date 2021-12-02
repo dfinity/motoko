@@ -72,6 +72,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.menhirLib
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
