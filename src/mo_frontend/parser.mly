@@ -13,7 +13,7 @@ open Parser_lib
 
 let position_to_pos position =
   (* TBR: Remove assertion once the menhir bug is fixed. *)
-  assert (Obj.is_block (Obj.repr position));
+  assert Obj.(is_block (repr position));
   { file = position.Lexing.pos_fname;
     line = position.Lexing.pos_lnum;
     column = position.Lexing.pos_cnum - position.Lexing.pos_bol
