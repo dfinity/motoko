@@ -4094,17 +4094,17 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_load_blob"
-        (("offset", I32Type), ("len", I32Type)) [I32Type]
+        (("offset", I64Type), ("len", I32Type)) [I32Type]
         (fun env get_offset get_len ->
           let (set_blob, get_blob) = new_local env "blob" in
           get_offset ^^
           get_len ^^
           guard_range env ^^
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^
+          get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_offset ^^
-          get_len ^^
-          IC.system_call env "ic0" "stable_read" ^^
+          get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          IC.system_call env "ic0" "stable64_read" ^^
           get_blob)
     | _ -> assert false
 
@@ -4112,7 +4112,7 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_store_blob"
-        (("offset", I32Type), ("blob", I32Type)) []
+        (("offset", I64Type), ("blob", I32Type)) []
         (fun env get_offset get_blob ->
          let (set_len, get_len) = new_local env "len" in
           get_blob ^^ Blob.len env ^^ set_len ^^
@@ -4120,9 +4120,9 @@ module StableMem = struct
           get_len ^^
           guard_range env ^^
           get_offset ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^
-          get_len ^^
-          IC.system_call env "ic0" "stable_write")
+          get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          IC.system_call env "ic0" "stable64_write")
     | _ -> assert false
 
 end (* Stack *)
