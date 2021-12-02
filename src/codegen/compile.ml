@@ -5719,15 +5719,15 @@ module Stabilization = struct
               set_offset
             end ^^ (* if_ *)
 
-          let (set_val, get_val) = new_local env "val" in
           let (set_blob, get_blob) = new_local env "blob" in
-
+          (* read blob from stable memory *)
           get_len ^^ Blob.alloc env ^^ set_blob ^^
           get_blob ^^ Blob.payload_ptr_unskewed ^^ (G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))) ^^
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "ic0" "stable64_read" ^^
 
+          let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
           get_blob ^^
           Serialization.deserialize_from_blob true env [ty] ^^
