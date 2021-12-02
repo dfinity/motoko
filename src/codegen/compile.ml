@@ -3443,10 +3443,6 @@ module IC = struct
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
-      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_size" [] [I32Type];
-      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
       E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
       E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
       E.add_func_import env "ic0" "stable64_size" [] [I64Type];
@@ -5726,16 +5722,11 @@ module Stabilization = struct
           let (set_val, get_val) = new_local env "val" in
           let (set_blob, get_blob) = new_local env "blob" in
 
-          Blob.of_size_copy env
-            (fun env -> get_len)
-            (* copy the stable data from stable memory from offset 4 *)
-            (fun env ->
-              G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (* HACK *)
-              IC.system_call env "ic0" "stable64_read")
-            (fun env ->
-              G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (* HACK *)
-              get_offset) ^^
-          set_blob ^^
+          get_len ^^ Blob.alloc env ^^ set_blob ^^
+          get_blob ^^ Blob.payload_ptr_unskewed ^^ (G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))) ^^
+          get_offset ^^
+          get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          IC.system_call env "ic0" "stable64_read" ^^
 
           (* deserialize blob to val *)
           get_blob ^^
