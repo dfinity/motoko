@@ -51,7 +51,7 @@ __END__
 for file in perf/*.mo; do
   base="$(basename "$file" .mo)"
   echo "Profiling $base..."
-  moc --force-gc --compacting-gc -g "$file" -o "_profile_build/$base.wasm"
+  moc --compacting-gc --force-gc -g "$file" -o "_profile_build/$base.wasm"
   wasm-profiler-instrument --ic-system-api -i "_profile_build/$base.wasm" -o "_profile_build/$base.instrumented.wasm"
 
   # qr.mo takes far too long with profiling instrumentation, so limit runtime
