@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+## 0.6.16 (2021-12-03)
+
+* Minor performance improvement to the mark-compact garbage collector
+
 ## 0.6.15 (2021-11-26)
 
 * Fixes crash when (ill-typed) `switch` expression on non-variant
