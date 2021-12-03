@@ -72,6 +72,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.menhirLib
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
@@ -165,7 +166,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
+      rustStdDepsHash = "sha256-jCe1HXSexW6p8QINrMtcBDO1TDWkg2glZwnf1EqLuB0";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
