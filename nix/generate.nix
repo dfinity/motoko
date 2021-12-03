@@ -53,9 +53,9 @@ let
     random = localHaskellSrc2nixWithDoc "qc-motoko" "test/random" "";
     lsp-int = localHaskellSrc2nixWithDoc "lsp-int" "test/lsp-int" "";
     # Packages on hackage that are newer than what's in nixpkgs
-    lsp-test = pkgs.haskellPackages.hackage2nix "lsp-test" "0.11.0.6";
-    haskell-lsp = pkgs.haskellPackages.hackage2nix "haskell-lsp" "0.23.0.0";
-    haskell-lsp-types = pkgs.haskellPackages.hackage2nix "haskell-lsp-types" "0.23.0.0";
+    #lsp-test = pkgs.haskellPackages.hackage2nix "lsp-test" "0.11.0.6";
+    #haskell-lsp = pkgs.haskellPackages.hackage2nix "haskell-lsp" "0.23.0.0";
+    #haskell-lsp-types = pkgs.haskellPackages.hackage2nix "haskell-lsp-types" "0.23.0.0";
   };
 
   allGenerated = pkgs.runCommandNoCC "generated" {
