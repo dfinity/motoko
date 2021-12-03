@@ -6,7 +6,5 @@ nix: subpath:
   lsp-int = super.callPackage generated/lsp-int.nix {};
 
   # tests: dist-newstyle: getDirectoryContents:openDirStream: does not exist (No such file or directory)
-  #lsp-test = nix.haskell.lib.dontCheck (super.callPackage generated/lsp-test.nix {});
-  #haskell-lsp = nix.haskell.lib.dontCheck (super.callPackage generated/haskell-lsp.nix {});
-  #haskell-lsp-types = nix.haskell.lib.dontCheck (super.callPackage generated/haskell-lsp-types.nix {});
+  # See #2954 for what to do when a custom package should become necessary.
 }

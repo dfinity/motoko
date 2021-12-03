@@ -70,6 +70,7 @@ let
         (self: super: import ./drun.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
+        # don't use `fetchFromGitHub` here as we really need an intact tarball
         (self: super: {
           all-cabal-hashes = self.fetchurl {
             url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/d859530d8342c52d09a73d1d125c144725b5945d.tar.gz";
