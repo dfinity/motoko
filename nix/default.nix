@@ -71,9 +71,11 @@ let
 
         # to allow picking up more recent Haskell packages from Hackage
         (self: super: {
-          all-cabal-hashes = self.fetchurl {
-            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/d859530d8342c52d09a73d1d125c144725b5945d.tar.gz";
-            sha256 = "0gjahsqqq99dc4bjcx9p3z8adpwy51w3mzrf57nib856jlvlfmv5";
+          all-cabal-hashes = self.fetchFromGitHub {
+            owner = "commercialhaskell";
+            repo = "all-cabal-hashes";
+            rev = "d859530d8342c52d09a73d1d125c144725b5945d";
+            sha256 = "1y6cgphxkdcvhmdddc4ssrpq1j1j9y7xhra9k668bzbi4na0g4yz";
           };
         })
 
