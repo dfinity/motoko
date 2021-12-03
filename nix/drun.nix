@@ -14,7 +14,7 @@ pkgs:
       # To automate this, try running the following in the nix/ directory
       # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
 
-      cargoSha256 = "0656lxdlr05cjkla1blvpqlxywk7shasiwmycz10nqykdrs4gfgf";
+      cargoSha256 = "sha256:1m2a12ds4bpg3v0wfn4svcplr68118vcdzs5mvll6s71j9bpgqli";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
@@ -23,16 +23,16 @@ pkgs:
 
       buildInputs = with pkgs; [
         openssl
-        llvm_10
-        llvmPackages_10.libclang
+        llvm_12
+        llvmPackages_12.libclang
         lmdb
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_10.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_10.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_12.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_12.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";

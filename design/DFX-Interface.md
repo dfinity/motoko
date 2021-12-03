@@ -72,10 +72,12 @@ Compiler warnings and errors are reported to `stderr`. Nothing writes to `stdout
 Compiling Motoko Files to IDL
 -----------------------------
 
-As the previous point, but passing `--idl` to `moc`.
+As the previous point, but passing `--idl` to `moc`, generating the `output.wasm` and
+an additional `output.did` file (in the same directory).
 
 The IDL generation does not issue any warnings.
 
+Compilation and `.did` generation can (optionally) be combined in a single step.
 
 Resolving Canister aliases
 --------------------------

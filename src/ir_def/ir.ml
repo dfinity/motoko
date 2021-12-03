@@ -72,14 +72,25 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of dec list * field list * upgrade * Type.typ (* actor *)
+  | ActorE of dec list * field list * system * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | TryE of exp * case list                    (* try/catch *)
 
-and upgrade = {
-  pre : exp;
-  post : exp
+and system = {
+  meta : meta;
+  preupgrade : exp;
+  postupgrade : exp
 }
+
+and candid = {
+    args : string;
+    service : string;
+  }
+
+and meta = {
+    candid : candid;  (* Candid (of service, never actor class) *)
+    sig_ : string  (* Motoko stable signature *)
+  }
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
@@ -220,7 +231,7 @@ let full_flavor () : flavor = {
 type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
-  | ActorU of arg list option * dec list * field list * upgrade * Type.typ (* actor (class) *)
+  | ActorU of arg list option * dec list * field list * system * Type.typ (* actor (class) *)
 
 type prog = comp_unit * flavor
 

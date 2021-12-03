@@ -31,21 +31,21 @@ pub unsafe fn dump_heap(
     print_heap(heap_base, hp);
 }
 
-pub(crate) unsafe fn print_continuation_table(closure_tbl_loc: *mut Value) {
+pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) {
     if !crate::continuation_table::table_initialized() {
         println!(100, "Continuation table not initialized");
         return;
     }
 
-    let arr = (*closure_tbl_loc).as_array() as *mut Array;
+    let arr = (*continuation_tbl_loc).as_array();
     let len = (*arr).len;
 
     if len == 0 {
-        println!(50, "Closure table empty");
+        println!(50, "Continuation table empty");
         return;
     }
 
-    println!(50, "Closure table: {}", len);
+    println!(50, "Continuation table: {}", len);
 
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
@@ -59,7 +59,7 @@ pub(crate) unsafe fn print_continuation_table(closure_tbl_loc: *mut Value) {
             write_buf.reset();
         }
     }
-    println!(50, "End of closure table");
+    println!(50, "End of continuation table");
 }
 
 pub(crate) unsafe fn print_static_roots(static_roots: Value) {

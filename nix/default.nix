@@ -13,9 +13,8 @@ let
   nixpkgs-patched = bootstrap-pkgs.applyPatches {
     name = "nixpkgs-patched";
     src = nixpkgs_src;
-    patches = [
-      ./patches/124498.patch
-    ];
+    # patches = [
+    # ];
   };
 
   pkgs =
@@ -46,7 +45,7 @@ let
         # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;
-          rust-channel = moz_overlay.rustChannelOf { date = "2021-10-25"; channel = "nightly"; };
+          rust-channel = moz_overlay.rustChannelOf { date = "2021-12-02"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
@@ -71,10 +70,11 @@ let
         (self: super: import ./drun.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
+        # don't use `fetchFromGitHub` here as we really need an intact tarball
         (self: super: {
           all-cabal-hashes = self.fetchurl {
-            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/66a799608f2c6e0e6c530383bc0e2bcb42ae11f2.tar.gz";
-            sha256 = "0ds95gacrzsqg5f0f6j533ghxzcqqn7wn1d391pcpj5g9frp01q2";
+            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/d859530d8342c52d09a73d1d125c144725b5945d.tar.gz";
+            sha256 = "0gjahsqqq99dc4bjcx9p3z8adpwy51w3mzrf57nib856jlvlfmv5";
           };
         })
 

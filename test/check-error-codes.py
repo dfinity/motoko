@@ -63,7 +63,8 @@ def populate_tested_codes():
     tc_ok = glob.glob("./**/*.tc.ok", recursive=True)
     comp_ref_ok = glob.glob("./**/*.comp-ref.ok", recursive=True)
     comp_ok = glob.glob("./**/*.comp.ok", recursive=True)
-    paths = tc_ok + comp_ref_ok + comp_ok
+    cmp_ok = glob.glob("./**/*.cmp.ok", recursive=True)
+    paths = tc_ok + comp_ref_ok + comp_ok + cmp_ok
     for path in paths:
         with open(path) as fp:
             for line in fp:
