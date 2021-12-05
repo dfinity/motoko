@@ -159,7 +159,7 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = ./rts/cargo-vendor-tools;
-        cargoSha256 = "0zi3fiq9sy6c9dv7fd2xc9lan85d16gfax47n6g6f5q5c1zb5r47";
+        cargoSha256 = "sha256-wZeLp8s/QI8DyK7KsHAYOqskJIEleomXzQG2ijRossk";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
@@ -192,7 +192,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "07i8mjky9w0c9gadxzpfvv9im40hj71v69a796q7vgg2j6agr03q";
+        sha256 = "sha256-5Y4JTKfpEhUTbb9zLhOVPYf74WscmcWsg/OdR6SMLOE";
         copyLockfile = true;
       };
 
