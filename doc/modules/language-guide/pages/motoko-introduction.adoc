@@ -105,7 +105,7 @@ The syntax `await` synchronizes on a future, and suspends computation until the 
 We see two uses of `await` in the example above,
 to obtain the results from two calls to services.
 
-When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program's control and data-flow that would be tedious to perform by hand in a purely synchronous language.
+When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program's control- and data-flow that would be tedious to perform by hand in a purely synchronous language.
 Meanwhile, the type system of {proglang} enforces certain correct usage patterns for these constructs, including that types flowing between consumers and producers always agree, and that the types of data sent among services are permitted to flow there, and do not (for example) contain link:mutable-state{outfilesuffix}[private mutable state].
 
 [[pitch-types]]
