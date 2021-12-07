@@ -21,16 +21,16 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "master",
+        "branch": "perf_record",
         "builtin": false,
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "ggreif",
         "repo": "ic",
-        "rev": "ce2efbd2da6c5824a1d7da6d4da2221d03e7bd1d",
-        "sha256": "0jvllmfmapf6shkm5yh6ncsmw4x7hdr676z7jrx56pjx9n0b4cf4",
+        "rev": "ecd8ce25452c24f2a1d2a8cdfc400c8e6c299889",
+        "sha256": "1c8z1nany72c3vsyzd4p03pidfkgc7q56l0wz9chi54ivdg2wb41",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/ce2efbd2da6c5824a1d7da6d4da2221d03e7bd1d.tar.gz",
+        "url": "https://github.com/ggreif/ic/archive/ecd8ce25452c24f2a1d2a8cdfc400c8e6c299889.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {

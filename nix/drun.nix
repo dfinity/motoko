@@ -15,7 +15,10 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-GgnJaWtf9RhVIY7NkIP+7I3yHbUK+58SQPj7Vzqb4iY=";
+      # To automate this, try running the following in the nix/ directory
+      # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
+
+      cargoSha256 = "sha256-vPpkfuY7yNctBP9/w+s4cdpgrnvOp6C3GB6ICWeGB2o";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
