@@ -20,19 +20,3 @@ debug.print: heartbeat
 debug.print: count = 9
 debug.print: heartbeat
 debug.print: count = 10
-debug.print: heartbeat
-debug.print: count = 11
-debug.print: heartbeat
-debug.print: count = 12
-debug.print: heartbeat
-debug.print: count = 13
-debug.print: heartbeat
-debug.print: count = 14
-debug.print: heartbeat
-debug.print: count = 15
-debug.print: heartbeat
-debug.print: count = 16
-debug.print: heartbeat
-debug.print: count = 17
-debug.print: heartbeat
-debug.print: count = 18
