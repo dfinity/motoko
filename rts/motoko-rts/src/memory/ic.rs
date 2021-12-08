@@ -28,9 +28,18 @@ extern "C" {
     pub(crate) fn get_static_roots() -> Value;
 }
 
+pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
+    // align to 32 bytes
+    ((get_heap_base() + 31) / 32) * 32
+}
+
 #[no_mangle]
-unsafe extern "C" fn init() {
-    HP = get_heap_base() as u32;
+unsafe extern "C" fn init(align: bool) {
+    HP = if align {
+        get_aligned_heap_base()
+    } else {
+        get_heap_base()
+    };
     LAST_HP = HP;
 }
 
@@ -51,7 +60,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_heap_base())
+    Bytes(HP - get_aligned_heap_base())
 }
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The

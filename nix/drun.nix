@@ -23,16 +23,16 @@ pkgs:
 
       buildInputs = with pkgs; [
         openssl
-        llvm_10
-        llvmPackages_10.libclang
+        llvm_12
+        llvmPackages_12.libclang
         lmdb
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_10.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_10.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_12.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_12.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";

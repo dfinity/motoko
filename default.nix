@@ -72,6 +72,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.menhirLib
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
@@ -158,14 +159,14 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = ./rts/cargo-vendor-tools;
-        cargoSha256 = "0zi3fiq9sy6c9dv7fd2xc9lan85d16gfax47n6g6f5q5c1zb5r47";
+        cargoSha256 = "sha256-wZeLp8s/QI8DyK7KsHAYOqskJIEleomXzQG2ijRossk";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
+      rustStdDepsHash = "sha256-jCe1HXSexW6p8QINrMtcBDO1TDWkg2glZwnf1EqLuB0";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -191,7 +192,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "129gfmn96vm7di903pxirg7zybl83q6nkwiqr3rsy7l1q8667kxx";
+        sha256 = "sha256-5Y4JTKfpEhUTbb9zLhOVPYf74WscmcWsg/OdR6SMLOE";
         copyLockfile = true;
       };
 
@@ -206,15 +207,13 @@ rec {
 
       # All dependencies needed to build the RTS, including Rust std deps, to
       # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
-      allDeps = nixpkgs.stdenvNoCC.mkDerivation {
-          name = "merged-rust-deps";
-
-          buildCommand = ''
-            mkdir -p $out
-            cp -r ${rtsDepsUnpacked}/* $out/
-            cp -r ${rustStdDeps}/* $out/
-          '';
-        };
+      allDeps = nixpkgs.symlinkJoin {
+        name = "merged-rust-deps";
+        paths = [
+          rtsDepsUnpacked
+          rustStdDeps
+        ];
+      };
     in
 
     stdenv.mkDerivation {
@@ -496,8 +495,10 @@ rec {
 
   inherit (nixpkgs) wabt wasmtime wasm;
 
-  filecheck = nixpkgs.linkFarm "FileCheck"
-    [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
+  filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
+    mkdir -p $out/bin
+    cp ${nixpkgs.llvm}/bin/FileCheck $out/bin
+  '';
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
@@ -706,6 +707,7 @@ rec {
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat
           nixpkgs.ocamlPackages.utop
+          nixpkgs.fswatch
           nixpkgs.niv
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`

@@ -1,5 +1,35 @@
 # Motoko compiler changelog
 
+## 0.6.16 (2021-12-03)
+
+* Minor performance improvement to the mark-compact garbage collector
+
+## 0.6.15 (2021-11-26)
+
+* Fixes crash when (ill-typed) `switch` expression on non-variant
+  value has variant alternatives (#2934)
+
+## 0.6.14 (2021-11-19)
+
+* The compiler now embeds the existing Candid interface  and  new
+  _stable signature_ of a canister in additional Wasm custom sections,
+  to be selectively exposed by the IC, and to be used by tools such as `dfx`
+  to verify upgrade compatibility (see extended documentation).
+
+  New compiler options:
+
+    * `--public-metadata <name>`: emit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types`) as `public` (default is `private`)
+    * `--stable-types`: emit signature of stable types to `.most` file
+    * `--stable-compatible <pre> <post>`: test upgrade compatibility between stable-type signatures  `<pre>` and `<post>`
+
+  A Motoko canister upgrade is safe provided:
+
+    * the canister's Candid interface evolves to a Candid subtype; and
+    * the canister's Motoko stable signature evolves to a _stable-compatible_ one.
+
+  (Candid subtyping can be verified using tool `didc` available at:
+   https://github.com/dfinity/candid.)
+
 * BREAKING CHANGE (Minor):
   Tightened typing for type-annotated patterns (including function parameters)
   to prevent some cases of unintended and counter-intuitive type propagation.
@@ -18,6 +48,16 @@
   This no longer works, `i` has to be declared as `Nat` (or the type omitted).
 
   If you encounter such cases, please adjust the type annotation.
+
+* Improved garbage collection scheduling
+
+* Miscellaneous performance improvements
+  - code generation for `for`-loops over arrays has improved
+  - slightly sped up `Int` equality comparisons
+
+## 0.6.13 (2021-11-19)
+
+*Pulled*
 
 ## 0.6.12 (2021-10-22)
 
