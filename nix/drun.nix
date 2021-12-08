@@ -10,9 +10,10 @@ pkgs:
       # 2. run nix-build -A drun nix/
       # 3. copy the “expected” hash from the output into this file
       # 4. commit and push
-
-      # To automate this, try running the following in the nix/ directory
-      # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
+      #
+      # To automate this, .github/workflows/update-hash.yml has been
+      # installed. You will normally not be bothered to perform
+      # the command therein manually.
 
       cargoSha256 = "sha256-keJ3V5LhaEPprkX/xjYKAZlML9uaWMfBHu8uopsIStQ=";
 
