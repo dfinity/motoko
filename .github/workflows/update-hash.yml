@@ -21,7 +21,7 @@ jobs:
     - name: Update drun cargo hash
       run: |
         cd nix
-        nix shell -f . nix-update -c nix-update --version=skip drun
+        nix --extra-experimental-features nix-command shell -f . nix-update -c nix-update --version=skip drun
     - name: Commit changes
       uses: EndBug/add-and-commit@v7.4.0
       with:
