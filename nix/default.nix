@@ -41,7 +41,7 @@ let
               };
             };
           }
-        ))
+        )
 
         # Rust nightly
         (self: super: let
