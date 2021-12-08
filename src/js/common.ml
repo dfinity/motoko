@@ -50,6 +50,13 @@ let js_run list source =
   let list = List.map Js.to_string list in
   ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
+let js_candid source =
+  js_result (Pipeline.generate_idl [Js.to_string source])
+    (fun prog ->
+      let code = Idllib.Arrange_idl.string_of_prog prog in
+      Js.some (Js.string code)
+    )
+
 let js_stable_compatible pre post =
   js_result (Pipeline.stable_compatible (Js.to_string pre) (Js.to_string post)) (fun _ -> Js.null)
 
