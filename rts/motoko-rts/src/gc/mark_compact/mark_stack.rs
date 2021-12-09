@@ -41,7 +41,7 @@ pub unsafe fn free_mark_stack() {
 /// Doubles the stack size
 pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
     let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
-    let p = mem.alloc_words(stack_cap).get_ptr() as *mut usize;
+    let p = mem.alloc_words(stack_cap, 0 /*FIXME: wut?*/).get_ptr() as *mut usize;
 
     // Make sure nothing was allocated after the stack
     debug_assert_eq!(STACK_TOP, p);

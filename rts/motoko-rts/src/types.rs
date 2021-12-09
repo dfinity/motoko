@@ -346,7 +346,7 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub unsafe fn tag(self: *mut Self) -> Tag {
+    pub unsafe fn tag(self: *const Self) -> Tag {
         (*self).tag
     }
 
@@ -389,7 +389,7 @@ impl Array {
         *(slot_addr as *mut Value) = ptr;
     }
 
-    pub unsafe fn len(self: *mut Self) -> u32 {
+    pub unsafe fn len(self: *const Self) -> u32 {
         (*self).len
     }
 }
@@ -406,7 +406,7 @@ impl Object {
         self.add(1) as *mut Value // skip object header
     }
 
-    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+    pub(crate) unsafe fn size(self: *const Self) -> u32 {
         (*self).size
     }
 
@@ -435,7 +435,7 @@ impl Closure {
         self.offset(1) as *mut Value // skip closure header
     }
 
-    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+    pub(crate) unsafe fn size(self: *const Self) -> u32 {
         (*self).size
     }
 }
@@ -452,7 +452,7 @@ impl Blob {
         self.add(1) as *mut u8 // skip closure header
     }
 
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
         (*self).len
     }
 
@@ -507,7 +507,7 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
 
@@ -562,11 +562,11 @@ pub struct Concat {
 }
 
 impl Concat {
-    pub unsafe fn text1(self: *mut Self) -> Value {
+    pub unsafe fn text1(self: *const Self) -> Value {
         (*self).text1
     }
 
-    pub unsafe fn text2(self: *mut Self) -> Value {
+    pub unsafe fn text2(self: *const Self) -> Value {
         (*self).text2
     }
 }
@@ -612,7 +612,7 @@ pub struct FreeSpace {
 
 impl FreeSpace {
     /// Size of the free space (includes object header)
-    pub unsafe fn size(self: *mut Self) -> Words<u32> {
+    pub unsafe fn size(self: *const Self) -> Words<u32> {
         (*self).words + size_of::<Obj>()
     }
 }
