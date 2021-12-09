@@ -312,7 +312,9 @@ and call_system_func_opt name es =
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
         _
       } when id.it = name
-      -> Some (callE (varE (var id.it p.note)) [] (tupE []))
+      -> Some (callE (varE (var id.it p.note))
+                 (if name = "heartbeat" then [T.Any] else [])
+                 (tupE []))
     | _ -> None) es
 
 and build_candid ts obj_typ =

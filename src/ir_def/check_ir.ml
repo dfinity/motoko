@@ -780,7 +780,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_decs env'' ds;
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
-    (* TODO: check_exp env'' heartbeat; *)
+    check_exp env'' heartbeat;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
@@ -1108,7 +1108,7 @@ let check_comp_unit env = function
     check_decs env'' ds;
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
-    (* TODO: check_exp env'' heartbeat; *)
+    check_exp env'' heartbeat;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
