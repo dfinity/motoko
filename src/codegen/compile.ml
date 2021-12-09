@@ -861,7 +861,7 @@ module RTS = struct
     E.add_func_import env "rts" "compacting_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
-    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [I32Type] [];
@@ -895,14 +895,15 @@ module Heap = struct
   let get_max_live_size env =
     E.call_import env "rts" "get_max_live_size"
 
-  let dyn_alloc_words env =
+  let dyn_alloc_words env init_word =
+    compile_unboxed_const init_word  ^^
     E.call_import env "rts" "alloc_words"
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
-  let alloc env (n : int32) : G.t =
+  let alloc env (n : int32) init_word : G.t =
     compile_unboxed_const n  ^^
-    dyn_alloc_words env
+    dyn_alloc_words env init_word
 
   (* Heap objects *)
 
@@ -937,11 +938,11 @@ module Heap = struct
     G.i (Store {ty = F64Type; align = 2; offset; sz = None})
 
   (* Create a heap object with instructions that fill in each word *)
-  let obj env element_instructions : G.t =
+  let obj env init_word element_instructions : G.t =
     let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
 
     let n = List.length element_instructions in
-    alloc env (Wasm.I32.of_int_u n) ^^
+    alloc env (Wasm.I32.of_int_u (n + 1)) init_word ^^
     set_heap_obj ^^
 
     let init_elem idx instrs : G.t =
@@ -1295,8 +1296,7 @@ module Tagged = struct
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
   let obj env tag element_instructions : G.t =
-    Heap.obj env @@
-      compile_unboxed_const (int_of_tag tag) ::
+    Heap.obj env (int_of_tag tag) @@
       element_instructions
 
 end (* Tagged *)
@@ -1307,10 +1307,10 @@ module MutBox = struct
   let field = Tagged.header_size
 
   let alloc env =
-    Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+    Tagged.(obj env MutBox [ compile_unboxed_zero ])
 
   let static env =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+    let tag = bytes_of_int32 Tagged.(int_of_tag MutBox) in
     let zero = bytes_of_int32 0l in
     let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
     E.add_static_root env ptr;
@@ -1508,9 +1508,8 @@ module BoxedWord64 = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Heap.alloc env 3l ^^
+    Heap.alloc env 3l Tagged.(int_of_tag Bits64) ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1626,9 +1625,8 @@ module BoxedSmallWord = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Heap.alloc env 2l ^^
+    Heap.alloc env 2l Tagged.(int_of_tag Bits32) ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits32) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -1867,9 +1865,8 @@ module Float = struct
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Heap.alloc env 3l ^^
+    Heap.alloc env 3l Tagged.(int_of_tag Bits64) ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
@@ -2731,12 +2728,8 @@ module Object = struct
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
-    Heap.alloc env (Int32.add header_size sz) ^^
+    Heap.alloc env (Int32.add header_size sz) Tagged.(int_of_tag Object) ^^
     set_ri ^^
-
-    (* Set tag *)
-    get_ri ^^
-    Tagged.(store Object) ^^
 
     (* Set size *)
     get_ri ^^
@@ -6246,12 +6239,8 @@ module FuncDec = struct
 
       let code =
         (* Allocate a heap object for the closure *)
-        Heap.alloc env (Int32.add Closure.header_size len) ^^
+        Heap.alloc env (Int32.add Closure.header_size len) Tagged.(int_of_tag Closure) ^^
         set_clos ^^
-
-        (* Store the tag *)
-        get_clos ^^
-        Tagged.(store Closure) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^
