@@ -116,9 +116,9 @@ let rec exp e : f = match e.it with
   | TryE (e, cs)        -> exp e ++ cases cs
   | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
 
-and actor ds fs u = close (decs ds +++ fields fs +++ upgrade u)
+and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
-and upgrade {pre; post} = under_lambda (exp pre) ++ under_lambda (exp post)
+and system {meta; preupgrade; postupgrade} = under_lambda (exp preupgrade) ++ under_lambda (exp postupgrade)
 
 and exps es : f = unions exp es
 

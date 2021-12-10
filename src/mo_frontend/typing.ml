@@ -1757,22 +1757,24 @@ and check_pat' env t pat : Scope.val_env =
     T.Env.singleton id.it t
   | LitP lit ->
     if not env.pre then begin
-      if T.opaque t then
+      let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
+      if T.opaque t' then
         error env pat.at "M0110" "literal pattern cannot consume expected type%a"
           display_typ_expand t;
-      if T.sub t T.Non
+      if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t lit pat.at
+      else check_lit env t' lit pat.at
     end;
     T.Env.empty
   | SignP (op, lit) ->
     if not env.pre then begin
+      let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
       if not (Operator.has_unop op (T.promote t)) then
         error env pat.at "M0111" "operator pattern cannot consume expected type%a"
           display_typ_expand t;
-      if T.sub t T.Non
+      if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t lit pat.at
+      else check_lit env t' lit pat.at
     end;
     T.Env.empty
   | TupP pats ->
@@ -1799,8 +1801,11 @@ and check_pat' env t pat : Scope.val_env =
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
-      try T.lookup_val_field id.it (T.as_variant_sub id.it t)
-      with Invalid_argument _ | Not_found ->
+      try
+        match T.lookup_val_field_opt id.it (T.as_variant_sub id.it t) with
+        | Some t1 -> t1
+        | None -> T.Non
+      with Invalid_argument _ ->
         error env pat.at "M0116" "variant pattern cannot consume expected type%a"
           display_typ_expand t
     in check_pat env t1 pat1
@@ -1817,7 +1822,7 @@ and check_pat' env t pat : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t pat1
+    check_pat env t' pat1
   | ParP pat1 ->
     check_pat env t pat1
 
@@ -2600,3 +2605,27 @@ let check_lib scope lib : Scope.t Diag.result =
           Scope.lib lib.note.filename imp_typ
         ) lib
     )
+
+let check_stab_sig scope sig_ : (T.field list) Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt
+        (fun (decs, sfs) ->
+          let env = env_of_scope msgs scope in
+          let scope = infer_block_decs env decs sig_.at in
+          let env1 = adjoin env scope in
+          check_ids env "object type" "field"
+            (List.map (fun (field : typ_field) -> field.it.id) sfs);
+          let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
+          let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
+          List.iter (fun (typ_field : Syntax.typ_field) ->
+            let t = typ_field.it.typ.note in
+            if not (T.stable t) then
+              error env typ_field.it.id.at "M0131" "variable %s is declared stable but has non-stable type%a"
+                typ_field.it.id.it
+                display_typ t) sfs;
+          List.sort T.compare_field fs
+        ) sig_.it
+    )
+
+

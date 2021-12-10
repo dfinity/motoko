@@ -3,7 +3,7 @@ open Source
 open Mo_config
 
 module Js = Js_of_ocaml.Js
-module Sys_js = Js_of_ocaml.Sys_js          
+module Sys_js = Js_of_ocaml.Sys_js
 
 let position_of_pos pos =
   object%js
@@ -57,27 +57,45 @@ let js_candid source =
       Js.some (Js.string code)
     )
 
+let js_stable_compatible pre post =
+  js_result (Pipeline.stable_compatible (Js.to_string pre) (Js.to_string post)) (fun _ -> Js.null)
+
 let js_compile_wasm mode source =
+  let source = Js.to_string source in
   let mode =
     match Js.to_string mode with
     | "wasi" -> Flags.WASIMode
     | "ic" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
-  js_result (Pipeline.compile_files mode true [Js.to_string source])
-    (fun m ->
+  js_result (Pipeline.compile_files mode true [source])
+    (fun (idl_prog, m) ->
+      let open CustomModule in
+      let sig_ = match m.motoko.stable_types with
+        | Some (_, txt) -> Js.some (Js.string txt)
+        | _ -> Js.null in
+      let candid = Idllib.Arrange_idl.string_of_prog idl_prog in
       let (_, wasm) = CustomModuleEncode.encode m in
       let constructor = Js.Unsafe.global##._Uint8Array in
       let code = constructor##from
         (object%js val length = String.length wasm end)
         (Js.wrap_callback (fun _v k -> Char.code wasm.[k])) in
-      Js.some code)
+      Js.some (object%js
+        val wasm = code
+        val candid = Js.string candid
+        val stable = sig_
+      end)
+    )
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
   let content = Js.to_string content in
   try Sys_js.create_file ~name:filename ~content:content
   with _ -> Sys_js.update_file ~name:filename ~content:content
+
+let js_remove_file filename = Sys.remove (Js.to_string filename)
+let js_rename_file oldpath newpath = Sys.rename (Js.to_string oldpath) (Js.to_string newpath)
+let js_read_dir path = Sys.readdir (Js.to_string path)
 
 let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
@@ -105,3 +123,10 @@ let set_actor_aliases entries =
   let aliases = Flags.actor_aliases in
   aliases := Flags.M.of_seq (Array.to_seq entries)  
 
+let gc_flags option =
+  match Js.to_string option with
+  | "force" -> Flags.force_gc := true
+  | "scheduling" -> Flags.force_gc := false
+  | "copying" -> Flags.gc_strategy := Mo_config.Flags.Copying
+  | "marking" -> Flags.gc_strategy := Mo_config.Flags.MarkCompact
+  | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")
