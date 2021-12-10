@@ -2,6 +2,10 @@ name: Update nix hashes
 
 on:
   push:
+    branches-ignore:
+      - master
+    tags-ignore:
+      - *
 
 jobs:
   update-hash:
