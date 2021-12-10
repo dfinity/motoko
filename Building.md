@@ -53,15 +53,15 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.13) are:
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.17) are:
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        ## 0.6.13 (2021-10-31)
+        ## 0.6.17 (2021-12-03)
 
    with today’s date.
 
- * Define a shell variable `export MOC_MINOR=15`
+ * Define a shell variable `export MOC_MINOR=17`
 
  * Look at `git log --first-parent 0.6.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
@@ -77,11 +77,11 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
 The `release` branch should thus always reference the latest release commit.
 
-Pushing the tag should cause Github Actions to create a “Release” on the github
+Pushing the tag should cause GitHub Actions to create a “Release” on the github
 project. This will fail if the changelog is not in order (in this case, fix and
 force-push the tag).  It will also fail if the nix cache did not yet contain
-the build artifacts for this revision. In this case, restart the Github Action
-on Github’s UI.
+the build artifacts for this revision. In this case, restart the GitHub Action
+on GitHub’s UI.
 
 After releasing the compiler you can update `motoko-base`'s `master`
 branch to the `next-moc` branch.
@@ -94,9 +94,11 @@ branch to the `next-moc` branch.
   to the new released version:
   `perl -pi -e "s/moc_version: \"0\.6\.\\d+\"/moc_version: \"0.6.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
 * `git add .github/ && git commit -m "Motoko 0.6.$MOC_MINOR"`
+* You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
-squash merge) once CI passes
+squash merge) once CI passes. It will eventually be imported into this
+repo by a scheduled `niv-updater-action`.
 
 ## Profile the compiler
 
@@ -120,6 +122,11 @@ build system.)
    (Note that you have to _run_ this in the directory with `gmon.out`, but
    _pass_ it the path to the binary.)
 
+
+## Benchmarking the RTS
+
+Specifically some advanced techniques to obtain performance deltas for the
+GC can be found in `rts/Benchmarking.md`.
 
 ## Updating Haskell Packages
 

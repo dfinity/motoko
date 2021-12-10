@@ -382,7 +382,7 @@ and build_actor at ts self_id es obj_typ =
   let (interface_d, interface_f) = export_interface candid.I.service in
   I.ActorE (interface_d @ ds', interface_f @ fs,
      { meta;
-       I.pre =
+       I.preupgrade =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
         blockE
           ((match call_system_func_opt "preupgrade" es with
@@ -398,7 +398,7 @@ and build_actor at ts self_id es obj_typ =
                         note = f.T.typ }
                     ) fields vs)
                  ty]));
-        I.post = match call_system_func_opt "postupgrade" es with
+        I.postupgrade = match call_system_func_opt "postupgrade" es with
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)
@@ -434,11 +434,13 @@ and stabilize stab_opt d =
 and build_obj at s self_id dfs obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s fs obj_typ in
-  let ret_ds, ret_o =
-    match self_id with
-    | None -> [], obj_e
-    | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
-  in I.BlockE (decs (List.map (fun df -> df.it.S.dec) dfs) @ ret_ds, ret_o)
+  let ds = decs (List.map (fun df -> df.it.S.dec) dfs) in
+  let e = blockE ds obj_e in
+  match self_id with
+    | None -> e.it
+    | Some self_id ->
+      let self = var self_id.it obj_typ in
+      (letE self e (varE self)).it
 
 and exp_field ef =
   let S.{mut; id; exp = e} = ef.it in

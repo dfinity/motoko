@@ -17,25 +17,25 @@ const empty_wasm_ic = moc.Motoko.compileWasm('ic', 'empty.mo');
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
 assert.equal(typeof(empty_wasm_plain), 'object');
-assert.deepEqual(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
-assert.deepEqual(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
+assert.deepEqual(empty_wasm_plain.code.wasm.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
+assert.deepEqual(empty_wasm_plain.code.wasm.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
 assert.equal(typeof(empty_wasm_plain.diagnostics), 'object');
 assert.equal(empty_wasm_plain.diagnostics.length, 0);
 
 // Check that the WebAssembly binary can be loaded
-WebAssembly.compile(empty_wasm_plain.code);
+WebAssembly.compile(empty_wasm_plain.code.wasm);
 
 // Now again for the ic module
 assert.equal(typeof(empty_wasm_ic), 'object');
-assert.deepEqual(empty_wasm_plain.code.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
-assert.deepEqual(empty_wasm_plain.code.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
+assert.deepEqual(empty_wasm_plain.code.wasm.subarray(0,4), new Uint8Array([0, 97, 115, 109]));
+assert.deepEqual(empty_wasm_plain.code.wasm.subarray(4,8), new Uint8Array([1, 0, 0, 0]));
 assert.equal(typeof(empty_wasm_ic.diagnostics), 'object');
 assert.equal(empty_wasm_ic.diagnostics.length, 0);
 
-WebAssembly.compile(empty_wasm_ic.code);
+WebAssembly.compile(empty_wasm_ic.code.wasm);
 
 // The plain and the ic module should not be the same
-assert.notEqual(empty_wasm_plain.code, empty_wasm_ic.code);
+assert.notEqual(empty_wasm_plain.code.wasm, empty_wasm_ic.code.wasm);
 
 moc.Motoko.removeFile('empty.mo');
 assert.throws(

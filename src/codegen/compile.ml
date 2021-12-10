@@ -864,7 +864,7 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
-    E.add_func_import env "rts" "init" [] [];
+    E.add_func_import env "rts" "init" [I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     ()
@@ -8785,7 +8785,7 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Compile the declarations *)
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
-      (Freevars.captured_vars (Freevars.upgrade up))
+      Freevars.(captured_vars (system up))
     in
 
     (* Export the public functions *)
@@ -8793,9 +8793,9 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Export upgrade hooks *)
     Func.define_built_in env "pre_exp" [] [] (fun env ->
-      compile_exp_as env ae2 SR.unit up.pre);
+      compile_exp_as env ae2 SR.unit up.preupgrade);
     Func.define_built_in env "post_exp" [] [] (fun env ->
-      compile_exp_as env ae2 SR.unit up.post);
+      compile_exp_as env ae2 SR.unit up.postupgrade);
     IC.export_upgrade_methods env;
 
     (* Export metadata *)
@@ -8848,6 +8848,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
     E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->
