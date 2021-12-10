@@ -1,6 +1,8 @@
 queue_rules:
   - name: default
     conditions:
+      - "#approved-reviews-by>=1"
+      - "#changes-requested-reviews-by=0"
       - status-success=tests (ubuntu-latest)
       - status-success=tests (macos-latest)
 
