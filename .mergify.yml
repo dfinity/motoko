@@ -24,7 +24,7 @@ pull_request_rules:
 
           {{ body }}
       delete_head_branch: {}
-  - name: Automatic closing successful trials
+  - name: Automatically closing successful trials
     conditions:
       - status-success=tests (ubuntu-latest)
       - status-success=tests (macos-latest)
