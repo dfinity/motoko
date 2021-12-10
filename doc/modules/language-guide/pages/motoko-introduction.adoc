@@ -95,7 +95,7 @@ We do not show an example of this "`notify`" pattern above, since it uses callba
 To address the need for clarity and simplicity, {proglang} adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a _structured_ language for describing potentially-complex asynchronous dependency graphs.
 
 The link:language-manual{outfilesuffix}#exp-async[async] syntax introduces futures. A future value
-represents a _" `promise` " of a result that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
+represents a _promise_ of a result _that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
 You'll learn more about futures when we introduce actors in link:actors-async{outfilesuffix}[Actors and async data].
 
 Here, we merely use the ones that arise from calling `service1.computeAnswer(params)` and
