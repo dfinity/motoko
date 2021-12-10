@@ -17,7 +17,10 @@ pull_request_rules:
       queue:
         name: default
         method: squash
-        commit_message: title+body
+        commit_message_template: |
+          {{ title }} (#{{ number }})
+
+          {{ body }}
       delete_head_branch: {}
   - name: Automatic closing successful trials
     conditions:
