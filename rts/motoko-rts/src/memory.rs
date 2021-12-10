@@ -35,7 +35,6 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words(), TAG_BLOB);
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
-    //(*blob).header.tag = TAG_BLOB;
     (*blob).len = size;
     ptr
 }
@@ -51,7 +50,6 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len), TAG_ARRAY);
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
-    //(*ptr).header.tag = TAG_ARRAY;
     (*ptr).len = len;
 
     skewed_ptr
