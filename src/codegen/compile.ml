@@ -6372,9 +6372,11 @@ module FuncDec = struct
       get_cb_index
 
   let ignoring_callback env =
-    let name = "@ignore_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
-    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
+    (* for one-way calls, we use an invalid table entry as the callback. this
+       way, the callback, when it comes back, will (safely) trap, even if the
+       module has completely changed in between. This way, one-way calls do not
+       get in the way of safe instantaneous upgrades *)
+    compile_unboxed_const (-1l)
 
   let cleanup_callback env =
     let name = "@cleanup_callback" in
@@ -8794,7 +8796,7 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Compile the declarations *)
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
-      (Freevars.captured_vars (Freevars.upgrade up))
+      Freevars.(captured_vars (system up))
     in
 
     (* Export the public functions *)
@@ -8802,9 +8804,9 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Export upgrade hooks *)
     Func.define_built_in env "pre_exp" [] [] (fun env ->
-      compile_exp_as env ae2 SR.unit up.pre);
+      compile_exp_as env ae2 SR.unit up.preupgrade);
     Func.define_built_in env "post_exp" [] [] (fun env ->
-      compile_exp_as env ae2 SR.unit up.post);
+      compile_exp_as env ae2 SR.unit up.postupgrade);
     IC.export_upgrade_methods env;
 
     (* Export metadata *)

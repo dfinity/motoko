@@ -1,5 +1,23 @@
 # Motoko compiler changelog
 
+## 0.6.17 (2021-12-10)
+
+* Improved handling of one-shot messages facilitating zero-downtime
+  upgrades (#2938).
+* Further performance improvements to the mark-compact garbage
+  collector (#2952, #2973).
+* Stable variable checking for `moc.js` (#2969).
+* A bug was fixed in the scoping checker  (#2977).
+
+## 0.6.16 (2021-12-03)
+
+* Minor performance improvement to the mark-compact garbage collector
+
+## 0.6.15 (2021-11-26)
+
+* Fixes crash when (ill-typed) `switch` expression on non-variant
+  value has variant alternatives (#2934)
+
 ## 0.6.14 (2021-11-19)
 
 * The compiler now embeds the existing Candid interface  and  new

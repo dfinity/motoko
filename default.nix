@@ -72,6 +72,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.menhirLib
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
@@ -158,14 +159,14 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = ./rts/cargo-vendor-tools;
-        cargoSha256 = "0zi3fiq9sy6c9dv7fd2xc9lan85d16gfax47n6g6f5q5c1zb5r47";
+        cargoSha256 = "sha256-wZeLp8s/QI8DyK7KsHAYOqskJIEleomXzQG2ijRossk";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
+      rustStdDepsHash = "sha256-jCe1HXSexW6p8QINrMtcBDO1TDWkg2glZwnf1EqLuB0";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -706,7 +707,9 @@ rec {
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat
           nixpkgs.ocamlPackages.utop
+          nixpkgs.fswatch
           nixpkgs.niv
+          nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
         ]
       ));
