@@ -317,8 +317,14 @@ import Buffer "mo:base/Buffer";
 
 class Counter<X>(init : Buffer.Buffer<X>) {
   var buffer = init.clone();
-  public func add(x : X) : Nat { buffer.add(x); buffer.size() };
-  public func reset() { buffer := init.clone() };
+  public func add(x : X) : Nat { 
+    buffer.add(x); 
+    buffer.size() 
+  };
+  
+  public func reset() { 
+    buffer := init.clone() 
+  };
 };
 ....
 
