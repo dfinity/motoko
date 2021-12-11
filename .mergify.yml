@@ -1,6 +1,8 @@
 queue_rules:
   - name: default
     conditions:
+      - "#approved-reviews-by>=1"
+      - "#changes-requested-reviews-by=0"
       - status-success=tests (ubuntu-latest)
       - status-success=tests (macos-latest)
 
@@ -17,9 +19,12 @@ pull_request_rules:
       queue:
         name: default
         method: squash
-        commit_message: title+body
+        commit_message_template: |
+          {{ title }} (#{{ number }})
+
+          {{ body }}
       delete_head_branch: {}
-  - name: Automatic closing succesfull trials
+  - name: Automatically closing successful trials
     conditions:
       - status-success=tests (ubuntu-latest)
       - status-success=tests (macos-latest)
@@ -52,4 +57,4 @@ pull_request_rules:
     actions:
       review:
         type: APPROVE
-        message: A change to Changelog.md? I can handle that!
+        message: A change to `Changelog.md`? I can handle that!
