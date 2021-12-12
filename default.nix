@@ -707,7 +707,9 @@ rec {
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat
           nixpkgs.ocamlPackages.utop
+          nixpkgs.fswatch
           nixpkgs.niv
+          nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
         ]
       ));

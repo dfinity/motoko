@@ -167,22 +167,24 @@ impl BitmapIter {
 
         // Outer loop iterates 64-bit words
         loop {
-            // Inner loop iterates bits in the current word
-            while self.current_word != 0 {
-                if self.current_word & 0b1 != 0 {
-                    let bit_idx = self.current_bit_idx;
-                    self.current_word >>= 1;
-                    self.current_bit_idx += 1;
-                    return bit_idx;
-                } else {
-                    let shift_amt = self.current_word.trailing_zeros();
-                    self.current_word >>= shift_amt;
-                    self.current_bit_idx += shift_amt;
-                }
+            // Examine the least significant bit(s) in the current word
+            if self.current_word != 0 {
+                let shift_amt = self.current_word.trailing_zeros();
+                self.current_word >>= shift_amt;
+                self.current_word >>= 1;
+                let bit_idx = self.current_bit_idx + shift_amt;
+                self.current_bit_idx = bit_idx + 1;
+                return bit_idx;
             }
 
             // Move on to next word (always 64-bit boundary)
             self.current_bit_idx += self.leading_zeros;
+            unsafe {
+                debug_assert_eq!(
+                    (self.current_bit_idx - get_bitmap_forbidden_size() as u32 * 8) % 64,
+                    0
+                )
+            }
             if self.current_bit_idx == self.size {
                 return BITMAP_ITER_END;
             }
