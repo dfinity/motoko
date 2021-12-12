@@ -365,7 +365,7 @@ The constituents of the body marked `public` contribute to the resulting objects
 
 =====  Another example: `Bits`
 
-As another example, let's consider the task of walking the bits of a Natural number. For this example, we could define the following:
+As another example, let's consider the task of walking the bits of a natural number (type `Nat`). For this example, we could define the following:
 
 [source, motoko]
 ....
