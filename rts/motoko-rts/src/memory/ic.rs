@@ -25,12 +25,21 @@ pub(crate) static mut LAST_HP: u32 = 0;
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
-    pub(crate) fn get_static_roots() -> SkewedPtr;
+    pub(crate) fn get_static_roots() -> Value;
+}
+
+pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
+    // align to 32 bytes
+    ((get_heap_base() + 31) / 32) * 32
 }
 
 #[no_mangle]
-unsafe extern "C" fn init() {
-    HP = get_heap_base() as u32;
+unsafe extern "C" fn init(align: bool) {
+    HP = if align {
+        get_aligned_heap_base()
+    } else {
+        get_heap_base()
+    };
     LAST_HP = HP;
 }
 
@@ -51,7 +60,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_heap_base())
+    Bytes(HP - get_aligned_heap_base())
 }
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
@@ -60,27 +69,27 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> SkewedPtr {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
         // Update ALLOCATED
-        ALLOCATED += Bytes(bytes.0 as u64);
+        ALLOCATED += Bytes(u64::from(bytes.as_u32()));
 
         // Update heap pointer
         let old_hp = HP;
-        let new_hp = old_hp + bytes.0;
+        let new_hp = old_hp + bytes.as_u32();
         HP = new_hp;
 
         // Grow memory if needed
         grow_memory(new_hp as usize);
 
-        skew(old_hp as usize)
+        Value::from_ptr(old_hp as usize)
     }
 }
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
 #[inline(never)]
 unsafe fn grow_memory(ptr: usize) {
-    let page_size = u64::from(WASM_PAGE_SIZE.0);
+    let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
     let total_pages_needed = (((ptr as u64) + page_size - 1) / page_size) as usize;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {

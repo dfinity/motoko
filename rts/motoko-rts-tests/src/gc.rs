@@ -6,6 +6,7 @@
 // To convert an offset into an address, add heap array's address to the offset.
 
 mod heap;
+mod random;
 mod utils;
 
 use heap::MotokoHeap;
@@ -22,11 +23,19 @@ use fxhash::{FxHashMap, FxHashSet};
 pub fn test() {
     println!("Testing garbage collection ...");
 
-    // TODO: Add more tests
-
+    println!("  Testing pre-defined heaps...");
     for test_heap in test_heaps() {
         test_gcs(&test_heap);
     }
+
+    println!("  Testing random heaps...");
+    let max_seed = 100;
+    for seed in 0..max_seed {
+        print!("\r{}/{}", seed + 1, max_seed);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        test_random_heap(seed, 180);
+    }
+    print!("\r");
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -61,6 +70,11 @@ fn test_heaps() -> Vec<TestHeap> {
             continuation_table: vec![],
         },
     ]
+}
+
+fn test_random_heap(seed: u64, max_objects: u32) {
+    let random_heap = random::generate(seed, max_objects);
+    test_gcs(&random_heap);
 }
 
 // All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
@@ -167,7 +181,7 @@ fn check_dynamic_heap(
             check_continuation_table(object_offset, continuation_table, heap);
             offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
-                .0 as usize;
+                .as_usize();
             continue;
         }
 
@@ -306,7 +320,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
         offset += WORD_SIZE;
 
         // Skip object header for idx
-        let idx_address = ptr as usize + size_of::<Array>().to_bytes().0 as usize;
+        let idx_address = ptr as usize + size_of::<Array>().to_bytes().as_usize();
         let idx = get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize));
 
         assert_eq!(idx, *obj);
@@ -316,9 +330,8 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 impl GC {
     fn run(&self, mut heap: MotokoHeap) {
         let heap_base = heap.heap_base_address() as u32;
-        let static_roots = skew(heap.static_root_array_address());
-        let continuation_table_ptr_address =
-            heap.continuation_table_ptr_address() as *mut SkewedPtr;
+        let static_roots = Value::from_ptr(heap.static_root_array_address());
+        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.clone();
         let heap_2 = heap.clone();

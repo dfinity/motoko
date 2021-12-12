@@ -1,8 +1,8 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-10
-WASM_CLANG ?= clang-10
-WASM_LD ?= wasm-ld-10
+CLANG ?= clang-12
+WASM_CLANG ?= clang-12
+WASM_LD ?= wasm-ld-12
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -103,7 +103,7 @@ CLANG_FLAGS = \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
    --optimize=s \
-   -resource-dir=$(WASM_CLANG_LIB)/lib/clang/10.0.1
+   -resource-dir=$(wildcard $(WASM_CLANG_LIB)/lib/clang/*)
 
 #
 # Build targets
@@ -117,6 +117,9 @@ _build:
 	mkdir -p $@
 
 _build/wasm:
+	mkdir -p $@
+
+_build/i686:
 	mkdir -p $@
 
 #
@@ -133,10 +136,20 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLS
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_WASM_A=_build/libtommath.a
 
+TOMMATH_i686_O=$(TOMMATHFILES:%=_build/i686/tommath_%.o)
+TOMMATH_i686_A=_build/libtommath_i686.a
+
 _build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 $(TOMMATH_WASM_A): $(TOMMATH_WASM_O)
+	llvm-ar rcs $@ $^
+	llvm-ranlib $@
+
+_build/i686/tommath_%.o: bn_%.c | _build/i686
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --target=i686-unknown-linux $< --output $@
+
+$(TOMMATH_i686_A): $(TOMMATH_i686_O)
 	llvm-ar rcs $@ $^
 	llvm-ranlib $@
 
@@ -210,11 +223,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 
 
 $(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
+	cd motoko-rts && cargo build --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
 $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
+	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 #
@@ -261,6 +274,11 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 		--whole-archive \
 		$+
 
+
+format:
+	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
+	cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml
+
 clean:
 	rm -rf \
 	  _build \
@@ -268,5 +286,4 @@ clean:
 	  mo-rts-debug.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
-	  motoko-rts/xargo-home \
 	  motoko-rts/cargo-home

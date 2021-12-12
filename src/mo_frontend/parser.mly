@@ -12,8 +12,6 @@ open Parser_lib
 (* Position handling *)
 
 let position_to_pos position =
-  (* TBR: Remove assertion once the menhir bug is fixed. *)
-  assert (Obj.is_block (Obj.repr position));
   { file = position.Lexing.pos_fname;
     line = position.Lexing.pos_lnum;
     column = position.Lexing.pos_cnum - position.Lexing.pos_bol
@@ -251,7 +249,7 @@ and objblock s dec_fields =
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
 %type<Mo_def.Syntax.typ_item> typ_item
-%type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre
+%type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_nobin
 %type<Mo_def.Syntax.vis> vis
 %type<Mo_def.Syntax.typ_tag> typ_tag
 %type<Mo_def.Syntax.typ_tag list> typ_variant
@@ -291,10 +289,16 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.inst> inst
 %type<Mo_def.Syntax.stab option> stab
 
+%type<Mo_def.Syntax.dec> typ_dec
+%type<Mo_def.Syntax.dec list> seplist(typ_dec,semicolon)
+%type<Mo_def.Syntax.typ_field list> seplist(stab_field,semicolon)
+%type<Mo_def.Syntax.typ_field> stab_field
+
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 %start<unit> parse_module_header (* Result passed via the Parser_lib.Imports exception *)
+%start<string -> Mo_def.Syntax.stab_sig> parse_stab_sig
 
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
@@ -414,11 +418,19 @@ typ_pre :
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
       in ObjT(s, tfs') @! at $sloc }
 
-typ :
+typ_nobin :
   | t=typ_pre
     { t }
-  | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
+  | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ_nobin
     { funcT(s, tps, t1, t2) @! at $sloc }
+
+typ :
+  | t=typ_nobin
+    { t }
+  | t1=typ AND t2=typ
+    { AndT(t1, t2) @! at $sloc }
+  | t1=typ OR t2=typ
+    { OrT(t1, t2) @! at $sloc }
 
 typ_item :
   | i=id COLON t=typ { Some i, t }
@@ -605,7 +617,7 @@ exp_bin(B) :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
-  | e=exp_bin(B) COLON t=typ
+  | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
 
 exp_nondec(B) :
@@ -888,5 +900,19 @@ import_list :
 
 parse_module_header :
   | start import_list EOF {}
+
+typ_dec :
+  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+    { TypD(x, tps, t) @? at $sloc }
+
+stab_field :
+  | STABLE mut=var_opt x=id COLON t=typ
+    { {id = x; typ = t; mut} @@ at $sloc }
+
+parse_stab_sig :
+  | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
+    { let trivia = !triv_table in
+      fun filename -> { it = (ds, sfs); at = at $sloc; note = { filename; trivia }}
+    }
 
 %%

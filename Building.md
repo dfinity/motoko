@@ -53,33 +53,35 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.6) are:
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.17) are:
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        == 0.6.6 (2021-08-01)
+        ## 0.6.17 (2021-12-03)
 
    with today’s date.
 
- * Look at `git log --first-parent 0.6.5..HEAD` and check
+ * Define a shell variable `export MOC_MINOR=17`
+
+ * Look at `git log --first-parent 0.6.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
- * `git commit -a -m "Releasing 0.6.6"`
+ * `git commit -am "Releasing 0.6.$MOC_MINOR"`
  * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
    merge it into master without additional approval, within 2 or 3 minutes.
  * `git switch master; git pull`. The release commit should be your `HEAD`
- * `git tag 0.6.6 -m "Motoko 0.6.6"`
- * `git branch -f release 0.6.6`
- * `git push origin release 0.6.6`
+ * `git tag 0.6.$MOC_MINOR -m "Motoko 0.6.$MOC_MINOR"`
+ * `git branch -f release 0.6.$MOC_MINOR`
+ * `git push origin release 0.6.$MOC_MINOR`
 
 The `release` branch should thus always reference the latest release commit.
 
-Pushing the tag should cause Github Actions to create a “Release” on the github
+Pushing the tag should cause GitHub Actions to create a “Release” on the github
 project. This will fail if the changelog is not in order (in this case, fix and
 force-push the tag).  It will also fail if the nix cache did not yet contain
-the build artifacts for this revision. In this case, restart the Github Action
-on Github’s UI.
+the build artifacts for this revision. In this case, restart the GitHub Action
+on GitHub’s UI.
 
 After releasing the compiler you can update `motoko-base`'s `master`
 branch to the `next-moc` branch.
@@ -87,17 +89,20 @@ branch to the `next-moc` branch.
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
-* `git switch -c username/update-moc-0.6.6`
-* Update the `moc_version` env variable in `.github/workflows/ci.yml`
-  and `.github/workflows/package-set.yml` to the new released version
-* `git add .github/ && git commit -m "Motoko 0.6.6"`
+* `git switch -c $USER/update-moc-0.6.$MOC_MINOR`
+* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
+  to the new released version:
+  `perl -pi -e "s/moc_version: \"0\.6\.\\d+\"/moc_version: \"0.6.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
+* `git add .github/ && git commit -m "Motoko 0.6.$MOC_MINOR"`
+* You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
-squash merge) once CI passes
+squash merge) once CI passes. It will eventually be imported into this
+repo by a scheduled `niv-updater-action`.
 
 ## Profile the compiler
 
-(This section is currently defuct, and needs to be update to work with the dune
+(This section is currently defunct, and needs to be update to work with the dune
 build system.)
 
 1. Build with profiling within nix-shell (TODO: How to do with dune)
@@ -117,6 +122,11 @@ build system.)
    (Note that you have to _run_ this in the directory with `gmon.out`, but
    _pass_ it the path to the binary.)
 
+
+## Benchmarking the RTS
+
+Specifically some advanced techniques to obtain performance deltas for the
+GC can be found in `rts/Benchmarking.md`.
 
 ## Updating Haskell Packages
 

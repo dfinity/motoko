@@ -5,7 +5,7 @@ use motoko_rts::gc::mark_compact::mark_stack::{
     INIT_STACK_SIZE, STACK_BASE, STACK_PTR, STACK_TOP,
 };
 use motoko_rts::memory::Memory;
-use motoko_rts::types::{size_of, Blob, Words};
+use motoko_rts::types::*;
 
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
@@ -33,6 +33,23 @@ fn test_push_pop() {
         .unwrap();
 }
 
+static TAGS: [Tag; 14] = [
+    TAG_OBJECT,
+    TAG_OBJ_IND,
+    TAG_ARRAY,
+    TAG_BITS64,
+    TAG_MUTBOX,
+    TAG_CLOSURE,
+    TAG_SOME,
+    TAG_VARIANT,
+    TAG_BLOB,
+    TAG_FWD_PTR,
+    TAG_BITS32,
+    TAG_BIGINT,
+    TAG_CONCAT,
+    TAG_NULL,
+];
+
 fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
     let objs: Vec<u32> = (0..n_objs).collect();
 
@@ -40,13 +57,12 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
         alloc_mark_stack(mem);
 
         for obj in &objs {
-            // Pushing a dummy argument derived from `obj` for tag
-            push_mark_stack(mem, *obj as usize, obj.wrapping_sub(1));
+            push_mark_stack(mem, *obj as usize, TAGS[(*obj as usize) % TAGS.len()]);
         }
 
         for obj in objs.iter().copied().rev() {
             let popped = pop_mark_stack();
-            if popped != Some((obj as usize, obj.wrapping_sub(1))) {
+            if popped != Some((obj as usize, TAGS[(obj as usize) % TAGS.len()])) {
                 free_mark_stack();
                 return Err(TestCaseError::Fail(
                     format!(

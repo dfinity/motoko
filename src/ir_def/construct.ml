@@ -84,17 +84,23 @@ let varLE (id, typ) =
 let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
-    | ICReplyPrim _ -> T.Non
+    | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
     | ICStableWrite _ -> T.unit
+    | IdxPrim
+    | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
+    | NextArrayOffset _ -> T.nat
+    | ValidArrayOffset -> T.bool
+    | GetPastArrayOffset _ -> T.nat
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
+    | BinPrim (t, _) -> t
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
-    | SystemCyclesAvailablePrim -> T.nat64
+    | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
@@ -115,7 +121,7 @@ let selfRefE typ =
 let assertE e =
   { it = PrimE (AssertPrim, [e]);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff e}
+    note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
 
@@ -218,6 +224,12 @@ let blockE decs exp =
       at = no_region;
       note = Note.{ def with typ; eff }
     }
+
+let natE n =
+  { it = LitE (NatLit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat }
+  }
 
 let textE s =
   { it = LitE (TextLit s);
@@ -445,7 +457,7 @@ let thenE exp1 exp2 = blockE [expD exp1] exp2
 let ignoreE exp =
   if typ exp = T.unit
   then exp
-  else thenE exp (tupE [])
+  else thenE exp (unitE ())
 
 
 (* Mono-morphic function expression *)
@@ -576,7 +588,7 @@ let whileE exp1 exp2 =
       loopE (
           ifE exp1
             exp2
-            (breakE lab (tupE []))
+            (breakE lab (unitE ()))
             T.unit
         )
     )
@@ -593,33 +605,33 @@ let loopWhileE exp1 exp2 =
       loopE (
           thenE exp1
             ( ifE exp2
-               (tupE [])
-               (breakE lab (tupE []))
+               (unitE ())
+               (breakE lab (unitE ()))
                T.unit
             )
         )
     )
 
 let forE pat exp1 exp2 =
-  (* for p in e1 e2
+  (* for (p in e1) e2
      ~~>
      let nxt = e1.next ;
      label l loop {
        switch nxt () {
          case null { break l };
-         case p    { e2 };
+         case ?p    { e2 };
        }
      } *)
   let lab = fresh_id "done" () in
   let ty1 = exp1.note.Note.typ in
-  let _, tfs = T.as_obj_sub ["next"] ty1 in
-  let tnxt = T.lookup_val_field "next" tfs in
+  let _, tfs = T.as_obj_sub [nextN] ty1 in
+  let tnxt = T.lookup_val_field nextN tfs in
   let nxt = fresh_var "nxt" tnxt in
-  letE nxt (dotE exp1 (nameN "next") tnxt) (
+  letE nxt (dotE exp1 nextN tnxt) (
     labelE lab T.unit (
       loopE (
-        switch_optE (callE (varE nxt) [] (tupE []))
-          (breakE lab (tupE []))
+        switch_optE (callE (varE nxt) [] (unitE ()))
+          (breakE lab (unitE ()))
           pat exp2 T.unit
       )
     )

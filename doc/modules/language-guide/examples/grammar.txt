@@ -45,9 +45,14 @@
     'async' <typ_pre>
     <obj_sort> <typ_obj>
 
-<typ> ::= 
+<typ_nobin> ::= 
     <typ_pre>
-    <func_sort_opt> ('<' <list(<typ_bind>, ',')> '>')? <typ_un> '->' <typ>
+    <func_sort_opt> ('<' <list(<typ_bind>, ',')> '>')? <typ_un> '->' <typ_nobin>
+
+<typ> ::= 
+    <typ_nobin>
+    <typ> 'and' <typ>
+    <typ> 'or' <typ>
 
 <typ_item> ::= 
     <id> ':' <typ>
@@ -171,7 +176,7 @@
     <exp_bin> <relop> <exp_bin>
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
-    <exp_bin> ':' <typ>
+    <exp_bin> ':' <typ_nobin>
 
 <exp_nondec> ::= 
     <exp_bin>
@@ -297,5 +302,6 @@
 
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
+
 
 

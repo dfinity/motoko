@@ -48,6 +48,8 @@ and typ' =
   | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of scope * typ                          (* future *)
+  | AndT of typ * typ                              (* intersection *)
+  | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
   | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
 
@@ -217,6 +219,10 @@ type prog_note = { filename : string; trivia : Trivia.triv_table }
 type prog = (prog', prog_note) Source.annotated_phrase
 and prog' = dec list
 
+(* Signatures (stable variables) *)
+
+type stab_sig = (stab_sig', prog_note) Source.annotated_phrase
+and stab_sig' = (dec list * typ_field list)      (* type declarations & stable actor fields *)
 
 (* Compilation units *)
 

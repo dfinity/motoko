@@ -11,10 +11,7 @@ path = "../src/lib.rs"
 [dependencies]
 libc = { version = "0.2.73", default_features = false }
 motoko-rts-macros = { path = "../../motoko-rts-macros" }
-
-[dependencies.compiler_builtins]
-version = "0.1.39"
-features = ["mangled-names"]
+static_assertions = "1.1.0"
 
 [profile.dev]
 panic = "abort"

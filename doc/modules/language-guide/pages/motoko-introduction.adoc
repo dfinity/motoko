@@ -4,7 +4,8 @@
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 
-{proglang} is a modern programming language you can use specifically for link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} platform] programs or as a general-purpose language for programs running on other platforms.
+{proglang} is a modern, general-purpose programming language you can use specifically to author link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[Internet Computer]  canister smart contracts.
+Although aimed squarely at the {IC}, its design is general enough to support future compilation to other targets.
 
 == Approachability
 
@@ -12,27 +13,27 @@
 
 == Asynchronous messaging and type sound execution
 
-{proglang} permits modern programming idioms, including special programming abstractions for distributed applications.
-Each application consists of an _actor_ that communicates with other actors _without_ using shared state, but instead by using (asynchronous) message passing.
+{proglang} permits modern programming idioms, including special programming abstractions for distributed applications (dapps).
+Each dapp consists of one or more  _actors_ that communicate solely by _asynchronous message passing_. The state of an actor is isolated from all other actors, supporting distribution. There is no way to share state between several actors. 
 The actor-based programming abstractions of {proglang} permit human-readable message-passing patterns, and they enforce that each network interaction obeys certain rules and avoids certain common mistakes.
 
-Specifically, {proglang} programs are _type sound_ since {proglang} includes a practical, modern type system that checks each one before it executes. 
-The {proglang} type system statically checks that each {proglang} program will execute safely, without internal type errors, on all possible inputs. 
-Consequently, entire classes of common programming pitfalls that are common in other languages are ruled out, including null pointer errors, mis-matched argument and result types and many others.
+Specifically, {proglang} programs are _type sound_ since {proglang} includes a practical, modern type system that checks each one before it executes.
+The {proglang} type system statically checks that each {proglang} program will execute safely, without dynamic type errors, on all possible inputs.
+Consequently, entire classes of common programming pitfalls that are common in other languages, and web programming languages in particular, are ruled out. This includes null reference errors, mis-matched argument or result types, missing field errors and many others.
 
 To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
 [[pitch-actors]]
-== Each microservice as an _actor_
+== Each canister smart contract as an _actor_
 
-{proglang} provides an *actor-based* programming model to developers to express _server behavior_, including that of _micro services_ on the Internet and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
+{proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
-An actor is similar to an object, but is special in that its isolated state exists _remotely_, and its interactions with the world are _asynchronous_.
+An actor is similar to an object, but is special in that its state is completely isolated, and all its interactions with the world are by _asynchronous_ messaging.
 
 All communication with and between actors involves passing messages asynchronously over the network using the Internet Computer's messaging protocol.
-An actor’s messages are processed in sequence, so state modifications never cause race conditions.
+An actor's messages are processed in sequence, so state modifications never admit race conditions (unless explicitly allowed by punctuating `await` expressions).
 
-The underlying computing platform provided by the Internet Computer ensures that each message-based synchronization will reach a close, but in doing so each one may also fail due to the usual reasons that arise in distributed systems, including time out.
+The Internet Computer ensures that each message that is sent receives a response. The response is either success with some value, or an error. An error can be the explicit rejection of the message by the receiving canister, a trap due to an illegal instruction such as division by zero, or a system error due to distribution or resource constraints. For example, a system error might be the transient or permanent unavailability of the receiver (either because the receiving actor is oversubscribed or has been deleted).
 
 [[pitch-async-actors]]
 === Asynchronous actors
@@ -53,7 +54,7 @@ finalStep(await result1, await result2)
 We can summarize the program's behavior with three steps:
 
 . The program makes two requests (lines 1 and 2) to two
-distinct services, each implemented internally as an actor (object).
+distinct services, each implemented as a {proglang} actor or canister smart contract implemented in some other language.
 
 . The program waits for each result to be ready (line 3) using the keyword `await` on each result value.
 
@@ -82,9 +83,9 @@ However, it requires special compiler and type-system support, as we discuss in 
 In an _asynchronous_ computing setting, a program and its running environment are permitted to perform _internal computations_ that occur _concurrently_ with one another.
 
 Specifically, asynchronous programs are ones where the program's requests of its environment do not (necessarily) require the program to wait for the environment.
-In the meantime, the program is permitted to make internal progress within this environment while it waits, perhaps _actively_. In the example, above, the program makes the second request while still waiting for the first micro service.
+In the meantime, the program is permitted to make internal progress within this environment while the environment proceeds to complete the request. In the example, above, the program issues the second request before waiting for the first request to complete.
 
-Symmetrically, the environment's requests of the program do not (necessarily) require the environment to wait for the program's answer to make external progress around it while it waits for this answer.
+Symmetrically, the environment's requests of the program do not (necessarily) require the environment to wait for the program's answer: the environment can make external progress while the answer is produced.
 
 We do not show an example of this "`notify`" pattern above, since it uses callbacks (and _higher-order_ functions and control flow) and is thus more complex.
 
@@ -94,18 +95,18 @@ We do not show an example of this "`notify`" pattern above, since it uses callba
 To address the need for clarity and simplicity, {proglang} adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a _structured_ language for describing potentially-complex asynchronous dependency graphs.
 
 The link:language-manual{outfilesuffix}#exp-async[async] syntax introduces futures. A future value
-represents a _"`promise`" of a result that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
+represents a _promise_ of a result _that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
 You'll learn more about futures when we introduce actors in link:actors-async{outfilesuffix}[Actors and async data].
 
 Here, we merely use the ones that arise from calling `service1.computeAnswer(params)` and
 `service2.computeAnswer(params)`.
 
-The syntax `await` synchronizes on a future, and potentially suspends computation until the future is completed by its producer.
-We show two uses of the `await` form in the example above, which await the results of the two services.
+The syntax `await` synchronizes on a future, and suspends computation until the future is completed by its producer.
+We see two uses of `await` in the example above,
+to obtain the results from two calls to services.
 
-When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program's control- and data-flow that would be tedious to perform by hand.
-Meanwhile, the type system of {proglang} enforces certain correct usage patterns for these constructs, including that types flowing between consumers and producers always agree, and that the types of data sent among services are permitted to flow there, and do
-not (for example) contain link:mutable-state{outfilesuffix}[private mutable state].
+When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program's control- and data-flow that would be tedious to perform by hand in a purely synchronous language.
+Meanwhile, the type system of {proglang} enforces certain correct usage patterns for these constructs, including that types flowing between consumers and producers always agree, and that the types of data sent among services are permitted to flow there, and do not (for example) contain link:mutable-state{outfilesuffix}[private mutable state].
 
 [[pitch-types]]
 === Types are static
@@ -114,13 +115,14 @@ Like other modern programming languages, {proglang} permits each variable to car
 Other link:basic-concepts{outfilesuffix}#intro-values[types of values] exist too, including records, tuples, and "`tagged data`" called _variants_.
 
 {proglang} enjoys the formal property of type safety, also known as _type soundness_.
-We often summarize this idea with the phrase: link:basic-concepts{outfilesuffix}#intro-type-soundness[Well-typed {proglang} programs don't go wrong], meaning that they do not misuse program constructs by treating them as if they have the wrong type.
+We often summarize this idea with the phrase: link:basic-concepts{outfilesuffix}#intro-type-soundness[Well-typed {proglang} programs don't go wrong], meaning that the only operations that will be performed on data are those permitted by its
+static type.
 
 For example, each variable in a {proglang} program carries an associated _type_, and this type is known _statically_, before the program executes.
-Each use of each variable is checked by the compiler to prevent runtime type errors, including null pointer errors.
+Each use of each variable is checked by the compiler to prevent runtime type errors, including null reference errors, invalid field access and the like.
 
-In this sense, {proglang} types provide a form of _trusted **compiler-verified** documentation_ in the program source code.
+In this sense, {proglang} types provide a form of _trustworthy, **compiler-verified** documentation_ in the program source code.
 
 As usual, dynamic testing can check properties that are beyond the reach of the {proglang} type system.
-While modern, the {proglang} type system is intentionally _not_ "`advanced`" or exotic in any new ways.
-Rather, the type system of {proglang} integrates lessons from modern, but well-understood, link:about-this-guide{outfilesuffix}#modern-types[practical type systems] of today to provide an approachable, yet _mathematically precise_ language for general-purpose, distributed programming.
+While modern, the {proglang} type system is intentionally _not_ "`advanced`" or particularly exotic.
+Rather, the type system of {proglang} integrates standard concepts from modern, but well-understood, link:about-this-guide{outfilesuffix}#modern-types[practical type systems] to provide an approachable, expressive yet safe language for programming general-purpose, distributed applications.

@@ -1,22 +1,33 @@
+queue_rules:
+  - name: default
+    conditions:
+      - "#approved-reviews-by>=1"
+      - "#changes-requested-reviews-by=0"
+      - status-success=tests (ubuntu-latest)
+      - status-success=tests (macos-latest)
+
 pull_request_rules:
   - name: Automatic merge (squash)
     conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
-      - status-success=hydra:dfinity-ci-build:evaluation
-      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
+      - status-success=tests (ubuntu-latest)
+      - status-success=tests (macos-latest)
       - base=master
       - label=automerge-squash
     actions:
-      merge:
+      queue:
+        name: default
         method: squash
-        strict: smart
-        commit_message: title+body
+        commit_message_template: |
+          {{ title }} (#{{ number }})
+
+          {{ body }}
       delete_head_branch: {}
-  - name: Automatic closing succesfull trials
+  - name: Automatically closing successful trials
     conditions:
-      - status-success=hydra:dfinity-ci-build:evaluation
-      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
+      - status-success=tests (ubuntu-latest)
+      - status-success=tests (macos-latest)
       - label=autoclose
     actions:
       close:
@@ -46,4 +57,4 @@ pull_request_rules:
     actions:
       review:
         type: APPROVE
-        message: A change to Changelog.md? I can handle that!
+        message: A change to `Changelog.md`? I can handle that!
