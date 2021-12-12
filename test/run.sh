@@ -204,6 +204,8 @@ do
   then base=$(basename $file .wat); ext=wat
   elif [ ${file: -4} == ".did" ]
   then base=$(basename $file .did); ext=did
+  elif [ ${file: -4} == ".cmp" ]
+  then base=$(basename $file .cmp); ext=cmp
   elif [ ${file: -5} == ".drun" ]
   then base=$(basename $file .drun); ext=drun
   else
@@ -391,7 +393,7 @@ do
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then
-        $ECHO "skipped (no drun)";
+        $ECHO "skipped (no $runner)";
         continue
       fi
 
@@ -470,6 +472,21 @@ do
         run node node -r esm $out/$base.js
       fi
     fi
+    ;;
+  "cmp")
+    # The file is a .cmp file, so we are expected to test compatiblity of the two
+    # files in cmp
+    # Compatibility check
+    $ECHO -n " [cmp]"
+    moc --stable-compatible $(<$base.cmp) > $out/$base.cmp 2>&1
+    succeeded=$?
+    if [ "$succeeded" -eq 0 ]
+    then
+     echo "TRUE" >> $out/$base.cmp
+    else
+     echo "FALSE" >> $out/$base.cmp
+    fi
+    diff_files="$diff_files $base.cmp"
   ;;
   *)
     echo "Unknown extentions $ext";

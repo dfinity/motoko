@@ -239,3 +239,11 @@ let string_of_prog prog =
   pp_prog ppf prog;
   pp_print_flush ppf ();
   Buffer.contents buf
+
+let string_of_args ts =
+  let buf = Buffer.create 100 in
+  let ppf = formatter_of_buffer buf in
+  pp_args ppf ts;
+  pp_print_flush ppf ();
+  Buffer.contents buf
+    
