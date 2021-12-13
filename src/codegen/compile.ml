@@ -3862,7 +3862,7 @@ module StableMem = struct
           set_sum ^^
           get_sum ^^
           get_offset ^^
-          G.i (Compare (Wasm.Values.I64 I32Op.LtU)) ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.then_trap_with env "StableMemory range overflow" ^^
           get_sum
           ^^
