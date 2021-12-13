@@ -141,7 +141,7 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
         #[cfg(feature = "ic")]
         #[export_name = #fn_name]
         unsafe extern "C" fn #fn_wrapper_ident(#(#wrapper_params_syn,)*) #wrapper_ret {
-            #fn_ident(crate::allocation_space::ALLOCATION_SPACE.as_mut().unwrap(), #(#wrapper_args_syn,)*)
+            #fn_ident(crate::allocation_space::ALLOCATION_SPACE.assume_init_mut(), #(#wrapper_args_syn,)*)
         }
     )
     .into()

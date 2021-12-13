@@ -26,7 +26,7 @@ unsafe fn schedule_compacting_gc() {
     let max_live: Bytes<u64> = Bytes(heap_size_bytes - slack - max_bitmap_size_bytes);
 
     if super::should_do_gc(
-        crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap(),
+        crate::allocation_space::ALLOCATION_SPACE.assume_init_ref(),
         max_live,
     ) {
         compacting_gc();
@@ -38,7 +38,7 @@ unsafe fn schedule_compacting_gc() {
 unsafe fn compacting_gc() {
     compacting_gc_internal(
         &crate::page_alloc::ic::IcPageAlloc {},
-        crate::allocation_space::ALLOCATION_SPACE.as_mut().unwrap(),
+        crate::allocation_space::ALLOCATION_SPACE.assume_init_mut(),
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size

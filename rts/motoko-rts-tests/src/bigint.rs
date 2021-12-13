@@ -10,8 +10,6 @@ use motoko_rts::types::{Bytes, Value};
 
 // Global variable for the allocation space as mp allocation routines are static functions and
 // can't capture values
-//
-// TODO: Update Rust and use MaybeUninit here
 static mut ALLOCATION_SPACE: Option<Space<TestPageAlloc>> = None;
 
 #[no_mangle]

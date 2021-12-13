@@ -11,7 +11,7 @@ unsafe fn schedule_copying_gc() {
         Bytes(u64::from((crate::constants::WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
 
     if super::should_do_gc(
-        crate::allocation_space::ALLOCATION_SPACE.as_ref().unwrap(),
+        crate::allocation_space::ALLOCATION_SPACE.assume_init_ref(),
         max_live,
     ) {
         copying_gc();
@@ -24,7 +24,7 @@ unsafe fn copying_gc() {
     let mut to_space = Space::new(crate::page_alloc::ic::IcPageAlloc {});
 
     copying_gc_internal(
-        crate::allocation_space::ALLOCATION_SPACE.as_mut().unwrap(),
+        crate::allocation_space::ALLOCATION_SPACE.assume_init_mut(),
         &mut to_space,
         crate::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
@@ -113,10 +113,7 @@ pub unsafe fn copying_gc_internal<
 
 /// Evacuate (copy) an object in from-space to to-space. Returns `false` when the object does not
 /// need to be evacuated (already evacuated, or a filler object).
-unsafe fn evac<P: PageAlloc>(
-    to_space: &mut Space<P>,
-    ptr_loc: usize,
-) -> bool {
+unsafe fn evac<P: PageAlloc>(to_space: &mut Space<P>, ptr_loc: usize) -> bool {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
@@ -160,10 +157,7 @@ unsafe fn evac<P: PageAlloc>(
 }
 
 /// Returns `false` when the object is already evacuated.
-unsafe fn evac_large<P: PageAlloc>(
-    to_space: &mut Space<P>,
-    obj: *mut Obj,
-) -> bool {
+unsafe fn evac_large<P: PageAlloc>(to_space: &mut Space<P>, obj: *mut Obj) -> bool {
     if obj.is_marked() {
         return false;
     }
@@ -182,10 +176,7 @@ unsafe fn evac_large<P: PageAlloc>(
 }
 
 /// Returns `false` when nothing is evacuated.
-unsafe fn scav<P: PageAlloc>(
-    to_space: &mut Space<P>,
-    obj: usize,
-) -> bool {
+unsafe fn scav<P: PageAlloc>(to_space: &mut Space<P>, obj: usize) -> bool {
     let obj = obj as *mut Obj;
 
     let mut evacuated = false;
@@ -199,10 +190,7 @@ unsafe fn scav<P: PageAlloc>(
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
-unsafe fn evac_static_roots<P: PageAlloc>(
-    to_space: &mut Space<P>,
-    roots: *mut Array,
-) {
+unsafe fn evac_static_roots<P: PageAlloc>(to_space: &mut Space<P>, roots: *mut Array) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
