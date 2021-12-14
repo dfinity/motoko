@@ -115,7 +115,7 @@ impl FreeLists {
     }
 
     /// Allocate single page
-    pub unsafe fn alloc<GrowMemory>(&mut self, grow_memory: GrowMemory) -> WasmPage
+    pub fn alloc<GrowMemory>(&mut self, grow_memory: GrowMemory) -> WasmPage
     where
         GrowMemory: FnMut(u16) -> u16, // Wasm memory.grow
     {
@@ -124,11 +124,7 @@ impl FreeLists {
     }
 
     /// Allocate multiple pages
-    pub unsafe fn alloc_pages<GrowMemory>(
-        &mut self,
-        mut grow_memory: GrowMemory,
-        n_pages: u16,
-    ) -> WasmPage
+    pub fn alloc_pages<GrowMemory>(&mut self, mut grow_memory: GrowMemory, n_pages: u16) -> WasmPage
     where
         GrowMemory: FnMut(u16) -> u16, // Wasm memory.grow
     {
@@ -198,7 +194,7 @@ impl FreeLists {
     }
 
     /// Free given page(s)
-    pub unsafe fn free(&mut self, page: WasmPage) {
+    pub fn free(&mut self, page: WasmPage) {
         let coalesce_left: Option<WasmPage> = self
             .addr_sorted
             .range(..page.page_num)
