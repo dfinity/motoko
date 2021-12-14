@@ -59,15 +59,15 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "next-moc",
+        "branch": "claudio/stable-mem-64",
         "description": "The Motoko base library",
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "c226be95be41d2bd69f2a3e671579d3ab24330f9",
-        "sha256": "0yl9zq9xvbvx2dhz0ylq17jw8ajcn150jz2l6r023s5d47k3j6qx",
+        "rev": "b307b5f608854d0d7b88d18fed31a26f891725b6",
+        "sha256": "0dpv6yq03w04sgcykw78h57yiy5j5pki0mmqmcn8ymmrgdsiaafy",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/c226be95be41d2bd69f2a3e671579d3ab24330f9.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/b307b5f608854d0d7b88d18fed31a26f891725b6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
