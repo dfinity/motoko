@@ -192,20 +192,19 @@ unsafe fn mark_fields<P: PageAlloc>(
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<P: PageAlloc>(space: &Space<P>) {
+unsafe fn update_refs<P: PageAlloc>(space: &mut Space<P>) {
+    let pages = space.sorted_pages();
+
     // Next object will be moved to this page
-    let mut to_page_idx = space.first_page();
+    let mut to_page_idx = 0;
 
     // TODO: Update rustc, use unwrap_unchecked
-    let mut to_page = space.get_page(to_page_idx).unwrap();
+    let mut to_page = &pages[to_page_idx];
 
     // Next object will be moved to this address in `to_page`
     let mut to_addr = to_page.contents_start();
 
-    // Traverse all marked bits in all pages
-    let mut from_page_idx = space.first_page();
-
-    while let Some(page) = space.get_page(from_page_idx) {
+    for page in &pages {
         let page_start = page.contents_start();
 
         let bitmap = page.get_bitmap().unwrap();
@@ -225,8 +224,8 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>) {
                 // Object does not fit into the current page, move on to the next page
                 // We know there must be more pages in the space as we compact the space and don't
                 // allocate in it
-                to_page_idx = to_page_idx.next();
-                to_page = space.get_page(to_page_idx).unwrap();
+                to_page_idx += 1;
+                to_page = &pages[to_page_idx];
                 to_addr = to_page.contents_start();
             }
 
@@ -245,9 +244,9 @@ unsafe fn update_refs<P: PageAlloc>(space: &Space<P>) {
 
             bit = bitmap_iter.next();
         }
-
-        from_page_idx = from_page_idx.next();
     }
+
+    space.set_pages(pages, to_addr);
 }
 
 /// Thread forwards pointers in object
