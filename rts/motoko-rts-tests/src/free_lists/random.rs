@@ -1,5 +1,4 @@
-use super::free_pages_addr_sorted;
-use motoko_rts::page_alloc::free_lists::*;
+use motoko_rts::page_alloc::free_lists::{FreeLists, SizeClass, WasmPage};
 
 use oorandom::Rand32;
 
@@ -10,7 +9,7 @@ fn rand_bool(rng: &mut Rand32) -> bool {
 pub(super) unsafe fn random_free_list_ops(seed: u64, num_ops: u32) {
     let mut rng = Rand32::new(seed);
 
-    clear();
+    let mut free_lists = FreeLists::new();
 
     // Number of Wasm pages allocated so far
     let mut n_wasm_pages = 0;
@@ -24,11 +23,11 @@ pub(super) unsafe fn random_free_list_ops(seed: u64, num_ops: u32) {
             // Index of the page to remove
             let page_idx = rng.rand_range(0..pages.len() as u32) as usize;
             let page = pages.remove(page_idx);
-            free(page);
+            free_lists.free(page);
         } else {
             // How many pages to allocate
             let n_pages = rng.rand_range(1..101) as u16;
-            let page = alloc_pages(
+            let page = free_lists.alloc_pages(
                 |n_pages| {
                     let ret = n_wasm_pages;
                     n_wasm_pages += n_pages;
@@ -42,12 +41,12 @@ pub(super) unsafe fn random_free_list_ops(seed: u64, num_ops: u32) {
 
     // Release all of the in-use pages
     for page in pages.into_iter() {
-        free(page);
+        free_lists.free(page);
     }
 
     // Free lists should have one entry
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: n_wasm_pages,
             pages: [0].iter().copied().collect()
@@ -55,7 +54,7 @@ pub(super) unsafe fn random_free_list_ops(seed: u64, num_ops: u32) {
     );
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: n_wasm_pages

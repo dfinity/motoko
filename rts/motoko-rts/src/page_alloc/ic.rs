@@ -1,4 +1,4 @@
-use super::free_lists::{self, WasmPage};
+use super::free_lists::{FreeLists, WasmPage};
 use super::{LargePageHeader, PageAlloc};
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
@@ -8,6 +8,8 @@ use core::arch::wasm32;
 /// A `PageAlloc` implementation for the IC
 #[derive(Clone)]
 pub struct IcPageAlloc {}
+
+static mut FREE_LISTS: FreeLists = FreeLists::new();
 
 fn alloc_wasm_pages(n_pages: u16) -> u16 {
     unsafe {
@@ -24,15 +26,15 @@ impl PageAlloc for IcPageAlloc {
     type Page = WasmPage;
 
     unsafe fn alloc(&self) -> WasmPage {
-        free_lists::alloc(alloc_wasm_pages)
+        FREE_LISTS.alloc(alloc_wasm_pages)
     }
 
     unsafe fn alloc_pages(&self, n_pages: u16) -> WasmPage {
-        free_lists::alloc_pages(alloc_wasm_pages, n_pages)
+        FREE_LISTS.alloc_pages(alloc_wasm_pages, n_pages)
     }
 
     unsafe fn free(&self, page: WasmPage) {
-        free_lists::free(page)
+        FREE_LISTS.free(page)
     }
 
     unsafe fn free_large(&self, header: *const LargePageHeader) {

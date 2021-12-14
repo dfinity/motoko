@@ -1,6 +1,6 @@
 mod random;
 
-use motoko_rts::page_alloc::free_lists::*;
+use motoko_rts::page_alloc::free_lists::{FreeLists, SizeClass, WasmPage};
 
 pub unsafe fn test() {
     println!("Testing free list functions ...");
@@ -22,26 +22,17 @@ pub unsafe fn test() {
     print!("\r");
 }
 
-unsafe fn free_pages_addr_sorted() -> Vec<WasmPage> {
-    FREE_PAGES_ADDR_SORTED
-        .iter()
-        .map(|(page_num, n_pages)| WasmPage {
-            page_num: *page_num,
-            n_pages: *n_pages,
-        })
-        .collect::<Vec<WasmPage>>()
-}
-
 unsafe fn simple() {
-    clear();
-    let page = alloc(|n_pages| {
+    let mut free_lists = FreeLists::new();
+
+    let page = free_lists.alloc(|n_pages| {
         assert_eq!(n_pages, 1);
         1
     });
-    free(page);
+    free_lists.free(page);
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 1,
             n_pages: 1,
@@ -49,7 +40,7 @@ unsafe fn simple() {
     );
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 1,
             pages: [1u16].iter().copied().collect()
@@ -58,23 +49,23 @@ unsafe fn simple() {
 }
 
 unsafe fn coalesce_left() {
-    clear();
+    let mut free_lists = FreeLists::new();
 
-    let page1 = alloc(|n_pages| {
+    let page1 = free_lists.alloc(|n_pages| {
         assert_eq!(n_pages, 1);
         1
     });
 
-    let page2 = alloc(|n_pages| {
+    let page2 = free_lists.alloc(|n_pages| {
         assert_eq!(n_pages, 1);
         2
     });
 
-    free(page2);
-    free(page1);
+    free_lists.free(page2);
+    free_lists.free(page1);
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 1,
             n_pages: 2,
@@ -82,7 +73,7 @@ unsafe fn coalesce_left() {
     );
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 2,
             pages: [1u16].iter().copied().collect()
@@ -91,22 +82,22 @@ unsafe fn coalesce_left() {
 }
 
 unsafe fn coalesce_right() {
-    clear();
+    let mut free_lists = FreeLists::new();
 
-    let page1 = alloc(|n_pages| {
+    let page1 = free_lists.alloc(|n_pages| {
         assert_eq!(n_pages, 1);
         1
     });
 
-    let page2 = alloc(|n_pages| {
+    let page2 = free_lists.alloc(|n_pages| {
         assert_eq!(n_pages, 1);
         2
     });
 
-    free(page1);
+    free_lists.free(page1);
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 1,
             n_pages: 1,
@@ -114,17 +105,17 @@ unsafe fn coalesce_right() {
     );
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 1,
             pages: [1u16].iter().copied().collect()
         }]
     );
 
-    free(page2);
+    free_lists.free(page2);
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 1,
             n_pages: 2,
@@ -132,7 +123,7 @@ unsafe fn coalesce_right() {
     );
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 2,
             pages: [1u16].iter().copied().collect()
@@ -141,9 +132,9 @@ unsafe fn coalesce_right() {
 }
 
 unsafe fn allocate_and_coalesce_multiple_pages() {
-    clear();
+    let mut free_lists = FreeLists::new();
 
-    let page1 = alloc_pages(
+    let page1 = free_lists.alloc_pages(
         |n_pages| {
             assert_eq!(n_pages, 5);
             0
@@ -151,10 +142,10 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
         5,
     );
 
-    free(page1);
+    free_lists.free(page1);
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 5,
             pages: [0].iter().copied().collect()
@@ -162,7 +153,7 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: 5
@@ -170,23 +161,23 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     // Second time we allocate same number of pages the old page should be returned
-    let page2 = alloc_pages(
+    let page2 = free_lists.alloc_pages(
         |n_pages| panic!("memory.grow called, n_pages={}", n_pages),
         5,
     );
 
     assert_eq!(page1, page2);
 
-    assert_eq!(FREE_PAGES_SIZE_SORTED, vec![]);
-    assert_eq!(free_pages_addr_sorted(), vec![]);
+    assert_eq!(free_lists.free_pages_size_sorted(), vec![]);
+    assert_eq!(free_lists.free_pages_addr_sorted(), vec![]);
 
-    let page3 = alloc(|_| 5);
-    let page4 = alloc(|_| 6);
+    let page3 = free_lists.alloc(|_| 5);
+    let page4 = free_lists.alloc(|_| 6);
 
-    free(page3);
+    free_lists.free(page3);
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 1,
             pages: [5].iter().copied().collect()
@@ -194,17 +185,17 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 5,
             n_pages: 1
         }]
     );
 
-    free(page4);
+    free_lists.free(page4);
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 2,
             pages: [5].iter().copied().collect()
@@ -212,17 +203,17 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 5,
             n_pages: 2
         }]
     );
 
-    free(page2);
+    free_lists.free(page2);
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 7,
             pages: [0].iter().copied().collect()
@@ -230,7 +221,7 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: 7
@@ -239,15 +230,16 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
 }
 
 unsafe fn split_large_pages() {
-    clear();
+    let mut free_lists = FreeLists::new();
 
     // Populate free lists
-    free(alloc_pages(|_| 0, 10));
+    let page = free_lists.alloc_pages(|_| 0, 10);
+    free_lists.free(page);
 
     // Allocate 10 small pages without calling memory.grow
     let mut pages = vec![];
     for page_num in 0..10 {
-        let page = alloc(|_| panic!("memory.grow called"));
+        let page = free_lists.alloc(|_| panic!("memory.grow called"));
         assert_eq!(
             page,
             WasmPage {
@@ -259,19 +251,19 @@ unsafe fn split_large_pages() {
     }
 
     // Free small pages in some random order
-    free(pages[3]);
-    free(pages[4]);
-    free(pages[1]);
-    free(pages[2]);
-    free(pages[5]);
-    free(pages[9]);
-    free(pages[8]);
-    free(pages[7]);
-    free(pages[6]);
-    free(pages[0]);
+    free_lists.free(pages[3]);
+    free_lists.free(pages[4]);
+    free_lists.free(pages[1]);
+    free_lists.free(pages[2]);
+    free_lists.free(pages[5]);
+    free_lists.free(pages[9]);
+    free_lists.free(pages[8]);
+    free_lists.free(pages[7]);
+    free_lists.free(pages[6]);
+    free_lists.free(pages[0]);
 
     assert_eq!(
-        FREE_PAGES_SIZE_SORTED,
+        free_lists.free_pages_size_sorted(),
         vec![SizeClass {
             n_pages: 10,
             pages: [0].iter().copied().collect()
@@ -279,7 +271,7 @@ unsafe fn split_large_pages() {
     );
 
     assert_eq!(
-        free_pages_addr_sorted(),
+        free_lists.free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: 10
