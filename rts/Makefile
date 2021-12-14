@@ -1,7 +1,7 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-12
-WASM_CLANG ?= clang-12
+CLANG ?= clang-13
+WASM_CLANG ?= clang-13
 WASM_LD ?= wasm-ld-12
 
 #
