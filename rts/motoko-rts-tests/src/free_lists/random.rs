@@ -1,3 +1,4 @@
+use super::free_pages_addr_sorted;
 use motoko_rts::page_alloc::free_lists::*;
 
 use oorandom::Rand32;
@@ -54,7 +55,7 @@ pub(super) unsafe fn random_free_list_ops(seed: u64, num_ops: u32) {
     );
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: n_wasm_pages

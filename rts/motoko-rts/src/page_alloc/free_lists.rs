@@ -1,6 +1,6 @@
 use super::{Bitmap, Page, PageHeader, WASM_PAGE_SIZE};
 
-use alloc::collections::btree_set::BTreeSet;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,39 +78,10 @@ impl SizeClass {
 }
 
 /// Free pages sorted by start address (Wasm page num). Used to find pages to merge.
-// TODO: Make this a `BTreeSet` after updating rustc (currently BTreeSet::new is not const)
-// Public for testing
-pub static mut FREE_PAGES_ADDR_SORTED: Vec<WasmPage> = Vec::new();
-
-unsafe fn get_page_num_idx(wasm_page_num: u16) -> Result<usize, usize> {
-    FREE_PAGES_ADDR_SORTED.binary_search_by_key(&wasm_page_num, |page| page.page_num)
-}
-
-unsafe fn add_free_page_addr_sorted(page: WasmPage) {
-    match get_page_num_idx(page.page_num) {
-        Ok(_) => panic!(
-            "add_free_page_addr_sorted: page {:?} already in free list",
-            page
-        ),
-        Err(idx) => FREE_PAGES_ADDR_SORTED.insert(idx, page),
-    }
-}
-
-unsafe fn remove_free_page_addr_sorted(wasm_page_num: u16) {
-    match get_page_num_idx(wasm_page_num) {
-        Ok(idx) => {
-            FREE_PAGES_ADDR_SORTED.remove(idx);
-        }
-        Err(_) => panic!(
-            "remove_free_page_addr: page {} is not in free list",
-            wasm_page_num
-        ),
-    }
-}
+// page num -> num of pages
+pub static mut FREE_PAGES_ADDR_SORTED: BTreeMap<u16, u16> = BTreeMap::new();
 
 /// Free pages reverse-sorted by region size and start address (or Wasm page num), used to allocate.
-// TODO: Make this a `BTreeSet` after updating rustc (currently BTreeSet::new is not const)
-// Public for testing
 pub static mut FREE_PAGES_SIZE_SORTED: Vec<SizeClass> = Vec::new();
 
 unsafe fn get_size_class_idx(n_pages: u16) -> Result<usize, usize> {
@@ -130,7 +101,7 @@ unsafe fn add_free_page_size_sorted(wasm_page_num: u16, n_pages: u16) {
     }
 }
 
-unsafe fn remove_free_size_sorted(wasm_page_num: u16, n_pages: u16) {
+unsafe fn remove_free_page_size_sorted(wasm_page_num: u16, n_pages: u16) {
     let size_class_idx = get_size_class_idx(n_pages).unwrap_or_else(|_| {
         panic!(
             "remove_free_size_sorted: No size class for {} pages",
@@ -177,7 +148,8 @@ where
 
             let page = WasmPage { page_num, n_pages };
 
-            remove_free_page_addr_sorted(page_num);
+            let old = FREE_PAGES_ADDR_SORTED.remove(&page_num);
+            debug_assert!(old.is_some());
 
             page
         }
@@ -193,7 +165,8 @@ where
                 // TODO: Improve err msg
                 let page = size_class.remove_first().unwrap();
 
-                remove_free_page_addr_sorted(page);
+                let old = FREE_PAGES_ADDR_SORTED.remove(&page);
+                debug_assert!(old.is_some());
 
                 let free_page = WasmPage {
                     page_num: page + n_pages,
@@ -213,7 +186,7 @@ where
                 }
 
                 add_free_page_size_sorted(free_page.page_num, free_page.n_pages);
-                add_free_page_addr_sorted(free_page);
+                FREE_PAGES_ADDR_SORTED.insert(free_page.page_num, free_page.n_pages);
 
                 WasmPage {
                     page_num: page,
@@ -226,65 +199,94 @@ where
 
 /// Free given page(s)
 pub unsafe fn free(page: WasmPage) {
-    // Check addr-sorted list first, coalesce with neighbors
-    let free_list_idx = match get_page_num_idx(page.page_num) {
-        Ok(_) => panic!(
-            "free: Wasm page {} is already in a free list",
-            page.page_num
-        ),
-        Err(idx) => idx,
-    };
+    let coalesce_left: Option<WasmPage> = FREE_PAGES_ADDR_SORTED
+        .range(..page.page_num)
+        .next_back()
+        .map(|(page_num, n_pages)| WasmPage {
+            page_num: *page_num,
+            n_pages: *n_pages,
+        });
 
-    let mut coalesce_start = free_list_idx;
-    let mut coalesce_end = free_list_idx;
+    let coalesce_right: Option<WasmPage> = FREE_PAGES_ADDR_SORTED
+        .range(page.page_num..)
+        .next()
+        .map(|(page_num, n_pages)| WasmPage {
+            page_num: *page_num,
+            n_pages: *n_pages,
+        });
 
-    while coalesce_start != 0 {
-        let prev_page = FREE_PAGES_ADDR_SORTED[coalesce_start - 1];
-        if prev_page.page_num + prev_page.n_pages == page.page_num {
-            coalesce_start -= 1;
-        } else {
-            break;
+    match (coalesce_left, coalesce_right) {
+        (None, None) => {
+            // Coalescing not possible
+            FREE_PAGES_ADDR_SORTED.insert(page.page_num, page.n_pages);
+            add_free_page_size_sorted(page.page_num, page.n_pages);
         }
-    }
+        (Some(coalesce_left), None) => {
+            if coalesce_left.page_num + coalesce_left.n_pages == page.page_num {
+                let old = FREE_PAGES_ADDR_SORTED.remove(&coalesce_left.page_num);
+                debug_assert!(old.is_some());
+                remove_free_page_size_sorted(coalesce_left.page_num, coalesce_left.n_pages);
 
-    while coalesce_end != FREE_PAGES_ADDR_SORTED.len() {
-        let next_page = FREE_PAGES_ADDR_SORTED[coalesce_end];
-        if next_page.page_num == page.page_num + page.n_pages {
-            coalesce_end += 1;
+                FREE_PAGES_ADDR_SORTED
+                    .insert(coalesce_left.page_num, coalesce_left.n_pages + page.n_pages);
+                add_free_page_size_sorted(
+                    coalesce_left.page_num,
+                    coalesce_left.n_pages + page.n_pages,
+                );
+            } else {
+                // Coalescing not possible
+                FREE_PAGES_ADDR_SORTED.insert(page.page_num, page.n_pages);
+                add_free_page_size_sorted(page.page_num, page.n_pages);
+            }
         }
-        break;
-    }
+        (None, Some(coalesce_right)) => {
+            if page.page_num + page.n_pages == coalesce_right.page_num {
+                let old = FREE_PAGES_ADDR_SORTED.remove(&coalesce_right.page_num);
+                debug_assert!(old.is_some());
+                remove_free_page_size_sorted(coalesce_right.page_num, coalesce_right.n_pages);
 
-    if coalesce_start == coalesce_end {
-        // Coalescing not possible
-        add_free_page_addr_sorted(page);
-        add_free_page_size_sorted(page.page_num, page.n_pages);
-    } else {
-        // Remove coalesced pages from free lists
-        let mut total_pages = page.n_pages;
-
-        let coalesced_wasm_page_num = core::cmp::min(
-            FREE_PAGES_ADDR_SORTED[coalesce_start].page_num,
-            page.page_num,
-        );
-
-        let coalesced_pages: Vec<WasmPage> = FREE_PAGES_ADDR_SORTED
-            .drain(coalesce_start..coalesce_end)
-            .collect();
-
-        for coalesced_page in &coalesced_pages {
-            // Page already removed from addr-sorted list above
-            remove_free_size_sorted(coalesced_page.page_num, coalesced_page.n_pages);
-            total_pages += coalesced_page.n_pages;
+                FREE_PAGES_ADDR_SORTED.insert(page.page_num, page.n_pages + coalesce_right.n_pages);
+                add_free_page_size_sorted(page.page_num, page.n_pages + coalesce_right.n_pages);
+            } else {
+                // Coalescing not possible
+                FREE_PAGES_ADDR_SORTED.insert(page.page_num, page.n_pages);
+                add_free_page_size_sorted(page.page_num, page.n_pages);
+            }
         }
+        (Some(coalesce_left), Some(coalesce_right)) => {
+            let coalesce_left_ = coalesce_left.page_num + coalesce_left.n_pages == page.page_num;
+            let coalesce_right_ = page.page_num + page.n_pages == coalesce_right.page_num;
 
-        // Insert new page
-        let new_page = WasmPage {
-            page_num: coalesced_wasm_page_num,
-            n_pages: total_pages,
-        };
+            if coalesce_left_ {
+                let old = FREE_PAGES_ADDR_SORTED.remove(&coalesce_left.page_num);
+                debug_assert!(old.is_some());
+                remove_free_page_size_sorted(coalesce_left.page_num, coalesce_left.n_pages);
+            }
 
-        add_free_page_addr_sorted(new_page);
-        add_free_page_size_sorted(coalesced_wasm_page_num, total_pages);
+            if coalesce_right_ {
+                let old = FREE_PAGES_ADDR_SORTED.remove(&coalesce_right.page_num);
+                debug_assert!(old.is_some());
+                remove_free_page_size_sorted(coalesce_right.page_num, coalesce_right.n_pages);
+            }
+
+            let new_page = match (coalesce_left_, coalesce_right_) {
+                (true, true) => WasmPage {
+                    page_num: coalesce_left.page_num,
+                    n_pages: coalesce_left.n_pages + page.n_pages + coalesce_right.n_pages,
+                },
+                (true, false) => WasmPage {
+                    page_num: coalesce_left.page_num,
+                    n_pages: coalesce_left.n_pages + page.n_pages,
+                },
+                (false, true) => WasmPage {
+                    page_num: page.page_num,
+                    n_pages: page.n_pages + coalesce_right.n_pages,
+                },
+                (false, false) => page,
+            };
+
+            FREE_PAGES_ADDR_SORTED.insert(new_page.page_num, new_page.n_pages);
+            add_free_page_size_sorted(new_page.page_num, new_page.n_pages);
+        }
     }
 }

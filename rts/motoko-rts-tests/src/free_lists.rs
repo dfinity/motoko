@@ -22,6 +22,16 @@ pub unsafe fn test() {
     print!("\r");
 }
 
+unsafe fn free_pages_addr_sorted() -> Vec<WasmPage> {
+    FREE_PAGES_ADDR_SORTED
+        .iter()
+        .map(|(page_num, n_pages)| WasmPage {
+            page_num: *page_num,
+            n_pages: *n_pages,
+        })
+        .collect::<Vec<WasmPage>>()
+}
+
 unsafe fn simple() {
     clear();
     let page = alloc(|n_pages| {
@@ -31,7 +41,7 @@ unsafe fn simple() {
     free(page);
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 1,
             n_pages: 1,
@@ -64,7 +74,7 @@ unsafe fn coalesce_left() {
     free(page1);
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 1,
             n_pages: 2,
@@ -94,10 +104,27 @@ unsafe fn coalesce_right() {
     });
 
     free(page1);
+
+    assert_eq!(
+        free_pages_addr_sorted(),
+        vec![WasmPage {
+            page_num: 1,
+            n_pages: 1,
+        }]
+    );
+
+    assert_eq!(
+        FREE_PAGES_SIZE_SORTED,
+        vec![SizeClass {
+            n_pages: 1,
+            pages: [1u16].iter().copied().collect()
+        }]
+    );
+
     free(page2);
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 1,
             n_pages: 2,
@@ -135,7 +162,7 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: 5
@@ -151,7 +178,7 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     assert_eq!(page1, page2);
 
     assert_eq!(FREE_PAGES_SIZE_SORTED, vec![]);
-    assert_eq!(FREE_PAGES_ADDR_SORTED, vec![]);
+    assert_eq!(free_pages_addr_sorted(), vec![]);
 
     let page3 = alloc(|_| 5);
     let page4 = alloc(|_| 6);
@@ -167,7 +194,7 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 5,
             n_pages: 1
@@ -185,7 +212,7 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 5,
             n_pages: 2
@@ -203,7 +230,7 @@ unsafe fn allocate_and_coalesce_multiple_pages() {
     );
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: 7
@@ -252,7 +279,7 @@ unsafe fn split_large_pages() {
     );
 
     assert_eq!(
-        FREE_PAGES_ADDR_SORTED,
+        free_pages_addr_sorted(),
         vec![WasmPage {
             page_num: 0,
             n_pages: 10

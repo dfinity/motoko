@@ -7,7 +7,8 @@
     arbitrary_self_types,
     core_intrinsics,
     map_first_last,
-    panic_info_message
+    panic_info_message,
+    const_btree_new
 )]
 
 #[macro_use]
