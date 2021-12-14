@@ -22,21 +22,21 @@ actor Life {
     (bits[P.nat64ToNat(bit >> 6)] & mask) == mask
   };
 
-  func readBit(offset : Nat32, index : Nat) : Bool {
-    let bit = P.natToNat32(index);
-    let mask : Nat32 = 1 << (bit % 32);
-    (SM.loadNat32(offset + ((bit >> 5)*4)) & mask) == mask
+  func readBit(offset : Nat64, index : Nat) : Bool {
+    let bit = P.natToNat64(index);
+    let mask : Nat64 = 1 << (bit % 64);
+    (SM.loadNat64(offset + ((bit >> 6) * 8)) & mask) == mask
   };
 
-  func writeBit(offset : Nat32, index : Nat, v : Bool) {
-    let bit = P.natToNat32(index);
-    let mask : Nat32 = 1 << (bit % 32);
-    let i = (bit >> 5)*4;
+  func writeBit(offset : Nat64, index : Nat, v : Bool) {
+    let bit = P.natToNat64(index);
+    let mask : Nat64 = 1 << (bit % 64);
+    let i = (bit >> 6) * 8;
     if v {
-      SM.storeNat32(offset + i, SM.loadNat32(offset + i) | mask)
+      SM.storeNat64(offset + i, SM.loadNat64(offset + i) | mask)
     }
     else {
-      SM.storeNat32(offset + i, SM.loadNat32(offset + i) & ^mask)
+      SM.storeNat64(offset + i, SM.loadNat64(offset + i) & ^mask)
     };
     assert (readBit(offset, index) == v);
   };
@@ -46,14 +46,14 @@ actor Life {
   type State = {
     #v1 : [[var Cell]];
     #v2 : {size : Nat; bits : [var Nat64]};
-    #v3 : {size : Nat; offset : Nat32}
+    #v3 : {size : Nat; offset : Nat64}
   };
 
 
-  func ensureMemory(offset : Nat32) {
+  func ensureMemory(offset : Nat64) {
       let pagesNeeded = ((offset + 65535) / 65536) - SM.size();
       if (pagesNeeded > 0) {
-        assert (SM.grow(pagesNeeded) != 0xFFFF)
+        assert (SM.grow(pagesNeeded) != 0xFFFFFFFF)
       };
   };
 
@@ -63,9 +63,9 @@ actor Life {
       switch state {
         case (#v1 css) {
           let n = css.size();
-          let len = (n * n) / 32 + 1;
-          let offset : Nat32 = P.natToNat32(index * len * 4);
-          ensureMemory(offset + P.natToNat32(len) * 4);
+          let len = (n * n) / 64 + 1;
+          let offset : Nat64 = P.natToNat64(index * len * 8);
+          ensureMemory(offset + P.natToNat64(len) * 8);
           for (i in css.keys()) {
             for (j in css[i].keys()) {
               writeBit(offset, i * n + j, css[i][j]);
@@ -74,9 +74,9 @@ actor Life {
           (n, offset)
         };
         case (#v2 {size; bits}) {
-          let len = (size * size) / 32 + 1;
-          let offset : Nat32 = P.natToNat32(index * len * 4);
-          ensureMemory(offset + P.natToNat32(len) * 4);
+          let len = (size * size) / 64 + 1;
+          let offset : Nat64 = P.natToNat64(index * len * 8);
+          ensureMemory(offset + P.natToNat64(len) * 8);
           for (i in below(size)) {
             for (j in below(size)) {
                let k = i * size + j;
@@ -86,9 +86,9 @@ actor Life {
           (size, offset)
         };
         case (#v3 {size; offset}) {
-          let len = (size * size) / 32 + 1;
-          let newoffset : Nat32 = P.natToNat32(index * len * 4);
-          ensureMemory(newoffset + P.natToNat32(len) * 4);
+          let len = (size * size) / 64 + 1;
+          let newoffset : Nat64 = P.natToNat64(index * len * 8);
+          ensureMemory(newoffset + P.natToNat64(len) * 8);
           if (offset != newoffset) {
             for (i in below(size)) {
               for (j in below(size)) {
@@ -156,17 +156,17 @@ actor Life {
   };
 
   func newState(index : Nat, size : Nat) : State {
-    let len = (size * size) / 32 + 1;
-    let offset : Nat32 = P.natToNat32(index * len * 4);
-    ensureMemory(offset + P.natToNat32(len) * 4);
+    let len = (size * size) / 64 + 1;
+    let offset : Nat64 = P.natToNat64(index * len * 8);
+    ensureMemory(offset + P.natToNat64(len) * 8);
     for (i in below(len)) {
-      var word : Nat32 = 0;
-      for (j in below(32)) {
-        let bit : Nat32 = if (Random.next()) 0 else 1;
+      var word : Nat64 = 0;
+      for (j in below(64)) {
+        let bit : Nat64 = if (Random.next()) 0 else 1;
         word |= bit;
         word <<= 1;
       };
-      SM.storeNat32(offset + P.natToNat32(i) * 4, word );
+      SM.storeNat64(offset + P.natToNat64(i) * 8, word );
     };
     #v3 { size; offset};
   };
