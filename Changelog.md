@@ -1,21 +1,120 @@
 # Motoko compiler changelog
 
+## 0.6.15 (2021-11-26)
+
+* Fixes crash when (ill-typed) `switch` expression on non-variant
+  value has variant alternatives (#2934)
+
+## 0.6.14 (2021-11-19)
+
+* The compiler now embeds the existing Candid interface  and  new
+  _stable signature_ of a canister in additional Wasm custom sections,
+  to be selectively exposed by the IC, and to be used by tools such as `dfx`
+  to verify upgrade compatibility (see extended documentation).
+
+  New compiler options:
+
+    * `--public-metadata <name>`: emit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types`) as `public` (default is `private`)
+    * `--stable-types`: emit signature of stable types to `.most` file
+    * `--stable-compatible <pre> <post>`: test upgrade compatibility between stable-type signatures  `<pre>` and `<post>`
+
+  A Motoko canister upgrade is safe provided:
+
+    * the canister's Candid interface evolves to a Candid subtype; and
+    * the canister's Motoko stable signature evolves to a _stable-compatible_ one.
+
+  (Candid subtyping can be verified using tool `didc` available at:
+   https://github.com/dfinity/candid.)
+
+* BREAKING CHANGE (Minor):
+  Tightened typing for type-annotated patterns (including function parameters)
+  to prevent some cases of unintended and counter-intuitive type propagation.
+
+  This may break some rare programs that were accidentally relying on that
+  propagation. For example, the indexing `xs[i]` in the following snippet
+  happend to type-check before, because `i` was given the more precise
+  type `Nat` (inferred from `run`'s parameter type), regardless of the
+  overly liberal declaration as an `Int`:
+
+  ```motoko
+  func run(f : Nat -> Text) {...};
+  let xs = ["a", "b", "c"];
+  run(func(i : Int) { xs[i] });
+  ```
+  This no longer works, `i` has to be declared as `Nat` (or the type omitted).
+
+  If you encounter such cases, please adjust the type annotation.
+
+* Improved garbage collection scheduling
+
+* Miscellaneous performance improvements
+  - code generation for `for`-loops over arrays has improved
+  - slightly sped up `Int` equality comparisons
+
+## 0.6.13 (2021-11-19)
+
+*Pulled*
+
+## 0.6.12 (2021-10-22)
+
+* `for` loops over arrays are now converted to more efficient
+  index-based iteration (#2831). This can result in significant cycle
+  savings for tight loops, as well as slightly less memory usage.
+
+* Add type union and intersection. The type expression
+
+  ```motoko
+  T and U
+  ```
+  produces the greatest lower bound of types `T` and `U`, that is,
+  the greatest type that is a subtype of both. Dually,
+
+  ```motoko
+  T or U
+  ```
+  produces the least upper bound of types `T` and `U`, that is,
+  the smallest type that is a supertype of both.
+
+  One use case of the former is "extending" an existing object type:
+
+  ``` motoko
+  type Person = {name : Text; address : Text};
+  type Manager = Person and {underlings : [Person]};
+  ```
+  Similarly, the latter can be used to "extend" a variant type:
+  ```motoko
+  type Workday = {#mon; #tue; #wed; #thu; #fri};
+  type Weekday = Workday or {#sat; #sun};
+  ```
+
+## 0.6.11 (2021-10-08)
+
+* Assertion error messages are now reproducible (#2821)
+
+## 0.6.10 (2021-09-23)
+
 * moc
 
-* Add runtime support for low-level, direct access to 32-bit IC stable memory (#2626)
+  * documentation changes
 
 * motoko-base
 
-  * Add StableMemory library, exposing 32-bit IC stable memory (#280)
+  * documentation changes
 
-== 0.6.8 (2021-09-06)
+## 0.6.9 (2021-09-15)
+
+* motoko-base
+
+  * add Debug.trap : Text -> None (#288)
+
+## 0.6.8 (2021-09-06)
 
 * Introduce primitives for `Int` ⇔ `Float` conversions (#2733)
 * Bump LLVM toolchain to version 12 (#2542)
 * Support extended name linker sections (#2760)
 * Fix crashing bug for formatting huge floats (#2737)
 
-== 0.6.7 (2021-08-16)
+## 0.6.7 (2021-08-16)
 
 * moc
 
@@ -28,7 +127,7 @@
   * Fix bug in `AssocList.diff` (#277)
   * Deprecate unsafe or redundant functions in library `Option` ( `unwrap`, `assertSome`, `assertNull`) (#275)
 
-== 0.6.6 (2021-07-30)
+## 0.6.6 (2021-07-30)
 
 * Vastly improved garbage collection scheduling: previously Motoko runtime would do GC
   after every update message. We now schedule a GC when
@@ -50,7 +149,7 @@
 
 * Fix issue #2640 (leaked `ClosureTable` entry when awaiting futures fails).
 
-== 0.6.5 (2021-07-08)
+## 0.6.5 (2021-07-08)
 
 * Add alternative, _compacting_ gc, enabled with new moc flag `--compacting-gc`.
   The compacting gc supports larger heap sizes than the default, 2-space copying collector.
@@ -71,20 +170,20 @@
   options that have arguments.
 * Fix issue #2319 (crash on import of Candid class).
 
-== 0.6.4 (2021-06-12)
+## 0.6.4 (2021-06-12)
 
 * For release builds, the banner (`moc --version`) now includes the release
   version.
 
 * Fix MacOS release builds (the 0.6.3 tarball for MacOS contained the linux binaries)
 
-== 0.6.3 (2021-06-10)
+## 0.6.3 (2021-06-10)
 
 * Motoko is now open source!
 
 * Better internal consistency checking of the intermediate representation
 
-== 0.6.2 (2021-05-24)
+## 0.6.2 (2021-05-24)
 
 * motoko-base:
 
@@ -97,11 +196,11 @@
   * numbers eponymous types and specializations from 1 (not 2);
   * avoids long chains of type equalities by normalizing before translation.
 
-== 0.6.1 (2021-04-30)
+## 0.6.1 (2021-04-30)
 
 * Internal: Update to IC interface spec 0.17 (adapt to breaking change to signature of `create_canister`)
 
-== 0.6.0 (2021-04-16)
+## 0.6.0 (2021-04-16)
 
 * BREAKING CHANGE:
   The old-style object and block syntax deprecated in 0.5.0 is finally removed.
@@ -143,11 +242,11 @@
 
 * motoko-base: fixed bug in `Text.compareWith`.
 
-== 0.5.15 (2021-04-13)
+## 0.5.15 (2021-04-13)
 
 * Bugfix: `Blob.toArray` was broken.
 
-== 0.5.14 (2021-04-09)
+## 0.5.14 (2021-04-09)
 
 * BREAKING CHANGE (Minor): Type parameter inference will no longer default
   under-constrained type parameters that are invariant in the result, but
@@ -190,7 +289,7 @@
 * When the compiler itself crashes, it will now ask the user to report the
   backtrace at the DFINITY forum
 
-== 0.5.13 (2021-03-25)
+## 0.5.13 (2021-03-25)
 
 * The `moc` interpreter now pretty-prints values (as well as types) in the
   repl, producing more readable output for larger values.
@@ -203,7 +302,7 @@
   functions are removed. Migrate away from `Word` types, or use
   `Word32.from/ToChar` for now.
 
-== 0.5.12 (2021-03-23)
+## 0.5.12 (2021-03-23)
 
 * The `moc` compiler now pretty-prints types in error messages and the repl,
   producing more readable output for larger types.
@@ -211,7 +310,7 @@
 * motoko base: fixed bug in `Text.mo` affecting partial matches in,
   for example, `Text.replace` (GH issue #234).
 
-== 0.5.11 (2021-03-12)
+## 0.5.11 (2021-03-12)
 
 * The `moc` compiler no longer rejects occurrences of private or
   local type definitions in public interfaces.
@@ -250,7 +349,7 @@
 
 * motoko base: `Text` now contains `decodeUtf8` and `encodeUtf8`.
 
-== 0.5.10 (2021-03-02)
+## 0.5.10 (2021-03-02)
 
 * User defined deprecations
 
@@ -276,14 +375,14 @@
 
 * motoko base: `Time.Time` is now public
 
-== 0.5.9 (2021-02-19)
+## 0.5.9 (2021-02-19)
 
 * The `moc` compiler now accepts the `-Werror` flag to turn warnings into errors.
 
 * The language server now returns documentation comments alongside
   completions and hover notifications
 
-== 0.5.8 (2021-02-12)
+## 0.5.8 (2021-02-12)
 
 * Wrapping arithmetic and bit-wise operations on `NatN` and `IntN`
 
@@ -318,27 +417,27 @@
 * Bugfix: Avoid compiler aborting when object literals have more fields than
   their type expects.
 
-== 0.5.7 (2021-02-05)
+## 0.5.7 (2021-02-05)
 
 * The type checker now exploits the expected type, if any,
   when typing object literal expressions.
   So `{ x = 0 } : { x : Nat8 }` now works as expected
   instead of requiring an additional type annotation on `0`.
 
-== 0.5.6 (2021-01-22)
+## 0.5.6 (2021-01-22)
 
 * The compiler now reports errors and warnings with an additional _error code_
   This code can be used to look up a more detailed description for a given error by passing the `--explain` flag with a code to the compiler.
   As of now this isn't going to work for most codes because the detailed descriptions still have to be written.
 * Internal: The parts of the RTS that were written in C have been ported to Rust.
 
-== 0.5.5 (2021-01-15)
+## 0.5.5 (2021-01-15)
 
 * new `moc` command-line arguments `--args <file>` and `--args0 <file>` for
   reading newline/NUL terminated arguments from `<file>`.
 * motoko base: documentation examples are executable in the browser
 
-== 0.5.4 (2021-01-07)
+## 0.5.4 (2021-01-07)
 
 * _Option blocks_ `do ? <block>` and _option checks_ `<exp> !`.
   Inside an option block, an option check validates that its operand expression is not `null`.
@@ -354,15 +453,15 @@
   That is, the argument to a `do` or `do ?` expression *must* be a block `{ ... }`,
   never a simple expression.
 
-== 0.5.3 (2020-12-10)
+## 0.5.3 (2020-12-10)
 
 * Nothing new, just release moc.js to CDN
 
-== 0.5.2 (2020-12-04)
+## 0.5.2 (2020-12-04)
 
 * Bugfix: gracefully handle importing ill-typed actor classes
 
-== 0.5.1 (2020-11-27)
+## 0.5.1 (2020-11-27)
 
 * BREAKING CHANGE: Simple object literals of the form `{a = foo(); b = bar()}`
   no longer bind the field names locally. This enables writing expressions
@@ -373,7 +472,7 @@
   declaration, as in `let a = 1; {a = a; b = a + 1}`, or by using the "long"
   object syntax `object {public let a = 1; public let b = a + 1}`.
 
-== 0.5.0 (2020-11-27)
+## 0.5.0 (2020-11-27)
 
 * BREAKING CHANGE: Free-standing blocks are disallowed
 
@@ -414,7 +513,7 @@
 
 * Various bug fixes and documentation improvements.
 
-== 0.4.6 (2020-11-13)
+## 0.4.6 (2020-11-13)
 
 * Significant documentation improvements
 * Various bugfixes
@@ -426,7 +525,7 @@
 * New motoko-base:
   * The Random library is added
 
-== 0.4.5 (2020-10-06)
+## 0.4.5 (2020-10-06)
 
 * BREAKING CHANGE: a library containing a single actor class is
   imported as a module, providing access to both the class type and
@@ -443,7 +542,7 @@
 * Compile.ml: target and use new builder call pattern (#1974)
 * fix scope var bugs (#1973)
 
-== 0.4.4 (2020-09-21)
+## 0.4.4 (2020-09-21)
 
 * Actor class export
 * Accept unit installation args for actors
@@ -452,18 +551,18 @@
 * RTS: Remove duplicate array and blob allocation code
 * RTS: Fix pointer arithmetic in BigInt collection function
 
-== 0.4.3 (2020-09-14)
+## 0.4.3 (2020-09-14)
 
 * Preliminary support for actor class import and dynamic canister installation.
   Surface syntax may change in future.
 * BREAKING CHANGE: a compilation unit/file defining an actor or actor class may *only* have leading `import` declarations; other leading declarations (e.g. `let` or `type`) are no longer supported.
 * Rust GC
 
-== 0.4.2 (2020-08-18)
+## 0.4.2 (2020-08-18)
 
 * Polymorphic equality.  `==` and `!=` now work on all shareable types.
 
-== 0.4.1 (2020-08-13)
+## 0.4.1 (2020-08-13)
 
 * Switching to bumping the third component of the version number
 * Bugfix: clashing declarations via function and class caught (#1756)
@@ -473,17 +572,17 @@
   missing.
 * Optimization: Handling of `Bool` in the backend.
 
-== 0.4 (2020-08-03)
+## 0.4 (2020-08-03)
 
 * Candid pretty printer to use shorthand when possible (#1774)
 * fix candid import to use the new id format (#1787)
 
-== 0.3 (2020-07-31)
+## 0.3 (2020-07-31)
 
 * Fixes an issue with boolean encoding to Candid
 * Converts the style guide to asciidocs
 
-== 0.2 (2020-07-30)
+## 0.2 (2020-07-30)
 
 * The `Blob` type round-trips through candid type export/import (#1744)
 * Allow actor classes to know the caller of their constructor (#1737)
@@ -495,6 +594,6 @@
 * The runtime is now embedded into `moc` and need not be distributed separately
   (#1772)
 
-== 0.1 (2020-07-20)
+## 0.1 (2020-07-20)
 
 * Beginning of the changelog. Released with dfx-0.6.0.

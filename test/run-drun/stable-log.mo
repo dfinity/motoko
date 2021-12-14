@@ -3,7 +3,7 @@ import StableMemory "stable-mem/StableMemory";
 
 actor {
 
-  func ensure(offset : Nat32) {
+  func ensure(offset : Nat64) {
     let pages = (offset + 65536) >> 16;
     if (pages > StableMemory.size()) {
       let oldsize = StableMemory.grow(pages - StableMemory.size());
@@ -11,15 +11,15 @@ actor {
     };
   };
 
-  stable var base : Nat32 = 0;
+  stable var base : Nat64 = 0;
 
   public func log(t : Text) {
     let blob = Prim.encodeUtf8(t);
-    let size = Prim.natToNat32(blob.size());
+    let size = Prim.natToNat64(blob.size());
     ensure(base + size + 4);
     StableMemory.storeBlob(base, blob);
     base += size;
-    StableMemory.storeNat32(base, size);
+    StableMemory.storeNat32(base, Prim.natToNat32(blob.size()));
     base += 4;
   };
 
@@ -30,7 +30,7 @@ actor {
     while (k < count and offset > 0) {
       offset -= 4;
       let size = StableMemory.loadNat32(offset);
-      offset -= size;
+      offset -= Prim.natToNat64(Prim.nat32ToNat(size));
       let blob = StableMemory.loadBlob(offset, Prim.nat32ToNat(size));
       switch (Prim.decodeUtf8(blob)) {
         case (?t) { a[k] := t };

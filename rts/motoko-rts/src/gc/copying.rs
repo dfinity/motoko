@@ -7,7 +7,12 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
-    if super::should_do_gc() {
+    // Half of the heap.
+    // NB. This expression is evaluated in compile time to a constant.
+    let max_live: Bytes<u64> =
+        Bytes(u64::from((crate::constants::WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
+
+    if super::should_do_gc(max_live) {
         copying_gc(mem);
     }
 }
@@ -28,7 +33,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(reclaimed.0 as u64),
+        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
     ic::LAST_HP = ic::HP;
@@ -73,7 +78,7 @@ pub unsafe fn copying_gc_internal<
     while p < get_hp() {
         let size = object_size(p);
         scav(mem, begin_from_space, begin_to_space, p);
-        p += size.to_bytes().0 as usize;
+        p += size.to_bytes().as_usize();
     }
 
     let end_to_space = get_hp();

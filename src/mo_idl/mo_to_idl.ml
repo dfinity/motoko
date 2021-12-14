@@ -207,3 +207,12 @@ let of_actor_type t : I.prog =
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
   {it = prog; at = no_region; note = ""}
+
+let of_service_type ts t : I.typ list * I.prog =
+  env := Env.empty;
+  let args = List.map typ ts  in
+  let actor = Some (typ t) in
+  let decs = gather_decs () in
+  let prog = I.{decs = decs; actor = actor} in
+  args,
+  {it = prog; at = no_region; note = ""}

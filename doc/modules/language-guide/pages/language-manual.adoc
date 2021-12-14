@@ -45,6 +45,8 @@ For example, this section provides technical details of interest to the followin
 The language quick reference is intended to provide complete reference information about {proglang}, but this section does _not_ provide explanatory text or usage information.
 Therefore, this section is typically not suitable for readers who are new to programming languages or who are looking for a general introduction to using {proglang}.
 
+Throughout, we use the term canister to refer to an {IC} canister smart contract.
+
 == Basic language syntax
 
 This section describes the basic language conventions you need to know for programming in {proglang}.
@@ -603,6 +605,8 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
+  <typ> and <typ>                               intersection
+  <typ> or <typ>                                union
   Error                                         errors/exceptions
   ( <typ> )                                      parenthesized type
 
@@ -899,6 +903,22 @@ Type `None` is the _bottom_ type, a subtype of all other types.
 No value has type `None`.
 
 As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
+
+[[and-type]]
+=== Intersection type
+
+The type expression `<typ1> and <typ2>` denotes the syntactic _intersection_ between its two type operands, that is, the greatest type that is a subtype of both. If both types are incompatible, the intersection is `None`.
+
+The intersection is _syntactic_, in that it does not consider possible instantiations of type variables. The intersection of two type variables is `None`, unless they are equal, or one is declared to be a (direct or indirect) subtype of the other.
+
+
+[[or-type]]
+=== Union type
+
+The type expression `<typ1> or <typ2>` denotes the syntactic _union_ between its two type operands, that is, the smallest type that is a supertype of both. If both types are incompatible, the union is `Any`.
+
+The union is _syntactic_, in that it does not consider possible instantiations of type variables. The union of two type variables is the union of their bounds, unless the variables are equal, or one is declared to be a (direct or indirect) subtype of the other.
+
 
 [[paren-type]]
 === Parenthesized type

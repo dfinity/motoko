@@ -77,7 +77,7 @@ let pick_char vs =
   Val (V.Char !x)
 
 let pick_val vs = function
-  | T.Null -> assert false
+  | T.Null -> Val V.Null
   | T.Bool -> Val (V.Bool (ValSet.mem (V.Bool false) vs))
   | T.Nat -> pick_nat (module Numerics.Nat) (fun x -> V.Int x) vs
   | T.Nat8 -> pick_nat (module Numerics.Nat8) (fun x -> V.Nat8 x) vs
@@ -156,6 +156,10 @@ and string_of_descs t descs =
 
 (* Abstract interpretation *)
 
+let is_neg_int = function
+  | V.Int i -> Numerics.Int.(lt i zero)
+  | _ -> false
+
 let value_of_lit = function
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
@@ -178,23 +182,23 @@ let value_of_lit = function
 
 let (&&&) = (&&) (* No short-cutting *)
 
-let skip_pat pat sets =
-  sets.alts <- AtSet.add pat.at sets.alts;
+let skip_pat at sets =
+  sets.alts <- AtSet.add at sets.alts;
   true
 
 let rec match_pat ctxt desc pat t sets =
-  T.span t = Some 0 && skip_pat pat sets ||
+  T.span t = Some 0 && skip_pat pat.at sets ||
   match pat.it with
   | WildP | VarP _ ->
     if T.inhabited t then
       succeed ctxt desc sets
     else
-      skip_pat pat sets
+      skip_pat pat.at sets
   | LitP lit ->
-    match_lit ctxt desc (value_of_lit !lit) t sets
+    match_lit ctxt desc pat.at (value_of_lit !lit) t sets
   | SignP (op, lit) ->
     let f = Operator.unop op (Operator.type_unop op pat.note) in
-    match_lit ctxt desc (f (value_of_lit !lit)) t sets
+    match_lit ctxt desc pat.at (f (value_of_lit !lit)) t sets
   | TupP pats ->
     let ts = T.as_tup (T.promote t) in
     let descs =
@@ -214,21 +218,28 @@ let rec match_pat ctxt desc pat t sets =
       | _ -> assert false
     in match_obj ctxt ldescs pat_fields tfs sets
   | OptP pat1 ->
-    let t' = T.as_opt (T.promote t) in
-    (match desc with
-    | Opt desc' ->
-      match_pat (InOpt ctxt) desc' pat1 t' sets
-    | Val V.Null ->
-      fail ctxt desc sets
-    | NotVal vs when ValSet.mem V.Null vs ->
-      match_pat (InOpt ctxt) Any pat1 t' sets
-    | Any ->
-      fail ctxt (Val V.Null) sets &&&
-      match_pat (InOpt ctxt) Any pat1 t' sets
-    | _ -> assert false
-    )
+    if T.is_prim T.Null (T.promote t) then  (* may occur through subtyping *)
+      skip_pat pat.at sets && fail ctxt (Val V.Null) sets
+    else
+      let t' = T.as_opt (T.promote t) in
+      (match desc with
+      | Opt desc' ->
+        match_pat (InOpt ctxt) desc' pat1 t' sets
+      | Val V.Null ->
+        fail ctxt desc sets
+      | NotVal vs when ValSet.mem V.Null vs ->
+        match_pat (InOpt ctxt) Any pat1 t' sets
+      | Any ->
+        fail ctxt (Val V.Null) sets &&&
+        match_pat (InOpt ctxt) Any pat1 t' sets
+      | _ -> assert false
+      )
   | TagP (id, pat1) ->
-    let t' = T.lookup_val_field id.it (T.as_variant (T.promote t)) in
+    let t', found =
+      match T.lookup_val_field_opt id.it (T.as_variant (T.promote t)) with
+      | None -> T.Non, false  (* may occur through subtyping *)
+      | Some t' -> t', true
+    in
     (match desc with
     | Tag (desc', l) ->
       if id.it = l then
@@ -238,6 +249,8 @@ let rec match_pat ctxt desc pat t sets =
     | NotTag ls ->
       if TagSet.mem id.it ls then
         fail ctxt desc sets
+      else if not found then
+        skip_pat pat.at sets && fail ctxt desc sets
       else if T.span t = Some (TagSet.cardinal ls + 1) then
         match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
       else
@@ -254,7 +267,7 @@ let rec match_pat ctxt desc pat t sets =
   | ParP pat1 ->
     match_pat ctxt desc pat1 t sets
 
-and match_lit ctxt desc v t sets =
+and match_lit ctxt desc at v t sets =
   match desc with
   | Val v' ->
     if V.equal v v' then
@@ -264,6 +277,8 @@ and match_lit ctxt desc v t sets =
   | NotVal vs ->
     if ValSet.mem v vs then
       fail ctxt desc sets
+    else if T.eq t T.nat && is_neg_int v then  (* may occur through subtyping *)
+      skip_pat at sets && fail ctxt desc sets
     else if T.span t = Some (ValSet.cardinal vs + 1) then
       succeed ctxt (Val v) sets
     else
@@ -272,7 +287,7 @@ and match_lit ctxt desc v t sets =
   | Opt _ ->
     fail ctxt desc sets
   | Any ->
-    match_lit ctxt (NotVal ValSet.empty) v t sets
+    match_lit ctxt (NotVal ValSet.empty) at v t sets
   | _ ->
     assert false
 

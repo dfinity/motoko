@@ -4,7 +4,7 @@
 :company-id: DFINITY
 :!page-repl:
 
-The Motoko compiler (`+moc+`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. 
+The {proglang} compiler (`+moc+`) is the primary tool for compiling {proglang} programs into executable WebAssembly (Wasm) modules. 
 The compiler runs in the background when you build projects using the {sdk-short-name}. 
 If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
 
@@ -12,7 +12,7 @@ This section provides compiler command-line reference information.
 
 == moc
 
-Use the Motoko compiler (`+moc+`) to compile Motoko programs into executable WebAssembly (Wasm) modules.
+Use the {proglang} compiler (`+moc+`) to compile {proglang} programs into executable WebAssembly (Wasm) modules.
 
 === Basic usage
 
@@ -40,7 +40,9 @@ You can use the following options with the `+moc+` command.
 
 |`+--check+` |Performs type checking only.
 
-|`+--compacting-gc+` |Link with compacting GC instead of copying GC.
+|`+--compacting-gc+` | Use compacting GC
+
+|`+--copying-gc+` | Use copying GC (default)
 
 |`+--debug+` |Respects debug expressions in the source (the default).
 
@@ -58,7 +60,7 @@ You can use the following options with the `+moc+` command.
 
 |`+-Werror+` |Treat warnings as errors.
 
-|`+--idl+` |Generates the interface description language specification.
+|`+--idl+` | Compile binary and emit Candid IDL specification to `.did` file.
 
 |`+-i+` |Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).
 
@@ -82,6 +84,8 @@ You can use the following options with the `+moc+` command.
 
 |`+--package <package-name> <package-path>+` |Specifies a package-name package-path pair, separated by a space.
 
+|`+--public-metadata <name>+` |Emit icp custom section <name> (candid:args or candid:service or motoko:stable-types) as `public` (default is `private`)
+
 |`+--print-deps+` |Prints the dependencies for a given source file.
 
 //|`+--profile+` |Activates profiling counters in interpreters.
@@ -97,6 +101,10 @@ You can use the following options with the `+moc+` command.
 |`+--release+` |Ignores debug expressions in the source.
 
 //|`+--sanity-checks+` |Enable sanity checking in the runtime system and generated code (for compiler development only).
+
+| `--stable-types` |Compile binary and emit signature of stable types to `.most` file.
+
+| `--stable-compatible <pre> <post>` |Test upgrade compatibility between stable-type signatures <pre> and <post>
 
 |`+-t+` |Activates tracing in interpreter.
 

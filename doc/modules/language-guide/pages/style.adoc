@@ -1,7 +1,8 @@
 = Motoko style guidelines
+:proglang: Motoko
 :!page-repl:
 
-To increase readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
+To increase readability and uniformity of {proglang} source code, the style guide provides suggestions for formatting {proglang} sources and other basic conventions.
 
 == Layout
 
@@ -378,7 +379,7 @@ func f() {
 
 === Semicolons
 
-* Motoko uniformly requires a semicolon to separate expressions or local declarations in a block, regardless of whether the preceding declaration ends in a closing '}'.
+* {proglang} uniformly requires a semicolon to separate expressions or local declarations in a block, regardless of whether the preceding declaration ends in a closing '}'.
 +
 Rationale: This is unlike other C-style languages, which tend to have rather ad-hoc rules.
 
@@ -462,7 +463,7 @@ switch (opt) {
 [[parens]]
 === Parentheses
 
-* Motoko supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already (for example, a tuple, object, or array) or is a simple constant or identifier.
+* {proglang} supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already (for example, a tuple, object, or array) or is a simple constant or identifier.
 +
 [source, motoko]
 ....
@@ -637,7 +638,7 @@ class Cart(length_ : Nat) {
 }
 ....
 +
-Rationale: In Motoko, functions are first-class values, so functions and other value identifiers share the same name space.
+Rationale: In {proglang}, functions are first-class values, so functions and other value identifiers share the same name space.
 +
 Identifiers with a leading `_` should _not_ be used for private state, since that indicates an unused name (see <<style>>).
 
@@ -703,7 +704,7 @@ let offset = +1;   // type Int
 if (x & mask == (1 : Nat32)) { ... };
 ....
 +
-NOTE: The need to annotate constants in cases like this is a short-coming of Motoko's type system that we hope to address soon.
+NOTE: The need to annotate constants in cases like this is a short-coming of {proglang}'s type system that we hope to address soon.
 +
 An annotation is not needed on function arguments, since their type is usually inferred from the function.
 The only exception is when that argument has generic type and the type arguments have been omitted.
@@ -833,7 +834,7 @@ Use the option type instead.
 func lookup(x : key) : ?Nat { ... }
 ....
 
-* Data is immutable in Motoko unless explicitly stated otherwise.
+* Data is immutable in {proglang} unless explicitly stated otherwise.
 +
 Use mutability types and definitions (`var`) with care and only where needed.
 +
@@ -863,7 +864,7 @@ func abs(i : Int) : Int { if (i < 0) -i else i };
 let delta = switch mode { case (#up) +1; case (#dn) -1 };
 ....
 
-* Motoko requires that all expressions in a block have type `()`, in order to prevent accidentally dropped results.
+* {proglang} requires that all expressions in a block have type `()`, in order to prevent accidentally dropped results.
 +
 Use `ignore` to explicitly drop results. Do _not_ use `ignore` when it's not needed.
 +
@@ -872,7 +873,7 @@ Use `ignore` to explicitly drop results. Do _not_ use `ignore` when it's not nee
 ignore async f();  // fire of a computation
 ....
 
-* Motoko allows to omit the `return` at the end of a function, because a block evaluates to its last expression.
+* {proglang} allows to omit the `return` at the end of a function, because a block evaluates to its last expression.
 +
 Use this when a function is short and in "functional" style, that is, the function does not contain complex control flow or side effects.
 +

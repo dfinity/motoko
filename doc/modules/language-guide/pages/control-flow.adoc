@@ -178,7 +178,7 @@ As a constructor function, `range` has a function type:
 
 [source.no-repl, motoko]
 ....
-(lower:Nat, upper:Nat) -> Iter<Nat>
+(lower : Nat, upper : Int) -> Iter<Nat>
 ....
 
 Where `Iter<Nat>` is an iterator object type with a `next` method that produces optional elements, each of type `?Nat`:
@@ -196,17 +196,17 @@ The value `null` indicates that the iteration sequence has terminated.
 Until reaching `null`, each non-`null` value, of the form ``?``__n__ for some number _n_, contains the next successive element in the iteration sequence.
 
 [[intro-revrange]]
-== Using `revrange`
+== Using `revRange`
 
-Like `range`, the function `revrange` is a `class` that constructs iterators (each of type `Iter<Nat>`).
+Like `range`, the function `revRange` is a `class` that constructs iterators (each of type `Iter<Int>`).
 As a constructor function, it has a function type:
 
 [source.no-repl, motoko]
 ....
-(upper:Nat, lower:Nat) -> Iter<Nat>
+(upper : Int, lower : Int) -> Iter<Int>
 ....
 
-Unlike `range`, the `revrange` function _descends_ in its iteration sequence, from an initial _upper_ bound to a final _lower_ bound.
+Unlike `range`, the `revRange` function _descends_ in its iteration sequence, from an initial _upper_ bound to a final _lower_ bound.
 
 [[other-iterators]]
 == Using iterators of specific data structures

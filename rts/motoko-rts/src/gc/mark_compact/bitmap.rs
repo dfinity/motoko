@@ -7,7 +7,7 @@ static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
 
 pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>) {
     // We will have at most this many objects in the heap, each requiring a bit
-    let n_bits = heap_size.to_words().0;
+    let n_bits = heap_size.to_words().as_u32();
     // Each byte will hold 8 bits.
     let bitmap_bytes = (n_bits + 7) / 8;
     // Also round allocation up to 8-bytes to make iteration efficient. We want to be able to read
@@ -54,10 +54,10 @@ pub struct BitmapIter {
 }
 
 pub unsafe fn iter_bits() -> BitmapIter {
-    let blob_len_bytes = (BITMAP_PTR.sub(size_of::<Blob>().to_bytes().0 as usize) as *mut Obj)
+    let blob_len_bytes = (BITMAP_PTR.sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Obj)
         .as_blob()
         .len()
-        .0;
+        .as_u32();
 
     debug_assert_eq!(blob_len_bytes % 8, 0);
 

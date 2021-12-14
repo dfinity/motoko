@@ -58,33 +58,66 @@ See `motoko-rts/src/bigint.rs` for the technical details.
 Rust build
 ----------
 
-The Rust parts are built from `motoko-rts`, using `xargo` and `cargo`.
+To build Motoko RTS in nix we need pre-fetch Rust dependencies. This works in
+`nix-build` by:
 
-To build this in nix, we need pre-fetch some dependencies (currently
-`compiler_builtins` and `libc`). This works in `nix-build` by:
-
- * Adding`compiler_builtins` as a dependency in `Cargo.toml` (even though not
-   needed), so that it shows up with a hash in `Cargo.lock`
-
- * Building a directory with vendored sources in `default.nix` (see `rustDeps`)
+ * Building a directory with vendored sources in `default.nix`
 
  * Configuring `cargo` to use that vendored directory (see `preBuild`)
 
 If you change dependencies (e.g. bump versions, add more crates),
 
- 1. Add them to `Cargo.toml`
- 2. Make sure that `Cargo.lock` is up to date
- 3. In `default.nix`, invalidate the `sha256` of `rustDeps` (e.g. change one
+ 1. Make sure that `motoko-rts-tests/Cargo.lock` is up to date. This can be
+    done by running `cargo build --target=wasm32-wasi` in `motoko-rts-tests/`
+    directory.
+ 2. In `default.nix`, invalidate the `sha256` of `rtsDeps` (e.g. change one
     character)
- 4. Run `nix-build -A rts`. You should get an error message about the actual
+ 3. Run `nix-build -A rts`. You should get an error message about the actual
     checksum.
- 5. Set that as `sha256` of `rustDeps` in `default.nix`
+ 4. Set that as `sha256` of `rtsDeps` in `default.nix`
 
 Warning: nix will happily use a stale version of the dependencies if you do not
 do step 3.
+
+**Updating rustc**:
+
+1. Update Rust version in `nix/default.nix`, in the line with
+   `moz_overlay.rustChannelOf { ... }`.
+2. Invalidate `rustStdDepsHash` in `default.nix`.
+3. Run `nix-build -A rts`. You should get an error message about the expected
+   value of `rustStdDepsHash`.
+4. Update `rustStdDepsHash` with the expected value in the error message.
 
 Running RTS tests
 -----------------
 
 - Build tests using rustc WASI target: `cargo build --target=wasm32-wasi`
 - Run with wasmtime: `wasmtime target/wasm32-wasi/debug/motoko-rts-tests.wasm`
+
+Debugging the RTS
+-----------------
+
+It is possible to build the RTS and test suite for i686 and debug using native
+debug tools like gdb and rr. You first need to build tommath-related files.
+This is easiest to do in `nix-shell`:
+
+- (in `rts/`) `make _build/libtommath_i686.a` (this step requires headers and
+  libraries for the target)
+- (in `rts/`) `make _build/tommath_bindings.rs` (this step requires `bindgen`)
+
+After these you can build the test suite for `i686-unknown-linux-gnu` target
+outside of `nix-shell`. If you don't have the target installed already, install with
+
+- `rustup +nightly target install i686-unknown-linux-gnu`
+
+Now build i686 executable:
+
+- (in `rts/motoko-rts-tests`) `cargo +nightly build --target=i686-unknown-linux-gnu`
+
+Now you should see an i686 executable
+`rts/motoko-rts-tests/target/i686-unknown-linux-gnu/debug/motoko-rts-tests`
+that you can debug with e.g. `gdb`.
+
+Ideally all of these steps would be done in `nix-shell` or outside, but the
+last command does not work in `nix-shell` because of missing i686 libraries and
+I couldn't figure out how to install those in nix.

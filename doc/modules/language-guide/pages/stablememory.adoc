@@ -16,7 +16,7 @@ within an upgrade, resulting in failed upgrades.
 
 To avoid this upgrade hazard, actors can elect to use a lower-level
 `StableMemory` library.  The library allows the
-programmer to incrementally allocate pages of IC stable memory and use
+programmer to incrementally allocate pages of (64-bit) IC stable memory and use
 those pages to incrementally read and write data in a user-defined binary format.
 
 The Motoko runtime system ensures there is no interference between the
@@ -47,30 +47,30 @@ module {
   // Current size of the stable memory, in pages.
   // Each page is 64KiB (65536 bytes).
   // Initially `0`.
-  size : () -> (pages : Nat32);
+  size : () -> (pages : Nat64);
 
   // Grow current `size` of stable memory by `pagecount` pages.
   // Each page is 64KiB (65536 bytes).
   // Returns previous `size` when able to grow.
-  // Returns `0xFFFF` if remaining pages insufficient.
-  grow : (new_pages : Nat32) -> (oldpages : Nat32);
+  // Returns `0xFFFF_FFFF` if remaining pages insufficient.
+  grow : (new_pages : Nat64) -> (oldpages : Nat64);
 
-  loadNat8 : (offset : Nat32) -> Nat8;
-  storeNat8 : (offset : Nat32, value: Nat8) -> ();
+  loadNat8 : (offset : Nat64) -> Nat8;
+  storeNat8 : (offset : Nat64, value: Nat8) -> ();
 
   // ... and similar for Nat16, Nat32, Nat64,
   // Int8, Int16, Int32 and Int64 ...
 
-  loadFloat : (offset : Nat32) -> Float;
-  storeFloat : (offset : Nat32, value : Float) -> ();
+  loadFloat : (offset : Nat64) -> Float;
+  storeFloat : (offset : Nat64, value : Float) -> ();
 
   // Load `size` bytes starting from `offset` as a `Blob`.
   // Traps on out-of-bounds access.
-  loadBlob : (offset : Nat32, size : Nat) -> Blob;
+  loadBlob : (offset : Nat64, size : Nat) -> Blob;
 
   // Write bytes of `blob` beginning at `offset`.
   // Traps on out-of-bounds access.
-  storeBlob : (offset : Nat32, value : Blob) -> ()
+  storeBlob : (offset : Nat64, value : Blob) -> ()
 
 }
 ----

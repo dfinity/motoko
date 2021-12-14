@@ -166,7 +166,13 @@ let error_codes : (string * string option) list =
     "M0160", None;
     "M0161", None; (* Candid float32 type cannot be imported as a Motoko type *)
     "M0162", None; (* Candid service constructor type not supported as Motoko type *)
-    "M0163", None; (* cannot import a Candid service constructor *)
-    "M0164", None; (* unknown record or variant label in textual representation *)
-    "M0165", None; (* odd expected type *)
+    "M0163", None; (* Cannot import a Candid service constructor *)
+    "M0164", None; (* Unknown record or variant label in textual representation *)
+    "M0165", None; (* Odd expected type *)
+    "M0166", None; (* Type intersection results in abstract type *)
+    "M0167", None; (* Type union results in bottom type *)
+    "M0168", None; (* Type union or intersection on forward types *)
+    "M0169", None; (* Stable variable cannot be discarded *)
+    "M0170", None; (* Stable variable must subtype *)
+    "M0171", None; (* Stable variable changing mutability *)
   ]

@@ -37,6 +37,12 @@ WebAssembly.compile(empty_wasm_ic.code);
 // The plain and the ic module should not be the same
 assert.notEqual(empty_wasm_plain.code, empty_wasm_ic.code);
 
+moc.Motoko.removeFile('empty.mo');
+assert.throws(
+  () => { moc.Motoko.compileWasm('ic', 'empty.mo') },
+  /no such file or directory/
+);
+
 // Check if error messages are correctly returned
 const bad_result = moc.Motoko.compileWasm('ic', 'bad.mo');
 // Uncomment to see what to paste below
@@ -88,3 +94,4 @@ assert.deepStrictEqual(moc.Motoko.check('bad.mo'), {
   ],
   "code": null
 });
+

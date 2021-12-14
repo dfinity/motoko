@@ -1,14 +1,16 @@
 = Stable variables and upgrade methods
 
-One key feature of the {IC} is the ability to persist application data using WebAssembly memory rather than a traditional database. 
-This data storage model—referred to as **orthogonal persistence**—requires the ability to preserve and migrate the application state to support application upgrades. 
-For example, if you want to deploy a new version of an application to fix an issue or add functionality, you need to ensure that any application state that needs to be preserved remains unchanged by the upgrade process.
-The orthogonal persistence model allows an application deployed as a canister to save and restore
-state from dedicated _stable_ storage that is retained across an upgrade.
+One key feature of the {IC} is its ability to persist canister smart contract state using WebAssembly memory and globals rather than a traditional database. This means that that the entire state of a canister is magically restored before, and saved after, each message, without explicit user instruction. This automatic and user-transparent preservation of state is called _orthogonal persistence_.
 
-For applications written in {proglang}, the language provides high-level support for preserving state using stable storage and in a way that accommodates changes to both the application data and to the {proglang} compiler used to produce the application code.
+Though convenient, orthogonal persistence poses a challenge when it comes to upgrading the code of a canister. Without an explicit representation of the canister's state, how does one tranfer any application data from the retired canister to its replacement?
 
-Support for preserving application state depends on you—as the application programmer—anticipating and indicating the data you want to retain after an upgrade. 
+Accommodating upgrades without data loss requires some new facility to _migrate_ a canister's crucial data to the upgraded canister.  For example, if you want to deploy a new version of a user-registration canister to fix an issue or add functionality, you need to ensure that existing registrations survive the upgrade process.
+
+The {IC}'s persistence model allows a canister to save and restore such data to dedicated _stable memory_ that, unlike ordinary canister memory, is retained across an upgrade, allowing a canister to transfer data in bulk to its replacement canister.
+
+For applications written in {proglang}, the language provides high-level support for preserving state that leverages {IC} stable memory. This higher-level feature, called _stable storage_, is designed to accommodate changes to both the application data and to the {proglang} compiler used to produce the application code.
+
+Utilizing stable storage depends on you — as the application programmer — anticipating and indicating the data you want to retain after an upgrade.
 Depending on the application, the data you decide to persist might be some, all, or none of a given actor's state.
 
 ////
@@ -17,7 +19,7 @@ To enable {proglang} to migrate the current state of variables when a canister i
 
 == Declaring stable variables
 
-In an actor, you can nominate a variable for stable storage by using the `+stable+` keyword as a modifier in the variable's declaration.
+In an actor, you can nominate a variable for stable storage (in {IC} stable memory) by using the `+stable+` keyword as a modifier in the variable's declaration.
 
 More precisely, every `+let+` and `+var+` variable declaration in an actor can specify whether the variable is `+stable+` or `+flexible+`.
 If you don't provide a modifier, the variable is declared as `+flexible+` by default.
@@ -39,18 +41,6 @@ that can be upgraded while preserving the counter's value:
 include::../examples/StableCounter.mo[]
 ....
 
-////
-The representation for stable variable signatures looks like a {proglang} actor type:
-
-[source.no-repl, motoko]
-....
-actor {
-  stable x : Nat;
-  stable var y : Int;
-  stable z : [var Nat];
-};
-....
-////
 
 NOTE: You can only use the `+stable+` or `+flexible+` modifier on `+let+` and `+var+` declarations that are **actor fields**. You cannot use these modifiers anywhere else in your program.
 
@@ -116,6 +106,71 @@ Note that the type of `+entries+`, being just an array of `+Text+` and `+Nat+` p
 In this example, the `+preupgrade+` system method simply writes the current `+map+` entries to `+entries+` before `+entries+` is saved to stable memory.
 The `+postupgrade+` system method resets `+entries+` to the empty array after `+map+` has been populated from `+entries+` to free space.
 
-== Upgrading the compiled program
+== Stable type signatures
 
-After you have deployed a {proglang} program with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade the deployed code. For information about upgrading the deployed program, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister].
+The collection of stable variable declarations in an actor can be summarized in a
+_stable signature_.
+
+The textual representation of an actor's stable signature resembles the internals of a {proglang} actor type:
+
+[source.no-repl, motoko]
+....
+actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};
+....
+
+It specifies the names, types and mutability of the actor's stable fields, possibly preceded by relevant Motoko type declarations.
+
+TIP: You can emit the stable signature of the main actor or actor class to a `.most` file using `moc` compiler option `--stable-types`. You should never need to author your own `.most` file.
+
+A stable signature `<stab-sig1>` is _stable-compatible_ with signature `<stab-sig2>`, if, and only,
+
+* every immutable field `stable <id> : T` in `<stab-sig1>` has a matching field `stable <id> : U` in `<stab-sig2>` with `T <: U`.
+* every mutable field `stable var <id> : T` in `<stab-sig1>` has a matching field `stable var <id> : U` in `<stab-sig2>` with `T <: U`.
+
+Note that `<stab-sig2>` may contain additional fields.
+Typically, `<stab-sig1>` is the signature of an older version while `<stab-sig2>` is the signature of a newer version. 
+
+The subtyping condition on stable fields ensures that the final value of some field can be consumed as the initial value of that field in the upgraded code.
+
+TIP: You can check the stable-compatiblity of two `.most` files, `cur.most` and `nxt.most` (containing stable signatures), using `moc` compiler option `--stable-compatible cur.most nxt.most`.
+
+NOTE: The _stable-compatible_ relation is quite conservative. In the future, it may be relaxed to accommodate a change in field mutability
+and/or abandoning fields from `<stab-sig1>` (but with a warning).
+
+== Upgrade safety
+
+Before upgrading a deployed canister, you should ensure that the upgrade is safe and will not
+
+* break existing clients (due to a Candid interface change); or
+* discard Motoko stable state (due to an incompatible change in stable declarations).
+
+A {proglang} canister upgrade is safe provided:
+
+* the canister's Candid interface evolves to a Candid subtype; and
+* the canister's Motoko stable signature evolves to a _stable-compatible_ one.
+
+Upgrade safety does not guarantee that the upgrade process will succeed (it can still fail due to resource constraints). However, it should at least ensure that a successful upgrade will not break Candid type compatibility with existing clients or unexpectedly lose data that was marked `stable`.
+
+TIP: You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using  the `didc` tool with argument `check nxt.did cur.did`.
+The `didc` tool is available at https://github.com/dfinity/candid.
+
+== Metadata sections
+
+The Motoko compiler embeds the Candid interface and stable signature
+of a canister as canister metadata, recorded in additional Wasm custom
+sections of a compiled binary.
+
+This metadata can be selectively exposed by the IC and used
+by tools such as `dfx` to verify upgrade compatibility.
+
+== Upgrading a deployed actor or canister smart contract
+
+After you have deployed a {proglang} actor with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade an already deployed version. For information about upgrading a deployed canister, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister smart contract].
+
+
+An upcoming version of `+dfx+` will, if appropriate, check the safety of an upgrade by comparing the Candid and (for Motoko canisters only) the stable signatures embedded in the deployed binary and upgrade binary, and abort the upgrade request when unsafe.
+

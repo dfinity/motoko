@@ -464,7 +464,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       List.iter (fun e -> typ e <: t0) exps;
       let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
       t1 <: t
-    | IdxPrim, [exp1; exp2] ->
+    | (IdxPrim | DerefArrayOffset), [exp1; exp2] ->
       let t1 = T.promote (typ exp1) in
       let t2 = try T.as_array_sub t1 with
                | Invalid_argument _ ->
@@ -473,6 +473,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | GetPastArrayOffset _, [exp1] ->
+      let t1 = T.promote (typ exp1) in
+      ignore
+        (try T.as_array_sub t1 with
+         | Invalid_argument _ ->
+           error env exp1.at "expected array type, but expression produces type\n  %s"
+             (T.string_of_typ_expand t1));
+      T.nat <: t
+    | NextArrayOffset _, [exp1] ->
+      typ exp1 <: T.nat;
+      T.nat <: t
+    | ValidArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.nat;
+      typ exp2 <: T.nat;
+      T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
@@ -757,15 +772,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, { pre; post}, t0) ->
+  | ActorE (ds, fs, { preupgrade; postupgrade; meta }, t0) ->
+    (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
-    check_exp env'' pre;
-    check_exp env'' post;
-    typ pre <: T.unit;
-    typ post <: T.unit;
+    check_exp env'' preupgrade;
+    check_exp env'' postupgrade;
+    typ preupgrade <: T.unit;
+    typ postupgrade <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -937,7 +953,8 @@ and check_pat env pat : val_env =
     T.Env.empty
   | LitP lit ->
     let t1 = T.Prim (type_lit env lit pat.at) in
-    t <: t1;
+    let t1' = if T.eq t1 T.nat then T.int else t1 in  (* account for subtyping *)
+    t <: t1';
     T.Env.empty
   | TupP pats ->
     let ve = check_pats pat.at env pats T.Env.empty in
@@ -986,7 +1003,9 @@ and check_pat_field env t (pf : pat_field) =
 
 and check_pat_tag env t l pat =
   let (<:) = check_sub env pat.at in
-  T.lookup_val_field l (T.as_variant_sub l t) <: pat.note
+  match T.lookup_val_field_opt l (T.as_variant_sub l t) with
+  | Some t -> t <: pat.note
+  | None -> ()
 
 (* Objects *)
 
@@ -1073,7 +1092,7 @@ let check_comp_unit env = function
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds
-  | ActorU (as_opt, ds, fs, { pre; post}, t0) ->
+  | ActorU (as_opt, ds, fs, { preupgrade; postupgrade; meta}, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1086,10 +1105,10 @@ let check_comp_unit env = function
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
-    check_exp env'' pre;
-    check_exp env'' post;
-    typ pre <: T.unit;
-    typ post <: T.unit;
+    check_exp env'' preupgrade;
+    check_exp env'' postupgrade;
+    typ preupgrade <: T.unit;
+    typ postupgrade <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
