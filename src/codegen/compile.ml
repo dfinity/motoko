@@ -7983,7 +7983,7 @@ and compile_exp (env : E.t) ae exp =
       const_sr SR.Vanilla (Arr.toBlob env)
 
     | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
-      SR.UnboxedWord64,
+      SR.UnboxedWord32,
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_word32 env
 
