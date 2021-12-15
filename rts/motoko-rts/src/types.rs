@@ -181,14 +181,14 @@ impl Value {
     /// Create a value from a pointer
     pub const fn from_ptr(ptr: usize) -> Self {
         // Cannot use `assert_eq` in const yet, so using `assert`
-        assert!(ptr & 0b1 == 0b0);
+        debug_assert!(ptr & 0b1 == 0b0);
         Value(skew(ptr) as u32)
     }
 
     /// Create a value from a scalar
     pub const fn from_scalar(value: u32) -> Self {
         // Cannot use `assert_eq` in const yet, so using `assert`
-        assert!(value >> 31 == 0);
+        debug_assert!(value >> 31 == 0);
         Value(value << 1)
     }
 
