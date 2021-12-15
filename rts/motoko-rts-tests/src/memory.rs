@@ -27,7 +27,7 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<u32>, init_word: u32) -> Value {
         let bytes = n.to_bytes();
 
         // Update heap pointer
@@ -38,6 +38,8 @@ impl Memory for TestMemory {
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
 
+        *(old_hp as *mut u32) = init_word;
+        debug_assert_eq!(Value::from_ptr(old_hp).as_obj().tag(), init_word);
         Value::from_ptr(old_hp)
     }
 }

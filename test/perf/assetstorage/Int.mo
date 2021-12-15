@@ -8,9 +8,14 @@ import Prelude "Prelude";
 import Hash "Hash";
 
 module {
+
+  /// Infinite precision signed integers.
+  public type Int = Prim.Types.Int;
+
   /// Returns the absolute value of the number
   public let abs : Int -> Nat = Prim.abs;
 
+  /// Conversion.
   public let toText : Int -> Text = func(x) {
     if (x == 0) {
       return "0";
@@ -51,6 +56,32 @@ module {
   /// Returns the maximum of `x` and `y`.
   public func max(x : Int, y : Int) : Int {
     if (x < y) { y } else { x };
+  };
+
+  // TODO: (re)move me?
+  public func hash(i : Int) : Hash.Hash {
+    // CAUTION: This removes the high bits!
+    let j = Prim.int32ToNat32(Prim.intToInt32Wrap(i));
+    Hash.hashNat8(
+      [j & (255 << 0),
+       j & (255 << 8),
+       j & (255 << 16),
+       j & (255 << 24)
+      ]);
+  };
+
+  // TODO: (re)move me?
+  /// WARNING: May go away (?)
+  public func hashAcc(h1 : Hash.Hash, i : Int) : Hash.Hash {
+    // CAUTION: This removes the high bits!
+    let j = Prim.int32ToNat32(Prim.intToInt32Wrap(i));
+    Hash.hashNat8(
+      [h1,
+       j & (255 << 0),
+       j & (255 << 8),
+       j & (255 << 16),
+       j & (255 << 24)
+      ]);
   };
 
   /// Returns `x == y`.
