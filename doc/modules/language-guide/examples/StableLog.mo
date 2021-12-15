@@ -10,7 +10,7 @@ actor StableLog {
     let pages = (offset + 65536) >> 16;
     if (pages > StableMemory.size()) {
       let oldsize = StableMemory.grow(pages - StableMemory.size());
-      assert (oldsize != 0xFFFF_FFFF);
+      assert (oldsize != 0xFFFF_FFFF_FFFF_FFFF);
     };
   };
 
