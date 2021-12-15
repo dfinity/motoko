@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+* moc
+
+  * Add runtime support for low-level, direct access to 64-bit IC stable memory, including documentation.
+
+* motoko-base
+
+  * Add StableMemory library, exposing 64-bit IC stable memory
+
 ## 0.6.15 (2021-11-26)
 
 * Fixes crash when (ill-typed) `switch` expression on non-variant
