@@ -1,4 +1,4 @@
-# The `StableMemory` library
+# The `ExperimentalStableMemory` library
 
 WARNING: The `ExperimentalStableMemory` library is experimental, subject to change and may be
 replaced by safer alternatives in later versions of Motoko. Use at
