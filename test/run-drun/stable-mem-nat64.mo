@@ -2,16 +2,16 @@ import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 actor {
 
-  stable var n : Nat32 = 0;
+  stable var n : Nat64 = 0;
   assert (n == StableMemory.size());
 
-  func valOfNat32(n : Nat32) : Nat64 { P.natToNat64(P.nat32ToNat(n)); };
-  let inc : Nat32 = 8;
+  func valOfNat64(n : Nat64) : Nat64 { P.natToNat64(P.nat64ToNat(n)); };
+  let inc : Nat64 = 8;
 
-  var i : Nat32 = 0;
+  var i : Nat64 = 0;
   let max = n * 65536;
   while (i < max) {
-    let v = valOfNat32(i);
+    let v = valOfNat64(i);
     assert (StableMemory.loadNat64(i) == v);
     StableMemory.storeNat64(i, ^v);
     assert (StableMemory.loadNat64(i) == ^v);
@@ -32,11 +32,11 @@ actor {
     assert (n == StableMemory.size());
 
     // check new page is clear
-    var i : Nat32 = m * 65536;
+    var i : Nat64 = m * 65536;
     let max = i + 65536;
     while (i < max) {
       assert (StableMemory.loadNat64(i) == 0);
-      StableMemory.storeNat64(i, valOfNat32(i));
+      StableMemory.storeNat64(i, valOfNat64(i));
       i += inc
     };
 
@@ -47,7 +47,7 @@ actor {
     assert (n == StableMemory.size());
     P.debugPrint (debug_show {testBounds=n});
     // test bounds check
-    var i : Nat32 = n * 65536 - 7;
+    var i : Nat64 = n * 65536 - 7;
     let max = i + 16;
     while (i < max) {
       try {
@@ -60,7 +60,7 @@ actor {
         assert P.errorCode e == #canister_error;
       };
       try {
-        await async StableMemory.storeNat64(i, valOfNat32(i));
+        await async StableMemory.storeNat64(i, valOfNat64(i));
         assert false;
       }
       catch e {
