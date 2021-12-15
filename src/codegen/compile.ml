@@ -4016,11 +4016,12 @@ module StableMem = struct
           get_mem_size env ^^
           set_size ^^
 
+          (* check within --max-stable-pages *)
           get_size ^^
           get_pages ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          compile_const_64 (Int64.shift_left 1L 48) ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
+          compile_const_64 (Int64.of_int (!Flags.max_stable_pages)) ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.GtU)) ^^
           G.if1 I64Type
             begin
              compile_const_64 (-1L) ^^
@@ -7984,103 +7985,88 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
       SR.UnboxedWord32,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_word32 env
 
     | OtherPrim ("stableMemoryStoreNat32"|"stableMemoryStoreInt32"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.UnboxedWord32 e2 ^^
       StableMem.store_word32 env
 
     | OtherPrim ("stableMemoryLoadNat8"), [e] ->
       SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_word8 env ^^
       TaggedSmallWord.msb_adjust Type.Nat8
 
     | OtherPrim ("stableMemoryLoadInt8"), [e] ->
       SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_word8 env ^^
       TaggedSmallWord.msb_adjust Type.Int8
 
     | OtherPrim ("stableMemoryStoreNat8"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
       StableMem.store_word8 env
 
     | OtherPrim ("stableMemoryStoreInt8"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
       StableMem.store_word8 env
 
     | OtherPrim ("stableMemoryLoadNat16"), [e] ->
       SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_word16 env ^^
       TaggedSmallWord.msb_adjust Type.Nat16
 
     | OtherPrim ("stableMemoryLoadInt16"), [e] ->
       SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_word16 env ^^
       TaggedSmallWord.msb_adjust Type.Int16
 
     | OtherPrim ("stableMemoryStoreNat16"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
       StableMem.store_word16 env
 
     | OtherPrim ("stableMemoryStoreInt16"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
       StableMem.store_word16 env
 
     | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
       SR.UnboxedWord64,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_word64 env
 
     | OtherPrim ("stableMemoryStoreNat64" | "stableMemoryStoreInt64"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.UnboxedWord64 e2 ^^
       StableMem.store_word64 env
 
     | OtherPrim ("stableMemoryLoadFloat"), [e] ->
       SR.UnboxedFloat64,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
       StableMem.load_float64 env
 
     | OtherPrim ("stableMemoryStoreFloat"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
       StableMem.store_float64 env
 
     | OtherPrim ("stableMemoryLoadBlob"), [e1; e2] ->
       SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^
       Blob.lit env "Blob size out of bounds" ^^
       BigNum.to_word32_with env ^^
@@ -8088,21 +8074,18 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim ("stableMemoryStoreBlob"), [e1; e2] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord32 e1 ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
       compile_exp_as env ae SR.Vanilla e2 ^^
       StableMem.store_blob env
 
     | OtherPrim ("stableMemorySize"), [] ->
-      SR.UnboxedWord32,
-      StableMem.get_mem_size env ^^
-        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) (* REMOVE ME *)
+      SR.UnboxedWord64,
+      StableMem.get_mem_size env
     | OtherPrim ("stableMemoryGrow"), [e] ->
-      SR.UnboxedWord32,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (* REMOVE ME *)
-      StableMem.logical_grow env ^^
-        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) (* REMOVE ME *)
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      StableMem.logical_grow env
+
     (* Other prims, binary*)
     | OtherPrim "Array.init", [_;_] ->
       const_sr SR.Vanilla (Arr.init env)
