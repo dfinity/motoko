@@ -1,4 +1,4 @@
-# The `StableMemory` library
+# The `ExperimentalStableMemory` library
 
 WARNING: The `ExperimentalStableMemory` library is experimental, subject to change and may be
 replaced by safer alternatives in later versions of Motoko. Use at
@@ -15,26 +15,26 @@ not be enough cycle budget to store then restore all stable variables
 within an upgrade, resulting in failed upgrades.
 
 To avoid this upgrade hazard, actors can elect to use a lower-level
-`StableMemory` library.  The library allows the
+`ExperimentalStableMemory` library.  The library allows the
 programmer to incrementally allocate pages of (64-bit) IC stable memory and use
 those pages to incrementally read and write data in a user-defined binary format.
 
 The Motoko runtime system ensures there is no interference between the
-abstraction presented by the `StableMemory` library and an actor's stable
+abstraction presented by the `ExperimentalStableMemory` library and an actor's stable
 variables, even though the two abstractions ultimately use the same underlying
 (concrete) stable memory facilities available to all IC canisters.
 This runtime support means that is safe for a Motoko program to
-exploit both stable variables and ``StableMemory``, within the same
+exploit both stable variables and ``ExperimentalStableMemory``, within the same
 application.
 
 ## The Library
 
 
-Support for stable memory is provided by the link:../base-libraries/StableMemory{outfilesuffix}[StableMemory]
+Support for stable memory is provided by the link:../base-libraries/ExperimentalStableMemory{outfilesuffix}[ExperimentalStableMemory]
 library in package `+base+`.
 
 
-The interface to the `StableMemory` library consists of functions for querying and growing the currently allocated set of stable memory pages,
+The interface to the `ExperimentalStableMemory` library consists of functions for querying and growing the currently allocated set of stable memory pages,
 plus matching pairs of ``load``, `store` operations
 for most of Motoko's fixed-size scalar types.
 
@@ -77,7 +77,7 @@ module {
 
 ## Example
 
-To demonstrate the `StableMemory` library, we present a dead simple
+To demonstrate the `ExperimentalStableMemory` library, we present a dead simple
 implementation of a logging actor that records text messages
 in a scalable, persistent log.
 
@@ -92,14 +92,14 @@ include::../examples/StableLog.mo[]
 ----
 
 The auxiliary function `ensure(offset)` is
-used to grow `StableMemory` as necessary to accommodate more data.
+used to grow `ExerimentalStableMemory` as necessary to accommodate more data.
 It computes the 64KiB page of a given offset and ensures enough pages have
 been allocated to guarantee that offset is within bounds.
 
 The shared `log(t)` function encodes its `Text` argument as a  ``Blob``,
 allocates enough stable memory to store it, and writes both
 the blob contents and its size at the next available
-offset in ``StableMemory``, updating `base`.
+offset in ``ExperimentalStableMemory``, updating `base`.
 
 The shared `readLast(count)` query reads up to `count` messages from the log, traversing
 the log in reverse from `base`.
