@@ -14,10 +14,6 @@ pub struct WasmPage {
 }
 
 impl Page for WasmPage {
-    fn page_idx(&self) -> u16 {
-        self.page_num
-    }
-
     unsafe fn start(&self) -> usize {
         usize::from(self.page_num) * WASM_PAGE_SIZE.as_usize()
     }

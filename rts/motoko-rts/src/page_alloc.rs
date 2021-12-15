@@ -40,9 +40,6 @@ pub trait PageAlloc: Clone {
 /// withing the pages, or externally (e.g. in an array indexed by a page), or a combination of
 /// both.
 pub trait Page: Clone {
-    // TODO FIXME
-    fn page_idx(&self) -> u16;
-
     /// Get the start of this page
     unsafe fn start(&self) -> usize;
 

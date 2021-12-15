@@ -176,10 +176,6 @@ impl TestPageAllocInner {
 }
 
 impl Page for TestPageRef {
-    fn page_idx(&self) -> u16 {
-        u16::try_from(self.page_idx).unwrap()
-    }
-
     unsafe fn start(&self) -> usize {
         self.page_alloc
             .inner
