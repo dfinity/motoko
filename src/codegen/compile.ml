@@ -878,7 +878,7 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
-    E.add_func_import env "rts" "init" [] [];
+    E.add_func_import env "rts" "init" [I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     ()
@@ -6391,9 +6391,11 @@ module FuncDec = struct
       get_cb_index
 
   let ignoring_callback env =
-    let name = "@ignore_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
-    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
+    (* for one-way calls, we use an invalid table entry as the callback. this
+       way, the callback, when it comes back, will (safely) trap, even if the
+       module has completely changed in between. This way, one-way calls do not
+       get in the way of safe instantaneous upgrades *)
+    compile_unboxed_const (-1l)
 
   let cleanup_callback env =
     let name = "@cleanup_callback" in
@@ -8875,6 +8877,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
     E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->

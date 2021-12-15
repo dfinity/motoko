@@ -10,11 +10,12 @@ pkgs:
       # 2. run nix-build -A drun nix/
       # 3. copy the “expected” hash from the output into this file
       # 4. commit and push
+      #
+      # To automate this, .github/workflows/update-hash.yml has been
+      # installed. You will normally not be bothered to perform
+      # the command therein manually.
 
-      # To automate this, try running the following in the nix/ directory
-      # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
-
-      cargoSha256 = "sha256:1m2a12ds4bpg3v0wfn4svcplr68118vcdzs5mvll6s71j9bpgqli";
+      cargoSha256 = "sha256-GgnJaWtf9RhVIY7NkIP+7I3yHbUK+58SQPj7Vzqb4iY=";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
@@ -23,16 +24,16 @@ pkgs:
 
       buildInputs = with pkgs; [
         openssl
-        llvm_10
-        llvmPackages_10.libclang
+        llvm_13
+        llvmPackages_13.libclang
         lmdb
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_10.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_10.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_13.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";

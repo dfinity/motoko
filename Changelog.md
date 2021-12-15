@@ -3,10 +3,30 @@
 * moc
 
   * Add runtime support for low-level, direct access to 64-bit IC stable memory, including documentation.
+  * Add compiler flag `--max-stable-pages <n>` to cap any use of `ExperimentalStableMemory.mo` (see below), while reserving space for stable variables.
+  Defaults to 65536 (4GiB).
 
 * motoko-base
 
-  * Add StableMemory library, exposing 64-bit IC stable memory
+  * (Officially) add `ExperimentalStableMemory.mo` library, exposing 64-bit IC stable memory
+
+* BREAKING CHANGE (Minor):
+  The previously available (but unadvertised) `ExperimentalStableMemory.mo` used
+  `Nat32` offsets. This one uses `Nat64` offsets to (eventually) provide access to more address space.
+
+## 0.6.17 (2021-12-10)
+
+* Improved handling of one-shot messages facilitating zero-downtime
+  upgrades (#2938).
+* Further performance improvements to the mark-compact garbage
+  collector (#2952, #2973).
+* Stable variable checking for `moc.js` (#2969).
+* A bug was fixed in the scoping checker  (#2977).
+
+## 0.6.16 (2021-12-03)
+
+* Minor performance improvement to the mark-compact garbage collector
+
 
 ## 0.6.15 (2021-11-26)
 
