@@ -58,6 +58,18 @@ impl<P: PageAlloc> Space<P> {
         self.total_alloc
     }
 
+    pub fn sorted_pages(&self) -> Vec<P::Page> {
+        let mut pages = self.pages.clone();
+        pages.sort_by_key(|page| unsafe { page.start() });
+        pages
+    }
+
+    pub fn set_pages(&mut self, pages: Vec<P::Page>, hp: usize) {
+        self.pages = pages;
+        self.current_page = self.pages.len() - 1;
+        self.hp = hp;
+    }
+
     pub fn iter_pages(&self) -> impl Iterator<Item = &P::Page> {
         self.pages.iter()
     }
