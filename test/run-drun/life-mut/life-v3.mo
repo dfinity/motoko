@@ -53,7 +53,7 @@ actor Life {
   func ensureMemory(offset : Nat64) {
       let pagesNeeded = ((offset + 65535) / 65536) - SM.size();
       if (pagesNeeded > 0) {
-        assert (SM.grow(pagesNeeded) != 0xFFFFFFFF)
+        assert (SM.grow(pagesNeeded) != 0xFFFF_FFFF)
       };
   };
 
