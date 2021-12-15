@@ -1,6 +1,6 @@
 # The `StableMemory` library
 
-WARNING: The `StableMemory` library is experimental, subject to change and may be
+WARNING: The `ExperimentalStableMemory` library is experimental, subject to change and may be
 replaced by safer alternatives in later versions of Motoko. Use at
 your own risk and discretion.
 
