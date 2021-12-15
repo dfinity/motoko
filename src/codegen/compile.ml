@@ -962,7 +962,7 @@ module Heap = struct
     let init_elem idx instrs : G.t =
       get_heap_obj ^^
       instrs ^^
-      store_field (Wasm.I32.of_int_u idx)
+      store_field (Wasm.I32.of_int_u (idx + 1))
     in
     G.concat_mapi init_elem element_instructions ^^
     get_heap_obj
@@ -1310,8 +1310,7 @@ module Tagged = struct
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
   let obj env tag element_instructions : G.t =
-    Heap.obj env (int_of_tag tag) @@
-      element_instructions
+    Heap.obj env (int_of_tag tag) element_instructions
 
 end (* Tagged *)
 
