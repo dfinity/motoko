@@ -6,8 +6,16 @@ use core::mem::{align_of, size_of};
 
 use static_assertions::const_assert_eq;
 
-// TODO: I don't understand why I get a "unused constant" warning for this. Removing it causes
-// compilation failures as expected.
+// `const_assert_eq` call below are expanded into something like `const _: ... = ...`. Because of
+// `_` they don't generate "unused constant" warnings, but the constants used in the RHSs are
+// considered unused, so we get a "unused constant" warning for `WORD_SIZE`.
+//
+// Example:
+//
+//     const X: u32 = 123;
+//     const _: u32 = X;
+//
+// Code above generates "unused constant X" warning.
 #[allow(unused)]
 const WORD_SIZE: usize = crate::constants::WORD_SIZE as usize;
 
