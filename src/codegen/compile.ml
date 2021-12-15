@@ -4016,11 +4016,12 @@ module StableMem = struct
           get_mem_size env ^^
           set_size ^^
 
+          (* check within --max-stable-pages *)
           get_size ^^
           get_pages ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          compile_const_64 (Int64.shift_left 1L 48) ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
+          compile_const_64 (Int64.of_int (!Flags.max_stable_pages)) ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.GtU)) ^^
           G.if1 I64Type
             begin
              compile_const_64 (-1L) ^^
