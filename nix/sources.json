@@ -101,12 +101,12 @@
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
-        "owner": "NixOS",
+        "owner": "ggreif",
         "repo": "nixpkgs",
-        "rev": "b9a9a7bb967c826ebdc2df347b6af6fe6aa10e8e",
-        "sha256": "1pp06z37v2ajl27czj3kgfa007kawsqw5cmx6m72faspqcfk6bi4",
+        "rev": "3dccf9ace42a8f35a4f4e3872d304da794ce5a73",
+        "sha256": "00l5lg8d5drmkbv1m60p08ar0918m46izhx8rwr9q4csbp42r94d",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/b9a9a7bb967c826ebdc2df347b6af6fe6aa10e8e.tar.gz",
+        "url": "https://github.com/ggreif/nixpkgs/archive/3dccf9ace42a8f35a4f4e3872d304da794ce5a73.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
