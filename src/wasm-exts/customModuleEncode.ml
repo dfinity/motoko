@@ -1216,7 +1216,7 @@ let encode (em : extended_module) =
       start_section m.start;
       elem_section m.elems;
       code_section m.funcs;
-      data_section m.data;
+      data_section m.datas;
       (* other optional sections *)
       name_section em.name;
       candid_sections em.candid;

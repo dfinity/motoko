@@ -8869,7 +8869,7 @@ and conclude_module env start_fi_o =
 
   let funcs = E.get_funcs env in
 
-  let data = List.map (fun (offset, init) -> nr {
+  let datas = List.map (fun (offset, init) -> nr {
     index = nr 0l;
     offset = nr (G.to_instr_list (compile_unboxed_const offset));
     init;
@@ -8893,7 +8893,7 @@ and conclude_module env start_fi_o =
       memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
-      data
+      datas
     } in
 
   let emodule =
