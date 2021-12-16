@@ -148,13 +148,6 @@ Another shortcoming in text processing is the inability to efficiently extract s
 Finally, it would be desirable to have extended syntax for multi-line text literals, ideally with interpolation, perhaps based on a generic toText function (see [shared generics](#shared-generics)).
 
 
-#### Floats
-
-While Motoko is the first blockchain language to feature floating point numbers, their functionality is still limited to the primitives that Wasm provides. The base library should include common math functionality like transcendental functions. Since these have to be implemented in software (as part of the runtime), any imprecision in such computations remains deterministic.
-
-Again, it would be desirable to implement tree shaking for the runtime to minimise the size of produced Wasm binaries.
-
-
 ### Type System
 
 The Motoko type system has a number of "gaps" that avoid certain forms of abstraction and composition.
