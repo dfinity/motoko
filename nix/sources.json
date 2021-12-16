@@ -103,10 +103,10 @@
         "homepage": null,
         "owner": "ggreif",
         "repo": "nixpkgs",
-        "rev": "3dccf9ace42a8f35a4f4e3872d304da794ce5a73",
-        "sha256": "00l5lg8d5drmkbv1m60p08ar0918m46izhx8rwr9q4csbp42r94d",
+        "rev": "0a3dcc9c2707f46172f472cf3bc2363e2f97453e",
+        "sha256": "0wxrx7lwkypabzd46by5h9zvg5mfg4n76labyf78rbp1xs04kkk6",
         "type": "tarball",
-        "url": "https://github.com/ggreif/nixpkgs/archive/3dccf9ace42a8f35a4f4e3872d304da794ce5a73.tar.gz",
+        "url": "https://github.com/ggreif/nixpkgs/archive/0a3dcc9c2707f46172f472cf3bc2363e2f97453e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
