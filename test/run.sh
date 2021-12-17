@@ -315,8 +315,8 @@ do
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
-        run_if wasm valid wasm-validate $out/$base.wasm
-        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        run_if wasm valid wasm-validate --enable-bulk-memory $out/$base.wasm
+        run_if ref.wasm valid-ref wasm-validate --enable-bulk-memory $out/$base.ref.wasm
 
         if [ -e $out/$base.wasm ]
         then

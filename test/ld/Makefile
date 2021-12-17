@@ -33,7 +33,7 @@ _out/%.wat: _out/%.wasm
 	wasm2wat $< -o $@
 
 _out/%.valid: _out/%.wasm
-	wasm-validate $< > $@ 2>&1 || true
+	wasm-validate --enable-bulk-memory $< > $@ 2>&1 || true
 
 
 include ../*.mk
