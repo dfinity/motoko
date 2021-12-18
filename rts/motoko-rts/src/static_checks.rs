@@ -36,7 +36,7 @@ const _: () = assert!(size_of::<FreeSpace>() == 2 * WORD_SIZE);
 const _: () = assert!(size_of::<FwdPtr>() == 2 * WORD_SIZE);
 
 // Check that objects need to be aligned on word boundaries. Having a different alignment
-// restriction an object type would require changing allocation routines for it.
+// restriction on object type would require changing allocation routines for it.
 const _: () = assert!(align_of::<Obj>() == WORD_SIZE);
 const _: () = assert!(align_of::<ObjInd>() == WORD_SIZE);
 const _: () = assert!(align_of::<Closure>() == WORD_SIZE);
