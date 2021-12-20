@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.6.18 (2021-12-20)
+
 * moc
 
   * Add runtime support for low-level, direct access to 64-bit IC stable memory, including documentation.
