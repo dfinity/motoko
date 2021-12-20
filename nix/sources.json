@@ -34,16 +34,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
-        "branch": "master",
+        "branch": "gabor/bulk",
         "builtin": false,
         "description": "A haskell toolbox for the Internet Computer",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "9d250a8d974b4d7bf3f76e3dbf8c75d4ef0eefb1",
-        "sha256": "0jsygv4n54f5rgbksxh86f80chks9fb4kwd591f7sscabrrgdrfm",
+        "rev": "b6daa1360ef14be2f452b23062cf2839ea9cf8e5",
+        "sha256": "05v9cycp73vj32qd7dpngvxj3zvya0ypi4p0wk54jwr25lgvg5m5",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/9d250a8d974b4d7bf3f76e3dbf8c75d4ef0eefb1.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/b6daa1360ef14be2f452b23062cf2839ea9cf8e5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
