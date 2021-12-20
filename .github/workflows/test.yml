@@ -40,6 +40,15 @@ jobs:
         GC_DONT_GC: 1 # otherwise `nix` crash on macOS
       run: nix-build-uncached --max-jobs 4 -A all-systems-go
 
+    # The above doesn’t show nice logs, due to
+    # https://github.com/Mic92/nix-build-uncached/issues/42
+    # So let’s re-run the tests with nix-build.
+    # In the happy case they have been built above and this is quick.
+    - name: "nix-build tests"
+      env:
+        GC_DONT_GC: 1 # otherwise `nix` crash on macOS
+      run: nix-build -A tests
+
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
