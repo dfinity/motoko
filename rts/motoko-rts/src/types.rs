@@ -180,15 +180,15 @@ impl PtrOrScalar {
 impl Value {
     /// Create a value from a pointer
     pub const fn from_ptr(ptr: usize) -> Self {
-        // TODO: Update rustc to enable assertion
-        // debug_assert_eq!(ptr & 0b1, 0b0);
+        // Cannot use `debug_assert_eq` in const yet, so using `debug_assert`
+        debug_assert!(ptr & 0b1 == 0b0);
         Value(skew(ptr) as u32)
     }
 
     /// Create a value from a scalar
     pub const fn from_scalar(value: u32) -> Self {
-        // TODO: Update rustc to enable assertion
-        // debug_assert_eq!(value >> 31, 0);
+        // Cannot use `debug_assert_eq` in const yet, so using `debug_assert`
+        debug_assert!(value >> 31 == 0);
         Value(value << 1)
     }
 

@@ -36,6 +36,8 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: "nix-build"
+      env:
+        GC_DONT_GC: 1 # otherwise `nix` crash on macOS
       run: nix-build-uncached --max-jobs 4 -A all-systems-go
 
     - name: Calculate performance delta
