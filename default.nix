@@ -681,7 +681,7 @@ rec {
       check-grammar
       check-error-codes
     ] ++
-    builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
+    builtins.attrValues tests ++
     builtins.attrValues js;
   };
 
