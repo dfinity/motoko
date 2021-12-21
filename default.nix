@@ -730,10 +730,14 @@ rec {
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
     # allow building this as a derivation, so that hydra builds and caches
-    # the dependencies of shell
-    # Also mention the dependencies in the output, so that after `nix-build -A
-    # shell` (or just `nix-build`) they are guaranteed to be present in the
-    # local nix store.
+    # the dependencies of shell.
+    #
+    # Note that we are using propagatedBuildInputs above, not just buildInputs.
+    # This means that the dependencies end up in the output path, in
+    # /nix/store/13d…da6-motoko-shell/nix-support/propagated-build-inputs
+    # so that after `nix-build -A shell` (or just `nix-build`) they are guaranteed
+    # to be present in the local nix store (else this might just download an
+    # empty build result path from the nix cache.)
     phases = ["installPhase" "fixupPhase"];
     installPhase = ''
       mkdir $out
