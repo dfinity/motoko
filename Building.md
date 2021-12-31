@@ -100,6 +100,18 @@ Make a PR off of that branch and merge it using a _normal merge_ (not
 squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
 
+## Coverage report
+
+To build with coverage enabled, compile the binaries in `src/` with
+
+    make DUNE_OPTS="--instrument-with bisect_ppx"`
+
+and then use `bisect-ppx-report html` to produce a report.
+
+The full report can be built with
+
+    nix-build -A tests.coverage
+
 ## Profile the compiler
 
 (This section is currently defunct, and needs to be update to work with the dune

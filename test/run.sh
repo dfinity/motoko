@@ -28,6 +28,7 @@ WASMTIME_OPTIONS="--disable-cache --cranelift"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
+SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
@@ -163,7 +164,7 @@ then
       echo "ERROR: Could not run drun, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run drun, will skip some tests"
+      echo "WARNING: Could not run drun, will skip running some tests"
       HAVE_drun=no
     fi
   fi
@@ -180,7 +181,7 @@ then
       echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run ic-ref-run, will skip some tests"
+      echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
     fi
   fi
@@ -298,7 +299,7 @@ do
         #
         # which actually works on the IC platform
 
-	# needs to be in the same directory to preserve relative paths :-(
+        # needs to be in the same directory to preserve relative paths :-(
         mangled=$base.mo.mangled
         sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
 
@@ -308,15 +309,18 @@ do
         then
           run comp $moc_with_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
           run comp-ref $moc_with_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
-	elif [ $PERF = yes ]
-	then
+        elif [ $PERF = yes ]
+        then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-	else
+        else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
-        run_if wasm valid wasm-validate $out/$base.wasm
-        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        if [ "$SKIP_VALIDATE" != yes ]
+        then
+          run_if wasm valid wasm-validate $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        fi
 
         if [ -e $out/$base.wasm ]
         then
@@ -361,14 +365,14 @@ do
         # collect size stats
         if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
         then
-	   if [ -n "$PERF_OUT" ]
+           if [ -n "$PERF_OUT" ]
            then
              wasm-strip $out/$base.wasm
              echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
            fi
         fi
 
-	rm -f $mangled
+        rm -f $mangled
       fi
     fi
   ;;

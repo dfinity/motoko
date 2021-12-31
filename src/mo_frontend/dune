@@ -1,6 +1,7 @@
 (library
   (name mo_frontend)
   (libraries menhirLib lib lang_utils mo_config mo_def mo_types mo_values wasm_exts)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )
 (menhir
   (modules parser)
