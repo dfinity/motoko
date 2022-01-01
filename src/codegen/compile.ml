@@ -414,6 +414,11 @@ module E = struct
   let make_lazy_function env name : lazy_function =
     Lib.AllocOnUse.make (fun () -> reserve_fun env name)
 
+  let has_built_in (env : t) name : bool =
+    match NameEnv.find_opt name !(env.built_in_funcs) with
+    | None -> false
+    | Some _ -> true
+
   let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
@@ -3588,9 +3593,10 @@ module IC = struct
       E.collect_garbage env
     ) in
     let fi = E.add_fun env "canister_heartbeat" empty_f in
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_heartbeat";
-      edesc = nr (FuncExport (nr fi))
+    if E.has_built_in env "heartbeat_exp" then
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode "canister_heartbeat";
+        edesc = nr (FuncExport (nr fi))
       })
 
   let export_wasi_start env =
