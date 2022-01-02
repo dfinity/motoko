@@ -318,7 +318,7 @@ rec {
         src = test_src dir;
         buildInputs =
           deps ++
-          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-17_x sources.esm ]) ++
           [ filecheck
             wasmtime
           ] ++
@@ -465,7 +465,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-10_x
+          nixpkgs.nodejs-17_x
         ];
         buildPhase = ''
           patchShebangs .
@@ -482,7 +482,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node $test
         '';
       };
     in
