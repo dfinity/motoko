@@ -670,7 +670,7 @@ rec {
       samples
       rts
       base-src
-      base-tests
+      # base-tests
       base-doc
       docs
       ic-ref-run

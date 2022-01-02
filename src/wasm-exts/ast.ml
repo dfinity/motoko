@@ -2,7 +2,7 @@
 This module originated as a copy of interpreter/syntax/ast.ml in the
 reference implementation.
 
-Base revision: WebAssembly/spec@a7a1856.
+Base revision: WebAssembly/spec@a7a1856 (with a few changes from eae4abc).
 
 The changes are:
  * None for now
@@ -108,8 +108,10 @@ and instr' =
   | GlobalSet of var                  (* write global variable *)
   | Load of loadop                    (* read memory at address *)
   | Store of storeop                  (* write memory at address *)
-  | MemorySize                        (* size of linear memory *)
-  | MemoryGrow                        (* grow linear memory *)
+  | MemorySize                        (* size of memory *)
+  | MemoryGrow                        (* grow memory *)
+  | MemoryFill                        (* fill memory range with value *)
+  | MemoryCopy                        (* copy memory ranges *)
   | Const of literal                  (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)
@@ -207,7 +209,7 @@ and module_' =
   funcs : func list;
   start : var option;
   elems : var list segment list;
-  data : string segment list;
+  datas : string segment list;
   imports : import list;
   exports : export list;
 }
@@ -223,8 +225,8 @@ let empty_module =
   memories = [];
   funcs = [];
   start = None;
-  elems  = [];
-  data = [];
+  elems = [];
+  datas = [];
   imports = [];
   exports = [];
 }

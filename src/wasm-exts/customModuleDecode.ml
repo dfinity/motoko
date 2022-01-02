@@ -891,7 +891,7 @@ let module_ s =
   iterate skip_custom_section s;
   let func_bodies = code_section s in
   iterate skip_custom_section s;
-  let data = data_section s in
+  let datas = data_section s in
   iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
@@ -908,7 +908,7 @@ let module_ s =
       func_types func_bodies
   in
   { module_ =
-     {types; tables; memories; globals; funcs; imports; exports; elems; data; start};
+     {types; tables; memories; globals; funcs; imports; exports; elems; datas; start};
     dylink;
     name;
     motoko;

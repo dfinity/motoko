@@ -34,16 +34,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
-        "branch": "master",
+        "branch": "gabor/bulk",
         "builtin": false,
         "description": "A haskell toolbox for the Internet Computer",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "4abda083ece4884b73a7c04809b103d3909b0a11",
-        "sha256": "1vrzwiq0203llg9s77dl2rnxpv3rjicjyz9n1kp0cvc2gqpk55fi",
+        "rev": "66e6db1907c09fc1bcc3e16633c6840606b417e5",
+        "sha256": "0rn38ais330gjq5rmsyyskyri8101231fkn9rgnp7afr6sq8ximb",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/4abda083ece4884b73a7c04809b103d3909b0a11.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/66e6db1907c09fc1bcc3e16633c6840606b417e5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -101,12 +101,12 @@
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
-        "owner": "NixOS",
+        "owner": "ggreif",
         "repo": "nixpkgs",
-        "rev": "b9a9a7bb967c826ebdc2df347b6af6fe6aa10e8e",
-        "sha256": "1pp06z37v2ajl27czj3kgfa007kawsqw5cmx6m72faspqcfk6bi4",
+        "rev": "0a3dcc9c2707f46172f472cf3bc2363e2f97453e",
+        "sha256": "0wxrx7lwkypabzd46by5h9zvg5mfg4n76labyf78rbp1xs04kkk6",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/b9a9a7bb967c826ebdc2df347b6af6fe6aa10e8e.tar.gz",
+        "url": "https://github.com/ggreif/nixpkgs/archive/0a3dcc9c2707f46172f472cf3bc2363e2f97453e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

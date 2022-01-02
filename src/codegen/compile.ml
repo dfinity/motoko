@@ -781,7 +781,6 @@ end (* Func *)
 module RTS = struct
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
-    E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
@@ -968,7 +967,7 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
+  let memcpy _env = G.i MemoryCopy
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp"
 
@@ -8898,7 +8897,7 @@ and conclude_module env start_fi_o =
 
   let funcs = E.get_funcs env in
 
-  let data = List.map (fun (offset, init) -> nr {
+  let datas = List.map (fun (offset, init) -> nr {
     index = nr 0l;
     offset = nr (G.to_instr_list (compile_unboxed_const offset));
     init;
@@ -8922,7 +8921,7 @@ and conclude_module env start_fi_o =
       memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
-      data
+      datas
     } in
 
   let emodule =
