@@ -318,7 +318,7 @@ rec {
         src = test_src dir;
         buildInputs =
           deps ++
-          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-17_x sources.esm ]) ++
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x sources.esm ]) ++
           [ filecheck
             wasmtime
           ] ++
@@ -465,7 +465,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-17_x
+          nixpkgs.nodejs-16_x
         ];
         buildPhase = ''
           patchShebangs .
