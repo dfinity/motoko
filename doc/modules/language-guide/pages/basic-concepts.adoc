@@ -267,7 +267,7 @@ Another mathematical way to think of the unit value is as a tuple with no elemen
 
 === Natural numbers
 
-The members of this type consist of the usual values - `0`, `1`, `2`, ... - but, as in mathematics, the members of are not bound to a special maximum size.
+The members of this type consist of the usual values - `0`, `1`, `2`, ... - but, as in mathematics, the members of `Nat` are not bound to a special maximum size.
 Rather, the runtime representation of these values accommodates arbitrary-sized numbers, making their "overflow" (nearly) impossible.
 (_nearly_ because it is the same event as running out of program memory, which can always happen for some programs in extreme situations).
 

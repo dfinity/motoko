@@ -127,7 +127,11 @@ To illustrate the role and use of object subtyping in {proglang}, consider imple
 [source, motoko]
 ....
 object bumpCounter {
-  var c = 0; public func bump() : Nat { c += 1; c };
+  var c = 0; 
+  public func bump() : Nat { 
+    c += 1; 
+    c 
+  };
 };
 ....
 
@@ -135,7 +139,9 @@ The object `bumpCounter` has the following object type, exposing exactly one ope
 
 [source.no-repl, motoko]
 ....
-{ bump : () -> Nat }
+{ 
+  bump : () -> Nat ;
+ }
 ....
 
 This type exposes the most common operation, and one that only permits certain behavior.
@@ -311,8 +317,14 @@ import Buffer "mo:base/Buffer";
 
 class Counter<X>(init : Buffer.Buffer<X>) {
   var buffer = init.clone();
-  public func add(x : X) : Nat { buffer.add(x); buffer.size() };
-  public func reset() { buffer := init.clone() };
+  public func add(x : X) : Nat { 
+    buffer.add(x); 
+    buffer.size() 
+  };
+  
+  public func reset() { 
+    buffer := init.clone() 
+  };
 };
 ....
 
@@ -353,7 +365,7 @@ The constituents of the body marked `public` contribute to the resulting objects
 
 =====  Another example: `Bits`
 
-As another example, let's consider the task of walking the bits of a `Nat`ural number. For this example, we could define the following:
+As another example, let's consider the task of walking the bits of a natural number (type `Nat`). For this example, we could define the following:
 
 [source, motoko]
 ....

@@ -10,12 +10,22 @@ let
     system = builtins.currentSystem;
   };
 
-  nixpkgs-patched = bootstrap-pkgs.applyPatches {
-    name = "nixpkgs-patched";
-    src = nixpkgs_src;
-    # patches = [
-    # ];
-  };
+  # dump nixpkgs patches here
+  nixpkgs-patches = [];
+
+  nixpkgs-patched =
+    if nixpkgs-patches == []
+    then nixpkgs_src
+    else
+      let
+        bootstrap-pkgs = import nixpkgs_src {
+          system = builtins.currentSystem;
+        };
+      in bootstrap-pkgs.applyPatches {
+        name = "nixpkgs-patched";
+        src = nixpkgs_src;
+        patches = nixpkgs-patches;
+      };
 
   pkgs =
     import nixpkgs-patched {

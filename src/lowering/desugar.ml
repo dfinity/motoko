@@ -439,11 +439,13 @@ and stabilize stab_opt d =
 and build_obj at s self_id dfs obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s fs obj_typ in
-  let ret_ds, ret_o =
-    match self_id with
-    | None -> [], obj_e
-    | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
-  in I.BlockE (decs (List.map (fun df -> df.it.S.dec) dfs) @ ret_ds, ret_o)
+  let ds = decs (List.map (fun df -> df.it.S.dec) dfs) in
+  let e = blockE ds obj_e in
+  match self_id with
+    | None -> e.it
+    | Some self_id ->
+      let self = var self_id.it obj_typ in
+      (letE self e (varE self)).it
 
 and exp_field ef =
   let S.{mut; id; exp = e} = ef.it in

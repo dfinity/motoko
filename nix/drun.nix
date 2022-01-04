@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-vPpkfuY7yNctBP9/w+s4cdpgrnvOp6C3GB6ICWeGB2o=";
+      cargoSha256 = "sha256-n3ikG94tn4scRNJfKfeWyMiHhC5wHR/syPaHd4I8yLY=";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
@@ -24,16 +24,16 @@ pkgs:
 
       buildInputs = with pkgs; [
         openssl
-        llvm_12
-        llvmPackages_12.libclang
+        llvm_13
+        llvmPackages_13.libclang
         lmdb
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_12.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_12.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_13.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";

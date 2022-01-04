@@ -28,7 +28,7 @@ jobs:
       - name: niv-updater-action
         uses: knl/niv-updater-action@60f23607814cf4f2e80a1e32ee74f8323897d09e
         with:
-          whitelist: 'nixpkgs,musl-wasi'
+          whitelist: 'nixpkgs,musl-wasi,ic'
           labels: |
             autoclose
           keep_updating: true
