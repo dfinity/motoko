@@ -17,6 +17,7 @@
 ** xref:cycles.adoc[Managing cycles]
 ** xref:upgrades.adoc[Stable variables and upgrade methods]
 ** xref:compatibility.adoc[Upgrade compatibility]
+** xref:stablememory.adoc[The ExperimentalStableMemory library]
 //** xref:advanced-discussion.adoc[Advanced discussion topics]
 ** xref:language-manual.adoc[Language quick reference]
 ** xref:compiler-ref.adoc[Compiler reference]

@@ -192,7 +192,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-5Y4JTKfpEhUTbb9zLhOVPYf74WscmcWsg/OdR6SMLOE";
+        sha256 = "0xalgx3agd4kz6dzifc4kaqxfd0gl0k5qxxgia3phkldm1za95wr";
         copyLockfile = true;
       };
 
@@ -318,7 +318,7 @@ rec {
         src = test_src dir;
         buildInputs =
           deps ++
-          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x sources.esm ]) ++
           [ filecheck
             wasmtime
           ] ++
@@ -465,7 +465,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-10_x
+          nixpkgs.nodejs-16_x
         ];
         buildPhase = ''
           patchShebangs .
@@ -482,7 +482,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node $test
         '';
       };
     in
@@ -681,7 +681,7 @@ rec {
       check-grammar
       check-error-codes
     ] ++
-    builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
+    builtins.attrValues tests ++
     builtins.attrValues js;
   };
 
@@ -730,10 +730,14 @@ rec {
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
     # allow building this as a derivation, so that hydra builds and caches
-    # the dependencies of shell
-    # Also mention the dependencies in the output, so that after `nix-build -A
-    # shell` (or just `nix-build`) they are guaranteed to be present in the
-    # local nix store.
+    # the dependencies of shell.
+    #
+    # Note that we are using propagatedBuildInputs above, not just buildInputs.
+    # This means that the dependencies end up in the output path, in
+    # /nix/store/13d…da6-motoko-shell/nix-support/propagated-build-inputs
+    # so that after `nix-build -A shell` (or just `nix-build`) they are guaranteed
+    # to be present in the local nix store (else this might just download an
+    # empty build result path from the nix cache.)
     phases = ["installPhase" "fixupPhase"];
     installPhase = ''
       mkdir $out
