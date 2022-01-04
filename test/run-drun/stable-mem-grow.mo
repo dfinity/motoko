@@ -3,14 +3,14 @@ import StableMemory "stable-mem/StableMemory";
 
 actor {
 
-  stable var n : Nat32 = 0;
+  stable var n : Nat64 = 0;
 
   system func preupgrade() {
     P.debugPrint("upgrading from " # debug_show n);
     let m = StableMemory.grow(1);
 
     // check all pages clear
-    var i : Nat32 = 0;
+    var i : Nat64 = 0;
     let max = StableMemory.size() * 65536;
     while (i < max) {
       assert (StableMemory.loadNat32(i) == 0);
@@ -22,7 +22,7 @@ actor {
   };
 
   public func testGrow() : async () {
-    var i : Nat32 = 0;
+    var i : Nat64 = 0;
     while (i < 10) {
       var pre = StableMemory.size();
       var post = StableMemory.grow(i);

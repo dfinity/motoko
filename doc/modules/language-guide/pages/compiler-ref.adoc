@@ -68,6 +68,8 @@ You can use the following options with the `+moc+` command.
 
 |`+--map+` |Outputs a JavaScript source map.
 
+| `+--max-stable-pages <n>+` |  Set maximum number of pages available for library `ExperimentStableMemory.mo` (default 65536).
+
 //|`+-no-await+` |Disables await-lowering (with -iR).
 
 //|`+-no-async+` |Disables async-lowering (with -iR).
