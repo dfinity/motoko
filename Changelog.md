@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko
+
+  * Implement support for `heartbeat` system methods (thanks to Paul Liu) (#2971)
+
 ## 0.6.19 (2022-01-05)
 
 * motoko-base
