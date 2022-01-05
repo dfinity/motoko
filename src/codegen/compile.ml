@@ -414,11 +414,6 @@ module E = struct
   let make_lazy_function env name : lazy_function =
     Lib.AllocOnUse.make (fun () -> reserve_fun env name)
 
-  let has_built_in (env : t) name : bool =
-    match NameEnv.find_opt name !(env.built_in_funcs) with
-    | None -> false
-    | Some _ -> true
-
   let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
