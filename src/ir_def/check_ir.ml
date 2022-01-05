@@ -783,6 +783,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' heartbeat;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
+    typ heartbeat <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
