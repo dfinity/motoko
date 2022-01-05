@@ -414,6 +414,11 @@ module E = struct
   let make_lazy_function env name : lazy_function =
     Lib.AllocOnUse.make (fun () -> reserve_fun env name)
 
+  let has_built_in (env : t) name : bool =
+    match NameEnv.find_opt name !(env.built_in_funcs) with
+    | None -> false
+    | Some _ -> true
+
   let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
     | None ->
@@ -8862,17 +8867,18 @@ and main_actor as_opt mod_env ds fs up =
         List.mem "candid:args" !Flags.public_metadata_names,
         up.meta.candid.args);
 
-   (* Deserialize any arguments *)
+
+    (* Deserialize any arguments *)
     begin match as_opt with
-     | None
-     | Some [] ->
-       (* Liberally accept empty as well as unit argument *)
-       assert (arg_tys = []);
-       IC.system_call env "ic0" "msg_arg_data_size" ^^
-       G.if0 (Serialization.deserialize env arg_tys) G.nop
-     | Some (_ :: _) ->
-       Serialization.deserialize env arg_tys ^^
-       G.concat_map (Var.set_val env ae1) (List.rev arg_names)
+      | None
+      | Some [] ->
+        (* Liberally accept empty as well as unit argument *)
+        assert (arg_tys = []);
+        IC.system_call env "ic0" "msg_arg_data_size" ^^
+        G.if0 (Serialization.deserialize env arg_tys) G.nop
+      | Some (_ :: _) ->
+        Serialization.deserialize env arg_tys ^^
+        G.concat_map (Var.set_val env ae1) (List.rev arg_names)
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop
