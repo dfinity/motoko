@@ -106,7 +106,6 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     mark_static_roots(mem, static_roots, heap_base);
 
     if (*continuation_table_ptr_loc).is_ptr() {
-        // TODO: No need to check if continuation table is already marked
         mark_object(mem, *continuation_table_ptr_loc);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
         // it will be readable when we unthread the continuation table
@@ -173,10 +172,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
     let field_addr = &mut (*mutbox).field;
-    // TODO: Not sure if this check is necessary?
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
-        // TODO: We should be able to omit the "already marked" check here as no two root MutBox
-        // can point to the same object (I think)
         mark_object(mem, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
