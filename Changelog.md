@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.6.19 (2022-01-05)
+
+* motoko-base
+
+  * Fixed a bug in the `RBTree.size()` method.
+
 ## 0.6.18 (2021-12-20)
 
 * moc
