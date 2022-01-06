@@ -3819,6 +3819,49 @@ module IC = struct
 
 end (* IC *)
 
+
+module Cycles = struct
+
+  let load_cycles env = Func.share_code1 env "load_cycles" ("ptr", I32Type) [I32Type]
+    (fun env get_ptr ->
+      get_ptr ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      get_ptr ^^
+      compile_add_const 4l ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      compile_unboxed_const 2l ^^
+      BigNum.from_word32 env ^^
+      compile_unboxed_const 64l ^^
+      BigNum.from_word32 env ^^
+      BigNum.compile_unsigned_pow env ^^
+      BigNum.compile_mul env ^^
+      BigNum.compile_add env)
+
+  let store_cycles env =  Func.share_code2 env "store_cycles" (("ptr", I32Type), ("val", I32Type)) []
+    (fun env get_ptr get_val ->
+      BigNum.fits_unsigned_bits env 64 ^^
+      E.else_trap_with env "Cycles out of bounds" ^^
+      get_ptr ^^
+      get_val ^^
+      BigNum.truncate_to_word64 env ^^
+      (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      get_ptr ^^
+      compile_add_const 4l ^^
+      get_val ^^
+      compile_unboxed_const 2l ^^
+      BigNum.from_word32 env ^^
+      compile_unboxed_const 64l ^^
+      BigNum.from_word32 env ^^
+      BigNum.compile_unsigned_pow env ^^
+      BigNum.compile_unsigned_div env ^^
+      BigNum.truncate_to_word64 env ^^
+      (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None })))
+
+end
+
 module StableMem = struct
 
   (* start from 1 to avoid accidental reads of 0 *)
