@@ -9,7 +9,6 @@ actor {
 
   public shared func inc() : async () {
     count := count + 1;
-    Prim.debugPrint("count = " # debug_show(count));
   };
 
   system func heartbeat() : async () {
@@ -25,7 +24,8 @@ actor {
        attempts += 1;
        if (attempts >= 50 and count == 0)
          throw Prim.error("he's dead Jim");
-     }
+     };
+     Prim.debugPrint(debug_show {count});
   };
 };
 
