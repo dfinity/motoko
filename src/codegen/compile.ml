@@ -3831,12 +3831,13 @@ module Cycles = struct
       compile_add_const 4l ^^
       (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
       BigNum.from_word64 env ^^
+      (* shift left 64 *)
       compile_unboxed_const 2l ^^
       BigNum.from_word32 env ^^
       compile_unboxed_const 64l ^^
       BigNum.from_word32 env ^^
       BigNum.compile_unsigned_pow env ^^
-      BigNum.compile_mul env ^^
+      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
       BigNum.compile_add env)
 
   let store_cycles env =  Func.share_code2 env "store_cycles" (("ptr", I32Type), ("val", I32Type)) []
@@ -3851,12 +3852,13 @@ module Cycles = struct
       get_ptr ^^
       compile_add_const 4l ^^
       get_val ^^
+      (* shift right 64 bits *)
       compile_unboxed_const 2l ^^
       BigNum.from_word32 env ^^
       compile_unboxed_const 64l ^^
       BigNum.from_word32 env ^^
       BigNum.compile_unsigned_pow env ^^
-      BigNum.compile_unsigned_div env ^^
+      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
       BigNum.truncate_to_word64 env ^^
       (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None })))
 
