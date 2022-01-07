@@ -3417,7 +3417,7 @@ module IC = struct
   let import_ic0 env =
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
       (* E.add_func_import env "ic0" "call_cycles_add" [I64Type] [] *)
-      E.add_func_import env "ic0" "call_cycles_add128" [I32Type] [];
+      E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
@@ -3434,9 +3434,9 @@ module IC = struct
       (* E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type]; *)
       E.add_func_import env "ic0" "msg_cycles_available128" [I32Type] [];
       (* E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type]; *)
-      E.add_func_import env "ic0" "msg_cycles_refunded" [I32Type] [];
+      E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
       (* E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type]; *)
-      E.add_func_import env "ic0" "msg_cycles_accept128" (i32s 2) [I32Type];
+      E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
       E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
@@ -3869,6 +3869,7 @@ module Cycles = struct
 *)
   let push_high_low env =  Func.share_code1 env "push_high_low" ("val", I32Type) [I64Type; I64Type]
     (fun env get_val ->
+      get_val ^^
       BigNum.fits_unsigned_bits env 64 ^^
       E.else_trap_with env "Cycles out of bounds" ^^
       get_val ^^
@@ -8250,7 +8251,7 @@ and compile_exp (env : E.t) ae exp =
     (* Cycles *)
     | SystemCyclesBalancePrim, [] ->
       SR.Vanilla,
-      Stack.with_words env "dst" 8l (fun get_dst ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cycle_balance env ^^
         get_dst ^^
@@ -8263,7 +8264,7 @@ and compile_exp (env : E.t) ae exp =
       IC.cycles_add env
     | SystemCyclesAcceptPrim, [e1] ->
       SR.Vanilla,
-      Stack.with_words env "dst" 8l (fun get_dst ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
         compile_exp_vanilla env ae e1 ^^
         Cycles.push_high_low env ^^
         get_dst ^^
@@ -8273,7 +8274,7 @@ and compile_exp (env : E.t) ae exp =
       )
     | SystemCyclesAvailablePrim, [] ->
       SR.Vanilla,
-      Stack.with_words env "dst" 8l (fun get_dst ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cycles_available env ^^
         get_dst ^^
@@ -8281,7 +8282,7 @@ and compile_exp (env : E.t) ae exp =
       )
     | SystemCyclesRefundedPrim, [] ->
       SR.Vanilla,
-      Stack.with_words env "dst" 8l (fun get_dst ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cycles_refunded env ^^
         get_dst ^^

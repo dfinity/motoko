@@ -285,7 +285,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ?(() -> ());
 
-type @Refund = Nat64;
+type @Refund = Nat;
 type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
 
 type @Waiter<T> = (@Refund,T) -> () ;
@@ -299,7 +299,7 @@ func @reset_refund() {
 };
 
 func @getSystemRefund() : @Refund {
-  return (prim "cyclesRefunded" : () -> Nat64) ();
+  return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
@@ -393,8 +393,8 @@ let @ic00 = actor "aaaaa-aa" :
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
-  let available = (prim "cyclesAvailable" : () -> Nat64) ();
-  let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
+  let available = (prim "cyclesAvailable" : () -> Nat) ();
+  let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
   @cycles += accepted;
   let { canister_id = canister_id_ } =
     await @ic00.create_canister({settings = null});

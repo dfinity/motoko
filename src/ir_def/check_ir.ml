@@ -642,12 +642,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.(Prim Nat64) <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
-      T.nat64 <: t
+      T.nat <: t
     | SystemCyclesAcceptPrim, [e1] ->
-      typ e1 <: T.nat64;
-      T.nat64 <: t
+      typ e1 <: T.nat;
+      T.nat <: t
     | SystemCyclesAddPrim, [e1] ->
-      typ e1 <: T.nat64;
+      typ e1 <: T.nat;
       T.unit <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
