@@ -11,8 +11,8 @@ void abort(void) { rts_trap("abort", 5); }
 
 // Functions below should not be called so we trap when they're called.
 
-int wctomb(char *s, wchar_t wc) { rts_trap("wctomb", 6); }
+int wctomb(char *s, wchar_t wc) { __builtin_trap(); }
 
-int fputs(const char *s, void *f) { rts_trap("fputs", 5); }
+int fputs(const char *s, void *f) { __builtin_trap(); }
 
-char *strerror(int e) { rts_trap("strerror", 8); }
+char *strerror(int e) { __builtin_trap(); }
