@@ -2061,7 +2061,7 @@ sig
   (* given a numeric object on the stack as skewed pointer, check whether
      it can be faithfully stored in N unsigned bits
      leaves boolean result on the stack
-     N must be 1..64
+     N must be 1..128
    *)
   val fits_unsigned_bits : E.t -> int -> G.t
 end
@@ -2350,7 +2350,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let fits_unsigned_bits env n =
     try_unbox I32Type (fun _ -> match n with
-        | 32 | 64 -> G.i Drop ^^ Bool.lit true
+        | 32 | 64 | 128 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 ->
           compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + 1))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -3866,7 +3866,7 @@ module Cycles = struct
       BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
       BigNum.truncate_to_word64 env ^^
         (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None })))
-*)
+
   let push_high_low env =  Func.share_code1 env "push_high_low" ("val", I32Type) [I64Type; I64Type]
     (fun env get_val ->
       get_val ^^
@@ -3881,6 +3881,31 @@ module Cycles = struct
       BigNum.compile_unsigned_pow env ^^
       BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
       BigNum.truncate_to_word64 env ^^
+      get_val ^^
+      BigNum.truncate_to_word64 env)
+ *)
+
+
+  let guard env =  Func.share_code1 env "Cycles.guard" ("val", I32Type) []
+    (fun env get_val ->
+      get_val ^^
+      BigNum.fits_unsigned_bits env 128 ^^
+      E.else_trap_with env "Cycles out of bounds")
+
+  let push_high env =  Func.share_code1 env "Cycles.push_high" ("val", I32Type) [I64Type]
+    (fun env get_val ->
+      get_val ^^
+      (* shift right 64 bits *)
+      compile_unboxed_const 2l ^^
+      BigNum.from_word32 env ^^
+      compile_unboxed_const 64l ^^
+      BigNum.from_word32 env ^^
+      BigNum.compile_unsigned_pow env ^^
+      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
+      BigNum.truncate_to_word64 env)
+
+  let push_low env =  Func.share_code1 env "Cycles.push_low" ("val", I32Type) [I64Type]
+    (fun env get_val ->
       get_val ^^
       BigNum.truncate_to_word64 env)
 
@@ -8259,14 +8284,28 @@ and compile_exp (env : E.t) ae exp =
       )
     | SystemCyclesAddPrim, [e1] ->
       SR.unit,
+      let (set_cycles, get_cycles) = new_local env "cycles" in
       compile_exp_vanilla env ae e1 ^^
-      Cycles.push_high_low env ^^
+      set_cycles ^^
+      get_cycles ^^
+      Cycles.guard env ^^
+      get_cycles ^^
+      Cycles.push_high env ^^
+      get_cycles ^^
+      Cycles.push_low env ^^
       IC.cycles_add env
     | SystemCyclesAcceptPrim, [e1] ->
       SR.Vanilla,
+      let (set_cycles, get_cycles) = new_local env "cycles" in
       Stack.with_words env "dst" 4l (fun get_dst ->
         compile_exp_vanilla env ae e1 ^^
-        Cycles.push_high_low env ^^
+        set_cycles ^^
+        get_cycles ^^
+        Cycles.guard env ^^
+        get_cycles ^^
+        Cycles.push_high env ^^
+        get_cycles ^^
+        Cycles.push_low env ^^
         get_dst ^^
         IC.cycles_accept env ^^
         get_dst ^^

@@ -6,7 +6,7 @@ module {
   public func balance() : Nat64 = Prim.natToNat64(Prim.cyclesBalance());
 
   //public let available : () -> Nat64 = Prim.cyclesAvailable;
-  public func avalable() : Nat64 = Prim.natToNat64(Prim.cyclesAvailable());
+  public func available() : Nat64 = Prim.natToNat64(Prim.cyclesAvailable());
 
   //public let accept : Nat64 -> Nat64 = Prim.cyclesAccept;
   public func accept(n : Nat64) : Nat64 = Prim.natToNat64(Prim.cyclesAccept(Prim.nat64ToNat(n)));

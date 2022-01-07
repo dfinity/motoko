@@ -16,7 +16,7 @@ var @cycles : Nat = 0;
 func @add_cycles() {
   let cycles = @cycles;
   @reset_cycles();
-  (prim "cyclesAdd" : Nat -> ()) (cycles);
+  (prim "cyclesAdd" : (Nat) -> ()) (cycles);
 };
 
 // Function called by backend to zero cycles on context switch.
