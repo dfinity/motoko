@@ -1269,7 +1269,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 |===
 |  name | type | description
 
-| `heartbeat`  | `+() -> async ()+` | hearbeat action
+| `heartbeat`  | `+() -> async ()+` | heartbeat action
 | `preupgrade`  | `+() -> ()+` | pre upgrade action
 | `postupgrade` | `+() -> ()+` | post upgrade action
 |===
