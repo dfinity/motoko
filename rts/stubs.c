@@ -9,7 +9,7 @@ __attribute__ ((noreturn)) void rts_trap(char *msg, uint32_t len);
 // musl implementation uses system calls so we provide our own implementation
 void abort(void) { rts_trap("abort", 5); }
 
-// Functions below should not be called so we trap when they're called.
+// Functions below should not be called, so we trap when they're called.
 
 int wctomb(char *s, wchar_t wc) { __builtin_trap(); }
 
