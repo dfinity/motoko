@@ -9,14 +9,14 @@ code, and cannot be shadowed.
 
 type @Iter<T_> = {next : () -> ?T_};
 
-var @cycles : Nat64 = 0;
+var @cycles : Nat = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
 func @add_cycles() {
   let cycles = @cycles;
   @reset_cycles();
-  (prim "cyclesAdd" : (Nat64) -> ()) (cycles);
+  (prim "cyclesAdd" : Nat -> ()) (cycles);
 };
 
 // Function called by backend to zero cycles on context switch.
