@@ -312,7 +312,14 @@ and call_system_func_opt name es =
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
         _
       } when id.it = name
-      -> Some (callE (varE (var id.it p.note)) [] (tupE []))
+      ->
+       Some (
+         if name = "heartbeat" then
+           blockE
+             [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+             (unitE ())
+         else
+           callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
 
 and build_candid ts obj_typ =
@@ -398,7 +405,10 @@ and build_actor at ts self_id es obj_typ =
                         note = f.T.typ }
                     ) fields vs)
                  ty]));
-        I.postupgrade = match call_system_func_opt "postupgrade" es with
+        I.postupgrade = (match call_system_func_opt "postupgrade" es with
+                 | Some call -> call
+                 | None -> tupE []);
+        I.heartbeat = match call_system_func_opt "heartbeat" es with
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)

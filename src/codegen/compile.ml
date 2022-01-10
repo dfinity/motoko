@@ -3586,6 +3586,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
       })
 
+  let export_heartbeat env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_heartbeat"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
+        E.collect_garbage env))
+    in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_heartbeat";
+      edesc = nr (FuncExport (nr fi))
+    })
+
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
@@ -8930,6 +8942,15 @@ and main_actor as_opt mod_env ds fs up =
       compile_exp_as env ae2 SR.unit up.postupgrade);
     IC.export_upgrade_methods env;
 
+    (* Export heartbeat (but only when required) *)
+    begin match up.heartbeat.it with
+     | Ir.PrimE (Ir.TupPrim, []) -> ()
+     | _ ->
+       Func.define_built_in env "heartbeat_exp" [] [] (fun env ->
+         compile_exp_as env ae2 SR.unit up.heartbeat);
+       IC.export_heartbeat env;
+    end;
+
     (* Export metadata *)
     env.E.stable_types :=
       Some (
@@ -8944,17 +8965,18 @@ and main_actor as_opt mod_env ds fs up =
         List.mem "candid:args" !Flags.public_metadata_names,
         up.meta.candid.args);
 
+
     (* Deserialize any arguments *)
     begin match as_opt with
-     | None
-     | Some [] ->
-       (* Liberally accept empty as well as unit argument *)
-       assert (arg_tys = []);
-       IC.system_call env "ic0" "msg_arg_data_size" ^^
-       G.if0 (Serialization.deserialize env arg_tys) G.nop
-     | Some (_ :: _) ->
-       Serialization.deserialize env arg_tys ^^
-       G.concat_map (Var.set_val env ae1) (List.rev arg_names)
+      | None
+      | Some [] ->
+        (* Liberally accept empty as well as unit argument *)
+        assert (arg_tys = []);
+        IC.system_call env "ic0" "msg_arg_data_size" ^^
+        G.if0 (Serialization.deserialize env arg_tys) G.nop
+      | Some (_ :: _) ->
+        Serialization.deserialize env arg_tys ^^
+        G.concat_map (Var.set_val env ae1) (List.rev arg_names)
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop

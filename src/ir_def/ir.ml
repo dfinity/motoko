@@ -79,7 +79,8 @@ and exp' =
 and system = {
   meta : meta;
   preupgrade : exp;
-  postupgrade : exp
+  postupgrade : exp;
+  heartbeat : exp
 }
 
 and candid = {
