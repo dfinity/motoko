@@ -289,7 +289,7 @@ do
         # installation, so this replaces
         #
         #     actor a { … }
-        #     a.go(); //CALL …
+        #     a.go(); //OR-CALL …
         #
         # with
         #
