@@ -278,6 +278,10 @@ func cyclesAccept(amount: Nat) : Nat {
 };
 
 func cyclesAdd(amount: Nat) : () {
+  // trap if @cycles would exceed 2^128
+  if ((@cycles + amount) > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
+    trap("cannot add more than 2^128 cycles")
+  };
   @cycles += amount;
 };
 
