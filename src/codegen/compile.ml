@@ -2350,7 +2350,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let fits_unsigned_bits env n =
     try_unbox I32Type (fun _ -> match n with
-        | 32 | 64 | 128 -> G.i Drop ^^ Bool.lit true
+        | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 ->
           compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + 1))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -3825,91 +3825,6 @@ module IC = struct
 end (* IC *)
 
 
-module Cycles = struct
-
-  let load_cycles env = Func.share_code1 env "load_cycles" ("ptr", I32Type) [I32Type]
-    (fun env get_ptr ->
-      get_ptr ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      get_ptr ^^
-      compile_add_const 8l ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      (* shift left 64 *)
-      compile_unboxed_const 2l ^^
-      BigNum.from_word32 env ^^
-      compile_unboxed_const 64l ^^
-      BigNum.from_word32 env ^^
-      BigNum.compile_unsigned_pow env ^^
-      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
-      BigNum.compile_add env)
-
-(* TODO: delete me
-  let store_cycles env =  Func.share_code2 env "store_cycles" (("ptr", I32Type), ("val", I32Type)) []
-    (fun env get_ptr get_val ->
-      BigNum.fits_unsigned_bits env 64 ^^
-      E.else_trap_with env "Cycles out of bounds" ^^
-      get_ptr ^^
-      get_val ^^
-      BigNum.truncate_to_word64 env ^^
-      (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      get_ptr ^^
-      compile_add_const 4l ^^
-      get_val ^^
-      (* shift right 64 bits *)
-      compile_unboxed_const 2l ^^
-      BigNum.from_word32 env ^^
-      compile_unboxed_const 64l ^^
-      BigNum.from_word32 env ^^
-      BigNum.compile_unsigned_pow env ^^
-      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
-      BigNum.truncate_to_word64 env ^^
-        (G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None })))
-
-  let push_high_low env =  Func.share_code1 env "push_high_low" ("val", I32Type) [I64Type; I64Type]
-    (fun env get_val ->
-      get_val ^^
-      BigNum.fits_unsigned_bits env 64 ^^
-      E.else_trap_with env "Cycles out of bounds" ^^
-      get_val ^^
-      (* shift right 64 bits *)
-      compile_unboxed_const 2l ^^
-      BigNum.from_word32 env ^^
-      compile_unboxed_const 64l ^^
-      BigNum.from_word32 env ^^
-      BigNum.compile_unsigned_pow env ^^
-      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
-      BigNum.truncate_to_word64 env ^^
-      get_val ^^
-      BigNum.truncate_to_word64 env)
- *)
-
-
-  let guard env =  Func.share_code1 env "Cycles.guard" ("val", I32Type) []
-    (fun env get_val ->
-      get_val ^^
-      BigNum.fits_unsigned_bits env 128 ^^
-      E.else_trap_with env "Cycles out of bounds")
-
-  let push_high env =  Func.share_code1 env "Cycles.push_high" ("val", I32Type) [I64Type]
-    (fun env get_val ->
-      get_val ^^
-      (* shift right 64 bits *)
-      compile_unboxed_const 2l ^^
-      BigNum.from_word32 env ^^
-      compile_unboxed_const 64l ^^
-      BigNum.from_word32 env ^^
-      BigNum.compile_unsigned_pow env ^^
-      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
-      BigNum.truncate_to_word64 env)
-
-  let push_low env =  Func.share_code1 env "Cycles.push_low" ("val", I32Type) [I64Type]
-    (fun env get_val ->
-      get_val ^^
-      BigNum.truncate_to_word64 env)
-
-end
 
 module StableMem = struct
 
@@ -6879,6 +6794,67 @@ let compile_lit env lit =
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
+
+module Cycles = struct
+
+  let load_cycles env = Func.share_code1 env "load_cycles" ("ptr", I32Type) [I32Type]
+    (fun env get_ptr ->
+      get_ptr ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      get_ptr ^^
+      compile_add_const 8l ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      (* shift left 64 *)
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 64))) ^^
+      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
+      BigNum.compile_add env)
+
+(*
+  (* TODO: if we had i64 (fake) multivalue support, we could use this instead of the follow three *)
+  let push_high_low env =  Func.share_code1 env "push_high_low" ("val", I32Type) [I64Type; I64Type]
+    (fun env get_val ->
+      get_val ^^
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 128))) ^^
+      BigNum.compile_relop env Lt ^^
+      E.else_trap_with env "Cycles out of bounds" ^^
+      get_val ^^
+      (* shift right 64 bits *)
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 64))) ^^
+      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
+      BigNum.truncate_to_word64 env ^^
+      get_val ^^
+      BigNum.truncate_to_word64 env)
+ *)
+
+
+  let guard env =  Func.share_code1 env "Cycles.guard" ("val", I32Type) []
+    (fun env get_val ->
+      get_val ^^
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 128))) ^^
+      BigNum.compile_relop env Lt ^^
+      E.else_trap_with env "Cycles out of bounds")
+
+  let push_high env =  Func.share_code1 env "Cycles.push_high" ("val", I32Type) [I64Type]
+    (fun env get_val ->
+      get_val ^^
+      (* shift right 64 bits *)
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 64))) ^^
+      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
+      BigNum.truncate_to_word64 env)
+
+  let push_low env =  Func.share_code1 env "Cycles.push_low" ("val", I32Type) [I64Type]
+    (fun env get_val ->
+      get_val ^^
+      BigNum.truncate_to_word64 env)
+
+end
 
 (* helper, traps with message *)
 let then_arithmetic_overflow env =
