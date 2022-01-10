@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+* motoko
+
+  * Implement support for `heartbeat` system methods (thanks to Paul Liu) (#2971)
+
+## 0.6.19 (2022-01-05)
+
+* motoko-base
+
+  * Fixed a bug in the `RBTree.size()` method.
+
 ## 0.6.18 (2021-12-20)
 
 * moc

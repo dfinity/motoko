@@ -1269,15 +1269,21 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 |===
 |  name | type | description
 
+| `heartbeat`  | `+() -> async ()+` | heartbeat action
 | `preupgrade`  | `+() -> ()+` | pre upgrade action
 | `postupgrade` | `+() -> ()+` | post upgrade action
 |===
 
+* `heartbeat`, when declared, is called on every Internet Computer subnet *heartbeat*,
+scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including
+any trap or thrown error, is ignored. The implicit context switch means that
+the time the heartbeat body is executed may be later than the time the
+heartbeat was issued by the subnet.
 * `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable variables are transferred to the replacement actor.
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
 
-These system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
+These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
 During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 

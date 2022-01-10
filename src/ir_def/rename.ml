@@ -27,12 +27,12 @@ and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, { meta; preupgrade; postupgrade }, t) ->
+  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat }, t) ->
     let ds', rho' = decs rho ds in
     ActorE
       (ds',
        fields rho' fs,
-       {meta; preupgrade = exp rho' preupgrade; postupgrade = exp rho' postupgrade},
+       {meta; preupgrade = exp rho' preupgrade; postupgrade = exp rho' postupgrade; heartbeat = exp rho' heartbeat},
        t)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
@@ -150,7 +150,7 @@ let comp_unit rho cu = match cu with
   | LibU (ds, e) ->
     let ds', rho' = decs rho ds
     in LibU (ds', exp rho' e)
-  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade }, t) ->
+  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat }, t) ->
     let as_opt', rho' = match as_opt with
       | None -> None, rho
       | Some as_ ->
@@ -159,4 +159,4 @@ let comp_unit rho cu = match cu with
     in
     let ds', rho'' = decs rho' ds in
     ActorU (as_opt', ds', fields rho'' fs,
-      { meta; preupgrade = exp rho'' preupgrade; postupgrade = exp rho'' postupgrade }, t)
+      { meta; preupgrade = exp rho'' preupgrade; postupgrade = exp rho'' postupgrade; heartbeat = exp rho'' heartbeat }, t)
