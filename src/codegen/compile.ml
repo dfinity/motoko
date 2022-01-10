@@ -3416,12 +3416,10 @@ module IC = struct
 
   let import_ic0 env =
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
-      (* E.add_func_import env "ic0" "call_cycles_add" [I64Type] [] *)
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
-      (* E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type]; *)
       E.add_func_import env "ic0" "canister_cycle_balance128" [I32Type] [];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
@@ -3431,11 +3429,8 @@ module IC = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
-      (* E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type]; *)
       E.add_func_import env "ic0" "msg_cycles_available128" [I32Type] [];
-      (* E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type]; *)
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
-      (* E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type]; *)
       E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
       E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
