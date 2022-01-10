@@ -255,6 +255,7 @@ func time() : Nat64 = (prim "time" : () -> Nat64) ();
 // Principal
 
 func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id;
+func principalOfBlob(act : Blob) : Principal = (prim "cast" : Blob -> Principal) act;
 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 
