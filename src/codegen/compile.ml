@@ -2990,7 +2990,7 @@ module Blob = struct
             | LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
             | GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
             | EqOp -> Bool.lit false
-            |_ -> assert false
+            | _ -> assert false
             end ^^
             G.i Return
           )
@@ -3000,7 +3000,7 @@ module Blob = struct
         | LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
         | GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
         | EqOp -> Bool.lit true
-        |_ -> assert false
+        | _ -> assert false
       end
   )
 
@@ -3580,6 +3580,18 @@ module IC = struct
       name = Wasm.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
       })
+
+  let export_footprint env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_query stable-variable-footprint"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
+        E.collect_garbage env))
+    in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_heartbeat";
+      edesc = nr (FuncExport (nr fi))
+    })
 
   let export_heartbeat env =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
@@ -8831,6 +8843,12 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Export the public functions *)
     List.iter (export_actor_field env ae2) fs;
+    if true (*flags.footprint*) then
+      begin
+        let field' : Ir_def.Ir.field' = { name = "stable-variable-footprint"; var = "go"} in
+        let footprint_field = Type.{ it = field'; at = no_region; note = Func(Shared Query, Promises, [](*binds*), [], [Prim Nat64]) } in
+        export_actor_field env ae2 footprint_field
+      end;
 
     (* Export upgrade hooks *)
     Func.define_built_in env "pre_exp" [] [] (fun env ->
