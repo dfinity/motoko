@@ -3,6 +3,10 @@
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → update go()
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: cannot add more than 2^128 cycles"
+debug.print: ok
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: cannot add more than 2^128 cycles"
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: cycles out of bounds"
 debug.print: {balance = 0}
 debug.print: {topped_up_balance = 0}
 debug.print: {added = 0}

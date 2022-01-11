@@ -6827,7 +6827,7 @@ module Cycles = struct
       compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
         (Big_int.power_int_positive_int 2 128))) ^^
       BigNum.compile_relop env Lt ^^
-      E.else_trap_with env "Cycles out of bounds" ^^
+      E.else_trap_with env "cycles out of bounds" ^^
       get_val ^^
       (* shift right 64 bits *)
       compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
@@ -6839,15 +6839,15 @@ module Cycles = struct
  *)
 
 
-  let guard env =  Func.share_code1 env "Cycles.guard" ("val", I32Type) []
+  let guard env =  Func.share_code1 env "__cycles_guard" ("val", I32Type) []
     (fun env get_val ->
       get_val ^^
       compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
         (Big_int.power_int_positive_int 2 128))) ^^
       BigNum.compile_relop env Lt ^^
-      E.else_trap_with env "Cycles out of bounds")
+      E.else_trap_with env "cycles out of bounds")
 
-  let push_high env =  Func.share_code1 env "Cycles.push_high" ("val", I32Type) [I64Type]
+  let push_high env =  Func.share_code1 env "__cycles_push_high" ("val", I32Type) [I64Type]
     (fun env get_val ->
       get_val ^^
       (* shift right 64 bits *)
@@ -6856,7 +6856,7 @@ module Cycles = struct
       BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
       BigNum.truncate_to_word64 env)
 
-  let push_low env =  Func.share_code1 env "Cycles.push_low" ("val", I32Type) [I64Type]
+  let push_low env =  Func.share_code1 env "__cycles_push_low" ("val", I32Type) [I64Type]
     (fun env get_val ->
       get_val ^^
       BigNum.truncate_to_word64 env)

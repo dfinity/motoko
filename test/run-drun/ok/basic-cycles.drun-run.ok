@@ -1,5 +1,9 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: cannot add more than 2^128 cycles
+debug.print: ok
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: cannot add more than 2^128 cycles
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: cycles out of bounds
 debug.print: {balance = 100_000_000_000_000}
 debug.print: {topped_up_balance = 100_000_000_000_000}
 debug.print: {added = 0}

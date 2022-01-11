@@ -1,3 +1,5 @@
+// test cycle overflow detection and larger cycle transfers
+
 import Prim "mo:⛔";
 
 actor a {
@@ -25,6 +27,34 @@ actor a {
   public func test(amount : Nat) : async () {
      Prim.debugPrint(debug_show({available=available(); amount = amount}));
      assert (available() == amount);
+  };
+
+  // test overflow of 128 bit cylce amounts
+  public func overflow() : async () {
+
+     // detect immediate overflow of add
+     try (await async {
+       add(0x1_00000000_00000000_00000000_00000000);
+       assert false;
+     })
+     catch (e) {Prim.debugPrint(Prim.errorMessage(e))};
+
+     // detect incremental overflow of add
+     try (await async {
+       add(0xFFFFFFFF_FFFFFFFF_FFFFFFFFF_FFFFFFF);
+       Prim.debugPrint("ok");
+       add(0x1);
+       assert false;
+     })
+     catch (e) { Prim.debugPrint(Prim.errorMessage(e)) };
+
+     // detect accept overflow
+     try (await async {
+       let _ = accept(0x1_00000000_00000000_00000000_00000000);
+       assert false;
+     })
+     catch (e) { Prim.debugPrint(Prim.errorMessage(e)) };
+
   };
 
   var tests = [
@@ -59,7 +89,8 @@ actor a {
   };
 
   public func go() : async (){
-     await iter();
+    await overflow();
+    await iter();
   }
 };
 
