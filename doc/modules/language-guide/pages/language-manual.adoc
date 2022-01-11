@@ -99,8 +99,8 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and assert assert await break case
-catch class continue debug debug_show else flexible
+actor and assert await break case
+catch class continue debug debug_show do else flexible
 false for func if ignore in import not null object or
 label let loop private public query return
 shared stable system switch true try
