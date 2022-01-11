@@ -2061,7 +2061,7 @@ sig
   (* given a numeric object on the stack as skewed pointer, check whether
      it can be faithfully stored in N unsigned bits
      leaves boolean result on the stack
-     N must be 1..128
+     N must be 1..64
    *)
   val fits_unsigned_bits : E.t -> int -> G.t
 end
@@ -6818,26 +6818,6 @@ module Cycles = struct
         (Big_int.power_int_positive_int 2 64))) ^^
       BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
       BigNum.compile_add env)
-
-(*
-  (* TODO: if we had i64 (fake) multivalue support, we could use this instead of the follow three *)
-  let push_high_low env =  Func.share_code1 env "push_high_low" ("val", I32Type) [I64Type; I64Type]
-    (fun env get_val ->
-      get_val ^^
-      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
-        (Big_int.power_int_positive_int 2 128))) ^^
-      BigNum.compile_relop env Lt ^^
-      E.else_trap_with env "cycles out of bounds" ^^
-      get_val ^^
-      (* shift right 64 bits *)
-      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
-        (Big_int.power_int_positive_int 2 64))) ^^
-      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
-      BigNum.truncate_to_word64 env ^^
-      get_val ^^
-      BigNum.truncate_to_word64 env)
- *)
-
 
   let guard env =  Func.share_code1 env "__cycles_guard" ("val", I32Type) []
     (fun env get_val ->
