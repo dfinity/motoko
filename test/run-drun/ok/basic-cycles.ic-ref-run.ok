@@ -1,0 +1,29 @@
+→ update create_canister(record {settings = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+debug.print: {balance = 0}
+debug.print: {topped_up_balance = 0}
+debug.print: {added = 0}
+debug.print: {amount = 0; available = 0}
+debug.print: {balance = 0}
+debug.print: {topped_up_balance = 4_294_967_295}
+debug.print: {added = 4_294_967_295}
+debug.print: {amount = 4_294_967_295; available = 4_294_967_295}
+debug.print: {balance = 4_294_967_295}
+debug.print: {topped_up_balance = 18_446_744_073_709_551_615}
+debug.print: {added = 18_446_744_073_709_551_615}
+debug.print: {amount = 18_446_744_073_709_551_615; available = 18_446_744_073_709_551_615}
+debug.print: {balance = 18_446_744_073_709_551_615}
+debug.print: {topped_up_balance = 18_446_744_073_709_551_616}
+debug.print: {added = 18_446_744_073_709_551_616}
+debug.print: {amount = 18_446_744_073_709_551_616; available = 18_446_744_073_709_551_616}
+debug.print: {balance = 18_446_744_073_709_551_616}
+debug.print: {topped_up_balance = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {added = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {amount = 79_228_162_514_264_337_593_543_950_335; available = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {balance = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {topped_up_balance = 1_329_227_995_784_915_872_903_807_060_280_344_576}
+debug.print: can't top up more
+← replied: ()
