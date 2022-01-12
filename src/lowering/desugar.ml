@@ -361,7 +361,7 @@ and export_footprint () =
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
     funcE v (Shared Query) Promises [bind] [] [nat64] (
-      asyncE bind2 (nat64E Numerics.Nat64.zero) (Con (scope_con, []))
+      asyncE bind2 (primE (I.OtherPrim "rts_stable_vars_size") []) (Con (scope_con, []))
     )
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])

@@ -7934,6 +7934,10 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       ContinuationTable.size env ^^ Prim.prim_word32toNat env
 
+    | OtherPrim "rts_stable_vars_size", [] ->
+      SR.Vanilla,
+      Heap.get_memory_size ^^ Prim.prim_word32toNat env (* FIXME *)
+
     | OtherPrim "crc32Hash", [e] ->
       SR.UnboxedWord32,
       compile_exp_vanilla env ae e ^^

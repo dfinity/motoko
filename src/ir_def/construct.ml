@@ -101,7 +101,8 @@ let primE prim es =
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
-    | SystemCyclesAcceptPrim -> T.nat64
+    | SystemCyclesAcceptPrim
+    | OtherPrim "rts_stable_vars_size" -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -229,12 +230,6 @@ let natE n =
   { it = LitE (NatLit n);
     at = no_region;
     note = Note.{ def with typ = T.nat }
-  }
-
-let nat64E n =
-  { it = LitE (Nat64Lit n);
-    at = no_region;
-    note = Note.{ def with typ = T.nat64 }
   }
 
 let textE s =
