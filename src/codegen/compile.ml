@@ -4398,8 +4398,8 @@ module Serialization = struct
       (* Some combinators for writing values *)
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_ref_size, get_ref_size) = new_local env "ref_size" in
-      compile_unboxed_const 0l ^^ set_data_size ^^
-      compile_unboxed_const 0l ^^ set_ref_size ^^
+      compile_unboxed_zero ^^ set_data_size ^^
+      compile_unboxed_zero ^^ set_ref_size ^^
 
       let inc_data_size code =
         get_data_size ^^ code ^^
