@@ -348,7 +348,7 @@ and export_interface txt =
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
-and export_footprint () =
+and export_footprint expr =
   let open T in
   let name = "stable-variable-footprint" in
   let v = "$__stable_variable_footprint"  in
@@ -361,7 +361,7 @@ and export_footprint () =
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
     funcE v (Shared Query) Promises [bind] [] [nat64] (
-      asyncE bind2 (primE (I.OtherPrim "rts_stable_vars_size") []) (Con (scope_con, []))
+      asyncE bind2 (primE (I.OtherPrim "rts_stable_vars_size") [expr]) (Con (scope_con, []))
     )
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
@@ -405,7 +405,24 @@ and build_actor at ts self_id es obj_typ =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
   let interface_d, interface_f = export_interface candid.I.service in
-  let footprint_d, footprint_f = export_footprint () in
+
+  let stable_vars =
+    let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+    blockE
+      ((match call_system_func_opt "preupgrade" es with
+        | Some call -> [expD call]
+        | None -> []) @
+         [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
+            (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
+      (newObjE T.Memory
+          (List.map2 (fun f v ->
+               { it = {I.name = f.T.lab; I.var = id_of_var v};
+                 at = no_region;
+                 note = f.T.typ }
+             ) fields vs)
+          ty) in
+
+  let footprint_d, footprint_f = export_footprint stable_vars in
   I.ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        I.preupgrade =
