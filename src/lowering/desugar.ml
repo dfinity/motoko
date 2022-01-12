@@ -405,8 +405,7 @@ and build_actor at ts self_id es obj_typ =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
   let interface_d, interface_f = export_interface candid.I.service in
-
-  let stable_vars =
+  let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es with
@@ -414,40 +413,25 @@ and build_actor at ts self_id es obj_typ =
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
-      (newObjE T.Memory
-          (List.map2 (fun f v ->
-               { it = {I.name = f.T.lab; I.var = id_of_var v};
-                 at = no_region;
-                 note = f.T.typ }
-             ) fields vs)
-          ty) in
-
-  let footprint_d, footprint_f = export_footprint stable_vars in
-  I.ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
+      (wrap
+         (newObjE T.Memory
+            (List.map2 (fun f v ->
+                 { it = {I.name = f.T.lab; I.var = id_of_var v};
+                   at = no_region;
+                   note = f.T.typ }
+               ) fields vs)
+            ty)) in
+  let footprint_d, footprint_f = export_footprint (with_stable_vars (fun e -> e)) in
+  I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
-       I.preupgrade =
-       (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
-        blockE
-          ((match call_system_func_opt "preupgrade" es with
-            | Some call -> [expD call]
-            | None -> []) @
-           [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
-              (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
-          (primE (I.ICStableWrite ty)
-             [ newObjE T.Memory
-                 (List.map2 (fun f v ->
-                      { it = {I.name = f.T.lab; I.var = id_of_var v};
-                        at = no_region;
-                        note = f.T.typ }
-                    ) fields vs)
-                 ty]));
-        I.postupgrade = (match call_system_func_opt "postupgrade" es with
-                 | Some call -> call
-                 | None -> tupE []);
-        I.heartbeat = match call_system_func_opt "heartbeat" es with
-                 | Some call -> call
-                 | None -> tupE []},
-    obj_typ)
+       preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
+       postupgrade = (match call_system_func_opt "postupgrade" es with
+                      | Some call -> call
+                      | None -> tupE []);
+       heartbeat = match call_system_func_opt "heartbeat" es with
+                   | Some call -> call
+                   | None -> tupE [] },
+     obj_typ))
 
 
 and stabilize stab_opt d =
