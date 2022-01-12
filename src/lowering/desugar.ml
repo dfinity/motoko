@@ -334,16 +334,19 @@ and export_interface txt =
   let open T in
   let name = "__get_candid_interface_tmp_hack" in
   let v = "$__get_candid_interface_tmp_hack"  in
-  let binds = [T.scope_bind] in
+  let binds = [scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [text]) in
 
-  let scope_con = Con.fresh "T" (Abs ([], T.scope_bound)) in
+  let scope_con = Con.fresh "T" (Abs ([], scope_bound)) in
   let scope_con2 = Con.fresh "T2" (Abs ([], Any)) in
-  let bind  = typ_arg scope_con T.Scope T.scope_bound in
-  let bind2 = typ_arg scope_con2 T.Scope T.scope_bound in
+  let bind  = typ_arg scope_con Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
     funcE v (Shared Query) Promises [bind] [] [text] (
-      asyncE bind2 (textE txt) (T.Con (scope_con, []))
+      asyncE bind2 (textE txt) (Con (scope_con, []))
+    )
+  )],
+  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
     )
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
