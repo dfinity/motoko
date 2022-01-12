@@ -347,6 +347,21 @@ and export_interface txt =
     )
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+
+and export_footprint () =
+  let open T in
+  let name = "stable-variable-footprint" in
+  let v = "$__stable_variable_footprint"  in
+  let binds = [scope_bind] in
+  let typ = Func (Shared Query, Promises, binds, [], [nat64]) in
+
+  let scope_con = Con.fresh "T" (Abs ([], scope_bound)) in
+  let scope_con2 = Con.fresh "T2" (Abs ([], Any)) in
+  let bind  = typ_arg scope_con Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
+  ([ letD (var v typ) (
+    funcE v (Shared Query) Promises [bind] [] [nat64] (
+      asyncE bind2 (nat64E Numerics.Nat64.zero) (Con (scope_con, []))
     )
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
@@ -389,8 +404,9 @@ and build_actor at ts self_id es obj_typ =
   let meta =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
-  let (interface_d, interface_f) = export_interface candid.I.service in
-  I.ActorE (interface_d @ ds', interface_f @ fs,
+  let interface_d, interface_f = export_interface candid.I.service in
+  let footprint_d, footprint_f = export_footprint () in
+  I.ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        I.preupgrade =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in

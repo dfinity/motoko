@@ -231,6 +231,12 @@ let natE n =
     note = Note.{ def with typ = T.nat }
   }
 
+let nat64E n =
+  { it = LitE (Nat64Lit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat64 }
+  }
+
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;

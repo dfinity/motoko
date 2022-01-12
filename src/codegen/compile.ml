@@ -3581,7 +3581,7 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
       })
 
-  let export_footprint env =
+  let _export_footprint env =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let fi = E.add_fun env "canister_query stable-variable-footprint"
       (Func.of_body env [] [] (fun env ->
@@ -8824,7 +8824,9 @@ and main_actor as_opt mod_env ds fs up =
     let ae0 = VarEnv.empty_ae in
 
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
-
+    (* List.iter (fun f -> Printf.printf "field: %s\n" f.it.var) fs;
+    List.iter (fun v -> Printf.printf "free captures: %s\n" v) (Freevars.S.elements captured);
+ *)
     (* Add any params to the environment *)
     (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
@@ -8832,6 +8834,9 @@ and main_actor as_opt mod_env ds fs up =
     let arg_tys = List.map (fun a -> a.note) args in
     let as_local n = not (Freevars.S.mem n captured) in
     let ae1 = VarEnv.add_arguments env ae0 as_local arg_names in
+
+    (* Add footprint query as an synthetic exported field *)
+    
 
     (* Reverse the fs, to a map from variable to exported name *)
     let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -8843,12 +8848,12 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Export the public functions *)
     List.iter (export_actor_field env ae2) fs;
-    if true (*flags.footprint*) then
+    (*if true (*flags.footprint*) then
       begin
         let field' : Ir_def.Ir.field' = { name = "stable-variable-footprint"; var = "go"} in
         let footprint_field = Type.{ it = field'; at = no_region; note = Func(Shared Query, Promises, [](*binds*), [], [Prim Nat64]) } in
         export_actor_field env ae2 footprint_field
-      end;
+      end;*)
 
     (* Export upgrade hooks *)
     Func.define_built_in env "pre_exp" [] [] (fun env ->
