@@ -7922,7 +7922,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       ContinuationTable.size env ^^ Prim.prim_word32toNat env
 
-    | OtherPrim "rts_stable_vars_size", [e] ->
+    | OtherPrim "☠️rts_stable_vars_size☠️", [e] ->
       SR.UnboxedWord64,
       let ts = [e.note.Ir_def.Note.typ] in
       let tydesc = Serialization.type_desc env ts in

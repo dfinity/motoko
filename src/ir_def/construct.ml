@@ -102,7 +102,7 @@ let primE prim es =
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim
-    | OtherPrim "rts_stable_vars_size" -> T.nat64
+    | OtherPrim "☠️rts_stable_vars_size☠️" -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
