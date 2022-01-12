@@ -1,0 +1,6 @@
+OOPS! You've triggered a compiler bug.
+Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
+
+Motoko (source 0.6.19-7-ge34b2803e-dirty)
+
+Fatal error: exception Stack overflow
