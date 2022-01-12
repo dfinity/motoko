@@ -1,0 +1,10 @@
+→ update create_canister(record {settings = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ query go()
+← replied: ((0 : nat64))
+→ update stable-variable-footprint()
+← replied: ((40 : nat64))
+→ query stable-variable-footprint()
+← replied: ((40 : nat64))

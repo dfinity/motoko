@@ -1,5 +1,6 @@
 actor footprint = {
     stable var s : Nat64 = 42;
+    stable var hello : Text = "Hey You!";
     public query func go() : async Nat64 {
         s - 42
     };
