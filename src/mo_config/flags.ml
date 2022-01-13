@@ -34,6 +34,7 @@ let profile_file = ref "profiling-counters.csv"
 let profile_line_prefix = ref ""
 let profile_field_names : string list ref = ref []
 let public_metadata_names : string list ref = ref []
+let stable_var_size_endpoint = ref ""
 let compiled = ref false
 let error_detail = ref 2
 let sanity = ref false

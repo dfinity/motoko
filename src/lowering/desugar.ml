@@ -348,9 +348,8 @@ and export_interface txt =
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
-and export_footprint expr =
+and export_footprint name expr =
   let open T in
-  let name = "stable-variable-footprint" in
   let v = "$__stable_variable_footprint"  in
   let binds = [scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [nat64]) in
@@ -421,7 +420,11 @@ and build_actor at ts self_id es obj_typ =
                    note = f.T.typ }
                ) fields vs)
             ty)) in
-  let footprint_d, footprint_f = export_footprint (with_stable_vars (fun e -> e)) in
+  let footprint_query_endpoint = !Mo_config.Flags.stable_var_size_endpoint in
+  let footprint_d, footprint_f =
+    if footprint_query_endpoint <> ""
+    then export_footprint footprint_query_endpoint (with_stable_vars (fun e -> e))
+    else [], [] in
   I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
