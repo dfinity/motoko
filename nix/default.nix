@@ -59,7 +59,6 @@ let
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-               "wasm32-unknown-unknown"
                "wasm32-unknown-emscripten"
                "wasm32-wasi"
                "i686-unknown-linux-gnu"
