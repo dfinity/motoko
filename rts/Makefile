@@ -223,11 +223,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 
 
 $(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && cargo build --release --target=wasm32-emscripten -Zbuild-std=core,alloc
+	cd motoko-rts && cargo build --release --target=wasm32-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
 $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && cargo build --target=wasm32-emscripten -Zbuild-std=core,alloc
+	cd motoko-rts && cargo build --target=wasm32-emscripten
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 #
