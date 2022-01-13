@@ -21,12 +21,16 @@ actor footprint = {
         s - 42
     };
 
+    /*public func self() : async Nat64 {
+        await Prim.stableVarFootprint()
+    };*/
+
     system func preupgrade() {
         hello #= " Hello World!"
     }
 };
 
-footprint.go(); //OR-CALL query go "DIDL\x00\x00"
+//footprint.go(); //OR-CALL query go "DIDL\x00\x00"
 //CALL ingress stable-variable-footprint "DIDL\x00\x00"
 //CALL query stable-variable-footprint "DIDL\x00\x00"
 //CALL query stable-variable-footprint "DIDL\x00\x00"

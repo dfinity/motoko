@@ -7922,7 +7922,7 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       ContinuationTable.size env ^^ Prim.prim_word32toNat env
 
-    | OtherPrim "☠️rts_stable_vars_size☠️", [e] ->
+    | OtherPrim "☠rts_stable_vars_size☠", [e] ->
       SR.UnboxedWord64,
       let ts = [e.note.Ir_def.Note.typ] in
       let tydesc = Serialization.type_desc env ts in
@@ -7932,6 +7932,10 @@ and compile_exp (env : E.t) ae exp =
       G.i Drop ^^
       compile_add_const tydesc_len  ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+
+    | OtherPrim "⏰rts_perform_gc⏰", [] ->
+      SR.unit,
+      E.collect_garbage env
 
     | OtherPrim "crc32Hash", [e] ->
       SR.UnboxedWord32,

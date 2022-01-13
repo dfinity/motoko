@@ -360,7 +360,7 @@ and export_footprint name expr =
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
     funcE v (Shared Query) Promises [bind] [] [nat64] (
-      asyncE bind2 (primE (I.OtherPrim "☠️rts_stable_vars_size☠️") [expr]) (Con (scope_con, []))
+      asyncE bind2 (primE (I.OtherPrim "☠rts_stable_vars_size☠") [expr]) (Con (scope_con, []))
     )
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
@@ -408,7 +408,8 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es with
-        | Some call -> [expD call]
+        | Some call -> [ expD (primE (I.OtherPrim "⏰rts_perform_gc⏰") [])
+                       ; expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
