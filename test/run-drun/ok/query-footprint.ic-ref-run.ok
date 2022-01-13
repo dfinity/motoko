@@ -10,3 +10,5 @@
 ← replied: ((5242 : nat64))
 → query stable-variable-footprint()
 ← replied: ((5242 : nat64))
+→ query __get_candid_interface_tmp_hack()
+← replied: ("service : {\n  go: () -> (nat64) query;\n}\n")

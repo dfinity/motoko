@@ -30,6 +30,7 @@ footprint.go(); //OR-CALL query go "DIDL\x00\x00"
 //CALL ingress stable-variable-footprint "DIDL\x00\x00"
 //CALL query stable-variable-footprint "DIDL\x00\x00"
 //CALL query stable-variable-footprint "DIDL\x00\x00"
+//CALL query __get_candid_interface_tmp_hack "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-ir
