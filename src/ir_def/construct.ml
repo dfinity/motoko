@@ -101,7 +101,7 @@ let primE prim es =
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
-    | SystemCyclesAcceptPrim -> T.nat64
+    | SystemCyclesAcceptPrim -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in

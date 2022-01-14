@@ -262,23 +262,27 @@ func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) ->
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
-func cyclesBalance() : Nat64 {
-  (prim "cyclesBalance" : () -> Nat64) ();
+func cyclesBalance() : Nat {
+  (prim "cyclesBalance" : () -> Nat) ();
 };
 
-func cyclesAvailable() : Nat64 {
-  (prim "cyclesAvailable" : () -> Nat64) ();
+func cyclesAvailable() : Nat {
+  (prim "cyclesAvailable" : () -> Nat) ();
 };
 
-func cyclesRefunded() : Nat64 {
+func cyclesRefunded() : Nat {
     @refund
 };
 
-func cyclesAccept(amount: Nat64) : Nat64 {
-  (prim "cyclesAccept" : Nat64 -> Nat64) (amount);
+func cyclesAccept(amount: Nat) : Nat {
+  (prim "cyclesAccept" : Nat -> Nat) (amount);
 };
 
-func cyclesAdd(amount: Nat64) : () {
+func cyclesAdd(amount: Nat) : () {
+  // trap if @cycles would exceed 2^128
+  if ((@cycles + amount) > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
+    trap("cannot add more than 2^128 cycles")
+  };
   @cycles += amount;
 };
 
