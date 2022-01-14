@@ -7922,6 +7922,10 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       ContinuationTable.size env ^^ Prim.prim_word32toNat env
 
+    | OtherPrim "rts_stable_var_footprint_query", [] ->
+      SR.Vanilla,
+      Var.get_val_vanilla env ae "$__stable_variable_footprint"
+
     | OtherPrim "☠rts_stable_vars_size☠", [e] ->
       SR.UnboxedWord64,
       let ts = [e.note.Ir_def.Note.typ] in
