@@ -7948,7 +7948,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "idlHash", [e] ->
       SR.Vanilla,
-      E.trap_with env "idlHash only implemented in interpreter "
+      E.trap_with env "idlHash only implemented in interpreter"
 
 
     | OtherPrim "popcnt8", [e] ->
