@@ -29,7 +29,7 @@ actor a {
      assert (available() == amount);
   };
 
-  // test overflow of 128 bit cylce amounts
+  // test overflow of 128 bit cycle amounts
   public func overflow() : async () {
 
      // detect immediate overflow of add
