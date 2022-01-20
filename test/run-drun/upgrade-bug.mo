@@ -1,7 +1,7 @@
 import P "mo:⛔";
 
 actor {
-  stable var a : [var Nat] = P.Array_init(268435456,0x0F); // 1GB array
+  stable var a : [var Nat] = P.Array_init(268435456 / 4, 0x0F); // 0.25 GB array (I think)
 
   system func preupgrade() { P.debugPrint("pre"); };
 
