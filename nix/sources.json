@@ -34,16 +34,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
-        "branch": "master",
+        "branch": "joachim/ic-ref-run-heartbeat",
         "builtin": false,
         "description": "A haskell toolbox for the Internet Computer",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "4abda083ece4884b73a7c04809b103d3909b0a11",
-        "sha256": "1vrzwiq0203llg9s77dl2rnxpv3rjicjyz9n1kp0cvc2gqpk55fi",
+        "rev": "75d6c681799a275f91f8caaf8cb50e1b1303a633",
+        "sha256": "0m66c1i68aychkp46hmjfsdjx8n6zkbzgsmhp5zjb13ymwmk9pjb",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/4abda083ece4884b73a7c04809b103d3909b0a11.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/75d6c681799a275f91f8caaf8cb50e1b1303a633.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
