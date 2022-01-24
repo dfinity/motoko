@@ -4392,8 +4392,15 @@ module Serialization = struct
       compile_unboxed_const 0l ^^ set_ref_size ^^
 
       let inc_data_size code =
+        let (set_sum, get_sum) = new_local env "sum" in
         get_data_size ^^ code ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        set_sum ^^
+        get_sum ^^
+        get_data_size ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+        E.then_trap_with env "buffer_size overflow" ^^
+        get_sum ^^
         set_data_size
       in
 
