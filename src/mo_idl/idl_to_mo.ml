@@ -56,7 +56,7 @@ let rec check_typ env t =
   | VarT {it=id; _} ->
      (match M.Env.find_opt id !m_env with
       | None ->
-         let con = Mo_types.Con.fresh id (M.Abs ([], M.Pre)) in
+         let con = Mo_types.Cons.fresh id (M.Abs ([], M.Pre)) in
          let res_t = M.Con (con, []) in
          m_env := M.Env.add id res_t !m_env;
          let t' = I.Env.find id env in

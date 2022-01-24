@@ -29,7 +29,7 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
         }
   | DI.TypeDecl ty ->
       let con = ty.DI.typ in
-      let eq, params, typ = Type.strings_of_kind (Con.kind con) in
+      let eq, params, typ = Type.strings_of_kind (Cons.kind con) in
       Lsp_t.
         {
           completion_item_label = ty.DI.name;
