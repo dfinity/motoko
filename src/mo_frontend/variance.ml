@@ -52,7 +52,7 @@ let variances cons t =
       | Con (c, []) when ConSet.mem c cons ->
         map := ConEnv.add c (join p (ConEnv.find c !map)) (!map)
       | Con (c, ts) ->
-        (match Con.kind c with
+        (match Cons.kind c with
         | Abs _ -> ()
         | Def (_, t) -> go p (open_ ts t)) (* TBR this may fail to terminate *)
       | Array t | Opt t -> go p t
