@@ -337,8 +337,8 @@ and export_interface txt =
   let binds = [T.scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [text]) in
 
-  let scope_con = Con.fresh "T" (Abs ([], T.scope_bound)) in
-  let scope_con2 = Con.fresh "T2" (Abs ([], Any)) in
+  let scope_con = Cons.fresh "T" (Abs ([], T.scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind  = typ_arg scope_con T.Scope T.scope_bound in
   let bind2 = typ_arg scope_con2 T.Scope T.scope_bound in
   ([ letD (var v typ) (
@@ -590,7 +590,7 @@ and dec' at n d = match d with
     let body = if s.it = T.Actor
       then
         let (_, obj_typ) = T.as_async rng_typ in
-        let c = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
+        let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE (typ_arg c T.Scope T.scope_bound)
           (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
@@ -766,7 +766,7 @@ type import_declaration = Ir.dec list
 
 let actor_class_mod_exp id class_typ func =
   let fun_typ = func.note.Note.typ in
-  let class_con = Con.fresh id (T.Def([], class_typ)) in
+  let class_con = Cons.fresh id (T.Def([], class_typ)) in
   let v = fresh_var id fun_typ in
   blockE
     [letD v func]
