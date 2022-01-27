@@ -298,8 +298,7 @@
     <obj_body>
 
 <imp> ::= 
-    'import' <id>? '='? <text>
-    'import' '{' <list(<pat_field>, ';')> '}' '=' <text>
+    'import' <pat_nullary> '='? <text>
 
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
