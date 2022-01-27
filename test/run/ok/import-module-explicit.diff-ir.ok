@@ -1,8 +1,0 @@
---- import-module-explicit.run
-+++ import-module-explicit.run-ir
-@@ -0,0 +1,5 @@
-+Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-+(unknown location): IR type error [M0000], subtype violation:
-+  module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
-+  <T>(T, List<T>) -> List<T>
-+
