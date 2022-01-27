@@ -23,7 +23,8 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let open Source in
   let f = prog.note in
 
-  let finish imports u = { it = { imports; body = u }; note = f; at = no_region } in
+  let finish imports u =
+    { it = { imports = List.rev imports; body = u }; note = f; at = no_region } in
   let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
 
   let rec go imports ds : comp_unit =
@@ -31,7 +32,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     (* imports *)
     | {it = LetD (p, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
       let i : import = { it = (p, url, ri); note = e.note.note_typ; at = e.at } in
-      go (imports @ [i]) ds'
+      go (i :: imports) ds'
 
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
