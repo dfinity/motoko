@@ -1,9 +1,8 @@
-// test incremental oom by allocating 5 GB, one GB at a time!
+// test incremental oom
 import P "mo:⛔";
 actor {
 
   public query func go() : async () {
-
     // allocate 3GB
     var c = 3;
     while(c > 0) {
@@ -26,5 +25,5 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
-// too resource heavy on GH:
 //CALL query go "DIDL\x00\x00"
+
