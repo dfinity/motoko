@@ -87,7 +87,7 @@ function normalize () {
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Normalize rust stack traces that include hex addresses
-    sed 's/::[0-9a-f]\+$/::XXX/g' |
+    sed 's/::h[0-9a-f]\+$/::hXXX/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
