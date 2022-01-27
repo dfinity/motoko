@@ -1,4 +1,4 @@
-// test incremental oom by allocating 5 GB, one GB at a time
+// test incremental oom by allocating 5 GB, one GB at a time!
 import P "mo:⛔";
 actor {
 
