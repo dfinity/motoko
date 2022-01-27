@@ -86,8 +86,8 @@ function normalize () {
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
-    # Delete rust stack trace entries that include hex addresses
-    sed '/wasm backtrace:/,$d' |
+    # Delete everything after Oom
+    sed '/RTS error: Out of memory/q' |
     cat > $1.norm
     mv $1.norm $1
   fi

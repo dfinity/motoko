@@ -1,6 +1,1 @@
 RTS error: Out of memory
-Error: failed to run main module `_out/inc-oom.wasm`
-
-Caused by:
-    0: failed to invoke command default
-    1: wasm trap: unreachable
