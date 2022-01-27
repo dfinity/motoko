@@ -35,7 +35,6 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | {it = LetD ({it = ObjP []; _}, _); _} :: ds' ->
       go imports ds'
     | ({it = LetD (({it = ObjP (f :: fs); _} as letd), ({it = ImportE (url, ri); _} as es)); _} as imp) :: ds' ->
-      (*let e = { it = DotE (es, f.label); at = es.at; note = e.note.note_typ } in*)
       let m, tfs = Type.as_obj es.note.note_typ in
       assert (m = Type.Module);
       let field_id = f.it.id in
@@ -94,7 +93,6 @@ let obj_decs obj_sort at note id_opt fields =
 (* To enable uniform definedness checking, typechecking and interpretation,
    present the unit as a list of declarations.
 *)
-
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
