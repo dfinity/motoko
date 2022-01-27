@@ -874,6 +874,8 @@ imp :
   | IMPORT xf=id_opt EQ? f=TEXT
     { let _, x = xf "import" $sloc in
       let_or_exp true x (ImportE (f, ref Unresolved)) (at $sloc) }
+  | IMPORT LCURLY fps=seplist(pat_field, semicolon) RCURLY EQ f=TEXT
+    { LetD(ObjP(fps) @! at $sloc, ImportE (f, ref Unresolved) @? at $sloc)  @? at $sloc }
 
 start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
   | (* empty *) { () }

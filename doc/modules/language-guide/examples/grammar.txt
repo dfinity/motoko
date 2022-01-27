@@ -299,6 +299,7 @@
 
 <imp> ::= 
     'import' <id>? '='? <text>
+    'import' '{' <list(<pat_field>, ';')> '}' '=' <text>
 
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
