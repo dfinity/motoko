@@ -872,7 +872,7 @@ class_body :
 
 imp :
   | IMPORT p=pat_nullary EQ? f=TEXT
-    { LetD(p, ImportE(f, ref Unresolved) @? at $sloc)  @? at $sloc }
+    { LetD(p, ImportE(f, ref Unresolved) @? at $sloc) @? at $sloc }
 
 start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
   | (* empty *) { () }
