@@ -859,10 +859,7 @@ let link_declarations imports (cu, flavor) =
 
 let transform_import (i : S.import) : import_declaration =
   let (p, f, ir) = i.it in
-  let t = i.note
-  (*match pat.it with
-    | VarP _ -> i.note
-    | Bulk (_, mod_note) -> mod_note.note_typ*) in
+  let t = i.note in
   assert (t <> T.Pre);
   let rhs = match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
@@ -872,12 +869,7 @@ let transform_import (i : S.import) : import_declaration =
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
-  in [
-      letP (pat p) rhs
-      (*match mid with
-       | Surface id -> letD (var id.it t) rhs
-       | Bulk (id, _) -> letD (var id.it i.note) (dotE rhs id.it i.note) *)
-    ]
+  in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
