@@ -227,8 +227,7 @@ and stab_sig' = (dec list * typ_field list)      (* type declarations & stable a
 (* Compilation units *)
 
 type import = (import', Type.typ) Source.annotated_phrase
-and import' = access * string * resolved_import ref
-and access = Surface of id | Bulk of id * typ_note
+and import' = pat * string * resolved_import ref
 
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =

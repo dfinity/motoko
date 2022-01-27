@@ -29,6 +29,10 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let rec go imports ds : comp_unit =
     match ds with
     (* imports *)
+    | {it = LetD (p, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
+      let i : import = { it = (p, url, ri); note = e.note.note_typ; at = e.at } in
+      go (imports @ [i]) ds'
+(*
     | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
       let i : import = { it = (Surface n, url, ri); note = e.note.note_typ; at = e.at } in
       go (imports @ [i]) ds'
@@ -40,7 +44,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       let field_id = f.it.id in
       let i : import = { it = (Bulk (field_id, es.note), url, ri); note = Type.lookup_val_field field_id.it tfs; at = es.at } in
       go (imports @ [i]) ({imp with it = LetD ({letd with it = ObjP fs}, es)} :: ds')
-
+ *)
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
@@ -97,22 +101,24 @@ let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
   let import_decs =
-    List.map (fun { it = (mid, fp, ri); at; note} ->
-        match mid with
-        | Surface id ->
-          { it = LetD ({ it = VarP id; at; note; },
+    List.map (fun { it = (pat, fp, ri); at; note} ->
+        (* match mid.it with
+        | VarP id -> *)
+          { it = LetD (pat,
                        { it = ImportE (fp, ri);
                          at;
                          note = { note_typ = note; note_eff = Type.Triv} });
             at;
             note = { note_typ = note; note_eff = Type.Triv } }
+              (*
         | Bulk (id, mod_note) ->
           { it = LetD ({ it = ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]; at; note; },
                        { it = ImportE (fp, ri);
                          at;
-                         note = mod_note });
+                         note = pat.note });
             at;
             note = { note_typ = note; note_eff = Type.Triv } }
+          *)
       ) imports
   in
   import_decs,
