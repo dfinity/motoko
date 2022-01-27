@@ -55,7 +55,7 @@ let un_prog prog =
   let imports =
     List.map
       (fun i ->
-        let alias, path, _ = i.it in
+        let Syntax.Surface alias, path, _ = i.it in
         (alias.it, path))
       imports
   in

@@ -30,7 +30,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     match ds with
     (* imports *)
     | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
-      let i : import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
+      let i : import = { it = (Surface n, url, ri); note = e.note.note_typ; at = e.at } in
       go (imports @ [i]) ds'
     | {it = LetD ({it = ObjP []; _}, _); _} :: ds' ->
       go imports ds'
@@ -38,7 +38,8 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       (*let e = { it = DotE (es, f.label); at = es.at; note = e.note.note_typ } in*)
       let m, tfs = Type.as_obj es.note.note_typ in
       assert (m = Type.Module);
-      let i : import = { it = (f.it.id, url, ri); note = Type.lookup_val_field f.it.id.it tfs; at = es.at } in
+      let field_id = f.it.id in
+      let i : import = { it = (Bulk field_id, url, ri); note = Type.lookup_val_field field_id.it tfs; at = es.at } in
       go (imports @ [i]) ({imp with it = LetD ({letd with it = ObjP fs}, es)} :: ds')
 
     (* terminal expressions *)
@@ -96,9 +97,11 @@ let obj_decs obj_sort at note id_opt fields =
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
-  let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
+  let import_decs = List.map (fun { it = (mid, fp, ri); at; note}  ->
     { it = LetD (
-      { it = VarP id; at; note; },
+               { it = (match mid with
+                       | Surface id -> VarP id
+                       | Bulk id -> ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]); at; note },
       { it = ImportE (fp, ri);
         at;
         note = { note_typ = note; note_eff = Type.Triv} });
