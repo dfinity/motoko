@@ -4,13 +4,3 @@ Error: failed to run main module `_out/inc-oom.wasm`
 Caused by:
     0: failed to invoke command default
     1: wasm trap: unreachable
-       wasm backtrace:
-         0: rts_trap
-         1: motoko_rts::trap_with_prefix::hXXX
-         2: motoko_rts::rts_trap_with::hXXX
-         3: motoko_rts::memory::alloc_array::hXXX
-         4: alloc_array
-         5: Array_init
-         6: init
-         7: _start
-       
