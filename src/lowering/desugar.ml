@@ -871,7 +871,7 @@ let transform_import (i : S.import) : import_declaration =
       primE (I.ActorOfIdBlob t) [blobE canister_id]
   in [ match mid with
        | Surface id -> letD (var id.it t) rhs
-       | Bulk id -> letD (var id.it t) (dotE rhs id.it T.Any(*FIXME*))]
+       | Bulk (id, _) -> letD (var id.it t) (dotE rhs id.it t)]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with

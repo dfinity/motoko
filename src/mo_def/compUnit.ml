@@ -39,7 +39,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       let m, tfs = Type.as_obj es.note.note_typ in
       assert (m = Type.Module);
       let field_id = f.it.id in
-      let i : import = { it = (Bulk field_id, url, ri); note = Type.lookup_val_field field_id.it tfs; at = es.at } in
+      let i : import = { it = (Bulk (field_id, es.note), url, ri); note = Type.lookup_val_field field_id.it tfs; at = es.at } in
       go (imports @ [i]) ({imp with it = LetD ({letd with it = ObjP fs}, es)} :: ds')
 
     (* terminal expressions *)
@@ -94,19 +94,69 @@ let obj_decs obj_sort at note id_opt fields =
 (* To enable uniform definedness checking, typechecking and interpretation,
    present the unit as a list of declarations.
 *)
+
+
+
+(*
+let { imports; body = cub; _ } = cu.it in
+    let import_decs =
+      List.map (fun { it = (id, fp, ri); at; note} ->
+          { it = LetD ({ it = VarP id; at; note; },
+                       { it = ImportE (fp, ri);
+                         at;
+                         note = { note_typ = note; note_eff = Type.Triv} });
+            at;
+            note = { note_typ = note; note_eff = Type.Triv } }) imports
+    in
+
+
+
+
+let { imports; body = cub; _ } = cu.it in
+    let import_decs =
+      List.map (fun { it = (mid, fp, ri); at; note} ->
+          match mid with
+          | Surface id ->
+            { it = LetD ({ it = VarP id; at; note; },
+                         { it = ImportE (fp, ri);
+                           at;
+                           note = { note_typ = note; note_eff = Type.Triv} });
+              at;
+              note = { note_typ = note; note_eff = Type.Triv } }
+          | Bulk (id, mod_note) ->
+            { it = LetD ({ it = (ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]); at; note; },
+                         { it = ImportE (fp, ri);
+                           at;
+                           note = mod_note });
+              at;
+              note = { note_typ = note; note_eff = Type.Triv } }
+        ) imports
+    in
+
+
+    *)
+
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
-  let import_decs = List.map (fun { it = (mid, fp, ri); at; note}  ->
-    { it = LetD (
-               { it = (match mid with
-                       | Surface id -> VarP id
-                       | Bulk id -> ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]); at; note },
-      { it = ImportE (fp, ri);
-        at;
-        note = { note_typ = note; note_eff = Type.Triv} });
-      at;
-      note = { note_typ = note; note_eff = Type.Triv } }) imports
+  let import_decs =
+    List.map (fun { it = (mid, fp, ri); at; note} ->
+        match mid with
+        | Surface id ->
+          { it = LetD ({ it = VarP id; at; note; },
+                       { it = ImportE (fp, ri);
+                         at;
+                         note = { note_typ = note; note_eff = Type.Triv} });
+            at;
+            note = { note_typ = note; note_eff = Type.Triv } }
+        | Bulk (id, mod_note) ->
+          { it = LetD ({ it = (ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]); at; note; },
+                       { it = ImportE (fp, ri);
+                         at;
+                         note = mod_note });
+            at;
+            note = { note_typ = note; note_eff = Type.Triv } }
+      ) imports
   in
   import_decs,
   match cub.it with
