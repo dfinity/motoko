@@ -95,47 +95,6 @@ let obj_decs obj_sort at note id_opt fields =
    present the unit as a list of declarations.
 *)
 
-
-
-(*
-let { imports; body = cub; _ } = cu.it in
-    let import_decs =
-      List.map (fun { it = (id, fp, ri); at; note} ->
-          { it = LetD ({ it = VarP id; at; note; },
-                       { it = ImportE (fp, ri);
-                         at;
-                         note = { note_typ = note; note_eff = Type.Triv} });
-            at;
-            note = { note_typ = note; note_eff = Type.Triv } }) imports
-    in
-
-
-
-
-let { imports; body = cub; _ } = cu.it in
-    let import_decs =
-      List.map (fun { it = (mid, fp, ri); at; note} ->
-          match mid with
-          | Surface id ->
-            { it = LetD ({ it = VarP id; at; note; },
-                         { it = ImportE (fp, ri);
-                           at;
-                           note = { note_typ = note; note_eff = Type.Triv} });
-              at;
-              note = { note_typ = note; note_eff = Type.Triv } }
-          | Bulk (id, mod_note) ->
-            { it = LetD ({ it = (ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]); at; note; },
-                         { it = ImportE (fp, ri);
-                           at;
-                           note = mod_note });
-              at;
-              note = { note_typ = note; note_eff = Type.Triv } }
-        ) imports
-    in
-
-
-    *)
-
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
@@ -150,7 +109,7 @@ let decs_of_lib (cu : comp_unit) =
             at;
             note = { note_typ = note; note_eff = Type.Triv } }
         | Bulk (id, mod_note) ->
-          { it = LetD ({ it = (ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]); at; note; },
+          { it = LetD ({ it = ObjP [{it = { id; pat = { it = VarP id; at; note }}; at; note = ()}]; at; note; },
                        { it = ImportE (fp, ri);
                          at;
                          note = mod_note });
