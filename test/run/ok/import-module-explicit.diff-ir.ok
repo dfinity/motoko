@@ -1,9 +1,8 @@
 --- import-module-explicit.run
 +++ import-module-explicit.run-ir
-@@ -0,0 +1,6 @@
-+OOPS! You've triggered a compiler bug.
-+Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
+@@ -0,0 +1,5 @@
++Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
++import-module-explicit.mo:4.9-4.13: IR type error [M0000], subtype violation:
++  module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
++  <T>(T, List<T>) -> List<T>
 +
-+Motoko (source 0.6.20-8-gecadc8dc6-dirty)
-+
-+Fatal error: exception (Invalid_argument "Import expression found in unit body: lib/ListM")

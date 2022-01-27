@@ -32,6 +32,12 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
       let i : import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
       go (imports @ [i]) ds'
+    | {it = LetD ({it = ObjP []; _}, _); _} :: ds' ->
+      go imports ds'
+    | ({it = LetD (({it = ObjP (f :: fs); _} as letd), ({it = ImportE (url, ri); _} as es)); _} as imp) :: ds' ->
+      (*let e = { it = DotE (es, f.label); at = es.at; note = e.note.note_typ } in*)
+      let i : import = { it = (f.it.id, url, ri); note = es.note.note_typ; at = es.at } in
+      go (imports @ [i]) ({it = LetD ({it = ObjP fs; at = letd.at; note = letd.note}, es); at = imp.at; note = imp.note} :: ds')
 
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
