@@ -1,2 +1,0 @@
-Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-refutable-import.mo:1.8-1.20: IR type error [M0000], refutable pattern in import
