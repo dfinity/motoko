@@ -4512,8 +4512,8 @@ module Serialization = struct
       end ^^
       (* Check 32-bit overflow of buffer_size *)
       get_data_size ^^
-      compile_const_64 0x1_0000_0000L ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+      compile_shrU64_const 32L ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
       E.else_trap_with env "buffer_size overflow" ^^
       (* Convert to 32-bit *)
       get_data_size ^^
