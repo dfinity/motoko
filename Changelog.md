@@ -4,6 +4,7 @@
 
 * motoko
 
+  * Fix: insert critical overflow checks preventing rare heap corruptions in out-of-memory allocation and stable variable serialization (#3077) 
   * Implement support for `heartbeat` system methods (thanks to ninegua) (#2971)
 
 * motoko-base
