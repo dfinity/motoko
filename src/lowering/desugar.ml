@@ -18,7 +18,7 @@ want to recognize for better user experience.
 *)
 
 let id_of_full_path (fp : string) : string =
-  "file$" ^ fp
+  Ir_utils.file_import_prefix ^ fp
 
 (* Combinators used in the desugaring *)
 
