@@ -1,0 +1,4 @@
+type-error-imports.mo:3.8-3.9: type error [M0050], literal of type
+  Nat
+does not have expected type
+  module {}
