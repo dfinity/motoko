@@ -1057,7 +1057,10 @@ and check_dec env dec  =
   | LetD (pat, exp) ->
     ignore (check_pat_exhaustive env pat);
     check_exp env exp;
-    typ exp <: pat.note
+    typ exp <: pat.note;
+    check env pat.at
+      Ir_utils.(expected_irrefutable dec ==> is_irrefutable pat)
+      "refutable pattern in import"
   | VarD (id, t, exp) ->
     check_exp env exp;
     typ exp <: t
