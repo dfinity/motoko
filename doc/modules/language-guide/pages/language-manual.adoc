@@ -413,8 +413,6 @@ Though typically a simple identifier, `<id>`, `<pat>` can also be any composite 
 
 The pattern must be irrefutable.
 
-by using an object pattern.
-
 [[syntax-libraries]]
 === Libraries
 
