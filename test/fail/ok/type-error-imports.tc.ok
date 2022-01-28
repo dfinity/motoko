@@ -1,3 +1,2 @@
-unit-module.mo:0.1: warning [M0142], deprecated syntax: an imported library should be a module or named actor class
-type-error-imports.mo:9.8-9.14: type error [M0112], tuple pattern cannot consume expected type
+type-error-imports.mo:4.8-4.14: type error [M0112], tuple pattern cannot consume expected type
   module {}
