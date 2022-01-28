@@ -76,7 +76,11 @@ impl Memory for IcMemory {
 
         // Update heap pointer
         let old_hp = HP;
-        let new_hp = old_hp + bytes.as_u32();
+        let (new_hp, overflow) = old_hp.overflowing_add(bytes.as_u32());
+        // Check for overflow
+        if overflow {
+            rts_trap_with("Out of memory");
+        }
         HP = new_hp;
 
         // Grow memory if needed
