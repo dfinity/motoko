@@ -406,7 +406,12 @@ The syntax of an _import_ `<imp>`  is as follows:
   "canister:<name>"                 import external actor by <name>
 ```
 
-An import introduces a resource named '<pat>' referring to a local source module, module from a package of modules, or canister (imported as an actor).
+An import introduces a resource referring to a local source module, module from a package of modules, or canister (imported as an actor).
+The contents of the resource are bound to `<pat>`. 
+
+Though typically a simple identifier, `<id>`, `<pat>` can also be any composite pattern binding selective components of the resource.
+
+The pattern must be irrefutable.
 
 The pattern is bound to a module and explicit bindings can be established
 by using an object pattern.
