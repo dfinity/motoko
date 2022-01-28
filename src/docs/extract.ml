@@ -58,7 +58,7 @@ let un_prog prog =
       (fun i ->
         match i.it with
         | { it = VarP alias; _ }, path, _ -> [ (alias.it, path) ]
-        | _ -> []) (* FIXME: explicit imports *)
+        | _ -> []) (* FIXME: explicit imports #3078 *)
       imports
   in
   match body.it with
