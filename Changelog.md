@@ -1,5 +1,16 @@
 # Motoko compiler changelog
 
+## 0.6.21 (future)
+
+* motoko (`moc`)
+
+  * Implement a limited form of explicit symbol imports (#3076)
+  * Implement support for 128-bit Cycles-API (#3042)
+
+* motoko-base
+
+  * 128-bit Cycles-API support (#???)
+
 ## 0.6.20 (2022-01-11)
 
 * motoko
