@@ -21,6 +21,17 @@ import Result "mo:base/Result";
 
 Notice that the import declaration includes the `+mo:+` prefix to identify the module as a {proglang} module and that the declaration does not include the `+.mo+` file type extension.
 
+Above example uses an identifier pattern to import modules wholesale, but you can also selectively import
+a subset of symbols from a module by resorting to the object pattern syntax:
+
+[source,motoko]
+----
+import { map, find, foldLeft = fold } = "mo:base/Array";
+----
+
+In this example, the functions `+map+` and `+find+` are imported unaltered, while the `+foldLeft+`
+function will is renamed to `+fold+`.
+
 == Importing local files
 
 Another common approach to writing programs in {proglang} involves splitting up the source code into different modules.
