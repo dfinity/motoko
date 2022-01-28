@@ -1,10 +1,12 @@
 # Motoko compiler changelog
 
-## 0.6.21 (future)
+## 0.6.21 (2022-01-28)
 
 * motoko (`moc`)
 
   * Implement a limited form of explicit symbol imports (#3076)
+  * Fix: insert critical overflow checks preventing rare heap corruptions
+    in out-of-memory allocation and stable variable serialization (#3077) 
   * Implement support for 128-bit Cycles-API (#3042)
 
 * motoko-base
@@ -15,7 +17,6 @@
 
 * motoko
 
-  * Fix: insert critical overflow checks preventing rare heap corruptions in out-of-memory allocation and stable variable serialization (#3077) 
   * Implement support for `heartbeat` system methods (thanks to ninegua) (#2971)
 
 * motoko-base
