@@ -1201,24 +1201,24 @@ Installation is (necessarily) asynchronous.
 [[imports]]
 === Imports and Urls
 
-An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
+An import `import <pat> =? <url>` declares a pattern `<pat>` bound to the contents of the text literal `<url>`.
 
 `<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package,
 or an external canister, referenced either by numeric canister id or by a named alias, and imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
-* `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
+* `"<filepath>"` then `<pat>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
   Note the `.mo` extension is implicit and should _not_ be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
-* `"mo:<package-name>/<path>"` then `<id>` is bound to the library module defined in file `<package-path>/<path>.mo` in directory `<package-path>` referenced by package alias `<package-name>`.
+* `"mo:<package-name>/<path>"` then `<pat>` is bound to the library module defined in file `<package-path>/<path>.mo` in directory `<package-path>` referenced by package alias `<package-name>`.
   The mapping from `<package-name>` to `<package-path>` is determined by a compiler command-line argument `--package <package-name> <package-path>`. For example, `import L "mo:base/List"` defines `L` to reference the `List` library in
    package alias `base`.
 
-* `"ic:<canisterid>"` then `<id>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
+* `"ic:<canisterid>"` then `<pat>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
   The IDL interface of canister `<canisterid>` must be found in file `<actorpath>/<canisterid>.did`.
   The compiler assumes that  `<actorpath>` is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists.
   For example, `import C "ic:lg264-qjkae"` defines `C` to reference the actor with canister id `lg264-qjkae` and IDL file `lg264-qjkae.did`.
@@ -1234,6 +1234,7 @@ The case sensitivity of file references depends on the host operating system so 
 (Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`).
 The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
 
+(Remark: sensible choices for `<pat>` are identifiers, such as `Array`, or object patterns like `{ cons; nil = empty }`, which allow explicit importing of specified symbols only, including the possibility of changing the binding name).
 
 [[decl-field]]
 === Declaration fields
