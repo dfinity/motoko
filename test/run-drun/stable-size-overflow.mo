@@ -1,7 +1,6 @@
 import P "mo:⛔";
 import SM "stable-mem/StableMemory";
 
-// Our users may not thank us that we only preserve sharing for mutable data, but nothing else.
 actor {
 
   ignore SM.grow(1);

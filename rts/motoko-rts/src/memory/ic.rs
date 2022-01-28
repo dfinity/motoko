@@ -76,13 +76,11 @@ impl Memory for IcMemory {
 
         // Update heap pointer
         let old_hp = HP;
-        // TODO: move after unchecked addition, using u32.
-        // check for overflow (in both debug and release)
-        if u64::from(old_hp) + u64::from(bytes.as_u32()) > u64::from(u32::MAX) {
+        let (new_hp, overflow) = old_hp.overflowing_add(bytes.as_u32());
+        // Check for overflow
+        if overflow {
             rts_trap_with("Out of memory");
         }
-        let new_hp = old_hp + bytes.as_u32();
-
         HP = new_hp;
 
         // Grow memory if needed
