@@ -6,10 +6,3 @@ let rec is_irrefutable p = match p.it with
   | AltP (pat1, _) -> is_irrefutable pat1
   | WildP | VarP _ -> true
   | TagP _ | LitP _ | OptP _ -> false
-
-let file_import_prefix = "file$"
-
-let expected_irrefutable : dec -> bool = function
-  | { it = LetD (_, { it = VarE id; _ }); _ } ->
-    Lib.String.starts_with file_import_prefix id
-  | _ -> false
