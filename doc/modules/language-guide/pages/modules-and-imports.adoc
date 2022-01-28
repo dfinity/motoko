@@ -30,7 +30,7 @@ import { map, find, foldLeft = fold } = "mo:base/Array";
 ----
 
 In this example, the functions `+map+` and `+find+` are imported unaltered, while the `+foldLeft+`
-function will is renamed to `+fold+`.
+function is renamed to `+fold+`.
 
 == Importing local files
 
