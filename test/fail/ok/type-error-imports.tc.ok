@@ -1,4 +1,3 @@
-type-error-imports.mo:3.8-3.9: type error [M0050], literal of type
-  Nat
-does not have expected type
+unit-module.mo:0.1: warning [M0142], deprecated syntax: an imported library should be a module or named actor class
+type-error-imports.mo:9.8-9.14: type error [M0112], tuple pattern cannot consume expected type
   module {}
