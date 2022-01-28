@@ -12,4 +12,3 @@ val import_prelude : Syntax.prog -> import_declaration
 val transform_unit : Syntax.comp_unit -> Ir.prog
 
 val link_declarations : import_declaration -> Ir.prog -> Ir.prog
-
