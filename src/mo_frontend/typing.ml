@@ -413,7 +413,7 @@ and check_typ' env typ : T.typ =
   | PathT (path, typs) ->
     let c = check_typ_path env path in
     let ts = List.map (check_typ env) typs in
-    let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
+    let T.Def (tbs, _) | T.Abs (tbs, _) = Cons.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
@@ -556,7 +556,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
     List.map2 (fun x tb ->
       match tb.note with
       | Some c -> c
-      | None -> Con.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
+      | None -> Cons.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -574,7 +574,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
   check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
   List.iter2 (fun c k ->
-    match Con.kind c with
+    match Cons.kind c with
     | T.Abs (_, T.Pre) -> T.set_kind c k
     | k' -> assert (T.eq_kind k k')
   ) cs ks;
@@ -621,7 +621,7 @@ and check_con_env env at ce =
   if not (T.ConSet.is_empty cs) then
     error env at "M0157" "block contains non-productive definition%s %s"
       (if T.ConSet.cardinal cs = 1 then "" else "s")
-      (String.concat ", " (List.map Con.name (T.ConSet.elements cs)));
+      (String.concat ", " (List.map Cons.name (T.ConSet.elements cs)));
   begin match Mo_types.Expansive.is_expansive ce with
   | None -> ()
   | Some msg ->
@@ -2307,7 +2307,7 @@ and gather_dec env scope dec : Scope.t =
     in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
-      | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
+      | None -> let c = Cons.fresh id.it pre_k in id.note <- Some c; c
       | Some c -> c
     in
     let val_env = match dec.it with
@@ -2414,7 +2414,7 @@ and infer_dec_typdecs env dec : Scope.t =
 
 and check_closed env id k at =
   let is_typ_param c =
-    match Con.kind c with
+    match Cons.kind c with
     | T.Def _ -> false
     | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
     | T.Abs( _, _) -> true in
@@ -2431,7 +2431,7 @@ and check_closed env id k at =
 
 and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
-  (match Con.kind c with
+  (match Cons.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
   | k' -> assert (T.eq_kind k' k) (* may diverge on expansive types *)
   );
@@ -2592,7 +2592,7 @@ let check_lib scope lib : Scope.t Diag.result =
                    | _ -> assert false)
                 | _ -> assert false
               in
-              let con = Con.fresh id.it (T.Def([], class_typ)) in
+              let con = Cons.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [
                 { T.lab = id.it; T.typ = T.Typ con; depr = None };
                 { T.lab = id.it; T.typ = fun_typ; depr = None }

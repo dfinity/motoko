@@ -24,9 +24,9 @@ let phase heading name =
 
 let print_ce =
   Type.ConSet.iter (fun c ->
-    let eq, params, typ = Type.pps_of_kind (Con.kind c) in
+    let eq, params, typ = Type.pps_of_kind (Cons.kind c) in
     Format.printf "@[<hv 2>type %s%a %s@ %a@]@."
-      (Con.to_string c)
+      (Cons.to_string c)
       params ()
       eq
       typ ()

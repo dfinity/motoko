@@ -20,7 +20,7 @@ open Construct
      a manifest tuple argument extended with a final reply continuation.
  *)
 
-module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
+module ConRenaming = E.Make(struct type t = T.con let compare = Cons.compare end)
 
 (* Helpers *)
 
@@ -202,16 +202,16 @@ let transform mode prog =
       T.Def (t_binds typ_binds, t_typ typ)
 
   and t_con c =
-    match Con.kind c with
+    match Cons.kind c with
     | T.Def ([], T.Prim _) -> c
     | _ ->
       match  ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
-        let clone = Con.clone c (Abs ([], Pre)) in
+        let clone = Cons.clone c (Abs ([], Pre)) in
         con_renaming := ConRenaming.add c clone (!con_renaming);
         (* Need to extend con_renaming before traversing the kind *)
-        Type.set_kind clone (t_kind (Con.kind c));
+        Type.set_kind clone (t_kind (Cons.kind c));
         clone
 
   and t_prim p = Ir.map_prim t_typ (fun id -> id) p

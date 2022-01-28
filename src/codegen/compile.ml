@@ -4386,14 +4386,15 @@ module Serialization = struct
     (fun env get_x ->
 
       (* Some combinators for writing values *)
-      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_data_size, get_data_size) = new_local64 env "data_size" in
       let (set_ref_size, get_ref_size) = new_local env "ref_size" in
-      compile_unboxed_const 0l ^^ set_data_size ^^
+      compile_const_64 0L ^^ set_data_size ^^
       compile_unboxed_const 0l ^^ set_ref_size ^^
 
       let inc_data_size code =
-        get_data_size ^^ code ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        get_data_size ^^
+        code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_data_size
       in
 
@@ -4404,9 +4405,10 @@ module Serialization = struct
       in
 
       let size env t =
+        let (set_inc, get_inc) = new_local env "inc" in
         buffer_size env t ^^
         get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
-        get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_size
+        set_inc ^^ inc_data_size get_inc
       in
 
       let size_alias size_thing =
@@ -4508,7 +4510,14 @@ module Serialization = struct
         size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
+      (* Check 32-bit overflow of buffer_size *)
       get_data_size ^^
+      compile_shrU64_const 32L ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      E.else_trap_with env "buffer_size overflow" ^^
+      (* Convert to 32-bit *)
+      get_data_size ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
       get_ref_size
     )
 
@@ -5343,9 +5352,14 @@ module Serialization = struct
       get_x ^^
       buffer_size env (Type.seq ts) ^^
       set_refs_size ^^
-
+      (* add tydesc_len *)
       compile_add_const tydesc_len  ^^
       set_data_size ^^
+      (* check for overflow *)
+      get_data_size ^^
+      compile_unboxed_const tydesc_len ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      E.then_trap_with env "serialization overflow" ^^
 
       let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
