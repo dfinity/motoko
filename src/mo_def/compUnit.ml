@@ -89,15 +89,13 @@ let obj_decs obj_sort at note id_opt fields =
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
-  let import_decs =
-    List.map (fun { it = (pat, fp, ri); at; note} ->
-        { it = LetD (pat,
-                     { it = ImportE (fp, ri);
-                       at;
-                       note = { note_typ = note; note_eff = Type.Triv} });
-          at;
-          note = { note_typ = note; note_eff = Type.Triv } }
-      ) imports
+  let import_decs = List.map (fun { it = (pat, fp, ri); at; note} ->
+    { it = LetD (pat,
+      { it = ImportE (fp, ri);
+        at;
+        note = { note_typ = note; note_eff = Type.Triv} });
+      at;
+      note = { note_typ = note; note_eff = Type.Triv } }) imports
   in
   import_decs,
   match cub.it with
