@@ -55,9 +55,10 @@ let un_prog prog =
   let { imports; body } = comp_unit.it in
   let imports =
     List.concat_map
-      (fun i -> match i.it with
-                | { it = VarP alias; _ }, path, _ -> [alias.it, path]
-                | _ -> []) (* FIXME: explicit imports *)
+      (fun i ->
+        match i.it with
+        | { it = VarP alias; _ }, path, _ -> [ (alias.it, path) ]
+        | _ -> []) (* FIXME: explicit imports *)
       imports
   in
   match body.it with
