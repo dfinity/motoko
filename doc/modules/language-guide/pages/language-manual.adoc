@@ -397,7 +397,7 @@ The syntax of an _import_ `<imp>`  is as follows:
 
 ```bnf
 <imp> ::= imports
-  import <id>? =? <url>
+  import <pat> =? <url>
 
 <url> ::=
   "<filepath>"                      import module from relative <filepath>.mo
@@ -406,7 +406,10 @@ The syntax of an _import_ `<imp>`  is as follows:
   "canister:<name>"                 import external actor by <name>
 ```
 
-An import introduces a resource named '<id>?' referring to a local source module, module from a package of modules, or canister (imported as an actor).
+An import introduces a resource named '<pat>' referring to a local source module, module from a package of modules, or canister (imported as an actor).
+
+The pattern is bound to a module and explicit bindings can be established
+by using an object pattern.
 
 [[syntax-libraries]]
 === Libraries
