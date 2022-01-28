@@ -71,7 +71,7 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 Specific bindings can be imported from the module using object patterns
 ....
-  import { cons; nil } "mo:base/List";
+  import { cons; nil } = "mo:base/List";
 ....
 
 === Libraries
