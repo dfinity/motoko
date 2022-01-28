@@ -51,16 +51,17 @@ and class_doc = {
 
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
-  let Syntax.{ imports; body } = comp_unit.it in
+  let open Syntax in
+  let { imports; body } = comp_unit.it in
   let imports =
-    List.map
-      (fun i ->
-        let Syntax.{ it = VarP alias; _ }, path, _ = i.it in
-        (alias.it, path))
+    List.concat_map
+      (fun i -> match i.it with
+                | { it = VarP alias; _ }, path, _ -> [alias.it, path]
+                | _ -> []) (* FIXME: explicit imports *)
       imports
   in
   match body.it with
-  | Syntax.ModuleU (_, decs) -> Ok (imports, decs)
+  | ModuleU (_, decs) -> Ok (imports, decs)
   | _ -> Error "Couldn't find a module expression"
 
 module PosTable = Trivia.PosHashtbl
