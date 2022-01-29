@@ -85,6 +85,8 @@ and exp' at note = function
     obj_block at s None dfs note.Note.typ
   | S.ObjE (efs, []) ->
     obj note.Note.typ efs
+  | S.ObjE (efs, [b]) -> (* TODO: multiple bases *)
+    obj_extend note.Note.typ efs b
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -466,6 +468,18 @@ and exp_field ef =
     let d = letD id' (exp e) in
     let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
+
+and obj_extend obj_typ efs base =
+  let (ds, fs) = List.map exp_field efs |> List.split in
+
+  let name, typ = "b", T.nat in
+  let id = fresh_var name typ in
+    let d = letD id (dotE (exp base) name typ) in
+    let f = { it = I.{ name; var = id_of_var id}; at = no_region; note = typ } in
+
+  let ds, fs = ds @ [d], fs @ [f] in
+  let obj_e = newObjE T.Object fs obj_typ in
+  I.BlockE(ds, obj_e)
 
 and obj obj_typ efs =
   let (ds, fs) = List.map exp_field efs |> List.split in
