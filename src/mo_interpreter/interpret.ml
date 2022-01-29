@@ -435,7 +435,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjBlockE (obj_sort, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
-  | ObjE exp_fields ->
+  | ObjE (exp_fields, _exp_bases) ->
     interpret_exp_fields env exp_fields V.Env.empty (fun env -> k (V.Obj env))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))

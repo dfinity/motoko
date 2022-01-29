@@ -710,7 +710,7 @@ let rec is_explicit_exp e =
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
     is_explicit_exp e1 || is_explicit_exp e2
   | TupE es -> List.for_all is_explicit_exp es
-  | ObjE efs ->
+  | ObjE (efs, []) ->
     List.for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs
   | ObjBlockE (_, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
@@ -1028,7 +1028,7 @@ and infer_exp'' env exp : T.typ =
       else env
     in
     infer_obj env' obj_sort.it dec_fields exp.at
-  | ObjE exp_fields ->
+  | ObjE (exp_fields, []) ->
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     let fts = List.map (infer_exp_field env) exp_fields in
@@ -1382,7 +1382,7 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE exp_fields, T.Obj(T.Object, fts) ->
+  | ObjE (exp_fields, []), T.Obj(T.Object, fts) ->
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;

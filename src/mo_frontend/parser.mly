@@ -247,7 +247,7 @@ and objblock s dec_fields =
 %nonassoc SHLOP SHROP ROTLOP ROTROP
 %left POWOP WRAPPOWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest obj_base
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_nobin
 %type<Mo_def.Syntax.vis> vis
@@ -274,7 +274,7 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.pat> pat pat_un pat_plain pat_nullary pat_bin
 %type<Mo_def.Syntax.pat_field> pat_field
 %type<Mo_def.Syntax.typ list option> option(typ_args)
-%type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
+%type<Mo_def.Syntax.exp option> option(obj_base) option(exp_nullary(ob))
 %type<unit option> option(EQ)
 %type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) block exp_bin(ob) exp_bin(bl) exp(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
@@ -545,9 +545,12 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 ob : e=exp_obj { e }
 
+obj_base :
+  | IN base=exp(ob) { base }
+
 exp_obj :
-  | LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE efs @? at $sloc }
+  | LCURLY efs=seplist(exp_field, semicolon) base=obj_base? RCURLY
+    { ObjE (efs, Option.to_list base) @? at $sloc }
 
 exp_plain :
   | l=lit

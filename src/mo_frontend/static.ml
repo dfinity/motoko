@@ -45,7 +45,7 @@ let rec exp m e = match e.it with
       | Var -> err m e.at
     end
   | ObjBlockE (_, dfs) -> dec_fields m dfs
-  | ObjE efs -> exp_fields m efs
+  | ObjE (efs, []) -> exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()

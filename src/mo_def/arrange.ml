@@ -21,7 +21,7 @@ let rec exp e = match e.it with
   | TupE es             -> "TupE"      $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
   | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
-  | ObjE efs            -> "ObjE"      $$ List.map exp_field efs
+  | ObjE (efs, [])      -> "ObjE"      $$ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
