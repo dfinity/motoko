@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.6.21 (2022-01-28)
+## 0.6.21 (2022-01-29)
 
 * motoko (`moc`)
 
@@ -11,7 +11,7 @@
 
 * motoko-base
 
-  * 128-bit Cycles-API support (#???)
+  * `Principal.fromBlob` added (#331)
 
 ## 0.6.20 (2022-01-11)
 
