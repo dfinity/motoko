@@ -1035,6 +1035,7 @@ and infer_exp'' env exp : T.typ =
     let bases = List.map (infer_exp env) bases in
     (* TODO: disjointness! *)
     (* TODO: var in bases? *)
+    (* TODO: Object, Module, Actor? *)
     let t_base = T.(List.fold_left glb (Obj (Object, [])) bases) in
     T.(glb t_base (Obj (Object, List.sort T.compare_field fts)))
   | DotE (exp1, id) ->
