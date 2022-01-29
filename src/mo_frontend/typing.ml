@@ -1028,11 +1028,13 @@ and infer_exp'' env exp : T.typ =
       else env
     in
     infer_obj env' obj_sort.it dec_fields exp.at
-  | ObjE (exp_fields, []) ->
+  | ObjE (exp_fields, bases) ->
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     let fts = List.map (infer_exp_field env) exp_fields in
-    T.Obj (T.Object, List.sort T.compare_field fts)
+    let bases = List.map (infer_exp env) bases in
+    let t_base = T.(List.fold_left glb (Obj (Object, [])) bases) in
+    T.(glb t_base (Obj (Object, List.sort T.compare_field fts)))
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
