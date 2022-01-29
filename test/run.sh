@@ -87,7 +87,7 @@ function normalize () {
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
-    sed '/RTS error: Out of memory/q' |
+    sed '/RTS error: Cannot grow memory/q' |
     cat > $1.norm
     mv $1.norm $1
   fi
