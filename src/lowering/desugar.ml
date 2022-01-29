@@ -472,7 +472,7 @@ and exp_field ef =
 and obj_extend obj_typ efs base =
   let (ds, fs) = List.map exp_field efs |> List.split in
 
-  let base, (base_t : T.typ) = exp base, (typ_note base.note).typ in
+  let base, (base_t : T.typ) = exp base, (typ_note base.note).Note.typ in
   let base_var = fresh_var "base" base_t in
   let base_dec = letD base_var base in
 
