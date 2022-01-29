@@ -79,10 +79,10 @@ impl Memory for IcMemory {
         let old_hp = u64::from(HP);
         let new_hp = old_hp + delta;
 
-
         // Grow memory if needed
         grow_memory(new_hp);
 
+        debug_assert!(new_hp <= u64::from(core::u32::MAX));
         HP = new_hp as u32;
 
         Value::from_ptr(old_hp as usize)
@@ -92,11 +92,12 @@ impl Memory for IcMemory {
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
+    debug_assert!(ptr <= 2*u64::from(core::u32::MAX));
     let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
-    let total_pages_needed = (ptr + page_size - 1) / page_size;
-    let current_pages = wasm32::memory_size(0) as u64;
+    let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
+    let current_pages = wasm32::memory_size(0) as usize;
     if total_pages_needed > current_pages {
-        if wasm32::memory_grow(0, (total_pages_needed - current_pages) as usize) == core::usize::MAX {
+        if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
             rts_trap_with("Cannot grow memory");
         }
     }
