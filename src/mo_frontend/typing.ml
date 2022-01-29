@@ -1033,6 +1033,7 @@ and infer_exp'' env exp : T.typ =
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     let fts = List.map (infer_exp_field env) exp_fields in
     let bases = List.map (infer_exp env) bases in
+    (* TODO: disjointness! *)
     let t_base = T.(List.fold_left glb (Obj (Object, [])) bases) in
     T.(glb t_base (Obj (Object, List.sort T.compare_field fts)))
   | DotE (exp1, id) ->
