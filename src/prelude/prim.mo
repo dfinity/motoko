@@ -357,3 +357,8 @@ func stableMemoryLoadBlob(offset : Nat64, size : Nat) : Blob =
 
 func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
   (prim "stableMemoryStoreBlob" : (Nat64, Blob) -> ()) (offset, val);
+
+// raw calls
+func call_raw(p : Principal, m : Text, a : Blob) : async Blob {
+  await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
+};
