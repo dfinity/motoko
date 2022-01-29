@@ -435,8 +435,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjBlockE (obj_sort, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
-  | ObjE (exp_fields, _exp_bases) ->
-    interpret_exp_fields env exp_fields V.Env.empty (fun env -> k (V.Obj env))
+  | ObjE (exp_fields, exp_bases) ->
+    let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
+    let merges = let open V.Env in
+      List.fold_left
+        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> assert false))
+        empty in
+    let strip = List.map (fun (V.Obj env) -> env) in
+    interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -618,6 +624,8 @@ and interpret_exps env exps vs (k : V.value list V.cont) =
   | [] -> k (List.rev vs)
   | exp::exps' ->
     interpret_exp env exp (fun v -> interpret_exps env exps' (v::vs) k)
+
+(* Objects *)
 
 and interpret_exp_fields env exp_fields fld_env (k : V.value V.Env.t V.cont) =
   match exp_fields with
