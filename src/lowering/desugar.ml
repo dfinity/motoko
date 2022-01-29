@@ -472,14 +472,23 @@ and exp_field ef =
 and obj_extend obj_typ efs base =
   let (ds, fs) = List.map exp_field efs |> List.split in
 
+  let base, (base_t : T.typ) = exp base, (typ_note base.note).typ in
+  let base_var = fresh_var "base" base_t in
+  let base_dec = letD base_var base in
+
   let name, typ = "b", T.nat in
   let id = fresh_var name typ in
-    let d = letD id (dotE (exp base) name typ) in
-    let f = { it = I.{ name; var = id_of_var id}; at = no_region; note = typ } in
+  let d = letD id (dotE (varE base_var) name typ) in
+  let f = { it = I.{ name; var = id_of_var id}; at = no_region; note = typ } in
 
   let ds, fs = ds @ [d], fs @ [f] in
   let obj_e = newObjE T.Object fs obj_typ in
-  I.BlockE(ds, obj_e)
+  I.BlockE(base_dec :: ds, obj_e)
+
+
+
+
+
 
 and obj obj_typ efs =
   let (ds, fs) = List.map exp_field efs |> List.split in
