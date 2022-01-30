@@ -287,6 +287,23 @@ let transform mode prog =
          )
          (varE nary_async))
         .it
+    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->
+      let exp1' = t_exp exp1 in
+      let exp2' = t_exp exp2 in
+      let exp3' = t_exp exp3 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode [T.blob] in
+      let _ = letEta in
+      (blockE (
+        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+          letEta exp1' (fun v1 ->
+          letEta exp2' (fun v2 ->
+          letEta exp3' (fun v3 ->
+            [ expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject)) ]
+            )
+          ))
+         )
+         (varE nary_async))
+        .it
     | PrimE (p, exps) ->
       PrimE (t_prim p, List.map t_exp exps)
     | BlockE b ->

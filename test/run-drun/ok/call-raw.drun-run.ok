@@ -1,0 +1,14 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c00017c02
+ingress Completed: Reply: 0x4449444c00017d02
+ingress Completed: Reply: 0x4449444c0001710568656c6c6f
+ingress Completed: Reply: 0x4449444c00037d7e79010161000000
+debug.print: unit!
+debug.print: ("int", +1)
+debug.print: ("int", +2)
+debug.print: ("text", "hello")
+debug.print: ("text", (1, true, 'a'))
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: ohoh
+debug.print: supercalifragilisticexpialidocious
+ingress Completed: Reply: 0x4449444c0000

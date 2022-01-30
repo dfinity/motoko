@@ -6362,8 +6362,22 @@ module FuncDec = struct
      deserialization); the reject callback function is unique.
   *)
 
-  let closures_to_reply_reject_callbacks env ts =
-    let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
+  let closures_to_reply_reject_callbacks_aux env ts_opt =
+    let arity, reply_name, from_arg_data =
+      match ts_opt with
+      | Some ts ->
+        (List.length ts,
+         "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">",
+         fun env -> Serialization.deserialize env ts)
+      | None ->
+        (1,
+         "@callback",
+         (fun env ->
+           Blob.of_size_copy env
+           (fun env -> IC.system_call env "ic0" "msg_arg_data_size")
+           (fun env -> IC.system_call env "ic0" "msg_arg_data_copy")
+           (fun env -> compile_unboxed_const 0l)))
+    in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
@@ -6374,11 +6388,11 @@ module FuncDec = struct
         set_closure ^^
         get_closure ^^
 
-        (* Deserialize reply arguments  *)
-        Serialization.deserialize env ts ^^
+        (* Deserialize/Blobify reply arguments  *)
+        from_arg_data env ^^
 
         get_closure ^^
-        Closure.call_closure env (List.length ts) 0 ^^
+        Closure.call_closure env arity 0 ^^
 
         message_cleanup env (Type.Shared Type.Write)
       );
@@ -6417,6 +6431,11 @@ module FuncDec = struct
       get_cb_index ^^
       compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
       get_cb_index
+
+  let closures_to_reply_reject_callbacks env ts =
+    closures_to_reply_reject_callbacks_aux env (Some ts)
+  let closures_to_raw_reply_reject_callbacks env  =
+    closures_to_reply_reject_callbacks_aux env None
 
   let ignoring_callback env =
     (* for one-way calls, we use an invalid table entry as the callback. this
@@ -6469,6 +6488,14 @@ module FuncDec = struct
       get_meth_pair
       (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
       (fun _ -> get_arg ^^ Serialization.serialize env ts1)
+
+  let ic_call_raw env get_meth_pair get_arg get_k get_r =
+    ic_call_threaded
+      env
+      "raw call"
+      get_meth_pair
+      (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
+      (fun _ -> get_arg ^^ Blob.as_ptr_len env)
 
   let ic_self_call env ts get_meth_pair get_future get_k get_r =
     ic_call_threaded
@@ -8234,7 +8261,21 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
       end
-
+    | ICCallRawPrim, [p;m;a;k;r] ->
+      SR.unit, begin
+      let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
+      let (set_arg, get_arg) = new_local env "arg" in
+      let (set_k, get_k) = new_local env "k" in
+      let (set_r, get_r) = new_local env "r" in
+      let add_cycles = Internals.add_cycles env ae in
+      compile_exp_vanilla env ae p ^^
+      compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
+      Tuple.from_stack env 2 ^^ set_meth_pair ^^
+      compile_exp_vanilla env ae a ^^ set_arg ^^
+      compile_exp_vanilla env ae k ^^ set_k ^^
+      compile_exp_vanilla env ae r ^^ set_r ^^
+      FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r add_cycles
+      end
     | ICStableRead ty, [] ->
       (*
         * On initial install:
