@@ -188,7 +188,7 @@ let string_of_symbol symbol : string =
   | X (N N_seplist_dec_field_semicolon_) -> "seplist(<dec_field>,<semicolon>)"
   | X (N N_seplist_exp_ob__COMMA_) -> "seplist(<exp(ob)>,,)"
   | X (N N_seplist_exp_field_semicolon_) -> "seplist(<exp_field>,<semicolon>)"
-  | X (N N_seplist1_exp_field_semicolon_) -> "seplist1(<exp_field>,<semicolon>)"
+  | X (N N_separated_nonempty_list_semicolon_exp_field_) -> "seplist+(<exp_field>,<semicolon>)"
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> "seplist(<exp_nonvar(ob)>,,)"
   | X (N N_seplist_imp_SEMICOLON_) -> "seplist(<imp>,;)"
   | X (N N_seplist_imp_semicolon_) -> "seplist(<imp>,<semicolon>)"
