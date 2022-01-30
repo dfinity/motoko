@@ -2,7 +2,6 @@ import P "mo:⛔";
 
 actor self {
 
-
   public shared func sint() : async Int {
     return 2;
   };
