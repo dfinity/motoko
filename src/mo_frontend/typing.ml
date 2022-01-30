@@ -710,8 +710,9 @@ let rec is_explicit_exp e =
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
     is_explicit_exp e1 || is_explicit_exp e2
   | TupE es -> List.for_all is_explicit_exp es
-  | ObjE (efs, []) ->
-    List.for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs
+  | ObjE (efs, bases) ->
+    List.(for_all is_explicit_exp bases
+          && for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs)
   | ObjBlockE (_, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
