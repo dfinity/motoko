@@ -18,13 +18,14 @@ let rec exp e = match e.it with
   | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
   | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
-  | TupE es             -> "TupE"      $$ List.map exp es
+  | TupE es             -> "TupE"      $$ exps es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
   | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
   | ObjE (efs, [])      -> "ObjE"      $$ List.map exp_field efs
+  | ObjE (efs, bases)   -> "ObjE"      $$ List.map exp_field efs @ [Atom "|"] @ exps bases
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
-  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
+  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
   | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
   | FuncE (x, sp, tp, p, t, sugar, e') ->
     "FuncE" $$ [
@@ -65,6 +66,8 @@ let rec exp e = match e.it with
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
   | IgnoreE e           -> "IgnoreE" $$ [exp e]
+
+and exps es = List.map exp es
 
 and inst inst = match inst.it with
   | None -> []
