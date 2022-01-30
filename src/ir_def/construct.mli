@@ -56,6 +56,7 @@ val cps_awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
+val ic_call_rawE : exp -> exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
 val tagE : id -> exp -> exp
