@@ -45,7 +45,7 @@ let rec exp m e = match e.it with
       | Var -> err m e.at
     end
   | ObjBlockE (_, dfs) -> dec_fields m dfs
-  | ObjE (efs, []) -> exp_fields m efs
+  | ObjE (efs, bases) -> List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()
@@ -56,7 +56,7 @@ let rec exp m e = match e.it with
   | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
-  | AnnotE (exp1, _) | IgnoreE exp1   | DoOptE exp1 -> exp m exp1
+  | AnnotE (exp1, _) | IgnoreE exp1 | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
 
   (* Clearly non-static *)
