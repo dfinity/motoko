@@ -480,13 +480,13 @@ and obj_extend obj_typ efs base =
   let base_dec = letD base_var base in
 
   let frob T.{ lab; typ; _ } =
-    match List.find_opt (fun { it = { id; _ }; _ } -> id.it = lab) efs with
+    match List.find_opt (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs with
     | Some ef ->
       exp_field ef
     | _ ->
       let id = fresh_var lab typ in
       let d = letD id (dotE (varE base_var) lab typ) in
-      let f = { it = I.{ name = lab; var = id_of_var id}; at = no_region; note = typ } in
+      let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
       d, f in
 
   let ds, fs = List.(map frob (snd (T.as_obj obj_typ)) |> split) in
