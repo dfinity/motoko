@@ -22,7 +22,7 @@
 
 * motoko-base
 
-  * Add `Iter.filter : <A>(Iter<A>, A -> Bool) -> Iter<A>` (thanks to jzxchiang1) (#328).
+  * Add `Iter.filter : <A>(Iter<A>, A -> Bool) -> Iter<A>` (thanks to jzxchiang1) (dfinity/motoko-base#328).
 
 ## 0.6.19 (2022-01-05)
 
