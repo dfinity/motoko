@@ -6495,7 +6495,7 @@ module FuncDec = struct
       "raw call"
       get_meth_pair
       (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
-      (fun _ -> get_arg)
+      (fun _ -> get_arg ^^ Blob.as_ptr_len env)
 
   let ic_self_call env ts get_meth_pair get_future get_k get_r =
     ic_call_threaded

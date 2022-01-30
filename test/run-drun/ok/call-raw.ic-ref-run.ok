@@ -1,0 +1,20 @@
+→ update create_canister(record {settings = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update sint()
+← replied: (+2)
+→ update snat()
+← replied: (2)
+→ update stext()
+← replied: ("hello")
+→ update stuple()
+← replied: (1, true, (97 : nat32))
+→ update go()
+debug.print: unit!
+debug.print: ("int", +1)
+debug.print: ("int", +2)
+debug.print: ("text", "hello")
+debug.print: ("text", (1, true, 'a'))
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: ohoh"
+← replied: ()
