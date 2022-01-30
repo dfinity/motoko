@@ -10,13 +10,22 @@ let
     system = builtins.currentSystem;
   };
 
-  nixpkgs-patched = bootstrap-pkgs.applyPatches {
-    name = "nixpkgs-patched";
-    src = nixpkgs_src;
-    patches = [
-      ./patches/124498.patch
-    ];
-  };
+  # dump nixpkgs patches here
+  nixpkgs-patches = [];
+
+  nixpkgs-patched =
+    if nixpkgs-patches == []
+    then nixpkgs_src
+    else
+      let
+        bootstrap-pkgs = import nixpkgs_src {
+          system = builtins.currentSystem;
+        };
+      in bootstrap-pkgs.applyPatches {
+        name = "nixpkgs-patched";
+        src = nixpkgs_src;
+        patches = nixpkgs-patches;
+      };
 
   pkgs =
     import nixpkgs-patched {
@@ -46,11 +55,10 @@ let
         # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;
-          rust-channel = moz_overlay.rustChannelOf { date = "2021-10-25"; channel = "nightly"; };
+          rust-channel = moz_overlay.rustChannelOf { date = "2022-01-13"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-               "wasm32-unknown-unknown"
                "wasm32-unknown-emscripten"
                "wasm32-wasi"
                "i686-unknown-linux-gnu"
@@ -71,10 +79,11 @@ let
         (self: super: import ./drun.nix self)
 
         # to allow picking up more recent Haskell packages from Hackage
+        # don't use `fetchFromGitHub` here as we really need an intact tarball
         (self: super: {
           all-cabal-hashes = self.fetchurl {
-            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/66a799608f2c6e0e6c530383bc0e2bcb42ae11f2.tar.gz";
-            sha256 = "0ds95gacrzsqg5f0f6j533ghxzcqqn7wn1d391pcpj5g9frp01q2";
+            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/d859530d8342c52d09a73d1d125c144725b5945d.tar.gz";
+            sha256 = "0gjahsqqq99dc4bjcx9p3z8adpwy51w3mzrf57nib856jlvlfmv5";
           };
         })
 

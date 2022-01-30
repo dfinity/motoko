@@ -1,5 +1,69 @@
 # Motoko compiler changelog
 
+## 0.6.21 (2022-01-29)
+
+* motoko (`moc`)
+
+  * Implement a limited form of explicit symbol imports (#3076)
+  * Fix: insert critical overflow checks preventing rare heap corruptions
+    in out-of-memory allocation and stable variable serialization (#3077) 
+  * Implement support for 128-bit Cycles-API (#3042)
+
+* motoko-base
+
+  * `Principal.fromBlob` added (#331)
+
+## 0.6.20 (2022-01-11)
+
+* motoko
+
+  * Implement support for `heartbeat` system methods (thanks to ninegua) (#2971)
+
+* motoko-base
+
+  * Add `Iter.filter : <A>(Iter<A>, A -> Bool) -> Iter<A>` (thanks to jzxchiang1) (#328).
+
+## 0.6.19 (2022-01-05)
+
+* motoko-base
+
+  * Fixed a bug in the `RBTree.size()` method.
+
+## 0.6.18 (2021-12-20)
+
+* moc
+
+  * Add runtime support for low-level, direct access to 64-bit IC stable memory, including documentation.
+  * Add compiler flag `--max-stable-pages <n>` to cap any use of `ExperimentalStableMemory.mo` (see below), while reserving space for stable variables.
+  Defaults to 65536 (4GiB).
+
+* motoko-base
+
+  * (Officially) add `ExperimentalStableMemory.mo` library, exposing 64-bit IC stable memory
+
+* BREAKING CHANGE (Minor):
+  The previously available (but unadvertised) `ExperimentalStableMemory.mo` used
+  `Nat32` offsets. This one uses `Nat64` offsets to (eventually) provide access to more address space.
+
+## 0.6.17 (2021-12-10)
+
+* Improved handling of one-shot messages facilitating zero-downtime
+  upgrades (#2938).
+* Further performance improvements to the mark-compact garbage
+  collector (#2952, #2973).
+* Stable variable checking for `moc.js` (#2969).
+* A bug was fixed in the scoping checker  (#2977).
+
+## 0.6.16 (2021-12-03)
+
+* Minor performance improvement to the mark-compact garbage collector
+
+
+## 0.6.15 (2021-11-26)
+
+* Fixes crash when (ill-typed) `switch` expression on non-variant
+  value has variant alternatives (#2934)
+
 ## 0.6.14 (2021-11-19)
 
 * The compiler now embeds the existing Candid interface  and  new

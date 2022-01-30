@@ -25,11 +25,11 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    # pulls in clang (wrapped) and clang-12 (unwrapped)
-    llvmPackages_12.clang
+    # pulls in clang (wrapped) and clang-13 (unwrapped)
+    llvmPackages_13.clang
     # pulls in wasm-ld
-    llvmPackages_12.lld
-    llvmPackages_12.bintools
+    llvmPackages_13.lld
+    llvmPackages_13.bintools
     rustc-nightly
     cargo-nightly
     wasmtime
@@ -42,16 +42,16 @@ let
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
     # so we do not use the nix-provided wrapper in clang
-    export WASM_CLANG="clang-12"
+    export WASM_CLANG="clang-13"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
     # that otherwise the wrapped clang would take care for us
-    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_12.clang-unwrapped.lib}"
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_13.clang-unwrapped.lib}"
 
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
-    # there we use plain clang-12. There is no stdlib there anyways.
+    # there we use plain clang-13. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_12}/bin/clang"
   '';
 in
@@ -72,6 +72,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.menhirLib
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
@@ -157,15 +158,15 @@ rec {
       # Build Rust package cargo-vendor-tools
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
-        src = ./rts/cargo-vendor-tools;
-        cargoSha256 = "0zi3fiq9sy6c9dv7fd2xc9lan85d16gfax47n6g6f5q5c1zb5r47";
+        src = "./rts/${name}";
+        cargoSha256 = "sha256-CrtZQTac95MEbk3uapviLgcQjEt5VUnTOG9fiJXIAU8";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "0wxx8prh66i19vd5078iky6x5bzs6ppz7c1vbcyx9h4fg0f7pfj6";
+      rustStdDepsHash = "sha256:06rb75ydzfk9msx4rawn7vm1md8p32lirkyfymws7w10zka3h6qs";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -191,7 +192,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "07i8mjky9w0c9gadxzpfvv9im40hj71v69a796q7vgg2j6agr03q";
+        sha256 = "sha256-VKNXQ7uT5njmZ4RlF1Lebyy7hPSw+KRjG8ntCXfw/Y4";
         copyLockfile = true;
       };
 
@@ -317,7 +318,7 @@ rec {
         src = test_src dir;
         buildInputs =
           deps ++
-          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x sources.esm ]) ++
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x sources.esm ]) ++
           [ filecheck
             wasmtime
           ] ++
@@ -464,7 +465,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-10_x
+          nixpkgs.nodejs-16_x
         ];
         buildPhase = ''
           patchShebangs .
@@ -481,7 +482,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv $test
+          NODE_PATH=$out/bin node $test
         '';
       };
     in
@@ -680,7 +681,7 @@ rec {
       check-grammar
       check-error-codes
     ] ++
-    builtins.attrValues (builtins.removeAttrs tests ["qc"]) ++
+    builtins.attrValues tests ++
     builtins.attrValues js;
   };
 
@@ -706,7 +707,9 @@ rec {
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat
           nixpkgs.ocamlPackages.utop
+          nixpkgs.fswatch
           nixpkgs.niv
+          nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
         ]
       ));
@@ -727,10 +730,14 @@ rec {
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
 
     # allow building this as a derivation, so that hydra builds and caches
-    # the dependencies of shell
-    # Also mention the dependencies in the output, so that after `nix-build -A
-    # shell` (or just `nix-build`) they are guaranteed to be present in the
-    # local nix store.
+    # the dependencies of shell.
+    #
+    # Note that we are using propagatedBuildInputs above, not just buildInputs.
+    # This means that the dependencies end up in the output path, in
+    # /nix/store/13d…da6-motoko-shell/nix-support/propagated-build-inputs
+    # so that after `nix-build -A shell` (or just `nix-build`) they are guaranteed
+    # to be present in the local nix store (else this might just download an
+    # empty build result path from the nix cache.)
     phases = ["installPhase" "fixupPhase"];
     installPhase = ''
       mkdir $out

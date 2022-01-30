@@ -4,7 +4,7 @@ open Source
 open Ir
 open Ir_effect
 open Mo_values
-module Con = Mo_types.Con
+module Cons = Mo_types.Cons
 module T = Mo_types.Type
 
 (* Field names *)
@@ -101,7 +101,7 @@ let primE prim es =
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
-    | SystemCyclesAcceptPrim -> T.nat64
+    | SystemCyclesAcceptPrim -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -261,7 +261,7 @@ let nullE () =
 let funcE name sort ctrl typ_binds args typs exp =
   let cs = List.map (function { it = {con;_ }; _ } -> con) typ_binds in
   let tbs = List.map (function { it = { sort; bound; con}; _ } ->
-    {T.var = Con.name con; T.sort; T.bound = T.close cs bound})
+    {T.var = Cons.name con; T.sort; T.bound = T.close cs bound})
     typ_binds
   in
   let ts1 = List.map (function arg -> T.close cs arg.note) args in
@@ -552,7 +552,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Con.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =

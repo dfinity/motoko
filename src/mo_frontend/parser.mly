@@ -12,8 +12,6 @@ open Parser_lib
 (* Position handling *)
 
 let position_to_pos position =
-  (* TBR: Remove assertion once the menhir bug is fixed. *)
-  assert (Obj.is_block (Obj.repr position));
   { file = position.Lexing.pos_fname;
     line = position.Lexing.pos_lnum;
     column = position.Lexing.pos_cnum - position.Lexing.pos_bol
@@ -873,9 +871,8 @@ class_body :
 (* Programs *)
 
 imp :
-  | IMPORT xf=id_opt EQ? f=TEXT
-    { let _, x = xf "import" $sloc in
-      let_or_exp true x (ImportE (f, ref Unresolved)) (at $sloc) }
+  | IMPORT p=pat_nullary EQ? f=TEXT
+    { LetD(p, ImportE(f, ref Unresolved) @? at $sloc) @? at $sloc }
 
 start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
   | (* empty *) { () }

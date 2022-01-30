@@ -312,7 +312,14 @@ and call_system_func_opt name es =
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
         _
       } when id.it = name
-      -> Some (callE (varE (var id.it p.note)) [] (tupE []))
+      ->
+       Some (
+         if name = "heartbeat" then
+           blockE
+             [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+             (unitE ())
+         else
+           callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
 
 and build_candid ts obj_typ =
@@ -330,8 +337,8 @@ and export_interface txt =
   let binds = [T.scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [text]) in
 
-  let scope_con = Con.fresh "T" (Abs ([], T.scope_bound)) in
-  let scope_con2 = Con.fresh "T2" (Abs ([], Any)) in
+  let scope_con = Cons.fresh "T" (Abs ([], T.scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind  = typ_arg scope_con T.Scope T.scope_bound in
   let bind2 = typ_arg scope_con2 T.Scope T.scope_bound in
   ([ letD (var v typ) (
@@ -382,7 +389,7 @@ and build_actor at ts self_id es obj_typ =
   let (interface_d, interface_f) = export_interface candid.I.service in
   I.ActorE (interface_d @ ds', interface_f @ fs,
      { meta;
-       I.pre =
+       I.preupgrade =
        (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
         blockE
           ((match call_system_func_opt "preupgrade" es with
@@ -398,7 +405,10 @@ and build_actor at ts self_id es obj_typ =
                         note = f.T.typ }
                     ) fields vs)
                  ty]));
-        I.post = match call_system_func_opt "postupgrade" es with
+        I.postupgrade = (match call_system_func_opt "postupgrade" es with
+                 | Some call -> call
+                 | None -> tupE []);
+        I.heartbeat = match call_system_func_opt "heartbeat" es with
                  | Some call -> call
                  | None -> tupE []},
     obj_typ)
@@ -434,11 +444,13 @@ and stabilize stab_opt d =
 and build_obj at s self_id dfs obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s fs obj_typ in
-  let ret_ds, ret_o =
-    match self_id with
-    | None -> [], obj_e
-    | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
-  in I.BlockE (decs (List.map (fun df -> df.it.S.dec) dfs) @ ret_ds, ret_o)
+  let ds = decs (List.map (fun df -> df.it.S.dec) dfs) in
+  let e = blockE ds obj_e in
+  match self_id with
+    | None -> e.it
+    | Some self_id ->
+      let self = var self_id.it obj_typ in
+      (letE self e (varE self)).it
 
 and exp_field ef =
   let S.{mut; id; exp = e} = ef.it in
@@ -578,7 +590,7 @@ and dec' at n d = match d with
     let body = if s.it = T.Actor
       then
         let (_, obj_typ) = T.as_async rng_typ in
-        let c = Con.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
+        let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE (typ_arg c T.Scope T.scope_bound)
           (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
@@ -754,7 +766,7 @@ type import_declaration = Ir.dec list
 
 let actor_class_mod_exp id class_typ func =
   let fun_typ = func.note.Note.typ in
-  let class_con = Con.fresh id (T.Def([], class_typ)) in
+  let class_con = Cons.fresh id (T.Def([], class_typ)) in
   let v = fresh_var id fun_typ in
   blockE
     [letD v func]
@@ -796,9 +808,9 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   in
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
-  let available = fresh_var "available" T.nat64 in
-  let accepted = fresh_var "accepted" T.nat64 in
-  let cycles = var "@cycles" (T.Mut (T.nat64)) in
+  let available = fresh_var "available" T.nat in
+  let accepted = fresh_var "accepted" T.nat in
+  let cycles = var "@cycles" (T.Mut (T.nat)) in
   let body =
     asyncE
       (typ_arg c' T.Scope T.scope_bound)
@@ -846,7 +858,7 @@ let link_declarations imports (cu, flavor) =
 
 
 let transform_import (i : S.import) : import_declaration =
-  let (id, f, ir) = i.it in
+  let (p, f, ir) = i.it in
   let t = i.note in
   assert (t <> T.Pre);
   let rhs = match !ir with
@@ -857,7 +869,7 @@ let transform_import (i : S.import) : import_declaration =
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
-  in [ letD (var id.it t) rhs ]
+  in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with

@@ -17,7 +17,7 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v15
+    - uses: cachix/install-nix-action@v16
       with:
         extra_nix_config: |
           experimental-features = nix-command
@@ -36,12 +36,23 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: "nix-build"
+      env:
+        GC_DONT_GC: 1 # otherwise `nix` crash on macOS
       run: nix-build-uncached --max-jobs 4 -A all-systems-go
+
+    # The above doesn’t show nice logs, due to
+    # https://github.com/Mic92/nix-build-uncached/issues/42
+    # So let’s re-run the tests with nix-build.
+    # In the happy case they have been built above and this is quick.
+    - name: "nix-build tests"
+      env:
+        GC_DONT_GC: 1 # otherwise `nix` crash on macOS
+      run: nix-build -A tests
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
-        from="$( git merge-base origin/${{ github.base_ref}} HEAD )"
+        from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
         nix-build --max-jobs 4 perf-delta.nix -o perf-delta.txt \

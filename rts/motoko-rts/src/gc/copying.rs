@@ -134,7 +134,7 @@ unsafe fn evac<M: Memory>(
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
-    // Update the field if the object is already evacauted
+    // Update the field if the object is already evacuated
     if obj.tag() == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;

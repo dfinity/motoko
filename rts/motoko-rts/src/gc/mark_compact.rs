@@ -38,7 +38,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
 
     compacting_gc_internal(
         mem,
-        ic::get_heap_base(),
+        ic::get_aligned_heap_base(),
         // get_hp
         || ic::HP as usize,
         // set_hp
@@ -72,6 +72,8 @@ pub unsafe fn compacting_gc_internal<
 ) {
     let old_hp = get_hp() as u32;
 
+    assert_eq!(heap_base % 32, 0);
+
     mark_compact(
         mem,
         set_hp,
@@ -98,16 +100,15 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 ) {
     let mem_size = Bytes(heap_end - heap_base);
 
-    alloc_bitmap(mem, mem_size);
+    alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
     alloc_mark_stack(mem);
 
     mark_static_roots(mem, static_roots, heap_base);
 
     if (*continuation_table_ptr_loc).is_ptr() {
-        // TODO: No need to check if continuation table is already marked
-        mark_object(mem, *continuation_table_ptr_loc, heap_base);
+        mark_object(mem, *continuation_table_ptr_loc);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
-        // it will be readable when we unthread continuation table
+        // it will be readable when we unthread the continuation table
         thread(continuation_table_ptr_loc);
     }
 
@@ -125,21 +126,21 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
     // Static objects are not in the dynamic heap so don't need marking.
     for i in 0..root_array.len() {
         let obj = root_array.get(i).as_obj();
-        // Root array should only has pointers to other static MutBoxes
+        // Root array should only have pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
         debug_assert!((obj as u32) < heap_base); // check that MutBox is static
         mark_root_mutbox_fields(mem, obj as *mut MutBox, heap_base);
     }
 }
 
-unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value, heap_base: u32) {
+unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);
 
-    let obj_idx = (obj - heap_base) / WORD_SIZE;
+    let obj_idx = obj / WORD_SIZE;
 
     if get_bit(obj_idx) {
         // Already marked
@@ -159,7 +160,7 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
         let field_value = *field_addr;
-        mark_object(mem, field_value, heap_base);
+        mark_object(mem, field_value);
 
         // Thread if backwards or self pointer
         if field_value.get_ptr() <= obj as usize {
@@ -171,11 +172,8 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
     let field_addr = &mut (*mutbox).field;
-    // TODO: Not sure if this check is necessary?
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
-        // TODO: We should be able to omit the "already marked" check here as no two root MutBox
-        // can point to the same object (I think)
-        mark_object(mem, *field_addr, heap_base);
+        mark_object(mem, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);
@@ -197,7 +195,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
-        let p = (heap_base + (bit * WORD_SIZE)) as *mut Obj;
+        let p = (bit * WORD_SIZE) as *mut Obj;
         let p_new = free;
 
         // Update backwards references to the object's new location and restore object header
