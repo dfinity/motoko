@@ -1,17 +1,18 @@
 # Motoko compiler changelog
 
-## 0.6.21 (2022-01-29)
+## 0.6.21 (2022-01-31)
 
 * motoko (`moc`)
 
-  * Implement a limited form of explicit symbol imports (#3076)
+  * Generalized `import` supporting pattern matching and selective field imports (#3076).
   * Fix: insert critical overflow checks preventing rare heap corruptions
-    in out-of-memory allocation and stable variable serialization (#3077) 
-  * Implement support for 128-bit Cycles-API (#3042)
+    in out-of-memory allocation and stable variable serialization (#3077).
+  * Implement support for 128-bit Cycles-API (#3042).
 
 * motoko-base
 
-  * `Principal.fromBlob` added (#331)
+  * `ExperimentalInternetComputer` library, exposing low-level, binary `call` function (a.k.a `raw calls`) (#334, Motoko #3806).
+  * `Principal.fromBlob` added (#331).
 
 ## 0.6.20 (2022-01-11)
 
