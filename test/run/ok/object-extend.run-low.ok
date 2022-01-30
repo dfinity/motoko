@@ -1,1 +1,5 @@
 {a = 8; b = 6}
+{b = 8}
+{a = 8; b = 6; c = "C"}
+IR has aliasing (or Check_ir visits nodes twice):
+(VarE $base/2)
