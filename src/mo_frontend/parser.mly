@@ -545,7 +545,7 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 ob : e=exp_obj { e }
 
-obj_base :
+%inline obj_base :
   | IN base=exp(ob) { base }
 
 exp_obj :

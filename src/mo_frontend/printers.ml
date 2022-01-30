@@ -166,6 +166,7 @@ let string_of_symbol symbol : string =
   | X (N N_lit) -> "<lit>"
   | X (N N_ob) -> "<ob>"
   | X (N N_obj_body) -> "<obj_body>"
+  | X (N N_option_obj_base_) -> "<obj_base>?"
   | X (N N_option_EQ_) -> "=?"
   | X (N N_option_exp_nullary_ob__) -> "<exp_nullary(ob)>?"
   | X (N N_option_typ_args_) -> "<typ_args>?"
