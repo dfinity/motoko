@@ -17,4 +17,5 @@ debug.print: ("int", +2)
 debug.print: ("text", "hello")
 debug.print: ("text", (1, true, 'a'))
 debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: ohoh"
+debug.print: supercalifragilisticexpialidocious
 ← replied: ()

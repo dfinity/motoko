@@ -8269,7 +8269,7 @@ and compile_exp (env : E.t) ae exp =
       let (set_r, get_r) = new_local env "r" in
       let add_cycles = Internals.add_cycles env ae in
       compile_exp_vanilla env ae p ^^
-      compile_exp_vanilla env ae m ^^
+      compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
       Tuple.from_stack env 2 ^^ set_meth_pair ^^
       compile_exp_vanilla env ae a ^^ set_arg ^^
       compile_exp_vanilla env ae k ^^ set_k ^^

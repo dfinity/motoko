@@ -41,6 +41,10 @@ actor self {
     P.trap("ohoh");
   };
 
+  public shared func supercalifragilisticexpialidocious() : async () {
+    P.debugPrint("supercalifragilisticexpialidocious");
+  };
+
   public shared func go() : async () {
     let p = P.principalOfActor(self);
 
@@ -84,6 +88,14 @@ actor self {
         P.debugPrint(P.errorMessage(e));
       }
     };
+
+    do {
+      let m = "super"#"cali"#"fragilisticexpialidocious";
+      let arg : Blob = "DIDL\00\00";
+      let res = await P.call_raw(p, m, arg);
+      assert (res == arg);
+    };
+
   }
 };
 
