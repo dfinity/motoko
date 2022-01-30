@@ -85,8 +85,10 @@ and exp' at note = function
     obj_block at s None dfs note.Note.typ
   | S.ObjE (efs, []) ->
     obj note.Note.typ efs
-  | S.ObjE (efs, [b]) -> (* TODO: multiple bases *)
+  | S.ObjE (efs, [b]) ->
     obj_extend note.Note.typ efs b
+  | S.ObjE _ -> (* TODO: multiple bases *)
+    assert false
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
