@@ -247,7 +247,7 @@ and objblock s dec_fields =
 %nonassoc SHLOP SHROP ROTLOP ROTROP
 %left POWOP WRAPPOWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest obj_base
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_nobin
 %type<Mo_def.Syntax.vis> vis
@@ -545,13 +545,10 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 ob : e=exp_obj { e }
 
-%inline obj_base :
-  | IN base=exp(ob) { base }
-
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { ObjE (efs, []) @? at $sloc }
-  | LCURLY efs=seplist1(exp_field, semicolon) base=obj_base RCURLY
+  | LCURLY efs=seplist1(exp_field, semicolon) IN base=exp(ob) RCURLY
     { ObjE (efs, [base]) @? at $sloc }
 
 exp_plain :

@@ -138,12 +138,9 @@
     '<>>='
     '@='
 
-<obj_base> ::= 
-    'in' <exp>
-
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
-    '{' <list1(<exp_field>, ';')> <obj_base> '}'
+    '{' <list1(<exp_field>, ';')> 'in' <exp> '}'
 
 <exp_plain> ::= 
     <lit>
