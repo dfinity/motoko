@@ -11,7 +11,7 @@
 
 * motoko-base
 
-  * `ExperimentalInternetComputer` library, exposing low-level, binary `call` function (a.k.a `raw calls`) (#334, Motoko #3806).
+  * `ExperimentalInternetComputer` library, exposing low-level, binary `call` function (a.k.a. "raw calls") (dfinity/motoko-base#334, Motoko #3806).
   * `Principal.fromBlob` added (dfinity/motoko-base#331).
 
 ## 0.6.20 (2022-01-11)
