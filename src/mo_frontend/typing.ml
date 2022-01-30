@@ -1388,7 +1388,7 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE (exp_fields, []), T.Obj(T.Object, fts) ->
+  | ObjE (exp_fields, []), T.Obj(T.Object, fts) -> (* FIXME: bases? *)
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
