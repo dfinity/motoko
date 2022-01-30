@@ -142,7 +142,8 @@
     'in' <exp>
 
 <exp_obj> ::= 
-    '{' <list(<exp_field>, ';')> <obj_base>? '}'
+    '{' <list(<exp_field>, ';')> '}'
+    '{' <list1(<exp_field>, ';')> <obj_base> '}'
 
 <exp_plain> ::= 
     <lit>
