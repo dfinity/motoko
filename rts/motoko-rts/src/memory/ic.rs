@@ -80,7 +80,9 @@ impl Memory for IcMemory {
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        grow_memory(new_hp);
+	if (old_hp ^ new_hp) >> 16 != 0 {
+            grow_memory(new_hp);
+	}
 
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
         HP = new_hp as u32;
