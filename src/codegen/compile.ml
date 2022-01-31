@@ -9091,6 +9091,9 @@ and conclude_module env start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
+        compiler = Some
+         (List.mem "motoko:compiler" !Flags.public_metadata_names,
+          Lib.Option.get Source_id.release Source_id.id)
       };
       candid = {
         args = !(env.E.args);
