@@ -81,7 +81,7 @@ impl Memory for IcMemory {
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        if (old_hp ^ new_hp) >> 16 != 0 {
+        if (old_hp ^ new_hp) >> 10 != 0 {
             grow_memory(new_hp);
         }
 
