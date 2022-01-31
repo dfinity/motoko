@@ -41,6 +41,7 @@ unsafe extern "C" fn init(align: bool) {
         get_heap_base()
     };
     LAST_HP = HP;
+    // make sure that the page HP points to us allocated too
     grow_memory(u64::from(HP))
 }
 
@@ -81,7 +82,7 @@ impl Memory for IcMemory {
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        if (old_hp ^ new_hp) >> 10 != 0 {
+        if (old_hp ^ new_hp) >> 16 != 0 {
             grow_memory(new_hp);
         }
 
@@ -96,8 +97,8 @@ impl Memory for IcMemory {
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
     debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
-    let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
-    let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
+    debug_assert_eq!(2 * u64::from(WASM_PAGE_SIZE.as_u32()) >> 16, 2);
+    let total_pages_needed = (ptr >> 16) as usize + 1;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
