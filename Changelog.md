@@ -166,7 +166,7 @@
 
 * motoko-base
 
-  * add Debug.trap : Text -> None (#288)
+  * add Debug.trap : Text -> None (dfinity/motoko-base#288)
 
 ## 0.6.8 (2021-09-06)
 
@@ -185,7 +185,7 @@
 
 * motoko-base:
 
-  * Fix bug in `AssocList.diff` (#277)
+  * Fix bug in `AssocList.diff` (dfinity/motoko-base#277)
   * Deprecate unsafe or redundant functions in library `Option` ( `unwrap`, `assertSome`, `assertNull`) (#275)
 
 ## 0.6.6 (2021-07-30)
