@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * Emit new ICP metadata custom section 'motoko:compiler' with compiler release or revision in UTF8 (e.g. "0.6.21"). Default is `icp:private`ax (#3091).
+  * Emit new ICP metadata custom section 'motoko:compiler' with compiler release or revision in UTF8 (e.g. "0.6.21"). Default is `icp:private` (#3091).
   * Generalized `import` supporting pattern matching and selective field imports (#3076).
   * Fix: insert critical overflow checks preventing rare heap corruptions
     in out-of-memory allocation and stable variable serialization (#3077).
