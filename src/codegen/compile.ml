@@ -3416,11 +3416,11 @@ module IC = struct
 
   let import_ic0 env =
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
-      E.add_func_import env "ic0" "call_cycles_add" [I64Type] [];
+      E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
-      E.add_func_import env "ic0" "canister_cycle_balance" [] [I64Type];
+      E.add_func_import env "ic0" "canister_cycle_balance128" [I32Type] [];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
@@ -3429,9 +3429,9 @@ module IC = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_cycles_available" [] [I64Type];
-      E.add_func_import env "ic0" "msg_cycles_refunded" [] [I64Type];
-      E.add_func_import env "ic0" "msg_cycles_accept" [I64Type] [I64Type];
+      E.add_func_import env "ic0" "msg_cycles_available128" [I32Type] [];
+      E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
+      E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
       E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
@@ -3767,7 +3767,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "canister_cycle_balance"
+      system_call env "ic0" "canister_cycle_balance128"
     | _ ->
       E.trap_with env "cannot read balance when running locally"
 
@@ -3775,7 +3775,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "call_cycles_add"
+      system_call env "ic0" "call_cycles_add128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
@@ -3783,7 +3783,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_cycles_accept"
+      system_call env "ic0" "msg_cycles_accept128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
@@ -3791,7 +3791,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_cycles_available"
+      system_call env "ic0" "msg_cycles_available128"
     | _ ->
       E.trap_with env "cannot get cycles available when running locally"
 
@@ -3799,7 +3799,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_cycles_refunded"
+      system_call env "ic0" "msg_cycles_refunded128"
     | _ ->
       E.trap_with env "cannot get cycles refunded when running locally"
 
@@ -3830,6 +3830,8 @@ module IC = struct
       E.trap_with env "cannot get certificate when running locally"
 
 end (* IC *)
+
+
 
 module StableMem = struct
 
@@ -4384,14 +4386,15 @@ module Serialization = struct
     (fun env get_x ->
 
       (* Some combinators for writing values *)
-      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_data_size, get_data_size) = new_local64 env "data_size" in
       let (set_ref_size, get_ref_size) = new_local env "ref_size" in
-      compile_unboxed_zero ^^ set_data_size ^^
-      compile_unboxed_zero ^^ set_ref_size ^^
+      compile_const_64 0L ^^ set_data_size ^^
+      compile_unboxed_const 0l ^^ set_ref_size ^^
 
       let inc_data_size code =
-        get_data_size ^^ code ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        get_data_size ^^
+        code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_data_size
       in
 
@@ -4402,9 +4405,10 @@ module Serialization = struct
       in
 
       let size env t =
+        let (set_inc, get_inc) = new_local env "inc" in
         buffer_size env t ^^
         get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
-        get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_size
+        set_inc ^^ inc_data_size get_inc
       in
 
       let size_alias size_thing =
@@ -4506,7 +4510,14 @@ module Serialization = struct
         size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
+      (* Check 32-bit overflow of buffer_size *)
       get_data_size ^^
+      compile_shrU64_const 32L ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      E.else_trap_with env "buffer_size overflow" ^^
+      (* Convert to 32-bit *)
+      get_data_size ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
       get_ref_size
     )
 
@@ -5341,9 +5352,14 @@ module Serialization = struct
       get_x ^^
       buffer_size env (Type.seq ts) ^^
       set_refs_size ^^
-
+      (* add tydesc_len *)
       compile_add_const tydesc_len  ^^
       set_data_size ^^
+      (* check for overflow *)
+      get_data_size ^^
+      compile_unboxed_const tydesc_len ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      E.then_trap_with env "serialization overflow" ^^
 
       let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
@@ -6346,8 +6362,22 @@ module FuncDec = struct
      deserialization); the reject callback function is unique.
   *)
 
-  let closures_to_reply_reject_callbacks env ts =
-    let reply_name = "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">" in
+  let closures_to_reply_reject_callbacks_aux env ts_opt =
+    let arity, reply_name, from_arg_data =
+      match ts_opt with
+      | Some ts ->
+        (List.length ts,
+         "@callback<" ^ Typ_hash.typ_hash (Type.Tup ts) ^ ">",
+         fun env -> Serialization.deserialize env ts)
+      | None ->
+        (1,
+         "@callback",
+         (fun env ->
+           Blob.of_size_copy env
+           (fun env -> IC.system_call env "ic0" "msg_arg_data_size")
+           (fun env -> IC.system_call env "ic0" "msg_arg_data_copy")
+           (fun env -> compile_unboxed_const 0l)))
+    in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
@@ -6358,11 +6388,11 @@ module FuncDec = struct
         set_closure ^^
         get_closure ^^
 
-        (* Deserialize reply arguments  *)
-        Serialization.deserialize env ts ^^
+        (* Deserialize/Blobify reply arguments  *)
+        from_arg_data env ^^
 
         get_closure ^^
-        Closure.call_closure env (List.length ts) 0 ^^
+        Closure.call_closure env arity 0 ^^
 
         message_cleanup env (Type.Shared Type.Write)
       );
@@ -6401,6 +6431,11 @@ module FuncDec = struct
       get_cb_index ^^
       compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
       get_cb_index
+
+  let closures_to_reply_reject_callbacks env ts =
+    closures_to_reply_reject_callbacks_aux env (Some ts)
+  let closures_to_raw_reply_reject_callbacks env  =
+    closures_to_reply_reject_callbacks_aux env None
 
   let ignoring_callback env =
     (* for one-way calls, we use an invalid table entry as the callback. this
@@ -6453,6 +6488,14 @@ module FuncDec = struct
       get_meth_pair
       (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
       (fun _ -> get_arg ^^ Serialization.serialize env ts1)
+
+  let ic_call_raw env get_meth_pair get_arg get_k get_r =
+    ic_call_threaded
+      env
+      "raw call"
+      get_meth_pair
+      (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
+      (fun _ -> get_arg ^^ Blob.as_ptr_len env)
 
   let ic_self_call env ts get_meth_pair get_future get_k get_r =
     ic_call_threaded
@@ -6799,6 +6842,47 @@ let compile_lit env lit =
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
+
+module Cycles = struct
+
+  let load_cycles env = Func.share_code1 env "load_cycles" ("ptr", I32Type) [I32Type]
+    (fun env get_ptr ->
+      get_ptr ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      get_ptr ^^
+      compile_add_const 8l ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      (* shift left 64 *)
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 64))) ^^
+      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
+      BigNum.compile_add env)
+
+  let guard env =  Func.share_code1 env "__cycles_guard" ("val", I32Type) []
+    (fun env get_val ->
+      get_val ^^
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 128))) ^^
+      BigNum.compile_relop env Lt ^^
+      E.else_trap_with env "cycles out of bounds")
+
+  let push_high env =  Func.share_code1 env "__cycles_push_high" ("val", I32Type) [I64Type]
+    (fun env get_val ->
+      get_val ^^
+      (* shift right 64 bits *)
+      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
+        (Big_int.power_int_positive_int 2 64))) ^^
+      BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
+      BigNum.truncate_to_word64 env)
+
+  let push_low env =  Func.share_code1 env "__cycles_push_low" ("val", I32Type) [I64Type]
+    (fun env get_val ->
+      get_val ^^
+      BigNum.truncate_to_word64 env)
+
+end
 
 (* helper, traps with message *)
 let then_arithmetic_overflow env =
@@ -8196,7 +8280,21 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
       end
-
+    | ICCallRawPrim, [p;m;a;k;r] ->
+      SR.unit, begin
+      let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
+      let (set_arg, get_arg) = new_local env "arg" in
+      let (set_k, get_k) = new_local env "k" in
+      let (set_r, get_r) = new_local env "r" in
+      let add_cycles = Internals.add_cycles env ae in
+      compile_exp_vanilla env ae p ^^
+      compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
+      Tuple.from_stack env 2 ^^ set_meth_pair ^^
+      compile_exp_vanilla env ae a ^^ set_arg ^^
+      compile_exp_vanilla env ae k ^^ set_k ^^
+      compile_exp_vanilla env ae r ^^ set_r ^^
+      FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r add_cycles
+      end
     | ICStableRead ty, [] ->
       (*
         * On initial install:
@@ -8214,23 +8312,58 @@ and compile_exp (env : E.t) ae exp =
 
     (* Cycles *)
     | SystemCyclesBalancePrim, [] ->
-      SR.UnboxedWord64,
-      IC.cycle_balance env
+      SR.Vanilla,
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cycle_balance env ^^
+        get_dst ^^
+        Cycles.load_cycles env
+      )
     | SystemCyclesAddPrim, [e1] ->
       SR.unit,
-      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+      let (set_cycles, get_cycles) = new_local env "cycles" in
+      compile_exp_vanilla env ae e1 ^^
+      set_cycles ^^
+      get_cycles ^^
+      Cycles.guard env ^^
+      get_cycles ^^
+      Cycles.push_high env ^^
+      get_cycles ^^
+      Cycles.push_low env ^^
       IC.cycles_add env
     | SystemCyclesAcceptPrim, [e1] ->
-      SR.UnboxedWord64,
-      compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-      IC.cycles_accept env
+      SR.Vanilla,
+      let (set_cycles, get_cycles) = new_local env "cycles" in
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        compile_exp_vanilla env ae e1 ^^
+        set_cycles ^^
+        get_cycles ^^
+        Cycles.guard env ^^
+        get_cycles ^^
+        Cycles.push_high env ^^
+        get_cycles ^^
+        Cycles.push_low env ^^
+        get_dst ^^
+        IC.cycles_accept env ^^
+        get_dst ^^
+        Cycles.load_cycles env
+      )
     | SystemCyclesAvailablePrim, [] ->
-      SR.UnboxedWord64,
-      IC.cycles_available env
+      SR.Vanilla,
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cycles_available env ^^
+        get_dst ^^
+        Cycles.load_cycles env
+      )
     | SystemCyclesRefundedPrim, [] ->
-      SR.UnboxedWord64,
-      IC.cycles_refunded env
-
+      SR.Vanilla,
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cycles_refunded env ^^
+        get_dst ^^
+        Cycles.load_cycles env
+      )
     | SetCertifiedData, [e1] ->
       SR.unit,
       compile_exp_vanilla env ae e1 ^^
@@ -8976,6 +9109,9 @@ and conclude_module env start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
+        compiler = Some
+         (List.mem "motoko:compiler" !Flags.public_metadata_names,
+          Lib.Option.get Source_id.release Source_id.id)
       };
       candid = {
         args = !(env.E.args);

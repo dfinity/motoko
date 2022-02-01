@@ -173,7 +173,7 @@ let structural_equality t =
     | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
     | T.Prim p -> eq_prim p
     | T.Con (c, ts) -> (
-        match Mo_types.Con.kind c with
+        match Mo_types.Cons.kind c with
         | T.Abs _ -> assert false
         | T.Def (_, t) -> go (T.open_ ts t) (* TBR this may fail to terminate *)
         )

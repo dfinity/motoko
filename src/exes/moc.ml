@@ -33,7 +33,8 @@ let idl = ref false
 let valid_metadata_names =
     ["candid:args";
      "candid:service";
-     "motoko:stable-types"]
+     "motoko:stable-types";
+     "motoko:compiler"]
 
 let argspec = [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";

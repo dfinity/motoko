@@ -56,7 +56,7 @@ and bind = {var : var; sort: bind_sort; bound : typ}
 
 and field = {lab : lab; typ : typ; depr : string option}
 
-and con = kind Con.t
+and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ

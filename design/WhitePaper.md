@@ -475,7 +475,7 @@ C ⊢ pat1 and pat2 :anal T ⊣ C1 ⊓ C2
 
 ### Objects
 
-#### Object Composition
+#### Object Composition ([#3072](https://github.com/dfinity/motoko/issues/3072))
 
 Currently, objects can only be constructed using object literals. It is not possible to construct an object in terms of another, preexisting object with some fields updated or added.
 

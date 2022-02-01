@@ -14,7 +14,7 @@ actor Cloner {
 
    public shared func test() : async () {
       // get some cycles
-      if (Cycles.balance() == (0 : Nat64))
+      if (Cycles.balance() == 0)
       await Cycles.provisional_top_up_actor(Cloner, 100_000_000_000_000);
 
       // create the original Cloneable object

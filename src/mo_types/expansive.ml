@@ -48,7 +48,7 @@ let debug = false (* set to 1 to show graph in error message *)
 module Vertex = struct
   type t = Type.con * int
   let compare (c,i) (d,j) =
-  match Con.compare c d with
+  match Cons.compare c d with
   | 0 -> compare i j
   | n -> n
 end
@@ -70,7 +70,7 @@ module VertexSet = Set.Make(Vertex)
 
 module EdgeSet = Set.Make(Edge)
 
-let string_of_vertex (c, i) = Printf.sprintf "(%s,%i)" (Con.name c) i
+let string_of_vertex (c, i) = Printf.sprintf "(%s,%i)" (Cons.name c) i
 
 let string_of_vertices vs =
   Printf.sprintf "{ %s }" (String.concat "," (List.map string_of_vertex (VertexSet.elements vs)))
@@ -130,7 +130,7 @@ let edges_typ cs c (es : EdgeSet.t) t : EdgeSet.t =
   go_typ 0 VertexSet.empty VertexSet.empty es t
 
 let edges_con cs c es : EdgeSet.t =
-  match Con.kind c with
+  match Cons.kind c with
   | Def (tbs, t) ->
     (* It's not clear we actually need to consider parameters bounds, since, unlike
        function type parameters, they don't introduce new subgoals during subtyping.
@@ -148,7 +148,7 @@ let edges cs = ConSet.fold (edges_con cs) cs EdgeSet.empty
 let vertices cs =
   ConSet.fold
     (fun c vs ->
-      match Con.kind c with
+      match Cons.kind c with
       | Def (tbs, t) ->
         let ws = List.mapi (fun i _tb -> (c, i)) tbs in
         List.fold_left (fun vs v -> VertexSet.add v vs) vs ws
@@ -192,12 +192,12 @@ let is_expansive cs =
   | None -> None
   | Some ((c,i), _, (d,j)) ->
     (* Construct an error messages with optional debug info *)
-    let op, sbs, st = Pretty.strings_of_kind (Con.kind c) in
-    let def = Printf.sprintf "type %s%s %s %s" (Con.name c) sbs op st in
-    let x = match Con.kind c with Def(tbs, _) | Abs(tbs, _) ->
+    let op, sbs, st = Pretty.strings_of_kind (Cons.kind c) in
+    let def = Printf.sprintf "type %s%s %s %s" (Cons.name c) sbs op st in
+    let x = match Cons.kind c with Def(tbs, _) | Abs(tbs, _) ->
       (List.nth tbs i).var in
-    let dys = match Con.kind d with Def(tbs, _) | Abs(tbs, _) ->
-      Printf.sprintf "%s<%s>" (Con.name d)
+    let dys = match Cons.kind d with Def(tbs, _) | Abs(tbs, _) ->
+      Printf.sprintf "%s<%s>" (Cons.name d)
         (String.concat "," (List.mapi (fun k _ ->
           if i = k then "-" ^ x ^"-" else "_") tbs))
     in
