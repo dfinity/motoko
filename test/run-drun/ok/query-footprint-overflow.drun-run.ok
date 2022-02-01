@@ -1,4 +1,3 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-ingress Err: IC0505: Wasm module of canister rwlgt-iiaaa-aaaaa-aaaaa-cai is not valid: Wasm module has an invalid custom section. Invalid custom section: size of custom section named motoko:stable-types exceeds the maximum allowed: size 78896 bytes, allowed 65536 bytes
-Err: IC0304: Attempt to execute a message on canister rwlgt-iiaaa-aaaaa-aaaaa-cai which contains no Wasm module
-Error: "Line 4: Illegal method name: stable-variable-footprint."
+ingress Completed: Reply: 0x4449444c0000
+Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: buffer_size overflow
