@@ -1,8 +1,9 @@
 //MOC-FLAG --stable-var-footprint-query=stable_variable_footprint
+
 import { Array_tabulate } = "mo:prim"
 
 actor footprint = {
-    let e0 = Array_tabulate<Text>(1000,
+    let e0 = Array_tabulate<Text>(1000, // length 1144 below...
                                   func _ = "seedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseed");
     let e1 = (e0, e0);
     let e2 = (e1, e1);
@@ -16,12 +17,6 @@ actor footprint = {
     let e10 = (e9, e9);
     let e11 = (e10, e10);
     let e12 = (e11, e11);
-    /*let e13 = (e12, e12);
-    let e14 = (e13, e13);*/
-    //let e15 = (e14, e14);
-    //let e16 = (e15, e15);
-    //let e17 = (e16, e16);
-    //let e18 = (e17, e17);
     stable var expl = e12;
 };
 
