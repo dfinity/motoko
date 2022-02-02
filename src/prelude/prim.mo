@@ -263,7 +263,7 @@ func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) ->
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
 // A query for obtaining the stable variable footprint statistics
-func queryStableVarFootprint() : () -> async Nat64 = (prim "rts_stable_var_footprint_query" : () -> () -> async Nat64) ();
+let queryStableVarFootprint = @query_stable_var_footprint;
 
 func cyclesBalance() : Nat {
   (prim "cyclesBalance" : () -> Nat) ();

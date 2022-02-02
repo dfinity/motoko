@@ -411,3 +411,17 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
+
+// stable memory footprint
+func @query_stable_var_footprint(self : actor {}, method : ?Text) : async Nat64 {
+  switch method {
+    case (?method) {
+      (prim "deserialize" : Blob -> Nat64)
+        (await @call_raw((prim "cast" : (actor {}) -> Principal) self, method, (prim "serialize" : () -> Blob) ())) };
+    case null {
+      let err = (prim "cast" : ({ #canister_error }, Text) -> Error) (#canister_error, "cannot call query");
+      throw err
+    }
+  }
+};
+
