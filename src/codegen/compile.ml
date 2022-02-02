@@ -3669,7 +3669,7 @@ module IC = struct
         (fun env -> system_call env "ic0" "msg_caller_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get caller  when running locally")
+      E.trap_with env (Printf.sprintf "cannot get caller when running locally")
 
   let reject env arg_instrs =
     match E.mode env with
