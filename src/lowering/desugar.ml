@@ -348,7 +348,7 @@ and export_interface txt =
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
-and export_footprint name expr =
+and export_footprint self_id name expr =
   let open T in
   let v = "$__stable_variable_footprint"  in
   let binds = [scope_bind] in
@@ -359,9 +359,13 @@ and export_footprint name expr =
   let bind  = typ_arg scope_con Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
-    funcE v (Shared Query) Promises [bind] [] [nat64] (
-      asyncE bind2 (primE (I.OtherPrim "☠rts_stable_vars_size☠") [expr]) (Con (scope_con, []))
-    )
+       funcE v (Shared Query) Promises [bind] [] [nat64] (
+           let c, s = fresh_var "caller" T.caller, fresh_var "self" T.caller in
+           (asyncE bind2
+              (blockE [ letD c (primE I.ICCallerPrim [])
+                      ; letD s (selfRefE T.caller)
+                      ; expD (assertE (trueE ()))]
+                 (primE (I.OtherPrim "☠rts_stable_vars_size☠") [expr])) (Con (scope_con, []))))
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
@@ -424,7 +428,7 @@ and build_actor at ts self_id es obj_typ =
   let footprint_query_endpoint = !Mo_config.Flags.stable_var_size_endpoint in
   let footprint_d, footprint_f =
     if footprint_query_endpoint <> ""
-    then export_footprint footprint_query_endpoint (with_stable_vars (fun e -> e))
+    then export_footprint self_id footprint_query_endpoint (with_stable_vars (fun e -> e))
     else [], [] in
   I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
