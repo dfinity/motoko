@@ -1,6 +1,6 @@
 //MOC-FLAG --stable-var-footprint-query=stable_variable_footprint
 
-import { Array_tabulate } = "mo:prim"
+import { Array_tabulate } = "mo:⛔"
 
 actor footprint = {
     let e0 = Array_tabulate<Text>(1000, // length 1144 below...
