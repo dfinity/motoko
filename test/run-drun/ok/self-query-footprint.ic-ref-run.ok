@@ -3,4 +3,4 @@
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → update self()
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "indirect call type mismatch"
+← replied: ((27 : nat64))

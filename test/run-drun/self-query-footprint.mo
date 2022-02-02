@@ -1,13 +1,13 @@
 //MOC-FLAG --stable-var-footprint-query=stable-variable-footprint
 
-import Prim "mo:⛔";
+import { queryStableVarFootprint } "mo:⛔";
 
 actor footprint = {
     stable var hello : Text = "Hey You!";
 
     public func self() : async Nat64 {
-        await ((Prim.queryStableVarFootprint()) ())
-    }
+        await queryStableVarFootprint(footprint, ?"stable-variable-footprint")
+    };
 }
 
 //CALL ingress self "DIDL\x00\x00"

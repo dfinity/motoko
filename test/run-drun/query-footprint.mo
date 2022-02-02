@@ -1,7 +1,5 @@
 //MOC-FLAG --stable-var-footprint-query=stable-variable-footprint
 
-import { queryStableVarFootprint } = "mo:prim"
-
 actor footprint = {
     stable var s : Nat64 = 42;
     stable var hello : Text = "Hey You!";
@@ -23,10 +21,6 @@ actor footprint = {
         s - 42
     };
 
-    public func self() : async Nat64 {
-        await queryStableVarFootprint(footprint, ?"stable-variable-footprint")
-    };
-
     system func preupgrade() {
         hello #= " Hello World!"
     }
@@ -37,7 +31,6 @@ actor footprint = {
 //CALL query stable-variable-footprint "DIDL\x00\x00"
 //CALL query stable-variable-footprint "DIDL\x00\x00"
 //CALL query __get_candid_interface_tmp_hack "DIDL\x00\x00"
-//CALL ingress self "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-ir
