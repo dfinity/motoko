@@ -360,11 +360,9 @@ and export_footprint self_id name expr =
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind] [] [nat64] (
-           let c, s = fresh_var "caller" T.caller, fresh_var "self" T.caller in
            (asyncE bind2
-              (blockE [ letD c (primE I.ICCallerPrim [])
-                      ; letD s (selfRefE T.caller)
-                      ; expD (assertE (primE (I.RelPrim (T.caller, Operator.EqOp)) [varE c; varE s]))]
+              (blockE [expD (assertE (primE (I.RelPrim (T.caller, Operator.EqOp))
+                                        [primE I.ICCallerPrim []; selfRefE T.caller]))]
                  (primE (I.OtherPrim "☠rts_stable_vars_size☠") [expr])) (Con (scope_con, []))))
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
