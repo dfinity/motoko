@@ -98,7 +98,7 @@ impl Memory for IcMemory {
 unsafe fn grow_memory(ptr: u64) {
     debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
     debug_assert_eq!(2 * u64::from(WASM_PAGE_SIZE.as_u32()) >> 16, 2);
-    let total_pages_needed = (ptr >> 16) as usize + 1;
+    let total_pages_needed = ((ptr >> 16) as usize + 1) & 0xFFFF;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
