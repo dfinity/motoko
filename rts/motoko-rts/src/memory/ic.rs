@@ -41,7 +41,7 @@ unsafe extern "C" fn init(align: bool) {
         get_heap_base()
     };
     LAST_HP = HP;
-    // make sure that the page HP points to us allocated too
+    // make sure that the page HP points to is allocated too
     grow_memory(u64::from(HP))
 }
 
