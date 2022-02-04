@@ -3605,11 +3605,15 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
       })
 
+  let trans env s =
+    Lifecycle.trans env s
+  (*   ^^ Lifecycle.(compile_static_print env (string_of_state s)) *)
+
   let export_upgrade_methods env =
     if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
     let status_stopped = 3l in
     let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
-      Lifecycle.trans env Lifecycle.InPreUpgrade ^^
+      trans env Lifecycle.InPreUpgrade ^^
       (* check status is stopped or trap on outstanding callbacks *)
       system_call env "ic0" "canister_status" ^^ compile_eq_const status_stopped ^^
       G.if0
@@ -3618,15 +3622,15 @@ module IC = struct
           E.then_trap_with env "canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)") ^^
       (* call pre_upgrade expression & any system method *)
       (G.i (Call (nr (E.built_in env "pre_exp")))) ^^
-      Lifecycle.trans env Lifecycle.PostPreUpgrade
+      trans env Lifecycle.PostPreUpgrade
     )) in
 
     let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
-      Lifecycle.trans env Lifecycle.InInit ^^
+      trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
-      Lifecycle.trans env Lifecycle.InPostUpgrade ^^
+      trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
-      Lifecycle.trans env Lifecycle.Idle ^^
+      trans env Lifecycle.Idle ^^
       E.collect_garbage env
     )) in
 
@@ -4163,6 +4167,8 @@ module RTS_Exports = struct
 
 end (* RTS_Exports *)
 
+
+(* < 0.6.21 serialization code that does *not* check for overflow when computing size of stable data (in several places) *)
 module Serialization = struct
   (*
     The general serialization strategy is as follows:
@@ -5539,7 +5545,8 @@ To detect and preserve aliasing, these steps are taken:
 end (* Serialization *)
 
 
-(*
+(****
+(* > 0.6.21 serialization code that *does* check for overflow when computing size of stable data (in several places) *)
 module Serialization = struct
   (*
     The general serialization strategy is as follows:
@@ -6928,8 +6935,8 @@ To detect and preserve aliasing, these steps are taken:
 *)
 
 end (* Serialization *)
-*)
 
+****)
 (* Stabilization (serialization to/from stable memory) of both:
    * stable variables; and
    * virtual stable memory.

@@ -63,6 +63,7 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_aligned_heap_base())
 }
 
+
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
@@ -100,6 +101,7 @@ unsafe fn grow_memory(ptr: usize) {
 }
 
 /*
+
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
