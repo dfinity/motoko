@@ -1,11 +1,17 @@
 import P "mo:⛔";
 
 actor {
-  stable var a : [var Nat] = P.Array_init(268435456 / 4, 0x0F); // 0.25 GB array (I think)
+  stable var a : [var Nat] = [var];
 
-  system func preupgrade() { P.debugPrint("pre"); };
+  system func preupgrade() {
+    a := P.Array_init<Nat>(268435456 / 4, 0x0F); // 0.25 GB array (I think)
+    P.debugPrint("pre");
+  };
 
-  system func postupgrade() { P.debugPrint("post"); }
+  system func postupgrade() {
+    P.debugPrint("post");
+    P.trap("deliberate trap");
+  }
 }
 
 //SKIP run
