@@ -4,7 +4,7 @@ import SM "stable-mem/StableMemory";
 // allocate up to last page, and then incrementally try to
 // trigger OOM incrementally on last page.
 // post-upgrade traps to avoid hitting disk
-
+// NB: the oom would not be detected pre 0.6.21
 actor {
 
   ignore SM.grow(1);
@@ -24,17 +24,15 @@ actor {
      var i = 32768;
      while (i > 0) {
        ignore SM.loadBlob(0, i);
-       P.debugPrint(debug_show(i));
        i /= 2;
      };
    };
-   P.trap("this code should be unreachable!");
    P.debugPrint("pre)");
   };
 
   system func postupgrade() {
    P.debugPrint("(post");
-   P.trap("deliberate trap!");
+   P.trap("deliberate trap - this code should not be reached!");
    P.debugPrint("post)");
   };
 
