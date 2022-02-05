@@ -84,9 +84,9 @@ impl Memory for IcMemory {
         // Grow memory if needed
         if (old_hp ^ new_hp) >> 16 != 0 {
             grow_memory(new_hp);
+            debug_assert!(new_hp <= u64::from(core::u32::MAX));
         }
 
-        debug_assert!(new_hp <= u64::from(core::u32::MAX));
         HP = new_hp as u32;
 
         Value::from_ptr(old_hp as usize)
