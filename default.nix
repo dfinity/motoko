@@ -158,7 +158,7 @@ rec {
       # Build Rust package cargo-vendor-tools
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
-        src = "./rts/${name}";
+        src = ./rts/${name};
         cargoSha256 = "sha256-CrtZQTac95MEbk3uapviLgcQjEt5VUnTOG9fiJXIAU8";
       };
 
@@ -166,7 +166,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256:06rb75ydyfk9msx4rawn7vm1md8p32lirkyfymws7w10zka3h6qs";
+      rustStdDepsHash = "sha256-+D0OXpU3/MJ06DsmQQiGWohvZz5ALTmJpc7HfAhd7S4";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -249,7 +249,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-	make test
+        make test
       '';
 
       installPhase = ''
