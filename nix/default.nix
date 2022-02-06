@@ -87,6 +87,8 @@ let
           };
         })
 
+        # get nix-build-uncached 1.1.1 (can be removed once that’s in our nixpkgs)
+        (self: super: { nix-build-uncached = self.callPackage ./nix-build-uncached.nix {}; })
       ];
     };
 in
