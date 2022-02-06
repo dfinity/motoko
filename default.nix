@@ -52,7 +52,7 @@ let
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
     # there we use plain clang-13. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_12}/bin/clang"
+    export CLANG="${nixpkgs.clang_13}/bin/clang"
   '';
 in
 
@@ -166,7 +166,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256:06rb75ydzfk9msx4rawn7vm1md8p32lirkyfymws7w10zka3h6qs";
+      rustStdDepsHash = "sha256-+D0OXpU3/MJ06DsmQQiGWohvZz5ALTmJpc7HfAhd7S4";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -249,7 +249,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-	make test
+        make test
       '';
 
       installPhase = ''

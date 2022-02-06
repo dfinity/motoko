@@ -2,7 +2,7 @@
 import P "mo:⛔";
 actor {
 
-  public query func go() : async () {
+  public func go() : async () {
     // allocate 3GB
     var c = 3;
     while(c > 0) {
@@ -25,5 +25,5 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
-//CALL query go "DIDL\x00\x00"
+//CALL ingress go "DIDL\x00\x00"
 
