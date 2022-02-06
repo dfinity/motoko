@@ -19,15 +19,4 @@ debug.print: {balance = 4_294_967_295}
 debug.print: {topped_up_balance = 18_446_744_073_709_551_615}
 debug.print: {added = 18_446_744_073_709_551_615}
 debug.print: {amount = 18_446_744_073_709_551_615; available = 18_446_744_073_709_551_615}
-debug.print: {balance = 18_446_744_073_709_551_615}
-debug.print: {topped_up_balance = 18_446_744_073_709_551_616}
-debug.print: {added = 18_446_744_073_709_551_616}
-debug.print: {amount = 18_446_744_073_709_551_616; available = 18_446_744_073_709_551_616}
-debug.print: {balance = 18_446_744_073_709_551_616}
-debug.print: {topped_up_balance = 79_228_162_514_264_337_593_543_950_335}
-debug.print: {added = 79_228_162_514_264_337_593_543_950_335}
-debug.print: {amount = 79_228_162_514_264_337_593_543_950_335; available = 79_228_162_514_264_337_593_543_950_335}
-debug.print: {balance = 79_228_162_514_264_337_593_543_950_335}
-debug.print: {topped_up_balance = 1_329_227_995_784_915_872_903_807_060_280_344_576}
-debug.print: can't top up more
 ← replied: ()

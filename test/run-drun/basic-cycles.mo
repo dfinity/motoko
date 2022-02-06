@@ -61,9 +61,10 @@ actor a {
      0x0,
      0xFFFFFFFF,
      0xFFFFFFFF_FFFFFFFF,
-     0x1_00000000_00000000,
-     0xFFFFFFFF_FFFFFFFF_FFFFFFFF,
-     0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF,
+// disabled as long as they crash the replica, see https://forum.dfinity.org/t/10729
+//     0x1_00000000_00000000,
+//     0xFFFFFFFF_FFFFFFFF_FFFFFFFF,
+//     0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF,
   ];
 
   public func iter() : async () {

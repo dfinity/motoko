@@ -16,11 +16,4 @@ debug.print: {balance = 100_000_000_000_000}
 debug.print: {topped_up_balance = 18_446_744_073_709_551_615}
 debug.print: {added = 18_446_744_073_709_551_615}
 debug.print: {amount = 18_446_744_073_709_551_615; available = 18_446_744_073_709_551_615}
-debug.print: {balance = 18_446_744_073_709_551_615}
-debug.print: {topped_up_balance = 18_446_744_073_709_551_616}
-debug.print: {added = 18_446_744_073_709_551_616}
-debug.print: {amount = 18_446_744_073_709_551_616; available = 18_446_744_073_709_551_616}
-debug.print: {balance = 18_446_744_073_709_551_616}
-debug.print: {topped_up_balance = 18_446_844_073_709_551_616}
-debug.print: can't top up more
 ingress Completed: Reply: 0x4449444c0000
