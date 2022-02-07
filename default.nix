@@ -158,7 +158,7 @@ rec {
       # Build Rust package cargo-vendor-tools
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
-        src = subpath "./rts/cargo-vendor-tools/";
+        src = subpath ./rts/${name};
         cargoSha256 = "sha256-CrtZQTac95MEbk3uapviLgcQjEt5VUnTOG9fiJXIAU8";
       };
 
