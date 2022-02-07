@@ -36,7 +36,7 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: "nix-build"
-      run: nix-build-uncached --max-jobs 2 -A all-systems-go
+      run: nix-build-uncached --max-jobs 1 -A all-systems-go
 
     # The above doesn’t show nice logs, due to
     # https://github.com/Mic92/nix-build-uncached/issues/42
