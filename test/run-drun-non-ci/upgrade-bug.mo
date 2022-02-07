@@ -13,7 +13,6 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
-// too resource heavy on GH:
-////SKIP comp
+
 
 //CALL upgrade ""
