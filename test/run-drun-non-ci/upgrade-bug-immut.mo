@@ -1,11 +1,11 @@
 import P "mo:⛔";
 
 actor {
-  stable var a : [var Nat] = [var];
+  stable var a : [Nat] = [];
 
   system func preupgrade() {
-    a := P.Array_init<Nat>(268435456 / 4, 0x0F); // 0.25 GB array (I think)
-    P.debugPrint("pre");
+     a := P.Array_tabulate<Nat>(268435456 / 4, func _ { 0x0F } ); // 0.25 GB array (I think)
+     P.debugPrint("pre");
   };
 
   system func postupgrade() {
@@ -19,7 +19,5 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
-// too resource heavy on GH:
-//SKIP comp
 
 //CALL upgrade ""
