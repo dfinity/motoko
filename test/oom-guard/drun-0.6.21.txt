@@ -1,0 +1,5 @@
+create
+install rwlgt-iiaaa-aaaaa-aaaaa-cai oom-guard-0.6.21.wasm ""
+query rwlgt-iiaaa-aaaaa-aaaaa-cai testQuery "DIDL\x00\x00"
+ingress rwlgt-iiaaa-aaaaa-aaaaa-cai testUpdate "DIDL\x00\x00"
+upgrade rwlgt-iiaaa-aaaaa-aaaaa-cai oom-guard-0.6.20.wasm "DIDL\x00\x00"
