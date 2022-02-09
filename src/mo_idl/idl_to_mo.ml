@@ -116,6 +116,6 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
   | None -> assert false
   | _ -> assert false
 
-let occ = ref M.Env.empty t (* HACK *)
+let occs = ref M.Env.empty (* HACK *)
 let check_typ env t = check_typ' env occs t
 let check_typs env t = check_typs' env occs t
