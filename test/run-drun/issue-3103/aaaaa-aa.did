@@ -1,0 +1,4 @@
+type T = int;
+service B : {
+  "getInt": () -> (T);
+}

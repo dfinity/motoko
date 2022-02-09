@@ -1,0 +1,4 @@
+issue-3103.mo:9.21-9.38: type error [M0096], expression of type
+  T/14
+cannot produce expected type
+  Bool
