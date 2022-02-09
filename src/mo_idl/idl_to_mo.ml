@@ -97,6 +97,7 @@ and check_meth env (m: typ_meth) =
   M.{lab = Idllib.Escape.escape_method m.it.var.at m.it.var.it; typ = check_typ env m.it.meth; depr = None}
 
 let check_prog (env: typ I.Env.t) actor : M.typ =
+  m_env := M.Env.empty;
   match actor with
   | Some {it=ServT ms; _} ->
      let fs = List.map (check_meth env) ms in
