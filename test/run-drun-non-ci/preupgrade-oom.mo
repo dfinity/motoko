@@ -1,5 +1,5 @@
 import P "mo:⛔";
-import SM "stable-mem/StableMemory";
+
 // exercise OOM detection during upgrade.
 // allocate up to last page, and then incrementally try to
 // trigger OOM incrementally on last page.
@@ -7,13 +7,13 @@ import SM "stable-mem/StableMemory";
 // NB: the oom would not be detected pre 0.6.21
 actor {
 
-  ignore SM.grow(1);
+  ignore P.stableMemoryGrow(1);
 
   system func preupgrade() {
    // allocate up to last page
    P.debugPrint("(pre");
    while (P.rts_memory_size() / 65536 < 65536) {
-     ignore SM.loadBlob(0, 65536);
+     ignore P.stableMemoryLoadBlob(0, 65536);
    };
    P.debugPrint("filled");
 
@@ -23,7 +23,7 @@ actor {
    do {
      var i = 32768;
      while (i > 0) {
-       ignore SM.loadBlob(0, i);
+       ignore P.stableMemoryLoadBlob(0, i);
        i /= 2;
      };
    };
