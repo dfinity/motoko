@@ -2274,7 +2274,6 @@ and gather_dec env scope dec : Scope.t =
       {it = VarP id; _},
       ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
-       (* TODO include RecE? *)
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
@@ -2357,7 +2356,6 @@ and infer_dec_typdecs env dec : Scope.t =
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
         {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
-       (* TODO include RecE? *)
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
@@ -2446,6 +2444,11 @@ and infer_block_valdecs env decs scope : Scope.t =
     ) (env, scope) decs
   in scope'
 
+and is_import d =
+  match d.it with
+  | LetD (_, {it = ImportE _; _}) -> true
+  | _ -> false
+
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
   | ExpD _ ->
@@ -2468,7 +2471,7 @@ and infer_dec_valdecs env dec : Scope.t =
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    let ve' = check_pat_exhaustive warn env t pat in
+    let ve' = check_pat_exhaustive (if is_import dec then local_error else warn) env t pat in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
@@ -2531,11 +2534,6 @@ let is_actor_dec d =
   | LetD (_, e) -> CompUnit.is_actor_def e
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
     obj_sort.it = T.Actor
-  | _ -> false
-
-let is_import d =
-  match d.it with
-  | LetD ({it = VarP n; _}, {it = ImportE _; _}) -> true
   | _ -> false
 
 let check_actors scope progs : unit Diag.result =

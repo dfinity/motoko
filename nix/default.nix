@@ -55,7 +55,7 @@ let
         # Rust nightly
         (self: super: let
           moz_overlay = import self.sources.nixpkgs-mozilla self super;
-          rust-channel = moz_overlay.rustChannelOf { date = "2022-01-13"; channel = "nightly"; };
+          rust-channel = moz_overlay.rustChannelOf { date = "2022-02-02"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
@@ -87,6 +87,8 @@ let
           };
         })
 
+        # get nix-build-uncached 1.1.1 (can be removed once that’s in our nixpkgs)
+        (self: super: { nix-build-uncached = self.callPackage ./nix-build-uncached.nix {}; })
       ];
     };
 in

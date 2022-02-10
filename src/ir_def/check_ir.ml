@@ -593,6 +593,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+      (* TODO: T.unit <: t ? *)
+    | ICCallRawPrim, [exp1; exp2; exp3; k; r] ->
+      typ exp1 <: T.principal;
+      typ exp2 <: T.text;
+      typ exp3 <: T.blob;
+      typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
+      typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+      T.unit <: t
     | ICStableRead t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";

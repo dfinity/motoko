@@ -858,7 +858,7 @@ let link_declarations imports (cu, flavor) =
 
 
 let transform_import (i : S.import) : import_declaration =
-  let (id, f, ir) = i.it in
+  let (p, f, ir) = i.it in
   let t = i.note in
   assert (t <> T.Pre);
   let rhs = match !ir with
@@ -869,7 +869,7 @@ let transform_import (i : S.import) : import_declaration =
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
-  in [ letD (var id.it t) rhs ]
+  in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with

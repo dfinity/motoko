@@ -8,14 +8,12 @@ Motoko compiler (source XXX)
 -- Interpreting empty.mo:
 -- Interpreting stdin:
 -- Finished stdin:
-let anon-import-1.1 : module {...}
 
 -- Parsing stdin:
 > -- Checking stdin:
 -- Definedness stdin:
 -- Interpreting stdin:
 -- Finished stdin:
-let anon-import-2.1 : module {...}
 
 -- Parsing stdin:
 > 
