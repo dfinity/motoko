@@ -6,7 +6,7 @@ import B "ic:aaaaa-aa";
 
 actor a {
   public func go() : async () {
-     let _ : Bool = await A.getBool(); // rejected, should be accepted
+     let _ : Bool = await A.getBool();
      let _ : Int = await B.getInt();
   };
 }
