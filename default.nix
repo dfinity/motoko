@@ -535,7 +535,7 @@ rec {
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
     buildInputs = with nixpkgs; [ ocamlformat ];
-    src = subpath "./src";
+    src = subpath ./src;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
@@ -585,7 +585,7 @@ rec {
 
   guide-examples-tc =  stdenv.mkDerivation {
     name = "guid-examples-tc";
-    src = subpath doc/modules/language-guide/examples;
+    src = subpath ./doc/modules/language-guide/examples;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     MOTOKO_BASE = base-src;
