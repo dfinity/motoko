@@ -62,7 +62,7 @@ and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 and field = {lab : lab; typ : typ; depr : string option}
 
-and con = kind Con.t
+and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
@@ -74,11 +74,11 @@ let is_shared_sort sort = sort <> Local
 (* Constructors *)
 
 let set_kind c k =
-  match Con.kind c with
-  | Abs (_, Pre) -> Con.unsafe_set_kind c k
+  match Cons.kind c with
+  | Abs (_, Pre) -> Cons.unsafe_set_kind c k
   | _ -> raise (Invalid_argument "set_kind")
 
-module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
+module ConEnv = Env.Make(struct type t = con let compare = Cons.compare end)
 module ConSet = ConEnv.Dom
 
 
@@ -255,7 +255,7 @@ and subst_kind sigma k =
 
 let close cs t =
   if cs = [] then t else
-  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
+  let ts = List.mapi (fun i c -> Var (Cons.name c, i)) cs in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
@@ -307,7 +307,7 @@ let open_ ts t =
 
 let open_binds tbs =
   if tbs = [] then [] else
-  let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
+  let cs = List.map (fun {var; _} -> Cons.fresh var (Abs ([], Pre))) tbs in
   let ts = List.map (fun c -> Con (c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
   List.iter2 set_kind cs ks;
@@ -322,7 +322,7 @@ let reduce tbs t ts =
 
 let rec normalize = function
   | Con (con, ts) as t ->
-    (match Con.kind con with
+    (match Cons.kind con with
     | Def (tbs, t) -> normalize (reduce tbs t ts)
     | _ -> t
     )
@@ -331,7 +331,7 @@ let rec normalize = function
 
 let rec promote = function
   | Con (con, ts) ->
-    let Def (tbs, t) | Abs (tbs, t) = Con.kind con
+    let Def (tbs, t) | Abs (tbs, t) = Cons.kind con
     in promote (reduce tbs t ts)
   | t -> t
 
@@ -548,7 +548,7 @@ let concrete t =
       | Var _ | Pre -> assert false
       | Prim _ | Any | Non -> true
       | Con (c, ts) ->
-        (match Con.kind c with
+        (match Cons.kind c with
         | Abs _ -> false
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
@@ -579,7 +579,7 @@ let serializable allow_mut t =
       | Async _ -> false
       | Mut t -> allow_mut && go t
       | Con (c, ts) ->
-        (match Con.kind c with
+        (match Cons.kind c with
         | Abs _ -> false
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
@@ -608,7 +608,7 @@ let find_unshared t =
       | Any | Non | Prim _ | Typ _ -> None
       | Async _ | Mut _ -> Some t
       | Con (c, ts) ->
-        (match Con.kind c with
+        (match Cons.kind c with
         | Abs _ -> None
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
@@ -675,12 +675,12 @@ let rec rel_typ rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
-    (match Con.kind con1, Con.kind con2 with
+    (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ rel eq t1 (open_ ts2 t)
-    | _ when Con.eq con1 con2 ->
+    | _ when Cons.eq con1 con2 ->
       rel_list eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ rel eq (open_ ts1 t) t2
@@ -688,7 +688,7 @@ let rec rel_typ rel eq t1 t2 =
       false
     )
   | Con (con1, ts1), t2 ->
-    (match Con.kind con1, t2 with
+    (match Cons.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
@@ -696,7 +696,7 @@ let rec rel_typ rel eq t1 t2 =
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
-    (match Con.kind con2 with
+    (match Cons.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ rel eq t1 (open_ ts2 t)
     | _ -> false
@@ -800,11 +800,11 @@ and eq_kind' eq k1 k2 : bool =
   | _ -> false
 
 and eq_con eq c1 c2 =
-  match Con.kind c1, Con.kind c2 with
+  match Cons.kind c1, Cons.kind c2 with
   | (Def (tbs1, t1)) as k1, (Def (tbs2, t2) as k2) ->
     eq_kind' eq k1 k2
   | Abs _, Abs _ ->
-    Con.eq c1 c2
+    Cons.eq c1 c2
   | Def (tbs1, t1), Abs (tbs2, t2)
   | Abs (tbs2, t2), Def (tbs1, t1) ->
     (match rel_binds eq eq tbs1 tbs2 with
@@ -906,7 +906,7 @@ let rec inhabited_typ co t =
   | Variant tfs -> List.exists (inhabited_field co) tfs
   | Var _ -> true  (* TODO(rossberg): consider bound *)
   | Con (c, ts) ->
-    match Con.kind c with
+    match Cons.kind c with
     | Def (tbs, t') -> (* TBR this may fail to terminate *)
       inhabited_typ co (open_ ts t')
     | Abs (tbs, t') ->
@@ -1014,7 +1014,7 @@ let rec combine rel lubs glbs t1 t2 =
         let op, expand =
           if rel == lubs then "lub", promote else "glb", normalize in
         let name = op ^ "<" ^ !str t1 ^ ", " ^ !str t2 ^ ">" in
-        let c = Con.fresh name (Abs ([], Pre)) in
+        let c = Cons.fresh name (Abs ([], Pre)) in
         let t = Con (c, []) in
         rel := M.add (t2, t1) t (M.add (t1, t2) t !rel);
         let t' =
@@ -1153,7 +1153,7 @@ let comma ppf () = fprintf ppf ",@ "
 let semi ppf () = fprintf ppf ";@ "
 
 let string_of_con' vs c =
-  let s = Con.to_string' Cfg.show_stamps c in
+  let s = Cons.to_string' Cfg.show_stamps c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
 (* If modified, adjust start_without_parens_nullary below to match *)
@@ -1184,7 +1184,7 @@ let rec pp_typ_nullary vs ppf = function
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
   | Typ c ->
-    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" pp_kind (Con.kind c)
+    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" pp_kind (Cons.kind c)
   | t -> fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) t
 
 (* naively follows structure of pp_typ_nullary, keep in sync *)
@@ -1313,7 +1313,7 @@ and pp_typ' vs ppf t =
 and pp_field vs ppf {lab; typ; depr} =
   match typ with
   | Typ c ->
-    let op, sbs, st = pps_of_kind (Con.kind c) in
+    let op, sbs, st = pps_of_kind (Cons.kind c) in
     fprintf ppf "@[<2>type %s%a %s@ %a@]" lab sbs () op st ()
   | Mut t' ->
     fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
@@ -1376,10 +1376,10 @@ and pp_stab_sig ppf sig_ =
   let cs = List.fold_right cons_field sig_ ConSet.empty in
   let ds =
     let cs' = ConSet.filter (fun c ->
-      match Con.kind c with
-      | Def ([], Prim p) when Con.name c = string_of_prim p -> false
-      | Def ([], Any) when Con.name c = "Any" -> false
-      | Def ([], Non) when Con.name c = "None" -> false
+      match Cons.kind c with
+      | Def ([], Prim p) when Cons.name c = string_of_prim p -> false
+      | Def ([], Any) when Cons.name c = "Any" -> false
+      | Def ([], Non) when Cons.name c = "None" -> false
       | Def _ -> true
       | Abs _ -> false) cs in
     ConSet.elements cs' in
@@ -1405,7 +1405,7 @@ let pp_typ = pp_typ' []
 let rec pp_typ_expand ppf t =
   match t with
   | Con (c, ts) ->
-    (match Con.kind c with
+    (match Cons.kind c with
     | Abs _ -> pp_typ' [] ppf t
     | Def _ ->
       match normalize t with

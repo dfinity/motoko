@@ -86,7 +86,9 @@ function normalize () {
     # Normalize canister id prefixes in debug prints
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' \
+    sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
+    # Delete everything after Oom
+    sed -e '/RTS error: Cannot grow memory/q' \
         > $1.norm
     mv $1.norm $1
   fi
@@ -290,7 +292,7 @@ do
         # installation, so this replaces
         #
         #     actor a { … }
-        #     a.go(); //CALL …
+        #     a.go(); //OR-CALL …
         #
         # with
         #

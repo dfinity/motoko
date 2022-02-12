@@ -52,7 +52,7 @@ let
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
     # there we use plain clang-13. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_12}/bin/clang"
+    export CLANG="${nixpkgs.clang_13}/bin/clang"
   '';
 in
 
@@ -158,15 +158,15 @@ rec {
       # Build Rust package cargo-vendor-tools
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
-        src = ./rts/cargo-vendor-tools;
-        cargoSha256 = "sha256-wZeLp8s/QI8DyK7KsHAYOqskJIEleomXzQG2ijRossk";
+        src = subpath "./rts/${name}/";
+        cargoSha256 = "sha256-CrtZQTac95MEbk3uapviLgcQjEt5VUnTOG9fiJXIAU8";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-jCe1HXSexW6p8QINrMtcBDO1TDWkg2glZwnf1EqLuB0";
+      rustStdDepsHash = "sha256-+D0OXpU3/MJ06DsmQQiGWohvZz5ALTmJpc7HfAhd7S4";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -192,7 +192,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "0xalgx3agd4kz6dzifc4kaqxfd0gl0k5qxxgia3phkldm1za95wr";
+        sha256 = "sha256-VKNXQ7uT5njmZ4RlF1Lebyy7hPSw+KRjG8ntCXfw/Y4";
         copyLockfile = true;
       };
 
@@ -249,7 +249,7 @@ rec {
       doCheck = true;
 
       checkPhase = ''
-	make test
+        make test
       '';
 
       installPhase = ''
@@ -535,7 +535,7 @@ rec {
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
     buildInputs = with nixpkgs; [ ocamlformat ];
-    src = subpath "./src";
+    src = subpath ./src;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
     installPhase = "touch $out";
@@ -585,7 +585,7 @@ rec {
 
   guide-examples-tc =  stdenv.mkDerivation {
     name = "guid-examples-tc";
-    src = subpath doc/modules/language-guide/examples;
+    src = subpath ./doc/modules/language-guide/examples;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     MOTOKO_BASE = base-src;

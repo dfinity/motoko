@@ -1,1 +1,1 @@
-import "self-import";
+import _ = "self-import";

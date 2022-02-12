@@ -23,15 +23,16 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let open Source in
   let f = prog.note in
 
-  let finish imports u = { it = { imports; body = u }; note = f; at = no_region } in
+  let finish imports u =
+    { it = { imports = List.rev imports; body = u }; note = f; at = no_region } in
   let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
 
   let rec go imports ds : comp_unit =
     match ds with
     (* imports *)
-    | {it = LetD ({it = VarP n; _}, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
-      let i : import = { it = (n, url, ri); note = e.note.note_typ; at = e.at } in
-      go (imports @ [i]) ds'
+    | {it = LetD (p, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
+      let i : import = { it = (p, url, ri); note = e.note.note_typ; at = e.at } in
+      go (i :: imports) ds'
 
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
@@ -88,9 +89,9 @@ let obj_decs obj_sort at note id_opt fields =
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
-  let import_decs = List.map (fun { it = (id, fp, ri); at; note}  ->
+  let import_decs = List.map (fun { it = (pat, fp, ri); at; note} ->
     { it = LetD (
-      { it = VarP id; at; note; },
+      pat,
       { it = ImportE (fp, ri);
         at;
         note = { note_typ = note; note_eff = Type.Triv} });

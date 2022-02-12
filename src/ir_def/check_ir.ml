@@ -168,7 +168,7 @@ let rec check_typ env typ : unit =
   | T.Con (c, typs) ->
     List.iter (check_typ env) typs;
     begin
-      match Con.kind c with
+      match Cons.kind c with
       | T.Def (tbs,_) ->
         check_con env c;
         check_typ_bounds env tbs typs no_region
@@ -253,7 +253,7 @@ and check_con env c =
   else
   begin
     env.seen := T.ConSet.add c !(env.seen);
-    let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    let T.Abs (binds,typ) | T.Def (binds, typ) = Cons.kind c in
     check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
     check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
@@ -593,6 +593,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+      (* TODO: T.unit <: t ? *)
+    | ICCallRawPrim, [exp1; exp2; exp3; k; r] ->
+      typ exp1 <: T.principal;
+      typ exp2 <: T.text;
+      typ exp3 <: T.blob;
+      typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
+      typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+      T.unit <: t
     | ICStableRead t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
@@ -642,12 +650,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.(Prim Nat64) <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
-      T.nat64 <: t
+      T.nat <: t
     | SystemCyclesAcceptPrim, [e1] ->
-      typ e1 <: T.nat64;
-      T.nat64 <: t
+      typ e1 <: T.nat;
+      T.nat <: t
     | SystemCyclesAddPrim, [e1] ->
-      typ e1 <: T.nat64;
+      typ e1 <: T.nat;
       T.unit <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
@@ -1048,7 +1056,7 @@ and check_open_typ_bind env typ_bind =
   | _ -> assert false
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; sort; bound} -> {Type.var = Con.name con; sort = sort; bound = Type.close cs bound}) tbs
+  List.map (fun {con; sort; bound} -> {Type.var = Cons.name con; sort = sort; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
