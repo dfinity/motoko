@@ -424,4 +424,3 @@ func @query_stable_var_footprint(self : actor {}, method : ?Text) : async Nat64 
     }
   }
 };
-
