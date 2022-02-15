@@ -410,8 +410,7 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es with
-        | Some call -> [ expD (primE (I.OtherPrim "⏰rts_perform_gc⏰") [])
-                       ; expD call]
+        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])

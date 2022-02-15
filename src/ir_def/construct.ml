@@ -88,6 +88,7 @@ let primE prim es =
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
+    | ICPerformGC
     | ICStableWrite _ -> T.unit
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
@@ -103,7 +104,6 @@ let primE prim es =
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat
     | OtherPrim "☠rts_stable_vars_size☠" -> T.nat64
-    | OtherPrim "⏰rts_perform_gc⏰" -> T.unit
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in

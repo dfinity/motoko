@@ -158,6 +158,7 @@ and prim =
   (* backend stuff *)
   | CPSAwait of Type.typ
   | CPSAsync of Type.typ
+  | ICPerformGC
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
@@ -293,6 +294,7 @@ let map_prim t_typ t_id p =
   | CPSAwait t -> CPSAwait (t_typ t)
   | CPSAsync t -> CPSAsync (t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
+  | ICPerformGC
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim

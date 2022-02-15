@@ -7829,6 +7829,10 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       Serialization.deserialize_from_blob false env ts
 
+    | ICPerformGC, [] ->
+      SR.unit,
+      E.collect_garbage env
+
     (* Other prims, unary *)
 
     | OtherPrim "array_len", [e] ->
@@ -8020,10 +8024,6 @@ and compile_exp (env : E.t) ae exp =
       G.i Drop ^^
       compile_add_const tydesc_len  ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-
-    | OtherPrim "⏰rts_perform_gc⏰", [] ->
-      SR.unit,
-      E.collect_garbage env
 
     | OtherPrim "crc32Hash", [e] ->
       SR.UnboxedWord32,

@@ -663,6 +663,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | GetCertificate, [] ->
       T.Opt T.blob <: t
+    | ICPerformGC, [] ->
+      T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
