@@ -1,0 +1,11 @@
+TODO: compile_exp
+Error: failed to run main module `_out/nat-shift.wasm`
+
+Caused by:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: shiftLeft
+         1: init
+         2: _start
+       
