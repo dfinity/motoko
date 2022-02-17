@@ -5,7 +5,7 @@ import Lib = "actor-class-cycles/C";
 // test cycle transfer on class instantiation
 actor a {
 
-  func round(n : Nat64) : Text {
+  func round(n : Nat) : Text {
     debug_show((n + 500_000_000_000) / 1_000_000_000_000) # "T";
   };
 
@@ -19,7 +19,7 @@ actor a {
       Prim.debugPrint(debug_show({ iteration = i }));
       Prim.debugPrint(debug_show({ balance = round(Cycles.balance()) }));
       let c = await {
-        Cycles.add(Prim.natToNat64((i + 1) * 10_000_000_000_000));
+        Cycles.add((i + 1) * 10_000_000_000_000);
 	Lib.C();
       };
       let {current = cur; initial = init} = await c.balance();

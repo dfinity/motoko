@@ -35,7 +35,7 @@ let non_productive cs =
         match ConEnv.find d (!map) with
         | Param n ->
           begin
-          match Con.kind d with
+          match Cons.kind d with
           | Def (tbs, t) ->
             assert (n < List.length tbs); (* assume types are arity-correct *)
             rhs cs (List.nth ts n)
@@ -56,7 +56,7 @@ let non_productive cs =
         if ConSet.mem c cs then
           Nonproductive
         else
-          let t = match Con.kind c with
+          let t = match Cons.kind c with
             | Def (_, t) -> t
             | _ -> assert false
           in

@@ -195,6 +195,11 @@ struct
     else
       None
 
+  let starts_with prefix s = (* in OCaml 4.13 *)
+    match chop_prefix prefix s with
+    | Some _ -> true
+    | _ -> false
+
   let chop_suffix suffix s =
     let suffix_len = String.length suffix in
     let s_len = String.length s in

@@ -14,7 +14,7 @@ let pp_rel ppf (t1, rel, t2) =
 let pp_constraint ppf (lb, c, ub) =
   Format.fprintf ppf "@[<hv 2>%a  <: @ @[<hv 2>%s  <: @ %a@]@]"
     pp_typ lb
-    (Con.name c)
+    (Cons.name c)
     pp_typ ub
 
 let display_constraint = Lib.Format.display pp_constraint
@@ -31,7 +31,7 @@ let denotable t =
   let t' = normalize t in
   not (is_mut t' || is_typ t')
 
-let bound c = match Con.kind c with
+let bound c = match Cons.kind c with
   | Abs ([], t) -> t
   | _ -> assert false
 
@@ -114,12 +114,12 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       (* Because we do matching, not unification, we never relate two flexible variables *)
       assert false
     | Con (con1, ts1), Con (con2, ts2) ->
-      (match Con.kind con1, Con.kind con2 with
+      (match Cons.kind con1, Cons.kind con2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any t1 (open_ ts2 t)
-      | _ when Con.eq con1 con2 ->
+      | _ when Cons.eq con1 con2 ->
         assert (ts1 = []);
         assert (ts2 = []);
         Some inst
@@ -128,7 +128,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       | _ -> None
       )
     | Con (con1, ts1), t2 ->
-      (match Con.kind con1, t2 with
+      (match Cons.kind con1, t2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | Abs (tbs, t), _ when rel != eq ->
@@ -136,7 +136,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       | _ -> None
       )
     | t1, Con (con2, ts2) ->
-      (match Con.kind con2 with
+      (match Cons.kind con2 with
       | Def (tbs, t) -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any t1 (open_ ts2 t)
       | _ -> None
@@ -246,19 +246,19 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | Variance.Invariant ->
       raise (Bimatch (Format.asprintf
         "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
-        (Con.name c)
+        (Cons.name c)
         display_constraint (lb, c, ub)
         display_rel (lb,"=/=",ub)))
 
   and fail_over_constrained lb c ub =
     raise (Bimatch (Format.asprintf
       "implicit instantiation of type parameter %s is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
-      (Con.name c)
+      (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb, "</:", ub)))
 
   and fail_open_bound c bd =
-    let c = Con.name c in
+    let c = Cons.name c in
     raise (Bimatch (Format.asprintf
       "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
       c (Lib.Format.display pp_typ) bd))
