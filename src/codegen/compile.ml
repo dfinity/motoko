@@ -2045,6 +2045,7 @@ sig
   val compile_unsigned_div : E.t -> G.t
   val compile_unsigned_rem : E.t -> G.t
   val compile_unsigned_pow : E.t -> G.t
+  val compile_lshd : E.t -> G.t
 
   (* comparisons *)
   val compile_eq : E.t -> G.t
@@ -2266,6 +2267,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
           get_res
       end)
+
+
+  let compile_lshd env = assert false
+
+
+
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
@@ -2615,6 +2622,7 @@ module BigNumLibtommath : BigNumType = struct
   let compile_unsigned_rem env = E.call_import env "rts" "bigint_rem"
   let compile_unsigned_div env = E.call_import env "rts" "bigint_div"
   let compile_unsigned_pow env = E.call_import env "rts" "bigint_pow"
+  let compile_lshd env = E.call_import env "rts" "bigint_lshd"
 
   let compile_eq env = E.call_import env "rts" "bigint_eq"
   let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
@@ -7854,6 +7862,12 @@ and compile_exp (env : E.t) ae exp =
       SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env
     | OtherPrim "blob_iter_next", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
+
+    | OtherPrim "lshd", [e1; e2] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^
+      compile_exp_as env ae SR.UnboxedWord32 e2 ^^
+      BigNum.compile_lshd env
 
     | OtherPrim "abs", [e] ->
       SR.Vanilla,
