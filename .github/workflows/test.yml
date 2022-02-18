@@ -41,15 +41,6 @@ jobs:
     - name: "Pull reports"
       run: nix-build -A report-site -o report-site
 
-    - name: Push report to gitub pages
-      if: runner.os == 'Linux' # && github.ref == 'refs/heads/master'
-      uses: JamesIves/github-pages-deploy-action@releases/v3
-      with:
-        ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-        BRANCH: gh-pages
-        FOLDER: report-site
-        SINGLE_COMMIT: true
-
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
