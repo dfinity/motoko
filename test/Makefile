@@ -1,7 +1,7 @@
 QUICK_DIRS = fail idl ld mo-idl repl run
 OTHER_DIRS = perf run-deser run-drun trap
 TEST_DIRS = $(QUICK_DIRS) $(OTHER_DIRS)
-SOURCE_PATHS ?= ../src # will be overriden when building coverage report with nix
+SOURCE_PATHS ?= ../src # will be overridden when building coverage report with nix
 
 MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
 
