@@ -91,9 +91,11 @@ jobs:
         edit-mode: replace
 
   reports:
+    # if: github.ref == 'refs/heads/master'
     needs: tests
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
+    steps:
     - uses: actions/checkout@v2
     - uses: cachix/install-nix-action@v16
       with:
@@ -105,7 +107,6 @@ jobs:
     - name: Fetch report
       run: nix-build -A report-site --jobs 0 -o report-site
     - name: Push report to gitub pages
-      # if: github.ref == 'refs/heads/master'
       uses: JamesIves/github-pages-deploy-action@v4.2.5
       with:
         branch: gh-pages
