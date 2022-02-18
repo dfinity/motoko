@@ -38,9 +38,6 @@ jobs:
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
-    - name: "Pull reports"
-      run: nix-build -A report-site -o report-site
-
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
