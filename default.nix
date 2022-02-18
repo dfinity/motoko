@@ -448,7 +448,7 @@ rec {
     );
 
     coverage = testDerivation {
-      # this runs all subdirectories, so lets just depend on all of test/
+      # this runs all subdirectories, so let's just depend on all of test/
       src = subpath ./test;
       buildInputs =
           builtins.attrValues coverage_bins ++
