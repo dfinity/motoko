@@ -486,3 +486,236 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
         *n -= 1;
     }
 }
+
+unsafe fn unfold(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> i32 {
+    let mut tb = Buf {
+        ptr: *typtbl.add(t as usize),
+        end: (*buf).end,
+    };
+    return sleb128_decode(&mut tb);
+}
+
+// https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
+
+#[no_mangle]
+unsafe extern "C" fn sub(buf1: *mut Buf,
+                         buf2: *mut Buf,
+                         typtbl1: *mut *mut u8,
+                         typtbl2: *mut *mut u8,
+                         t1: i32,
+                         t2: i32,
+                         depth: i32) -> bool {
+
+    if depth > 100 {
+        idl_trap_with("sub: subtyping too deep");
+    }
+
+    // re-declare as mut for any unfolding
+    let mut t1 = t1;
+    let mut t2 = t2;
+
+
+    /* primitives reflexive */
+    if is_primitive_type(t1) &&
+       is_primitive_type(t2) &&
+       t1 == t2 {
+      return true;
+    }
+
+    // unfold t1, if necessary
+    let mut tb1 = Buf {
+        ptr: *typtbl1.add(if t1 < 0 { 0 } else { t1 as usize }), // better dummy?
+        end: (*buf1).end,
+    };
+
+    if t1 >= 0 {
+        t1 = sleb128_decode(&mut tb1);
+    };
+
+    // unfold t2, if necessary
+    let mut tb2 = Buf {
+        ptr: *typtbl2.add(if t2 < 0 { 0 } else { t2 as usize }), // better dummy?
+        end: (*buf2).end,
+    };
+
+    if t2 >= 0 {
+        t2 = sleb128_decode(&mut tb2);
+    };
+
+    debug_assert!(t1 < 0 && t2 < 0);
+
+    match (t1, t2) {
+        (_, IDL_PRIM_reserved) => true,
+        (IDL_PRIM_empty, _) => false,
+        (IDL_PRIM_null, IDL_CON_opt) => true,
+        (IDL_CON_opt, IDL_CON_opt) => {
+            let t11 = sleb128_decode(&mut tb1);
+            let t21 = sleb128_decode(&mut tb2);
+            return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+        },
+        // todo: ugly opt cases
+        (IDL_CON_vec, IDL_CON_vec) => {
+            let t11 = sleb128_decode(&mut tb1);
+            let t21 = sleb128_decode(&mut tb2);
+            return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+        },
+        // default
+        (IDL_CON_func, IDL_CON_func) => {
+            // contra in domain
+            let in1 = leb128_decode(&mut tb1);
+            let in2 = leb128_decode(&mut tb2);
+            if in1 > in2 {
+                return false;
+            }
+            for _ in 0..in1 {
+               let t11 = sleb128_decode(&mut tb1);
+               let t21 = sleb128_decode(&mut tb2);
+                if !sub(buf2, buf1, typtbl2, typtbl1, t21, t11, depth + 1) {
+                    return false
+                }
+            };
+            for _ in in1..in2 {
+               let _ = sleb128_decode(&mut tb2);
+            };
+            // co in range
+            let out1 = leb128_decode(&mut tb1);
+            let out2 = leb128_decode(&mut tb2);
+            if out2 > out1 {
+                return false;
+            }
+            for _ in 0..out2 {
+               let t11 = sleb128_decode(&mut tb1);
+               let t21 = sleb128_decode(&mut tb2);
+               if !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                   return false;
+               }
+            };
+            for _ in out2..out1 {
+               let _ = sleb128_decode(&mut tb1);
+            };
+            // TODO: annotations (as sets!)
+                // Annotations
+            /*
+            for _ in 0..leb128_decode(buf) {
+                let a = read_byte(buf);
+                if !(1 <= a && a <= 2) {
+                    idl_trap_with("func annotation not within 1..2");
+                }
+            }
+            */
+            return true
+        },
+        (_,_) => false,
+        
+    }
+/*
+    buf.advance(2);
+            }
+             => {
+                buf.advance(4);
+            }
+            IDL_PRIM_nat64 | IDL_PRIM_int64 | IDL_PRIM_float64 => {
+                buf.advance(8);
+            }
+            IDL_PRIM_text => skip_text(buf),
+            IDL_PRIM_empty => {
+                idl_trap_with("skip_any: encountered empty");
+            }
+            IDL_REF_principal => {
+                if read_byte_tag(buf) != 0 {
+                    skip_blob(buf);
+                }
+            }
+            _ => {
+                idl_trap_with("skip_any: unknown prim");
+            }
+        }
+    } else {
+        // t >= 0
+        let mut tb = Buf {
+            ptr: *typtbl.add(t as usize),
+            end: (*buf).end,
+        };
+        let tc = sleb128_decode(&mut tb);
+        match tc {
+            IDL_CON_opt => {
+                let it = sleb128_decode(&mut tb);
+                if read_byte_tag(buf) != 0 {
+                    skip_any(buf, typtbl, it, 0);
+                }
+            }
+            IDL_CON_vec => {
+                let it = sleb128_decode(&mut tb);
+                let count = leb128_decode(buf);
+                skip_any_vec(buf, typtbl, it, count);
+            }
+            IDL_CON_record => {
+                for _ in 0..leb128_decode(&mut tb) {
+                    skip_leb128(&mut tb);
+                    let it = sleb128_decode(&mut tb);
+                    // This is just a quick check; we should be keeping
+                    // track of all enclosing records to detect larger loops
+                    if it == t {
+                        idl_trap_with("skip_any: recursive record");
+                    }
+                    skip_any(buf, typtbl, it, depth + 1);
+                }
+            }
+            IDL_CON_variant => {
+                let n = leb128_decode(&mut tb);
+                let i = leb128_decode(buf);
+                if i >= n {
+                    idl_trap_with("skip_any: variant tag too large");
+                }
+                for _ in 0..i {
+                    skip_leb128(&mut tb);
+                    skip_leb128(&mut tb);
+                }
+                skip_leb128(&mut tb);
+                let it = sleb128_decode(&mut tb);
+                skip_any(buf, typtbl, it, 0);
+            }
+            IDL_CON_func => {
+                if read_byte_tag(buf) == 0 {
+                    idl_trap_with("skip_any: skipping references");
+                } else {
+                    if read_byte_tag(buf) == 0 {
+                        idl_trap_with("skip_any: skipping references");
+                    } else {
+                        skip_blob(buf)
+                    }
+                    skip_text(buf)
+                }
+            }
+            IDL_CON_service => {
+                if read_byte_tag(buf) == 0 {
+                    idl_trap_with("skip_any: skipping references");
+                } else {
+                    skip_blob(buf)
+                }
+            }
+            IDL_CON_alias => {
+                // See Note [mutable stable values] in codegen/compile.ml
+                let it = sleb128_decode(&mut tb);
+                let tag = read_byte_tag(buf);
+                if tag == 0 {
+                    buf.advance(8);
+                    // this is the contents (not a reference)
+                    skip_any(buf, typtbl, it, 0);
+                } else {
+                    buf.advance(4);
+                }
+            }
+            _ => {
+                // Future type
+                let n_data = leb128_decode(buf);
+                let n_ref = leb128_decode(buf);
+                buf.advance(n_data);
+                if n_ref > 0 {
+                    idl_trap_with("skip_any: skipping references");
+                }
+            }
+        }
+    }
+*/
+}
