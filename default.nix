@@ -282,7 +282,7 @@ rec {
   deser = ocaml_exe "deser" "deser" null;
   candid-tests = ocaml_exe "candid-tests" "candid-tests" null;
 
-  # exectuable built with coverage:
+  # executable built with coverage:
   coverage_bins = builtins.listToAttrs (nixpkgs.lib.flip map [moc mo-ld didc deser ] (drv:
     { name = drv.name;
       value = drv.overrideAttrs(old : {
