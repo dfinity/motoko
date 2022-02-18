@@ -2269,10 +2269,33 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       end)
 
 
-  let compile_lshd env = assert false
-
-
-
+  let compile_lshd env =
+    let set_amount, get_amount = new_local env "amount" in
+    let set_n, get_n = new_local env "n" in
+    set_amount ^^
+    set_n ^^ get_n ^^
+    BitTagged.if_tagged_scalar env [I32Type]
+      ( (* non-ptr, shift amount < 30: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
+        get_n ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
+        let set_remember, get_remember = new_local64 env "remember" in
+        set_remember ^^ get_remember ^^
+        get_amount ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        let set_res, get_res = new_local env "res" in
+        set_res ^^ get_res ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (* exclude sign flip *)
+        get_remember ^^
+        G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
+        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+        G.if1 I32Type
+          get_res
+          (E.trap_with env ("compile_lshd, fallback"))
+      )
+      (E.trap_with env ("compile_lshd, biiig"))
+      (*get_n ^^ get_amount ^^ Num.compile_lshd env*)
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
