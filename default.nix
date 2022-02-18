@@ -617,7 +617,7 @@ rec {
     '';
   };
 
-  report = nixpkgs.runCommandNoCC "netlify-site" {
+  report-site = nixpkgs.runCommandNoCC "report-site" {
     buildInputs = [ nixpkgs.tree ];
   } ''
     mkdir -p $out
@@ -689,6 +689,7 @@ rec {
       base-tests
       base-doc
       docs
+      report-site
       ic-ref-run
       shell
       check-formatting
