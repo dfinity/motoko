@@ -42,7 +42,7 @@ jobs:
       run: nix-build -A report-site -o report-site
 
     - name: Push report to gitub pages
-      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/joachim/deploy-reports'
+      if: runner.os == 'Linux' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/joachim/deploy-reports')
       uses: JamesIves/github-pages-deploy-action@releases/v3
       with:
         ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
