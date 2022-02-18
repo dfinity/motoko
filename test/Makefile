@@ -14,9 +14,9 @@ quick:
 coverage:
 	rm -rf _coverage
 	mkdir _coverage
-	export BISECT_FILE=$$PWD/_coverage/bisect; \
-	export SKIP_RUNNING=yes; \
-	export SKIP_VALIDATE=yes; \
+	export BISECT_FILE=$$PWD/_coverage/bisect \
+	       SKIP_RUNNING=yes \
+	       SKIP_VALIDATE=yes; \
 	$(foreach test_dir,$(TEST_DIRS),make -C $(test_dir) &&) true
 	bisect-ppx-report html --coverage-path=_coverage $(foreach dir,$(SOURCE_PATHS),--source-path=$(dir) --source-path=$(dir)/_build/default/) -o coverage
 	rm -rf _coverage
