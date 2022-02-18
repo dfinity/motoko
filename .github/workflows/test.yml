@@ -94,7 +94,7 @@ jobs:
       with:
         name: ic-hs-test
     - name: Fetch report
-      run: nix-build -A report-site --max-jobs 0 -o report-site
+      run: nix-build -A report-site -o report-site
     - name: Push report to gitub pages
       uses: JamesIves/github-pages-deploy-action@v4.2.5
       with:
