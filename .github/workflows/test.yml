@@ -38,6 +38,18 @@ jobs:
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
+    - name: "Pull reports"
+      run: nix-build -A report-site -o report-site
+
+    - name: Push report to gitub pages
+      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/joachim/deploy-reports'
+      uses: JamesIves/github-pages-deploy-action@releases/v3
+      with:
+        ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        BRANCH: gh-pages
+        FOLDER: report-site
+        SINGLE_COMMIT: true
+
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |

@@ -617,7 +617,7 @@ rec {
     '';
   };
 
-  netlify-site = nixpkgs.runCommandNoCC "netlify-site" {
+  report = nixpkgs.runCommandNoCC "netlify-site" {
     buildInputs = [ nixpkgs.tree ];
   } ''
     mkdir -p $out
