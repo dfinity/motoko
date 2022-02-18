@@ -2278,18 +2278,17 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       ( (* non-ptr, shift amount < 30: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
         get_n ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-        let set_remember, get_remember = new_local64 env "remember" in
-        set_remember ^^ get_remember ^^
         get_amount ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+        let set_remember, get_remember = new_local64 env "remember" in
+        set_remember ^^ get_remember ^^
         G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
         let set_res, get_res = new_local env "res" in
         set_res ^^ get_res ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (* exclude sign flip *)
         get_remember ^^
         G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
-        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
         G.if1 I32Type
           get_res
           (E.trap_with env ("compile_lshd, fallback"))
