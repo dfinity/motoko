@@ -2291,10 +2291,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
         G.if1 I32Type
           get_res
-          (E.trap_with env ("compile_lshd, fallback"))
+          (get_n ^^ get_amount ^^ Num.compile_lshd env)
       )
-      (E.trap_with env ("compile_lshd, biiig"))
-      (*get_n ^^ get_amount ^^ Num.compile_lshd env*)
+      (get_n ^^ get_amount ^^ Num.compile_lshd env)
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
@@ -2644,7 +2643,7 @@ module BigNumLibtommath : BigNumType = struct
   let compile_unsigned_rem env = E.call_import env "rts" "bigint_rem"
   let compile_unsigned_div env = E.call_import env "rts" "bigint_div"
   let compile_unsigned_pow env = E.call_import env "rts" "bigint_pow"
-  let compile_lshd env = E.call_import env "rts" "bigint_lshd"
+  let compile_lshd env = E.call_import env "rts" "bigint_lsh"
 
   let compile_eq env = E.call_import env "rts" "bigint_eq"
   let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
