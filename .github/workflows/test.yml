@@ -79,9 +79,8 @@ jobs:
         edit-mode: replace
 
   reports:
-    # while testing:
-    # if: github.ref == 'refs/heads/master'
-    #needs: tests
+    if: github.ref == 'refs/heads/master'
+    needs: tests
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
