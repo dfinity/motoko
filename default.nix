@@ -672,12 +672,14 @@ rec {
     ln -s ${base-doc} $out/base-doc
     ln -s ${docs} $out/docs
     ln -s ${tests.profiling-graphs} $out/flamegraphs
+    ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
       echo docs/docs/language-guide/motoko.html;
-      echo base-doc/index.html
-      echo flamegraphs/index.html ) | \
+      echo base-doc/
+      echo coverage/
+      echo flamegraphs/ ) | \
       tree -H . -l --fromfile -T "Motoko build reports" > index.html
   '';
 

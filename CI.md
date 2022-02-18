@@ -103,6 +103,7 @@ Various build artifacts are most useful when available directly in the browser, 
  * The “overview slides”
  * The documentation for `motoko-base`, in the version pinned by motoko
  * Flamegraphs for the programs in `tests/perf`
+ * A coverage report
 
 A stable link to these should exist for `master`, and an easy-to-find link for each PR.
 
