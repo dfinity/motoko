@@ -95,9 +95,11 @@ jobs:
         name: ic-hs-test
     - name: Fetch report
       run: nix-build -A report-site -o report-site
+    - name: Resolve symlinks
+      run: cp -rL report-site report-site-copy
     - name: Push report to gitub pages
       uses: JamesIves/github-pages-deploy-action@v4.2.5
       with:
         branch: gh-pages
-        folder: report-site
-        single_commit: true
+        folder: report-site-copy
+        single-commit: true
