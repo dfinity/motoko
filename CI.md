@@ -94,22 +94,28 @@ Mergify reacts to the `automerge-squash` label. Once approved and CI passes, it
 merges master into the branch (using normal merge, which is important for
 stashed PRs) and then squash-merges the PR.
 
-Render and show generated base docs
------------------------------------
+Render and provide various reports
+----------------------------------
 **Use-case:**
-To be able to see and share the effects on the generated documentation for the base library, caused by a change to `mo-doc`, without needing the reviewer to generate the documentation locally.
+Various build artifacts are most useful when available directly in the browser, namely:
+
+ * The motoko user guide
+ * The “overview slides”
+ * The documentation for `motoko-base`, in the version pinned by motoko
+ * Flamegraphs for the programs in `tests/perf`
+
+A stable link to these should exist for `master`, and an easy-to-find link for each PR.
 
 **Implementation (internal):**
-Hydra hosts the build product of the `base-doc` CI job. This can be found via the Hydra job status page, and the there is a stable link for the latest build of `master` and of each PR.
+Hydra hosts the build products of the relevant jobs, and can be found via the
+Hydra job status page, and the there is a stable link for the latest build of
+`master` and of each PR.
 
-Render and show slides
-----------------------
-**Use-case:**
-To be able to see and share the “overview slides”, the rendered version should be hosted somewhere.
-
-**Implementation (internal):**
-Hydra hosts the build product of the `overview-slides` CI job. This can be found via the Hydra job status page, and the there is a stable link for the latest build of `master` and of each PR.
-
+**Implementation (external):**
+The latest `master` version of the file is availble at
+<https://dfinity.github.io/motoko/>.
+The reports are calculated in PRs (so failures would be caught), but are not
+hosted anywhere.
 
 Performance changes are known
 -----------------------------

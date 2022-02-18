@@ -665,6 +665,22 @@ rec {
     '';
   };
 
+  report-site = nixpkgs.runCommandNoCC "report-site" {
+    buildInputs = [ nixpkgs.tree ];
+  } ''
+    mkdir -p $out
+    ln -s ${base-doc} $out/base-doc
+    ln -s ${docs} $out/docs
+    ln -s ${tests.profiling-graphs} $out/flamegraphs
+    cd $out;
+    # generate a simple index.html, listing the entry points
+    ( echo docs/overview-slides.html;
+      echo docs/docs/language-guide/motoko.html;
+      echo base-doc/index.html
+      echo flamegraphs/index.html ) | \
+      tree -H . -l --fromfile -T "Motoko build reports" > index.html
+  '';
+
   check-generated = nixpkgs.runCommandNoCC "check-generated" {
       nativeBuildInputs = [ nixpkgs.diffutils ];
       expected = import ./nix/generate.nix { pkgs = nixpkgs; };
@@ -721,6 +737,7 @@ rec {
       base-tests
       base-doc
       docs
+      report-site
       ic-ref-run
       shell
       check-formatting
