@@ -167,6 +167,11 @@ unsafe fn parse_idl_header<M: Memory>(
                 if !(1 <= a && a <= 2) {
                     idl_trap_with("func annotation not within 1..2");
                 }
+                // TODO: shouldn't we also check
+                // * 1 (query) or 2 (oneway), but not both
+                // * 2 -> |Ret types| == 0
+                // c.f. https://github.com/dfinity/candid/issues/318
+                // NB: if this code changes, change sub type check below accordingly
             }
         } else if ty == IDL_CON_service {
             let mut last_len: u32 = 0 as u32;
@@ -591,17 +596,33 @@ unsafe extern "C" fn sub(
             for _ in out2..out1 {
                 let _ = sleb128_decode(&mut tb1);
             }
-            // TODO: annotations (as sets!)
-            // Annotations
-            /*
-            for _ in 0..leb128_decode(buf) {
-                let a = read_byte(buf);
-                if !(1 <= a && a <= 2) {
-                    idl_trap_with("func annotation not within 1..2");
-                }
+            // check annotations (that we care about)
+            // TODO: more generally, we would check equality of 256-bit bit-vectors,
+            // but validity ensures each entry is 1 or 2 (for now)
+            // c.f. https://github.com/dfinity/candid/issues/318
+            let mut a11 = false;
+            let mut a12 = false;
+            for _ in 0..leb128_decode(buf1) {
+                let a = read_byte(buf1);
+                if a == 1 {
+                    a11 = true;
+                };
+                if a == 2 {
+                    a12 = true;
+                };
             }
-            */
-            return true;
+            let mut a21 = false;
+            let mut a22 = false;
+            for _ in 0..leb128_decode(buf2) {
+                let a = read_byte(buf2);
+                if a == 1 {
+                    a21 = true;
+                };
+                if a == 2 {
+                    a22 = true;
+                };
+            }
+            return (a11 == a21) && (a12 == a22);
         }
         (_, _) => false,
     }
