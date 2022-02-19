@@ -624,116 +624,34 @@ unsafe extern "C" fn sub(
             }
             return (a11 == a21) && (a12 == a22);
         }
+        (IDL_CON_variant, IDL_CON_variant) => {
+            let n1 = leb128_decode(buf1);
+            let mut n2 = leb128_decode(buf2);
+            for _ in 0..n1 {
+                if n2 == 0 {
+                    return false;
+                };
+                let tag1 = leb128_decode(buf1);
+                let t11 = sleb128_decode(buf1);
+                let mut tag2 = 0;
+                let mut t21 = 0;
+                loop {
+                    tag2 = leb128_decode(buf2);
+                    t21 = sleb128_decode(buf2);
+                    n2 -= 1;
+                    if !(tag2 < tag1 && n2 > 0) {
+                        break;
+                    }
+                }
+                if tag1 != tag2 {
+                    return false;
+                };
+                if !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                    return false;
+                }
+            }
+            return true;
+        }
         (_, _) => false,
     }
-    /*
-        buf.advance(2);
-                }
-                 => {
-                    buf.advance(4);
-                }
-                IDL_PRIM_nat64 | IDL_PRIM_int64 | IDL_PRIM_float64 => {
-                    buf.advance(8);
-                }
-                IDL_PRIM_text => skip_text(buf),
-                IDL_PRIM_empty => {
-                    idl_trap_with("skip_any: encountered empty");
-                }
-                IDL_REF_principal => {
-                    if read_byte_tag(buf) != 0 {
-                        skip_blob(buf);
-                    }
-                }
-                _ => {
-                    idl_trap_with("skip_any: unknown prim");
-                }
-            }
-        } else {
-            // t >= 0
-            let mut tb = Buf {
-                ptr: *typtbl.add(t as usize),
-                end: (*buf).end,
-            };
-            let tc = sleb128_decode(&mut tb);
-            match tc {
-                IDL_CON_opt => {
-                    let it = sleb128_decode(&mut tb);
-                    if read_byte_tag(buf) != 0 {
-                        skip_any(buf, typtbl, it, 0);
-                    }
-                }
-                IDL_CON_vec => {
-                    let it = sleb128_decode(&mut tb);
-                    let count = leb128_decode(buf);
-                    skip_any_vec(buf, typtbl, it, count);
-                }
-                IDL_CON_record => {
-                    for _ in 0..leb128_decode(&mut tb) {
-                        skip_leb128(&mut tb);
-                        let it = sleb128_decode(&mut tb);
-                        // This is just a quick check; we should be keeping
-                        // track of all enclosing records to detect larger loops
-                        if it == t {
-                            idl_trap_with("skip_any: recursive record");
-                        }
-                        skip_any(buf, typtbl, it, depth + 1);
-                    }
-                }
-                IDL_CON_variant => {
-                    let n = leb128_decode(&mut tb);
-                    let i = leb128_decode(buf);
-                    if i >= n {
-                        idl_trap_with("skip_any: variant tag too large");
-                    }
-                    for _ in 0..i {
-                        skip_leb128(&mut tb);
-                        skip_leb128(&mut tb);
-                    }
-                    skip_leb128(&mut tb);
-                    let it = sleb128_decode(&mut tb);
-                    skip_any(buf, typtbl, it, 0);
-                }
-                IDL_CON_func => {
-                    if read_byte_tag(buf) == 0 {
-                        idl_trap_with("skip_any: skipping references");
-                    } else {
-                        if read_byte_tag(buf) == 0 {
-                            idl_trap_with("skip_any: skipping references");
-                        } else {
-                            skip_blob(buf)
-                        }
-                        skip_text(buf)
-                    }
-                }
-                IDL_CON_service => {
-                    if read_byte_tag(buf) == 0 {
-                        idl_trap_with("skip_any: skipping references");
-                    } else {
-                        skip_blob(buf)
-                    }
-                }
-                IDL_CON_alias => {
-                    // See Note [mutable stable values] in codegen/compile.ml
-                    let it = sleb128_decode(&mut tb);
-                    let tag = read_byte_tag(buf);
-                    if tag == 0 {
-                        buf.advance(8);
-                        // this is the contents (not a reference)
-                        skip_any(buf, typtbl, it, 0);
-                    } else {
-                        buf.advance(4);
-                    }
-                }
-                _ => {
-                    // Future type
-                    let n_data = leb128_decode(buf);
-                    let n_ref = leb128_decode(buf);
-                    buf.advance(n_data);
-                    if n_ref > 0 {
-                        idl_trap_with("skip_any: skipping references");
-                    }
-                }
-            }
-        }
-    */
 }
