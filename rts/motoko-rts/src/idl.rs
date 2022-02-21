@@ -500,14 +500,8 @@ unsafe fn unfold(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> i32 {
     return sleb128_decode(&mut tb);
 }
 
-
-unsafe fn opt_empty_sub(
-    buf: *mut Buf,
-    typtbl: *mut *mut u8,
-    t: i32,
-) -> bool {
-
-   if is_primitive_type(t) {
+unsafe fn opt_empty_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
+    if is_primitive_type(t) {
         return t == IDL_PRIM_reserved;
     }
 
@@ -650,39 +644,44 @@ unsafe extern "C" fn sub(
         (IDL_CON_record, IDL_CON_record) => {
             let mut n1 = leb128_decode(buf1);
             let n2 = leb128_decode(buf2);
+            let mut tag1 = 0;
+            let mut t11 = 0;
+            let mut advance = true;
             for _ in 0..n2 {
                 let tag2 = leb128_decode(buf2);
                 let t21 = sleb128_decode(buf2);
                 if n1 == 0 {
-                    return opt_empty_sub(buf2, typtbl2, t21);
+                    // check all remaining fields optional
+                    if !opt_empty_sub(buf2, typtbl2, t21) {
+                        return false;
+                    }
+                    continue;
                 };
-                let mut tag1 = 0;
-                let mut t11 = 0;
-                let mut save_ptr : *mut u8 = (*buf1).ptr;
-                loop {
-                    save_ptr = (*buf1).ptr;
-                    tag1 = leb128_decode(buf1);
-                    t11 = sleb128_decode(buf1);
-                    n1 -= 1;
-                    if !(tag1 < tag2 && n1 > 0) {
-                        break;
+                if advance {
+                    loop {
+                        tag1 = leb128_decode(buf1);
+                        t11 = sleb128_decode(buf1);
+                        n1 -= 1;
+                        if !(tag1 < tag2 && n1 > 0) {
+                            break;
+                        }
                     }
-                }
+                };
                 if tag1 > tag2 {
-                    if opt_empty_sub(buf2, typtbl2, t21) {
-                        // reconsider this field
-                        (*buf1).ptr = save_ptr;
-                        n1 += 1;
-                        continue;
+                    if !opt_empty_sub(buf2, typtbl2, t21) {
+                        // missing, non_opt field
+                        return false;
                     }
-                    else { return false; }
+                    advance = false; // reconsider this field in next round
+                    continue;
                 };
                 if !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
                     return false;
                 }
+                advance = true;
             }
             return true;
-        },
+        }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(buf1);
             let mut n2 = leb128_decode(buf2);
