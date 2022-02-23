@@ -120,8 +120,7 @@ and pat p = match p.it with
 
 and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
-  | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
-  | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
+  | BoolLit b     -> "BoolLit"   $$ [ Atom (if b then "true" else "false") ]
   | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
   | Nat8Lit w     -> "Nat8Lit"   $$ [ Atom (Numerics.Nat8.to_pretty_string w) ]
   | Nat16Lit w    -> "Nat16Lit"  $$ [ Atom (Numerics.Nat16.to_pretty_string w) ]
