@@ -363,7 +363,7 @@ and export_footprint self_id name expr =
            (asyncE bind2
               (blockE [expD (assertE (primE (I.RelPrim (T.caller, Operator.EqOp))
                                         [primE I.ICCallerPrim []; selfRefE T.caller]))]
-                 (primE (I.OtherPrim "☠rts_stable_vars_size☠") [expr])) (Con (scope_con, []))))
+                 (primE (I.ICStableVarsSize) [expr])) (Con (scope_con, []))))
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 

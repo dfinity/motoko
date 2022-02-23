@@ -90,6 +90,7 @@ let primE prim es =
     | ICStableRead t -> t
     | ICPerformGC
     | ICStableWrite _ -> T.unit
+    | ICStableVarsSize -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | NextArrayOffset _ -> T.nat
@@ -103,7 +104,6 @@ let primE prim es =
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat
-    | OtherPrim "☠rts_stable_vars_size☠" -> T.nat64
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in

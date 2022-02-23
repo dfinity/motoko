@@ -159,6 +159,7 @@ and prim =
   | CPSAwait of Type.typ
   | CPSAsync of Type.typ
   | ICPerformGC
+  | ICStableVarsSize
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
@@ -295,6 +296,7 @@ let map_prim t_typ t_id p =
   | CPSAsync t -> CPSAsync (t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICPerformGC
+  | ICStableVarsSize
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim
