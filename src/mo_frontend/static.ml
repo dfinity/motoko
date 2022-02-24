@@ -104,9 +104,10 @@ and triv m p = match p.it with
   patterns here.
   *)
   | TupP ps -> List.iter (triv m) ps
+  | ObjP fs -> List.iter (fun (f : pat_field) -> triv m f.it.pat) fs
 
   (* TODO:
-    claudio: what about record patterns, singleton variant patterns? These are irrefutable too.
+    claudio: what about singleton variant patterns? These are irrefutable too.
     Andreas suggests simply allowing all patterns: "The worst that can happen is that the program
     is immediately terminated, but that doesn't break anything semantically."
   *)
