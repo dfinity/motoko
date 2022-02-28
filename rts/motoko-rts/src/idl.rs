@@ -518,7 +518,27 @@ unsafe fn opt_empty_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
     return t == IDL_CON_opt;
 }
 
+unsafe fn null_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
+    if is_primitive_type(t) {
+        return t == IDL_PRIM_empty || t == IDL_PRIM_null;
+    }
+
+    // unfold t
+    let mut t = t;
+
+    let mut tb = Buf {
+        ptr: *typtbl.add(t as usize),
+        end: (*buf).end,
+    };
+
+    t = sleb128_decode(&mut tb);
+
+    return t == IDL_CON_opt;
+}
+
+
 // https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
+// https://github.com/dfinity/candid/blob/20b84d1c1515e2c1db353ebe02b738486f835466/spec/Candid.md
 #[no_mangle]
 unsafe extern "C" fn sub(
     buf1: *mut Buf,
@@ -567,19 +587,32 @@ unsafe extern "C" fn sub(
     match (t1, t2) {
         (_, IDL_PRIM_reserved) => true,
         (IDL_PRIM_empty, _) => false,
+/*
         (IDL_PRIM_null, IDL_CON_opt) => true,
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-        }
-        // todo: ugly opt cases
+        },
+        (_, IDL_CON_opt) => {
+            let t21 = sleb128_decode(&mut tb2);
+            return
+                !null_sub(buf1, typetbl1, t1) &&
+                !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+        },
+        (_, IDL_CON_opt) => {
+            let t21 = sleb128_decode(&mut tb2);
+            return
+                !null_sub(buf1, typetbl1, t1) &&
+                !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+        },
+*/
+        (_, IDL_CON_opt) => true, // apparently, this is admissable
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-        }
-        // default
+        },
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
             let in1 = leb128_decode(&mut tb1);
@@ -709,7 +742,8 @@ unsafe extern "C" fn sub(
                 }
             }
             return true;
-        }
+        },
+        // default
         (_, _) => false,
     }
 }
