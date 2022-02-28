@@ -7833,6 +7833,17 @@ and compile_exp (env : E.t) ae exp =
       SR.unit,
       E.collect_garbage env
 
+    | ICStableVarsSize, [e] ->
+      SR.UnboxedWord64,
+      let ts = [e.note.Ir_def.Note.typ] in
+      let tydesc = Serialization.type_desc env ts in
+      let tydesc_len = Int32.of_int (String.length tydesc) in
+      compile_exp_vanilla env ae e ^^
+      Serialization.buffer_size env (Type.seq ts) ^^
+      G.i Drop ^^
+      compile_add_const tydesc_len  ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+
     (* Other prims, unary *)
 
     | OtherPrim "array_len", [e] ->
@@ -8013,17 +8024,6 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "rts_stable_var_footprint_query", [] ->
       SR.Vanilla,
       Var.get_val_vanilla env ae "$__stable_variable_footprint"
-
-    | OtherPrim "☠rts_stable_vars_size☠", [e] ->
-      SR.UnboxedWord64,
-      let ts = [e.note.Ir_def.Note.typ] in
-      let tydesc = Serialization.type_desc env ts in
-      let tydesc_len = Int32.of_int (String.length tydesc) in
-      compile_exp_vanilla env ae e ^^
-      Serialization.buffer_size env (Type.seq ts) ^^
-      G.i Drop ^^
-      compile_add_const tydesc_len  ^^
-      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
     | OtherPrim "crc32Hash", [e] ->
       SR.UnboxedWord32,
