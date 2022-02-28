@@ -501,7 +501,7 @@ let rec cons' t cs =
   | Var _ ->  cs
   | (Prim _ | Any | Non | Pre ) -> cs
   | Con (c, ts) ->
-    List.fold_right cons' ts (ConSet.add c cs)
+    List.fold_right cons' ts (cons_con c cs)
   | (Opt t | Mut t | Array t) ->
     cons' t cs
   | Async (t1, t2) ->
@@ -513,7 +513,12 @@ let rec cons' t cs =
     List.fold_right cons' ts2 cs
   | (Obj (_, fs) | Variant fs) ->
     List.fold_right cons_field fs cs
-  | Typ c -> ConSet.add c cs
+  | Typ c -> cons_con c cs
+
+and cons_con c cs =
+  if ConSet.mem c cs
+  then cs
+  else cons_kind' (Cons.kind c) (ConSet.add c cs)
 
 and cons_bind tb cs =
   cons' tb.bound cs
@@ -521,13 +526,14 @@ and cons_bind tb cs =
 and cons_field {lab; typ; depr} cs =
   cons' typ cs
 
-let cons_kind k =
+and cons_kind' k cs =
   match k with
   | Def (tbs, t)
   | Abs (tbs, t) ->
-    cons' t (List.fold_right cons_bind tbs ConSet.empty)
+    cons' t (List.fold_right cons_bind tbs cs)
 
 let cons t = cons' t ConSet.empty
+let cons_kind k = cons_kind' k ConSet.empty
 
 (* Checking for concrete types *)
 
