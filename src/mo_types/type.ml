@@ -1440,6 +1440,7 @@ let string_of_typ_expand typ : string =
     pp_typ_expand ppf) typ
 
 let string_of_stab_sig typ : string =
+ "// Version: 1.0.0\n" ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> pp_stab_sig ppf) typ
 
 let _ = str := string_of_typ
