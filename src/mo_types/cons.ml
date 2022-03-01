@@ -30,7 +30,7 @@ let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
 let to_string' show_stamps c =
-  if not show_stamps || c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
+  if not show_stamps || c.stamp = 0 then c.name else Printf.sprintf "%s__%i" c.name c.stamp
 
 let to_string c = to_string' true c
 

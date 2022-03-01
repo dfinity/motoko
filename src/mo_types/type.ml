@@ -1111,8 +1111,6 @@ let rec match_stab_sig tfs1 tfs2 =
 
 (* Pretty printing *)
 
-open Printf
-
 let string_of_prim = function
   | Null -> "Null"
   | Bool -> "Bool"
@@ -1132,9 +1130,6 @@ let string_of_prim = function
   | Blob -> "Blob"
   | Error -> "Error"
   | Principal -> "Principal"
-
-let string_of_var (x, i) =
-  if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
 
 let string_of_obj_sort = function
   | Object -> ""
@@ -1158,9 +1153,12 @@ let comma ppf () = fprintf ppf ",@ "
 
 let semi ppf () = fprintf ppf ";@ "
 
+let string_of_var (x, i) =
+  if i = 0 then sprintf "%s" x else sprintf "%s_%d" x i
+
 let string_of_con' vs c =
   let s = Cons.to_string' Cfg.show_stamps c in
-  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
+  if List.mem (s, 0) vs then s ^ "__0" else s  (* TBR *)
 
 (* If modified, adjust start_without_parens_nullary below to match *)
 let rec pp_typ_nullary vs ppf = function
@@ -1346,7 +1344,7 @@ and vars_of_binds vs bs =
 and name_of_var vs v =
   match vs with
   | [] -> v
-  | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
+  | v'::vs' -> name_of_var vs' (if (fst v) = (fst v') then (fst v, snd v + 1) else v)
 
 and pp_bind vs ppf (v, {bound; _}) =
   if bound = Any then
