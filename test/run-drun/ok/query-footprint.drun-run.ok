@@ -1,4 +1,8 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0001780000000000000000
-Error: "Line 4: Illegal method name: stable-variable-footprint."
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at .:0.1
+Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at .:0.1
+ingress Completed: Reply: 0x4449444c0001785118000000000000
+ingress Completed: Reply: 0x4449444c0001785118000000000000
+Err: IC0302: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai has no query method 'delegate'
+Ok: Reply: 0x4449444c0001712973657276696365203a207b0a202064656c65676174653a202829202d3e20286e61743634293b0a7d0a

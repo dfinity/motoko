@@ -2,13 +2,15 @@
 ← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
-→ query go()
-← replied: ((0 : nat64))
-→ update stable-variable-footprint()
-← replied: ((5242 : nat64))
-→ query stable-variable-footprint()
-← replied: ((5242 : nat64))
-→ query stable-variable-footprint()
-← replied: ((5242 : nat64))
+→ update stable_variable_footprint()
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at .:0.1"
+→ query stable_variable_footprint()
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at .:0.1"
+→ update delegate()
+← replied: ((6225 : nat64))
+→ update delegate()
+← replied: ((6225 : nat64))
+→ query delegate()
+← rejected (RC_DESTINATION_INVALID): query method does not exist
 → query __get_candid_interface_tmp_hack()
-← replied: ("service : {\n  go: () -> (nat64) query;\n}\n")
+← replied: ("service : {\n  delegate: () -> (nat64);\n}\n")
