@@ -25,7 +25,7 @@ to argument of type
 to produce result of type
   Any
 because type parameter T has an open bound
-  U/12
+  U__12
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:95.8-95.26: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(T, T) -> (U, U)
@@ -34,7 +34,7 @@ to argument of type
 to produce result of type
   Any
 because type parameter T has an open bound
-  U/13
+  U__13
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:96.8-96.23: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(T, T) -> (U, U)
@@ -43,7 +43,7 @@ to argument of type
 to produce result of type
   Any
 because type parameter T has an open bound
-  U/14
+  U__14
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:111.8-111.17: type error [M0098], cannot implicitly instantiate function of type
   <T <: Int>(T) -> T
@@ -73,34 +73,34 @@ to argument of type
   <V>(V) -> V
 to produce result of type
   ()
-because no instantiation of T/100 makes
-  <V>(V) -> V  <:  <U>(T/100) -> U
+because no instantiation of T__100 makes
+  <V>(V) -> V  <:  <U>(T__100) -> U
 inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
   <T>(<U>(U) -> T) -> ()
 to argument of type
   <V>(V) -> V
 to produce result of type
   ()
-because no instantiation of T/101 makes
-  <V>(V) -> V  <:  <U>(U) -> T/101
+because no instantiation of T__101 makes
+  <V>(V) -> V  <:  <U>(U) -> T__101
 inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
   <T>([T]) -> T
 to argument of type
   [var Nat]
 to produce result of type
   Any
-because no instantiation of T/104 makes
-  [var Nat]  <:  [T/104]
+because no instantiation of T__104 makes
+  [var Nat]  <:  [T__104]
 inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
   <T>([var T]) -> T
 to argument of type
   [Nat]
 to produce result of type
   ()
-because no instantiation of T/105 makes
-  [Nat]  <:  [var T/105]
+because no instantiation of T__105 makes
+  [Nat]  <:  [var T__105]
 and
-  T/105  <:  ()
+  T__105  <:  ()
 inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
   <T>([var T]) -> T
 to argument of type
@@ -115,24 +115,24 @@ so that no valid instantiation exists
 inference.mo:137.4-137.8: type error [M0098], cannot implicitly instantiate function of type
   <U <: {}>(U) -> ()
 to argument of type
-  T/37
+  T__37
 to produce result of type
   ()
 because implicit instantiation of type parameter U is over-constrained with
-  T/37  <:  U  <:  {}
+  T__37  <:  U  <:  {}
 where
-  T/37  </:  {}
+  T__37  </:  {}
 so that no valid instantiation exists
 inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
-  <U <: T/40>(U) -> U
+  <U <: T__40>(U) -> U
 to argument of type
-  T/40
+  T__40
 to produce result of type
   None
 because implicit instantiation of type parameter U is over-constrained with
-  T/40  <:  U  <:  None
+  T__40  <:  U  <:  None
 where
-  T/40  </:  None
+  T__40  </:  None
 so that no valid instantiation exists
 inference.mo:172.8-172.54: type error [M0098], cannot implicitly instantiate function of type
   <T>(Bool, [var T], [var T]) -> [var T]
@@ -151,7 +151,7 @@ to argument of type
   {type x = Nat}
 to produce result of type
   Any
-because no instantiation of T/115 makes
-  {type x = Nat}  <:  {x : T/115}
+because no instantiation of T__115 makes
+  {type x = Nat}  <:  {x : T__115}
 inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
 inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0

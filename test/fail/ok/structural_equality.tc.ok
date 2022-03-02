@@ -23,11 +23,11 @@ and
 at common supertype
   Any
 structural_equality.mo:12.37-12.43: warning [M0061], comparing abstract type
-  A/10
+  A__10
 to itself at supertype
   Any
 structural_equality.mo:13.41-13.47: warning [M0062], comparing incompatible types
-  A/11
+  A__11
 and
   B
 at common supertype

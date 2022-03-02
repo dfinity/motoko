@@ -40,7 +40,7 @@ let argspec = Arg.align
 
 (* IO *)
 
-module Pretty = Type.MakePretty(struct let show_stamps = false end)
+module Pretty = Type.MakePretty(Type.ElideStamps)
 
 let load_file f =
   let ic = open_in_bin f in
