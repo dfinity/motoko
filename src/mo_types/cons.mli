@@ -7,7 +7,7 @@ val clone: 'a t -> 'a -> 'a t
 
 val name : 'a t -> string
 val to_string : 'a t -> string
-val to_string' : bool -> 'a t -> string
+val to_string' : bool -> string -> 'a t -> string
 
 val kind : 'a t -> 'a
 val unsafe_set_kind : 'a t -> 'a -> unit (* cf. Type.set_kind *)

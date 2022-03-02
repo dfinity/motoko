@@ -1084,31 +1084,6 @@ let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 
-(* Stable signatures *)
-
-let rec match_stab_sig tfs1 tfs2 =
-  (* Assume that tfs1 and tfs2 are sorted. *)
-  (* Should we insist on monotonic preservation of fields, or relax? *)
-  match tfs1, tfs2 with
-  | [], _ ->
-    true (* no or additional fields ok *)
-  | _, [] ->
-    false (* true, should we allow fields to be dropped *)
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-     | 0 ->
-       is_mut tf1.typ = is_mut tf2.typ &&
-       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-         (* should we enforce equal mutability or not? Seems unncessary
-            since upgrade is read-once *)
-       match_stab_sig tfs1' tfs2'
-     | -1 ->
-       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
-     | _ ->
-       (* new field ok *)
-       match_stab_sig tfs1 tfs2'
-    )
-
 (* Pretty printing *)
 
 let string_of_prim = function
@@ -1142,8 +1117,33 @@ let string_of_func_sort = function
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
 
-module MakePretty(Cfg : sig val show_stamps : bool end) =
-  struct
+(* PrettyPrinter configurations *)
+
+module type PrettyConfig = sig
+  val show_stamps : bool
+  val con_sep : string
+  val par_sep : string
+end
+
+module ShowStamps = struct
+  let show_stamps = true
+  let con_sep = "__" (* TODO: revert to "/" *)
+  let par_sep = "_"
+end
+
+module ElideStamps = struct
+  let show_stamps = false
+  let con_sep = ShowStamps.con_sep
+  let par_sep = ShowStamps.par_sep
+end
+
+module ParseableStamps = struct
+  let show_stamps = false
+  let con_sep = "__"
+  let par_sep = "_"
+end
+
+module MakePretty(Cfg : PrettyConfig) = struct
 
 open Format
 
@@ -1154,11 +1154,11 @@ let comma ppf () = fprintf ppf ",@ "
 let semi ppf () = fprintf ppf ";@ "
 
 let string_of_var (x, i) =
-  if i = 0 then sprintf "%s" x else sprintf "%s_%d" x i
+  if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
 let string_of_con' vs c =
-  let s = Cons.to_string' Cfg.show_stamps c in
-  if List.mem (s, 0) vs then s ^ "__0" else s  (* TBR *)
+  let s = Cons.to_string' Cfg.show_stamps Cfg.con_sep c in
+  if List.mem (s, 0) vs then s ^ Cfg.con_sep ^ "0" else s  (* FIX ME *)
 
 (* If modified, adjust start_without_parens_nullary below to match *)
 let rec pp_typ_nullary vs ppf = function
@@ -1439,10 +1439,6 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_typ_expand ppf) typ
 
-let string_of_stab_sig typ : string =
- "// Version: 1.0.0\n" ^
-  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> pp_stab_sig ppf) typ
-
 let _ = str := string_of_typ
 
 
@@ -1461,8 +1457,36 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_stab_sig : field list -> string
 end
 
+include MakePretty(ShowStamps)
 
-include MakePretty(struct let show_stamps = true end)
+(* Stable signatures *)
+
+let rec match_stab_sig tfs1 tfs2 =
+  (* Assume that tfs1 and tfs2 are sorted. *)
+  (* Should we insist on monotonic preservation of fields, or relax? *)
+  match tfs1, tfs2 with
+  | [], _ ->
+    true (* no or additional fields ok *)
+  | _, [] ->
+    false (* true, should we allow fields to be dropped *)
+  | tf1::tfs1', tf2::tfs2' ->
+    (match compare_field tf1 tf2 with
+     | 0 ->
+       is_mut tf1.typ = is_mut tf2.typ &&
+       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+         (* should we enforce equal mutability or not? Seems unncessary
+            since upgrade is read-once *)
+       match_stab_sig tfs1' tfs2'
+     | -1 ->
+       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
+     | _ ->
+       (* new field ok *)
+       match_stab_sig tfs1 tfs2'
+    )
+
+let string_of_stab_sig fields : string =
+  let module Pretty = MakePretty(ParseableStamps) in
+  "// Version: 1.0.0\n" ^
+  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) fields
