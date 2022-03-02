@@ -1162,7 +1162,7 @@ let vs_of_cs cs =
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
-let string_of_con' vs c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
+let string_of_con c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
 
 (* If modified, adjust start_without_parens_nullary below to match *)
 let rec pp_typ_nullary vs ppf = function
@@ -1172,9 +1172,9 @@ let rec pp_typ_nullary vs ppf = function
   | Prim p -> pr ppf (string_of_prim p)
   | Var (s, i) ->
     pr ppf (try string_of_var (List.nth vs i) with _ -> Printf.sprintf "??? %s %i" s i)
-  | Con (c, []) -> pr ppf (string_of_con' vs c)
+  | Con (c, []) -> pr ppf (string_of_con c)
   | Con (c, ts) ->
-    fprintf ppf "@[%s<@[<1>%a@]>@]" (string_of_con' vs c)
+    fprintf ppf "@[%s<@[<1>%a@]>@]" (string_of_con c)
       (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
   | Tup ts ->
     fprintf ppf "@[<1>(%a%s)@]"
@@ -1406,7 +1406,7 @@ and pp_stab_sig ppf sig_ =
   let fs =
     List.sort compare_field
       (List.map (fun c ->
-        { lab = string_of_con' vs c;
+        { lab = string_of_con c;
           typ = Typ c;
           depr = None }) ds)
   in
@@ -1441,8 +1441,6 @@ let pp_typ ppf t =
 let pp_typ_expand ppf t =
   let vs = vs_of_cs (cons t) in
   pp_typ_expand' vs ppf t
-
-let string_of_con : con -> string = string_of_con' []
 
 let string_of_typ typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
