@@ -1439,9 +1439,6 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_typ_expand ppf) typ
 
-let _ = str := string_of_typ
-
-
 end
 
 module type Pretty = sig
@@ -1460,6 +1457,8 @@ module type Pretty = sig
 end
 
 include MakePretty(ShowStamps)
+
+let _ = str := string_of_typ
 
 (* Stable signatures *)
 
