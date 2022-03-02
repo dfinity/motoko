@@ -1153,12 +1153,16 @@ let comma ppf () = fprintf ppf ",@ "
 
 let semi ppf () = fprintf ppf ";@ "
 
+module StringSet = Set.Make(String)
+
+let vs_of_cs cs =
+  let names = ConSet.fold (fun c ns -> StringSet.add (Cons.name c) ns) cs StringSet.empty in
+  StringSet.fold (fun n vs -> (n, 0)::vs) names []
+
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
-let string_of_con' vs c =
-  let s = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  if List.mem (s, 0) vs then s ^ Cfg.con_sep ^ "0" else s  (* FIX ME *)
+let string_of_con' vs c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
 
 (* If modified, adjust start_without_parens_nullary below to match *)
 let rec pp_typ_nullary vs ppf = function
@@ -1188,7 +1192,7 @@ let rec pp_typ_nullary vs ppf = function
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
   | Typ c ->
-    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" pp_kind (Cons.kind c)
+    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" (pp_kind' vs) (Cons.kind c)
   | t -> fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) t
 
 (* naively follows structure of pp_typ_nullary, keep in sync *)
@@ -1317,7 +1321,7 @@ and pp_typ' vs ppf t =
 and pp_field vs ppf {lab; typ; depr} =
   match typ with
   | Typ c ->
-    let op, sbs, st = pps_of_kind (Cons.kind c) in
+    let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
     fprintf ppf "@[<2>type %s%a %s@ %a@]" lab sbs () op st ()
   | Mut t' ->
     fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
@@ -1361,23 +1365,35 @@ and pp_binds vs vs' ppf = function
       (pp_print_list ~pp_sep:comma (pp_bind vs)) (List.combine vs' tbs)
 
 
-and pps_of_kind k =
+and pps_of_kind' vs k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
     | Abs (tbs, t) -> "<:", tbs, t
   in
-  let vs = vars_of_binds [] tbs in
+  let vs' = vars_of_binds vs tbs in
+  let vs'vs = vs'@vs in
   op,
-  (fun ppf () -> pp_binds vs vs ppf tbs),
-  (fun ppf () -> pp_typ' vs ppf t)
+  (fun ppf () -> pp_binds vs'vs vs' ppf tbs),
+  (fun ppf () -> pp_typ' vs'vs ppf t)
+
+and pps_of_kind k =
+  let cs = cons_kind k in
+  let vs = vs_of_cs cs in
+  pps_of_kind' vs k
+
+and pp_kind' vs ppf k =
+  let op, sbs, st = pps_of_kind' vs k in
+  fprintf ppf "%s %a%a" op sbs () st ()
 
 and pp_kind ppf k =
-  let op, sbs, st = pps_of_kind k in
-  fprintf ppf "%s %a%a" op sbs () st ()
+  let cs = cons_kind k in
+  let vs = vs_of_cs cs in
+  pp_kind' vs ppf k
 
 and pp_stab_sig ppf sig_ =
   let cs = List.fold_right cons_field sig_ ConSet.empty in
+  let vs = vs_of_cs cs in
   let ds =
     let cs' = ConSet.filter (fun c ->
       match Cons.kind c with
@@ -1390,42 +1406,47 @@ and pp_stab_sig ppf sig_ =
   let fs =
     List.sort compare_field
       (List.map (fun c ->
-        { lab = string_of_con' [] c;
+        { lab = string_of_con' vs c;
           typ = Typ c;
           depr = None }) ds)
   in
   let pp_stab_fields ppf sig_ =
     fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
       (string_of_obj_sort Actor)
-      (pp_print_list ~pp_sep:semi (pp_stab_field [])) sig_
+      (pp_print_list ~pp_sep:semi (pp_stab_field vs)) sig_
   in
   fprintf ppf "@[<v 0>%a%a%a;@]"
-   (pp_print_list ~pp_sep:semi (pp_field [])) fs
+   (pp_print_list ~pp_sep:semi (pp_field vs)) fs
    (if fs = [] then fun ppf () -> () else semi) ()
    pp_stab_fields sig_
 
-let pp_typ = pp_typ' []
-
-let rec pp_typ_expand ppf t =
+let rec pp_typ_expand' vs ppf t =
   match t with
   | Con (c, ts) ->
     (match Cons.kind c with
-    | Abs _ -> pp_typ' [] ppf t
+    | Abs _ -> pp_typ' vs ppf t
     | Def _ ->
       match normalize t with
-      | Prim _ | Any | Non -> pp_typ' [] ppf t
+      | Prim _ | Any | Non -> pp_typ' vs ppf t
       | t' -> fprintf ppf "%a = %a"
-        (pp_typ' []) t
-        pp_typ_expand t'
+        (pp_typ' vs) t
+        (pp_typ_expand' vs) t'
     )
-  | _ -> pp_typ' [] ppf t
+  | _ -> pp_typ' vs ppf t
 
+let pp_typ ppf t =
+  let vs = vs_of_cs (cons t) in
+  pp_typ' vs ppf t
+
+let pp_typ_expand ppf t =
+  let vs = vs_of_cs (cons t) in
+  pp_typ_expand' vs ppf t
 
 let string_of_con : con -> string = string_of_con' []
 
 let string_of_typ typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_typ' [] ppf) typ
+    pp_typ ppf) typ
 
 let string_of_kind k : string =
   Lib.Format.with_str_formatter (fun ppf ->
