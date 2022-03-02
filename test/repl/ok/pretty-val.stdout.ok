@@ -283,7 +283,7 @@ Motoko compiler (source XXX)
 > let o3 : ?(?(?Nat)) = ?(?(?666))
 > let o4 : ?(?(?(?Nat))) = ?(?(?(?666)))
 > let o5 : ?(?(?(?(?Nat)))) = ?(?(?(?(?666))))
->         type c<T, U> = {type List<T> = ?(T, List<T>); A : T; B : U}
+>         type c<T, U> = {type List<T_1> = ?(T_1, List<T_1>); A : T; B : U}
 let c : <T, U>(T, U) -> c<T, U> = func
 > let c1 :
   {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}} =
