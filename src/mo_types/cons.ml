@@ -29,10 +29,9 @@ let kind c = !(c.kind)
 let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
-let to_string' show_stamps sep c =
-  if not show_stamps || c.stamp = 0 then c.name else Printf.sprintf "%s%s%i" c.name sep c.stamp
 
-let to_string c = to_string' true "/" c
+let to_string show_stamps sep c =
+  if not show_stamps || c.stamp = 0 then c.name else Printf.sprintf "%s%s%i" c.name sep c.stamp
 
 let eq c1 c2 = (c1.name, c1.stamp) = (c2.name, c2.stamp)
 let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)

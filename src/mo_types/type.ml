@@ -1157,7 +1157,7 @@ let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
 let string_of_con' vs c =
-  let s = Cons.to_string' Cfg.show_stamps Cfg.con_sep c in
+  let s = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
   if List.mem (s, 0) vs then s ^ Cfg.con_sep ^ "0" else s  (* FIX ME *)
 
 (* If modified, adjust start_without_parens_nullary below to match *)

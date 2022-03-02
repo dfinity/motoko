@@ -26,7 +26,7 @@ let print_ce =
   Type.ConSet.iter (fun c ->
     let eq, params, typ = Type.pps_of_kind (Cons.kind c) in
     Format.printf "@[<hv 2>type %s%a %s@ %a@]@."
-      (Cons.to_string c)
+      (Type.string_of_con c)
       params ()
       eq
       typ ()

@@ -148,7 +148,7 @@ and dec d = match d.it with
   | VarD (i, t, e) -> "VarD" $$ [id i; typ t; exp e]
 
 and typ_bind (tb : typ_bind) =
-  Cons.to_string tb.it.con $$ [typ tb.it.bound]
+  Type.string_of_con tb.it.con $$ [typ tb.it.bound]
 
 and comp_unit = function
   | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]
