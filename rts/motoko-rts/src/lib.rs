@@ -10,9 +10,9 @@ mod print;
 pub mod debug;
 
 pub mod bigint;
+mod bitset;
 #[cfg(feature = "ic")]
 mod blob_iter;
-mod bitset;
 pub mod buf;
 mod char;
 pub mod constants;

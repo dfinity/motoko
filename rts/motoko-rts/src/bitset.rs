@@ -16,7 +16,9 @@ impl BitSet {
         let byte = (n / 8) as usize;
         let bit = (n % 8) as u8;
         let dst = (*self).ptr.add(byte);
-        if dst > (*self).end { idl_trap_with("BitSet.set out of bounds"); };
+        if dst > (*self).end {
+            idl_trap_with("BitSet.set out of bounds");
+        };
         *dst = *dst | (1 << bit);
     }
 
@@ -24,10 +26,10 @@ impl BitSet {
         let byte = (n / 8) as usize;
         let bit = (n % 8) as u8;
         let src = (*self).ptr.add(byte);
-        if src > (*self).end { idl_trap_with("BitSet.get out of bounds"); };
+        if src > (*self).end {
+            idl_trap_with("BitSet.get out of bounds");
+        };
         let mask = 1 << bit;
         return *src & mask == mask;
     }
 }
-
-

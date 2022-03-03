@@ -1,5 +1,5 @@
 #![allow(non_upper_case_globals)]
-use crate::bitset::{BitSet};
+use crate::bitset::BitSet;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
@@ -536,7 +536,6 @@ unsafe fn null_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
     return t == IDL_CON_opt;
 }
 
-
 // https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
 // https://github.com/dfinity/candid/blob/20b84d1c1515e2c1db353ebe02b738486f835466/spec/Candid.md
 #[no_mangle]
@@ -587,32 +586,32 @@ unsafe extern "C" fn sub(
     match (t1, t2) {
         (_, IDL_PRIM_reserved) => true,
         (IDL_PRIM_empty, _) => false,
-/*
-        (IDL_PRIM_null, IDL_CON_opt) => true,
-        (IDL_CON_opt, IDL_CON_opt) => {
-            let t11 = sleb128_decode(&mut tb1);
-            let t21 = sleb128_decode(&mut tb2);
-            return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-        },
-        (_, IDL_CON_opt) => {
-            let t21 = sleb128_decode(&mut tb2);
-            return
-                !null_sub(buf1, typetbl1, t1) &&
-                !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-        },
-        (_, IDL_CON_opt) => {
-            let t21 = sleb128_decode(&mut tb2);
-            return
-                !null_sub(buf1, typetbl1, t1) &&
-                !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-        },
-*/
+        /*
+                (IDL_PRIM_null, IDL_CON_opt) => true,
+                (IDL_CON_opt, IDL_CON_opt) => {
+                    let t11 = sleb128_decode(&mut tb1);
+                    let t21 = sleb128_decode(&mut tb2);
+                    return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+                },
+                (_, IDL_CON_opt) => {
+                    let t21 = sleb128_decode(&mut tb2);
+                    return
+                        !null_sub(buf1, typetbl1, t1) &&
+                        !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+                },
+                (_, IDL_CON_opt) => {
+                    let t21 = sleb128_decode(&mut tb2);
+                    return
+                        !null_sub(buf1, typetbl1, t1) &&
+                        !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+                },
+        */
         (_, IDL_CON_opt) => true, // apparently, this is admissable
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-        },
+        }
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
             let in1 = leb128_decode(&mut tb1);
@@ -742,7 +741,7 @@ unsafe extern "C" fn sub(
                 }
             }
             return true;
-        },
+        }
         // default
         (_, _) => false,
     }
