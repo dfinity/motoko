@@ -1,5 +1,5 @@
 #![allow(non_upper_case_globals)]
-use crate::bitset::{BitRel};
+use crate::bitrel::{BitRel};
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
@@ -788,8 +788,8 @@ unsafe extern "C" fn sub_type(
     rel_buf : *mut Buf, // a buffer with at least 2 * n * m bits
     buf1: *mut Buf,
     buf2: *mut Buf,
-    typtbl1: *mut *mut u8,
-    typtbl2: *mut *mut u8,
+    typtbl1: *mut *mut u8, // size n
+    typtbl2: *mut *mut u8, // size m
     t1: i32,
     t2: i32,
 ) -> bool {
@@ -803,6 +803,8 @@ unsafe extern "C" fn sub_type(
         n: n,
         m: m,
     };
+
+    debug_assert!(t1 < (n as i32)  && t2 < (m as i32));
 
     rel.init();
 
