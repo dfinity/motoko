@@ -2,5 +2,5 @@
 ← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
-→ query stable_variable_footprint()
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: buffer_size overflow"
+→ update delegate()
+← rejected (RC_CANISTER_REJECT): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: buffer_size overflow"
