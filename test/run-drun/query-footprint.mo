@@ -19,7 +19,7 @@ actor footprint = {
     stable var expl = e10;
 
     public func delegate() : async Nat64 {
-        await queryStableVarFootprint(footprint, ?"__motoko_stable_var_size")
+        await queryStableVarFootprint(footprint)
     };
 
     system func preupgrade() {

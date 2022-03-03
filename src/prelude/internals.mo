@@ -413,14 +413,8 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 };
 
 // stable memory footprint
-func @query_stable_var_footprint(self : actor {}, method : ?Text) : async Nat64 {
-  switch method {
-    case (?method) {
-      (prim "deserialize" : Blob -> Nat64)
-        (await @call_raw((prim "cast" : (actor {}) -> Principal) self, method, (prim "serialize" : () -> Blob) ())) };
-    case null {
-      let err = (prim "cast" : ({ #canister_error }, Text) -> Error) (#canister_error, "cannot call query");
-      throw err
-    }
-  }
+func @query_stable_var_footprint(self : actor {}) : async Nat64 {
+  (prim "deserialize" : Blob -> Nat64)
+      (await @call_raw((prim "cast" : (actor {}) -> Principal) self, "__motoko_stable_var_size",
+                       (prim "serialize" : () -> Blob) ()))
 };
