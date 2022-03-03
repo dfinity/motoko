@@ -1,7 +1,8 @@
-//! This module implements a simple bit set to be used by the compiler (in generated code)
+//! This module implements a simple subtype cache used by the compiler (in generated code)
 
 use crate::idl_trap_with;
 
+/* TODO: delete me
 #[repr(packed)]
 pub struct BitSet {
     /// Pointer into the bit set
@@ -32,20 +33,21 @@ impl BitSet {
         return *src & mask == mask;
     }
 }
+*/
 
 #[repr(packed)]
 pub struct BitRel {
     /// Pointer into the bit set
     pub ptr: *mut u8,
     /// Pointer to the end of the bit set
+    /// must allow at least 2 * n * m bits
     pub end: *mut u8,
     pub n: u32,
     pub m: u32,
 }
 
 impl BitRel {
-
-    pub(crate) unsafe fn init(self: & Self) {
+    pub(crate) unsafe fn init(self: &Self) {
         let bytes = (((*self).end as usize) - ((*self).ptr as usize)) as u32;
         if (self.n * self.m * 2) > bytes * 8 {
             idl_trap_with("BitRel not enough bytes");
@@ -57,7 +59,7 @@ impl BitRel {
         }
     }
 
-    pub(crate) unsafe fn set(self: & Self, p: bool, i_j: u32, j_i: u32) {
+    pub(crate) unsafe fn set(self: &Self, p: bool, i_j: u32, j_i: u32) {
         let n = self.n;
         let m = self.m;
         let (i, j, base) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
@@ -77,7 +79,7 @@ impl BitRel {
         *dst = *dst | (1 << bit);
     }
 
-    pub(crate) unsafe fn get(self: & Self, p: bool, i_j: u32, j_i: u32) -> bool {
+    pub(crate) unsafe fn get(self: &Self, p: bool, i_j: u32, j_i: u32) -> bool {
         let n = self.n;
         let m = self.m;
         let (i, j, base) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
@@ -98,4 +100,3 @@ impl BitRel {
         return *src & mask == mask;
     }
 }
-

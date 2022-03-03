@@ -1,5 +1,5 @@
 #![allow(non_upper_case_globals)]
-use crate::bitrel::{BitRel};
+use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
@@ -296,7 +296,7 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
 // Assumes all type references in the typtbl are already checked
 //
 // This is currently implemented recursively, but we could
-// do this in a loop (by maintaing a stack of the t arguments)
+// do this in a loop (by maintaining a stack of the t arguments)
 #[no_mangle]
 unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth: i32) {
     if depth > 100 {
@@ -539,8 +539,8 @@ unsafe fn null_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
 // https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
 // https://github.com/dfinity/candid/blob/20b84d1c1515e2c1db353ebe02b738486f835466/spec/Candid.md
 unsafe fn sub(
-    rel : & BitRel,
-    p : bool,
+    rel: &BitRel,
+    p: bool,
     buf1: *mut Buf,
     buf2: *mut Buf,
     typtbl1: *mut *mut u8,
@@ -587,7 +587,7 @@ unsafe fn sub(
         let t2 = t2 as u32;
         if rel.get(p, t1, t2) {
             // cached: succeed!
-            return true
+            return true;
         };
         // cache and continue
         rel.set(p, t1, t2);
@@ -635,7 +635,7 @@ unsafe fn sub(
                 let t11 = sleb128_decode(&mut tb1);
                 let t21 = sleb128_decode(&mut tb2);
                 // NB: invert p and args!
-                if !sub(rel, !p,  buf2, buf1, typtbl2, typtbl1, t21, t11, depth + 1) {
+                if !sub(rel, !p, buf2, buf1, typtbl2, typtbl1, t21, t11, depth + 1) {
                     return false;
                 }
             }
@@ -760,10 +760,7 @@ unsafe fn sub(
     }
 }
 
-unsafe fn table_size(
-    buf: *mut Buf
-) -> u32 {
-
+unsafe fn table_size(buf: *mut Buf) -> u32 {
     let mut buf = Buf {
         ptr: (*buf).ptr,
         end: (*buf).end,
@@ -785,7 +782,7 @@ unsafe fn table_size(
 
 #[no_mangle]
 unsafe extern "C" fn sub_type(
-    rel_buf : *mut Buf, // a buffer with at least 2 * n * m bits
+    rel_buf: *mut Buf, // a buffer with at least 2 * n * m bits
     buf1: *mut Buf,
     buf2: *mut Buf,
     typtbl1: *mut *mut u8, // size n
@@ -793,7 +790,6 @@ unsafe extern "C" fn sub_type(
     t1: i32,
     t2: i32,
 ) -> bool {
-
     let n = table_size(buf1);
     let m = table_size(buf2);
 
@@ -804,10 +800,9 @@ unsafe extern "C" fn sub_type(
         m: m,
     };
 
-    debug_assert!(t1 < (n as i32)  && t2 < (m as i32));
+    debug_assert!(t1 < (n as i32) && t2 < (m as i32));
 
     rel.init();
 
-    return sub(& rel, true, buf1, buf2, typtbl1, typtbl2, t1, t2, 0);
-
+    return sub(&rel, true, buf1, buf2, typtbl1, typtbl2, t1, t2, 0);
 }
