@@ -5,7 +5,6 @@ module {
   }
   */
 
- type Id<A> = object { map : <B>(A->B) -> Id<B> };
- //type Id<A> = ( <B>(A->B) -> Id<(B,B)>, Nat);
+ type Id<A> = object { map : <B>(A->B) -> Id<B> }; // note polymorphic recursion
 }
 
