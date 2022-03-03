@@ -49,7 +49,6 @@ let argspec = [
       Arg.Unit (set_mode StableCompatible);
       ],
     "<pre> <post> test upgrade compatibility between stable-type signatures <pre> and <post>";
-  "--stable-var-footprint-query", Arg.Set_string Flags.stable_var_size_endpoint, "<label>  generate query endpoint for stable variable statistics";
   "--idl", Arg.Unit (fun () ->
     idl := true;
     set_mode Compile ()), (* similar to --stable-types *)

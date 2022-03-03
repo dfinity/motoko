@@ -1,5 +1,3 @@
-//MOC-FLAG --stable-var-footprint-query=__motoko_stable_var_size
-
 import { Array_tabulate; queryStableVarFootprint } = "mo:⛔"
 
 actor footprint = {

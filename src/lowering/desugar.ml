@@ -422,11 +422,7 @@ and build_actor at ts self_id es obj_typ =
                    note = f.T.typ }
                ) fields vs)
             ty)) in
-  let footprint_query_endpoint = !Mo_config.Flags.stable_var_size_endpoint in
-  let footprint_d, footprint_f =
-    if footprint_query_endpoint <> ""
-    then export_footprint self_id footprint_query_endpoint (with_stable_vars (fun e -> e))
-    else [], [] in
+  let footprint_d, footprint_f = export_footprint self_id "__motoko_stable_var_size" (with_stable_vars (fun e -> e)) in
   I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
