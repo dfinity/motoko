@@ -3,7 +3,7 @@
 import { Array_tabulate; queryStableVarFootprint } = "mo:⛔"
 
 actor footprint = {
-    let e0 = Array_tabulate<Text>(1000, // length 1144 below...
+    let e0 = Array_tabulate<Text>(125, // length 1144 below...
                                   func _ = "seedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseed");
     let e1 = [e0, e0];
     let e2 = [e1, e1];
@@ -17,7 +17,10 @@ actor footprint = {
     let e10 = [e9, e9];
     let e11 = [e10, e10];
     let e12 = [e11, e11];
-    stable var expl = e12;
+    let e13 = [e12, e12];
+    let e14 = [e13, e13];
+    let e15 = [e14, e14];
+    stable var expl = e15;
 
     public func delegate() : async Nat64 {
         await queryStableVarFootprint(footprint, ?"stable_variable_footprint")
