@@ -11,7 +11,6 @@ pub struct BitSet {
 }
 
 impl BitSet {
-    #[cfg(feature = "ic")]
     pub(crate) unsafe fn set(self: *mut Self, n: u32) {
         let byte = (n / 8) as usize;
         let bit = (n % 8) as u8;
