@@ -1,5 +1,5 @@
 #![allow(non_upper_case_globals)]
-
+use crate::bitset::{BitSet};
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};

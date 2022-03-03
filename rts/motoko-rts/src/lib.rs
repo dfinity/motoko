@@ -12,6 +12,7 @@ pub mod debug;
 pub mod bigint;
 #[cfg(feature = "ic")]
 mod blob_iter;
+mod bitset;
 pub mod buf;
 mod char;
 pub mod constants;
