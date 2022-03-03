@@ -539,7 +539,7 @@ unsafe fn null_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
 // https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
 // https://github.com/dfinity/candid/blob/20b84d1c1515e2c1db353ebe02b738486f835466/spec/Candid.md
 unsafe fn sub(
-    rel : *mut BitRel,
+    rel : & BitRel,
     p : bool,
     buf1: *mut Buf,
     buf2: *mut Buf,
@@ -797,7 +797,7 @@ unsafe extern "C" fn sub_type(
     let n = table_size(buf1);
     let m = table_size(buf2);
 
-    let mut rel = BitRel {
+    let rel = BitRel {
         ptr: (*rel_buf).ptr,
         end: (*rel_buf).end,
         n: n,
@@ -806,6 +806,6 @@ unsafe extern "C" fn sub_type(
 
     rel.init();
 
-    return sub(&mut rel, true, buf1, buf2, typtbl1, typtbl2, t1, t2, 0);
+    return sub(& rel, true, buf1, buf2, typtbl1, typtbl2, t1, t2, 0);
 
 }
