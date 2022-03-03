@@ -1,5 +1,5 @@
 #![allow(non_upper_case_globals)]
-use crate::bitset::BitSet;
+use crate::bitset::{BitRel};
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
@@ -538,8 +538,9 @@ unsafe fn null_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
 
 // https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
 // https://github.com/dfinity/candid/blob/20b84d1c1515e2c1db353ebe02b738486f835466/spec/Candid.md
-#[no_mangle]
-unsafe extern "C" fn sub(
+unsafe fn sub(
+    rel : *mut BitRel,
+    p : bool,
     buf1: *mut Buf,
     buf2: *mut Buf,
     typtbl1: *mut *mut u8,
@@ -581,6 +582,17 @@ unsafe extern "C" fn sub(
         t2 = sleb128_decode(&mut tb2);
     };
 
+    if t1 >= 0 && t2 >= 0 {
+        let t1 = t1 as u32;
+        let t2 = t2 as u32;
+        if rel.get(p, t1, t2) {
+            // cached: succeed!
+            return true
+        };
+        // cache and continue
+        rel.set(p, t1, t2);
+    };
+
     debug_assert!(t1 < 0 && t2 < 0);
 
     match (t1, t2) {
@@ -610,7 +622,7 @@ unsafe extern "C" fn sub(
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
-            return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
+            return sub(rel, p, buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
         }
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
@@ -622,7 +634,8 @@ unsafe extern "C" fn sub(
             for _ in 0..in1 {
                 let t11 = sleb128_decode(&mut tb1);
                 let t21 = sleb128_decode(&mut tb2);
-                if !sub(buf2, buf1, typtbl2, typtbl1, t21, t11, depth + 1) {
+                // NB: invert p and args!
+                if !sub(rel, !p,  buf2, buf1, typtbl2, typtbl1, t21, t11, depth + 1) {
                     return false;
                 }
             }
@@ -638,7 +651,7 @@ unsafe extern "C" fn sub(
             for _ in 0..out2 {
                 let t11 = sleb128_decode(&mut tb1);
                 let t21 = sleb128_decode(&mut tb2);
-                if !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                if !sub(rel, p, buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
                     return false;
                 }
             }
@@ -707,7 +720,7 @@ unsafe extern "C" fn sub(
                     advance = false; // reconsider this field in next round
                     continue;
                 };
-                if !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                if !sub(rel, p, buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
                     return false;
                 }
                 advance = true;
@@ -736,7 +749,7 @@ unsafe extern "C" fn sub(
                 if tag1 != tag2 {
                     return false;
                 };
-                if !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                if !sub(rel, p, buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1) {
                     return false;
                 }
             }
@@ -745,4 +758,54 @@ unsafe extern "C" fn sub(
         // default
         (_, _) => false,
     }
+}
+
+unsafe fn table_size(
+    buf: *mut Buf
+) -> u32 {
+
+    let mut buf = Buf {
+        ptr: (*buf).ptr,
+        end: (*buf).end,
+    };
+
+    if buf.ptr == buf.end {
+        idl_trap_with(
+            "empty input. Expected Candid-encoded argument, but received a zero-length argument",
+        );
+    }
+
+    // Magic bytes (DIDL)
+    if read_word(&mut buf) != 0x4C444944 {
+        idl_trap_with("missing magic bytes");
+    }
+
+    return leb128_decode(&mut buf);
+}
+
+#[no_mangle]
+unsafe extern "C" fn sub_type(
+    rel_buf : *mut Buf, // a buffer with at least 2 * n * m bits
+    buf1: *mut Buf,
+    buf2: *mut Buf,
+    typtbl1: *mut *mut u8,
+    typtbl2: *mut *mut u8,
+    t1: i32,
+    t2: i32,
+) -> bool {
+
+    let n = table_size(buf1);
+    let m = table_size(buf2);
+
+    let mut rel = BitRel {
+        ptr: (*rel_buf).ptr,
+        end: (*rel_buf).end,
+        n: n,
+        m: m,
+    };
+
+    rel.init();
+
+    return sub(&mut rel, true, buf1, buf2, typtbl1, typtbl2, t1, t2, 0);
+
 }

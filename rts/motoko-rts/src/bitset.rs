@@ -44,7 +44,12 @@ pub struct BitRel {
 }
 
 impl BitRel {
-    pub(crate) unsafe fn clear(self: *mut Self) {
+
+    pub(crate) unsafe fn init(self: &mut Self) {
+        let bytes = (((*self).end as usize) - ((*self).ptr as usize)) as u32;
+        if (self.n * self.m * 2) > bytes * 8 {
+            idl_trap_with("BitRel not enough bytes");
+        };
         let mut ptr = (*self).ptr;
         while ptr < (*self).end {
             *ptr = 0;
@@ -93,3 +98,4 @@ impl BitRel {
         return *src & mask == mask;
     }
 }
+
