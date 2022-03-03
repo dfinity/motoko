@@ -1,5 +1,16 @@
 # Motoko compiler changelog
 
+## 0.6.22 (2022-02-24)
+
+* motoko (`moc`)
+
+  * Fix: remove bogus error when transitively importing module with
+    selective field imports (#3121)
+  * Fix: Treating eponymous types from separate candid files (#3103)
+
+* Various reports from CI are now pushed to
+  https://dfinity.github.io/motoko (#3113)
+
 ## 0.6.21 (2022-01-31)
 
 * motoko (`moc`)
