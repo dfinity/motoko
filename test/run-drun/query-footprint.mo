@@ -1,4 +1,4 @@
-//MOC-FLAG --stable-var-footprint-query=stable_variable_footprint
+//MOC-FLAG --stable-var-footprint-query=__motoko_stable_var_size
 import { queryStableVarFootprint } "mo:⛔";
 
 actor footprint = {
@@ -19,7 +19,7 @@ actor footprint = {
     stable var expl = e10;
 
     public func delegate() : async Nat64 {
-        await queryStableVarFootprint(footprint, ?"stable_variable_footprint")
+        await queryStableVarFootprint(footprint, ?"__motoko_stable_var_size")
     };
 
     system func preupgrade() {
@@ -27,8 +27,8 @@ actor footprint = {
     }
 };
 
-//CALL ingress stable_variable_footprint "DIDL\x00\x00"
-//CALL query stable_variable_footprint "DIDL\x00\x00"
+//CALL ingress __motoko_stable_var_size "DIDL\x00\x00"
+//CALL query __motoko_stable_var_size "DIDL\x00\x00"
 //CALL ingress delegate "DIDL\x00\x00"
 //CALL ingress delegate "DIDL\x00\x00"
 //CALL query delegate "DIDL\x00\x00"

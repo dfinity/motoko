@@ -1,4 +1,4 @@
-//MOC-FLAG --stable-var-footprint-query=stable_variable_footprint
+//MOC-FLAG --stable-var-footprint-query=__motoko_stable_var_size
 
 import { Array_tabulate; queryStableVarFootprint } = "mo:⛔"
 
@@ -23,7 +23,7 @@ actor footprint = {
     stable var expl = e15;
 
     public func delegate() : async Nat64 {
-        await queryStableVarFootprint(footprint, ?"stable_variable_footprint")
+        await queryStableVarFootprint(footprint, ?"__motoko_stable_var_size")
     };
 
 };
