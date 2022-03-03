@@ -235,6 +235,8 @@ val scope_bind : bind
 
 val match_stab_sig : field list -> field list -> bool
 
+val string_of_stab_sig : field list -> string
+
 (* Pretty printing *)
 
 val string_of_prim : prim -> string
@@ -253,10 +255,20 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_stab_sig : field list -> string
 end
 
-module MakePretty(_ : sig val show_stamps : bool end) : Pretty
+module type PrettyConfig = sig
+  val show_stamps : bool
+  val con_sep : string
+  val par_sep : string
+end
+
+module ShowStamps : PrettyConfig
+
+module ElideStamps : PrettyConfig
+
+module ParseableStamps : PrettyConfig
+
+module MakePretty(_ : PrettyConfig) : Pretty
 
 include Pretty
-

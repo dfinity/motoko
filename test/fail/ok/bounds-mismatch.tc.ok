@@ -58,11 +58,11 @@ cannot produce expected type
 bounds-mismatch.mo:113.21-113.22: type error [M0096], expression of type
   <X, Y <: {f : () -> X}>(X) -> X
 cannot produce expected type
-  <X <: Nat, Y <: C/1<X>>(X) -> X
+  <X <: Nat, Y <: C__1<X>>(X) -> X
 bounds-mismatch.mo:120.21-120.22: type error [M0096], expression of type
   <X, Y <: {f : () -> Nat}>(X) -> X
 cannot produce expected type
-  <X <: Nat, Y <: C/2<X>>(X) -> X
+  <X <: Nat, Y <: C__2<X>>(X) -> X
 bounds-mismatch.mo:125.21-128.4: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
