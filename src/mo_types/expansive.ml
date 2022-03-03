@@ -92,7 +92,9 @@ let edges_typ cs c (es : EdgeSet.t) t : EdgeSet.t =
       es2
     | Var (s, j) ->
       assert (j < i);
-      es
+      let es1 = VertexSet.fold (fun dj es -> EdgeSet.add (dj, 1, dj) es) exp es in
+      let es2 = VertexSet.fold (fun dj es -> EdgeSet.add (dj, 1, dj) es) non es1 in
+      es2
     | (Prim _ | Any | Non | Pre ) -> es
     | Con (d, ts) when ConSet.mem d cs ->
       let exp1 = VertexSet.union exp non in

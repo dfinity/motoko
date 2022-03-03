@@ -2431,7 +2431,7 @@ and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Cons.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> assert (T.eq_kind k' k) (* may diverge on expansive types *)
+  | k' -> () (* assert (T.eq_kind k' k) (* may diverge on expansive types *) *)
   );
   T.ConSet.singleton c
 
