@@ -765,7 +765,7 @@ module Func = struct
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
     )
-  let share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+  let _share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -784,6 +784,17 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
     )
+  let share_code8 env name (p1, p2, p3, p4, p5, p6, p7, p8) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6; p7; p8] retty (fun env -> mk_body env
+        (G.i (LocalGet (nr 0l)))
+        (G.i (LocalGet (nr 1l)))
+        (G.i (LocalGet (nr 2l)))
+        (G.i (LocalGet (nr 3l)))
+        (G.i (LocalGet (nr 4l)))
+        (G.i (LocalGet (nr 5l)))
+        (G.i (LocalGet (nr 6l)))
+        (G.i (LocalGet (nr 7l)))
+    )
 
 end (* Func *)
 
@@ -795,7 +806,8 @@ module RTS = struct
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub_buf_size" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "idl_sub" [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "idl_sub"
+      [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -4779,21 +4791,25 @@ module Serialization = struct
    *)
 
   let idl_sub env =
-    Func.share_code6 env "idl_sub"
-      (("get_buf1", I32Type),
-       ("get_buf2", I32Type),
+    Func.share_code8 env "idl_sub"
+      (("get_end1", I32Type),
+       ("get_end2", I32Type),
+       ("n_types1", I32Type),
+       ("n_types2", I32Type),
        ("typtbl1", I32Type),
        ("typtbl2", I32Type),
        ("idltyp1", I32Type),
        ("idltyp2", I32Type))
       [I32Type]
-      (fun env get_buf1 get_buf2 get_typtbl1 get_typtbl2 get_idltyp1 get_idltyp2 ->
-        get_buf1 ^^ get_buf2 ^^
+      (fun env get_end1 get_end2 get_n_types1 get_n_types2 get_typtbl1 get_typtbl2 get_idltyp1 get_idltyp2 ->
+        get_n_types1 ^^ get_n_types2 ^^
         E.call_import env "rts" "idl_sub_buf_size" ^^
         Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
           get_rel_buf_ptr ^^
-          get_buf1 ^^
-          get_buf2 ^^
+          get_end1 ^^
+          get_end2 ^^
+          get_n_types1 ^^
+          get_n_types2 ^^
           get_typtbl1 ^^
           get_typtbl2 ^^
           get_idltyp1 ^^
@@ -5372,8 +5388,11 @@ module Serialization = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
-        get_data_buf ^^ get_data_buf ^^ get_typtbl ^^ get_typtbl ^^ get_idltyp ^^ get_idltyp ^^
-          idl_sub env ^^
+        compile_unboxed_const 0xFFFF_FFFFl ^^ compile_unboxed_const 0xFFFF_FFFFl ^^ (* FIX ME *)
+        get_typtbl_size ^^ get_typtbl_size ^^
+        get_typtbl ^^ get_typtbl ^^
+        get_idltyp ^^ get_idltyp ^^
+        idl_sub env ^^
         E.else_trap_with env "idl_sub_irreflexive:func" ^^
         with_composite_typ idl_func (fun _get_typ_buf ->
           read_byte_tagged
@@ -5384,8 +5403,11 @@ module Serialization = struct
             ]
         );
       | Obj (Actor, _) ->
-        get_data_buf ^^ get_data_buf ^^ get_typtbl ^^ get_typtbl ^^ get_idltyp ^^ get_idltyp ^^
-          idl_sub env ^^
+        compile_unboxed_const 0xFFFF_FFFFl ^^ compile_unboxed_const 0xFFFF_FFFFl ^^ (* FIX ME *)
+        get_typtbl_size ^^ get_typtbl_size ^^
+        get_typtbl ^^ get_typtbl ^^
+        get_idltyp ^^ get_idltyp ^^
+        idl_sub env ^^
         E.else_trap_with env "idl_sub_irreflexive:actor" ^^
         with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
       | Mut t ->
