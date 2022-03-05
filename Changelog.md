@@ -1,5 +1,14 @@
 # Motoko compiler changelog
 
+## 0.6.23 (2022-03-05)
+
+* motoko (`moc`)
+
+  * bugfix: fix pretty printing of (stable) types and #3128 (#3130)
+
+    * Collect constructors  *transitively* before emitting a .most file.
+    * Modifies type pretty printer to produce well-formed types and stable type signatures.
+
 ## 0.6.22 (2022-02-24)
 
 * motoko (`moc`)
