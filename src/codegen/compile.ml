@@ -765,6 +765,15 @@ module Func = struct
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
     )
+  let share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
+        (G.i (LocalGet (nr 0l)))
+        (G.i (LocalGet (nr 1l)))
+        (G.i (LocalGet (nr 2l)))
+        (G.i (LocalGet (nr 3l)))
+        (G.i (LocalGet (nr 4l)))
+        (G.i (LocalGet (nr 5l)))
+    )
   let share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
@@ -785,6 +794,8 @@ module RTS = struct
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "idl_sub_buf_size" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "idl_sub" [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -1010,6 +1021,7 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
+  (* TODO: check for overflow *)
   let alloc_words env n =
     get_stack_ptr env ^^
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
@@ -1023,11 +1035,38 @@ module Stack = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_stack_ptr env
 
+  (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also below *)
   let with_words env name n f =
     let (set_x, get_x) = new_local env name in
     alloc_words env n ^^ set_x ^^
     f get_x ^^
     free_words env n
+
+  (* TODO: check for overflow *)
+  let dynamic_alloc_words env get_n =
+    get_stack_ptr env ^^
+    get_n ^^
+    compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+    set_stack_ptr env ^^
+    get_stack_ptr env
+
+  let dynamic_free_words env get_n =
+    get_stack_ptr env ^^
+    get_n ^^
+    compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_stack_ptr env
+
+  (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also above*)
+  let dynamic_with_words env name f =
+    let (set_n, get_n) = new_local env "n" in
+    let (set_x, get_x) = new_local env name in
+    set_n ^^
+    dynamic_alloc_words env get_n ^^ set_x ^^
+    f get_x ^^
+    dynamic_free_words env get_n
+
 
 end (* Stack *)
 
@@ -4726,7 +4765,7 @@ module Serialization = struct
     ]
 
   (* The main deserialization function, generated once per type hash.
-     Is parameters are:
+     Its parameters are:
        * data_buffer: The current position of the input data buffer
        * ref_buffer:  The current position of the input references buffer
        * typtbl:      The type table, as returned by parse_idl_header
@@ -4738,6 +4777,29 @@ module Serialization = struct
      It returns the value of type t (vanilla representation) or coercion_error_value,
      It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
    *)
+
+  let idl_sub env =
+    Func.share_code6 env "idl_sub"
+      (("get_buf1", I32Type),
+       ("get_buf2", I32Type),
+       ("typtbl1", I32Type),
+       ("typtbl2", I32Type),
+       ("idltyp1", I32Type),
+       ("idltyp2", I32Type))
+      [I32Type]
+      (fun env get_buf1 get_buf2 get_typtbl1 get_typtbl2 get_idltyp1 get_idltyp2 ->
+        get_buf1 ^^ get_buf2 ^^
+        E.call_import env "rts" "idl_sub_buf_size" ^^
+        Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
+          get_rel_buf_ptr ^^
+          get_buf1 ^^
+          get_buf2 ^^
+          get_typtbl1 ^^
+          get_typtbl2 ^^
+          get_idltyp1 ^^
+          get_idltyp2 ^^
+          E.call_import env "rts" "idl_sub"))
+
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -5310,6 +5372,9 @@ module Serialization = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
+        get_data_buf ^^ get_data_buf ^^ get_typtbl ^^ get_typtbl ^^ get_idltyp ^^ get_idltyp ^^
+          idl_sub env ^^
+        E.else_trap_with env "idl_sub_irreflexive:func" ^^
         with_composite_typ idl_func (fun _get_typ_buf ->
           read_byte_tagged
             [ E.trap_with env "IDL error: unexpected function reference"
@@ -5319,6 +5384,9 @@ module Serialization = struct
             ]
         );
       | Obj (Actor, _) ->
+        get_data_buf ^^ get_data_buf ^^ get_typtbl ^^ get_typtbl ^^ get_idltyp ^^ get_idltyp ^^
+          idl_sub env ^^
+        E.else_trap_with env "idl_sub_irreflexive:actor" ^^
         with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
@@ -5396,6 +5464,7 @@ module Serialization = struct
       get_data_start ^^
       get_data_size
     )
+
 
   let deserialize_from_blob extended env ts =
     let ts_name = typ_seq_hash ts in

@@ -760,7 +760,10 @@ unsafe fn sub(
     }
 }
 
-unsafe fn table_size(buf: *mut Buf) -> u32 {
+
+// TODO: make non-extern?
+#[no_mangle]
+unsafe extern "C" fn table_size(buf: *mut Buf) -> u32 {
     let mut buf = Buf {
         ptr: (*buf).ptr,
         end: (*buf).end,
@@ -781,7 +784,15 @@ unsafe fn table_size(buf: *mut Buf) -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn sub_type(
+unsafe extern "C" fn idl_sub_buf_size(buf1: *mut Buf, buf2: *mut Buf) -> u32 {
+    let n = table_size(buf1);
+    let m = table_size(buf2);
+    return ((2 * n * m) + 31) / 32;
+}
+
+
+#[no_mangle]
+unsafe extern "C" fn idl_sub(
     rel_buf: *mut Buf, // a buffer with at least 2 * n * m bits
     buf1: *mut Buf,
     buf2: *mut Buf,
