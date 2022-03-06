@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+## 0.6.24 (2022-03-06)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus identification of distinct type constructors
+    in --stable-types section and .most file (#3140)
+
 ## 0.6.23 (2022-03-05)
 
 * motoko (`moc`)
