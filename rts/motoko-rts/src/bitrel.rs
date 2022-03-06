@@ -63,7 +63,7 @@ impl BitRel {
     pub(crate) unsafe fn set(self: &Self, p: bool, i_j: u32, j_i: u32) {
         let n = self.n;
         let m = self.m;
-        let (i, j, base) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
+        let (base, i, j) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
         if i >= n {
             idl_trap_with("BitRel.set i out of bounds");
         };
@@ -83,7 +83,7 @@ impl BitRel {
     pub(crate) unsafe fn get(self: &Self, p: bool, i_j: u32, j_i: u32) -> bool {
         let n = self.n;
         let m = self.m;
-        let (i, j, base) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
+        let (base, i, j) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
         if i >= n {
             idl_trap_with("BitRel.set i out of bounds");
         };

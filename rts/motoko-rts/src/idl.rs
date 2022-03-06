@@ -758,7 +758,43 @@ unsafe fn sub(
             return true;
         }
         (IDL_CON_service, IDL_CON_service) => {
-            // TODO: complete me
+//            return true; // TODO: Delete ME
+            let mut n1 = leb128_decode(&mut tb1);
+            let n2 = leb128_decode(&mut tb2);
+            for _ in 0..n2 {
+                if n1 == 0 {
+                    return false;
+                };
+                let len2 = leb128_decode(&mut tb2);
+                let p2 = tb2.ptr;
+                Buf::advance(&mut tb2, len2);
+                let t21 = sleb128_decode(&mut tb2);
+                let mut len1 = 0;
+                let mut p1 = core::ptr::null_mut();
+                let mut t11 = 0;
+                let mut cmp : i32 = 0;
+                loop {
+                    len1 = leb128_decode(&mut tb1);
+                    p1 = tb1.ptr;
+                    Buf::advance(&mut tb1, len1);
+                    t11 = sleb128_decode(&mut tb1);
+                    n1 -= 1;
+                    cmp = libc::memcmp(
+                        p1 as *mut libc::c_void,
+                        p2 as *mut libc::c_void,
+                        min(len1, len2) as usize
+                    );
+                    if !(cmp < 0 && n1 > 0) {
+                        break;
+                    }
+                }
+                if !(cmp == 0 && len1 == len2) {
+                    return false;
+                };
+                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                    return false;
+                }
+            }
             return true;
         },
         // default
