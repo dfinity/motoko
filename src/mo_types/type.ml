@@ -1138,7 +1138,7 @@ module ElideStamps = struct
 end
 
 module ParseableStamps = struct
-  let show_stamps = false
+  let show_stamps = true
   let con_sep = "__"
   let par_sep = "_"
 end
