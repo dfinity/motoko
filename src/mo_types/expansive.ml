@@ -163,7 +163,7 @@ let string_of_sccs sccs =
   Printf.sprintf "{ %s }" (String.concat ","
    (List.map string_of_vertices sccs))
 
-module Pretty = MakePretty(struct let show_stamps = false end)
+module Pretty = MakePretty(ElideStamps)
 
 let is_expansive cs =
   (* Collect vertices and labeled edges *)
