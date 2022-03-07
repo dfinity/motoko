@@ -159,7 +159,7 @@ and prim =
   | CPSAwait of Type.typ
   | CPSAsync of Type.typ
   | ICPerformGC
-  | ICStableVarsSize
+  | ICStableSize of Type.typ
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
