@@ -580,7 +580,7 @@ let compile_op64_const op i =
     G.i (Binary (Wasm.Values.I64 op))
 let compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
-let _compile_mul64_const = compile_op64_const I64Op.Mul
+let compile_mul64_const = compile_op64_const I64Op.Mul
 let _compile_divU64_const = compile_op64_const I64Op.DivU
 let compile_shrU64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.ShrU n
@@ -904,7 +904,8 @@ module Heap = struct
 
   let get_memory_size =
     G.i MemorySize ^^
-    compile_mul_const page_size
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+    compile_mul64_const page_size64
 
   let get_max_live_size env =
     E.call_import env "rts" "get_max_live_size"
@@ -7984,7 +7985,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "rts_memory_size", [] ->
       SR.Vanilla,
-      Heap.get_memory_size ^^ Prim.prim_word32toNat env
+      Heap.get_memory_size ^^ BigNum.from_word64 env
 
     | OtherPrim "rts_total_allocation", [] ->
       SR.Vanilla,
