@@ -90,7 +90,7 @@ let primE prim es =
     | ICStableRead t -> t
     | ICPerformGC
     | ICStableWrite _ -> T.unit
-    | ICStableVarsSize -> T.nat64
+    | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | NextArrayOffset _ -> T.nat

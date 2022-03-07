@@ -7833,7 +7833,7 @@ and compile_exp (env : E.t) ae exp =
       SR.unit,
       E.collect_garbage env
 
-    | ICStableVarsSize, [e] ->
+    | ICStableSize _, [e] ->
       SR.UnboxedWord64,
       let ts = [e.note.Ir_def.Note.typ] in
       let tydesc = Serialization.type_desc env ts in

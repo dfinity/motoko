@@ -94,8 +94,8 @@ and prim = function
   | OtherPrim s       -> Atom s
   | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | ICStableSize t    -> "ICStableSize" $$ [typ t]
   | ICPerformGC       -> Atom "ICPerformGC"
-  | ICStableVarsSize  -> Atom "ICStableVarsSize"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"

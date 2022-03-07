@@ -350,7 +350,7 @@ and export_interface txt =
 
 and export_footprint self_id name expr =
   let open T in
-  let v = "$__stable_variable_footprint"  in
+  let v = "$__stable_variable_footprint" in
   let binds = [scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [nat64]) in
 
@@ -361,9 +361,9 @@ and export_footprint self_id name expr =
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind] [] [nat64] (
            (asyncE bind2
-              (blockE [expD (assertE (primE (I.RelPrim (T.caller, Operator.EqOp))
-                                        [primE I.ICCallerPrim []; selfRefE T.caller]))]
-                 (primE (I.ICStableVarsSize) [expr])) (Con (scope_con, []))))
+              (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
+                                        [primE I.ICCallerPrim []; selfRefE caller]))]
+                 (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con, []))))
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 

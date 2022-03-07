@@ -159,7 +159,6 @@ and prim =
   | CPSAwait of Type.typ
   | CPSAsync of Type.typ
   | ICPerformGC
-  | ICStableSize of Type.typ
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
@@ -167,6 +166,7 @@ and prim =
   | ICCallRawPrim
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
+  | ICStableSize of Type.typ
 
 and spacing = One | ElementSize        (* increment units when iterating over arrays *)
 
@@ -296,11 +296,11 @@ let map_prim t_typ t_id p =
   | CPSAsync t -> CPSAsync (t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICPerformGC
-  | ICStableVarsSize
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim
   | ICCallRawPrim -> p
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
+  | ICStableSize t -> ICStableSize (t_typ t)
 
