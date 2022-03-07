@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.6.25 (2022-03-07)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus elision of type constructors sharing names with primitive types in --stable-types section and .most file (#3140)
+
 ## 0.6.24 (2022-03-06)
 
 * motoko (`moc`)
