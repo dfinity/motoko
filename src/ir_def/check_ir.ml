@@ -665,8 +665,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Opt T.blob <: t
     | ICPerformGC, [] ->
       T.unit <: t
-    | ICStableSize _t1, [e1] ->
-      (* check e1 for being a record *)
+    | ICStableSize t1, [e1] ->
+      typ e1 <: t1;
       T.(Prim Nat64) <: t
     | OtherPrim _, _ -> ()
     | p, args ->
