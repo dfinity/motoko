@@ -647,7 +647,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
          the environment and see if this lines up. *)
       t1 <: t;
     | SystemTimePrim, [] ->
-      T.(Prim Nat64) <: t;
+      T.nat64 <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
       T.nat <: t
@@ -667,7 +667,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | ICStableSize t1, [e1] ->
       typ e1 <: t1;
-      T.(Prim Nat64) <: t
+      T.nat64 <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
