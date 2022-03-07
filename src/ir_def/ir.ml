@@ -140,11 +140,15 @@ and prim =
   | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
+  | UnreachablePrim of bool           (* true if known to be dead *)
   (* Array field iteration/access *)
   | NextArrayOffset of spacing        (* advance array offset *)
   | ValidArrayOffset                  (* verify array offset *)
   | DerefArrayOffset                  (* array offset indexing *)
   | GetPastArrayOffset of spacing     (* array offset past the last element *)
+  (* Physical/Variant equality *)
+  | SameReference                     (* raw pointer equality *)
+  | SameVariantTag of Type.typ        (* raw variant tag equality *)
   (* Funds *)
   | SystemCyclesAddPrim
   | SystemCyclesAcceptPrim
@@ -263,7 +267,9 @@ let map_prim t_typ t_id p =
   | NextArrayOffset _
   | ValidArrayOffset
   | DerefArrayOffset
-  | GetPastArrayOffset _ -> p
+  | GetPastArrayOffset _
+  | SameReference -> p
+  | SameVariantTag t -> SameVariantTag (t_typ t)
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim
@@ -289,6 +295,7 @@ let map_prim t_typ t_id p =
   | SystemCyclesRefundedPrim
   | SetCertifiedData
   | GetCertificate
+  | UnreachablePrim _
   | OtherPrim _ -> p
   | CPSAwait t -> CPSAwait (t_typ t)
   | CPSAsync t -> CPSAsync (t_typ t)

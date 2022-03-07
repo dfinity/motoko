@@ -134,6 +134,7 @@ end (* Const *)
 module SR = struct
   (* This goes with the StackRep module, but we need the types earlier *)
 
+  type unreachable = Silent | Noisy
 
   (* Value representation on the stack:
 
@@ -148,8 +149,10 @@ module SR = struct
     | UnboxedWord64
     | UnboxedWord32
     | UnboxedFloat64
-    | Unreachable
+    | Unreachable of unreachable
     | Const of Const.t
+
+  let unreachable : t = Unreachable Noisy
 
   let unit = UnboxedTuple 0
 
@@ -609,7 +612,7 @@ let bytes_of_int32 (i : int32) : string =
 (* A common variant of todo *)
 
 let todo_trap env fn se = todo fn se (E.trap_with env ("TODO: " ^ fn))
-let _todo_trap_SR env fn se = todo fn se (SR.Unreachable, E.trap_with env ("TODO: " ^ fn))
+let _todo_trap_SR env fn se = todo fn se (SR.unreachable, E.trap_with env ("TODO: " ^ fn))
 
 (* Locals *)
 
@@ -5838,7 +5841,7 @@ module StackRep = struct
       if n > 1 then assert !Flags.multi_value;
       Lib.List.make n I32Type
     | Const _ -> []
-    | Unreachable -> []
+    | Unreachable _ -> []
 
   let to_string = function
     | Vanilla -> "Vanilla"
@@ -5847,13 +5850,14 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedFloat64 -> "UnboxedFloat64"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
-    | Unreachable -> "Unreachable"
+    | Unreachable Silent -> "Dead"
+    | Unreachable Noisy -> "Unreachable"
     | Const _ -> "Const"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | _, _ when SR.eq sr1 sr2 -> sr1
-    | Unreachable, sr2 -> sr2
-    | sr1, Unreachable -> sr1
+    | Unreachable Noisy, sr2 -> sr2
+    | sr1, Unreachable Noisy -> sr1
     | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
@@ -5888,7 +5892,7 @@ module StackRep = struct
     match sr_in with
     | Vanilla | UnboxedBool | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | Const _ | Unreachable -> G.nop
+    | Const _ | Unreachable _ -> G.nop
 
   (* Materializes a Const.lit: If necessary, puts
      bytes into static memory, and returns a vanilla value.
@@ -5918,12 +5922,12 @@ module StackRep = struct
       Arr.vanilla_lit env ptrs
     | Const.Lit l -> materialize_lit env l
 
-  let adjust env (sr_in : t) sr_out =
-    if eq sr_in sr_out
-    then G.nop
-    else match sr_in, sr_out with
-    | Unreachable, Unreachable -> G.nop
-    | Unreachable, _ -> G.i Unreachable
+  let adjust env (sr_in : t) (sr_out : t) =
+    match sr_in, sr_out with
+    | _, _ when eq sr_in sr_out -> G.nop
+    | Unreachable Silent, _ -> fun _ _ _ -> []
+    | Unreachable Noisy, Unreachable Noisy -> G.nop
+    | Unreachable Noisy, _ -> G.i Unreachable
 
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
@@ -6616,7 +6620,7 @@ module PatCode = struct
     | CanFail is -> is fail_code
 
   let orElse : patternCode -> patternCode -> patternCode = function
-    | CannotFail is1 -> fun _ -> CannotFail is1
+    | CannotFail _ as cannot -> fun _ -> cannot
     | CanFail is1 -> function
       | CanFail is2 -> CanFail (fun fail_code ->
           let inner_fail = G.new_depth_label () in
@@ -6894,7 +6898,7 @@ let compile_unop env t op =
   let open Operator in
   match op, t with
   | _, Type.Non ->
-    SR.Vanilla, SR.Unreachable, G.i Unreachable
+    SR.Vanilla, SR.unreachable, G.i Unreachable
   | NegOp, Type.(Prim Int) ->
     SR.Vanilla, SR.Vanilla,
     BigNum.compile_neg env
@@ -6933,7 +6937,7 @@ let compile_unop env t op =
   | _ ->
     todo "compile_unop"
       (Wasm.Sexpr.Node ("BinOp", [ Arrange_ops.unop op ]))
-      (SR.Vanilla, SR.Unreachable, E.trap_with env "TODO: compile_unop")
+      (SR.Vanilla, SR.unreachable, E.trap_with env "TODO: compile_unop")
 
 (* Logarithmic helpers for deciding whether we can carry out operations in constant bitwidth *)
 
@@ -7161,7 +7165,7 @@ let compile_smallNat_kernel env ty name op =
 
 (* The first returned StackRep is for the arguments (expected), the second for the results (produced) *)
 let compile_binop env t op =
-  if t = Type.Non then SR.Vanilla, SR.Unreachable, G.i Unreachable else
+  if t = Type.Non then SR.Vanilla, SR.unreachable, G.i Unreachable else
   StackRep.of_type t,
   StackRep.of_type t,
   Operator.(match t, op with
@@ -7519,7 +7523,7 @@ and compile_exp (env : E.t) ae exp =
   | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.Note.typ) es ->
     (* Handle dead code separately, so that we can rely on useful type
        annotations below *)
-    SR.Unreachable,
+    SR.unreachable,
     G.concat_map (compile_exp_ignore env ae) es ^^
     G.i Unreachable
 
@@ -7648,6 +7652,18 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e1 ^^
       compile_exp_vanilla env ae e2 ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+    | SameReference, [e1; e2] ->
+      SR.bool,
+      compile_exp_vanilla env ae e1 ^^
+      compile_exp_vanilla env ae e2 ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+    | SameVariantTag _, [e1; e2] ->
+      SR.bool,
+      compile_exp_vanilla env ae e1 ^^
+      Variant.get_variant_tag ^^
+      compile_exp_vanilla env ae e2 ^^
+      Variant.get_variant_tag ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq))
     | DerefArrayOffset, [e1; e2] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
@@ -7669,7 +7685,7 @@ and compile_exp (env : E.t) ae exp =
 
     | BreakPrim name, [e] ->
       let d = VarEnv.get_label_depth ae name in
-      SR.Unreachable,
+      SR.unreachable,
       compile_exp_vanilla env ae e ^^
       G.branch_to_ d
     | AssertPrim, [e1] ->
@@ -7677,10 +7693,12 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.bool e1 ^^
       G.if0 G.nop (IC.fail_assert env exp.at)
     | RetPrim, [e] ->
-      SR.Unreachable,
+      SR.unreachable,
       compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
       FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
       G.i Return
+    | UnreachablePrim true, [] -> SR.(Unreachable Silent), G.nop
+    | UnreachablePrim false, [] -> SR.unreachable, G.nop
 
     (* Numeric conversions *)
     | NumConvWrapPrim (t1, t2), [e] -> begin
@@ -7712,7 +7730,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_vanilla env ae e ^^
         TaggedSmallWord.untag_codepoint
 
-      | _ -> SR.Unreachable, todo_trap env "compile_exp u" (Arrange_ir.exp exp)
+      | _ -> SR.unreachable, todo_trap env "compile_exp u" (Arrange_ir.exp exp)
       end
 
     | NumConvTrapPrim (t1, t2), [e] -> begin
@@ -7816,7 +7834,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord64 e ^^
         G.i (Convert (Wasm.Values.F64 F64Op.ConvertSI64))
 
-      | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
+      | _ -> SR.unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
 
     | SerializePrim ts, [e] ->
@@ -8355,7 +8373,7 @@ and compile_exp (env : E.t) ae exp =
       IC.get_certificate env
 
     (* Unknown prim *)
-    | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
+    | _ -> SR.unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
   | VarE var ->
     Var.get_val env ae var
@@ -8371,7 +8389,7 @@ and compile_exp (env : E.t) ae exp =
     let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.relax (StackRep.join sr1 sr2) in
+    let sr = StackRep.(relax (join sr1 sr2)) in
     sr,
     code_scrut ^^
     E.if_ env
@@ -8381,7 +8399,7 @@ and compile_exp (env : E.t) ae exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-    let (sr, code2) = compile_exp env ae' exp in
+    let sr, code2 = compile_exp env ae' exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -8396,7 +8414,7 @@ and compile_exp (env : E.t) ae exp =
       )
     )
   | LoopE e ->
-    SR.Unreachable,
+    SR.unreachable,
     let ae' = VarEnv.{ ae with lvl = NotTopLvl } in
     G.loop0 (compile_exp_unit env ae' e ^^ G.i (Br (nr 0l))
     )
@@ -8405,13 +8423,13 @@ and compile_exp (env : E.t) ae exp =
   | SwitchE (e, cs) ->
     SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in
-    let (set_i, get_i) = new_local env "switch_in" in
-    let (set_j, get_j) = new_local env "switch_out" in
+    let set_i, get_i = new_local env "switch_in" in
+    let set_j, get_j = new_local env "switch_out" in
 
     let rec go env cs = match cs with
       | [] -> CanFail (fun k -> k)
       | {it={pat; exp=e}; _}::cs ->
-          let (ae1, code) = compile_pat_local env ae pat in
+          let ae1, code = compile_pat_local env ae pat in
           orElse ( CannotFail get_i ^^^ code ^^^
                    CannotFail (compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
                  (go env cs)

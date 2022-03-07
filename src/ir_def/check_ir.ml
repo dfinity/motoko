@@ -488,6 +488,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: T.nat;
       typ exp2 <: T.nat;
       T.bool <: t
+    | SameReference, [exp1; exp2] ->
+      let t1, t2 = typ exp1, typ exp2 in
+      t1 <: t2;
+      t2 <: t1; (* i.e. t1 = t2 *)
+      T.bool <: t
+    | SameVariantTag tv, [exp1; exp2] ->
+      typ exp1 <: tv;
+      typ exp2 <: tv;
+      T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
@@ -647,7 +656,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
          the environment and see if this lines up. *)
       t1 <: t;
     | SystemTimePrim, [] ->
-      T.(Prim Nat64) <: t;
+      T.nat64 <: t;
+    | UnreachablePrim _, [] ->
+      T.Non <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
       T.nat <: t

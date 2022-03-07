@@ -85,14 +85,17 @@ let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
     | ICReplyPrim _
-    | ICRejectPrim -> T.Non
+    | ICRejectPrim
+    | UnreachablePrim _ -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
     | ICStableWrite _ -> T.unit
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | NextArrayOffset _ -> T.nat
-    | ValidArrayOffset -> T.bool
+    | ValidArrayOffset
+    | SameReference
+    | SameVariantTag _ -> T.bool
     | GetPastArrayOffset _ -> T.nat
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
@@ -646,6 +649,7 @@ let forE pat exp1 exp2 =
   )
 
 let unreachableE () =
-  (* Do we want a dedicated UnreachableE in the AST? *)
-  loopE (unitE ())
+  primE (UnreachablePrim false) []
 
+let deadE () =
+  primE (UnreachablePrim true) []

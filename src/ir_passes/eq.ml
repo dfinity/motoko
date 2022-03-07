@@ -21,7 +21,7 @@ type env =
   }
 
 let empty_env () : env = {
-  params = ref M.empty;
+    params = ref M.empty;
   }
 
 let add_type env t : unit =
@@ -57,7 +57,7 @@ let eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t e1 e2 ->
   then blockE [expD (ignoreE e1); expD (ignoreE e2)] (trueE ())
   else if Check_ir.has_prim_eq t
   then primE (RelPrim (t, Operator.EqOp)) [e1; e2]
-  else varE (eq_var_for t) -*- (tupE [e1; e2])
+  else varE (eq_var_for t) -*- tupE [e1; e2]
 
 (* Construction helpers *)
 
@@ -69,6 +69,16 @@ let arg2E t = varE (arg2Var t)
 let define_eq : T.typ -> Ir.exp -> Ir.dec = fun t e ->
   Construct.nary_funcD (eq_var_for t) [arg1Var t; arg2Var t] e
 
+let define_eq_variant : T.typ -> Ir.exp -> Ir.dec = fun t e ->
+  Construct.nary_funcD
+    (eq_var_for t)
+    [arg1Var t; arg2Var t]
+    (ifE
+       (falseE () (*primE SameReference [arg1E t; arg2E t]*))
+       (trueE ())
+       (ifE (primE (SameVariantTag t) [arg1E t; arg2E t]) e (falseE ()) T.bool)
+       T.bool)
+
 let array_eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e1 e2 ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [eq_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.bool]) in
@@ -77,6 +87,8 @@ let array_eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f
 (* Synthesizing a single show function *)
 
 (* Returns the new declarations, as well as a list of further types it needs *)
+
+let is_flat_alt f = T.(is_unit (normalize f.typ))
 
 let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
   match t with
@@ -134,7 +146,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
       define_eq t (array_eq_func_body t' (varE (eq_var_for t')) (arg1E t) (arg2E t)),
       [t']
     end
-  | T.Obj ((T.Object | T.Memory | T.Module), fs) ->
+  | T.Obj (T.(Object | Memory | Module), fs) ->
     define_eq t (
       conjE (List.map (fun f ->
         let t' = T.as_immut (T.normalize f.Type.typ) in
@@ -142,8 +154,14 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
       ) fs)
     ),
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
+  | T.Variant fs when List.for_all is_flat_alt fs ->
+    (* enum-like, i.e. flat variant *)
+    define_eq_variant t (trueE ()),
+    List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Variant fs ->
-    define_eq t (
+    let flat, deep = List.partition is_flat_alt fs in
+    assert (deep <> []);
+    define_eq_variant t (
       (* switching on the diagonal *)
       { it = SwitchE
         ( tupE [arg1E t; arg2E t],
@@ -158,8 +176,8 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
                   ]; at = no_region; note = T.Tup [t;t] };
                 exp = eq_func_body t' (varE y1) (varE y2);
               }; at = no_region; note = ()
-            }) fs @
-            [ { it = { pat = wildP; exp = falseE () };
+            }) deep @
+            [ { it = { pat = wildP; exp = (if flat = [] then deadE else trueE) () };
                 at = no_region; note = () } ]
         );
       at = no_region;
