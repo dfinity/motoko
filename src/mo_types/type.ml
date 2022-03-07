@@ -1397,9 +1397,9 @@ and pp_stab_sig ppf sig_ =
   let ds =
     let cs' = ConSet.filter (fun c ->
       match Cons.kind c with
-      | Def ([], Prim p) when Cons.name c = string_of_prim p -> false
-      | Def ([], Any) when Cons.name c = "Any" -> false
-      | Def ([], Non) when Cons.name c = "None" -> false
+      | Def ([], Prim p) when string_of_con c = string_of_prim p -> false
+      | Def ([], Any) when string_of_con c = "Any" -> false
+      | Def ([], Non) when string_of_con c = "None" -> false
       | Def _ -> true
       | Abs _ -> false) cs in
     ConSet.elements cs' in
