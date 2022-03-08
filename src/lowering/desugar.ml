@@ -337,33 +337,33 @@ and export_interface txt =
   let binds = [scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [text]) in
 
-  let scope_con = Cons.fresh "T" (Abs ([], scope_bound)) in
+  let scope_con1 = Cons.fresh "T" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
-  let bind  = typ_arg scope_con Scope scope_bound in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
-    funcE v (Shared Query) Promises [bind] [] [text] (
-      asyncE bind2 (textE txt) (Con (scope_con, []))
+    funcE v (Shared Query) Promises [bind1] [] [text] (
+      asyncE bind2 (textE txt) (Con (scope_con1, []))
     )
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
 and export_footprint self_id name expr =
   let open T in
-  let v = "$__stable_variable_footprint" in
+  let v = "$__stable_var_size" in
   let binds = [scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [nat64]) in
 
-  let scope_con = Cons.fresh "T" (Abs ([], scope_bound)) in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
-  let bind  = typ_arg scope_con Scope scope_bound in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
-       funcE v (Shared Query) Promises [bind] [] [nat64] (
+       funcE v (Shared Query) Promises [bind1] [] [nat64] (
            (asyncE bind2
               (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
                                         [primE I.ICCallerPrim []; selfRefE caller]))]
-                 (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con, []))))
+                 (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con1, []))))
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
