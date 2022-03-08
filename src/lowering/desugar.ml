@@ -337,7 +337,7 @@ and export_interface txt =
   let binds = [scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [text]) in
 
-  let scope_con1 = Cons.fresh "T" (Abs ([], scope_bound)) in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
