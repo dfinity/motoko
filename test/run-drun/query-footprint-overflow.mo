@@ -1,4 +1,4 @@
-import { Array_tabulate; queryStableVarFootprint } = "mo:⛔"
+import { Array_tabulate; queryUpgradeFootprint } = "mo:⛔"
 
 actor footprint = {
     let e0 = Array_tabulate<Text>(125, // length 1144 below...
@@ -21,7 +21,8 @@ actor footprint = {
     stable var expl = e15;
 
     public func delegate() : async Nat64 {
-        await queryStableVarFootprint(footprint)
+        let { stable_vars } = await queryUpgradeFootprint(footprint);
+        stable_vars
     };
 
 };

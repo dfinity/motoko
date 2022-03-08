@@ -1,4 +1,4 @@
-import { queryStableVarFootprint } "mo:⛔";
+import { queryUpgradeFootprint } "mo:⛔";
 
 actor footprint = {
     stable var s : Nat64 = 42;
@@ -18,7 +18,8 @@ actor footprint = {
     stable var expl = e10;
 
     public func delegate() : async Nat64 {
-        await queryStableVarFootprint(footprint)
+        let { stable_vars } = await queryUpgradeFootprint(footprint);
+        stable_vars
     };
 
     system func preupgrade() {

@@ -413,8 +413,10 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 };
 
 // stable memory footprint
-func @query_stable_var_footprint(self : actor {}) : async Nat64 {
-  (prim "deserialize" : Blob -> Nat64)
+func @query_upgrade_footprint(self : actor {}) : async { stable_vars : Nat64 } {
+  let stable_vars =
+    (prim "deserialize" : Blob -> Nat64)
       (await @call_raw((prim "cast" : (actor {}) -> Principal) self, "__motoko_stable_var_size",
-                       (prim "serialize" : () -> Blob) ()))
+                       (prim "serialize" : () -> Blob) ()));
+  { stable_vars }
 };
