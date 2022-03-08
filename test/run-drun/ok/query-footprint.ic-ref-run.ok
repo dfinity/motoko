@@ -10,7 +10,5 @@
 ← replied: ((6225 : nat64))
 → update delegate()
 ← replied: ((6225 : nat64))
-→ query delegate()
-← rejected (RC_DESTINATION_INVALID): query method does not exist
 → query __get_candid_interface_tmp_hack()
 ← replied: ("service : {\n  delegate: () -> (nat64);\n}\n")
