@@ -2991,7 +2991,7 @@ module Blob = struct
             | LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
             | GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
             | EqOp -> Bool.lit false
-            |_ -> assert false
+            | _ -> assert false
             end ^^
             G.i Return
           )
@@ -3001,7 +3001,7 @@ module Blob = struct
         | LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
         | GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
         | EqOp -> Bool.lit true
-        |_ -> assert false
+        | _ -> assert false
       end
   )
 
@@ -3670,7 +3670,7 @@ module IC = struct
         (fun env -> system_call env "ic0" "msg_caller_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get caller  when running locally")
+      E.trap_with env (Printf.sprintf "cannot get caller when running locally")
 
   let reject env arg_instrs =
     match E.mode env with
@@ -7830,6 +7830,20 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       Serialization.deserialize_from_blob false env ts
 
+    | ICPerformGC, [] ->
+      SR.unit,
+      E.collect_garbage env
+
+    | ICStableSize t, [e] ->
+      SR.UnboxedWord64,
+      let tydesc = Serialization.type_desc env [t] in
+      let tydesc_len = Int32.of_int (String.length tydesc) in
+      compile_exp_vanilla env ae e ^^
+      Serialization.buffer_size env t ^^
+      G.i Drop ^^
+      compile_add_const tydesc_len  ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+
     (* Other prims, unary *)
 
     | OtherPrim "array_len", [e] ->
@@ -8014,7 +8028,7 @@ and compile_exp (env : E.t) ae exp =
 
     | OtherPrim "idlHash", [e] ->
       SR.Vanilla,
-      E.trap_with env "idlHash only implemented in interpreter "
+      E.trap_with env "idlHash only implemented in interpreter"
 
 
     | OtherPrim "popcnt8", [e] ->
@@ -8946,7 +8960,6 @@ and main_actor as_opt mod_env ds fs up =
     let ae0 = VarEnv.empty_ae in
 
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
-
     (* Add any params to the environment *)
     (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
