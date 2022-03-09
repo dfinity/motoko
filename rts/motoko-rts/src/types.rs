@@ -501,7 +501,7 @@ pub struct BigInt {
     /// The data following now must describe is the `mp_int` struct.
     /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
     /// the data within this object before it is used.
-    /// (NB: If we have a non-moving GC, we can make this an invaiant)
+    /// (NB: If we have a non-moving GC, we can make this an invariant)
     pub mp_int: mp_int,
     // data follows ..
 }
