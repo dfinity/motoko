@@ -411,3 +411,12 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
+
+// stable variable footprint
+func @stable_var_info(self : actor {}) : async { size : Nat64 } {
+  let size =
+    (prim "deserialize" : Blob -> Nat64)
+      (await @call_raw((prim "cast" : (actor {}) -> Principal) self, "__motoko_stable_var_size",
+                       (prim "serialize" : () -> Blob) ()));
+  { size }
+};
