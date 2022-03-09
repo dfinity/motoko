@@ -26,3 +26,14 @@
 //   staging area of the stream, respectively
 // - `flusher` is the function to be called when `len - filled` approaches zero.
 
+use crate::types::{Blob};
+
+#[repr(C)] // See the note at the beginning of this module
+pub struct Stream {
+    pub blob_header: Blob,
+    pub ptr64: u64,
+    pub limit64: u64,
+    pub flusher: u32,
+    pub filled: u32
+}
+
