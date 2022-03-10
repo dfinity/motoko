@@ -30,10 +30,25 @@ use crate::types::{Blob};
 
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
-    pub blob_header: Blob,
+    pub header: Blob,
     pub ptr64: u64,
     pub limit64: u64,
     pub flusher: u32,
     pub filled: u32
+    // cache data follows ..
 }
 
+impl Stream {
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
+        self.add(1) as *mut u8 // skip closure header
+    }
+/*
+    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+        (*self).len
+    }
+
+    pub unsafe fn get(self: *mut Self, idx: u32) -> u8 {
+        *self.payload_addr().add(idx as usize)
+    }
+     */
+}
