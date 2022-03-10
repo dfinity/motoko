@@ -2,7 +2,7 @@
 //!
 //! When serialising Motoko stable variables to stable memory we used to first completely
 //! fill up an in-heap buffer and then copy that wholesale into stable memory. This can be
-//! disadvategous for two reasons:
+//! disadvantageous for two reasons:
 //!  - double copying
 //!  - heap congestion (especially for the compacting collector)
 //!
