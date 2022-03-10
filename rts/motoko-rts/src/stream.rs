@@ -26,13 +26,20 @@
 //   staging area of the stream, respectively
 // - `flusher` is the function to be called when `len - filled` approaches zero.
 
+use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Stream, Value};
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
+const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+    debug_assert_eq!(
+        INITIAL_STREAM_FILLED,
+        (size_of::<Stream>() - size_of::<Blob>()).to_bytes()
+    );
     debug_assert!(size > size_of::<Stream>().to_bytes());
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
@@ -42,7 +49,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     (*stream).ptr64 = 0;
     (*stream).limit64 = 0;
     (*stream).flusher = Stream::flush;
-    (*stream).filled = (size_of::<Stream>() - size_of::<Blob>()).to_bytes();
+    (*stream).filled = INITIAL_STREAM_FILLED;
     blob
 }
 
@@ -51,7 +58,33 @@ impl Stream {
         self.add(1) as *mut u8 // skip closure header
     }
 
-    fn flush(self: *mut Self) {}
+    /// make sure that w
+    #[inline]
+    fn flush(self: *mut Self) {
+        unsafe {
+            if (*self).filled > INITIAL_STREAM_FILLED {
+                self.send_to_stable(self.payload_addr(), (*self).filled - INITIAL_STREAM_FILLED)
+            }
+        }
+    }
+    fn send_to_stable(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {}
+
+    pub fn stash(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
+        unsafe {
+            if (*self).limit64 != 0 && n > STREAM_CHUNK_SIZE
+                || (*self).header.len - (*self).filled < n
+            {
+                self.flush();
+                self.send_to_stable(ptr, n);
+            } else {
+                let dest = self.payload_addr().add((*self).filled.as_usize());
+                (*self).filled += n;
+                assert!((*self).filled <= (*self).header.len);
+                memcpy_bytes(dest as usize, ptr as usize, n);
+            }
+        }
+    }
+
     /*
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         (*self).len
