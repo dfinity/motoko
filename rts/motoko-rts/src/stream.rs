@@ -48,7 +48,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let stream = blob.as_stream();
     (*stream).ptr64 = 0;
     (*stream).limit64 = 0;
-    (*stream).flusher = Stream::flush; // FIXME: needed? send_to_stable?
+    (*stream).flusher = Stream::flush; // FIXME: needed? send_to_stable? BOTH?
     (*stream).filled = INITIAL_STREAM_FILLED;
     blob
 }
