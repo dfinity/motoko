@@ -29,7 +29,7 @@
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Stream, Value};
+use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
@@ -48,7 +48,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let stream = blob.as_stream();
     (*stream).ptr64 = 0;
     (*stream).limit64 = 0;
-    (*stream).flusher = Stream::flush;
+    (*stream).flusher = Stream::flush; // FIXME: needed? send_to_stable?
     (*stream).filled = INITIAL_STREAM_FILLED;
     blob
 }
@@ -63,7 +63,8 @@ impl Stream {
     fn flush(self: *mut Self) {
         unsafe {
             if (*self).filled > INITIAL_STREAM_FILLED {
-                self.send_to_stable(self.payload_addr(), (*self).filled - INITIAL_STREAM_FILLED)
+                self.send_to_stable(self.payload_addr(), (*self).filled - INITIAL_STREAM_FILLED);
+                (*self).filled = INITIAL_STREAM_FILLED
             }
         }
     }
@@ -85,13 +86,17 @@ impl Stream {
         }
     }
 
-    /*
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
-        (*self).len
+    /// Split the stream object into two `Blob`s, a front-runner (small) one
+    /// and a latter one that comprises the current amount of the cached bytes.
+    /// Lengths are adjusted correspondingly.
+    pub unsafe fn split(self: *mut Self) -> Value {
+        (*self).header.len = INITIAL_STREAM_FILLED; // TODO: check this!
+        (*self).filled -= INITIAL_STREAM_FILLED;
+        let blob = self
+            .payload_addr()
+            .sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Blob;
+        (*blob).header.tag = TAG_BLOB;
+        debug_assert_eq!(blob.len(), (*self).filled);
+        Value::from_ptr(blob as usize)
     }
-
-    pub unsafe fn get(self: *mut Self, idx: u32) -> u8 {
-        *self.payload_addr().add(idx as usize)
-    }
-     */
 }
