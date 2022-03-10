@@ -70,6 +70,7 @@ impl Stream {
     }
     fn send_to_stable(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {}
 
+    /// Ingest a number of bytes into the stream.
     pub fn stash(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             if (*self).limit64 != 0 && n > STREAM_CHUNK_SIZE
@@ -83,6 +84,15 @@ impl Stream {
                 assert!((*self).filled <= (*self).header.len);
                 memcpy_bytes(dest as usize, ptr as usize, n);
             }
+        }
+    }
+    pub fn stash8(self: *mut Self, byte: u8) {
+        unsafe {
+            if (*self).filled == (*self).header.len {
+                self.flush()
+            }
+            (self as *mut Blob).set((*self).filled.as_u32(), byte);
+            (*self).filled += Bytes(1)
         }
     }
 
