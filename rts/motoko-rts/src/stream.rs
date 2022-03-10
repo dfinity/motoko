@@ -26,23 +26,32 @@
 //   staging area of the stream, respectively
 // - `flusher` is the function to be called when `len - filled` approaches zero.
 
-use crate::types::{Blob};
+use crate::memory::{alloc_blob, Memory};
+use crate::rts_trap_with;
+use crate::types::{size_of, Blob, Bytes, Stream, Value};
 
-#[repr(C)] // See the note at the beginning of this module
-pub struct Stream {
-    pub header: Blob,
-    pub ptr64: u64,
-    pub limit64: u64,
-    pub flusher: u32,
-    pub filled: u32
-    // cache data follows ..
+const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
+
+pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+    debug_assert!(size > size_of::<Stream>().to_bytes());
+    if size > MAX_STREAM_SIZE {
+        rts_trap_with("alloc_stream: Cache too large");
+    }
+    let blob = alloc_blob(mem, size);
+    let stream = blob.as_stream();
+    (*stream).ptr64 = 0;
+    (*stream).limit64 = 0;
+    (*stream).flusher = 0;
+    (*stream).filled = (size_of::<Stream>() - size_of::<Blob>()).to_bytes();
+    blob
 }
 
 impl Stream {
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
         self.add(1) as *mut u8 // skip closure header
     }
-/*
+
+    /*
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         (*self).len
     }
