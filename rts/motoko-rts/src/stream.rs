@@ -41,7 +41,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let stream = blob.as_stream();
     (*stream).ptr64 = 0;
     (*stream).limit64 = 0;
-    (*stream).flusher = 0;
+    (*stream).flusher = Stream::flush;
     (*stream).filled = (size_of::<Stream>() - size_of::<Blob>()).to_bytes();
     blob
 }
@@ -51,6 +51,7 @@ impl Stream {
         self.add(1) as *mut u8 // skip closure header
     }
 
+    fn flush(self: *mut Self) {}
     /*
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         (*self).len
