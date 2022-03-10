@@ -572,9 +572,20 @@ unsafe fn sub(
     t2: i32,
     depth: i32,
 ) -> bool {
-    if depth > 100 {
+    if depth > 1023 {
         idl_trap_with("sub: subtyping too deep");
     }
+
+    if t1 >= 0 && t2 >= 0 {
+        let t1 = t1 as u32;
+        let t2 = t2 as u32;
+        if rel.get(p, t1, t2) {
+            // cached: succeed!
+            return true;
+        };
+        // cache and continue
+        rel.set(p, t1, t2);
+    };
 
     // re-declare as mut for any unfolding
     let mut t1 = t1;
@@ -603,17 +614,6 @@ unsafe fn sub(
 
     if t2 >= 0 {
         t2 = sleb128_decode(&mut tb2);
-    };
-
-    if t1 >= 0 && t2 >= 0 {
-        let t1 = t1 as u32;
-        let t2 = t2 as u32;
-        if rel.get(p, t1, t2) {
-            // cached: succeed!
-            return true;
-        };
-        // cache and continue
-        rel.set(p, t1, t2);
     };
 
     debug_assert!(t1 < 0 && t2 < 0);
