@@ -129,6 +129,30 @@ actor this {
      Prim.debugPrint("ok 13");
    };
 
+   type Actor = actor {
+      f : () -> async ();
+      p : () -> ();
+      q : shared query  () ->  async ();
+ //     r : shared   () -> async ();
+   };
+
+   // non-triv actor
+   public func f14(n : Actor) : async Actor { n };
+
+   public func send_f14(
+     f14 : shared (n : Actor) -> async Actor
+   ) : async () {
+     Prim.debugPrint("ok 14");
+   };
+
+   // non-triv actor
+   public query func f15() : async () {  };
+
+   public func send_f15(
+     f15 : query () -> async ()
+   ) : async () {
+     Prim.debugPrint("ok 15");
+   };
 
 
    public func go() : async () {
@@ -146,6 +170,9 @@ actor this {
       await this.send_f11(f11);
       await this.send_f12(f12);
       await this.send_f13(f13);
+      await this.send_f14(f14);
+      await this.send_f15(f15);
+
    };
 
 

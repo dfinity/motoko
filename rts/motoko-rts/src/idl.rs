@@ -50,6 +50,27 @@ unsafe fn is_primitive_type(ty: i32) -> bool {
     ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal)
 }
 
+// TBR; based on Text.text_compare
+unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
+    let len = min(len1, len2);
+    let cmp = libc::memcmp(
+        p1 as *mut libc::c_void,
+        p2 as *mut libc::c_void,
+        len as usize,
+    );
+    if cmp == -1 {
+        return -1;
+    } else if cmp == 1 {
+        return 1;
+    } else if len1 > len {
+        return 1;
+    } else if len2 > len {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
 unsafe fn check_typearg(ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
     if !(is_primitive_type(ty) || (ty >= 0 && (ty as u32) < n_types)) {
@@ -758,7 +779,6 @@ unsafe fn sub(
             return true;
         }
         (IDL_CON_service, IDL_CON_service) => {
-//            return true; // TODO: Delete ME
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
             for _ in 0..n2 {
@@ -772,23 +792,20 @@ unsafe fn sub(
                 let mut len1 = 0;
                 let mut p1 = core::ptr::null_mut();
                 let mut t11 = 0;
-                let mut cmp : i32 = 0;
+                let mut cmp: i32 = 0;
                 loop {
                     len1 = leb128_decode(&mut tb1);
                     p1 = tb1.ptr;
                     Buf::advance(&mut tb1, len1);
                     t11 = sleb128_decode(&mut tb1);
                     n1 -= 1;
-                    cmp = libc::memcmp(
-                        p1 as *mut libc::c_void,
-                        p2 as *mut libc::c_void,
-                        min(len1, len2) as usize
-                    );
-                    if !(cmp < 0 && n1 > 0) {
-                        break;
-                    }
+                    cmp = utf8_cmp(len1, p1, len2, p2);
+                    if cmp < 0 && n1 > 0 {
+                        continue;
+                    };
+                    break;
                 }
-                if !(cmp == 0 && len1 == len2) {
+                if !(cmp == 0) {
                     return false;
                 };
                 if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
@@ -796,12 +813,11 @@ unsafe fn sub(
                 }
             }
             return true;
-        },
+        }
         // default
         (_, _) => false,
     }
 }
-
 
 // TODO: DELETE
 #[no_mangle]
@@ -826,14 +842,13 @@ unsafe extern "C" fn table_size(buf: *mut Buf) -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_size(n_types1: u32, n_types2: u32) -> u32 {
+unsafe extern "C" fn idl_sub_buf_words(n_types1: u32, n_types2: u32) -> u32 {
     return ((2 * n_types1 * n_types2) + 31) / 32;
 }
 
-
 #[no_mangle]
 unsafe extern "C" fn idl_sub(
-    rel_buf: *mut Buf, // a buffer with at least 2 * n * m bits
+    rel_buf: *mut u8, // a buffer with at least 2 * n * m bits
     end1: *mut u8,
     end2: *mut u8,
     n_types1: u32,
@@ -843,10 +858,9 @@ unsafe extern "C" fn idl_sub(
     t1: i32,
     t2: i32,
 ) -> bool {
-
     let rel = BitRel {
-        ptr: (*rel_buf).ptr,
-        end: (*rel_buf).end,
+        ptr: rel_buf,
+        end: rel_buf.add((idl_sub_buf_words(n_types1, n_types2) * 4) as usize),
         n: n_types1,
         m: n_types2,
     };

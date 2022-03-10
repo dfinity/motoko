@@ -805,7 +805,7 @@ module RTS = struct
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "idl_sub_buf_size" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "idl_sub"
       [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
@@ -4803,7 +4803,7 @@ module Serialization = struct
       [I32Type]
       (fun env get_end1 get_end2 get_n_types1 get_n_types2 get_typtbl1 get_typtbl2 get_idltyp1 get_idltyp2 ->
         get_n_types1 ^^ get_n_types2 ^^
-        E.call_import env "rts" "idl_sub_buf_size" ^^
+        E.call_import env "rts" "idl_sub_buf_words" ^^
         Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
           get_rel_buf_ptr ^^
           get_end1 ^^
@@ -4968,9 +4968,9 @@ module Serialization = struct
         get_ptr ^^ get_len ^^ Text.of_ptr_size env
       in
 
-      let read_actor_data () =
+      let read_actor_data t =
         read_byte_tagged
-          [ E.trap_with env "IDL error: unexpected actor reference"
+          [ E.trap_with env ("IDL error: unexpected actor reference" ^ Type.string_of_typ t)
           ; read_principal ()
           ]
       in
@@ -5396,8 +5396,8 @@ module Serialization = struct
         E.else_trap_with env "idl_sub_irreflexive:func" ^^
         with_composite_typ idl_func (fun _get_typ_buf ->
           read_byte_tagged
-            [ E.trap_with env "IDL error: unexpected function reference"
-            ; read_actor_data () ^^
+            [ E.trap_with env ("IDL error: unexpected function reference" ^ Type.string_of_typ t)
+            ; read_actor_data t ^^
               read_text () ^^
               Tuple.from_stack env 2
             ]
@@ -5409,7 +5409,7 @@ module Serialization = struct
         get_idltyp ^^ get_idltyp ^^
         idl_sub env ^^
         E.else_trap_with env "idl_sub_irreflexive:actor" ^^
-        with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
+        with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data t)
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
