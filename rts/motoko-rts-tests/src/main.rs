@@ -9,6 +9,7 @@ mod leb128;
 mod mark_stack;
 mod memory;
 mod principal_id;
+mod stream;
 mod text;
 mod utf8;
 
@@ -21,7 +22,8 @@ fn main() {
     }
 
     unsafe {
-        bigint::test();
+        stream::test();
+        /*bigint::test();
         bitmap::test();
         continuation_table::test();
         crc32::test();
@@ -30,7 +32,7 @@ fn main() {
         mark_stack::test();
         principal_id::test();
         text::test();
-        utf8::test();
+        utf8::test();*/
     }
 }
 
