@@ -758,7 +758,7 @@ module Func = struct
         (G.i (LocalGet (nr 1l)))
         (G.i (LocalGet (nr 2l)))
     )
-  let _share_code4 env name (p1, p2, p3, p4) retty mk_body =
+  let share_code4 env name (p1, p2, p3, p4) retty mk_body =
     share_code env name [p1; p2; p3; p4] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -784,7 +784,7 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
     )
-  let share_code8 env name (p1, p2, p3, p4, p5, p6, p7, p8) retty mk_body =
+  let _share_code8 env name (p1, p2, p3, p4, p5, p6, p7, p8) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7; p8] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -4286,8 +4286,10 @@ module Serialization = struct
   let idl_service   = -23l
   let idl_alias     = 1l (* see Note [mutable stable values] *)
 
-
-  let type_desc env ts : string =
+  (* TODO: use record *)
+  let type_desc env ts :
+     string * int list * int32 list  (* type_desc, (relative offsets), indices of ts *)
+    =
     let open Type in
 
     (* Type traversal *)
@@ -4360,6 +4362,12 @@ module Serialization = struct
       | Some i -> add_sleb128 (Int32.neg i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
 
+    let idx t =
+      let t = Type.normalize t in
+      match to_idl_prim t with
+      | Some i -> Int32.neg i
+      | None -> TM.find (normalize t) idx in
+
     let rec add_typ t =
       match t with
       | Non -> assert false
@@ -4423,10 +4431,17 @@ module Serialization = struct
 
     Buffer.add_string buf "DIDL";
     add_leb128 (List.length typs);
-    List.iter add_typ typs;
+    let offsets = List.map (fun typ ->
+      let offset = Buffer.length buf in
+      add_typ typ;
+      offset)
+      typs
+    in
     add_leb128 (List.length ts);
     List.iter add_idx ts;
-    Buffer.contents buf
+    (Buffer.contents buf,
+     offsets,
+     List.map idx ts)
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
@@ -4790,18 +4805,46 @@ module Serialization = struct
      It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
    *)
 
-  let idl_sub env =
-    Func.share_code8 env "idl_sub"
+  let idl_sub env t2 =
+    Func.share_code4 env ("idl_sub<" ^ typ_hash t2 ^ ">")
       (("get_end1", I32Type),
-       ("get_end2", I32Type),
+       (* ("get_end2", I32Type), *)
        ("n_types1", I32Type),
-       ("n_types2", I32Type),
+       (* ("n_types2", I32Type), *)
        ("typtbl1", I32Type),
-       ("typtbl2", I32Type),
-       ("idltyp1", I32Type),
-       ("idltyp2", I32Type))
+       (* ("typtbl2", I32Type), *)
+       ("idltyp1", I32Type)
+       (*, ("idltyp2", I32Type) *)
+      )
       [I32Type]
-      (fun env get_end1 get_end2 get_n_types1 get_n_types2 get_typtbl1 get_typtbl2 get_idltyp1 get_idltyp2 ->
+      (fun env get_end1 (* get_end2 *) get_n_types1 (* get_n_types2 *) get_typtbl1 (*get_typtbl2*) get_idltyp1 (*get_idltyp2*) ->
+        let typdesc, offsets, idltyps2 = type_desc env [t2] in
+        let idltyp2 = List.hd idltyps2 in
+        let (set_end2, get_end2) = new_local env "end2" in
+        let (set_n_types2, get_n_types2) = new_local env "n_types2" in
+        let (set_typtbl2, get_typtbl2) = new_local env "typetbl2" in
+        let (set_idltyp2, get_idltyp2) = new_local env "idltyp2" in
+        let static_typedesc =
+          Int32.(add (Blob.vanilla_lit env typdesc)  Blob.unskewed_payload_offset)
+        in
+        let tbl2 =
+          let buf = Buffer.create (List.length offsets * 4) in
+          begin
+            List.iter (fun offset ->
+            Buffer.add_int32_le buf
+              Int32.(add static_typedesc (of_int(offset))))
+            offsets;
+            Buffer.contents buf
+          end
+        in
+        let static_typtbl2 =
+          Int32.add (Blob.vanilla_lit env tbl2) Blob.unskewed_payload_offset
+        in
+        compile_unboxed_const Int32.(add static_typedesc (of_int (String.length typdesc)))
+          ^^ set_end2 ^^
+        compile_unboxed_const (Int32.of_int (List.length offsets)) ^^ set_n_types2 ^^
+        compile_unboxed_const static_typtbl2 ^^ set_typtbl2 ^^
+        compile_unboxed_const idltyp2 ^^ set_idltyp2 ^^
         get_n_types1 ^^ get_n_types2 ^^
         E.call_import env "rts" "idl_sub_buf_words" ^^
         Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
@@ -5388,11 +5431,11 @@ module Serialization = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
-        compile_unboxed_const 0xFFFF_FFFFl ^^ compile_unboxed_const 0xFFFF_FFFFl ^^ (* FIX ME *)
-        get_typtbl_size ^^ get_typtbl_size ^^
-        get_typtbl ^^ get_typtbl ^^
-        get_idltyp ^^ get_idltyp ^^
-        idl_sub env ^^
+        compile_unboxed_const 0xFFFF_FFFFl (* ^^ compile_unboxed_const 0xFFFF_FFFFl *) ^^ (* FIX ME *)
+        get_typtbl_size ^^ (* get_typtbl_size  ^^ *)
+        get_typtbl ^^ (* get_typtbl ^^ *)
+        get_idltyp ^^ (* get_idltyp ^^ *)
+        idl_sub env t ^^
         E.else_trap_with env "idl_sub_irreflexive:func" ^^
         with_composite_typ idl_func (fun _get_typ_buf ->
           read_byte_tagged
@@ -5403,11 +5446,11 @@ module Serialization = struct
             ]
         );
       | Obj (Actor, _) ->
-        compile_unboxed_const 0xFFFF_FFFFl ^^ compile_unboxed_const 0xFFFF_FFFFl ^^ (* FIX ME *)
-        get_typtbl_size ^^ get_typtbl_size ^^
-        get_typtbl ^^ get_typtbl ^^
-        get_idltyp ^^ get_idltyp ^^
-        idl_sub env ^^
+        compile_unboxed_const 0xFFFF_FFFFl ^^  (* compile_unboxed_const 0xFFFF_FFFFl ^^ (* FIX ME *) *)
+        get_typtbl_size ^^ (* get_typtbl_size ^^ *)
+        get_typtbl ^^ (* get_typtbl ^^ *)
+        get_idltyp ^^ (* get_idltyp ^^ *)
+        idl_sub env t ^^
         E.else_trap_with env "idl_sub_irreflexive:actor" ^^
         with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data t)
       | Mut t ->
@@ -5435,7 +5478,7 @@ module Serialization = struct
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-      let tydesc = type_desc env ts in
+      let (tydesc, _offsets, _idltyps) = type_desc env ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
       (* Get object sizes *)
