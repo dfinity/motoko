@@ -688,24 +688,20 @@ unsafe fn sub(
             let mut a11 = false;
             let mut a12 = false;
             for _ in 0..leb128_decode(&mut tb1) {
-                let a = read_byte(&mut tb1);
-                if a == 1 {
-                    a11 = true;
-                };
-                if a == 2 {
-                    a12 = true;
-                };
+                match read_byte(&mut tb1) {
+                  1 => { a11 = true },
+                  2 => { a12 = true },
+                  _ => { },
+                }
             }
             let mut a21 = false;
             let mut a22 = false;
             for _ in 0..leb128_decode(&mut tb2) {
-                let a = read_byte(&mut tb2);
-                if a == 1 {
-                    a21 = true;
-                };
-                if a == 2 {
-                    a22 = true;
-                };
+                match read_byte(&mut tb2) {
+                  1 => { a21 = true },
+                  2 => { a22 = true },
+                  _ => { },
+                }
             }
             return (a11 == a21) && (a12 == a22);
         }
