@@ -32,4 +32,7 @@ pub unsafe fn test() {
 
     println!("  Testing stream filling (blocks)");
     println!("  Testing stream decay");
+    let blob = stream.as_stream().split();
+    assert_eq!(blob.as_blob().len(), Bytes(60));
+    assert_eq!(stream.as_blob().len(), Bytes(16));
 }

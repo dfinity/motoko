@@ -101,7 +101,7 @@ impl Stream {
     /// and a latter one that comprises the current amount of the cached bytes.
     /// Lengths are adjusted correspondingly.
     pub unsafe fn split(self: *mut Self) -> Value {
-        (*self).header.len = INITIAL_STREAM_FILLED; // TODO: check this!
+        (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = self
             .payload_addr()
