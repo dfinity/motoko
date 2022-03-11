@@ -40,11 +40,10 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
         INITIAL_STREAM_FILLED,
         (size_of::<Stream>() - size_of::<Blob>()).to_bytes()
     );
-    debug_assert!(size > size_of::<Stream>().to_bytes());
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
     }
-    let blob = alloc_blob(mem, size);
+    let blob = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
     let stream = blob.as_stream();
     (*stream).ptr64 = 0;
     (*stream).limit64 = 0;
@@ -58,7 +57,7 @@ impl Stream {
         self.add(1) as *mut u8 // skip closure header
     }
 
-    /// make sure that w
+    /// make sure that the cache is empty
     #[inline]
     fn flush(self: *mut Self) {
         unsafe {
@@ -68,7 +67,9 @@ impl Stream {
             }
         }
     }
-    fn send_to_stable(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {}
+    fn send_to_stable(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {
+        assert!(false)
+    }
 
     /// Ingest a number of bytes into the stream.
     pub fn stash(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
