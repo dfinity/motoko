@@ -689,18 +689,18 @@ unsafe fn sub(
             let mut a12 = false;
             for _ in 0..leb128_decode(&mut tb1) {
                 match read_byte(&mut tb1) {
-                  1 => { a11 = true },
-                  2 => { a12 = true },
-                  _ => { },
+                    1 => a11 = true,
+                    2 => a12 = true,
+                    _ => {}
                 }
             }
             let mut a21 = false;
             let mut a22 = false;
             for _ in 0..leb128_decode(&mut tb2) {
                 match read_byte(&mut tb2) {
-                  1 => { a21 = true },
-                  2 => { a22 = true },
-                  _ => { },
+                    1 => a21 = true,
+                    2 => a22 = true,
+                    _ => {}
                 }
             }
             return (a11 == a21) && (a12 == a22);
@@ -839,12 +839,12 @@ unsafe extern "C" fn table_size(buf: *mut Buf) -> u32 {
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub_buf_words(n_types1: u32, n_types2: u32) -> u32 {
-    return ((2 * n_types1 * n_types2) + 31) / 32;
+    return BitRel::words(n_types1, n_types2);
 }
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub(
-    rel_buf: *mut u8, // a buffer with at least 2 * n * m bits
+    rel_buf: *mut u32, // a buffer with at least 2 * n * m bits
     end1: *mut u8,
     end2: *mut u8,
     n_types1: u32,
@@ -856,7 +856,7 @@ unsafe extern "C" fn idl_sub(
 ) -> bool {
     let rel = BitRel {
         ptr: rel_buf,
-        end: rel_buf.add((idl_sub_buf_words(n_types1, n_types2) * 4) as usize),
+        end: rel_buf.add(idl_sub_buf_words(n_types1, n_types2) as usize),
         n: n_types1,
         m: n_types2,
     };
