@@ -27,6 +27,9 @@ pub unsafe fn test() {
     for b in 32..92u8 {
         stream.as_stream().stash8(b);
     }
+    assert_eq!(stream.as_blob().get(24), 32);
+    assert_eq!(stream.as_blob().get(83), 91);
+
     println!("  Testing stream filling (blocks)");
     println!("  Testing stream decay");
 }
