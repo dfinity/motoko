@@ -30,9 +30,21 @@ pub unsafe fn test() {
     assert_eq!(stream.as_blob().get(24), 32);
     assert_eq!(stream.as_blob().get(83), 91);
 
-    println!("  Testing stream filling (blocks)");
     println!("  Testing stream decay");
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(60));
     assert_eq!(stream.as_blob().len(), Bytes(16));
+
+    println!("  Testing stream filling (blocks)");
+    let stream = alloc_stream(&mut mem, Bytes(6000));
+    let chunk: [u8; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    for _ in 0..600 {
+        stream
+            .as_stream()
+            .stash(&chunk[0], Bytes(chunk.len() as u32));
+    }
+    let blob = stream.as_stream().split();
+    assert_eq!(blob.as_blob().len(), Bytes(6000));
+
+    //println!("  Testing stream filling and flushing");
 }
