@@ -51,5 +51,7 @@ pub unsafe fn test() {
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(6000));
 
+    // TODO: stash more than STREAM_CHUNK_SIZE
+
     //println!("  Testing stream filling and flushing");
 }
