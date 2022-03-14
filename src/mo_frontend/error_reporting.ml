@@ -94,6 +94,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_DIVASSIGN -> DIVASSIGN
       | T_DISALLOWED -> DISALLOWED
       | T_DEBUG_SHOW -> DEBUG_SHOW
+      | T_TO_CANDID -> TO_CANDID
+      | T_FROM_CANDID -> FROM_CANDID
       | T_DEBUG -> DEBUG
       | T_CONTINUE -> CONTINUE
       | T_COMMA -> COMMA

@@ -38,6 +38,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     T.Triv
   | UnE (_, _, exp1)
   | ShowE (_, exp1)
+  | ToCandidE (_, exp1)
+  | FromCandidE (_, exp1)
   | ProjE (exp1, _)
   | OptE exp1
   | DoOptE exp1

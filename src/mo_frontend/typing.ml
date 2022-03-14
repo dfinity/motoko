@@ -972,6 +972,8 @@ and infer_exp'' env exp : T.typ =
       ot := t
     end;
     T.text
+  | ToCandidE (ot, exp1) -> invalid_arg "to do"
+  | FromCandidE (ot, exp1) -> invalid_arg "to do"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts

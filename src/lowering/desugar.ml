@@ -68,6 +68,8 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
+  | S.ToCandidE (ot, e) -> invalid_arg "to do"
+  | S.FromCandidE (ot, e) -> invalid_arg "to do"
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it

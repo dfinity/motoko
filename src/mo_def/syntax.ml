@@ -151,6 +151,8 @@ and exp' =
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
   | ShowE of (op_typ * exp)                    (* debug show operator *)
+  | ToCandidE of (op_typ * exp)                (* to_candid operator *)
+  | FromCandidE of (op_typ * exp)              (* from_candid operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
