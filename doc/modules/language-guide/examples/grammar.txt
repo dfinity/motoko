@@ -169,7 +169,7 @@
     'actor' <exp_plain>
     'not' <exp_un>
     'debug_show' <exp_un>
-    TO_C'and'<id> <exp_un>
+    TO_C'and'<id> '(' <list(<exp>, ',')> ')'
     FROM_C'and'<id> <exp_un>
 
 <exp_bin> ::= 
