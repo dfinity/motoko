@@ -97,7 +97,7 @@ let rec exp msgs e : f = match e.it with
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
   | ShowE (_, e)        -> exp msgs e
-  | ToCandidE (_, e)    -> exp msgs e
+  | ToCandidE (_, es)   -> exps msgs es
   | FromCandidE (_, e)  -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e

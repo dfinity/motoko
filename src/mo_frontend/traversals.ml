@@ -6,7 +6,7 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | ImportE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> f exp
   | UnE (x, y, exp1) -> f { exp with it = UnE (x, y, over_exp f exp1) }
   | ShowE (x, exp1) -> f { exp with it = ShowE (x, over_exp f exp1) }
-  | ToCandidE (x, exp1) -> f { exp with it = ToCandidE (x, over_exp f exp1) }
+  | ToCandidE (x, exps) ->  f { exp with it = ToCandidE (x, List.map (over_exp f) exps) }
   | FromCandidE (x, exp1) -> f { exp with it = FromCandidE (x, over_exp f exp1) }
   | ProjE (exp1, x) -> f { exp with it = ProjE (over_exp f exp1, x) }
   | OptE exp1 -> f { exp with it = OptE (over_exp f exp1) }

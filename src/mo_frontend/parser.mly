@@ -606,8 +606,8 @@ exp_un(B) :
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
     { ShowE (ref Type.Pre, e) @? at $sloc }
-  | TO_CANDID e=exp_un(ob)
-    { ToCandidE (ref Type.Pre, e) @? at $sloc }
+  | TO_CANDID LPAR es=seplist(exp(ob), COMMA) RPAR
+    { ToCandidE (ref Type.Pre, es) @? at $sloc }
   | FROM_CANDID e=exp_un(ob)
     { FromCandidE (ref Type.Pre, e) @? at $sloc }
 
