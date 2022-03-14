@@ -53,6 +53,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
 }
 
 impl Stream {
+    #[inline]
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
         self.add(1) as *mut u8 // skip closure header
     }
@@ -80,7 +81,9 @@ impl Stream {
                 self.flush();
                 self.send_to_stable(ptr, n);
             } else {
-                let dest = self.payload_addr().add((*self).filled.as_usize());
+                let dest = self
+                    .payload_addr()
+                    .add(((*self).filled - INITIAL_STREAM_FILLED).as_usize());
                 (*self).filled += n;
                 assert!((*self).filled <= (*self).header.len);
                 memcpy_bytes(dest as usize, ptr as usize, n);

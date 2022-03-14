@@ -37,12 +37,17 @@ pub unsafe fn test() {
 
     println!("  Testing stream filling (blocks)");
     let stream = alloc_stream(&mut mem, Bytes(6000));
-    let chunk: [u8; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let chunk: [u8; 10] = [10, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     for _ in 0..600 {
         stream
             .as_stream()
             .stash(&chunk[0], Bytes(chunk.len() as u32));
     }
+    assert_eq!(stream.as_blob().get(24), 10);
+    assert_eq!(stream.as_blob().get(25), 1);
+    assert_eq!(stream.as_blob().get(33), 9);
+    assert_eq!(stream.as_blob().get(34), 10);
+    assert_eq!(stream.as_blob().get(6023), 9);
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(6000));
 
