@@ -774,7 +774,7 @@ module Func = struct
         (G.i (LocalGet (nr 4l)))
         (G.i (LocalGet (nr 5l)))
     )
-  let share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
+  let _share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -784,7 +784,7 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
     )
-  let _share_code8 env name (p1, p2, p3, p4, p5, p6, p7, p8) retty mk_body =
+  let share_code8 env name (p1, p2, p3, p4, p5, p6, p7, p8) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7; p8] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -4808,16 +4808,12 @@ module Serialization = struct
   let idl_sub env t2 =
     Func.share_code4 env ("idl_sub<" ^ typ_hash t2 ^ ">")
       (("get_end1", I32Type),
-       (* ("get_end2", I32Type), *)
        ("n_types1", I32Type),
-       (* ("n_types2", I32Type), *)
        ("typtbl1", I32Type),
-       (* ("typtbl2", I32Type), *)
        ("idltyp1", I32Type)
-       (*, ("idltyp2", I32Type) *)
       )
       [I32Type]
-      (fun env get_end1 (* get_end2 *) get_n_types1 (* get_n_types2 *) get_typtbl1 (*get_typtbl2*) get_idltyp1 (*get_idltyp2*) ->
+      (fun env get_end1 get_n_types1 get_typtbl1 get_idltyp1 ->
         let typdesc, offsets, idltyps2 = type_desc env [t2] in
         let idltyp2 = List.hd idltyps2 in
         let (set_end2, get_end2) = new_local env "end2" in
@@ -4863,16 +4859,17 @@ module Serialization = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code7 env name
+    Func.share_code8 env name
       (("data_buffer", I32Type),
        ("ref_buffer", I32Type),
+       ("typtbl_end", I32Type),
        ("typtbl", I32Type),
        ("idltyp", I32Type),
        ("typtbl_size", I32Type),
        ("depth", I32Type),
        ("can_recover", I32Type)
       ) [I32Type]
-    (fun env get_data_buf get_ref_buf get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
+    (fun env get_data_buf get_ref_buf get_typtbl_end get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -4892,6 +4889,7 @@ module Serialization = struct
         set_idlty ^^
         get_data_buf ^^
         get_ref_buf ^^
+        get_typtbl_end ^^
         get_typtbl ^^
         get_idlty ^^
         get_typtbl_size ^^
@@ -5431,10 +5429,10 @@ module Serialization = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
-        compile_unboxed_const 0xFFFF_FFFFl (* ^^ compile_unboxed_const 0xFFFF_FFFFl *) ^^ (* FIX ME *)
-        get_typtbl_size ^^ (* get_typtbl_size  ^^ *)
-        get_typtbl ^^ (* get_typtbl ^^ *)
-        get_idltyp ^^ (* get_idltyp ^^ *)
+        get_typtbl_end ^^
+        get_typtbl_size ^^
+        get_typtbl ^^
+        get_idltyp ^^
         idl_sub env t ^^
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
@@ -5446,10 +5444,10 @@ module Serialization = struct
               ]))
          (coercion_failed "IDL error: incompatible function type")
       | Obj (Actor, _) ->
-        compile_unboxed_const 0xFFFF_FFFFl ^^  (* compile_unboxed_const 0xFFFF_FFFFl ^^ (* FIX ME *) *)
-        get_typtbl_size ^^ (* get_typtbl_size ^^ *)
-        get_typtbl ^^ (* get_typtbl ^^ *)
-        get_idltyp ^^ (* get_idltyp ^^ *)
+        get_typtbl_end ^^
+        get_typtbl_size ^^
+        get_typtbl ^^
+        get_idltyp ^^
         idl_sub env t ^^
         G.if1 I32Type
           (with_composite_typ idl_service
@@ -5582,6 +5580,7 @@ module Serialization = struct
 
         G.concat_map (fun t ->
           get_data_buf ^^ get_ref_buf ^^
+          get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
           get_typtbl_ptr ^^ load_unskewed_ptr ^^
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
           get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
