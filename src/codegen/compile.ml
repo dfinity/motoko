@@ -5009,9 +5009,9 @@ module Serialization = struct
         get_ptr ^^ get_len ^^ Text.of_ptr_size env
       in
 
-      let read_actor_data t =
+      let read_actor_data () =
         read_byte_tagged
-          [ E.trap_with env ("IDL error: unexpected actor reference" ^ Type.string_of_typ t)
+          [ E.trap_with env ("IDL error: unexpected actor reference")
           ; read_principal ()
           ]
       in
@@ -5437,8 +5437,8 @@ module Serialization = struct
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
-              [ E.trap_with env ("IDL error: unexpected function reference" ^ Type.string_of_typ t)
-              ; read_actor_data t ^^
+              [ E.trap_with env ("IDL error: unexpected function reference")
+              ; read_actor_data () ^^
                 read_text () ^^
                 Tuple.from_stack env 2
               ]))
@@ -5451,7 +5451,7 @@ module Serialization = struct
         idl_sub env t ^^
         G.if1 I32Type
           (with_composite_typ idl_service
-             (fun _get_typ_buf -> read_actor_data t))
+             (fun _get_typ_buf -> read_actor_data ()))
           (coercion_failed "IDL error: incompatible actor type")
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
