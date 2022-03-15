@@ -5436,23 +5436,25 @@ module Serialization = struct
         get_typtbl ^^ (* get_typtbl ^^ *)
         get_idltyp ^^ (* get_idltyp ^^ *)
         idl_sub env t ^^
-        E.else_trap_with env "idl_sub_irreflexive:func" ^^
-        with_composite_typ idl_func (fun _get_typ_buf ->
-          read_byte_tagged
-            [ E.trap_with env ("IDL error: unexpected function reference" ^ Type.string_of_typ t)
-            ; read_actor_data t ^^
-              read_text () ^^
-              Tuple.from_stack env 2
-            ]
-        );
+        G.if1 I32Type
+          (with_composite_typ idl_func (fun _get_typ_buf ->
+            read_byte_tagged
+              [ E.trap_with env ("IDL error: unexpected function reference" ^ Type.string_of_typ t)
+              ; read_actor_data t ^^
+                read_text () ^^
+                Tuple.from_stack env 2
+              ]))
+         (coercion_failed "IDL error: incompatible function type")
       | Obj (Actor, _) ->
         compile_unboxed_const 0xFFFF_FFFFl ^^  (* compile_unboxed_const 0xFFFF_FFFFl ^^ (* FIX ME *) *)
         get_typtbl_size ^^ (* get_typtbl_size ^^ *)
         get_typtbl ^^ (* get_typtbl ^^ *)
         get_idltyp ^^ (* get_idltyp ^^ *)
         idl_sub env t ^^
-        E.else_trap_with env "idl_sub_irreflexive:actor" ^^
-        with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data t)
+        G.if1 I32Type
+          (with_composite_typ idl_service
+             (fun _get_typ_buf -> read_actor_data t))
+          (coercion_failed "IDL error: incompatible actor type")
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
