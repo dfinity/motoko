@@ -4630,7 +4630,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-        E.else_trap_with env "object_size/Mut: Unexpected tag " ^^
+        E.else_trap_with env "object_size/Mut: Unexpected tag" ^^
         (* Check if we have seen this before *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0 begin
@@ -5544,11 +5544,11 @@ module MakeSerialization (Strm : Stream) = struct
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      E.else_trap_with env "reference buffer not filled " ^^
+      E.else_trap_with env "reference buffer not filled" ^^
 
       get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      E.else_trap_with env "data buffer not filled " ^^
+      E.else_trap_with env "data buffer not filled" ^^
 
       get_refs_size ^^
       compile_unboxed_const 0l ^^
