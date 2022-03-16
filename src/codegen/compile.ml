@@ -3917,9 +3917,7 @@ module Cycles = struct
       )
     )
 
-end
-
-
+end (* Cycles *)
 
 module StableMem = struct
 
@@ -4224,7 +4222,7 @@ module StableMem = struct
           IC.system_call env "ic0" "stable64_write")
     | _ -> assert false
 
-end (* Stack *)
+end (* StableMemory *)
 
 module RTS_Exports = struct
   let system_exports env =
