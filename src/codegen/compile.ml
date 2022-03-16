@@ -5592,7 +5592,7 @@ module Serialization = struct
         E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
 
         G.concat_map (fun t ->
-          if extended then compile_unboxed_const 1l else compile_unboxed_const 0l ^^
+          compile_unboxed_const (if extended then 1l else 0l) ^^
           get_data_buf ^^ get_ref_buf ^^
           get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
           get_typtbl_ptr ^^ load_unskewed_ptr ^^
