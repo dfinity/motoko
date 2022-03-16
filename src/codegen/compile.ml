@@ -4176,7 +4176,7 @@ module type Stream = sig
 end
 
 
-module DataBufStream : Stream = struct
+module BumpStream : Stream = struct
   let advance_data_buf get_data_buf =
     get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
 
@@ -4601,7 +4601,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_buf in
  *)
 
-      let write_word, write_word32, write_byte, write_text, write_unsigned, write_signed = Strm.(write_word_leb env get_data_buf, write_word_32 env get_data_buf, write_byte env get_data_buf, write_text env get_data_buf, write_unsigned env get_data_buf, write_signed env get_data_buf) in
+      let write_word, write_word32, write_byte, write_blob, write_text, write_unsigned, write_signed = Strm.(write_word_leb env get_data_buf, write_word_32 env get_data_buf, write_byte env get_data_buf, write_blob env get_data_buf, write_text env get_data_buf, write_unsigned env get_data_buf, write_signed env get_data_buf) in
       (*
       let write_word code =
         let set_word, get_word = new_local env "word" in
@@ -4696,12 +4696,14 @@ module MakeSerialization (Strm : Stream) = struct
         get_data_buf ^^
         get_x ^^ Float.unbox env ^^
         G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 8l ^^ advance_data_buf
+        (*FIXME: reserve*)compile_unboxed_const 8l ^^
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
       | Prim (Int64|Nat64) ->
         get_data_buf ^^
         get_x ^^ BoxedWord64.unbox env ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 8l ^^ advance_data_buf
+        (*FIXME: reserve*)compile_unboxed_const 8l ^^
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
       | Prim (Int32|Nat32) ->
         write_word32 (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
@@ -4710,7 +4712,8 @@ module MakeSerialization (Strm : Stream) = struct
         get_data_buf ^^
         get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16}) ^^
-        compile_unboxed_const 2l ^^ advance_data_buf
+        (*FIXME: reserve*)compile_unboxed_const 2l ^^
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
       | Prim (Int8|Nat8) ->
         write_byte (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
       | Prim Bool ->
@@ -5632,7 +5635,7 @@ To detect and preserve aliasing, these steps are taken:
 
 end (* MakeSerialization *)
 
-module Serialization = MakeSerialization(BigNumLibtommath)
+module Serialization = MakeSerialization(BumpStream)
 
 
 (* Stabilization (serialization to/from stable memory) of both:
