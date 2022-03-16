@@ -3834,6 +3834,91 @@ module IC = struct
 
 end (* IC *)
 
+module Cycles = struct
+
+  let from_word128_ptr env = Func.share_code1 env "from_word128_ptr" ("ptr", I32Type) [I32Type]
+    (fun env get_ptr ->
+      get_ptr ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      get_ptr ^^
+      compile_add_const 8l ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      BigNum.from_word64 env ^^
+      (* shift left 64 *)
+      compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 64)) ^^
+      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
+      BigNum.compile_add env)
+
+  (* only used twice, so ok to not use share_code1; that would require I64Type support in FakeMultiVal *)
+  let to_two_word64 env =
+    let (set_val, get_val) = new_local env "cycles" in
+    set_val ^^
+    get_val ^^
+    compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 128)) ^^
+    BigNum.compile_relop env Lt ^^
+    E.else_trap_with env "cycles out of bounds" ^^
+
+    get_val ^^
+    (* shift right 64 bits *)
+    compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 64)) ^^
+    BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
+    BigNum.truncate_to_word64 env ^^
+
+    get_val ^^
+    BigNum.truncate_to_word64 env
+
+  let balance env =
+    Func.share_code0 env "cycle_balance" [I32Type] (fun env ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cycle_balance env ^^
+        get_dst ^^
+        from_word128_ptr env
+      )
+    )
+
+  let add env =
+    Func.share_code1 env "cycle_add" ("cycles", I32Type) [] (fun env get_x ->
+      get_x ^^
+      to_two_word64 env ^^
+      IC.cycles_add env
+    )
+
+  let accept env =
+    Func.share_code1 env "cycle_accept" ("cycles", I32Type) [I32Type] (fun env get_x ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_x ^^
+        to_two_word64 env ^^
+        get_dst ^^
+        IC.cycles_accept env ^^
+        get_dst ^^
+        from_word128_ptr env
+      )
+    )
+
+  let available env =
+    Func.share_code0 env "cycle_available" [I32Type] (fun env ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cycles_available env ^^
+        get_dst ^^
+        from_word128_ptr env
+      )
+    )
+
+  let refunded env =
+    Func.share_code0 env "cycle_refunded" [I32Type] (fun env ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cycles_refunded env ^^
+        get_dst ^^
+        from_word128_ptr env
+      )
+    )
+
+end
+
 
 
 module StableMem = struct
@@ -6846,93 +6931,6 @@ let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
 
-module Cycles = struct
-
-  let from_word128_ptr env = Func.share_code1 env "from_word128_ptr" ("ptr", I32Type) [I32Type]
-    (fun env get_ptr ->
-      get_ptr ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      get_ptr ^^
-      compile_add_const 8l ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      (* shift left 64 *)
-      compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
-        (Big_int.power_int_positive_int 2 64))) ^^
-      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
-      BigNum.compile_add env)
-
-  (* only used twice, so ok to not use share_code1; that would require I64Type support in FakeMultiVal *)
-  let to_two_word64 env =
-    let (set_val, get_val) = new_local env "cycles" in
-    set_val ^^
-    get_val ^^
-    compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
-      (Big_int.power_int_positive_int 2 128))) ^^
-    BigNum.compile_relop env Lt ^^
-    E.else_trap_with env "cycles out of bounds" ^^
-
-    get_val ^^
-    (* shift right 64 bits *)
-    compile_lit_as env SR.Vanilla (Ir.NatLit (Numerics.Nat.of_big_int
-      (Big_int.power_int_positive_int 2 64))) ^^
-    BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
-    BigNum.truncate_to_word64 env ^^
-
-    get_val ^^
-    BigNum.truncate_to_word64 env
-
-  let balance env =
-    Func.share_code0 env "cycle_balance" [I32Type] (fun env ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
-        get_dst ^^
-        IC.cycle_balance env ^^
-        get_dst ^^
-        from_word128_ptr env
-      )
-    )
-
-  let add env =
-    Func.share_code1 env "cycle_add" ("cycles", I32Type) [] (fun env get_x ->
-      get_x ^^
-      to_two_word64 env ^^
-      IC.cycles_add env
-    )
-
-  let accept env =
-    Func.share_code1 env "cycle_accept" ("cycles", I32Type) [I32Type] (fun env get_x ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
-        get_x ^^
-        to_two_word64 env ^^
-        get_dst ^^
-        IC.cycles_accept env ^^
-        get_dst ^^
-        from_word128_ptr env
-      )
-    )
-
-  let available env =
-    Func.share_code0 env "cycle_available" [I32Type] (fun env ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
-        get_dst ^^
-        IC.cycles_available env ^^
-        get_dst ^^
-        from_word128_ptr env
-      )
-    )
-
-  let refunded env =
-    Func.share_code0 env "cycle_refunded" [I32Type] (fun env ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
-        get_dst ^^
-        IC.cycles_refunded env ^^
-        get_dst ^^
-        from_word128_ptr env
-      )
-    )
-
-end
 
 (* helper, traps with message *)
 let then_arithmetic_overflow env =
