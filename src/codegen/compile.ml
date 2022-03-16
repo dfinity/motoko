@@ -4188,8 +4188,8 @@ module BumpStream : Stream = struct
 
   let write_word_32 env get_data_buf code =
     get_data_buf ^^ code ^^
-    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-    compile_unboxed_const 1l ^^ advance_data_buf get_data_buf
+    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+    compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
 
   let write_byte _env get_data_buf code =
     get_data_buf ^^ code ^^
