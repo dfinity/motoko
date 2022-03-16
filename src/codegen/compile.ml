@@ -4592,36 +4592,11 @@ module MakeSerialization (Strm : Stream) = struct
     let name = "@serialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
-      (*let set_data_buf = G.setter_for get_data_buf in*)
       let set_ref_buf = G.setter_for get_ref_buf in
 
       (* Some combinators for writing values *)
-(*
-      let advance_data_buf =
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_buf in
- *)
 
       let write_word, write_word32, write_byte, write_blob, write_text, write_unsigned, write_signed = Strm.(write_word_leb env get_data_buf, write_word_32 env get_data_buf, write_byte env get_data_buf, write_blob env get_data_buf, write_text env get_data_buf, write_unsigned env get_data_buf, write_signed env get_data_buf) in
-      (*
-      let write_word code =
-        let set_word, get_word = new_local env "word" in
-        code ^^ set_word ^^
-        I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
-        advance_data_buf
-      in
-
-      let write_word32 code =
-        get_data_buf ^^ code ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const Heap.word_size ^^ advance_data_buf
-      in
-
-      let write_byte code =
-        get_data_buf ^^ code ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-        compile_unboxed_const 1l ^^ advance_data_buf
-      in
-       *)
 
       let write env t =
         get_data_buf ^^
@@ -4678,20 +4653,8 @@ module MakeSerialization (Strm : Stream) = struct
       begin match t with
       | Prim Nat ->
         write_unsigned get_x
-        (*
-        get_data_buf ^^
-        get_x ^^
-        BigNum.compile_store_to_data_buf_unsigned env ^^
-        advance_data_buf
-         *)
       | Prim Int ->
         write_signed get_x
-        (*
-        get_data_buf ^^
-        get_x ^^
-        BigNum.compile_store_to_data_buf_signed env ^^
-        advance_data_buf
-         *)
       | Prim Float ->
         get_data_buf ^^
         get_x ^^ Float.unbox env ^^
@@ -4760,25 +4723,8 @@ module MakeSerialization (Strm : Stream) = struct
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Blob ->
         write_blob get_x
-        (*
-        let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Blob.len env ^^ set_len ^^
-        write_word get_len ^^
-        get_data_buf ^^
-        get_x ^^ Blob.payload_ptr_unskewed ^^
-        get_len ^^
-        Heap.memcpy env ^^
-        get_len ^^ advance_data_buf
-         *)
       | Prim Text ->
         write_text get_x
-        (*
-        let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Text.size env ^^ set_len ^^
-        write_word get_len ^^
-        get_x ^^ get_data_buf ^^ Text.to_buf env ^^
-        get_len ^^ advance_data_buf
-         *)
       | Func _ ->
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
