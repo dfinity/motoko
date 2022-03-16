@@ -784,8 +784,8 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
     )
-  let share_code8 env name (p1, p2, p3, p4, p5, p6, p7, p8) retty mk_body =
-    share_code env name [p1; p2; p3; p4; p5; p6; p7; p8] retty (fun env -> mk_body env
+  let share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6; p7; p8; p9] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
         (G.i (LocalGet (nr 2l)))
@@ -794,6 +794,7 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
         (G.i (LocalGet (nr 7l)))
+        (G.i (LocalGet (nr 8l)))
     )
 
 end (* Func *)
@@ -4859,8 +4860,9 @@ module Serialization = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code8 env name
-      (("data_buffer", I32Type),
+    Func.share_code9 env name
+      (("extended", I32Type),
+       ("data_buffer", I32Type),
        ("ref_buffer", I32Type),
        ("typtbl_end", I32Type),
        ("typtbl", I32Type),
@@ -4869,7 +4871,7 @@ module Serialization = struct
        ("depth", I32Type),
        ("can_recover", I32Type)
       ) [I32Type]
-    (fun env get_data_buf get_ref_buf get_typtbl_end get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
+    (fun env get_extended get_data_buf get_ref_buf get_typtbl_end get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -4887,6 +4889,7 @@ module Serialization = struct
       let go' can_recover env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
+        get_extended ^^
         get_data_buf ^^
         get_ref_buf ^^
         get_typtbl_end ^^
@@ -5429,11 +5432,16 @@ module Serialization = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
-        get_typtbl_end ^^
-        get_typtbl_size ^^
-        get_typtbl ^^
-        get_idltyp ^^
-        idl_sub env t ^^
+        get_extended ^^
+        G.if1 I32Type
+          (compile_unboxed_const 1l)
+          (begin
+            get_typtbl_end ^^
+            get_typtbl_size ^^
+            get_typtbl ^^
+            get_idltyp ^^
+            idl_sub env t
+           end) ^^
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
@@ -5444,11 +5452,16 @@ module Serialization = struct
               ]))
          (coercion_failed "IDL error: incompatible function type")
       | Obj (Actor, _) ->
-        get_typtbl_end ^^
-        get_typtbl_size ^^
-        get_typtbl ^^
-        get_idltyp ^^
-        idl_sub env t ^^
+        get_extended ^^
+        G.if1 I32Type
+          (compile_unboxed_const 1l)
+          (begin
+            get_typtbl_end ^^
+            get_typtbl_size ^^
+            get_typtbl ^^
+            get_idltyp ^^
+            idl_sub env t
+           end) ^^
         G.if1 I32Type
           (with_composite_typ idl_service
              (fun _get_typ_buf -> read_actor_data ()))
@@ -5579,6 +5592,7 @@ module Serialization = struct
         E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
 
         G.concat_map (fun t ->
+          compile_unboxed_const (if extended then 1l else 0l) ^^
           get_data_buf ^^ get_ref_buf ^^
           get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
           get_typtbl_ptr ^^ load_unskewed_ptr ^^
