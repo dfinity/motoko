@@ -3850,6 +3850,7 @@ module Cycles = struct
       BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
       BigNum.compile_add env)
 
+  (* takes a bignum from the stack, traps if ≥2^128, and leaves two 64bit words on the stack *)
   (* only used twice, so ok to not use share_code1; that would require I64Type support in FakeMultiVal *)
   let to_two_word64 env =
     let (set_val, get_val) = new_local env "cycles" in
