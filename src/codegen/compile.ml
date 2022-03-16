@@ -7560,9 +7560,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
          end
       | _ -> false in
 
-
-    begin match fun_sr, sort, call_as_prim with
-      | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _, true ->
+    begin match fun_sr, sort with
+      | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ when call_as_prim ->
          assert (sort = Type.Local);
          (* Handle argument tuples *)
          begin match n_args, e2.it with
@@ -7581,7 +7580,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            (* ugly case; let's just call this as a function for now *)
            raise (Invalid_argument "call_as_prim was true?")
          end
-      | SR.Const (_, Const.Fun (mk_fi, Const.Complicated)), _, _ ->
+      | SR.Const (_, Const.Fun (mk_fi, Const.Complicated)), _ ->
          assert (sort = Type.Local);
          StackRep.of_arity return_arity,
 
@@ -7590,7 +7589,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
-      | _, Type.Local, _ ->
+      | _, Type.Local ->
          let (set_clos, get_clos) = new_local env "clos" in
 
          StackRep.of_arity return_arity,
@@ -7600,7 +7599,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
-      | _, Type.Shared _, _ ->
+      | _, Type.Shared _ ->
          (* Non-one-shot functions have been rewritten in async.ml *)
          assert (control = Type.Returns);
 
