@@ -8877,9 +8877,18 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
     let fun_rhs =
+
+      (* a few prims cannot be safely inlined *)
+      let inlineable_prim = function
+      | RetPrim -> false
+      | BreakPrim _ -> false
+      | _ -> true in
+
       match sort, control, typ_binds, e.it with
       (* Special cases for prim-wrapping functions *)
+
       | Type.Local, Type.Returns, [], PrimE (prim, prim_args) when
+          inlineable_prim prim &&
           List.length args = List.length prim_args &&
           List.for_all2 (fun p a -> a.it = VarE p.it) args prim_args ->
         Const.PrimWrapper prim
