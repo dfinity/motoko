@@ -4197,7 +4197,7 @@ module BumpStream : Stream = struct
     compile_unboxed_const 1l ^^ advance_data_buf get_data_buf
 
   let write_blob env get_data_buf get_x =
-    let (set_len, get_len) = new_local env "len" in
+    let set_len, get_len = new_local env "len" in
     get_x ^^ Blob.len env ^^ set_len ^^
     write_word_leb env get_data_buf get_len ^^
     get_data_buf ^^
@@ -4207,7 +4207,7 @@ module BumpStream : Stream = struct
     get_len ^^ advance_data_buf get_data_buf
 
   let write_text env get_data_buf get_x =
-    let (set_len, get_len) = new_local env "len" in
+    let set_len, get_len = new_local env "len" in
     get_x ^^ Text.size env ^^ set_len ^^
     write_word_leb env get_data_buf get_len ^^
     get_x ^^ get_data_buf ^^ Text.to_buf env ^^
