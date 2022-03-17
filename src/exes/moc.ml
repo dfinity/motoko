@@ -89,6 +89,12 @@ let argspec = [
       String.concat " or " valid_metadata_names ^
       ") as `public` (default is `private`)";
 
+  "--suppress-metadata",
+    Arg.String (fun n -> Flags.(suppress_metadata_names := n :: !suppress_metadata_names)),
+    "<name>  omit icp custom section <name> (" ^
+      String.concat " or " valid_metadata_names ^
+      ")";
+
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
