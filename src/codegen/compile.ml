@@ -4173,12 +4173,17 @@ module type Stream = sig
   val write_text : E.t -> G.t -> G.t -> G.t
   val write_unsigned : E.t -> G.t -> G.t -> G.t
   val write_signed : E.t -> G.t -> G.t -> G.t
+
+  (* opportunity to flush or update, stream token is on  stack *)
+  val checkpoint : E.t -> G.t -> G.t
 end
 
 
 module BumpStream : Stream = struct
   let advance_data_buf get_data_buf =
     get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
+
+  let checkpoint _env get_data_buf = G.setter_for get_data_buf
 
   let write_word_leb env get_data_buf code =
     let set_word, get_word = new_local env "word" in
@@ -4603,7 +4608,8 @@ module MakeSerialization (Strm : Stream) = struct
         get_ref_buf ^^
         serialize_go env t ^^
         set_ref_buf ^^
-        G.setter_for get_data_buf
+        Strm.checkpoint env get_data_buf
+        (*G.setter_for get_data_buf*)
       in
 
       let write_alias write_thing =
