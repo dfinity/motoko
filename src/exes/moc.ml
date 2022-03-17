@@ -261,17 +261,17 @@ let process_profiler_flags () =
   ProfilerFlags.profile_field_names := !Flags.profile_field_names;
   ()
 
-let process_public_metadata_names () =
+let process_metadata_names kind =
   List.iter
     (fun s ->
       if not (List.mem s valid_metadata_names) then
         begin
-          eprintf "moc: --public-metadata argument %s must be one of %s"
+          eprintf "moc: --%s-metadata argument %s must be one of %s"
+            kind
             s
             (String.concat ", " valid_metadata_names);
           exit 1
         end)
-    (!Flags.public_metadata_names)
 
 let () =
   (*
@@ -289,7 +289,8 @@ let () =
   end;
 
   process_profiler_flags ();
-  process_public_metadata_names ();
+  process_metadata_names "public" !Flags.public_metadata_names;
+  process_metadata_names "suppress" !Flags.suppress_metadata_names;
   try
     process_files !args
   with
