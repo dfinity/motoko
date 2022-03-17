@@ -832,7 +832,7 @@ let encode (em : extended_module) =
       | None -> ()
       | Some (is_public, x) ->
         section 0 (fun x ->
-          string ("icp:"^ (if is_public then "public " else "private ") ^ name);
+          string ("icp:" ^ (if is_public then "public " else "private ") ^ name); Printf.eprintf "name: %s value: %s\n" name x;
           f x
         ) x true
 
