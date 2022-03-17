@@ -60,7 +60,7 @@ let argspec = [
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, "<n>  set print depth";
   "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
-  "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as werrors";
+  "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as errors";
   ]
 
   @ Args.error_args
