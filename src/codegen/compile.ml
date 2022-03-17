@@ -4174,16 +4174,22 @@ module type Stream = sig
   val write_unsigned : E.t -> G.t -> G.t -> G.t
   val write_signed : E.t -> G.t -> G.t -> G.t
 
-  (* opportunity to flush or update, stream token is on  stack *)
+  (* opportunity to flush or update, stream token is on stack *)
   val checkpoint : E.t -> G.t -> G.t
+
+  (* reserve a small fixed number of bytes in the stream and return an address to it *)
+  val reserve : E.t -> G.t -> int32 -> G.t
 end
 
 
 module BumpStream : Stream = struct
   let advance_data_buf get_data_buf =
-    get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
+    get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
 
   let checkpoint _env get_data_buf = G.setter_for get_data_buf
+
+  let reserve _env get_data_buf bytes =
+    get_data_buf ^^ get_data_buf ^^ compile_add_const bytes ^^ G.setter_for get_data_buf
 
   let write_word_leb env get_data_buf code =
     let set_word, get_word = new_local env "word" in
@@ -4666,13 +4672,13 @@ module MakeSerialization (Strm : Stream) = struct
         get_x ^^ Float.unbox env ^^
         G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
         (*FIXME: reserve*)compile_unboxed_const 8l ^^
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
       | Prim (Int64|Nat64) ->
         get_data_buf ^^
         get_x ^^ BoxedWord64.unbox env ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
         (*FIXME: reserve*)compile_unboxed_const 8l ^^
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
       | Prim (Int32|Nat32) ->
         write_word32 (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
@@ -4682,7 +4688,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16}) ^^
         (*FIXME: reserve*)compile_unboxed_const 2l ^^
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (G.setter_for get_data_buf)
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
       | Prim (Int8|Nat8) ->
         write_byte (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
       | Prim Bool ->
