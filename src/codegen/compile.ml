@@ -4615,7 +4615,6 @@ module MakeSerialization (Strm : Stream) = struct
         serialize_go env t ^^
         set_ref_buf ^^
         Strm.checkpoint env get_data_buf
-        (*G.setter_for get_data_buf*)
       in
 
       let write_alias write_thing =
@@ -4668,27 +4667,21 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Int ->
         write_signed get_x
       | Prim Float ->
-        get_data_buf ^^
+        Strm.reserve env get_data_buf 8l ^^
         get_x ^^ Float.unbox env ^^
-        G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
-        (*FIXME: reserve*)compile_unboxed_const 8l ^^
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
+        G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None})
       | Prim (Int64|Nat64) ->
-        get_data_buf ^^
+        Strm.reserve env get_data_buf 8l ^^
         get_x ^^ BoxedWord64.unbox env ^^
-        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
-        (*FIXME: reserve*)compile_unboxed_const 8l ^^
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
+        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None})
       | Prim (Int32|Nat32) ->
         write_word32 (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
         write_word32 (get_x ^^ TaggedSmallWord.untag_codepoint)
       | Prim (Int16|Nat16) ->
-        get_data_buf ^^
+        Strm.reserve env get_data_buf 2l ^^
         get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16}) ^^
-        (*FIXME: reserve*)compile_unboxed_const 2l ^^
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16})
       | Prim (Int8|Nat8) ->
         write_byte (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
       | Prim Bool ->
