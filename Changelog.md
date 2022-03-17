@@ -1,10 +1,16 @@
 # Motoko compiler changelog
 
+## FUTURE (2022-03-XX)
+
+* motoko (`moc`)
+
+  * Adds new flag `--suppress-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
+
 ## 0.6.25 (2022-03-07)
 
 * motoko (`moc`)
 
-  * bugfix: fix bogus elision of type constructors sharing names with primitive types in --stable-types section and .most file (#3140)
+  * bugfix: fix bogus elision of type constructors sharing names with primitive types in `--stable-types` section and `.most` file (#3140)
 
 ## 0.6.24 (2022-03-06)
 
