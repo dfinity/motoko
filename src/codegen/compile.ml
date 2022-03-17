@@ -5586,12 +5586,23 @@ module Serialization = struct
         ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
-
+        (* Remember data buffer position, to detect progress *)
+        let (set_old_pos, get_old_pos) = new_local env "old_pos" in
+        let (set_old_main_pos, get_old_main_pos) = new_local env "old_main_pos" in
+(*
         get_arg_count ^^
         compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
         E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
-
+ *)
         G.concat_map (fun t ->
+          ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
+          ReadBuf.get_ptr get_main_typs_buf ^^ set_old_main_pos ^^
+          ReadBuf.is_empty env get_main_typs_buf ^^
+          (G.if0
+           (begin
+              (compile_unboxed_const (coercion_error_value env)) ^^ set_val
+            end)
+          (begin
           compile_unboxed_const (if extended then 1l else 0l) ^^
           get_data_buf ^^ get_ref_buf ^^
           get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
@@ -5599,13 +5610,22 @@ module Serialization = struct
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
           get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
           compile_unboxed_const 0l ^^ (* initial depth *)
-          compile_unboxed_const 0l ^^ (* initially, cannot recover *)
-          deserialize_go env t ^^ set_val ^^
+          compile_unboxed_const 0l ^^ (* initially, can recover *)
+          deserialize_go env t ^^ set_val
+          end))
+          ^^
           get_val ^^ compile_eq_const (coercion_error_value env) ^^
-          E.then_trap_with env ("IDL error: coercion failure encountered") ^^
-          get_val
+          Type.(G.if1 I32Type
+             (match normalize t with
+              | Opt _ | Any ->
+                 ReadBuf.set_ptr get_main_typs_buf get_old_main_pos ^^
+                 ReadBuf.set_ptr get_data_buf get_old_pos ^^
+                 Opt.null_lit env
+              | _ -> E.trap_with env ("IDL error: coercion failure encountered"))
+             (get_val))
         ) ts ^^
 
+(*
         (* Skip any extra arguments *)
         get_arg_count ^^ compile_sub_const (Int32.of_int (List.length ts)) ^^
         from_0_to_n env (fun _ ->
@@ -5615,12 +5635,24 @@ module Serialization = struct
           compile_unboxed_const 0l ^^
           E.call_import env "rts" "skip_any"
         ) ^^
+ *)
+
+        compile_while env
+          ((ReadBuf.is_empty env get_main_typs_buf) ^^ Bool.neg)
+          (begin
+            get_data_buf ^^
+            get_typtbl_ptr ^^ load_unskewed_ptr ^^
+            ReadBuf.read_sleb128 env get_main_typs_buf ^^
+            compile_unboxed_const 0l ^^
+            E.call_import env "rts" "skip_any"
+           end) ^^
 
         ReadBuf.is_empty env get_data_buf ^^
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
         ReadBuf.is_empty env get_ref_buf ^^
         E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
       ))))))
+
     )
 
   let deserialize env ts =
