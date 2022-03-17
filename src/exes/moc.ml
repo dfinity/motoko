@@ -89,8 +89,8 @@ let argspec = [
       String.concat " or " valid_metadata_names ^
       ") as `public` (default is `private`)";
 
-  "--suppress-metadata",
-    Arg.String (fun n -> Flags.(suppress_metadata_names := n :: !suppress_metadata_names)),
+  "--omit-metadata",
+    Arg.String (fun n -> Flags.(omit_metadata_names := n :: !omit_metadata_names)),
     "<name>  omit icp custom section <name> (" ^
       String.concat " or " valid_metadata_names ^
       ")";
@@ -290,7 +290,7 @@ let () =
 
   process_profiler_flags ();
   process_metadata_names "public" !Flags.public_metadata_names;
-  process_metadata_names "suppress" !Flags.suppress_metadata_names;
+  process_metadata_names "omit" !Flags.omit_metadata_names;
   try
     process_files !args
   with

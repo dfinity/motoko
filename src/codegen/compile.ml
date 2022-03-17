@@ -9026,7 +9026,7 @@ and main_actor as_opt mod_env ds fs up =
   )
 
 and metadata name value =
-  if List.mem name !Flags.suppress_metadata_names then None
+  if List.mem name !Flags.omit_metadata_names then None
   else Some (
            List.mem name !Flags.public_metadata_names,
            value)

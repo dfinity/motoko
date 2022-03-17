@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * Adds new flag `--suppress-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
+  * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
 
 ## 0.6.25 (2022-03-07)
 
