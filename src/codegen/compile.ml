@@ -9005,19 +9005,9 @@ and main_actor as_opt mod_env ds fs up =
     end;
 
     (* Export metadata *)
-    env.E.stable_types :=
-      Some (
-        List.mem "motoko:stable-types" !Flags.public_metadata_names,
-        up.meta.sig_);
-    env.E.service :=
-      Some (
-        List.mem "candid:service" !Flags.public_metadata_names,
-        up.meta.candid.service);
-    env.E.args :=
-      Some (
-        List.mem "candid:args" !Flags.public_metadata_names,
-        up.meta.candid.args);
-
+    env.E.stable_types := metadata "motoko:stable-types" up.meta.sig_;
+    env.E.service := metadata "candid:service" up.meta.candid.service;
+    env.E.args := metadata "candid:args" up.meta.candid.args;
 
     (* Deserialize any arguments *)
     begin match as_opt with
@@ -9034,6 +9024,12 @@ and main_actor as_opt mod_env ds fs up =
     (* Continue with decls *)
     decls_codeW G.nop
   )
+
+and metadata name value =
+  if List.mem name !Flags.omit_metadata_names then None
+  else Some (
+           List.mem name !Flags.public_metadata_names,
+           value)
 
 and conclude_module env start_fi_o =
 
@@ -9114,9 +9110,7 @@ and conclude_module env start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
-        compiler = Some
-         (List.mem "motoko:compiler" !Flags.public_metadata_names,
-          Lib.Option.get Source_id.release Source_id.id)
+        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id)
       };
       candid = {
         args = !(env.E.args);
