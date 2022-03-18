@@ -5591,14 +5591,14 @@ module Serialization = struct
           let can_recover, default_or_trap = Type.(
             match normalize t with
             | Prim Null | Opt _ | Any ->
-              (compile_unboxed_one, Opt.null_lit env)
+              (compile_unboxed_one, fun msg -> Opt.null_lit env)
             | _ ->
-              (compile_unboxed_zero, E.trap_with env "IDL error: coercion failure encountered"))
+              (compile_unboxed_zero, fun msg -> E.trap_with env msg))
           in
           get_arg_count ^^
           compile_rel_const I32Op.Eq 0l ^^
           G.if1 I32Type
-           default_or_trap
+           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
              compile_unboxed_const (if extended then 1l else 0l) ^^
              get_data_buf ^^ get_ref_buf ^^
@@ -5612,7 +5612,7 @@ module Serialization = struct
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              (G.if1 I32Type
-               default_or_trap
+               (default_or_trap "IDL error: coercion failure encountered")
                get_val)
            end)
         ) ts ^^
