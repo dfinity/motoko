@@ -4195,7 +4195,7 @@ module BumpStream : Stream = struct
     let set_word, get_word = new_local env "word" in
     code ^^ set_word ^^
     I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
-        advance_data_buf get_data_buf
+    advance_data_buf get_data_buf
 
   let write_word_32 env get_data_buf code =
     get_data_buf ^^ code ^^
