@@ -5588,12 +5588,12 @@ module Serialization = struct
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
-          let default_or_trap =
-            Type.(
-              match normalize t with
-              | Prim Null | Opt _ | Any ->
-                Opt.null_lit env
-              | _ -> E.trap_with env "IDL error: coercion failure encountered")
+          let can_recover, default_or_trap = Type.(
+            match normalize t with
+            | Prim Null | Opt _ | Any ->
+              (compile_unboxed_one, Opt.null_lit env)
+            | _ ->
+              (compile_unboxed_zero, E.trap_with env "IDL error: coercion failure encountered"))
           in
           get_arg_count ^^
           compile_rel_const I32Op.Eq 0l ^^
@@ -5607,7 +5607,7 @@ module Serialization = struct
              ReadBuf.read_sleb128 env get_main_typs_buf ^^
              get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
              compile_unboxed_const 0l ^^ (* initial depth *)
-             compile_unboxed_const 1l ^^ (* initially, can recover *)
+             can_recover ^^
              deserialize_go env t ^^ set_val ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
