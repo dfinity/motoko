@@ -4171,8 +4171,8 @@ module type Stream = sig
   val write_word_32 : E.t -> G.t -> G.t -> G.t
   val write_blob : E.t -> G.t -> G.t -> G.t
   val write_text : E.t -> G.t -> G.t -> G.t
-  val write_unsigned : E.t -> G.t -> G.t -> G.t
-  val write_signed : E.t -> G.t -> G.t -> G.t
+  val write_bignum_leb : E.t -> G.t -> G.t -> G.t
+  val write_bignum_sleb : E.t -> G.t -> G.t -> G.t
 
   (* opportunity to flush or update, stream token is on stack *)
   val checkpoint : E.t -> G.t -> G.t
@@ -4224,13 +4224,13 @@ module BumpStream : Stream = struct
     get_x ^^ get_data_buf ^^ Text.to_buf env ^^
     get_len ^^ advance_data_buf get_data_buf
 
-  let write_unsigned env get_data_buf get_x =
+  let write_bignum_leb env get_data_buf get_x =
     get_data_buf ^^
     get_x ^^
     BigNum.compile_store_to_data_buf_unsigned env ^^
     advance_data_buf get_data_buf
 
-  let write_signed env get_data_buf get_x =
+  let write_bignum_sleb env get_data_buf get_x =
     get_data_buf ^^
     get_x ^^
     BigNum.compile_store_to_data_buf_signed env ^^
@@ -4607,7 +4607,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Some combinators for writing values *)
 
-      let write_word, write_word32, write_byte, write_blob, write_text, write_unsigned, write_signed = Strm.(write_word_leb env get_data_buf, write_word_32 env get_data_buf, write_byte env get_data_buf, write_blob env get_data_buf, write_text env get_data_buf, write_unsigned env get_data_buf, write_signed env get_data_buf) in
+      let write_word, write_word32, write_byte, write_blob, write_text, write_unsigned, write_signed = Strm.(write_word_leb env get_data_buf, write_word_32 env get_data_buf, write_byte env get_data_buf, write_blob env get_data_buf, write_text env get_data_buf, write_bignum_leb env get_data_buf, write_bignum_sleb env get_data_buf) in
 
       let write env t =
         get_data_buf ^^
