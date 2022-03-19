@@ -4606,8 +4606,9 @@ module MakeSerialization (Strm : Stream) = struct
       let set_ref_buf = G.setter_for get_ref_buf in
 
       (* Some combinators for writing values *)
-
-      let write_word, write_word32, write_byte, write_blob, write_text, write_unsigned, write_signed = Strm.(write_word_leb env get_data_buf, write_word_32 env get_data_buf, write_byte env get_data_buf, write_blob env get_data_buf, write_text env get_data_buf, write_bignum_leb env get_data_buf, write_bignum_sleb env get_data_buf) in
+      let    [write_word;     write_word32;  write_byte; write_blob; write_text; write_unsigned;   write_signed] =
+        Strm.[write_word_leb; write_word_32; write_byte; write_blob; write_text; write_bignum_leb; write_bignum_sleb]
+        |> List.map (fun f -> f env get_data_buf) in
 
       let write env t =
         get_data_buf ^^
