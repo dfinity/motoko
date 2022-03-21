@@ -15,6 +15,14 @@ actor this {
      Prim.debugPrint("ok");
    };
 
+   public func send_f2(
+     f : shared (Nat, [Nat], {f:Nat;g:Nat}, {#l:Nat; #m:Nat}) ->
+           async(Int, [Int], {f:Int;g:Int}, {#l:Int; #m:Int})
+   ) : async () {
+     Prim.debugPrint("ok");
+   };
+
+
 
    public func f0(n : Nat) : async Int { 0 };
 
@@ -27,6 +35,16 @@ actor this {
    public func f0_4(ob : ?Bool) : async Int { 0 };
 
    public func f1_0(n : ?Nat) : async Bool { true };
+
+   public func f2_0(n : Nat, a : [Nat], r : {f : Nat; g : Nat}, v : {#l : Nat; #m : Nat}) :
+     async (Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Int}) {
+        (1, [1], {f=1;g=1}, (#l 0))
+     };
+
+   public func f2_1(n : Int, a : [Int], r : {f : Int}, v : {#l : Int; #m : Int; #o : Int}) :
+     async (Nat, [Nat], {f : Nat; g : Nat; h : Nat}, { #l : Nat}) {
+        (1, [1], {f = 1; g = 2; h = 3}, (#l 0))
+     };
 
    public func go() : async () {
       let t = debug_show (Prim.principalOfActor(this));
@@ -87,6 +105,45 @@ actor this {
         catch e { Prim.debugPrint "wrong_1_0"; }
       };
 
+
+      // opt override in return
+      do {
+        let this = actor (t) : actor {
+          send_f1 : (shared (?Nat) -> async Bool) -> async ();
+        };
+        try {
+          await this.send_f1(f1_0);
+        }
+        catch e { Prim.debugPrint "wrong_1_0"; }
+      };
+
+
+      do {
+        let this = actor (t) : actor {
+          send_f2 :
+            (shared (Nat, [Nat], {f : Nat; g : Nat}, {#l : Nat; #m : Nat}) ->
+               async(Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Int})) ->
+                 async ()
+        };
+        try {
+          await this.send_f2(f2_0);
+        }
+        catch e { Prim.debugPrint "wrong_2_0"; }
+      };
+
+
+      do {
+        let this = actor (t) : actor {
+          send_f2 :
+            (shared (Int, [Int], {f : Int}, {#l : Int; #m : Int; #o : Int}) ->
+              async(Nat, [Nat], {f : Nat; g : Nat; h : Nat}, {#l : Nat})) ->
+                async ()
+        };
+        try {
+          await this.send_f2(f2_1);
+        }
+        catch e { Prim.debugPrint "wrong_2_1"; }
+      };
 
 
 
