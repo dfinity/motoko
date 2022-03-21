@@ -628,6 +628,7 @@ unsafe fn sub(
         (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
         (_, IDL_PRIM_reserved) => true,
         (IDL_PRIM_empty, _) => true,
+        (IDL_PRIM_nat, IDL_PRIM_int) => true,
         /*
                 (IDL_PRIM_null, IDL_CON_opt) => true,
                 (IDL_CON_opt, IDL_CON_opt) => {
