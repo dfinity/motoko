@@ -5439,8 +5439,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.else_trap_with env "data buffer not filled" ^^
 
       get_refs_size ^^
-      compile_unboxed_const 0l ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
       get_data_start ^^
