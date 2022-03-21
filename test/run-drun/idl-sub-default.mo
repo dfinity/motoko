@@ -1,7 +1,7 @@
 import Prim "mo:⛔";
 
+// test candid subtype test with higher-order arguments
 actor this {
-
 
    public func send_f0(
      f : shared (Nat) -> async Int
@@ -22,7 +22,12 @@ actor this {
      Prim.debugPrint("ok");
    };
 
-
+   public func send_f3(
+     f : shared () ->
+           async (Null, Any, ?None)
+   ) : async () {
+     Prim.debugPrint("ok");
+   };
 
    public func f0(n : Nat) : async Int { 0 };
 
@@ -44,6 +49,11 @@ actor this {
    public func f2_1(n : Int, a : [Int], r : {f : Int}, v : {#l : Int; #m : Int; #o : Int}) :
      async (Nat, [Nat], {f : Nat; g : Nat; h : Nat}, { #l : Nat}) {
         (1, [1], {f = 1; g = 2; h = 3}, (#l 0))
+     };
+
+   public func f3_0() :
+     async (n : Null, a : ?None, r : Any) {
+       (null, null, null)
      };
 
    public func go() : async () {
@@ -118,12 +128,13 @@ actor this {
       };
 
 
+      // several args
       do {
         let this = actor (t) : actor {
           send_f2 :
             (shared (Nat, [Nat], {f : Nat; g : Nat}, {#l : Nat; #m : Nat}) ->
-               async(Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Int})) ->
-                 async ()
+              async (Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Int})) ->
+                async ()
         };
         try {
           await this.send_f2(f2_0);
@@ -131,12 +142,12 @@ actor this {
         catch e { Prim.debugPrint "wrong_2_0"; }
       };
 
-
+      // several args, contra-co subtyping
       do {
         let this = actor (t) : actor {
           send_f2 :
             (shared (Int, [Int], {f : Int}, {#l : Int; #m : Int; #o : Int}) ->
-              async(Nat, [Nat], {f : Nat; g : Nat; h : Nat}, {#l : Nat})) ->
+              async (Nat, [Nat], {f : Nat; g : Nat; h : Nat}, {#l : Nat})) ->
                 async ()
         };
         try {
@@ -146,9 +157,21 @@ actor this {
       };
 
 
+      // null, opt and any trailing args, defaulting
+      do {
+        let this = actor (t) : actor {
+          send_f3 :
+            (shared () ->
+              async (Null, ?None, Any)) ->
+                async ()
+        };
+        try {
+          await this.send_f3(f3_0);
+        }
+        catch e { Prim.debugPrint "wrong_3_0"; }
+      };
 
    };
-
 
 }
 //SKIP run
