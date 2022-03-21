@@ -9,6 +9,13 @@ actor this {
      Prim.debugPrint("ok");
    };
 
+   public func send_f1(
+     f : shared (?Nat) -> async ?Int
+   ) : async () {
+     Prim.debugPrint("ok");
+   };
+
+
    public func f0(n : Nat) : async Int { 0 };
 
    public func f0_1(n : Int) : async Nat { 0 };
@@ -19,7 +26,7 @@ actor this {
 
    public func f0_4(ob : ?Bool) : async Int { 0 };
 
-   public func f0_5(n : Nat) : async ?Bool { null };
+   public func f1_0(n : ?Nat) : async Bool { true };
 
    public func go() : async () {
       let t = debug_show (Prim.principalOfActor(this));
@@ -27,7 +34,7 @@ actor this {
       // vanilla subtyping on in/out args
       do {
         let this = actor (t) : actor {
-           send_f0 : (shared (n:Int) -> async Nat) -> async ();
+          send_f0 : (shared (n:Int) -> async Nat) -> async ();
         };
         try {
           await this.send_f0(f0_1);
@@ -38,7 +45,7 @@ actor this {
       // vanilla subtyping on in/out arg sequences
       do {
         let this = actor (t) : actor {
-           send_f0 : (shared () -> async (Nat,Bool)) -> async ();
+          send_f0 : (shared () -> async (Nat,Bool)) -> async ();
         };
         try {
           await this.send_f0(f0_2);
@@ -49,7 +56,7 @@ actor this {
       // opt subtyping in arg and return
       do {
         let this = actor (t) : actor {
-           send_f0 : (shared (Nat, ?Nat) -> async (Int, ?Nat)) -> async ();
+          send_f0 : (shared (Nat, ?Nat) -> async (Int, ?Nat)) -> async ();
         };
         try {
           await this.send_f0(f0_3);
@@ -60,7 +67,7 @@ actor this {
       // opt override in arg
       do {
         let this = actor (t) : actor {
-           send_f0 : (shared (?Bool) -> async Int) -> async ();
+          send_f0 : (shared (?Bool) -> async Int) -> async ();
         };
         try {
           await this.send_f0(f0_4);
@@ -72,12 +79,12 @@ actor this {
       // opt override in return
       do {
         let this = actor (t) : actor {
-           send_f0 : (shared (Nat) -> async ?Bool) -> async ();
+          send_f1 : (shared (?Nat) -> async Bool) -> async ();
         };
         try {
-          await this.send_f0(f0_5);
+          await this.send_f1(f1_0);
         }
-        catch e { Prim.debugPrint "wrong_0_5"; }
+        catch e { Prim.debugPrint "wrong_1_0"; }
       };
 
 

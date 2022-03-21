@@ -5,7 +5,7 @@
 → update go()
 debug.print: ok
 debug.print: ok
-debug.print: wrong_0_3
 debug.print: ok
-debug.print: wrong_0_5
+debug.print: ok
+debug.print: ok
 ← replied: ()

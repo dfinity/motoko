@@ -659,36 +659,46 @@ unsafe fn sub(
             // TODO: extend with opt subtyping
             // contra in domain
             let in1 = leb128_decode(&mut tb1);
-            let in2 = leb128_decode(&mut tb2);
-            if in1 > in2 {
-                return false;
-            }
+            let mut in2 = leb128_decode(&mut tb2);
             for _ in 0..in1 {
                 let t11 = sleb128_decode(&mut tb1);
-                let t21 = sleb128_decode(&mut tb2);
-                // NB: invert p and args!
-                if !sub(rel, !p, end2, end1, typtbl2, typtbl1, t21, t11, depth + 1) {
-                    return false;
+                if in2 == 0 {
+                    if !opt_empty_sub(end1, typtbl1, t11) {
+                        return false;
+                    }
+                } else {
+                    let t21 = sleb128_decode(&mut tb2);
+                    in2 -= 1;
+                    // NB: invert p and args!
+                    if !sub(rel, !p, end2, end1, typtbl2, typtbl1, t21, t11, depth + 1) {
+                        return false;
+                    }
                 }
             }
-            for _ in in1..in2 {
+            while in2 > 0 {
                 let _ = sleb128_decode(&mut tb2);
+                in2 -= 1;
             }
             // co in range
-            let out1 = leb128_decode(&mut tb1);
+            let mut out1 = leb128_decode(&mut tb1);
             let out2 = leb128_decode(&mut tb2);
-            if out2 > out1 {
-                return false;
-            }
             for _ in 0..out2 {
-                let t11 = sleb128_decode(&mut tb1);
                 let t21 = sleb128_decode(&mut tb2);
-                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
-                    return false;
+                if out1 == 0 {
+                    if !opt_empty_sub(end2, typtbl2, t21) {
+                        return false;
+                    }
+                } else {
+                    let t11 = sleb128_decode(&mut tb1);
+                    out1 -= 1;
+                    if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                        return false;
+                    }
                 }
             }
-            for _ in out2..out1 {
+            while out1 > 0 {
                 let _ = sleb128_decode(&mut tb1);
+                out1 -= 1;
             }
             // check annotations (that we care about)
             // TODO: more generally, we would check equality of 256-bit bit-vectors,
