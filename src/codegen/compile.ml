@@ -5587,40 +5587,54 @@ module Serialization = struct
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
-        get_arg_count ^^
-        compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
-        E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
-
         G.concat_map (fun t ->
-          compile_unboxed_const (if extended then 1l else 0l) ^^
-          get_data_buf ^^ get_ref_buf ^^
-          get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
-          get_typtbl_ptr ^^ load_unskewed_ptr ^^
-          ReadBuf.read_sleb128 env get_main_typs_buf ^^
-          get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
-          compile_unboxed_const 0l ^^ (* initial depth *)
-          compile_unboxed_const 0l ^^ (* initially, cannot recover *)
-          deserialize_go env t ^^ set_val ^^
-          get_val ^^ compile_eq_const (coercion_error_value env) ^^
-          E.then_trap_with env ("IDL error: coercion failure encountered") ^^
-          get_val
+          let can_recover, default_or_trap = Type.(
+            match normalize t with
+            | Prim Null | Opt _ | Any ->
+              (compile_unboxed_one, fun msg -> Opt.null_lit env)
+            | _ ->
+              (compile_unboxed_zero, fun msg -> E.trap_with env msg))
+          in
+          get_arg_count ^^
+          compile_rel_const I32Op.Eq 0l ^^
+          G.if1 I32Type
+           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
+           (begin
+             compile_unboxed_const (if extended then 1l else 0l) ^^
+             get_data_buf ^^ get_ref_buf ^^
+             get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
+             get_typtbl_ptr ^^ load_unskewed_ptr ^^
+             ReadBuf.read_sleb128 env get_main_typs_buf ^^
+             get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
+             compile_unboxed_const 0l ^^ (* initial depth *)
+             can_recover ^^
+             deserialize_go env t ^^ set_val ^^
+             get_val ^^ compile_eq_const (coercion_error_value env) ^^
+             get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
+             (G.if1 I32Type
+               (default_or_trap "IDL error: coercion failure encountered")
+               get_val)
+           end)
         ) ts ^^
 
         (* Skip any extra arguments *)
-        get_arg_count ^^ compile_sub_const (Int32.of_int (List.length ts)) ^^
-        from_0_to_n env (fun _ ->
-          get_data_buf ^^
-          get_typtbl_ptr ^^ load_unskewed_ptr ^^
-          ReadBuf.read_sleb128 env get_main_typs_buf ^^
-          compile_unboxed_const 0l ^^
-          E.call_import env "rts" "skip_any"
-        ) ^^
+        compile_while env
+         (get_arg_count ^^ compile_rel_const I32Op.GtU 0l)
+         (begin
+            get_data_buf ^^
+            get_typtbl_ptr ^^ load_unskewed_ptr ^^
+            ReadBuf.read_sleb128 env get_main_typs_buf ^^
+            compile_unboxed_const 0l ^^
+            E.call_import env "rts" "skip_any" ^^
+            get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count
+           end) ^^
 
         ReadBuf.is_empty env get_data_buf ^^
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
         ReadBuf.is_empty env get_ref_buf ^^
         E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
       ))))))
+
     )
 
   let deserialize env ts =
