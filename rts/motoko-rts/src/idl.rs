@@ -522,9 +522,9 @@ unsafe fn unfold(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> i32 {
     return sleb128_decode(&mut tb);
 }
 
-unsafe fn opt_empty_sub(end: *mut u8, typtbl: *mut *mut u8, t: i32) -> bool {
+unsafe fn is_null_opt_reserved(end: *mut u8, typtbl: *mut *mut u8, t: i32) -> bool {
     if is_primitive_type(t) {
-        return t == IDL_PRIM_reserved;
+        return t == IDL_PRIM_null || t == IDL_PRIM_reserved;
     }
 
     // unfold t
@@ -656,14 +656,13 @@ unsafe fn sub(
             return sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1);
         }
         (IDL_CON_func, IDL_CON_func) => {
-            // TODO: extend with opt subtyping
             // contra in domain
             let in1 = leb128_decode(&mut tb1);
             let mut in2 = leb128_decode(&mut tb2);
             for _ in 0..in1 {
                 let t11 = sleb128_decode(&mut tb1);
                 if in2 == 0 {
-                    if !opt_empty_sub(end1, typtbl1, t11) {
+                    if !is_null_opt_reserved(end1, typtbl1, t11) {
                         return false;
                     }
                 } else {
@@ -685,7 +684,7 @@ unsafe fn sub(
             for _ in 0..out2 {
                 let t21 = sleb128_decode(&mut tb2);
                 if out1 == 0 {
-                    if !opt_empty_sub(end2, typtbl2, t21) {
+                    if !is_null_opt_reserved(end2, typtbl2, t21) {
                         return false;
                     }
                 } else {
@@ -735,7 +734,7 @@ unsafe fn sub(
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
                     // check all remaining fields optional
-                    if !opt_empty_sub(end2, typtbl2, t21) {
+                    if !is_null_opt_reserved(end2, typtbl2, t21) {
                         return false;
                     }
                     continue;
@@ -751,7 +750,7 @@ unsafe fn sub(
                     }
                 };
                 if tag1 > tag2 {
-                    if !opt_empty_sub(end2, typtbl2, t21) {
+                    if !is_null_opt_reserved(end2, typtbl2, t21) {
                         // missing, non_opt field
                         return false;
                     }
