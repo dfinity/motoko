@@ -598,7 +598,11 @@ unsafe fn sub(
 
     // unfold t1, if necessary
     let mut tb1 = Buf {
-        ptr: *typtbl1.add(if t1 < 0 { 0 } else { t1 as usize }), // better dummy?
+        ptr: if t1 < 0 {
+            end1
+        } else {
+            *typtbl1.add(t1 as usize)
+        },
         end: end1,
     };
 
@@ -608,7 +612,11 @@ unsafe fn sub(
 
     // unfold t2, if necessary
     let mut tb2 = Buf {
-        ptr: *typtbl2.add(if t2 < 0 { 0 } else { t2 as usize }), // better dummy?
+        ptr: if t2 < 0 {
+            end2
+        } else {
+            *typtbl2.add(t2 as usize)
+        },
         end: end2,
     };
 
@@ -616,9 +624,8 @@ unsafe fn sub(
         t2 = sleb128_decode(&mut tb2);
     };
 
-    debug_assert!(t1 < 0 && t2 < 0);
-
     match (t1, t2) {
+        (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
         (_, IDL_PRIM_reserved) => true,
         (IDL_PRIM_empty, _) => true,
         /*
@@ -648,6 +655,7 @@ unsafe fn sub(
             return sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1);
         }
         (IDL_CON_func, IDL_CON_func) => {
+            // TODO: extend with opt subtyping
             // contra in domain
             let in1 = leb128_decode(&mut tb1);
             let in2 = leb128_decode(&mut tb2);
