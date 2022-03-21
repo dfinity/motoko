@@ -4164,8 +4164,19 @@ module RTS_Exports = struct
 
 end (* RTS_Exports *)
 
+
+(* Below signature is needed by the serialiser to supply the
+   methods various formats and auxiliary routines. A stream
+   token refers to the stream itself. Depending on the stream's
+   methodology, the token can be a (bump) pointer or a handle
+   (like a `Blob`). The former needs to be updated at certain
+   points because the token will normally reside in locals that
+   nested functions won't have access to. *)
 module type Stream = sig
-  (*               env    ref    code *)
+  (* Bottleneck routines for streaming in different formats.
+     The `code` must be used linearly. `token` is a fragment
+     of Wasm that puts the stream token onto the stack.
+     Arguments:    env    token  code *)
   val write_byte : E.t -> G.t -> G.t -> G.t
   val write_word_leb : E.t -> G.t -> G.t -> G.t
   val write_word_32 : E.t -> G.t -> G.t -> G.t
@@ -4174,10 +4185,12 @@ module type Stream = sig
   val write_bignum_leb : E.t -> G.t -> G.t -> G.t
   val write_bignum_sleb : E.t -> G.t -> G.t -> G.t
 
-  (* opportunity to flush or update, stream token is on stack *)
+  (* Opportunity to flush or update the token. Stream token is on stack. *)
   val checkpoint : E.t -> G.t -> G.t
 
-  (* reserve a small fixed number of bytes in the stream and return an address to it *)
+  (* Reserve a small fixed number of bytes in the stream and return an
+     address to it. The address is invalidated by a GC, and as such must
+     be written to in the next few instructions. *)
   val reserve : E.t -> G.t -> int32 -> G.t
 end
 
