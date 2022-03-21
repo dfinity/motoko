@@ -88,6 +88,8 @@ You can use the following options with the `+moc+` command.
 
 |`+--public-metadata <name>+` |Emit icp custom section <name> (candid:args or candid:service or motoko:stable-types or motoko:compiler) as `public` (default is `private`)
 
+|`+--omit-metadata <name>+` |omit icp custom section <name> (candid:args or candid:service or motoko:stable-types or motoko:compiler)
+
 |`+--print-deps+` |Prints the dependencies for a given source file.
 
 //|`+--profile+` |Activates profiling counters in interpreters.

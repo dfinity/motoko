@@ -4250,7 +4250,94 @@ module RTS_Exports = struct
 
 end (* RTS_Exports *)
 
-module Serialization = struct
+
+(* Below signature is needed by the serialiser to supply the
+   methods various formats and auxiliary routines. A stream
+   token refers to the stream itself. Depending on the stream's
+   methodology, the token can be a (bump) pointer or a handle
+   (like a `Blob`). The former needs to be updated at certain
+   points because the token will normally reside in locals that
+   nested functions won't have access to. *)
+module type Stream = sig
+  (* Bottleneck routines for streaming in different formats.
+     The `code` must be used linearly. `token` is a fragment
+     of Wasm that puts the stream token onto the stack.
+     Arguments:    env    token  code *)
+  val write_byte : E.t -> G.t -> G.t -> G.t
+  val write_word_leb : E.t -> G.t -> G.t -> G.t
+  val write_word_32 : E.t -> G.t -> G.t -> G.t
+  val write_blob : E.t -> G.t -> G.t -> G.t
+  val write_text : E.t -> G.t -> G.t -> G.t
+  val write_bignum_leb : E.t -> G.t -> G.t -> G.t
+  val write_bignum_sleb : E.t -> G.t -> G.t -> G.t
+
+  (* Opportunity to flush or update the token. Stream token is on stack. *)
+  val checkpoint : E.t -> G.t -> G.t
+
+  (* Reserve a small fixed number of bytes in the stream and return an
+     address to it. The address is invalidated by a GC, and as such must
+     be written to in the next few instructions. *)
+  val reserve : E.t -> G.t -> int32 -> G.t
+end
+
+
+module BumpStream : Stream = struct
+  let advance_data_buf get_data_buf =
+    get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
+
+  let checkpoint _env get_data_buf = G.setter_for get_data_buf
+
+  let reserve _env get_data_buf bytes =
+    get_data_buf ^^ get_data_buf ^^ compile_add_const bytes ^^ G.setter_for get_data_buf
+
+  let write_word_leb env get_data_buf code =
+    let set_word, get_word = new_local env "word" in
+    code ^^ set_word ^^
+    I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
+    advance_data_buf get_data_buf
+
+  let write_word_32 env get_data_buf code =
+    get_data_buf ^^ code ^^
+    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+    compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
+
+  let write_byte _env get_data_buf code =
+    get_data_buf ^^ code ^^
+    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
+    compile_unboxed_const 1l ^^ advance_data_buf get_data_buf
+
+  let write_blob env get_data_buf get_x =
+    let set_len, get_len = new_local env "len" in
+    get_x ^^ Blob.len env ^^ set_len ^^
+    write_word_leb env get_data_buf get_len ^^
+    get_data_buf ^^
+    get_x ^^ Blob.payload_ptr_unskewed ^^
+    get_len ^^
+    Heap.memcpy env ^^
+    get_len ^^ advance_data_buf get_data_buf
+
+  let write_text env get_data_buf get_x =
+    let set_len, get_len = new_local env "len" in
+    get_x ^^ Text.size env ^^ set_len ^^
+    write_word_leb env get_data_buf get_len ^^
+    get_x ^^ get_data_buf ^^ Text.to_buf env ^^
+    get_len ^^ advance_data_buf get_data_buf
+
+  let write_bignum_leb env get_data_buf get_x =
+    get_data_buf ^^
+    get_x ^^
+    BigNum.compile_store_to_data_buf_unsigned env ^^
+    advance_data_buf get_data_buf
+
+  let write_bignum_sleb env get_data_buf get_x =
+    get_data_buf ^^
+    get_x ^^
+    BigNum.compile_store_to_data_buf_signed env ^^
+    advance_data_buf get_data_buf
+
+end
+
+module MakeSerialization (Strm : Stream) = struct
   (*
     The general serialization strategy is as follows:
     * We statically generate the IDL type description header.
@@ -4615,39 +4702,17 @@ module Serialization = struct
     let name = "@serialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
-      let set_data_buf = G.setter_for get_data_buf in
       let set_ref_buf = G.setter_for get_ref_buf in
 
       (* Some combinators for writing values *)
-
-      let advance_data_buf =
-        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_buf in
-
-      let write_word code =
-        let (set_word, get_word) = new_local env "word" in
-        code ^^ set_word ^^
-        I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
-        advance_data_buf
-      in
-
-      let write_word32 code =
-        get_data_buf ^^ code ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const Heap.word_size ^^ advance_data_buf
-      in
-
-      let write_byte code =
-        get_data_buf ^^ code ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-        compile_unboxed_const 1l ^^ advance_data_buf
-      in
+      let open Strm in
 
       let write env t =
         get_data_buf ^^
         get_ref_buf ^^
         serialize_go env t ^^
         set_ref_buf ^^
-        set_data_buf
+        checkpoint env get_data_buf
       in
 
       let write_alias write_thing =
@@ -4659,18 +4724,18 @@ module Serialization = struct
         G.if0
         begin
           (* This is the real data *)
-          write_byte (compile_unboxed_const 0l) ^^
+          write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
-          write_word32 (compile_unboxed_const 0l) ^^
-          write_word32 (compile_unboxed_const 0l) ^^
+          write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
+          write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           (* Now the data, following the object field mutbox indirection *)
           write_thing ()
         end
         begin
           (* This is a reference *)
-          write_byte (compile_unboxed_const 1l) ^^
+          write_byte env get_data_buf (compile_unboxed_const 1l) ^^
           (* Sanity Checks *)
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
@@ -4688,7 +4753,7 @@ module Serialization = struct
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
           (* Write the offset to the output buffer *)
-          write_word32 get_offset
+          write_word_32 env get_data_buf get_offset
         end
       in
 
@@ -4696,38 +4761,29 @@ module Serialization = struct
 
       begin match t with
       | Prim Nat ->
-        get_data_buf ^^
-        get_x ^^
-        BigNum.compile_store_to_data_buf_unsigned env ^^
-        advance_data_buf
+        write_bignum_leb env get_data_buf get_x
       | Prim Int ->
-        get_data_buf ^^
-        get_x ^^
-        BigNum.compile_store_to_data_buf_signed env ^^
-        advance_data_buf
+        write_bignum_sleb env get_data_buf get_x
       | Prim Float ->
-        get_data_buf ^^
+        reserve env get_data_buf 8l ^^
         get_x ^^ Float.unbox env ^^
-        G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 8l ^^ advance_data_buf
+        G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None})
       | Prim (Int64|Nat64) ->
-        get_data_buf ^^
+        reserve env get_data_buf 8l ^^
         get_x ^^ BoxedWord64.unbox env ^^
-        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 8l ^^ advance_data_buf
+        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None})
       | Prim (Int32|Nat32) ->
-        write_word32 (get_x ^^ BoxedSmallWord.unbox env)
+        write_word_32 env get_data_buf (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
-        write_word32 (get_x ^^ TaggedSmallWord.untag_codepoint)
+        write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.untag_codepoint)
       | Prim (Int16|Nat16) ->
-        get_data_buf ^^
+        reserve env get_data_buf 2l ^^
         get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16}) ^^
-        compile_unboxed_const 2l ^^ advance_data_buf
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16})
       | Prim (Int8|Nat8) ->
-        write_byte (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
+        write_byte env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
       | Prim Bool ->
-        write_byte (get_x ^^ BoxedSmallWord.unbox env) (* essentially SR.adjust SR.Vanilla SR.bool *)
+        write_byte env get_data_buf (get_x ^^ BoxedSmallWord.unbox env) (* essentially SR.adjust SR.Vanilla SR.bool *)
       | Tup [] -> (* e(()) = null *)
         G.nop
       | Tup ts ->
@@ -4743,7 +4799,7 @@ module Serialization = struct
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
-        write_word (get_x ^^ Heap.load_field Arr.len_field) ^^
+        write_word_leb env get_data_buf (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
@@ -4755,40 +4811,29 @@ module Serialization = struct
         get_x ^^
         Opt.is_some env ^^
         G.if0
-          ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t )
-          ( write_byte (compile_unboxed_const 0l) )
+          (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t)
+          (write_byte env get_data_buf (compile_unboxed_const 0l))
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
             Variant.test_is env l ^^
             G.if0
-              ( write_word (compile_unboxed_const (Int32.of_int i)) ^^
+              ( write_word_leb env get_data_buf (compile_unboxed_const (Int32.of_int i)) ^^
                 get_x ^^ Variant.project ^^ write env t)
               continue
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Blob ->
-        let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Blob.len env ^^ set_len ^^
-        write_word get_len ^^
-        get_data_buf ^^
-        get_x ^^ Blob.payload_ptr_unskewed ^^
-        get_len ^^
-        Heap.memcpy env ^^
-        get_len ^^ advance_data_buf
+        write_blob env get_data_buf get_x
       | Prim Text ->
-        let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Text.size env ^^ set_len ^^
-        write_word get_len ^^
-        get_x ^^ get_data_buf ^^ Text.to_buf env ^^
-        get_len ^^ advance_data_buf
+        write_text env get_data_buf get_x
       | Func _ ->
-        write_byte (compile_unboxed_const 1l) ^^
+        write_byte env get_data_buf (compile_unboxed_const 1l) ^^
         get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
-        write_byte (compile_unboxed_const 1l) ^^
+        write_byte env get_data_buf (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
       | Non ->
         E.trap_with env "serializing value of type None"
@@ -5637,7 +5682,9 @@ To detect and preserve aliasing, these steps are taken:
 
 *)
 
-end (* Serialization *)
+end (* MakeSerialization *)
+
+module Serialization = MakeSerialization(BumpStream)
 
 
 (* Stabilization (serialization to/from stable memory) of both:
@@ -9007,19 +9054,9 @@ and main_actor as_opt mod_env ds fs up =
     end;
 
     (* Export metadata *)
-    env.E.stable_types :=
-      Some (
-        List.mem "motoko:stable-types" !Flags.public_metadata_names,
-        up.meta.sig_);
-    env.E.service :=
-      Some (
-        List.mem "candid:service" !Flags.public_metadata_names,
-        up.meta.candid.service);
-    env.E.args :=
-      Some (
-        List.mem "candid:args" !Flags.public_metadata_names,
-        up.meta.candid.args);
-
+    env.E.stable_types := metadata "motoko:stable-types" up.meta.sig_;
+    env.E.service := metadata "candid:service" up.meta.candid.service;
+    env.E.args := metadata "candid:args" up.meta.candid.args;
 
     (* Deserialize any arguments *)
     begin match as_opt with
@@ -9036,6 +9073,12 @@ and main_actor as_opt mod_env ds fs up =
     (* Continue with decls *)
     decls_codeW G.nop
   )
+
+and metadata name value =
+  if List.mem name !Flags.omit_metadata_names then None
+  else Some (
+           List.mem name !Flags.public_metadata_names,
+           value)
 
 and conclude_module env start_fi_o =
 
@@ -9116,9 +9159,7 @@ and conclude_module env start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
-        compiler = Some
-         (List.mem "motoko:compiler" !Flags.public_metadata_names,
-          Lib.Option.get Source_id.release Source_id.id)
+        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id)
       };
       candid = {
         args = !(env.E.args);
