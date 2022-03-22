@@ -543,7 +543,6 @@ unsafe fn sub(
     t1: i32,
     t2: i32,
 ) -> bool {
-
     if t1 >= 0 && t2 >= 0 {
         let t1 = t1 as u32;
         let t2 = t2 as u32;
@@ -721,8 +720,8 @@ unsafe fn sub(
                 };
                 let tag1 = leb128_decode(&mut tb1);
                 let t11 = sleb128_decode(&mut tb1);
-                let mut tag2 = 0;
-                let mut t21 = 0;
+                let mut tag2: u32;
+                let mut t21: i32;
                 loop {
                     tag2 = leb128_decode(&mut tb2);
                     t21 = sleb128_decode(&mut tb2);
@@ -751,10 +750,10 @@ unsafe fn sub(
                 let p2 = tb2.ptr;
                 Buf::advance(&mut tb2, len2);
                 let t21 = sleb128_decode(&mut tb2);
-                let mut len1 = 0;
-                let mut p1 = core::ptr::null_mut();
-                let mut t11 = 0;
-                let mut cmp: i32 = 0;
+                let mut len1: u32;
+                let mut p1: *mut u8;
+                let mut t11: i32;
+                let mut cmp: i32;
                 loop {
                     len1 = leb128_decode(&mut tb1);
                     p1 = tb1.ptr;
