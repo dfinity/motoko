@@ -4187,6 +4187,9 @@ module type Stream = sig
 
   (* Creates a fresh stream, storing stream token. *)
   val create : E.t -> G.t -> G.t
+  (* Checks the stream's filling, traps if unexpected *)
+  val check : E.t -> G.t -> G.t -> G.t
+
   (* Finishes the stream, performing consistence checks. *)
   (*val terminate : E.t -> G.t -> G.t *)
 
@@ -4204,6 +4207,12 @@ end
 
 module BumpStream : Stream = struct
   let create env set_data_buf = Blob.dyn_alloc_scratch env ^^ set_data_buf
+
+  let check env get_data_buf get_data_size =
+    get_data_buf ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "data buffer not filled"
+
   (*let terminate env get_data_buf = Blob.dyn_alloc_scratch env ^^ set_data_start*)
 
   let name_serialize typ_name = "@serialize_go<" ^ typ_name ^ ">"
@@ -5442,8 +5451,8 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "reference buffer not filled" ^^
 
-      G.i Drop ^^
-      (* FIXME get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      Strm.check env get_data_start get_data_size ^^
+      (* get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "data buffer not filled" ^^
        *)
