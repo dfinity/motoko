@@ -68,8 +68,18 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
-  | S.ToCandidE (ot, e) -> invalid_arg "to do"
-  | S.FromCandidE (ot, e) -> invalid_arg "to do"
+  | S.ToCandidE (ot, e) ->
+    begin match !ot with
+    | T.Tup ts1 ->
+      I.PrimE (I.SerializePrim ts1, exps e)
+    | _ -> assert false
+    end
+  | S.FromCandidE (ot, e) ->
+    begin match !ot with
+    | T.Tup ts1 ->
+      I.PrimE (I.DeserializePrim ts1, [exp e])
+    | _ -> assert false
+    end
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it

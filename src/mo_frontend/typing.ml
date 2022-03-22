@@ -972,8 +972,12 @@ and infer_exp'' env exp : T.typ =
       ot := t
     end;
     T.text
-  | ToCandidE (ot, exp1) -> invalid_arg "to do"
-  | FromCandidE (ot, exp1) -> invalid_arg "to do"
+  | ToCandidE (ot, exps) ->
+    let ts = List.map (infer_exp env) exps in
+    ot := T.Tup ts;
+    T.Prim T.Blob
+  | FromCandidE (ot, exp1) ->
+    error env exp.at "M0063" "from_candid requires but is missing a known type (from context)"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -1380,6 +1384,21 @@ and check_exp' env0 t exp : T.typ =
     if env.weak && op = Operator.SubOp && T.eq t T.nat then
       warn env exp.at "M0155" "operator may trap for inferred type%a"
         display_typ_expand t;
+    t
+  | ToCandidE (ot, exps), _ ->
+    begin match t with
+    | T.Prim T.Blob -> begin
+        let ts = List.map (infer_exp env) exps in
+        ot := T.Tup ts;
+        T.Prim T.Blob
+      end
+    | _ ->
+      error env exp.at "MXXXX" "to_candid produces Blob, not type%a"
+        display_typ_expand t
+    end
+  | FromCandidE (ot, exp1), _ ->
+    ot := t;
+    check_exp env (T.Prim T.Blob) exp1;
     t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
@@ -2628,5 +2647,3 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           List.sort T.compare_field fs
         ) sig_.it
     )
-
-
