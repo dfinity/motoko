@@ -570,11 +570,7 @@ unsafe fn sub(
     typtbl2: *mut *mut u8,
     t1: i32,
     t2: i32,
-    depth: i32,
 ) -> bool {
-    if depth > 1023 {
-        idl_trap_with("sub: subtyping too deep");
-    }
 
     if t1 >= 0 && t2 >= 0 {
         let t1 = t1 as u32;
@@ -653,7 +649,7 @@ unsafe fn sub(
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
-            return sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1);
+            return sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21);
         }
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
@@ -669,7 +665,7 @@ unsafe fn sub(
                     let t21 = sleb128_decode(&mut tb2);
                     in2 -= 1;
                     // NB: invert p and args!
-                    if !sub(rel, !p, end2, end1, typtbl2, typtbl1, t21, t11, depth + 1) {
+                    if !sub(rel, !p, end2, end1, typtbl2, typtbl1, t21, t11) {
                         return false;
                     }
                 }
@@ -690,7 +686,7 @@ unsafe fn sub(
                 } else {
                     let t11 = sleb128_decode(&mut tb1);
                     out1 -= 1;
-                    if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                    if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
                         return false;
                     }
                 }
@@ -757,7 +753,7 @@ unsafe fn sub(
                     advance = false; // reconsider this field in next round
                     continue;
                 };
-                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
                     return false;
                 }
                 advance = true;
@@ -786,7 +782,7 @@ unsafe fn sub(
                 if tag1 != tag2 {
                     return false;
                 };
-                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
                     return false;
                 }
             }
@@ -822,7 +818,7 @@ unsafe fn sub(
                 if !(cmp == 0) {
                     return false;
                 };
-                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21, depth + 1) {
+                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
                     return false;
                 }
             }
@@ -883,5 +879,5 @@ unsafe extern "C" fn idl_sub(
 
     rel.init();
 
-    return sub(&rel, true, end1, end2, typtbl1, typtbl2, t1, t2, 0);
+    return sub(&rel, true, end1, end2, typtbl1, typtbl2, t1, t2);
 }
