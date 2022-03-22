@@ -4229,7 +4229,7 @@ module BumpStream : Stream = struct
 
   let terminate env get_data_buf get_data_size header_size =
     get_data_buf ^^ compile_sub_const header_size ^^
-    get_data_size ^^ compile_sub_const header_size
+    get_data_size ^^ compile_add_const header_size
 
   let name_for seed typ_name = "@" ^ seed ^ "<" ^ typ_name ^ ">"
 
