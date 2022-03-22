@@ -10,36 +10,40 @@ pub struct BitRel {
     /// Pointer into the bit set
     pub ptr: *mut u32,
     /// Pointer to the end of the bit set
-    /// must allow at least 2 * n * m bits
+    /// must allow at least 2 * size1 * size2 bits
     pub end: *mut u32,
-    pub n: u32,
-    pub m: u32,
+    pub size1: u32,
+    pub size2: u32,
 }
 
 impl BitRel {
-    pub(crate) unsafe fn words(n_types1: u32, n_types2: u32) -> u32 {
-        return ((2 * n_types1 * n_types2) + (usize::BITS - 1)) / usize::BITS;
+    pub(crate) unsafe fn words(size1: u32, size2: u32) -> u32 {
+        return ((2 * size1 * size2) + (usize::BITS - 1)) / usize::BITS;
     }
 
     pub(crate) unsafe fn init(self: &Self) {
         let bytes = ((self.end as usize) - (self.ptr as usize)) as u32;
-        if (self.n * self.m * 2) > bytes * 8 {
+        if (self.size1 * self.size2 * 2) > bytes * 8 {
             idl_trap_with("BitRel not enough bytes");
         };
         memzero(self.ptr as usize, Words(bytes / WORD_SIZE));
     }
 
     pub(crate) unsafe fn set(self: &Self, p: bool, i_j: u32, j_i: u32) {
-        let n = self.n;
-        let m = self.m;
-        let (base, i, j) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
-        if i >= n {
+        let size1 = self.size1;
+        let size2 = self.size2;
+        let (base, i, j) = if p {
+            (0, i_j, j_i)
+        } else {
+            (size1 * size2, j_i, i_j)
+        };
+        if i >= size1 {
             idl_trap_with("BitRel.set i out of bounds");
         };
-        if j >= m {
+        if j >= size2 {
             idl_trap_with("BitRel.set j out of bounds");
         };
-        let k = base + i * m + j;
+        let k = base + i * size2 + j;
         let word = (k / usize::BITS) as usize;
         let bit = (k % usize::BITS) as u32;
         let dst = self.ptr.add(word);
@@ -50,16 +54,20 @@ impl BitRel {
     }
 
     pub(crate) unsafe fn get(self: &Self, p: bool, i_j: u32, j_i: u32) -> bool {
-        let n = self.n;
-        let m = self.m;
-        let (base, i, j) = if p { (0, i_j, j_i) } else { (n * m, j_i, i_j) };
-        if i >= n {
+        let size1 = self.size1;
+        let size2 = self.size2;
+        let (base, i, j) = if p {
+            (0, i_j, j_i)
+        } else {
+            (size1 * size2, j_i, i_j)
+        };
+        if i >= size1 {
             idl_trap_with("BitRel.set i out of bounds");
         };
-        if j >= m {
+        if j >= size2 {
             idl_trap_with("BitRel.set j out of bounds");
         };
-        let k = base + i * m + j;
+        let k = base + i * size2 + j;
         let word = (k / usize::BITS) as usize;
         let bit = (k % usize::BITS) as u32;
         let src = self.ptr.add(word);

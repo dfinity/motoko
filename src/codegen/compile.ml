@@ -4808,18 +4808,18 @@ module Serialization = struct
 
   let idl_sub env t2 =
     Func.share_code4 env ("idl_sub<" ^ typ_hash t2 ^ ">")
-      (("get_end1", I32Type),
-       ("n_types1", I32Type),
-       ("typtbl1", I32Type),
+      (("typtbl1", I32Type),
+       ("typtbl_end1", I32Type),
+       ("typtbl_size1", I32Type),
        ("idltyp1", I32Type)
       )
       [I32Type]
-      (fun env get_end1 get_n_types1 get_typtbl1 get_idltyp1 ->
+      (fun env get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 ->
         let typdesc, offsets, idltyps2 = type_desc env [t2] in
         let idltyp2 = List.hd idltyps2 in
-        let (set_end2, get_end2) = new_local env "end2" in
-        let (set_n_types2, get_n_types2) = new_local env "n_types2" in
         let (set_typtbl2, get_typtbl2) = new_local env "typetbl2" in
+        let (set_typtbl_end2, get_typtbl_end2) = new_local env "typtbl_end2" in
+        let (set_typtbl_size2, get_typtbl_size2) = new_local env "typtbl_size2" in
         let (set_idltyp2, get_idltyp2) = new_local env "idltyp2" in
         let static_typedesc =
           Int32.(add (Blob.vanilla_lit env typdesc)  Blob.unskewed_payload_offset)
@@ -4838,20 +4838,20 @@ module Serialization = struct
           Int32.add (Blob.vanilla_lit env tbl2) Blob.unskewed_payload_offset
         in
         compile_unboxed_const Int32.(add static_typedesc (of_int (String.length typdesc)))
-          ^^ set_end2 ^^
-        compile_unboxed_const (Int32.of_int (List.length offsets)) ^^ set_n_types2 ^^
+          ^^ set_typtbl_end2 ^^
+        compile_unboxed_const (Int32.of_int (List.length offsets)) ^^ set_typtbl_size2 ^^
         compile_unboxed_const static_typtbl2 ^^ set_typtbl2 ^^
         compile_unboxed_const idltyp2 ^^ set_idltyp2 ^^
-        get_n_types1 ^^ get_n_types2 ^^
+        get_typtbl_size1 ^^ get_typtbl_size2 ^^
         E.call_import env "rts" "idl_sub_buf_words" ^^
         Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
           get_rel_buf_ptr ^^
-          get_end1 ^^
-          get_end2 ^^
-          get_n_types1 ^^
-          get_n_types2 ^^
           get_typtbl1 ^^
           get_typtbl2 ^^
+          get_typtbl_end1 ^^
+          get_typtbl_end2 ^^
+          get_typtbl_size1 ^^
+          get_typtbl_size2 ^^
           get_idltyp1 ^^
           get_idltyp2 ^^
           E.call_import env "rts" "idl_sub"))
@@ -4864,14 +4864,14 @@ module Serialization = struct
       (("extended", I32Type),
        ("data_buffer", I32Type),
        ("ref_buffer", I32Type),
-       ("typtbl_end", I32Type),
        ("typtbl", I32Type),
-       ("idltyp", I32Type),
+       ("typtbl_end", I32Type),
        ("typtbl_size", I32Type),
+       ("idltyp", I32Type),
        ("depth", I32Type),
        ("can_recover", I32Type)
       ) [I32Type]
-    (fun env get_extended get_data_buf get_ref_buf get_typtbl_end get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
+    (fun env get_extended get_data_buf get_ref_buf get_typtbl get_typtbl_end get_typtbl_size get_idltyp get_depth get_can_recover ->
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -4892,10 +4892,10 @@ module Serialization = struct
         get_extended ^^
         get_data_buf ^^
         get_ref_buf ^^
-        get_typtbl_end ^^
         get_typtbl ^^
-        get_idlty ^^
+        get_typtbl_end ^^
         get_typtbl_size ^^
+        get_idlty ^^
         ( (* Reset depth counter if we made progress *)
           ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -5436,9 +5436,9 @@ module Serialization = struct
         G.if1 I32Type
           (compile_unboxed_const 1l)
           (begin
+            get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
-            get_typtbl ^^
             get_idltyp ^^
             idl_sub env t
            end) ^^
@@ -5456,9 +5456,9 @@ module Serialization = struct
         G.if1 I32Type
           (compile_unboxed_const 1l)
           (begin
+            get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
-            get_typtbl ^^
             get_idltyp ^^
             idl_sub env t
            end) ^^
@@ -5602,10 +5602,10 @@ module Serialization = struct
            (begin
              compile_unboxed_const (if extended then 1l else 0l) ^^
              get_data_buf ^^ get_ref_buf ^^
-             get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
              get_typtbl_ptr ^^ load_unskewed_ptr ^^
-             ReadBuf.read_sleb128 env get_main_typs_buf ^^
+             get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
              get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
+             ReadBuf.read_sleb128 env get_main_typs_buf ^^
              compile_unboxed_const 0l ^^ (* initial depth *)
              can_recover ^^
              deserialize_go env t ^^ set_val ^^

@@ -513,7 +513,7 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
     }
 }
 
-unsafe fn is_null_opt_reserved(end: *mut u8, typtbl: *mut *mut u8, t: i32) -> bool {
+unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     if is_primitive_type(t) {
         return t == IDL_PRIM_null || t == IDL_PRIM_reserved;
     }
@@ -536,10 +536,10 @@ unsafe fn is_null_opt_reserved(end: *mut u8, typtbl: *mut *mut u8, t: i32) -> bo
 unsafe fn sub(
     rel: &BitRel,
     p: bool,
-    end1: *mut u8,
-    end2: *mut u8,
     typtbl1: *mut *mut u8,
     typtbl2: *mut *mut u8,
+    end1: *mut u8,
+    end2: *mut u8,
     t1: i32,
     t2: i32,
 ) -> bool {
@@ -600,7 +600,7 @@ unsafe fn sub(
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
-            return sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21);
+            return sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21);
         }
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
@@ -609,14 +609,14 @@ unsafe fn sub(
             for _ in 0..in1 {
                 let t11 = sleb128_decode(&mut tb1);
                 if in2 == 0 {
-                    if !is_null_opt_reserved(end1, typtbl1, t11) {
+                    if !is_null_opt_reserved(typtbl1, end1, t11) {
                         return false;
                     }
                 } else {
                     let t21 = sleb128_decode(&mut tb2);
                     in2 -= 1;
                     // NB: invert p and args!
-                    if !sub(rel, !p, end2, end1, typtbl2, typtbl1, t21, t11) {
+                    if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11) {
                         return false;
                     }
                 }
@@ -631,13 +631,13 @@ unsafe fn sub(
             for _ in 0..out2 {
                 let t21 = sleb128_decode(&mut tb2);
                 if out1 == 0 {
-                    if !is_null_opt_reserved(end2, typtbl2, t21) {
+                    if !is_null_opt_reserved(typtbl2, end2, t21) {
                         return false;
                     }
                 } else {
                     let t11 = sleb128_decode(&mut tb1);
                     out1 -= 1;
-                    if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                         return false;
                     }
                 }
@@ -681,7 +681,7 @@ unsafe fn sub(
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
                     // check all remaining fields optional
-                    if !is_null_opt_reserved(end2, typtbl2, t21) {
+                    if !is_null_opt_reserved(typtbl2, end2, t21) {
                         return false;
                     }
                     continue;
@@ -697,14 +697,14 @@ unsafe fn sub(
                     }
                 };
                 if tag1 > tag2 {
-                    if !is_null_opt_reserved(end2, typtbl2, t21) {
+                    if !is_null_opt_reserved(typtbl2, end2, t21) {
                         // missing, non_opt field
                         return false;
                     }
                     advance = false; // reconsider this field in next round
                     continue;
                 };
-                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
+                if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                     return false;
                 }
                 advance = true;
@@ -733,7 +733,7 @@ unsafe fn sub(
                 if tag1 != tag2 {
                     return false;
                 };
-                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
+                if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                     return false;
                 }
             }
@@ -769,7 +769,7 @@ unsafe fn sub(
                 if !(cmp == 0) {
                     return false;
                 };
-                if !sub(rel, p, end1, end2, typtbl1, typtbl2, t11, t21) {
+                if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                     return false;
                 }
             }
@@ -787,26 +787,35 @@ unsafe extern "C" fn idl_sub_buf_words(n_types1: u32, n_types2: u32) -> u32 {
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub(
-    rel_buf: *mut u32, // a buffer with at least 2 * n * m bits
-    end1: *mut u8,
-    end2: *mut u8,
-    n_types1: u32,
-    n_types2: u32,
-    typtbl1: *mut *mut u8, // of len n_types1
-    typtbl2: *mut *mut u8, // of len n_types2
+    rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
+    typtbl1: *mut *mut u8,
+    typtbl2: *mut *mut u8,
+    typtbl_end1: *mut u8,
+    typtbl_end2: *mut u8,
+    typtbl_size1: u32,
+    typtbl_size2: u32,
     t1: i32,
     t2: i32,
 ) -> bool {
     let rel = BitRel {
         ptr: rel_buf,
-        end: rel_buf.add(idl_sub_buf_words(n_types1, n_types2) as usize),
-        n: n_types1,
-        m: n_types2,
+        end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),
+        size1: typtbl_size1,
+        size2: typtbl_size2,
     };
 
-    debug_assert!(t1 < (n_types1 as i32) && t2 < (n_types2 as i32));
+    debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
 
     rel.init();
 
-    return sub(&rel, true, end1, end2, typtbl1, typtbl2, t1, t2);
+    return sub(
+        &rel,
+        true,
+        typtbl1,
+        typtbl2,
+        typtbl_end1,
+        typtbl_end2,
+        t1,
+        t2,
+    );
 }
