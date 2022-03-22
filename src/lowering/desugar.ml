@@ -76,8 +76,10 @@ and exp' at note = function
     end
   | S.FromCandidE (ot, e) ->
     begin match !ot with
-    | T.Tup ts1 ->
+    | T.Opt (T.Tup ts1) ->
       I.PrimE (I.DeserializePrim ts1, [exp e])
+    | T.Opt t ->
+      I.PrimE (I.DeserializePrim [t], [exp e])
     | _ -> assert false
     end
   | S.TupE es -> (tupE (exps es)).it
@@ -154,6 +156,7 @@ and exp' at note = function
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
+(*
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _,
              {it=S.TupE es; _}) ->
     begin match note.S.note_typ with
@@ -167,6 +170,7 @@ and exp' at note = function
       I.PrimE (I.DeserializePrim ts2, [exp e])
     | _ -> assert false
     end
+*)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "caller";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.ICCallerPrim, [])

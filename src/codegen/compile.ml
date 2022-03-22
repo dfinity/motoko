@@ -7825,7 +7825,11 @@ and compile_exp (env : E.t) ae exp =
       Serialization.serialize env ts ^^
       Blob.of_ptr_size env
 
+    | SerializePrim ts, _ ->
+      invalid_arg "to do -- generalize unary case of compile_exp(SerializePrim _)"
+
     | DeserializePrim ts, [e] ->
+      (* to do -- deserialize should yield null, not trap, on failure. *)
       StackRep.of_arity (List.length ts),
       compile_exp_vanilla env ae e ^^
       Serialization.deserialize_from_blob false env ts

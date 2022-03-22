@@ -977,7 +977,7 @@ and infer_exp'' env exp : T.typ =
     ot := T.Tup ts;
     T.Prim T.Blob
   | FromCandidE (ot, exp1) ->
-    error env exp.at "M0063" "from_candid requires but is missing a known type (from context)"
+    error env exp.at "MXXXX" "from_candid requires but is missing a known type (from context)"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -1396,12 +1396,12 @@ and check_exp' env0 t exp : T.typ =
       error env exp.at "MXXXX" "to_candid produces Blob, not type%a"
         display_typ_expand t
     end
-  | FromCandidE (ot, exp1), T.Tup ts when List.for_all T.shared ts ->
-    ot := T.Tup ts;
+  | FromCandidE (ot, exp1), t when T.shared t && T.is_opt t ->
+    ot := t;
     check_exp env (T.Prim T.Blob) exp1;
     t
   | FromCandidE (_, _), t ->
-      error env exp.at "MXXXX" "from_candid produces a tuple of shared, not type%a"
+      error env exp.at "MXXXX" "from_candid produces an optional shared type, not type%a"
         display_typ_expand t    
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
@@ -1513,9 +1513,6 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
-  | CallE ({it=AnnotE ({it=PrimE "serialize";_}, _);note;_}, _, e), _
-      when not (is_tuple_lit e) ->
-    error env exp.at "MXXXX" "primitive serialize requires a literal tuple argument"
   | CallE (exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
