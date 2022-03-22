@@ -5435,8 +5435,6 @@ module MakeSerialization (Strm : Stream) = struct
       get_x ^^
       buffer_size env (Type.seq ts) ^^
       set_refs_size ^^
-      (* NO! add tydesc_len
-      compile_add_const tydesc_len ^^ *)
       set_data_size ^^
       (* check for overflow *)
       get_data_size ^^
@@ -5448,20 +5446,13 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-      (*Blob.dyn_alloc_scratch env ^^ set_data_start*)
+      (* Create a stream with suitable capacity and given header *)
       Strm.create env get_data_size set_data_start get_data_start tydesc ^^
       get_refs_size ^^ compile_mul_const Heap.word_size ^^ Blob.dyn_alloc_scratch env ^^ set_refs_start ^^
 
-      (* Write ty desc *)
-        (*Strm.write_literal env get_data_start tydesc ^^*)
-      (*get_data_start ^^
-      Blob.lit env tydesc ^^ Blob.payload_ptr_unskewed ^^
-      compile_unboxed_const tydesc_len ^^
-      Heap.memcpy env ^^*)
-
       (* Serialize x into the buffer *)
       get_x ^^
-      get_data_start ^^ (*compile_add_const tydesc_len ^^*)
+      get_data_start ^^
       get_refs_start ^^
       serialize_go env (Type.seq ts) ^^
 
@@ -5470,18 +5461,14 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "reference buffer not filled" ^^
 
+      (* Verify that the stream is correctly filled *)
       Strm.check env get_data_start get_data_size ^^
-      (* get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      E.else_trap_with env "data buffer not filled" ^^
-       *)
       get_refs_size ^^
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
+      (* Extract the payload if possible *)
       Strm.terminate env get_data_start get_data_size tydesc_len
-     (* get_data_start ^^
-      get_data_size*)
     )
 
   let deserialize_from_blob extended env ts =
