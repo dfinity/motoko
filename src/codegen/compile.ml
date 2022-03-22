@@ -4189,8 +4189,9 @@ module type Stream = sig
      Arguments:env    size   setter getter header *)
   val create : E.t -> G.t -> G.t -> G.t -> string -> G.t
 
-  (* Checks the stream's filling, traps if unexpected *)
-  val check : E.t -> G.t -> G.t -> G.t
+  (* Checks the stream's filling, traps if unexpected
+     Arguments:      env    token  size *)
+  val check_filled : E.t -> G.t -> G.t -> G.t
 
   (* Finishes the stream, performing consistence checks.
      Leaves two words on stack, whose interpretation depends
@@ -4222,7 +4223,7 @@ module BumpStream : Stream = struct
     Heap.memcpy env ^^
     get_data_buf ^^ compile_add_const header_size ^^ set_data_buf
 
-  let check env get_data_buf get_data_size =
+  let check_filled env get_data_buf get_data_size =
     get_data_buf ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "data buffer not filled"
@@ -5462,7 +5463,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.else_trap_with env "reference buffer not filled" ^^
 
       (* Verify that the stream is correctly filled *)
-      Strm.check env get_data_start get_data_size ^^
+      Strm.check_filled env get_data_start get_data_size ^^
       get_refs_size ^^
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
