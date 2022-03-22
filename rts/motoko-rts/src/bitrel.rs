@@ -5,39 +5,6 @@ use crate::idl_trap_with;
 use crate::mem_utils::memzero;
 use crate::types::Words;
 
-/* TODO: delete me
-#[repr(packed)]
-pub struct BitSet {
-    /// Pointer into the bit set
-    pub ptr: *mut u8,
-    /// Pointer to the end of the bit set
-    pub end: *mut u8,
-}
-
-impl BitSet {
-    pub(crate) unsafe fn set(self: *mut Self, n: u32) {
-        let byte = (n / 8) as usize;
-        let bit = (n % 8) as u8;
-        let dst = (*self).ptr.add(byte);
-        if dst > (*self).end {
-            idl_trap_with("BitSet.set out of bounds");
-        };
-        *dst = *dst | (1 << bit);
-    }
-
-    pub(crate) unsafe fn get(self: *mut Self, n: u32) -> bool {
-        let byte = (n / 8) as usize;
-        let bit = (n % 8) as u8;
-        let src = (*self).ptr.add(byte);
-        if src > (*self).end {
-            idl_trap_with("BitSet.get out of bounds");
-        };
-        let mask = 1 << bit;
-        return *src & mask == mask;
-    }
-}
-*/
-
 #[repr(packed)]
 pub struct BitRel {
     /// Pointer into the bit set

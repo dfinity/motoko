@@ -513,15 +513,6 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
     }
 }
 
-// TODO: delete me
-unsafe fn unfold(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> i32 {
-    let mut tb = Buf {
-        ptr: *typtbl.add(t as usize),
-        end: (*buf).end,
-    };
-    return sleb128_decode(&mut tb);
-}
-
 unsafe fn is_null_opt_reserved(end: *mut u8, typtbl: *mut *mut u8, t: i32) -> bool {
     if is_primitive_type(t) {
         return t == IDL_PRIM_null || t == IDL_PRIM_reserved;
@@ -533,25 +524,6 @@ unsafe fn is_null_opt_reserved(end: *mut u8, typtbl: *mut *mut u8, t: i32) -> bo
     let mut tb = Buf {
         ptr: *typtbl.add(t as usize),
         end: end,
-    };
-
-    t = sleb128_decode(&mut tb);
-
-    return t == IDL_CON_opt;
-}
-
-// TODO: delete me
-unsafe fn null_sub(buf: *mut Buf, typtbl: *mut *mut u8, t: i32) -> bool {
-    if is_primitive_type(t) {
-        return t == IDL_PRIM_empty || t == IDL_PRIM_null;
-    }
-
-    // unfold t
-    let mut t = t;
-
-    let mut tb = Buf {
-        ptr: *typtbl.add(t as usize),
-        end: (*buf).end,
     };
 
     t = sleb128_decode(&mut tb);
@@ -625,26 +597,6 @@ unsafe fn sub(
         (_, IDL_PRIM_reserved) => true,
         (IDL_PRIM_empty, _) => true,
         (IDL_PRIM_nat, IDL_PRIM_int) => true,
-        /*
-                (IDL_PRIM_null, IDL_CON_opt) => true,
-                (IDL_CON_opt, IDL_CON_opt) => {
-                    let t11 = sleb128_decode(&mut tb1);
-                    let t21 = sleb128_decode(&mut tb2);
-                    return sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-                },
-                (_, IDL_CON_opt) => {
-                    let t21 = sleb128_decode(&mut tb2);
-                    return
-                        !null_sub(buf1, typetbl1, t1) &&
-                        !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-                },
-                (_, IDL_CON_opt) => {
-                    let t21 = sleb128_decode(&mut tb2);
-                    return
-                        !null_sub(buf1, typetbl1, t1) &&
-                        !sub(buf1, buf2, typtbl1, typtbl2, t11, t21, depth + 1);
-                },
-        */
         (_, IDL_CON_opt) => true, // apparently, this is admissable
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
@@ -827,28 +779,6 @@ unsafe fn sub(
         // default
         (_, _) => false,
     }
-}
-
-// TODO: DELETE
-#[no_mangle]
-unsafe extern "C" fn table_size(buf: *mut Buf) -> u32 {
-    let mut buf = Buf {
-        ptr: (*buf).ptr,
-        end: (*buf).end,
-    };
-
-    if buf.ptr == buf.end {
-        idl_trap_with(
-            "empty input. Expected Candid-encoded argument, but received a zero-length argument",
-        );
-    }
-
-    // Magic bytes (DIDL)
-    if read_word(&mut buf) != 0x4C444944 {
-        idl_trap_with("missing magic bytes");
-    }
-
-    return leb128_decode(&mut buf);
 }
 
 #[no_mangle]
