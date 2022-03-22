@@ -29,6 +29,14 @@ assert(debug_show (1,2,3) == debug_show (deserNats (serNats (1,2,3)) : (Nat,Nat,
 assert(true == deserBool (serBool true));
 assert(false == deserBool (serBool false));
 
+Prim.debugPrint(debug_show (to_candid ()));
+Prim.debugPrint(debug_show (to_candid (1,2,3)));
+Prim.debugPrint(debug_show (to_candid "Hello World!"));
+from_candid (to_candid ()) : ();
+assert ("Hello World!" == (from_candid (to_candid "Hello World!") : Text));
+// abusing debug_show for easy structural equality
+assert(debug_show (1,2,3) == debug_show (from_candid` (to_candid (1,2,3)) : (Nat,Nat,Nat)));
+
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
