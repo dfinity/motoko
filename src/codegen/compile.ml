@@ -4185,15 +4185,21 @@ module type Stream = sig
   val write_bignum_leb : E.t -> G.t -> G.t -> G.t
   val write_bignum_sleb : E.t -> G.t -> G.t -> G.t
 
-  (* Creates a fresh stream, storing stream token. *)
-  val create : E.t -> G.t -> G.t
+  (* Creates a fresh stream with header, storing stream token.
+     Arguments:env    size   setter getter header *)
+  val create : E.t -> G.t -> G.t -> G.t -> string -> G.t
+
   (* Checks the stream's filling, traps if unexpected *)
   val check : E.t -> G.t -> G.t -> G.t
 
-  (* Finishes the stream, performing consistence checks. *)
-  (*val terminate : E.t -> G.t -> G.t *)
+  (* Finishes the stream, performing consistence checks.
+     Leaves two words on stack, whose interpretation depends
+     on the Stream.
+     Arguments:   env    token  size   header_size *)
+  val terminate : E.t -> G.t -> G.t -> int32 -> G.t
 
-  val name_serialize : string -> string
+  (* Builds a unique name for a name seed and a type *)
+  val name_for : string -> string -> string
 
   (* Opportunity to flush or update the token. Stream token is on stack. *)
   val checkpoint : E.t -> G.t -> G.t
@@ -4206,16 +4212,26 @@ end
 
 
 module BumpStream : Stream = struct
-  let create env set_data_buf = Blob.dyn_alloc_scratch env ^^ set_data_buf
+  let create env get_data_size set_data_buf get_data_buf header =
+    let header_size = Int32.of_int (String.length header) in
+    get_data_size ^^ compile_add_const header_size ^^
+    Blob.dyn_alloc_scratch env ^^ set_data_buf ^^
+    get_data_buf ^^
+    Blob.lit env header ^^ Blob.payload_ptr_unskewed ^^
+    compile_unboxed_const header_size ^^
+    Heap.memcpy env ^^
+    get_data_buf ^^ compile_add_const header_size ^^ set_data_buf
 
   let check env get_data_buf get_data_size =
     get_data_buf ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "data buffer not filled"
 
-  (*let terminate env get_data_buf = Blob.dyn_alloc_scratch env ^^ set_data_start*)
+  let terminate env get_data_buf get_data_size header_size =
+    get_data_buf ^^ compile_sub_const header_size ^^
+    get_data_size ^^ compile_sub_const header_size
 
-  let name_serialize typ_name = "@serialize_go<" ^ typ_name ^ ">"
+  let name_for seed typ_name = "@" ^ seed ^ "<" ^ typ_name ^ ">"
 
   let advance_data_buf get_data_buf =
     get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
@@ -4634,7 +4650,7 @@ module MakeSerialization (Strm : Stream) = struct
   let rec serialize_go env t =
     let open Type in
     let t = Type.normalize t in
-    let name = Strm.name_serialize (typ_hash t) in
+    let name = Strm.name_for "serialize_go" (typ_hash t) in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
       let set_ref_buf = G.setter_for get_ref_buf in
@@ -5406,7 +5422,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   let serialize env ts : G.t =
     let ts_name = typ_seq_hash ts in
-    let name = "@serialize<" ^ ts_name ^ ">" in (*FIXME!*)
+    let name = Strm.name_for "serialize" ts_name in
     (* returns data/length pointers (will be GC’ed next time!) *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
@@ -5419,30 +5435,33 @@ module MakeSerialization (Strm : Stream) = struct
       get_x ^^
       buffer_size env (Type.seq ts) ^^
       set_refs_size ^^
-      (* add tydesc_len *)
-      compile_add_const tydesc_len  ^^
+      (* NO! add tydesc_len
+      compile_add_const tydesc_len ^^ *)
       set_data_size ^^
       (* check for overflow *)
       get_data_size ^^
+      compile_add_const tydesc_len ^^
       compile_unboxed_const tydesc_len ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       E.then_trap_with env "serialization overflow" ^^
 
-      let (set_data_startX, get_data_start) = new_local env "data_start" in
+      let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-      get_data_size ^^ (*Blob.dyn_alloc_scratch env ^^ set_data_start*)Strm.create env set_data_startX ^^
+      (*Blob.dyn_alloc_scratch env ^^ set_data_start*)
+      Strm.create env get_data_size set_data_start get_data_start tydesc ^^
       get_refs_size ^^ compile_mul_const Heap.word_size ^^ Blob.dyn_alloc_scratch env ^^ set_refs_start ^^
 
       (* Write ty desc *)
-      get_data_start ^^
+        (*Strm.write_literal env get_data_start tydesc ^^*)
+      (*get_data_start ^^
       Blob.lit env tydesc ^^ Blob.payload_ptr_unskewed ^^
       compile_unboxed_const tydesc_len ^^
-      Heap.memcpy env ^^
+      Heap.memcpy env ^^*)
 
       (* Serialize x into the buffer *)
       get_x ^^
-      get_data_start ^^ compile_add_const tydesc_len ^^
+      get_data_start ^^ (*compile_add_const tydesc_len ^^*)
       get_refs_start ^^
       serialize_go env (Type.seq ts) ^^
 
@@ -5460,8 +5479,9 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
-      get_data_start ^^
-      get_data_size
+      Strm.terminate env get_data_start get_data_size tydesc_len
+     (* get_data_start ^^
+      get_data_size*)
     )
 
   let deserialize_from_blob extended env ts =
