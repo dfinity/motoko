@@ -4185,6 +4185,11 @@ module type Stream = sig
   val write_bignum_leb : E.t -> G.t -> G.t -> G.t
   val write_bignum_sleb : E.t -> G.t -> G.t -> G.t
 
+  (* Creates a fresh stream, storing stream token. *)
+  val create : E.t -> G.t -> G.t
+  (* Finishes the stream, performing consistence checks. *)
+  (*val terminate : E.t -> G.t -> G.t *)
+
   val name_serialize : string -> string
 
   (* Opportunity to flush or update the token. Stream token is on stack. *)
@@ -4198,6 +4203,9 @@ end
 
 
 module BumpStream : Stream = struct
+  let create env set_data_buf = Blob.dyn_alloc_scratch env ^^ set_data_buf
+  (*let terminate env get_data_buf = Blob.dyn_alloc_scratch env ^^ set_data_start*)
+
   let name_serialize typ_name = "@serialize_go<" ^ typ_name ^ ">"
 
   let advance_data_buf get_data_buf =
@@ -5389,7 +5397,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   let serialize env ts : G.t =
     let ts_name = typ_seq_hash ts in
-    let name = "@serialize<" ^ ts_name ^ ">" in
+    let name = "@serialize<" ^ ts_name ^ ">" in (*FIXME!*)
     (* returns data/length pointers (will be GC’ed next time!) *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
@@ -5411,10 +5419,10 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       E.then_trap_with env "serialization overflow" ^^
 
-      let (set_data_start, get_data_start) = new_local env "data_start" in
+      let (set_data_startX, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-      get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
+      get_data_size ^^ (*Blob.dyn_alloc_scratch env ^^ set_data_start*)Strm.create env set_data_startX ^^
       get_refs_size ^^ compile_mul_const Heap.word_size ^^ Blob.dyn_alloc_scratch env ^^ set_refs_start ^^
 
       (* Write ty desc *)
@@ -5434,10 +5442,11 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "reference buffer not filled" ^^
 
-      get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      G.i Drop ^^
+      (* FIXME get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "data buffer not filled" ^^
-
+       *)
       get_refs_size ^^
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
