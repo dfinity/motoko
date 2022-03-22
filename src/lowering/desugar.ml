@@ -68,10 +68,10 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
-  | S.ToCandidE (ot, e) ->
+  | S.ToCandidE (ot, es) ->
     begin match !ot with
     | T.Tup ts1 ->
-      I.PrimE (I.SerializePrim ts1, exps e)
+      I.PrimE (I.SerializePrim ts1, exps es)
     | _ -> assert false
     end
   | S.FromCandidE (ot, e) ->
@@ -154,10 +154,11 @@ and exp' at note = function
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _, e) ->
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _,
+             {it=S.TupE es; _}) ->
     begin match note.S.note_typ with
     | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
-      I.PrimE (I.SerializePrim ts1, [exp e])
+      I.PrimE (I.SerializePrim ts1, exps es)
     | _ -> assert false
     end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "deserialize";_}, _);note;_}, _, e) ->

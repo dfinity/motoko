@@ -7,10 +7,10 @@ func deserUnit(x : Blob) : () = (prim "deserialize" : Blob -> ()) x;
 func serNats(x: Nat, y: Nat, z: Nat) : Blob = (prim "serialize" : (Nat,Nat,Nat) -> Blob) (x,y,z);
 func deserNats(x: Blob) : (Nat, Nat, Nat) = (prim "deserialize" : Blob -> (Nat,Nat,Nat)) x;
 
-func serText(x: Text) : Blob = (prim "serialize" : Text -> Blob) x;
+func serText(x: Text) : Blob = (prim "serialize" : Text -> Blob) (x,);
 func deserText(x: Blob) : Text = (prim "deserialize" : Blob -> Text) x;
 
-func serBool(x: Bool) : Blob = (prim "serialize" : Bool -> Blob) x;
+func serBool(x: Bool) : Blob = (prim "serialize" : Bool -> Blob) (x,);
 func deserBool(x: Blob) : Bool = (prim "deserialize" : Blob -> Bool) x;
 
 

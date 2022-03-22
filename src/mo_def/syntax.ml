@@ -122,6 +122,7 @@ and vis' =
 
 let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 
+
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
 
@@ -255,6 +256,7 @@ let (@?) it at = Source.({it; at; note = empty_typ_note})
 let (@!) it at = Source.({it; at; note = Type.Pre})
 let (@=) it at = Source.({it; at; note = None})
 
+let is_tuple_lit e = match e.Source.it with TupE _ -> true | _ -> false
 
 (* NB: This function is currently unused *)
 let string_of_lit = function

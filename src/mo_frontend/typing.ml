@@ -1513,6 +1513,9 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
+  | CallE ({it=AnnotE ({it=PrimE "serialize";_}, _);note;_}, _, e), _
+      when not (is_tuple_lit e) ->
+    error env exp.at "MXXXX" "primitive serialize requires a literal tuple argument"
   | CallE (exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
