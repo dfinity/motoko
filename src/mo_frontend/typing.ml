@@ -1396,10 +1396,13 @@ and check_exp' env0 t exp : T.typ =
       error env exp.at "MXXXX" "to_candid produces Blob, not type%a"
         display_typ_expand t
     end
-  | FromCandidE (ot, exp1), _ ->
-    ot := t;
+  | FromCandidE (ot, exp1), T.Tup ts when List.for_all T.shared ts ->
+    ot := T.Tup ts;
     check_exp env (T.Prim T.Blob) exp1;
     t
+  | FromCandidE (_, _), t ->
+      error env exp.at "MXXXX" "from_candid produces a tuple of shared, not type%a"
+        display_typ_expand t    
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
