@@ -5678,15 +5678,14 @@ module BlobStream : Stream = struct
     get_token ^^ code ^^
     E.call_import env "rts" "stream_write_byte"
 
-  let write_blob env get_data_buf get_x =
+  let write_blob env get_token get_x =
     let set_len, get_len = new_local env "len" in
     get_x ^^ Blob.len env ^^ set_len ^^
-    write_word_leb env get_data_buf get_len ^^
-    get_data_buf ^^
+    write_word_leb env get_token get_len ^^
+    get_token ^^
     get_x ^^ Blob.payload_ptr_unskewed ^^
     get_len ^^
-    Heap.memcpy env ^^
-    get_len ^^ advance_data_buf get_data_buf
+    E.call_import env "rts" "stream_write"
 
   let write_text env get_data_buf get_x =
     let set_len, get_len = new_local env "len" in
