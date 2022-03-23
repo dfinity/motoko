@@ -257,6 +257,8 @@ module E = struct
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
+    typtbl_typs : Type.typ list ref;
+      (* Types accumulated in global typtbl (for candid subtype checks *)
 
     (* Metadata *)
     args : (bool * string) option ref;
@@ -264,7 +266,6 @@ module E = struct
     stable_types : (bool * string) option ref;
     labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
-
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -298,6 +299,7 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
     service = ref None;
@@ -4240,6 +4242,23 @@ module Serialization = struct
       by the next GC.
   *)
 
+  let register_delayed_globals env =
+    (E.add_global32_delayed env "__typtbl" Immutable,
+     E.add_global32_delayed env "__typtbl_size" Immutable,
+     E.add_global32_delayed env "__typtbl_end" Immutable,
+     E.add_global32_delayed env "__typtbl_idltyps" Immutable)
+
+
+  let get_typtbl env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl")))
+  let get_typtbl_size env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl_size")))
+  let get_typtbl_end env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl_end")))
+  let get_typtbl_idltyps env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
+
+
   open Typ_hash
 
   let sort_by_hash fs =
@@ -4443,6 +4462,41 @@ module Serialization = struct
     (Buffer.contents buf,
      offsets,
      List.map idx ts)
+
+  let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
+       let typdesc, offsets, idltyps = type_desc env (!(env.E.typtbl_typs)) in
+       let static_typedesc =
+         Int32.(add (Blob.vanilla_lit env typdesc)  Blob.unskewed_payload_offset)
+       in
+       let tbl =
+         let buf = Buffer.create (List.length offsets * 4) in
+         begin
+           List.iter (fun offset ->
+             Buffer.add_int32_le buf
+               Int32.(add static_typedesc (of_int(offset))))
+           offsets;
+           Buffer.contents buf
+         end
+       in
+       let static_typtbl =
+         Int32.add (Blob.vanilla_lit env tbl) Blob.unskewed_payload_offset
+       in
+       let static_idltyps =
+         let buf = Buffer.create (List.length idltyps * 4) in
+         begin
+           List.iter (fun idltyp ->
+             Buffer.add_int32_le buf idltyp)
+           idltyps;
+           Buffer.contents buf
+         end
+       in
+       let static_idltyps =
+         Int32.add (Blob.vanilla_lit env static_idltyps) Blob.unskewed_payload_offset
+       in
+       set_typtbl static_typtbl;
+       set_typtbl_end Int32.(add static_typedesc (of_int (String.length typdesc)));
+       set_typtbl_size (Int32.of_int (List.length offsets));
+       set_typtbl_idltyps static_idltyps
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
@@ -4807,7 +4861,9 @@ module Serialization = struct
    *)
 
   let idl_sub env t2 =
-    Func.share_code4 env ("idl_sub<" ^ typ_hash t2 ^ ">")
+    let idx = List.length (!(env.E.typtbl_typs)) in
+    env.E.typtbl_typs := !(env.E.typtbl_typs) @ [t2];
+    Func.share_code4 env ("idl_sub_"^Int.to_string idx) (* TODO FIX ME *)
       (("typtbl1", I32Type),
        ("typtbl_end1", I32Type),
        ("typtbl_size1", I32Type),
@@ -4815,43 +4871,21 @@ module Serialization = struct
       )
       [I32Type]
       (fun env get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 ->
-        let typdesc, offsets, idltyps2 = type_desc env [t2] in
-        let idltyp2 = List.hd idltyps2 in
-        let (set_typtbl2, get_typtbl2) = new_local env "typetbl2" in
-        let (set_typtbl_end2, get_typtbl_end2) = new_local env "typtbl_end2" in
-        let (set_typtbl_size2, get_typtbl_size2) = new_local env "typtbl_size2" in
         let (set_idltyp2, get_idltyp2) = new_local env "idltyp2" in
-        let static_typedesc =
-          Int32.(add (Blob.vanilla_lit env typdesc)  Blob.unskewed_payload_offset)
-        in
-        let tbl2 =
-          let buf = Buffer.create (List.length offsets * 4) in
-          begin
-            List.iter (fun offset ->
-            Buffer.add_int32_le buf
-              Int32.(add static_typedesc (of_int(offset))))
-            offsets;
-            Buffer.contents buf
-          end
-        in
-        let static_typtbl2 =
-          Int32.add (Blob.vanilla_lit env tbl2) Blob.unskewed_payload_offset
-        in
-        compile_unboxed_const Int32.(add static_typedesc (of_int (String.length typdesc)))
-          ^^ set_typtbl_end2 ^^
-        compile_unboxed_const (Int32.of_int (List.length offsets)) ^^ set_typtbl_size2 ^^
-        compile_unboxed_const static_typtbl2 ^^ set_typtbl2 ^^
-        compile_unboxed_const idltyp2 ^^ set_idltyp2 ^^
-        get_typtbl_size1 ^^ get_typtbl_size2 ^^
+        get_typtbl_idltyps env ^^
+        compile_add_const (Int32.of_int (idx*4)) ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        set_idltyp2 ^^
+        get_typtbl_size1 ^^ get_typtbl_size env ^^
         E.call_import env "rts" "idl_sub_buf_words" ^^
         Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
           get_rel_buf_ptr ^^
           get_typtbl1 ^^
-          get_typtbl2 ^^
+          get_typtbl env ^^
           get_typtbl_end1 ^^
-          get_typtbl_end2 ^^
+          get_typtbl_end env ^^
           get_typtbl_size1 ^^
-          get_typtbl_size2 ^^
+          get_typtbl_size env ^^
           get_idltyp1 ^^
           get_idltyp2 ^^
           E.call_import env "rts" "idl_sub"))
@@ -5711,7 +5745,8 @@ To detect and preserve aliasing, these steps are taken:
    after checking the type hash field to make sure we are aliasing at the same
    type.
 
-*)
+ *)
+
 
 end (* Serialization *)
 
@@ -9175,9 +9210,11 @@ and main_actor as_opt mod_env ds fs up =
     decls_codeW G.nop
   )
 
-and conclude_module env start_fi_o =
+and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
+
+  Serialization.set_delayed_globals env set_serialization_globals;
 
   let static_roots = GC.store_static_roots env in
   (* declare before building GC *)
@@ -9275,6 +9312,8 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   Stack.register_globals env;
   StableMem.register_globals env;
 
+  let set_serialization_globals =  Serialization.register_delayed_globals env in
+
   IC.system_imports env;
   RTS.system_imports env;
   RTS_Exports.system_exports env;
@@ -9291,4 +9330,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env start_fi_o
+  conclude_module env set_serialization_globals start_fi_o
