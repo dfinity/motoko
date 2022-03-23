@@ -5670,7 +5670,7 @@ module BlobStream : Stream = struct
     advance_data_buf get_data_buf
 
   let write_word_32 env get_token code =
-    get_token ^^ reserve env get_token 4l ^^
+    get_token ^^ reserve env get_token Heap.word_size ^^
     code ^^
     G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None})
 
