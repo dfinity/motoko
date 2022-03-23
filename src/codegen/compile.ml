@@ -760,12 +760,20 @@ module Func = struct
         (G.i (LocalGet (nr 1l)))
         (G.i (LocalGet (nr 2l)))
     )
-  let share_code4 env name (p1, p2, p3, p4) retty mk_body =
+  let _share_code4 env name (p1, p2, p3, p4) retty mk_body =
     share_code env name [p1; p2; p3; p4] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
+    )
+  let share_code5 env name (p1, p2, p3, p4, p5) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5] retty (fun env -> mk_body env
+        (G.i (LocalGet (nr 0l)))
+        (G.i (LocalGet (nr 1l)))
+        (G.i (LocalGet (nr 2l)))
+        (G.i (LocalGet (nr 3l)))
+        (G.i (LocalGet (nr 4l)))
     )
   let _share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
@@ -4863,19 +4871,18 @@ module Serialization = struct
   let idl_sub env t2 =
     let idx = List.length (!(env.E.typtbl_typs)) in
     env.E.typtbl_typs := !(env.E.typtbl_typs) @ [t2];
-    Func.share_code4 env ("idl_sub_"^Int.to_string idx) (* TODO FIX ME *)
+    get_typtbl_idltyps env ^^
+    compile_add_const (Int32.of_int (idx * 4)) ^^
+    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+    Func.share_code5 env ("idl_sub")
       (("typtbl1", I32Type),
        ("typtbl_end1", I32Type),
        ("typtbl_size1", I32Type),
-       ("idltyp1", I32Type)
+       ("idltyp1", I32Type),
+       ("idltyp2", I32Type)
       )
       [I32Type]
-      (fun env get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 ->
-        let (set_idltyp2, get_idltyp2) = new_local env "idltyp2" in
-        get_typtbl_idltyps env ^^
-        compile_add_const (Int32.of_int (idx*4)) ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        set_idltyp2 ^^
+      (fun env get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
         get_typtbl_size1 ^^ get_typtbl_size env ^^
         E.call_import env "rts" "idl_sub_buf_words" ^^
         Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
