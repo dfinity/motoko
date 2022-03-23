@@ -5669,10 +5669,10 @@ module BlobStream : Stream = struct
     I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
     advance_data_buf get_data_buf
 
-  let write_word_32 env get_data_buf code =
-    get_data_buf ^^ code ^^
-    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-    compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
+  let write_word_32 env get_token code =
+    get_token ^^ reserve env get_token 4l ^^
+    code ^^
+    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None})
 
   let write_byte env get_token code =
     get_token ^^ code ^^
