@@ -31,10 +31,13 @@ use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
+use motoko_rts_macros::ic_mem_fn;
+
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(24);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
+#[ic_mem_fn]
 pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     debug_assert_eq!(
         INITIAL_STREAM_FILLED,
