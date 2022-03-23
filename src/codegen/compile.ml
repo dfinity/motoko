@@ -4244,8 +4244,8 @@ module Serialization = struct
 
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
-     E.add_global32_delayed env "__typtbl_size" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
+     E.add_global32_delayed env "__typtbl_size" Immutable,
      E.add_global32_delayed env "__typtbl_idltyps" Immutable)
 
 
