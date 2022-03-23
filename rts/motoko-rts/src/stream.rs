@@ -105,6 +105,18 @@ impl Stream {
         }
     }
 
+    #[export_name = "stream_reserve"]
+    pub fn reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
+        unsafe {
+            if (*self).filled + bytes > (*self).header.len {
+                self.flush()
+            }
+	    let ptr = self.payload_addr().add((*self).filled.as_usize());
+	    (*self).filled += bytes;
+            ptr
+        }
+    }
+
     /// Split the stream object into two `Blob`s, a front-runner (small) one
     /// and a latter one that comprises the current amount of the cached bytes.
     /// Lengths are adjusted correspondingly.

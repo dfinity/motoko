@@ -885,6 +885,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     ()
 
 end (* RTS *)
