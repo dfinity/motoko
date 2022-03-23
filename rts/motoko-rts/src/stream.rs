@@ -94,6 +94,7 @@ impl Stream {
             }
         }
     }
+    #[export_name = "stream_write_byte"]
     pub fn stash8(self: *mut Self, byte: u8) {
         unsafe {
             if (*self).filled == (*self).header.len {

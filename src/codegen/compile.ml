@@ -883,6 +883,7 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
     ()
 
@@ -5673,10 +5674,9 @@ module BlobStream : Stream = struct
     G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
     compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
 
-  let write_byte _env get_data_buf code =
-    get_data_buf ^^ code ^^
-    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-    compile_unboxed_const 1l ^^ advance_data_buf get_data_buf
+  let write_byte env get_token code =
+    get_token ^^ code ^^
+    E.call_import env "rts" "stream_write_byte"
 
   let write_blob env get_data_buf get_x =
     let set_len, get_len = new_local env "len" in
