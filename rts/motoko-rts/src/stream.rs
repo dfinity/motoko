@@ -76,6 +76,7 @@ impl Stream {
     }
 
     /// Ingest a number of bytes into the stream.
+    #[export_name = "stream_write"]
     pub fn stash(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             if (*self).limit64 != 0 && n > STREAM_CHUNK_SIZE
@@ -106,6 +107,7 @@ impl Stream {
     /// Split the stream object into two `Blob`s, a front-runner (small) one
     /// and a latter one that comprises the current amount of the cached bytes.
     /// Lengths are adjusted correspondingly.
+    #[export_name = "stream_split"]
     pub unsafe fn split(self: *mut Self) -> Value {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;

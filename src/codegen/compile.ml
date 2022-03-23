@@ -882,6 +882,8 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -5641,18 +5643,21 @@ module BlobStream : Stream = struct
     E.call_import env "rts" "stream_write"
 
   let check_filled env get_token get_data_size =
-    G.nop
+    G.i Drop
 
-  let terminate env get_data_buf get_data_size header_size =
-    get_data_buf ^^ compile_sub_const header_size ^^
-    get_data_size ^^ compile_add_const header_size
+  let terminate env get_token get_data_size header_size =
+    get_token ^^ E.call_import env "rts" "stream_split" ^^
+    let set_blob, get_blob = new_local env "blob" in
+    set_blob ^^
+    get_blob ^^ Blob.payload_ptr_unskewed ^^
+    get_blob ^^ Blob.len env
 
   let name_for seed typ_name = "@Bl_" ^ seed ^ "<" ^ typ_name ^ ">"
 
-  let advance_data_buf get_data_buf =
+  (*NOT NEEDED*)let advance_data_buf get_data_buf =
     get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
 
-  let checkpoint _env get_data_buf = G.setter_for get_data_buf
+  let checkpoint _env _get_token = G.i Drop
 
   let reserve _env get_data_buf bytes =
     get_data_buf ^^ get_data_buf ^^ compile_add_const bytes ^^ G.setter_for get_data_buf
