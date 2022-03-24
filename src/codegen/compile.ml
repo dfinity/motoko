@@ -5695,17 +5695,21 @@ module BlobStream : Stream = struct
     get_x ^^ get_data_buf ^^ Text.to_buf env ^^
     get_len ^^ advance_data_buf get_data_buf
 
-  let write_bignum_leb env get_data_buf get_x =
-    get_data_buf ^^
+  let write_bignum_leb env get_token get_x =
+    get_token ^^
+    I32Leb.compile_leb128_size get_x ^^ (* FIXME: compile_data_size_unsigned *)
+    E.call_import env "rts" "stream_reserve" ^^
     get_x ^^
     BigNum.compile_store_to_data_buf_unsigned env ^^
-    advance_data_buf get_data_buf
+    G.i Drop
 
-  let write_bignum_sleb env get_data_buf get_x =
-    get_data_buf ^^
+  let write_bignum_sleb env get_token get_x =
+    get_token ^^
+    I32Leb.compile_sleb128_size get_x ^^ (* FIXME: compile_data_size_signed *)
+    E.call_import env "rts" "stream_reserve" ^^
     get_x ^^
     BigNum.compile_store_to_data_buf_signed env ^^
-    advance_data_buf get_data_buf
+    G.i Drop
 
 end
 
