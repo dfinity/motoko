@@ -5661,8 +5661,8 @@ module BlobStream : Stream = struct
 
   let checkpoint _env _get_token = G.i Drop
 
-  let reserve _env get_data_buf bytes =
-    get_data_buf ^^ get_data_buf ^^ compile_add_const bytes ^^ G.setter_for get_data_buf
+  let reserve env get_token bytes =
+    get_token ^^ compile_add_const bytes ^^ E.call_import env "rts" "stream_reserve"
 
   let write_word_leb env get_data_buf code =
     let set_word, get_word = new_local env "word" in
