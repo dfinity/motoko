@@ -546,17 +546,14 @@ unsafe fn sub(
     if t1 >= 0 && t2 >= 0 {
         let t1 = t1 as u32;
         let t2 = t2 as u32;
-        if rel.get(p, t1, t2) {
+        if rel.get(p, t1, t2, 0) {
             // cached: succeed!
-            return true;
+            return rel.get(p, t1, t2, 1);
         };
         // cache and continue
-        rel.set(p, t1, t2);
+        rel.set(p, t1, t2, 0, true); // mark visited
+        rel.set(p, t1, t2, 1, true); // assume true
     };
-
-    // re-declare as mut for any unfolding
-    let mut t1 = t1;
-    let mut t2 = t2;
 
     /* primitives reflexive */
     if is_primitive_type(t1) && is_primitive_type(t2) && t1 == t2 {
@@ -573,8 +570,10 @@ unsafe fn sub(
         end: end1,
     };
 
-    if t1 >= 0 {
-        t1 = sleb128_decode(&mut tb1);
+    let u1 = if t1 >= 0 {
+        sleb128_decode(&mut tb1)
+    } else {
+        t1
     };
 
     // unfold t2, if necessary
@@ -587,11 +586,13 @@ unsafe fn sub(
         end: end2,
     };
 
-    if t2 >= 0 {
-        t2 = sleb128_decode(&mut tb2);
+    let u2 = if t2 >= 0 {
+        sleb128_decode(&mut tb2)
+    } else {
+        t2
     };
 
-    match (t1, t2) {
+    match (u1, u2) {
         (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
         (_, IDL_PRIM_reserved) => true,
         (IDL_PRIM_empty, _) => true,
@@ -600,7 +601,12 @@ unsafe fn sub(
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
-            return sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21);
+            if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                return true;
+            } else {
+                rel.set(p, t1 as u32, t2 as u32, 1, false);
+                return false;
+            }
         }
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
@@ -610,6 +616,7 @@ unsafe fn sub(
                 let t11 = sleb128_decode(&mut tb1);
                 if in2 == 0 {
                     if !is_null_opt_reserved(typtbl1, end1, t11) {
+                        rel.set(p, t1 as u32, t2 as u32, 1, false);
                         return false;
                     }
                 } else {
@@ -617,6 +624,7 @@ unsafe fn sub(
                     in2 -= 1;
                     // NB: invert p and args!
                     if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11) {
+                        rel.set(p, t1 as u32, t2 as u32, 1, false);
                         return false;
                     }
                 }
@@ -632,12 +640,14 @@ unsafe fn sub(
                 let t21 = sleb128_decode(&mut tb2);
                 if out1 == 0 {
                     if !is_null_opt_reserved(typtbl2, end2, t21) {
+                        rel.set(p, t1 as u32, t2 as u32, 1, false);
                         return false;
                     }
                 } else {
                     let t11 = sleb128_decode(&mut tb1);
                     out1 -= 1;
                     if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                        rel.set(p, t1 as u32, t2 as u32, 1, false);
                         return false;
                     }
                 }
@@ -668,7 +678,12 @@ unsafe fn sub(
                     _ => {}
                 }
             }
-            return (a11 == a21) && (a12 == a22);
+            if (a11 == a21) && (a12 == a22) {
+                return true;
+            } else {
+                rel.set(p, t1 as u32, t2 as u32, 1, false);
+                return false;
+            }
         }
         (IDL_CON_record, IDL_CON_record) => {
             let mut n1 = leb128_decode(&mut tb1);
@@ -682,6 +697,7 @@ unsafe fn sub(
                 if n1 == 0 {
                     // check all remaining fields optional
                     if !is_null_opt_reserved(typtbl2, end2, t21) {
+                        rel.set(p, t1 as u32, t2 as u32, 1, false);
                         return false;
                     }
                     continue;
@@ -699,12 +715,14 @@ unsafe fn sub(
                 if tag1 > tag2 {
                     if !is_null_opt_reserved(typtbl2, end2, t21) {
                         // missing, non_opt field
+                        rel.set(p, t1 as u32, t2 as u32, 1, false);
                         return false;
                     }
                     advance = false; // reconsider this field in next round
                     continue;
                 };
                 if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                    rel.set(p, t1 as u32, t2 as u32, 1, false);
                     return false;
                 }
                 advance = true;
@@ -716,6 +734,7 @@ unsafe fn sub(
             let mut n2 = leb128_decode(&mut tb2);
             for _ in 0..n1 {
                 if n2 == 0 {
+                    rel.set(p, t1 as u32, t2 as u32, 1, false);
                     return false;
                 };
                 let tag1 = leb128_decode(&mut tb1);
@@ -731,9 +750,11 @@ unsafe fn sub(
                     }
                 }
                 if tag1 != tag2 {
+                    rel.set(p, t1 as u32, t2 as u32, 1, false);
                     return false;
                 };
                 if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                    rel.set(p, t1 as u32, t2 as u32, 1, false);
                     return false;
                 }
             }
@@ -744,6 +765,7 @@ unsafe fn sub(
             let n2 = leb128_decode(&mut tb2);
             for _ in 0..n2 {
                 if n1 == 0 {
+                    rel.set(p, t1 as u32, t2 as u32, 1, false);
                     return false;
                 };
                 let len2 = leb128_decode(&mut tb2);
@@ -767,16 +789,23 @@ unsafe fn sub(
                     break;
                 }
                 if !(cmp == 0) {
+                    rel.set(p, t1 as u32, t2 as u32, 1, false);
                     return false;
                 };
                 if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                    rel.set(p, t1 as u32, t2 as u32, 1, false);
                     return false;
                 }
             }
             return true;
         }
         // default
-        (_, _) => false,
+        (_, _) => {
+            if t1 >= 0 && t2 >= 0 {
+                rel.set(p, t1 as u32, t2 as u32, 1, false);
+            }
+            return false;
+        }
     }
 }
 
