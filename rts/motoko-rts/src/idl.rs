@@ -546,8 +546,8 @@ unsafe fn sub(
     if t1 >= 0 && t2 >= 0 {
         let t1 = t1 as u32;
         let t2 = t2 as u32;
-        if rel.get(p, t1, t2, 0) {
-            // cached: succeed!
+        if rel.get(p, t1, t2, 0) { // visited? (bit 0)
+            // return assumed or determined result (bit 1)
             return rel.get(p, t1, t2, 1);
         };
         // cache and continue
