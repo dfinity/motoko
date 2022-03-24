@@ -592,221 +592,212 @@ unsafe fn sub(
         t2
     };
 
-    match (u1, u2) {
-        (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
-        (_, IDL_PRIM_reserved) => true,
-        (IDL_PRIM_empty, _) => true,
-        (IDL_PRIM_nat, IDL_PRIM_int) => true,
-        (_, IDL_CON_opt) => true, // apparently, this is admissable
-        (IDL_CON_vec, IDL_CON_vec) => {
-            let t11 = sleb128_decode(&mut tb1);
-            let t21 = sleb128_decode(&mut tb2);
-            if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
-                return true;
-            } else {
-                rel.set(p, t1 as u32, t2 as u32, 1, false);
-                return false;
-            }
-        }
-        (IDL_CON_func, IDL_CON_func) => {
-            // contra in domain
-            let in1 = leb128_decode(&mut tb1);
-            let mut in2 = leb128_decode(&mut tb2);
-            for _ in 0..in1 {
+    // exit either via 'return true' or 'break 'return_false' to memoize the negative result
+    'return_false: loop {
+        match (u1, u2) {
+            (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
+            (_, IDL_PRIM_reserved) => return true,
+            (IDL_PRIM_empty, _) => return true,
+            (IDL_PRIM_nat, IDL_PRIM_int) => return true,
+            (_, IDL_CON_opt) => return true, // apparently, this is admissable
+            (IDL_CON_vec, IDL_CON_vec) => {
                 let t11 = sleb128_decode(&mut tb1);
-                if in2 == 0 {
-                    if !is_null_opt_reserved(typtbl1, end1, t11) {
-                        rel.set(p, t1 as u32, t2 as u32, 1, false);
-                        return false;
-                    }
+                let t21 = sleb128_decode(&mut tb2);
+                if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                    return true;
                 } else {
-                    let t21 = sleb128_decode(&mut tb2);
-                    in2 -= 1;
-                    // NB: invert p and args!
-                    if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11) {
-                        rel.set(p, t1 as u32, t2 as u32, 1, false);
-                        return false;
-                    }
+                    break 'return_false;
                 }
             }
-            while in2 > 0 {
-                let _ = sleb128_decode(&mut tb2);
-                in2 -= 1;
-            }
-            // co in range
-            let mut out1 = leb128_decode(&mut tb1);
-            let out2 = leb128_decode(&mut tb2);
-            for _ in 0..out2 {
-                let t21 = sleb128_decode(&mut tb2);
-                if out1 == 0 {
-                    if !is_null_opt_reserved(typtbl2, end2, t21) {
-                        rel.set(p, t1 as u32, t2 as u32, 1, false);
-                        return false;
-                    }
-                } else {
+            (IDL_CON_func, IDL_CON_func) => {
+                // contra in domain
+                let in1 = leb128_decode(&mut tb1);
+                let mut in2 = leb128_decode(&mut tb2);
+                for _ in 0..in1 {
                     let t11 = sleb128_decode(&mut tb1);
+                    if in2 == 0 {
+                        if !is_null_opt_reserved(typtbl1, end1, t11) {
+                            break 'return_false;
+                        }
+                    } else {
+                        let t21 = sleb128_decode(&mut tb2);
+                        in2 -= 1;
+                        // NB: invert p and args!
+                        if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11) {
+                            break 'return_false;
+                        }
+                    }
+                }
+                while in2 > 0 {
+                    let _ = sleb128_decode(&mut tb2);
+                    in2 -= 1;
+                }
+                // co in range
+                let mut out1 = leb128_decode(&mut tb1);
+                let out2 = leb128_decode(&mut tb2);
+                for _ in 0..out2 {
+                    let t21 = sleb128_decode(&mut tb2);
+                    if out1 == 0 {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
+                            break 'return_false;
+                        }
+                    } else {
+                        let t11 = sleb128_decode(&mut tb1);
+                        out1 -= 1;
+                        if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                            break 'return_false;
+                        }
+                    }
+                }
+                while out1 > 0 {
+                    let _ = sleb128_decode(&mut tb1);
                     out1 -= 1;
+                }
+                // check annotations (that we care about)
+                // TODO: more generally, we would check equality of 256-bit bit-vectors,
+                // but validity ensures each entry is 1 or 2 (for now)
+                // c.f. https://github.com/dfinity/candid/issues/318
+                let mut a11 = false;
+                let mut a12 = false;
+                for _ in 0..leb128_decode(&mut tb1) {
+                    match read_byte(&mut tb1) {
+                        1 => a11 = true,
+                        2 => a12 = true,
+                        _ => {}
+                    }
+                }
+                let mut a21 = false;
+                let mut a22 = false;
+                for _ in 0..leb128_decode(&mut tb2) {
+                    match read_byte(&mut tb2) {
+                        1 => a21 = true,
+                        2 => a22 = true,
+                        _ => {}
+                    }
+                }
+                if (a11 == a21) && (a12 == a22) {
+                    return true;
+                } else {
+                    break 'return_false;
+                }
+            }
+            (IDL_CON_record, IDL_CON_record) => {
+                let mut n1 = leb128_decode(&mut tb1);
+                let n2 = leb128_decode(&mut tb2);
+                let mut tag1 = 0;
+                let mut t11 = 0;
+                let mut advance = true;
+                for _ in 0..n2 {
+                    let tag2 = leb128_decode(&mut tb2);
+                    let t21 = sleb128_decode(&mut tb2);
+                    if n1 == 0 {
+                        // check all remaining fields optional
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
+                            break 'return_false;
+                        }
+                        continue;
+                    };
+                    if advance {
+                        loop {
+                            tag1 = leb128_decode(&mut tb1);
+                            t11 = sleb128_decode(&mut tb1);
+                            n1 -= 1;
+                            if !(tag1 < tag2 && n1 > 0) {
+                                break;
+                            }
+                        }
+                    };
+                    if tag1 > tag2 {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
+                            // missing, non_opt field
+                            break 'return_false;
+                        }
+                        advance = false; // reconsider this field in next round
+                        continue;
+                    };
                     if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
-                        rel.set(p, t1 as u32, t2 as u32, 1, false);
-                        return false;
+                        break 'return_false;
                     }
+                    advance = true;
                 }
-            }
-            while out1 > 0 {
-                let _ = sleb128_decode(&mut tb1);
-                out1 -= 1;
-            }
-            // check annotations (that we care about)
-            // TODO: more generally, we would check equality of 256-bit bit-vectors,
-            // but validity ensures each entry is 1 or 2 (for now)
-            // c.f. https://github.com/dfinity/candid/issues/318
-            let mut a11 = false;
-            let mut a12 = false;
-            for _ in 0..leb128_decode(&mut tb1) {
-                match read_byte(&mut tb1) {
-                    1 => a11 = true,
-                    2 => a12 = true,
-                    _ => {}
-                }
-            }
-            let mut a21 = false;
-            let mut a22 = false;
-            for _ in 0..leb128_decode(&mut tb2) {
-                match read_byte(&mut tb2) {
-                    1 => a21 = true,
-                    2 => a22 = true,
-                    _ => {}
-                }
-            }
-            if (a11 == a21) && (a12 == a22) {
                 return true;
-            } else {
-                rel.set(p, t1 as u32, t2 as u32, 1, false);
-                return false;
             }
-        }
-        (IDL_CON_record, IDL_CON_record) => {
-            let mut n1 = leb128_decode(&mut tb1);
-            let n2 = leb128_decode(&mut tb2);
-            let mut tag1 = 0;
-            let mut t11 = 0;
-            let mut advance = true;
-            for _ in 0..n2 {
-                let tag2 = leb128_decode(&mut tb2);
-                let t21 = sleb128_decode(&mut tb2);
-                if n1 == 0 {
-                    // check all remaining fields optional
-                    if !is_null_opt_reserved(typtbl2, end2, t21) {
-                        rel.set(p, t1 as u32, t2 as u32, 1, false);
-                        return false;
-                    }
-                    continue;
-                };
-                if advance {
+            (IDL_CON_variant, IDL_CON_variant) => {
+                let n1 = leb128_decode(&mut tb1);
+                let mut n2 = leb128_decode(&mut tb2);
+                for _ in 0..n1 {
+                    if n2 == 0 {
+                        break 'return_false;
+                    };
+                    let tag1 = leb128_decode(&mut tb1);
+                    let t11 = sleb128_decode(&mut tb1);
+                    let mut tag2: u32;
+                    let mut t21: i32;
                     loop {
-                        tag1 = leb128_decode(&mut tb1);
-                        t11 = sleb128_decode(&mut tb1);
-                        n1 -= 1;
-                        if !(tag1 < tag2 && n1 > 0) {
+                        tag2 = leb128_decode(&mut tb2);
+                        t21 = sleb128_decode(&mut tb2);
+                        n2 -= 1;
+                        if !(tag2 < tag1 && n2 > 0) {
                             break;
                         }
                     }
-                };
-                if tag1 > tag2 {
-                    if !is_null_opt_reserved(typtbl2, end2, t21) {
-                        // missing, non_opt field
-                        rel.set(p, t1 as u32, t2 as u32, 1, false);
-                        return false;
+                    if tag1 != tag2 {
+                        break 'return_false;
+                    };
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                        break 'return_false;
                     }
-                    advance = false; // reconsider this field in next round
-                    continue;
-                };
-                if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
-                    rel.set(p, t1 as u32, t2 as u32, 1, false);
-                    return false;
                 }
-                advance = true;
+                return true;
             }
-            return true;
-        }
-        (IDL_CON_variant, IDL_CON_variant) => {
-            let n1 = leb128_decode(&mut tb1);
-            let mut n2 = leb128_decode(&mut tb2);
-            for _ in 0..n1 {
-                if n2 == 0 {
-                    rel.set(p, t1 as u32, t2 as u32, 1, false);
-                    return false;
-                };
-                let tag1 = leb128_decode(&mut tb1);
-                let t11 = sleb128_decode(&mut tb1);
-                let mut tag2: u32;
-                let mut t21: i32;
-                loop {
-                    tag2 = leb128_decode(&mut tb2);
-                    t21 = sleb128_decode(&mut tb2);
-                    n2 -= 1;
-                    if !(tag2 < tag1 && n2 > 0) {
+            (IDL_CON_service, IDL_CON_service) => {
+                let mut n1 = leb128_decode(&mut tb1);
+                let n2 = leb128_decode(&mut tb2);
+                for _ in 0..n2 {
+                    if n1 == 0 {
+                        break 'return_false;
+                    };
+                    let len2 = leb128_decode(&mut tb2);
+                    let p2 = tb2.ptr;
+                    Buf::advance(&mut tb2, len2);
+                    let t21 = sleb128_decode(&mut tb2);
+                    let mut len1: u32;
+                    let mut p1: *mut u8;
+                    let mut t11: i32;
+                    let mut cmp: i32;
+                    loop {
+                        len1 = leb128_decode(&mut tb1);
+                        p1 = tb1.ptr;
+                        Buf::advance(&mut tb1, len1);
+                        t11 = sleb128_decode(&mut tb1);
+                        n1 -= 1;
+                        cmp = utf8_cmp(len1, p1, len2, p2);
+                        if cmp < 0 && n1 > 0 {
+                            continue;
+                        };
                         break;
                     }
-                }
-                if tag1 != tag2 {
-                    rel.set(p, t1 as u32, t2 as u32, 1, false);
-                    return false;
-                };
-                if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
-                    rel.set(p, t1 as u32, t2 as u32, 1, false);
-                    return false;
-                }
-            }
-            return true;
-        }
-        (IDL_CON_service, IDL_CON_service) => {
-            let mut n1 = leb128_decode(&mut tb1);
-            let n2 = leb128_decode(&mut tb2);
-            for _ in 0..n2 {
-                if n1 == 0 {
-                    rel.set(p, t1 as u32, t2 as u32, 1, false);
-                    return false;
-                };
-                let len2 = leb128_decode(&mut tb2);
-                let p2 = tb2.ptr;
-                Buf::advance(&mut tb2, len2);
-                let t21 = sleb128_decode(&mut tb2);
-                let mut len1: u32;
-                let mut p1: *mut u8;
-                let mut t11: i32;
-                let mut cmp: i32;
-                loop {
-                    len1 = leb128_decode(&mut tb1);
-                    p1 = tb1.ptr;
-                    Buf::advance(&mut tb1, len1);
-                    t11 = sleb128_decode(&mut tb1);
-                    n1 -= 1;
-                    cmp = utf8_cmp(len1, p1, len2, p2);
-                    if cmp < 0 && n1 > 0 {
-                        continue;
+                    if !(cmp == 0) {
+                        break 'return_false;
                     };
-                    break;
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                        break 'return_false;
+                    }
                 }
-                if !(cmp == 0) {
-                    rel.set(p, t1 as u32, t2 as u32, 1, false);
-                    return false;
-                };
-                if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
-                    rel.set(p, t1 as u32, t2 as u32, 1, false);
-                    return false;
-                }
+                return true;
             }
-            return true;
-        }
-        // default
-        (_, _) => {
-            if t1 >= 0 && t2 >= 0 {
-                rel.set(p, t1 as u32, t2 as u32, 1, false);
+            // default
+            (_, _) => {
+                break 'return_false;
             }
-            return false;
         }
     }
+    // remember negative result ...
+    if t1 >= 0 && t2 >= 0 {
+        rel.set(p, t1 as u32, t2 as u32, 1, false);
+    }
+    // .. only then return false
+    return false;
 }
 
 #[no_mangle]
