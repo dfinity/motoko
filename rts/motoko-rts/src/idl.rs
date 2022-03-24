@@ -551,8 +551,8 @@ unsafe fn sub(
             return rel.get(p, t1, t2, 1);
         };
         // cache and continue
-        rel.set(p, t1, t2, 0, true); // mark visited
-        rel.set(p, t1, t2, 1, true); // assume true
+        rel.set(p, t1, t2, 0, true); // mark bit 0 visited (bit 0)
+        rel.set(p, t1, t2, 1, true); // assume t1 <:/:> t2 true (bit 1)
     };
 
     /* primitives reflexive */
@@ -592,6 +592,7 @@ unsafe fn sub(
         t2
     };
 
+    // NB we use a trivial labelled loop so we can factor out the common failure continuation.
     // exit either via 'return true' or 'break 'return_false' to memoize the negative result
     'return_false: loop {
         match (u1, u2) {
@@ -794,6 +795,7 @@ unsafe fn sub(
     }
     // remember negative result ...
     if t1 >= 0 && t2 >= 0 {
+        // falsify t1 <:/:> t2 (bit 1)
         rel.set(p, t1 as u32, t2 as u32, 1, false);
     }
     // .. only then return false
@@ -801,8 +803,8 @@ unsafe fn sub(
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_words(n_types1: u32, n_types2: u32) -> u32 {
-    return BitRel::words(n_types1, n_types2);
+unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> u32 {
+    return BitRel::words(typtbl_size1, typtbl_size2);
 }
 
 #[no_mangle]
