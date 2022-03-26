@@ -277,9 +277,9 @@ impl Value {
 
     /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
-    pub unsafe fn as_concat(self) -> *mut Concat {
+    pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.get_ptr() as *mut Concat
+        self.get_ptr() as *const Concat
     }
 
     /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
@@ -363,9 +363,9 @@ impl Obj {
         self as *mut Blob
     }
 
-    pub unsafe fn as_concat(self: *mut Self) -> *mut Concat {
+    pub unsafe fn as_concat(self: *mut Self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self as *mut Concat
+        self as *const Concat
     }
 }
 
@@ -579,11 +579,11 @@ pub struct Concat {
 }
 
 impl Concat {
-    pub unsafe fn text1(self: *mut Self) -> Value {
+    pub unsafe fn text1(self: *const Self) -> Value {
         (*self).text1
     }
 
-    pub unsafe fn text2(self: *mut Self) -> Value {
+    pub unsafe fn text2(self: *const Self) -> Value {
         (*self).text2
     }
 }

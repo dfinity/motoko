@@ -137,10 +137,9 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
             s = (*next_crumb).t;
             next_crumb = (*next_crumb).next;
         } else {
-            debug_assert_eq!(s_ptr.tag(), TAG_CONCAT);
-            let concat = s_ptr as *const Concat;
-            let s1 = (*concat).text1;
-            let s2 = (*concat).text2;
+            let concat = s_ptr.as_concat();
+            let s1 = concat.text1();
+            let s2 = concat.text2();
 
             let s1_len = text_size(s1);
             let s2_len = text_size(s2);
@@ -157,6 +156,21 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
                 next_crumb = new_crumb;
                 s = s1;
             }
+        }
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn stream_write_text(mut s: Value, stream: Value) {
+    loop {
+        let s_ptr = s.as_obj();
+        if s_ptr.tag() == TAG_BLOB {
+            let blob = s_ptr.as_blob();
+            stream.as_stream().stash(blob.payload_addr(), blob.len());
+        } else {
+            let concat = s_ptr.as_concat();
+            stream_write_text(concat.text1(), stream);
+            s = concat.text2();
         }
     }
 }
@@ -202,13 +216,13 @@ unsafe fn text_compare_range(
 
     // Decompose concats
     if s1_obj.tag() == TAG_CONCAT {
-        let s1_concat = s1_obj as *const Concat;
-        let n_compared = text_size((*s1_concat).text1) - offset1;
-        let cmp = text_compare_range((*s1_concat).text1, offset1, s2, offset2, n_compared);
+        let s1_concat = s1_obj.as_concat();
+        let n_compared = text_size(s1_concat.text1()) - offset1;
+        let cmp = text_compare_range(s1_concat.text1(), offset1, s2, offset2, n_compared);
         match cmp {
             Ordering::Less | Ordering::Greater => cmp,
             Ordering::Equal => text_compare_range(
-                (*s1_concat).text2,
+                s1_concat.text2(),
                 Bytes(0),
                 s2,
                 offset2 + n_compared,
@@ -216,15 +230,15 @@ unsafe fn text_compare_range(
             ),
         }
     } else if s2_obj.tag() == TAG_CONCAT {
-        let s2_concat = s2_obj as *const Concat;
-        let n_compared = text_size((*s2_concat).text1) - offset2;
-        let cmp = text_compare_range(s1, offset1, (*s2_concat).text1, offset2, n_compared);
+        let s2_concat = s2_obj.as_concat();
+        let n_compared = text_size(s2_concat.text1()) - offset2;
+        let cmp = text_compare_range(s1, offset1, s2_concat.text1(), offset2, n_compared);
         match cmp {
             Ordering::Less | Ordering::Greater => cmp,
             Ordering::Equal => text_compare_range(
                 s1,
                 offset1 + n_compared,
-                (*s2_concat).text2,
+                s2_concat.text2(),
                 Bytes(0),
                 n - n_compared,
             ),
@@ -265,7 +279,7 @@ unsafe fn text_get_range(
         if s_obj.tag() == TAG_CONCAT {
             let s_concat = s_obj.as_concat();
 
-            let left = (*s_concat).text1;
+            let left = s_concat.text1();
             let left_size = text_size(left);
 
             // Follow left node?
@@ -276,7 +290,7 @@ unsafe fn text_get_range(
 
             // Follow right node?
             if offset >= left_size {
-                s = (*s_concat).text2;
+                s = s_concat.text2();
                 offset -= left_size;
                 continue;
             }
