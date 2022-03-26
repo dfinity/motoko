@@ -21,7 +21,7 @@ pub unsafe fn test() {
     let mut mem = TestMemory::new(Words(1024 * 1024));
 
     println!("  Testing stream creation");
-    let stream = alloc_stream(&mut mem, Bytes(60));
+    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(60)) as usize);
 
     println!("  Testing stream filling (single bytes)");
     for b in 32..92u8 {
@@ -36,7 +36,7 @@ pub unsafe fn test() {
     assert_eq!(stream.as_blob().len(), Bytes(16));
 
     println!("  Testing stream filling (blocks)");
-    let stream = alloc_stream(&mut mem, Bytes(6000));
+    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(6000)) as usize);
     let chunk: [u8; 10] = [10, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     for _ in 0..600 {
         stream
