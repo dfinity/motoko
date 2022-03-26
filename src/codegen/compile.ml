@@ -5659,7 +5659,7 @@ module BlobStream : Stream = struct
   let checkpoint _env _get_token = G.i Drop
 
   let reserve env get_token bytes =
-    get_token ^^ compile_add_const bytes ^^ E.call_import env "rts" "stream_reserve"
+    get_token ^^ compile_unboxed_const bytes ^^ E.call_import env "rts" "stream_reserve"
 
   let write_word_leb env get_token code =
     let set_word, get_word = new_local env "word" in
@@ -5673,7 +5673,7 @@ module BlobStream : Stream = struct
     G.i Drop
 
   let write_word_32 env get_token code =
-    get_token ^^ reserve env get_token Heap.word_size ^^
+    reserve env get_token Heap.word_size ^^
     code ^^
     G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None})
 
