@@ -28,7 +28,7 @@
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
@@ -161,16 +161,17 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn stream_write_text(stream: Value, mut s: Value) {
+unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
     loop {
         let s_ptr = s.as_obj();
         if s_ptr.tag() == TAG_BLOB {
             let blob = s_ptr.as_blob();
-            stream.as_stream().stash(blob.payload_addr(), blob.len());
+            stream.stash(blob.payload_addr(), blob.len());
+            break;
         } else {
             let concat = s_ptr.as_concat();
             stream_write_text(stream, concat.text1());
-            s = concat.text2();
+            s = concat.text2()
         }
     }
 }

@@ -38,7 +38,7 @@ const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(24);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
-pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Stream {
     debug_assert_eq!(
         INITIAL_STREAM_FILLED,
         (size_of::<Stream>() - size_of::<Blob>()).to_bytes()
@@ -46,13 +46,12 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
     }
-    let blob = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
-    let stream = blob.as_stream();
+    let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
     (*stream).ptr64 = 0;
     (*stream).limit64 = 0;
     (*stream).flusher = Stream::flush; // FIXME: needed? send_to_stable? BOTH?
     (*stream).filled = INITIAL_STREAM_FILLED;
-    blob
+    stream
 }
 
 impl Stream {
@@ -124,9 +123,7 @@ impl Stream {
     pub unsafe fn split(self: *mut Self) -> Value {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
-        let blob = self
-            .payload_addr()
-            .sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Blob;
+        let blob = (self.payload_addr() as *mut Blob).sub(1);
         (*blob).header.tag = TAG_BLOB;
         debug_assert_eq!(blob.len(), (*self).filled);
         Value::from_ptr(blob as usize)
