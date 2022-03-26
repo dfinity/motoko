@@ -5641,9 +5641,8 @@ module BlobStream : Stream = struct
     get_data_size ^^ compile_add_const header_size ^^
     E.call_import env "rts" "alloc_stream" ^^ set_token ^^
     get_token ^^
-    Blob.lit env header ^^ Blob.payload_ptr_unskewed ^^
-    compile_unboxed_const header_size ^^
-    E.call_import env "rts" "stream_write" (* TODO: use stream_write_text *)
+    Blob.lit env header ^^
+    E.call_import env "rts" "stream_write_text"
 
   let check_filled env get_token get_data_size =
     G.i Drop
@@ -5670,7 +5669,7 @@ module BlobStream : Stream = struct
     E.call_import env "rts" "stream_reserve" ^^
     let set_addr, get_addr = new_local env "addr" in
     set_addr ^^
-    I32Leb.compile_store_to_data_buf_unsigned env get_word set_addr ^^
+    I32Leb.compile_store_to_data_buf_unsigned env get_word (*TODO: stream_reserve here*)get_addr ^^
     G.i Drop
 
   let write_word_32 env get_token code =
