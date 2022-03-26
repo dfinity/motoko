@@ -161,7 +161,7 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn stream_write_text(mut s: Value, stream: Value) {
+unsafe extern "C" fn stream_write_text(stream: Value, mut s: Value) {
     loop {
         let s_ptr = s.as_obj();
         if s_ptr.tag() == TAG_BLOB {
@@ -169,7 +169,7 @@ unsafe extern "C" fn stream_write_text(mut s: Value, stream: Value) {
             stream.as_stream().stash(blob.payload_addr(), blob.len());
         } else {
             let concat = s_ptr.as_concat();
-            stream_write_text(concat.text1(), stream);
+            stream_write_text(stream, concat.text1());
             s = concat.text2();
         }
     }
