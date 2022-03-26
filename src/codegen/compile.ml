@@ -884,6 +884,7 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     ()
@@ -5642,7 +5643,7 @@ module BlobStream : Stream = struct
     get_token ^^
     Blob.lit env header ^^ Blob.payload_ptr_unskewed ^^
     compile_unboxed_const header_size ^^
-    E.call_import env "rts" "stream_write"
+    E.call_import env "rts" "stream_write" (* TODO: use stream_write_text *)
 
   let check_filled env get_token get_data_size =
     G.i Drop
@@ -5655,9 +5656,6 @@ module BlobStream : Stream = struct
     get_blob ^^ Blob.len env
 
   let name_for seed typ_name = "@Bl_" ^ seed ^ "<" ^ typ_name ^ ">"
-
-  (*NOT NEEDED*)let advance_data_buf get_data_buf =
-    get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
 
   let checkpoint _env _get_token = G.i Drop
 
@@ -5693,12 +5691,10 @@ module BlobStream : Stream = struct
     get_len ^^
     E.call_import env "rts" "stream_write"
 
-  let write_text env get_data_buf get_x =
-    let set_len, get_len = new_local env "len" in
-    get_x ^^ Text.size env ^^ set_len ^^
-    write_word_leb env get_data_buf get_len ^^
-    get_x ^^ get_data_buf ^^ Text.to_buf env ^^
-    get_len ^^ advance_data_buf get_data_buf
+  let write_text env get_token get_x =
+    write_word_leb env get_token (get_x ^^ Text.size env) ^^
+    get_token ^^ get_x ^^
+    E.call_import env "rts" "stream_write_text"
 
   let write_bignum_leb env get_token get_x =
     get_token ^^
