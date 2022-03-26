@@ -111,8 +111,8 @@ impl Stream {
             if (*self).filled + bytes > (*self).header.len {
                 self.flush()
             }
-	    let ptr = self.payload_addr().add((*self).filled.as_usize());
-	    (*self).filled += bytes;
+            let ptr = self.payload_addr().add((*self).filled.as_usize());
+            (*self).filled += bytes;
             ptr
         }
     }
