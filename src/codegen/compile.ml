@@ -5647,7 +5647,7 @@ module BlobStream : Stream = struct
   let check_filled env get_token get_data_size =
     G.i Drop
 
-  let terminate env get_token get_data_size header_size =
+  let terminate env get_token _get_data_size _header_size =
     get_token ^^ E.call_import env "rts" "stream_split" ^^
     let set_blob, get_blob = new_local env "blob" in
     set_blob ^^
