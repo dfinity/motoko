@@ -350,7 +350,7 @@ Tokens on the same line have equal precedence with the indicated associativity.
 
 | LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 |(higher)| none | `else`, `while`
-|(higher)| right | `:=`, `+=`, `-=`, `*=`, `+/=+`, `+%=+`, `+**=+`, `+#=+`, `+&=+`, `+\|=+`, `+^=+`, `+<<=+`, `+>>=+`, `+<<>=+`, `+<>>=+`, `+%=`, `-%=`, `*%=`, `**%=`
+|(higher)| right | `:=`, `+=`, `-=`, `+*=+`, `+/=+`, `+%=+`, `+**=+`, `+#=+`, `+&=+`, `+\|=+`, `+^=+`, `+<<=+`, `+>>=+`, `+<<>=+`, `+<>>=+`, `+%=`, `-%=`, `+*%=+`, `**%=`
 |(higher)| left | `:`
 |(higher)| left | `or`
 |(higher)| left | `and`
@@ -666,7 +666,7 @@ For example, the link:base-libraries/text{outfilesuffix}[`Text`] library provide
 [[type-bool]]
 === Type `Bool`
 
-The type `Bool` of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
+The type `Bool` of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `+_ and _+` and `+_ or _+` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
 
 // Comparison TODO.
 

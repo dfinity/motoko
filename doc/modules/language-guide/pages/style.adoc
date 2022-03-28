@@ -640,7 +640,7 @@ class Cart(length_ : Nat) {
 +
 Rationale: In {proglang}, functions are first-class values, so functions and other value identifiers share the same name space.
 +
-Identifiers with a leading `_` should _not_ be used for private state, since that indicates an unused name (see <<style>>).
+Identifiers with a leading `+_+` should _not_ be used for private state, since that indicates an unused name (see <<style>>).
 
 * Use longer, more descriptive names for global or public identifier or ones with large scope, and short names for local ones with small scope.
 +

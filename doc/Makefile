@@ -1,5 +1,7 @@
 all: overview-slides.html antora
 
+SRC=modules/language-guide/pages
+OUT=md
 SHELL=bash
 
 overview-slides.html : overview-slides.md
@@ -15,6 +17,8 @@ overview-slides.html : overview-slides.md
 	  # # -V minScale=2 \
 	  # # -V maxScale=2
 
+md:
+	./convert.sh $(SRC) $(OUT)
 
 antora:
 	rm -rf build
@@ -22,3 +26,4 @@ antora:
 	./patch-antora-js.sh
 
 .PHONY: antora
+.PHONY: md
