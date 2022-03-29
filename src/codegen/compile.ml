@@ -1933,6 +1933,9 @@ module ReadBuf = struct
   let advance get_buf get_delta =
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
+  let back get_buf rev =
+    set_ptr get_buf (get_ptr get_buf ^^ compile_sub_const rev)
+
   let read_leb128 env get_buf =
     get_buf ^^ E.call_import env "rts" "leb128_decode"
 
@@ -2411,11 +2414,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_shrU_const 7l ^^
     G.if1 I32Type
       begin
-        get_b0 ^^ compile_shl_const 25l ^^
-        (if signed then compile_shrS_const else compile_shrU_const) 24l
-      end
-      begin
-        ReadBuf.advance get_data_buf (compile_unboxed_const (-1l)) ^^
+        ReadBuf.back get_data_buf 1l ^^
         let set_res, get_res = new_local env "res" in
         Num.compile_load_from_data_buf env get_data_buf signed ^^
         set_res ^^
@@ -2423,6 +2422,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if1 I32Type
           (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
           get_res
+      end
+      begin
+        get_b0 ^^ compile_shl_const 25l ^^
+        (if signed then compile_shrS_const else compile_shrU_const) 24l
       end
 
   let compile_store_to_data_buf_unsigned env =
