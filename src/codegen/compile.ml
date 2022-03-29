@@ -2405,13 +2405,25 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env
 
   let compile_load_from_data_buf env get_data_buf signed =
-    let set_res, get_res = new_local env "res" in
-    Num.compile_load_from_data_buf env get_data_buf signed ^^
-    set_res ^^
-    get_res ^^ fits_in_vanilla env ^^
+    ReadBuf.read_byte env get_data_buf ^^
+    let set_b0, get_b0 = new_local env "b0" in
+    set_b0 ^^ get_b0 ^^
+    compile_bitand_const 0x80l ^^
     G.if1 I32Type
-      (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
-      get_res
+      begin
+        get_b0 ^^ compile_shl_const 25l ^^
+        (if signed then compile_shrS_const else compile_shrU_const) 24l
+      end
+      begin
+        ReadBuf.advance get_data_buf (compile_unboxed_const (-1l)) ^^
+        let set_res, get_res = new_local env "res" in
+        Num.compile_load_from_data_buf env get_data_buf signed ^^
+        set_res ^^
+        get_res ^^ fits_in_vanilla env ^^
+        G.if1 I32Type
+          (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
+          get_res
+      end
 
   let compile_store_to_data_buf_unsigned env =
     let set_x, get_x = new_local env "x" in
