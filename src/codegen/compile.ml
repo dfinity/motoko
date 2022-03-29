@@ -2408,7 +2408,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     ReadBuf.read_byte env get_data_buf ^^
     let set_b0, get_b0 = new_local env "b0" in
     set_b0 ^^ get_b0 ^^
-    compile_bitand_const 0x80l ^^
+    compile_shrU_const 7l ^^
     G.if1 I32Type
       begin
         get_b0 ^^ compile_shl_const 25l ^^
