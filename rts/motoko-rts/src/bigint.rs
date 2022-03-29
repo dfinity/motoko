@@ -461,7 +461,7 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 
     if mp_isneg(&tmp) {
-        // Turn negatiave numbers into the two's complement of the right size
+        // Turn negative numbers into the two's complement of the right size
         let bytes = bigint_sleb128_size(n);
         let mut big: mp_int = core::mem::zeroed();
         check(mp_init(&mut big));
