@@ -509,8 +509,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
 
     buf.advance((bits as u32 >> 3) + 1);
 
-    leb <<= 64 - bits; // remove fuzz
-    leb >>= 65 - bits; // remove cont'n bit
+    leb >>= 1; // remove cont'n bit
     acc |= leb & 0b11111110000000;
     if bits < 16 {
         return Value::from_signed_scalar(acc as i32);
