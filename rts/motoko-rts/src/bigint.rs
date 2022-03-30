@@ -495,6 +495,39 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn bigint_leb128_decode_word64(mut leb: u64, bits: u64, buf: *mut Buf) -> Value {
+    //assert_eq!((leb, bits), (1, 7));
+
+    let mut acc = leb & 0b111_1111;
+    if bits < 8 { buf.advance(1); return Value::from_signed_scalar(acc as i32) }
+
+    buf.advance((bits as u32 >> 3) + 1);
+
+
+    leb <<= 64 - bits; // remove fuzz
+    leb >>= 65 - bits; // remove cont'n bit
+    //assert_eq!((leb, bits, acc), (8256, 15, 0));
+    acc |= leb & 0b11111110000000;
+    //assert_eq!((leb, bits, acc), (8256, 15, 8192));
+    if bits < 16 { return Value::from_signed_scalar(acc as i32) }
+
+    leb >>= 1; // remove cont'n bit
+    acc |= leb & 0b111111100000000000000;
+    if bits < 24 { return Value::from_signed_scalar(acc as i32) }
+    leb >>= 1; // remove cont'n bit
+    acc |= leb & 0b1111111000000000000000000000;
+    if bits < 32 { return Value::from_signed_scalar(acc as i32) }
+
+    leb >>= 1; // remove cont'n bit
+    acc |= leb & 0b11111110000000000000000000000000000;
+    //assert_eq!((leb, bits, acc), (8256, 15, 8192));
+    let tentative = (acc as i32) << 1 >> 1;
+    if tentative as u64 == acc { return Value::from_signed_scalar(tentative)}
+    //assert_eq!((leb, bits, acc), (8256, 15, 8192));
+    bigint_of_word64(acc)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     let mut i = tmp_bigint();
     let mut tmp = tmp_bigint();
@@ -522,4 +555,10 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     }
 
     persist_bigint(i)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bigint_sleb128_decode_word64(mut leb: i64, bits: u64, buf: *mut Buf) -> Value {
+    assert!(false);
+    Value::from_signed_scalar(leb as i32)
 }

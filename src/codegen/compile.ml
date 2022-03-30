@@ -822,9 +822,11 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_leb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "utf8_valid" [I32Type; I32Type] [I32Type];
@@ -1736,7 +1738,7 @@ module TaggedSmallWord = struct
   let ctz_kernel ty =
     compile_word_padding ty ^^
     compile_rotr_const (shift_of_type ty) ^^
-    G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
+    G.i (Unary (Wasm.Values.I64 I32Op.Ctz)) ^^
     msb_adjust ty
 
   (* Kernel for testing a bit position, according to the word invariant. *)
@@ -2420,45 +2422,27 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       Num.compile_abs
       env
 
+  let compile_load_from_word64 env get_data_buf = function
+    | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode_word64"
+    | true -> get_data_buf ^^ E.call_import env "rts" "bigint_sleb128_decode_word64"
+
   let compile_load_from_data_buf env get_data_buf signed =
     ReadBuf.speculative_read_word64 env get_data_buf ^^
+    let set_a, get_a = new_local64 env "a" in
+    set_a ^^ get_a ^^
     compile_xor64_const (-1L) ^^
     compile_bitand64_const 0b1000000010000000100000001000000010000000L ^^
+    let set_eom, get_eom = new_local64 env "eom" in
+    set_eom ^^ get_eom ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    E.then_trap_with env "not smallish!" ^^
-    ReadBuf.read_byte env get_data_buf ^^
-    let set_b0, get_b0 = new_local env "b0" in
-    set_b0 ^^ get_b0 ^^
-    compile_shrU_const 7l ^^
     G.if1 I32Type
       begin
-        ReadBuf.read_byte env get_data_buf ^^
-        let set_b1, get_b1 = new_local env "b1" in
-        set_b1 ^^ get_b1 ^^
-        compile_shrU_const 7l ^^
-        G.if1 I32Type
-          begin
-            ReadBuf.advance get_data_buf (compile_unboxed_const (-2l)) ^^
-            let set_res, get_res = new_local env "res" in
-            Num.compile_load_from_data_buf env get_data_buf signed ^^
-            set_res ^^
-            get_res ^^ fits_in_vanilla env ^^
-            G.if1 I32Type
-              (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
-              get_res
-          end
-          begin
-            get_b1 ^^ compile_shl_const 7l ^^
-            get_b0 ^^ compile_bitand_const 0x7fl ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-            if signed
-            then compile_shl_const 18l ^^ compile_shrS_const 17l
-            else compile_shl_const 1l
-          end
+        Num.compile_load_from_data_buf env get_data_buf signed
       end
       begin
-        get_b0 ^^ compile_shl_const 25l ^^
-        (if signed then compile_shrS_const else compile_shrU_const) 24l
+        get_a ^^
+        get_eom ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz)) ^^
+        compile_load_from_word64 env get_data_buf signed
       end
 
   let compile_store_to_data_buf_unsigned env =
