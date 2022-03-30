@@ -494,6 +494,7 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_decode_word64(
     mut leb: u64,
@@ -564,6 +565,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut leb: i64,
