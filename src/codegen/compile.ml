@@ -591,6 +591,8 @@ let compile_shl64_const = function
 let compile_bitand64_const = compile_op64_const I64Op.And
 let _compile_bitor64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Or n
+let compile_xor64_const = function
+  | 0L -> G.nop | n -> compile_op64_const I64Op.Xor n
 let compile_eq64_const i =
   compile_const_64 i ^^
   G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -1945,6 +1947,11 @@ module ReadBuf = struct
     G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
     E.else_trap_with env "IDL error: out of bounds read"
 
+  let check_page_end env get_buf incr_delta =
+    get_ptr get_buf ^^ compile_bitand_const 0xFFFFl ^^
+    incr_delta ^^
+    compile_shrU_const 16l
+
   let is_empty env get_buf =
     get_end get_buf ^^ get_ptr get_buf ^^
     G.i (Compare (Wasm.Values.I32 I64Op.Eq))
@@ -1966,6 +1973,15 @@ module ReadBuf = struct
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 4l)
+
+  let speculative_read_word64 env get_buf =
+    check_page_end env get_buf (compile_add_const 8l) ^^
+    G.if1 I64Type
+      (compile_const_64 (-1L))
+      begin
+        get_ptr get_buf ^^
+        G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None})
+      end
 
   let read_word64 env get_buf =
     check_space env get_buf (compile_unboxed_const 8l) ^^
@@ -2405,6 +2421,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env
 
   let compile_load_from_data_buf env get_data_buf signed =
+    ReadBuf.speculative_read_word64 env get_data_buf ^^
+    compile_xor64_const (-1L) ^^
+    compile_bitand64_const 0b1000000010000000100000001000000010000000L ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+    E.then_trap_with env "not smallish!" ^^
     ReadBuf.read_byte env get_data_buf ^^
     let set_b0, get_b0 = new_local env "b0" in
     set_b0 ^^ get_b0 ^^
@@ -7041,8 +7062,7 @@ let compile_unop env t op =
     set_f ^^ Float.compile_unboxed_zero ^^ get_f ^^ G.i (Binary (Wasm.Values.F64 F64Op.Sub))
   | NotOp, Type.(Prim (Nat64|Int64)) ->
      SR.UnboxedWord64, SR.UnboxedWord64,
-     compile_const_64 (-1L) ^^
-     G.i (Binary (Wasm.Values.I64 I64Op.Xor))
+     compile_xor64_const (-1L)
   | NotOp, Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)) ->
      StackRep.of_type t, StackRep.of_type t,
      compile_unboxed_const (TaggedSmallWord.mask_of_type ty) ^^
