@@ -1738,7 +1738,7 @@ module TaggedSmallWord = struct
   let ctz_kernel ty =
     compile_word_padding ty ^^
     compile_rotr_const (shift_of_type ty) ^^
-    G.i (Unary (Wasm.Values.I64 I32Op.Ctz)) ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
     msb_adjust ty
 
   (* Kernel for testing a bit position, according to the word invariant. *)
