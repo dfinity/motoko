@@ -507,7 +507,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
         return Value::from_signed_scalar(acc as i32);
     }
 
-    buf.advance((bits as u32 >> 3) + 1);
+    buf.advance((bits as u32 / 8) + 1);
 
     leb >>= 1; // remove cont'n bit
     acc |= leb & 0b11111110000000;
@@ -567,44 +567,40 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
 #[cfg(feature = "ic")]
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_decode_word64(
-    mut leb: i64,
+    mut leb: u64,
     bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    let mut acc = leb & 0b111_1111;
+    buf.advance((bits as u32 / 8) + 1);
+
+    leb = leb.rotate_right(7);
+    let upper_mask: u64 = 0b111_1111 << 57;
+    let mut acc = leb & upper_mask;
     if bits < 8 {
-        buf.advance(1);
-        return Value::from_signed_scalar((acc as i32) << 25 >> 25);
+        return Value::from_signed_scalar((acc as i64 >> 57) as i32);
     }
-
-    buf.advance((bits as u32 >> 3) + 1);
-
-    leb <<= 64 - bits; // remove fuzz
-    leb >>= 65 - bits; // remove cont'n bit
-    acc |= leb & 0b11111110000000;
+    leb = leb.rotate_right(8);
+    acc = acc >> 7 | leb & upper_mask;
     if bits < 16 {
-        return Value::from_signed_scalar((acc as i32) << 18 >> 18);
+        return Value::from_signed_scalar((acc as i64 >> 50) as i32);
     }
-    leb >>= 1; // remove cont'n bit
-    acc |= leb & 0b111111100000000000000;
+    leb = leb.rotate_right(8);
+    acc = acc >> 7 | leb & upper_mask;
     if bits < 24 {
-        return Value::from_signed_scalar((acc as i32) << 11 >> 11);
+        return Value::from_signed_scalar((acc as i64 >> 43) as i32);
     }
-    leb >>= 1; // remove cont'n bit
-    acc |= leb & 0b1111111000000000000000000000;
+    leb = leb.rotate_right(8);
+    acc = acc >> 7 | leb & upper_mask;
     if bits < 32 {
-        return Value::from_signed_scalar((acc as i32) << 4 >> 4);
+        return Value::from_signed_scalar((acc as i64 >> 36) as i32);
     }
-    leb >>= 1; // remove cont'n bit
-    acc |= leb & 0b11111110000000000000000000000000000;
+    leb = leb.rotate_right(8);
+    let signed = (acc >> 7 | leb & upper_mask) as i64 >> 29;
 
-    acc <<= 29; // sign extension
-    acc >>= 29;
-
-    let tentative = (acc as i32) << 1 >> 1;
-    if tentative as i64 == acc {
+    let tentative = (signed as i32) << 1 >> 1;
+    if tentative as i64 == signed {
         return Value::from_signed_scalar(tentative);
     }
 
-    bigint_of_int64(acc)
+    bigint_of_int64(signed)
 }
