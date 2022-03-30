@@ -530,6 +530,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     if tentative as u64 == acc {
         return Value::from_signed_scalar(tentative);
     }
+
     bigint_of_word64(acc)
 }
 
@@ -569,6 +570,40 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    assert!(false);
-    Value::from_signed_scalar(leb as i32)
+    let mut acc = leb & 0b111_1111;
+    if bits < 8 {
+        buf.advance(1);
+        return Value::from_signed_scalar((acc as i32) << 25 >> 25);
+    }
+
+    buf.advance((bits as u32 >> 3) + 1);
+
+    leb <<= 64 - bits; // remove fuzz
+    leb >>= 65 - bits; // remove cont'n bit
+    acc |= leb & 0b11111110000000;
+    if bits < 16 {
+        return Value::from_signed_scalar((acc as i32) << 18 >> 18);
+    }
+    leb >>= 1; // remove cont'n bit
+    acc |= leb & 0b111111100000000000000;
+    if bits < 24 {
+        return Value::from_signed_scalar((acc as i32) << 11 >> 11);
+    }
+    leb >>= 1; // remove cont'n bit
+    acc |= leb & 0b1111111000000000000000000000;
+    if bits < 32 {
+        return Value::from_signed_scalar((acc as i32) << 4 >> 4);
+    }
+    leb >>= 1; // remove cont'n bit
+    acc |= leb & 0b11111110000000000000000000000000000;
+
+    acc <<= 29; // sign extension
+    acc >>= 29;
+
+    let tentative = (acc as i32) << 1 >> 1;
+    if tentative as i64 == acc {
+        return Value::from_signed_scalar(tentative);
+    }
+
+    bigint_of_int64(acc)
 }
