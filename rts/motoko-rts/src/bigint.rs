@@ -562,7 +562,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
 #[cfg(feature = "ic")]
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_decode_word64(
-    mut leb: u64,
+    mut sleb: u64,
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
@@ -572,7 +572,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     let mut mask: u64 = 0b111_1111;
     let mut acc = 0;
     loop {
-        acc |= leb & mask;
+        acc |= sleb & mask;
         if bits < 8 {
             if continuations == 4 {
                 break;
@@ -582,7 +582,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         }
         bits -= 8;
         mask <<= 7;
-        leb >>= 1;
+        sleb >>= 1;
     }
 
     let signed = (acc as i64) << 29 >> 29;
