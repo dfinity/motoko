@@ -526,7 +526,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     let tentative = (acc as i32) << 1 >> 1; // top two bits must match
     if tentative as u64 == acc {
         // roundtrip is valid
-        return Value::from_signed_scalar(tentative as i32);
+        return Value::from_signed_scalar(tentative);
     }
 
     bigint_of_word64(acc)
