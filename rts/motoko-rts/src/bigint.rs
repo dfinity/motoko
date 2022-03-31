@@ -570,35 +570,29 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut leb: u64,
-    bits: u64,
+    mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    buf.advance((bits as u32 / 8) + 1);
+    let continuations = bits as u32 / 8;
+    buf.advance(continuations + 1);
 
-    leb = leb.rotate_right(7);
-    let upper_mask: u64 = 0b111_1111 << 57;
-    let mut acc = leb & upper_mask;
-    if bits < 8 {
-        return Value::from_signed_scalar((acc as i64 >> 57) as i32);
+    let mut mask: u64 = 0b111_1111;
+    let mut acc = 0;
+    loop {
+        acc |= leb & mask;
+        if bits < 8 {
+            if continuations == 4 {
+                break;
+            }
+            let sext = 25 - 7 * continuations;
+            return Value::from_signed_scalar((acc as i32) << sext >> sext);
+        }
+        bits -= 8;
+        mask <<= 7;
+        leb >>= 1;
     }
-    leb = leb.rotate_right(8);
-    acc = acc >> 7 | leb & upper_mask;
-    if bits < 16 {
-        return Value::from_signed_scalar((acc as i64 >> 50) as i32);
-    }
-    leb = leb.rotate_right(8);
-    acc = acc >> 7 | leb & upper_mask;
-    if bits < 24 {
-        return Value::from_signed_scalar((acc as i64 >> 43) as i32);
-    }
-    leb = leb.rotate_right(8);
-    acc = acc >> 7 | leb & upper_mask;
-    if bits < 32 {
-        return Value::from_signed_scalar((acc as i64 >> 36) as i32);
-    }
-    leb = leb.rotate_right(8);
-    let signed = (acc >> 7 | leb & upper_mask) as i64 >> 29;
 
+    let signed = (acc as i64) << 29 >> 29;
     let tentative = (signed as i32) << 1 >> 1;
     if tentative as i64 == signed {
         return Value::from_signed_scalar(tentative);
