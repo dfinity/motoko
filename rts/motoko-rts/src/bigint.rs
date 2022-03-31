@@ -494,7 +494,10 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
-/// decode at most 5 bytes as indicated by `bits`
+/// Decode at most 5 bytes of LEB128 data to a compact bignum `Value`.
+/// The number of 7-bit chunks are located in the lower portion of `leb`
+/// as indicated by `bits`.
+///
 #[cfg(feature = "ic")]
 #[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_decode_word64(
@@ -505,7 +508,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     let continuations = bits as u32 / 8;
     buf.advance(continuations + 1);
 
-    let mut mask: u64 = 0b111_1111;
+    let mut mask: u64 = 0b111_1111; // sliding mask
     let mut acc = 0;
     loop {
         acc |= leb & mask;
@@ -520,8 +523,9 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
         leb >>= 1;
     }
 
-    let tentative = (acc as i32) << 1 >> 1;
+    let tentative = (acc as i32) << 1 >> 1; // top two bits must match
     if tentative as u64 == acc {
+        // roundtrip is valid
         return Value::from_signed_scalar(tentative as i32);
     }
 
@@ -558,7 +562,10 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
-/// decode at most 5 bytes as indicated by `bits`
+/// Decode at most 5 bytes of SLEB128 data to a compact bignum `Value`.
+/// The number of 7-bit chunks are located in the lower portion of `sleb`
+/// as indicated by `bits`.
+///
 #[cfg(feature = "ic")]
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_decode_word64(
@@ -569,7 +576,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     let continuations = bits as u32 / 8;
     buf.advance(continuations + 1);
 
-    let mut mask: u64 = 0b111_1111;
+    let mut mask: u64 = 0b111_1111; // sliding mask
     let mut acc = 0;
     loop {
         acc |= sleb & mask;
@@ -577,7 +584,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
             if continuations == 4 {
                 break;
             }
-            let sext = 25 - 7 * continuations;
+            let sext = 25 - 7 * continuations; // this many top bits will get a copy of the sign
             return Value::from_signed_scalar((acc as i32) << sext >> sext);
         }
         bits -= 8;
@@ -585,9 +592,10 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         sleb >>= 1;
     }
 
-    let signed = (acc as i64) << 29 >> 29;
-    let tentative = (signed as i32) << 1 >> 1;
+    let signed = (acc as i64) << 29 >> 29; // sign extends
+    let tentative = (signed as i32) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
+        // roundtrip is valid
         return Value::from_signed_scalar(tentative);
     }
 
