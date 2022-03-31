@@ -499,37 +499,30 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
 #[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_decode_word64(
     mut leb: u64,
-    bits: u64,
+    mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    let mut acc = leb & 0b111_1111;
-    if bits < 8 {
-        buf.advance(1);
-        return Value::from_signed_scalar(acc as i32);
+    let continuations = bits as u32 / 8;
+    buf.advance(continuations + 1);
+
+    let mut mask: u64 = 0b111_1111;
+    let mut acc = 0;
+    loop {
+        acc |= leb & mask;
+        if bits < 8 {
+            if continuations == 4 {
+                break;
+            }
+            return Value::from_signed_scalar(acc as i32);
+        }
+        bits -= 8;
+        mask <<= 7;
+        leb >>= 1;
     }
 
-    buf.advance((bits as u32 / 8) + 1);
-
-    leb >>= 1; // remove cont'n bit
-    acc |= leb & 0b11111110000000;
-    if bits < 16 {
-        return Value::from_signed_scalar(acc as i32);
-    }
-    leb >>= 1; // remove cont'n bit
-    acc |= leb & 0b111111100000000000000;
-    if bits < 24 {
-        return Value::from_signed_scalar(acc as i32);
-    }
-    leb >>= 1; // remove cont'n bit
-    acc |= leb & 0b1111111000000000000000000000;
-    if bits < 32 {
-        return Value::from_signed_scalar(acc as i32);
-    }
-    leb >>= 1; // remove cont'n bit
-    acc |= leb & 0b11111110000000000000000000000000000;
     let tentative = (acc as i32) << 1 >> 1;
     if tentative as u64 == acc {
-        return Value::from_signed_scalar(tentative);
+        return Value::from_signed_scalar(tentative as i32);
     }
 
     bigint_of_word64(acc)
