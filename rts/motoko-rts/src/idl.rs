@@ -781,8 +781,8 @@ unsafe fn sub(
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_words(n_types1: u32, n_types2: u32) -> u32 {
-    return BitRel::words(n_types1, n_types2);
+unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> u32 {
+    return BitRel::words(typtbl_size1, typtbl_size2);
 }
 
 #[no_mangle]
@@ -797,6 +797,8 @@ unsafe extern "C" fn idl_sub(
     t1: i32,
     t2: i32,
 ) -> bool {
+    debug_assert!(rel_buf != (0 as *mut u32));
+
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),

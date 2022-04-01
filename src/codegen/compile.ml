@@ -1082,7 +1082,6 @@ module Stack = struct
     f get_x ^^
     dynamic_free_words env get_n
 
-
 end (* Stack *)
 
 
