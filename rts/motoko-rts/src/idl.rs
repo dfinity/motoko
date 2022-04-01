@@ -820,6 +820,8 @@ unsafe extern "C" fn idl_sub(
     t1: i32,
     t2: i32,
 ) -> bool {
+    debug_assert!(rel_buf != (0 as *mut u32));
+
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),
