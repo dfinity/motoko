@@ -592,7 +592,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         sleb >>= 1;
     }
 
-    let signed = (acc as i64) << 29 >> 29; // sign extends
+    let signed = (acc as i64) << 29 >> 29; // sign extend
     let tentative = (signed as i32) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
         // roundtrip is valid
