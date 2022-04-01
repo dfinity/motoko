@@ -591,6 +591,8 @@ let compile_shl64_const = function
 let compile_bitand64_const = compile_op64_const I64Op.And
 let _compile_bitor64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Or n
+let compile_xor64_const = function
+  | 0L -> G.nop | n -> compile_op64_const I64Op.Xor n
 let compile_eq64_const i =
   compile_const_64 i ^^
   G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -820,9 +822,11 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_leb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "utf8_valid" [I32Type; I32Type] [I32Type];
@@ -1945,6 +1949,11 @@ module ReadBuf = struct
     G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
     E.else_trap_with env "IDL error: out of bounds read"
 
+  let check_page_end env get_buf incr_delta =
+    get_ptr get_buf ^^ compile_bitand_const 0xFFFFl ^^
+    incr_delta ^^
+    compile_shrU_const 16l
+
   let is_empty env get_buf =
     get_end get_buf ^^ get_ptr get_buf ^^
     G.i (Compare (Wasm.Values.I32 I64Op.Eq))
@@ -1966,6 +1975,15 @@ module ReadBuf = struct
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 4l)
+
+  let speculative_read_word64 env get_buf =
+    check_page_end env get_buf (compile_add_const 8l) ^^
+    G.if1 I64Type
+      (compile_const_64 (-1L))
+      begin
+        get_ptr get_buf ^^
+        G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None})
+      end
 
   let read_word64 env get_buf =
     check_space env get_buf (compile_unboxed_const 8l) ^^
@@ -2031,7 +2049,7 @@ sig
      and leave it on the stack (vanilla).
      The boolean argument is true if the value to be read is signed.
    *)
-  val compile_load_from_data_buf : E.t -> bool -> G.t
+  val compile_load_from_data_buf : E.t -> G.t -> bool -> G.t
 
   (* literals *)
   val vanilla_lit : E.t -> Big_int.big_int -> int32
@@ -2404,14 +2422,29 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       Num.compile_abs
       env
 
-  let compile_load_from_data_buf env signed =
-    let set_res, get_res = new_local env "res" in
-    Num.compile_load_from_data_buf env signed ^^
-    set_res ^^
-    get_res ^^ fits_in_vanilla env ^^
+  let compile_load_from_word64 env get_data_buf = function
+    | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode_word64"
+    | true -> get_data_buf ^^ E.call_import env "rts" "bigint_sleb128_decode_word64"
+
+  let compile_load_from_data_buf env get_data_buf signed =
+    (* see Note [speculating for short (S)LEB encoded bignums] *)
+    ReadBuf.speculative_read_word64 env get_data_buf ^^
+    let set_a, get_a = new_local64 env "a" in
+    set_a ^^ get_a ^^
+    compile_xor64_const (-1L) ^^
+    compile_bitand64_const 0b1000000010000000100000001000000010000000L ^^
+    let set_eom, get_eom = new_local64 env "eom" in
+    set_eom ^^ get_eom ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if1 I32Type
-      (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
-      get_res
+      begin
+        Num.compile_load_from_data_buf env get_data_buf signed
+      end
+      begin
+        get_a ^^
+        get_eom ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz)) ^^
+        compile_load_from_word64 env get_data_buf signed
+      end
 
   let compile_store_to_data_buf_unsigned env =
     let set_x, get_x = new_local env "x" in
@@ -2563,9 +2596,9 @@ module BigNumLibtommath : BigNumType = struct
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
 
-  let compile_load_from_data_buf env = function
-    | false -> E.call_import env "rts" "bigint_leb128_decode"
-    | true -> E.call_import env "rts" "bigint_sleb128_decode"
+  let compile_load_from_data_buf env get_data_buf = function
+    | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
+    | true -> get_data_buf ^^ E.call_import env "rts" "bigint_sleb128_decode"
 
   let vanilla_lit env n =
     (* See enum mp_sign *)
@@ -5187,22 +5220,19 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Nat ->
         with_prim_typ t
         begin
-          get_data_buf ^^
-          BigNum.compile_load_from_data_buf env false
+          BigNum.compile_load_from_data_buf env get_data_buf false
         end
       | Prim Int ->
         (* Subtyping with nat *)
         check_prim_typ (Prim Nat) ^^
         G.if1 I32Type
           begin
-            get_data_buf ^^
-            BigNum.compile_load_from_data_buf env false
+            BigNum.compile_load_from_data_buf env get_data_buf false
           end
           begin
             with_prim_typ t
             begin
-              get_data_buf ^^
-              BigNum.compile_load_from_data_buf env true
+              BigNum.compile_load_from_data_buf env get_data_buf true
             end
           end
       | Prim Float ->
@@ -5612,6 +5642,35 @@ module MakeSerialization (Strm : Stream) = struct
       (fun env -> IC.system_call env "ic0" "msg_arg_data_copy")
       (fun env -> compile_unboxed_const 0l) ^^
     deserialize_from_blob false env ts
+
+(*
+Note [speculating for short (S)LEB encoded bignums]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#3098 highlighted that a lot of heap garbage can be generated while reading in
+(S)LEB-encoded bignums. To make heap consumption optimal for every compactly
+representable `Int`, we resort to speculatively reading a 64-byte chunk from
+the `ReadBuf`. We call it speculative, because it may read past the end of the
+buffer (and thus end up containing junk bytes) or even fail because reading
+across Wasm page boundaries could cause trapping. (Consider the buffer ending
+3 bytes before the last-memory-page boundary and issuing a speculative 64-bit read for the
+address 2 bytes less than buffer end.) In case of failure to read data, `-1`
+(a sentinel) is returned. (The sentinel could be use-case specific when later
+the need arises.)
+
+In most cases the speculative read will come back with valid bytes. How many
+of those are relevant, can be judged by consulting the buffer-end pointer or
+analysing the 64-bit word directly. In the case of (S)LEB, the continuation and
+termination bits can be filtered and thus the encoding's last byte detected when
+present in the 64-bit word.
+
+If such a LEB boundary is detected, avenues open up for a much faster (than
+bytewise-sequential) parsing.
+
+After the data is interpreted, it's the client's responsibility to adjust the
+current buffer position.
+
+ *)
 
 (*
 Note [mutable stable values]
@@ -7017,8 +7076,7 @@ let compile_unop env t op =
     set_f ^^ Float.compile_unboxed_zero ^^ get_f ^^ G.i (Binary (Wasm.Values.F64 F64Op.Sub))
   | NotOp, Type.(Prim (Nat64|Int64)) ->
      SR.UnboxedWord64, SR.UnboxedWord64,
-     compile_const_64 (-1L) ^^
-     G.i (Binary (Wasm.Values.I64 I64Op.Xor))
+     compile_xor64_const (-1L)
   | NotOp, Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)) ->
      StackRep.of_type t, StackRep.of_type t,
      compile_unboxed_const (TaggedSmallWord.mask_of_type ty) ^^
