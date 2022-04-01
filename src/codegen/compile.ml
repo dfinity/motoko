@@ -767,15 +767,7 @@ module Func = struct
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
     )
-  let share_code5 env name (p1, p2, p3, p4, p5) retty mk_body =
-    share_code env name [p1; p2; p3; p4; p5] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
-        (G.i (LocalGet (nr 1l)))
-        (G.i (LocalGet (nr 2l)))
-        (G.i (LocalGet (nr 3l)))
-        (G.i (LocalGet (nr 4l)))
-    )
-  let _share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+  let share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -4868,25 +4860,34 @@ module Serialization = struct
      It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
    *)
 
+  let with_rel_buf_opt env extended get_typtbl_size1 f =
+    if extended then
+      f (compile_unboxed_const 0l)
+    else
+      get_typtbl_size1 ^^ get_typtbl_size env ^^
+      E.call_import env "rts" "idl_sub_buf_words" ^^
+      Stack.dynamic_with_words env "rel_buf" f
+
+
   let idl_sub env t2 =
     let idx = List.length (!(env.E.typtbl_typs)) in
     env.E.typtbl_typs := !(env.E.typtbl_typs) @ [t2];
     get_typtbl_idltyps env ^^
     compile_add_const (Int32.of_int (idx * 4)) ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-    Func.share_code5 env ("idl_sub")
-      (("typtbl1", I32Type),
+    Func.share_code6 env ("idl_sub")
+      (("rel_buf", I32Type),
+       ("typtbl1", I32Type),
        ("typtbl_end1", I32Type),
        ("typtbl_size1", I32Type),
        ("idltyp1", I32Type),
        ("idltyp2", I32Type)
       )
       [I32Type]
-      (fun env get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
-        get_typtbl_size1 ^^ get_typtbl_size env ^^
-        E.call_import env "rts" "idl_sub_buf_words" ^^
-        Stack.dynamic_with_words env "rel_buf" (fun get_rel_buf_ptr ->
-          get_rel_buf_ptr ^^
+      (fun env get_rel_buf get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
+          get_rel_buf ^^
+          E.else_trap_with env "null rel_buf" ^^
+          get_rel_buf ^^
           get_typtbl1 ^^
           get_typtbl env ^^
           get_typtbl_end1 ^^
@@ -4895,14 +4896,14 @@ module Serialization = struct
           get_typtbl_size env ^^
           get_idltyp1 ^^
           get_idltyp2 ^^
-          E.call_import env "rts" "idl_sub"))
+          E.call_import env "rts" "idl_sub")
 
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
     Func.share_code9 env name
-      (("extended", I32Type),
+      (("rel_buf_opt", I32Type),
        ("data_buffer", I32Type),
        ("ref_buffer", I32Type),
        ("typtbl", I32Type),
@@ -4912,7 +4913,7 @@ module Serialization = struct
        ("depth", I32Type),
        ("can_recover", I32Type)
       ) [I32Type]
-    (fun env get_extended get_data_buf get_ref_buf get_typtbl get_typtbl_end get_typtbl_size get_idltyp get_depth get_can_recover ->
+    (fun env get_rel_buf_opt get_data_buf get_ref_buf get_typtbl get_typtbl_end get_typtbl_size get_idltyp get_depth get_can_recover ->
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -4930,7 +4931,7 @@ module Serialization = struct
       let go' can_recover env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
-        get_extended ^^
+        get_rel_buf_opt ^^
         get_data_buf ^^
         get_ref_buf ^^
         get_typtbl ^^
@@ -5473,16 +5474,16 @@ module Serialization = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
-        get_extended ^^
+        get_rel_buf_opt ^^
         G.if1 I32Type
-          (compile_unboxed_const 1l)
           (begin
             get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
-           end) ^^
+            end)
+          (compile_unboxed_const 1l) ^^
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
@@ -5493,16 +5494,16 @@ module Serialization = struct
               ]))
          (coercion_failed "IDL error: incompatible function type")
       | Obj (Actor, _) ->
-        get_extended ^^
+        get_rel_buf_opt ^^
         G.if1 I32Type
-          (compile_unboxed_const 1l)
           (begin
             get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
-           end) ^^
+            end)
+          (compile_unboxed_const 1l) ^^
         G.if1 I32Type
           (with_composite_typ idl_service
              (fun _get_typ_buf -> read_actor_data ()))
@@ -5622,6 +5623,9 @@ module Serialization = struct
       Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
+      (* Allocate memo table, if necessary *)
+      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
         ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
@@ -5641,7 +5645,7 @@ module Serialization = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-             compile_unboxed_const (if extended then 1l else 0l) ^^
+             get_rel_buf_opt ^^
              get_data_buf ^^ get_ref_buf ^^
              get_typtbl_ptr ^^ load_unskewed_ptr ^^
              get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
@@ -5676,7 +5680,7 @@ module Serialization = struct
         E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
       ))))))
 
-    )
+    ))
 
   let deserialize env ts =
     Blob.of_size_copy env
