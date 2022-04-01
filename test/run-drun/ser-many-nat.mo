@@ -9,8 +9,6 @@ var n = Prim.nat64ToNat(1<<32);
 var c = n;
 public func go() : async () {
  while (n > 0) {
-   //Prim.debugPrint(debug_show(n));
-
    if (n != deserNat(serNat(n))) {
      Prim.debugPrint(debug_show {failure = n});
    };
