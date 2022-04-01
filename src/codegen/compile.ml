@@ -5653,7 +5653,7 @@ representable `Int`, we resort to speculatively reading a 64-byte chunk from
 the `ReadBuf`. We call it speculative, because it may read past the end of the
 buffer (and thus end up containing junk bytes) or even fail because reading
 across Wasm page boundaries could cause trapping. (Consider the buffer ending
-3 bytes before the page boundary and issuing a speculative 64-bit read for the
+3 bytes before the last-memory-page boundary and issuing a speculative 64-bit read for the
 address 2 bytes less than buffer end.) In case of failure to read data, `-1`
 (a sentinel) is returned. (The sentinel could be use-case specific when later
 the need arises.)
