@@ -5477,6 +5477,7 @@ module Serialization = struct
         get_rel_buf_opt ^^
         G.if1 I32Type
           (begin
+            get_rel_buf_opt ^^
             get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
@@ -5497,6 +5498,7 @@ module Serialization = struct
         get_rel_buf_opt ^^
         G.if1 I32Type
           (begin
+            get_rel_buf_opt ^^
             get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
