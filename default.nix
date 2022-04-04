@@ -162,14 +162,14 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256-CrtZQTac95MEbk3uapviLgcQjEt5VUnTOG9fiJXIAU8";
+        cargoSha256 = "sha256:0kq1r2aqhpvg739ljmbr9f6101rfwadnmvjddq297xww6r0mkfqa";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-FKHMGqInqyfTl4oO1+gwe/o4pvWh3Bh0/QCeaEfjhCM";
+      rustStdDepsHash = "sha256:1nky4lrj8vd55h2lg4r0vhfg15xm2gfkbjv783qdkxy8afqagqph";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
