@@ -123,54 +123,11 @@ impl Stream {
     /// Lengths are adjusted correspondingly.
     #[export_name = "stream_split"]
     pub unsafe fn split(self: *mut Self) -> Value {
-	//crate::debug::print_value(Value::from_ptr(self as usize));
-
-
-
-	//assert_eq!(((*self).header.len, (*self).filled), (Bytes(78), Bytes(51)));
-
-	//if (*self).filled.as_u32() <= 69 {return Value::from_raw((*self).filled.as_u32());}
-
-
 	(*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.payload_addr() as *mut Blob).sub(1);
         (*blob).header.tag = TAG_BLOB;
         debug_assert_eq!(blob.len(), (*self).filled);
-
-
-
-
-	//assert_eq!((blob.len(), (*self).filled), (Bytes(54), Bytes(54)));
-
-	//crate::debug::print_value(Value::from_ptr(self as usize));
-	//crate::debug::print_value(Value::from_ptr(blob as usize));
-
-
-	
 	Value::from_ptr(blob as usize)
     }
-
-
-
-
-    #[export_name = "diff_stream_pos"]
-    pub unsafe fn diff_stream_pos(prev: i32, now: i32) -> i32 {
-	let diff = prev - now;
-	//assert!(diff == -18 || diff == -23);
-	diff
-    }
-
-
-    #[export_name = "check_len"]
-    pub unsafe fn check_len(now: u32) -> u32 {
-	if now > 100 {
-	    //crate::debug::print_value(Value::from_raw(now))
-	}else{
-
-	    //assert_eq!(now, 54);
-	}
-	now
-    }
-
 }
