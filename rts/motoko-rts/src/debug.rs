@@ -200,11 +200,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BLOB => {
             let blob = obj.as_blob();
-            let _ = write!(buf, "<Blob len={:#x}>{:#x}{:#x}{:#x}{:#x}\n", blob.len().as_u32(), *blob.payload_addr(), *blob.payload_addr().add(1), *blob.payload_addr().add(2), *blob.payload_addr().add(3));
-
-	    for i in 0..blob.len().as_usize() {
-            let _ = write!(buf, "{}={:#x}\n", i, *blob.payload_addr().add(i));
-	    }
+            let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_u32());
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
@@ -219,7 +215,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<BigInt>");
         }
         TAG_CONCAT => {
-            let concat = obj as *const Concat;
+            let concat = obj.as_concat();
             let _ = write!(
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
