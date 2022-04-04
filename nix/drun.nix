@@ -1,6 +1,6 @@
 pkgs:
 { drun =
-    pkgs.rustPlatform.buildRustPackage {
+    pkgs.rustPackages_1_57.rustPlatform.buildRustPackage {
       name = "drun";
 
       src = pkgs.sources.ic + "/rs";
@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-15xc6dSuXT9pINny5BP2J+JPOmhTdi+h2r5JAWXG1sE=";
+      cargoSha256 = "sha256:1rx9hmiaywi1czpdmn0j1v3rl9qgf1jw0j49331mp1vfkjfrdyr8";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
