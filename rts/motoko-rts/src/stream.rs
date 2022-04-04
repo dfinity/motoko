@@ -94,6 +94,8 @@ impl Stream {
             }
         }
     }
+
+    /// Ingest a single byte into the stream.
     #[export_name = "stream_write_byte"]
     pub fn stash8(self: *mut Self, byte: u8) {
         unsafe {
@@ -105,13 +107,17 @@ impl Stream {
         }
     }
 
+    /// Return a pointer to a reserved area of the cache and advance the
+    /// fill indicator beyond it.
     #[export_name = "stream_reserve"]
     pub fn reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
         unsafe {
             if (*self).filled + bytes > (*self).header.len {
                 self.flush()
             }
-            let ptr = (self as *mut Blob).payload_addr().add((*self).filled.as_usize());
+            let ptr = (self as *mut Blob)
+                .payload_addr()
+                .add((*self).filled.as_usize());
             (*self).filled += bytes;
             ptr
         }
@@ -122,11 +128,11 @@ impl Stream {
     /// Lengths are adjusted correspondingly.
     #[export_name = "stream_split"]
     pub unsafe fn split(self: *mut Self) -> Value {
-	(*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
+        (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.payload_addr() as *mut Blob).sub(1);
         (*blob).header.tag = TAG_BLOB;
         debug_assert_eq!(blob.len(), (*self).filled);
-	Value::from_ptr(blob as usize)
+        Value::from_ptr(blob as usize)
     }
 }
