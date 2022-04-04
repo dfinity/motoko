@@ -5259,7 +5259,7 @@ module MakeSerialization (Strm : Stream) = struct
           )
         end begin
           (* Decoded before. Check type hash *)
-          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t)  ^^
+          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
@@ -5818,7 +5818,6 @@ module BlobStream : Stream = struct
   let absolute_offset env get_token =
     let filled_field = Int32.add Blob.len_field 6l in (* see invariant in `stream.rs` *)
     get_token ^^ Heap.load_field_unskewed filled_field
-  
 
   let checkpoint _env _get_token = G.i Drop
 
