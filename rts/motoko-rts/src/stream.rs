@@ -123,7 +123,7 @@ impl Stream {
     /// Lengths are adjusted correspondingly.
     #[export_name = "stream_split"]
     pub unsafe fn split(self: *mut Self) -> Value {
-	crate::debug::print_value(Value::from_ptr(self as usize));
+	//crate::debug::print_value(Value::from_ptr(self as usize));
 
 
 
@@ -143,8 +143,8 @@ impl Stream {
 
 	//assert_eq!((blob.len(), (*self).filled), (Bytes(54), Bytes(54)));
 
-	crate::debug::print_value(Value::from_ptr(self as usize));
-	crate::debug::print_value(Value::from_ptr(blob as usize));
+	//crate::debug::print_value(Value::from_ptr(self as usize));
+	//crate::debug::print_value(Value::from_ptr(blob as usize));
 
 
 	
