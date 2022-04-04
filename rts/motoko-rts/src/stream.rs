@@ -57,8 +57,8 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
 
 impl Stream {
     #[inline]
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
-        self.add(1) as *mut u8 // skip closure header
+    pub unsafe fn payload_addr(self: *const Self) -> *const u8 {
+        self.add(1) as *const u8 // skip closure header
     }
 
     /// make sure that the cache is empty
