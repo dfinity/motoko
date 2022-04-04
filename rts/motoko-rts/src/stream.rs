@@ -107,7 +107,7 @@ impl Stream {
 
     #[export_name = "stream_reserve"]
     pub fn reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
-        unsafe {if bytes != Bytes(1) {assert_eq!(bytes,Bytes(4))}
+        unsafe {
             if (*self).filled + bytes > (*self).header.len {
         assert!(false);
                 self.flush()
