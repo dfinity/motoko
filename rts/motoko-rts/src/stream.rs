@@ -109,7 +109,6 @@ impl Stream {
     pub fn reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
         unsafe {
             if (*self).filled + bytes > (*self).header.len {
-        assert!(false);
                 self.flush()
             }
             let ptr = (self as *mut Blob).payload_addr().add((*self).filled.as_usize());
