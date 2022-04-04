@@ -108,6 +108,7 @@ impl Stream {
     #[export_name = "stream_reserve"]
     pub fn reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
         unsafe {
+	    //if bytes != Bytes(4) && bytes != Bytes(1) { assert_eq!(bytes, Bytes(3))}
             if (*self).filled + bytes > (*self).header.len {
                 self.flush()
             }
@@ -122,11 +123,42 @@ impl Stream {
     /// Lengths are adjusted correspondingly.
     #[export_name = "stream_split"]
     pub unsafe fn split(self: *mut Self) -> Value {
-        (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
+	crate::debug::print_value(Value::from_ptr(self as usize));
+
+
+
+	//assert_eq!(((*self).header.len, (*self).filled), (Bytes(78), Bytes(51)));
+
+	//if (*self).filled.as_u32() <= 69 {return Value::from_raw((*self).filled.as_u32());}
+
+
+	(*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.payload_addr() as *mut Blob).sub(1);
         (*blob).header.tag = TAG_BLOB;
         debug_assert_eq!(blob.len(), (*self).filled);
-        Value::from_ptr(blob as usize)
+
+
+
+
+	//assert_eq!((blob.len(), (*self).filled), (Bytes(54), Bytes(54)));
+
+	crate::debug::print_value(Value::from_ptr(self as usize));
+	crate::debug::print_value(Value::from_ptr(blob as usize));
+
+
+	
+	Value::from_ptr(blob as usize)
     }
+
+
+
+
+    #[export_name = "get_stream_pos"]
+    pub unsafe fn get_stream_pos(prev: i32, now: i32) -> i32 {
+	let diff = prev - now;
+	assert!(diff == -18 || diff == -23);
+	diff
+    }
+
 }

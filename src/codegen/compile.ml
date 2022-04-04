@@ -892,6 +892,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
+    E.add_func_import env "rts" "get_stream_pos" [I32Type;I32Type] [I32Type];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     ()
 
@@ -4836,7 +4837,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* Second time we see this *)
           (* Calculate relative offset *)
           let set_offset, get_offset = new_local env "offset" in
-          get_tag ^^ Strm.absolute_offset env get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+          get_tag ^^ Strm.absolute_offset env get_data_buf ^^ (* G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^*) E.call_import env "rts" "get_stream_pos"  ^^
           set_offset ^^
           (*get_tag ^^ get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_offset ^^ (* FIXME: needs an abstract offset calculation, Strm.calc_offset *)*)
@@ -5816,9 +5817,11 @@ module BlobStream : Stream = struct
 
   let name_for seed typ_name = "@Bl_" ^ seed ^ "<" ^ typ_name ^ ">"
 
-  let absolute_offset _env get_token =
+  let absolute_offset env get_token =
     let filled_field = Int32.add Blob.len_field 6l in (* see invariant in `stream.rs` *)
+    (*get_token ^^ get_token ^^ Heap.load_field_unskewed filled_field ^^ E.call_import env "rts" "get_stream_pos"*)
     get_token ^^ Heap.load_field_unskewed filled_field
+  
 
   let checkpoint _env _get_token = G.i Drop
 
