@@ -27,6 +27,7 @@ pkgs:
         llvm_13
         llvmPackages_13.libclang
         lmdb
+        libunwind
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];
