@@ -5826,13 +5826,9 @@ module BlobStream : Stream = struct
 
   let write_word_leb env get_token code =
     let set_word, get_word = new_local env "word" in
-    get_token ^^
     code ^^ set_word ^^
-    I32Leb.compile_leb128_size get_word ^^
-    E.call_import env "rts" "stream_reserve" ^^
-    let set_addr, get_addr = new_local env "addr" in
-    set_addr ^^
-    I32Leb.compile_store_to_data_buf_unsigned env get_word (*TODO: stream_reserve here*)get_addr ^^
+    I32Leb.compile_store_to_data_buf_unsigned env get_word
+      (get_token ^^ I32Leb.compile_leb128_size get_word ^^ E.call_import env "rts" "stream_reserve") ^^
     G.i Drop
 
   let write_word_32 env get_token code =
