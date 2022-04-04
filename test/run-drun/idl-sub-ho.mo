@@ -36,6 +36,13 @@ actor this {
      Prim.debugPrint("ok");
    };
 
+   public func send_f6(
+     f : shared () ->
+           async {a : Null; b : Any; c : ?None}
+   ) : async () {
+     Prim.debugPrint("ok");
+   };
+
    public func f0(n : Nat) : async Int { 0 };
 
    public func f0_1(n : Int) : async Nat { 0 };
@@ -73,7 +80,13 @@ actor this {
         { a = 1; b = [1]; c = {f = 1; g = 2; h = 3}; d = (#l 0)}
      };
 
+   public func f6_0() :
+     async {a : Null; b : ?None; c : Any} {
+       { a= null; b = null; c = null}
+     };
+
    public func go() : async () {
+
       let t = debug_show (Prim.principalOfActor(this));
 
       // vanilla subtyping on in/out args
@@ -176,7 +189,7 @@ actor this {
       };
 
 
-      // several args
+      // record arg
       do {
         let this = actor (t) : actor {
           send_f5 :
@@ -190,7 +203,7 @@ actor this {
         catch e { Prim.debugPrint "wrong_5_0"; }
       };
 
-      // several args, contra-co subtyping
+      // record arg, contra-co subtyping
       do {
         let this = actor (t) : actor {
           send_f5 :
@@ -204,6 +217,20 @@ actor this {
         catch e { Prim.debugPrint "wrong_5_1"; }
       };
 
+
+      // null, opt and any record fields, defaulting
+      do {
+        let this = actor (t) : actor {
+          send_f6 :
+            (shared () ->
+              async {a : Null; b : ?None; c : Any}) ->
+                async ()
+        };
+        try {
+          await this.send_f6(f6_0);
+        }
+        catch e { Prim.debugPrint "wrong_6_0"; }
+      };
 
    };
 
