@@ -1,4 +1,5 @@
 (library
   (name mo_def)
   (libraries lib lang_utils mo_types mo_values)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

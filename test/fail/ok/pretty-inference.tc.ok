@@ -170,8 +170,8 @@ to argument of type
   (Nat, Nat)
 to produce result of type
   ()
-because no instantiation of T/40, U/12 makes
-  (Nat, Nat)  <:  (T/40, U/12)
+because no instantiation of T__40, U__12 makes
+  (Nat, Nat)  <:  (T__40, U__12)
 and
   Nat  <:  ()
 pretty-inference.mo:44.1-44.9: type error [M0098], cannot implicitly instantiate function of type
@@ -180,8 +180,8 @@ to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
   ()
-because no instantiation of T/41, U/13 makes
-  ((Nat, Bool), (Nat, Bool))  <:  (T/41, U/13)
+because no instantiation of T__41, U__13 makes
+  ((Nat, Bool), (Nat, Bool))  <:  (T__41, U__13)
 and
   Nat  <:  ()
 pretty-inference.mo:46.1-46.9: type error [M0098], cannot implicitly instantiate function of type
@@ -190,8 +190,9 @@ to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
   ()
-because no instantiation of T/42, U/14 makes
-  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <:  (T/42, U/14)
+because no instantiation of T__42, U__14 makes
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <: 
+    (T__42, U__14)
 and
   Nat  <:  ()
 pretty-inference.mo:48.1-48.9: type error [M0098], cannot implicitly instantiate function of type
@@ -201,10 +202,10 @@ to argument of type
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
 to produce result of type
   ()
-because no instantiation of T/43, U/15 makes
+because no instantiation of T__43, U__15 makes
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
-    (T/43, U/15)
+    (T__43, U__15)
 and
   Nat  <:  ()
 pretty-inference.mo:50.1-50.9: type error [M0098], cannot implicitly instantiate function of type
@@ -216,12 +217,12 @@ to argument of type
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))
 to produce result of type
   ()
-because no instantiation of T/44, U/16 makes
+because no instantiation of T__44, U__16 makes
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
-    (T/44, U/16)
+    (T__44, U__16)
 and
   Nat  <:  ()
 pretty-inference.mo:52.1-52.9: type error [M0098], cannot implicitly instantiate function of type
@@ -237,7 +238,7 @@ to argument of type
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))
 to produce result of type
   ()
-because no instantiation of T/45, U/17 makes
+because no instantiation of T__45, U__17 makes
   ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
     ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
@@ -246,6 +247,6 @@ because no instantiation of T/45, U/17 makes
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
     ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))  <: 
-    (T/45, U/17)
+    (T__45, U__17)
 and
   Nat  <:  ()

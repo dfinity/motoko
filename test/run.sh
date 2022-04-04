@@ -28,6 +28,7 @@ WASMTIME_OPTIONS="--disable-cache --cranelift"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
+SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
@@ -65,31 +66,31 @@ function normalize () {
   if [ -e "$1" ]
   then
     grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
-    sed 's/\x00//g' |
-    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
-    sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
-    sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
-    sed 's/prelude:[^:]*:/prelude:___:/g' |
-    sed 's/prim:[^:]*:/prim:___:/g' |
-    sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
-    sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
-    sed 's,/private/tmp/,/tmp/,g' |
-    sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
-    sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
-    sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
-    sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
-    sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
-    sed 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
-    sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
-    sed 's/Failed to send batch [0-9]*/failed to send batch XX/ig' |
-    sed 's/compiler (source .*)/compiler (source XXX)/ig' |
+    sed -e 's/\x00//g' \
+        -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
+        -e 's/^.*[IW], hypervisor:/hypervisor:/g' \
+        -e 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' \
+        -e 's/prelude:[^:]*:/prelude:___:/g' \
+        -e 's/prim:[^:]*:/prim:___:/g' \
+        -e 's/ calling func\$[0-9]*/ calling func$NNN/g' \
+        -e 's/rip_addr: [0-9]*/rip_addr: XXX/g' \
+        -e 's,/private/tmp/,/tmp/,g' \
+        -e 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' \
+        -e 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' \
+        -e 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
+    sed -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
+        -e 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' \
+        -e 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
+    sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
+        -e 's/compiler (source .*)/compiler (source XXX)/ig' |
     # Normalize canister id prefixes in debug prints
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
+    sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
-    sed '/RTS error: Cannot grow memory/q' |
-    cat > $1.norm
+    sed -e '/RTS error: Cannot grow memory/q' \
+        > $1.norm
     mv $1.norm $1
   fi
 }
@@ -166,7 +167,7 @@ then
       echo "ERROR: Could not run drun, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run drun, will skip some tests"
+      echo "WARNING: Could not run drun, will skip running some tests"
       HAVE_drun=no
     fi
   fi
@@ -183,7 +184,7 @@ then
       echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run ic-ref-run, will skip some tests"
+      echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
     fi
   fi
@@ -301,7 +302,7 @@ do
         #
         # which actually works on the IC platform
 
-	# needs to be in the same directory to preserve relative paths :-(
+        # needs to be in the same directory to preserve relative paths :-(
         mangled=$base.mo.mangled
         sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
 
@@ -311,15 +312,18 @@ do
         then
           run comp $moc_with_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
           run comp-ref $moc_with_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
-	elif [ $PERF = yes ]
-	then
+        elif [ $PERF = yes ]
+        then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-	else
+        else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
-        run_if wasm valid wasm-validate $out/$base.wasm
-        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        if [ "$SKIP_VALIDATE" != yes ]
+        then
+          run_if wasm valid wasm-validate $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        fi
 
         if [ -e $out/$base.wasm ]
         then
@@ -364,14 +368,14 @@ do
         # collect size stats
         if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
         then
-	   if [ -n "$PERF_OUT" ]
+           if [ -n "$PERF_OUT" ]
            then
              wasm-strip $out/$base.wasm
              echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
            fi
         fi
 
-	rm -f $mangled
+        rm -f $mangled
       fi
     fi
   ;;
