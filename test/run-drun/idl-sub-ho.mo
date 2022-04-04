@@ -29,6 +29,13 @@ actor this {
      Prim.debugPrint("ok");
    };
 
+   public func send_f5(
+     f : shared {a : Nat; b : [Nat]; c : {f:Nat;g:Nat}; d : {#l:Nat; #m:Nat}} ->
+           async {a : Int; b : [Int]; c : {f:Int;g:Int}; d : {#l:Int; #m:Int}}
+   ) : async () {
+     Prim.debugPrint("ok");
+   };
+
    public func f0(n : Nat) : async Int { 0 };
 
    public func f0_1(n : Int) : async Nat { 0 };
@@ -54,6 +61,16 @@ actor this {
    public func f3_0() :
      async (n : Null, a : ?None, r : Any) {
        (null, null, null)
+     };
+
+   public func f5_0({a = n : Nat; b = a : [Nat]; c = r : {f : Nat; g : Nat}; d = v : {#l : Nat; #m : Nat}}) :
+     async { a : Int; b : [Int]; c : {f : Int; g : Int}; d : {#l : Int; #m : Int} } {
+        { a = 1; b = [1]; c = {f =1 ; g = 1}; d = (#l 0)}
+     };
+
+   public func f5_1({a = n : Int; b = a : [Int]; c = r : {f : Int}; d = v : {#l : Int; #m : Int; #o : Int} }) :
+     async { a : Nat; b : [Nat]; c : {f : Nat; g : Nat; h : Nat}; d : { #l : Nat}} {
+        { a = 1; b = [1]; c = {f = 1; g = 2; h = 3}; d = (#l 0)}
      };
 
    public func go() : async () {
@@ -115,19 +132,6 @@ actor this {
         catch e { Prim.debugPrint "wrong_1_0"; }
       };
 
-
-      // opt override in return
-      do {
-        let this = actor (t) : actor {
-          send_f1 : (shared (?Nat) -> async Bool) -> async ();
-        };
-        try {
-          await this.send_f1(f1_0);
-        }
-        catch e { Prim.debugPrint "wrong_1_0"; }
-      };
-
-
       // several args
       do {
         let this = actor (t) : actor {
@@ -170,6 +174,36 @@ actor this {
         }
         catch e { Prim.debugPrint "wrong_3_0"; }
       };
+
+
+      // several args
+      do {
+        let this = actor (t) : actor {
+          send_f5 :
+            (shared {a : Nat; b : [Nat]; c :  {f : Nat; g : Nat}; d : {#l : Nat; #m : Nat}} ->
+              async {a : Int; b : [Int]; c : {f : Int; g : Int}; d : {#l : Int; #m : Int}}) ->
+                async ()
+        };
+        try {
+          await this.send_f5(f5_0);
+        }
+        catch e { Prim.debugPrint "wrong_5_0"; }
+      };
+
+      // several args, contra-co subtyping
+      do {
+        let this = actor (t) : actor {
+          send_f5 :
+            (shared {a : Int; b : [Int]; c : {f : Int}; d : {#l : Int; #m : Int; #o : Int}} ->
+              async {a : Nat; b : [Nat]; c : {f : Nat; g : Nat; h : Nat}; d : {#l : Nat}}) ->
+                async ()
+        };
+        try {
+          await this.send_f5(f5_1);
+        }
+        catch e { Prim.debugPrint "wrong_5_1"; }
+      };
+
 
    };
 
