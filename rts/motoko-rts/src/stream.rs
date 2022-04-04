@@ -16,7 +16,7 @@
 //
 //      ┌────────────┬─────┬───────┬─────────┬─────────┬────────┬──────────┐
 //      │ tag (blob) │ len │ ptr64 │ limit64 │ flusher │ filled │ cache... │
-//      └────────────┴─────┴───────┴─────────┴─────────┴────────┴──────────┘
+//      └────────────┴─────┴───┴───┴────┴────┴─────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
@@ -25,6 +25,7 @@
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
 // - `flusher` is the function to be called when `len - filled` approaches zero.
+// - INVARIANT: keep `BlobStream.filled_field` (in compile.ml) in sync with the layout!
 
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};

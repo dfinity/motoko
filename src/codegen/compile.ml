@@ -935,6 +935,10 @@ module Heap = struct
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
 
+  let load_field_unskewed (i : int32) : G.t =
+    let offset = Int32.mul word_size i in
+    G.i (Load {ty = I32Type; align = 2; offset; sz = None})
+
   let load_field (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
@@ -4318,6 +4322,12 @@ module type Stream = sig
      Arguments:      env    token  size *)
   val check_filled : E.t -> G.t -> G.t -> G.t
 
+  (* Pushes the stream's current absolute byte offset on stack.
+     The requirement is that the difference between two two uses
+     of this method must give a correct _relative_ offset.
+     Arguments:         env    token *)
+  val absolute_offset : E.t -> G.t -> G.t
+
   (* Finishes the stream, performing consistence checks.
      Leaves two words on stack, whose interpretation depends
      on the Stream.
@@ -4361,6 +4371,8 @@ module BumpStream : Stream = struct
 
   let advance_data_buf get_data_buf =
     get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
+
+  let absolute_offset _env get_data_buf = get_data_buf
 
   let checkpoint _env get_data_buf = G.setter_for get_data_buf
 
@@ -4803,7 +4815,8 @@ module MakeSerialization (Strm : Stream) = struct
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
-          get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
+          get_x ^^ Strm.absolute_offset env get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
+          (*get_x ^^ get_data_buf ^^ Heap.store_field Tagged.tag_field ^^*)
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -4822,9 +4835,11 @@ module MakeSerialization (Strm : Stream) = struct
           E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
           (* Second time we see this *)
           (* Calculate relative offset *)
-          let (set_offset, get_offset) = new_local env "offset" in
-          get_tag ^^ get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+          let set_offset, get_offset = new_local env "offset" in
+          get_tag ^^ Strm.absolute_offset env get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_offset ^^
+          (*get_tag ^^ get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+          set_offset ^^ (* FIXME: needs an abstract offset calculation, Strm.calc_offset *)*)
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0l ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
@@ -5800,6 +5815,10 @@ module BlobStream : Stream = struct
     get_blob ^^ Blob.len env
 
   let name_for seed typ_name = "@Bl_" ^ seed ^ "<" ^ typ_name ^ ">"
+
+  let absolute_offset _env get_token =
+    let filled_field = Int32.add Blob.len_field 6l in (* see invariant in `stream.rs` *)
+    get_token ^^ Heap.load_field_unskewed filled_field
 
   let checkpoint _env _get_token = G.i Drop
 
