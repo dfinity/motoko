@@ -23,6 +23,21 @@ actor this {
      Prim.debugPrint("wrong_3");
    };
 
+   public func send_f5(
+     f : shared {a : Nat; b : [Nat]; c : {f:Nat;g:Nat}; d : {#l:Nat; #m:Nat}} ->
+           async {a : Int; b : [Int]; c : {f:Int;g:Int}; d : {#l:Int; #m:Int}}
+   ) : async () {
+     Prim.debugPrint("ok");
+   };
+
+   public func send_f6(
+     f : shared () ->
+           async {a : Null; b : Any; c : ?None}
+   ) : async () {
+     Prim.debugPrint("ok");
+   };
+
+
    public func f0(n : Nat) : async Int { 0 };
 
    public func f0_1_a(n : None) : async Int { 0 };
@@ -70,6 +85,36 @@ actor this {
        (null, null, null)
      };
 
+   public func f5_0_a({a = n : Nat; b = a : [Nat]; c = r : {f : Nat; g : Nat}; d = v : {#l : Nat; #m : None}}) :
+     async { a : Int; b : [Int]; c : {f : Int; g : Int}; d : {#l : Int; #m : Int} } {
+        { a = 1; b = [1]; c = {f =1 ; g = 1}; d = (#l 0)}
+     };
+
+   public func f5_0_b({a = n : Nat; b = a : [Nat]; c = r : {f : Nat; g : Nat}; d = v : {#l : Nat; #m : Nat}}) :
+     async { a : Int; b : [Int]; c : {f : Int; g : Int}; d : {#l : Int; #m : Any} } {
+        { a = 1; b = [1]; c = {f =1 ; g = 1}; d = (#l 0)}
+     };
+
+   public func f5_1_a({a = n : Int; b = a : [Int]; c = r : {f : Int}; d = v : {#l : Int; #m : None; #o : Int} }) :
+     async { a : Nat; b : [Nat]; c : {f : Nat; g : Nat; h : Nat}; d : { #l : Nat}} {
+        { a = 1; b = [1]; c = {f = 1; g = 2; h = 3}; d = (#l 0)}
+     };
+
+   public func f5_1_b({a = n : Int; b = a : [Int]; c = r : {f : Int}; d = v : {#l : Int; #m : Int; #o : Int} }) :
+     async { a : Nat; b : [Nat]; c : {f : Nat; g : Nat; h : Nat}; d : { #l : Any}} {
+        { a = 1; b = [1]; c = {f = 1; g = 2; h = 3}; d = (#l 0)}
+     };
+
+
+   public func f6_0_a({x = _:Nat}) :
+     async {a : Null; b : ?None; c : Any} {
+       { a= null; b = null; c = null}
+     };
+
+   public func f6_0_b({}) :
+     async {a : Null; b : ?None; c : Any} {
+       { a= null; b = null; c = null}
+     };
 
    public func go() : async () {
       let t = debug_show (Prim.principalOfActor(this));
@@ -270,6 +315,103 @@ actor this {
         }
       };
 
+      // negative several fields
+      do {
+        let this = actor (t) : actor {
+          send_f5 :
+            (shared {a : Nat; b : [Nat]; c : {f : Nat; g : Nat}; d : {#l : Nat; #m : None}} ->
+              async {a : Int; b : [Int]; c : {f : Int; g : Int}; d : {#l : Int; #m : Int}}) ->
+                async ()
+        };
+        try {
+          await this.send_f5(f5_0_a);
+          Prim.debugPrint "wrong 5_0_a";
+        }
+        catch e {
+          Prim.debugPrint "ok 5_0_a"; }
+      };
+
+      // negative several fields
+      do {
+        let this = actor (t) : actor {
+          send_f5 :
+            (shared { a : Nat; b : [Nat]; c : {f : Nat; g : Nat}; d : {#l : Nat; #m : Nat}} ->
+              async { a : Int; b : [Int]; c :  {f : Int; g : Int}; d : {#l : Int; #m : Any}}) ->
+                async ()
+        };
+        try {
+          await this.send_f5(f5_0_b);
+          Prim.debugPrint "wrong 5_0_b";
+        }
+        catch e {
+          Prim.debugPrint "ok 5_0_b"; }
+      };
+
+      // negative several fields, contra-co subtyping
+      do {
+        let this = actor (t) : actor {
+          send_f5 :
+            (shared { a : Int; b : [Int]; c : {f : Int}; d : {#l : Int; #m : None; #o : Int}} ->
+              async { a : Nat; b : [Nat]; c : {f : Nat; g : Nat; h : Nat}; d : {#l : Nat}}) ->
+                async ()
+        };
+        try {
+          await this.send_f5(f5_1_a);
+          Prim.debugPrint "wrong 5_1_a";
+        }
+        catch e { Prim.debugPrint "ok 5_1_a"; }
+      };
+
+      // negative several args, contra-co subtyping
+      do {
+        let this = actor (t) : actor {
+          send_f5 :
+            (shared { a : Int; b : [Int]; c : {f : Int}; d : {#l : Int; #m : Int; #o : Int}} ->
+              async { a : Nat; b : [Nat]; c : {f : Nat; g : Nat; h : Nat}; d : {#l : Any}}) ->
+                async ()
+        };
+        try {
+          await this.send_f5(f5_1_b);
+          Prim.debugPrint "wrong 5_1_b";
+        }
+        catch e {
+          Prim.debugPrint "ok 5_1_b";}
+      };
+
+
+      // negative null, opt and any fields, defaulting
+      do {
+        let this = actor (t) : actor {
+          send_f6 :
+            (shared {x : Nat} ->
+              async { a : Null; b : ?None; c : Any}) ->
+                async ()
+        };
+        try {
+          await this.send_f6(f6_0_a);
+          Prim.debugPrint "wrong 6_0_a";
+        }
+        catch e {
+          Prim.debugPrint "ok 6_0_a";
+        }
+      };
+
+      // negative null, opt and any fields, defaulting
+      do {
+        let this = actor (t) : actor {
+          send_f6 :
+            (shared {} ->
+              async {a : Null; b : ?None; c : Any}) ->
+                async ()
+        };
+        try {
+          await this.send_f6(f6_0_b);
+          Prim.debugPrint "wrong 6_0_b";
+        }
+        catch e {
+          Prim.debugPrint "ok 6_0_b";
+        }
+      };
 
    };
 
