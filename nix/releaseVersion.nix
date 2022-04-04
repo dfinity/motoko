@@ -6,4 +6,4 @@ let version =
       pkgs.lib.splitString "\n" (builtins.readFile ../Changelog.md)
     )
   ))); in
-if officialRelease then version else "${version}-dirty"
+if officialRelease then version else "${version}+"
