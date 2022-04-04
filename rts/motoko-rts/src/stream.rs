@@ -85,9 +85,9 @@ impl Stream {
                 self.flush();
                 self.send_to_stable(ptr, n);
             } else {
-                let dest = self
+                let dest = (self as *mut Blob)
                     .payload_addr()
-                    .add(((*self).filled - INITIAL_STREAM_FILLED).as_usize());
+                    .add((*self).filled.as_usize());
                 (*self).filled += n;
                 assert!((*self).filled <= (*self).header.len);
                 memcpy_bytes(dest as usize, ptr as usize, n);
@@ -107,12 +107,12 @@ impl Stream {
 
     #[export_name = "stream_reserve"]
     pub fn reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
-        unsafe {
-	    //if bytes != Bytes(4) && bytes != Bytes(1) { assert_eq!(bytes, Bytes(3))}
+        unsafe {if bytes != Bytes(1) {assert_eq!(bytes,Bytes(4))}
             if (*self).filled + bytes > (*self).header.len {
+        assert!(false);
                 self.flush()
             }
-            let ptr = self.payload_addr().add((*self).filled.as_usize());
+            let ptr = (self as *mut Blob).payload_addr().add((*self).filled.as_usize());
             (*self).filled += bytes;
             ptr
         }
@@ -154,11 +154,23 @@ impl Stream {
 
 
 
-    #[export_name = "get_stream_pos"]
-    pub unsafe fn get_stream_pos(prev: i32, now: i32) -> i32 {
+    #[export_name = "diff_stream_pos"]
+    pub unsafe fn diff_stream_pos(prev: i32, now: i32) -> i32 {
 	let diff = prev - now;
-	assert!(diff == -18 || diff == -23);
+	//assert!(diff == -18 || diff == -23);
 	diff
+    }
+
+
+    #[export_name = "check_len"]
+    pub unsafe fn check_len(now: u32) -> u32 {
+	if now > 100 {
+	    //crate::debug::print_value(Value::from_raw(now))
+	}else{
+
+	    //assert_eq!(now, 54);
+	}
+	now
     }
 
 }

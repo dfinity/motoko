@@ -202,7 +202,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let blob = obj.as_blob();
             let _ = write!(buf, "<Blob len={:#x}>{:#x}{:#x}{:#x}{:#x}\n", blob.len().as_u32(), *blob.payload_addr(), *blob.payload_addr().add(1), *blob.payload_addr().add(2), *blob.payload_addr().add(3));
 
-	    for i in 0..54 {
+	    for i in 0..blob.len().as_usize() {
             let _ = write!(buf, "{}={:#x}\n", i, *blob.payload_addr().add(i));
 	    }
         }

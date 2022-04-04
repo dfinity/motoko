@@ -894,8 +894,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
-    E.add_func_import env "rts" "get_stream_pos" [I32Type;I32Type] [I32Type];
+    E.add_func_import env "rts" "diff_stream_pos" [I32Type;I32Type] [I32Type];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "check_len" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -4839,7 +4840,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* Second time we see this *)
           (* Calculate relative offset *)
           let set_offset, get_offset = new_local env "offset" in
-          get_tag ^^ Strm.absolute_offset env get_data_buf ^^ (* G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^*) E.call_import env "rts" "get_stream_pos"  ^^
+          get_tag ^^ Strm.absolute_offset env get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^ (*E.call_import env "rts" "diff_stream_pos"  ^^*)
           set_offset ^^
           (*get_tag ^^ get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_offset ^^ (* FIXME: needs an abstract offset calculation, Strm.calc_offset *)*)
@@ -5259,11 +5260,11 @@ module MakeSerialization (Strm : Stream) = struct
             *)
             get_thing ^^ set_result ^^
             get_memo ^^ get_result ^^ store_unskewed_ptr ^^
-            get_memo ^^ compile_add_const 4l ^^ Blob.lit env (typ_hash t) ^^ store_unskewed_ptr
+            get_memo ^^ compile_add_const 4l ^^ Blob.lit env (typ_hash t) ^^ E.call_import env "rts" "check_len" ^^ store_unskewed_ptr
           )
         end begin
           (* Decoded before. Check type hash *)
-          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
+          ReadBuf.read_word32 env get_data_buf ^^ E.call_import env "rts" "check_len" ^^ Blob.lit env (typ_hash t)  ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
@@ -5610,6 +5611,9 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Extract the payload if possible *)
       Strm.terminate env get_data_start get_data_size tydesc_len
+
+
+        ^^ E.call_import env "rts" "check_len"
     )
 
   let deserialize_from_blob extended env ts =
@@ -5625,8 +5629,8 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
-
-      get_blob ^^ Blob.len env ^^ set_data_size ^^
+      get_blob ^^ E.call_import env "rts" "check_len" ^^
+        (*get_blob ^^*) Blob.len env ^^ set_data_size ^^
       get_blob ^^ Blob.payload_ptr_unskewed ^^ set_data_start ^^
 
       (* Allocate space for the reference buffer and copy it *)
@@ -5821,7 +5825,6 @@ module BlobStream : Stream = struct
 
   let absolute_offset env get_token =
     let filled_field = Int32.add Blob.len_field 6l in (* see invariant in `stream.rs` *)
-    (*get_token ^^ get_token ^^ Heap.load_field_unskewed filled_field ^^ E.call_import env "rts" "get_stream_pos"*)
     get_token ^^ Heap.load_field_unskewed filled_field
   
 
