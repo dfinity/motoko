@@ -18,7 +18,7 @@ actor this {
 
    public func send_f3(
      f : shared () ->
-           async (Null, Any, ?None)
+           async (Null, Any, ?None, Nat)
    ) : async () {
      Prim.debugPrint("wrong_3");
    };
@@ -38,20 +38,38 @@ actor this {
 
    public func f1_0(n : ?Nat) : async (Bool, Nat) { (true, 0) };
 
-   public func f2_0(n : Nat, a : [Nat], r : {f : Nat; g : Nat}, v : {#l : Nat; #m : Nat}) :
+   public func f2_0_a(n : Nat, a : [Nat], r : {f : Nat; g : Nat}, v : {#l : Nat; #m : None}) :
      async (Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Int}) {
         (1, [1], {f=1;g=1}, (#l 0))
      };
 
-   public func f2_1(n : Int, a : [Int], r : {f : Int}, v : {#l : Int; #m : Int; #o : Int}) :
+   public func f2_0_b(n : Nat, a : [Nat], r : {f : Nat; g : Nat}, v : {#l : Nat; #m : Nat}) :
+     async (Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Any}) {
+        (1, [1], {f=1;g=1}, (#l 0))
+     };
+
+
+   public func f2_1_a(n : Int, a : [Int], r : {f : Int}, v : {#l : Int; #m : None; #o : Int}) :
      async (Nat, [Nat], {f : Nat; g : Nat; h : Nat}, { #l : Nat}) {
         (1, [1], {f = 1; g = 2; h = 3}, (#l 0))
      };
 
-   public func f3_0() :
+   public func f2_1_b(n : Int, a : [Int], r : {f : Int}, v : {#l : Int; #m : Int; #o : Int}) :
+     async (Nat, [Nat], {f : Nat; g : Nat; h : Nat}, { #l : Any}) {
+        (1, [1], {f = 1; g = 2; h = 3}, (#l 0))
+     };
+
+
+   public func f3_0_a(x : Nat) :
      async (n : Null, a : ?None, r : Any) {
        (null, null, null)
      };
+
+   public func f3_0_b() :
+     async (n : Null, a : ?None, r : Any) {
+       (null, null, null)
+     };
+
 
    public func go() : async () {
       let t = debug_show (Prim.principalOfActor(this));
@@ -154,36 +172,88 @@ actor this {
       };
 
 
+      // negative several args
+      do {
+        let this = actor (t) : actor {
+          send_f2 :
+            (shared (Nat, [Nat], {f : Nat; g : Nat}, {#l : Nat; #m : None}) ->
+              async (Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Int})) ->
+                async ()
+        };
+        try {
+          await this.send_f2(f2_0_a);
+          Prim.debugPrint "wrong_2_0_a";
+        }
+        catch e {
+          Prim.debugPrint "ok 2_0_a"; }
+      };
+
       // several args
       do {
         let this = actor (t) : actor {
           send_f2 :
             (shared (Nat, [Nat], {f : Nat; g : Nat}, {#l : Nat; #m : Nat}) ->
-              async (Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Int})) ->
+              async (Int, [Int], {f : Int; g : Int}, {#l : Int; #m : Any})) ->
                 async ()
         };
         try {
-          await this.send_f2(f2_0);
+          await this.send_f2(f2_0_b);
+          Prim.debugPrint "wrong_2_0_b";
         }
-        catch e { Prim.debugPrint "wrong_2_0"; }
+        catch e {
+          Prim.debugPrint "ok 2_0_b"; }
       };
 
-      // several args, contra-co subtyping
+      // negative several args, contra-co subtyping
       do {
         let this = actor (t) : actor {
           send_f2 :
-            (shared (Int, [Int], {f : Int}, {#l : Int; #m : Int; #o : Int}) ->
+            (shared (Int, [Int], {f : Int}, {#l : Int; #m : None; #o : Int}) ->
               async (Nat, [Nat], {f : Nat; g : Nat; h : Nat}, {#l : Nat})) ->
                 async ()
         };
         try {
-          await this.send_f2(f2_1);
+          await this.send_f2(f2_1_a);
+          Prim.debugPrint "wrong 2_1_a";
         }
-        catch e { Prim.debugPrint "wrong_2_1"; }
+        catch e { Prim.debugPrint "ok 2_1_a"; }
+      };
+
+      // negative several args, contra-co subtyping
+      do {
+        let this = actor (t) : actor {
+          send_f2 :
+            (shared (Int, [Int], {f : Int}, {#l : Int; #m : Int; #o : Int}) ->
+              async (Nat, [Nat], {f : Nat; g : Nat; h : Nat}, {#l : Any})) ->
+                async ()
+        };
+        try {
+          await this.send_f2(f2_1_b);
+          Prim.debugPrint "wrong 2_1_b";
+        }
+        catch e {
+          Prim.debugPrint "ok 2_1_b";}
       };
 
 
-      // null, opt and any trailing args, defaulting
+      // negative null, opt and any trailing args, defaulting
+      do {
+        let this = actor (t) : actor {
+          send_f3 :
+            (shared Nat ->
+              async (Null, ?None, Any)) ->
+                async ()
+        };
+        try {
+          await this.send_f3(f3_0_a);
+          Prim.debugPrint "wrong 3_0_a";
+        }
+        catch e {
+          Prim.debugPrint "ok 3_0_a";
+        }
+      };
+
+      // negative null, opt and any trailing args, defaulting
       do {
         let this = actor (t) : actor {
           send_f3 :
@@ -192,10 +262,14 @@ actor this {
                 async ()
         };
         try {
-          await this.send_f3(f3_0);
+          await this.send_f3(f3_0_b);
+          Prim.debugPrint "wrong 3_0_b";
         }
-        catch e { Prim.debugPrint "wrong_3_0"; }
+        catch e {
+          Prim.debugPrint "ok 3_0_b";
+        }
       };
+
 
    };
 
