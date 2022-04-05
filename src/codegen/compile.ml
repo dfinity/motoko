@@ -466,6 +466,13 @@ module E = struct
       | _ ->
         raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
 
+  let reuse_import (env : t) modname funcname =
+    let name = modname ^ "." ^ funcname in
+    match NameEnv.find_opt name !(env.named_imports) with
+      | Some fi -> fi
+      | _ ->
+        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
+
   let get_rts (env : t) = env.rts
 
   let as_block_type env : stack_type -> block_type = function
@@ -4284,24 +4291,6 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
 
-    let stable64_write_moc_fi = E.add_fun env "stable64_write_moc" (
-      Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] [] (fun env ->
-        if E.mode env = Flags.WASIMode
-        then G.nop
-        else
-          begin
-            G.i (LocalGet (nr 0l)) ^^
-            G.i (LocalGet (nr 1l)) ^^
-            G.i (LocalGet (nr 2l)) ^^
-            IC.system_call env "stable64_write"
-          end
-      )
-    ) in
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "stable64_write_moc";
-      edesc = nr (FuncExport (nr stable64_write_moc_fi))
-    });
-
     let rts_trap_fi = E.add_fun env "rts_trap" (
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
@@ -4312,6 +4301,19 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "rts_trap";
       edesc = nr (FuncExport (nr rts_trap_fi))
+    });
+
+    let stable64_write_moc_fi =
+      if E.mode env = Flags.WASIMode then
+        E.add_fun env "stable64_write_moc" (
+            Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] [] (fun env ->
+                G.nop
+              )
+          )
+      else E.reuse_import env "ic0" "stable64_write" in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "stable64_write_moc";
+      edesc = nr (FuncExport (nr stable64_write_moc_fi))
     })
 
 end (* RTS_Exports *)
