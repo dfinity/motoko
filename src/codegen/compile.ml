@@ -4283,6 +4283,25 @@ module RTS_Exports = struct
       name = Wasm.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
+
+    let stable64_write_moc_fi = E.add_fun env "stable64_write_moc" (
+      Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] [] (fun env ->
+        if E.mode env = Flags.WASIMode
+        then G.nop
+        else
+          begin
+            G.i (LocalGet (nr 0l)) ^^
+            G.i (LocalGet (nr 1l)) ^^
+            G.i (LocalGet (nr 2l)) ^^
+            IC.system_call env "stable64_write"
+          end
+      )
+    ) in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "stable64_write_moc";
+      edesc = nr (FuncExport (nr stable64_write_moc_fi))
+    });
+
     let rts_trap_fi = E.add_fun env "rts_trap" (
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
