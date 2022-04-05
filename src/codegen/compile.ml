@@ -895,6 +895,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     ()
 
 end (* RTS *)
@@ -5885,7 +5886,27 @@ module Stabilization = struct
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
-  module Externalization = MakeSerialization(BlobStream)
+  module StableMemoryStream : Stream = struct
+    include BlobStream
+
+    let create env get_data_size set_token get_token header =
+      create env (*FIXME: 32k?*)get_data_size set_token get_token header ^^
+      get_token ^^
+      StableMem.get_mem_size env ^^
+      let (set_dst, get_dst) = new_local64 env "dst" in
+      set_dst ^^ get_dst ^^
+      get_dst ^^ extend64 get_data_size ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+      E.call_import env "rts" "stream_stable_dest"
+
+    let terminate env get_token get_data_size header_size =
+      terminate env get_token get_data_size header_size
+
+    let absolute_offset env get_token =
+      absolute_offset env get_token (* FIXME: add (ptr64 - StableMem.get_mem_size) *)
+  end
+
+  module Externalization = MakeSerialization(StableMemoryStream)
 
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
