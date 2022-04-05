@@ -4,54 +4,225 @@ actor this {
 
   type List<T> = {
     #nil;
-    #left:(T,List<T>)
+    #left: (T, List<T>)
   };
 
-  type Tree<T> = {
+  type Seq<T> = {
     #nil;
-    #left: (T, Tree<T>);
-    #right: (T, Tree<T>)
+    #left: (T, Seq<T>);
+    #right: (T, Seq<T>)
   };
 
-  public func f0(l : List<Nat>) : async Tree<Nat> { l };
-  public func f1(l : List<Nat>) : async Tree<Int> { l };
-  public func f2(l : List<Int>) : async Tree<Nat> { #nil };
-  public func f3(l : Tree<Int>) : async List<Nat> { #nil };
+  type EvenList<T> = {
+    #nil;
+    #left:
+      (T, {
+        //#nil;
+        #left: (T, EvenList<T>)})
+  };
+
+  type EvenSeq<T> = {
+    #nil;
+    #left: (T, {
+      // #nil;
+      #left: (T, EvenSeq<T>);
+      #right: (T, EvenSeq<T>)
+    });
+    #right: (T, {
+      // #nil;
+      #left: (T, EvenSeq<T>);
+      #right: (T, EvenSeq<T>)});
+  };
+
+  // sanity subtype checks, verify:
+  // List<T> <: Seq<T>
+  // EvenList<T> <: List<T>
+  // EvenSeq<T> <: Seq<T>
+  func sub1<T>(t : List<T>) : Seq<T> { t };
+  func sub2<T>(t : EvenList<T>) : List<T> { t };
+  func sub3<T>(t : EvenSeq<T>) : Seq<T> { t };
+
+  public func f0(l : Seq<Int>) : async EvenList<Nat> { #nil };
+  public func f1(l : List<Nat>) : async Seq<Int> { l };
+  public func f2(l : List<Int>) : async Seq<Nat> { #nil };
+  public func f3(l : Seq<Int>) : async List<Nat> { #nil };
   public func f4(l : Any) : async None { Prim.trap "bail" };
 
   public func send_f0(
-    f : shared List<Nat> -> async Tree<Int>
+    f : shared EvenList<Nat> -> async Seq<Int>
   ) : async () {
     Prim.debugPrint("ok 0");
   };
 
   public func send_f1(
-    a : [shared List<Nat> -> async Tree<Int>]
+    a : [shared EvenList<Nat> -> async Seq<Int>]
   ) : async () {
     Prim.debugPrint("ok 0");
   };
+
+  public func send_f2(
+    f : shared List<Nat> -> async EvenSeq<Int>
+  ) : async () {
+    Prim.debugPrint("ok 0");
+  };
+
+  public func send_f3(
+    a : [shared List<Nat> -> async EvenSeq<Int>]
+  ) : async () {
+    Prim.debugPrint("ok 0");
+  };
+
+  public func send_f4(
+    a : [?(shared List<Nat> -> async EvenSeq<Int>)]
+  ) : async () {
+    Prim.debugPrint("ok 0");
+  };
+
 
   func tabulate<T>(n : Nat, v : T) : [T] {
     Prim.Array_tabulate(n, func (_ : Nat) : T { v });
   };
 
   public func go() : async () {
-    await this.send_f0(f0);
-    await this.send_f0(f1);
-    await this.send_f0(f2);
-    await this.send_f0(f3);
-    await this.send_f0(f4);
+
+    let t = debug_show (Prim.principalOfActor(this));
+
+    do {
+      try {
+        await this.send_f0(f0);
+      }
+      catch e {
+        Prim.debugPrint "wrong_0"; };
+    };
+
+    do {
+      let this = actor (t) : actor {
+        send_f0 : (shared List<Int> -> async Seq<Nat>) -> async ();
+      };
+      try {
+        await this.send_f0(f0);
+      }
+      catch e {
+        Prim.debugPrint "wrong_1"; };
+    };
+
+
+    do {
+      let this = actor (t) : actor {
+        send_f0 : (shared Seq<Nat> -> async List<Int>) -> async ();
+      };
+      try {
+        await this.send_f0(f0);
+      }
+      catch e {
+        Prim.debugPrint "wrong_2"; };
+    };
+
+    do {
+      let this = actor (t) : actor {
+        send_f0 : (shared Seq<Int> -> async List<Nat>) -> async ();
+      };
+      try {
+        await this.send_f0(f0);
+      }
+      catch e {
+        Prim.debugPrint "wrong_3";
+      };
+    };
+
+    do {
+      let this = actor (t) : actor {
+        send_f0 : (shared EvenSeq<Int> -> async EvenList<Nat>) -> async ();
+      };
+      try {
+        await this.send_f0(f0);
+      }
+      catch e {
+        Prim.debugPrint "wrong_4";
+      };
+    };
+
+    // negative test
+    do {
+      let this = actor (t) : actor {
+        send_f2 : (shared EvenList<Nat> -> async Seq<Int>) -> async ();
+      };
+      try {
+        await this.send_f2(f0);
+        Prim.debugPrint "wrong_5";
+      }
+      catch e {
+        Prim.debugPrint ("ok 5" # Prim.errorMessage(e))
+      };
+    };
 
     // test vectors, should benefit from memoization
-    await this.send_f1(tabulate(1024, f0));
-    await this.send_f1(tabulate(1024, f1));
-    await this.send_f1(tabulate(1024, f2));
-    await this.send_f1(tabulate(1024, f3));
-    await this.send_f1(tabulate(1024, f4));
+     do {
+      try {
+        await this.send_f1(tabulate(1024, f0));
+      }
+      catch e {
+        Prim.debugPrint "wrong_6";
+      };
+    };
+
+    do {
+      let this = actor (t) : actor {
+        send_f1 : [shared List<Int> -> async Seq<Nat>] -> async ();
+      };
+      try {
+        await this.send_f1(tabulate(1024, f0));
+      }
+      catch e {
+        Prim.debugPrint "wrong_7";
+      };
+    };
+
+    do {
+      let this = actor (t) : actor {
+        send_f1 : [shared Seq<Nat> -> async List<Int>] -> async ();
+      };
+      try {
+        await this.send_f1(tabulate(1024, f0));
+      }
+      catch e {
+        Prim.debugPrint "wrong_8";
+      };
+    };
+
+    // negative test
+    do {
+      let this = actor (t) : actor {
+        send_f3 : [shared EvenList<Nat> -> async Seq<Int>] -> async ();
+      };
+      try {
+        await this.send_f3(tabulate(1024, f0));
+        Prim.debugPrint "wrong_9";
+      }
+      catch e {
+        Prim.debugPrint ("ok 9" # Prim.errorMessage(e))
+      };
+    };
+
+    // test defaulting
+    do {
+      let this = actor (t) : actor {
+        send_f4 : [?(shared EvenList<Nat> -> async Seq<Int>)] -> async ();
+      };
+      try {
+        await this.send_f4(tabulate(1024, ?f0));
+        Prim.debugPrint ("ok 10")
+      }
+      catch e {
+        Prim.debugPrint ("wrong_10" # Prim.errorMessage(e))
+      };
+    };
+
+
   };
 }
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-///SKIP comp-ref
+//SKIP comp-ref
 //CALL ingress go "DIDL\x00\x00"
