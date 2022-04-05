@@ -14,9 +14,9 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬───────┬─────────┬─────────┬────────┬──────────┐
-//      │ tag (blob) │ len │ ptr64 │ limit64 │ flusher │ filled │ cache... │
-//      └────────────┴─────┴───┴───┴────┴────┴─────────┴────────┴──────────┘
+//      ┌────────────┬─────┬───────┬─────────┬───────────┬────────┬──────────┐
+//      │ tag (blob) │ len │ ptr64 │ limit64 │ outputter │ filled │ cache... │
+//      └────────────┴─────┴───┴───┴────┴────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
@@ -24,7 +24,7 @@
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
-// - `flusher` is the function to be called when `len - filled` approaches zero.
+// - `outputter` is the function to be called when `len - filled` approaches zero.
 // - INVARIANT: keep `BlobStream.filled_field` (in compile.ml) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
@@ -51,7 +51,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
     (*stream).ptr64 = 0;
     (*stream).limit64 = 0;
-    (*stream).flusher = Stream::flush; // FIXME: needed? send_to_stable? BOTH?
+    (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
     stream
 }
@@ -71,13 +71,31 @@ impl Stream {
     fn flush(self: *mut Self) {
         unsafe {
             if (*self).filled > INITIAL_STREAM_FILLED {
-                self.send_to_stable(self.cache_addr(), (*self).filled - INITIAL_STREAM_FILLED);
+                ((*self).outputter)(
+                    self,
+                    self.cache_addr(),
+                    (*self).filled - INITIAL_STREAM_FILLED,
+                );
                 (*self).filled = INITIAL_STREAM_FILLED
             }
         }
     }
+
+    fn no_backing_store(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {
+        assert!(false)
+    }
+
     fn send_to_stable(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {
         assert!(false)
+    }
+
+    #[export_name = "stream_stable_dest"]
+    pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
+        unsafe {
+            (*self).ptr64 = start;
+            (*self).limit64 = limit;
+            (*self).outputter = Self::send_to_stable;
+        }
     }
 
     /// Ingest a number of bytes into the stream.
@@ -88,7 +106,7 @@ impl Stream {
                 || (*self).header.len - (*self).filled < n
             {
                 self.flush();
-                self.send_to_stable(ptr, n);
+                ((*self).outputter)(self, ptr, n);
             } else {
                 let dest = self
                     .as_blob_mut()
