@@ -58,7 +58,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
 
 #[link(name = "ic0")]
 extern "C" {
-    fn stable64_write(to: u64, ptr: u64, n: u64) -> bool;
+    fn stable64_write(to: u64, ptr: u64, n: u64);
 }
 
 impl Stream {
