@@ -103,7 +103,7 @@ impl Stream {
     pub fn stash(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             if (*self).limit64 != 0 && n > STREAM_CHUNK_SIZE
-                || (*self).header.len - (*self).filled < n
+                || (*self).filled + n > (*self).header.len
             {
                 self.flush();
                 ((*self).outputter)(self, ptr, n);
@@ -123,7 +123,7 @@ impl Stream {
     #[export_name = "stream_write_byte"]
     pub fn stash8(self: *mut Self, byte: u8) {
         unsafe {
-            if (*self).filled == (*self).header.len {
+            if (*self).filled >= (*self).header.len {
                 self.flush()
             }
             self.as_blob_mut().set((*self).filled.as_u32(), byte);
