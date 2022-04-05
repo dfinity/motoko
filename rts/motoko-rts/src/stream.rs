@@ -90,6 +90,7 @@ impl Stream {
         assert!(false)
     }
 
+    #[cfg(feature = "ic")]
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             //assert!(false);
@@ -102,6 +103,7 @@ impl Stream {
         }
     }
 
+    #[cfg(feature = "ic")]
     /// Sets up the bottleneck routine to output towards a range of stable memory
     /// Note: assumes that the entire byte range is writable
     #[export_name = "stream_stable_dest"]
