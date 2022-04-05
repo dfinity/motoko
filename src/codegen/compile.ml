@@ -5891,10 +5891,14 @@ module Stabilization = struct
 
     let create env get_data_size set_token get_token header =
       create env (*FIXME: 32k?*)get_data_size set_token get_token header ^^
-      get_token ^^
-      StableMem.get_mem_size env ^^
+      StableMem.get_mem_size env ^^ G.i Drop ^^
+      compile_const_64 4L ^^
       let (set_dst, get_dst) = new_local64 env "dst" in
       set_dst ^^ get_dst ^^
+      extend64 get_data_size ^^
+      StableMem.ensure env ^^
+      get_token ^^
+      get_dst ^^
       get_dst ^^ extend64 get_data_size ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
@@ -5919,9 +5923,8 @@ module Stabilization = struct
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if0
       begin (* ensure [0,..,3,...len+4) *)
-        compile_const_64 0L ^^
+        compile_const_64 4L ^^  (* reserve one word for size *)
         extend64 get_len ^^
-        compile_add64_const 4L ^^  (* reserve one word for size *)
         StableMem.ensure env ^^
 
         (* write len to initial word of stable memory*)
@@ -5935,7 +5938,7 @@ module Stabilization = struct
         extend64 get_len ^^
         E.call_import env "ic0" "stable64_write"
       end
-      begin
+      begin G.i Unreachable ^^
         let (set_N, get_N) = new_local64 env "N" in
 
         (* let N = !size * page_size *)

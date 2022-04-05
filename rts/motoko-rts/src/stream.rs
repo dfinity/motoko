@@ -89,12 +89,16 @@ impl Stream {
         assert!(false)
     }
 
+    /// Sets up the bottleneck routine to output towards a range of stable memory
+    /// Note: assumes thaat the entre byte range is writable
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
             (*self).ptr64 = start;
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
+	    assert_eq!((start, limit), (4, 68613));
+	    // TODO: StableMem.ensure env limit
         }
     }
 
