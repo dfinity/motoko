@@ -177,7 +177,8 @@ impl Stream {
         Value::from_ptr(blob as usize)
     }
 
-    /// Shut down the stream by outputting all data.
+    /// Shut down the stream by outputting all data. Lengths are
+    /// adjusted correspondingly, and the stream remains intact.
     #[export_name = "stream_shutdown"]
     pub unsafe fn shutdown(self: *mut Self) {
         self.flush()
