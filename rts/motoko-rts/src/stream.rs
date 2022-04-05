@@ -175,4 +175,11 @@ impl Stream {
         debug_assert_eq!(blob.len(), (*self).filled);
         Value::from_ptr(blob as usize)
     }
+
+    /// Shut down the stream by outputting all data.
+    #[export_name = "stream_shutdown"]
+    pub unsafe fn shutdown(self: *mut Self) {
+        self.flush()
+    }
+
 }

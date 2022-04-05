@@ -894,6 +894,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     ()
@@ -5904,7 +5905,13 @@ module Stabilization = struct
       E.call_import env "rts" "stream_stable_dest"
 
     let terminate env get_token get_data_size header_size =
-      terminate env get_token get_data_size header_size
+      absolute_offset env get_token ^^ (* FIXME *)
+      let set_len, get_len = new_local env "len" in
+      set_len ^^
+      get_token ^^
+      E.call_import env "rts" "stream_shutdown" ^^
+      compile_unboxed_zero ^^ (* no need to write *)
+      get_len
 
     let absolute_offset env get_token =
       absolute_offset env get_token (* FIXME: add (ptr64 - StableMem.get_mem_size) *)
@@ -5932,11 +5939,16 @@ module Stabilization = struct
         get_len ^^
         StableMem.write_word32 env ^^
 
-        (* copy data to following stable memory *)
-        compile_const_64 4L ^^
-        extend64 get_dst ^^
-        extend64 get_len ^^
-        E.call_import env "ic0" "stable64_write"
+        (* copy data to following stable memory FIXME: ask the stream statically  *)
+        get_dst ^^ compile_eq_const 0l ^^
+        G.if0
+          G.nop
+          begin
+            compile_const_64 4L ^^
+            extend64 get_dst ^^
+            extend64 get_len ^^
+            E.call_import env "ic0" "stable64_write"
+        end
       end
       begin G.i Unreachable ^^
         let (set_N, get_N) = new_local64 env "N" in
