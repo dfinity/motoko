@@ -5892,6 +5892,7 @@ module Stabilization = struct
 
     let create env get_data_size set_token get_token header =
       create env (*FIXME: 32k?*)get_data_size set_token get_token header ^^
+        (* TODO: push header directly? *)
       StableMem.get_mem_size env ^^ G.i Drop ^^
       compile_const_64 4L ^^
       get_data_size ^^
@@ -5910,6 +5911,7 @@ module Stabilization = struct
 
     let terminate env get_token get_data_size header_size =
       absolute_offset env get_token ^^ (* FIXME *)
+      compile_sub_const 24l ^^ (* HACK *)
       let set_len, get_len = new_local env "len" in
       set_len ^^
       get_token ^^

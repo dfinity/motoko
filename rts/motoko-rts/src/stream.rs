@@ -94,8 +94,8 @@ impl Stream {
         unsafe {
             //assert!(false);
 	    let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
-	    assert_eq!((next_ptr64), (68694));
-	    assert!(next_ptr64 <= (*self).limit64);
+	    //assert_eq!((next_ptr64), (68694));
+	    //assert!(next_ptr64 <= (*self).limit64);
 
 	    stable64_write((*self).ptr64, ptr as u64, n.as_u32() as u64);
 	    (*self).ptr64 = next_ptr64
@@ -103,14 +103,14 @@ impl Stream {
     }
 
     /// Sets up the bottleneck routine to output towards a range of stable memory
-    /// Note: assumes thaat the entire byte range is writable
+    /// Note: assumes that the entire byte range is writable
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
             (*self).ptr64 = start;
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
-	    assert_eq!((start, limit), (4, 68694));
+	    //assert_eq!((start, limit), (4, 68694));
         }
     }
 
