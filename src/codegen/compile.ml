@@ -5755,6 +5755,10 @@ module Serialization = MakeSerialization(BumpStream)
 
 module Stabilization = struct
 
+  let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+
+  module Externalization = MakeSerialization(BumpStream)
+
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
@@ -5767,7 +5771,7 @@ module Stabilization = struct
     G.if0
       begin (* ensure [0,..,3,...len+4) *)
         compile_const_64 0L ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        extend64 get_len ^^
         compile_add64_const 4L ^^  (* reserve one word for size *)
         StableMem.ensure env ^^
 
@@ -5778,8 +5782,8 @@ module Stabilization = struct
 
         (* copy data to following stable memory *)
         compile_const_64 4L ^^
-        get_dst ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        extend64 get_dst ^^
+        extend64 get_len ^^
         E.call_import env "ic0" "stable64_write"
       end
       begin
@@ -5794,7 +5798,7 @@ module Stabilization = struct
            N + 4 + len + 4 + 4 + 4 = N + len + 16
         *)
         get_N ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        extend64 get_len ^^
         compile_add64_const 16L ^^
         StableMem.ensure env  ^^
 
@@ -5804,8 +5808,8 @@ module Stabilization = struct
 
         get_N ^^
         compile_add64_const 4L ^^
-        get_dst ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        extend64 get_dst ^^
+        extend64 get_len ^^
         E.call_import env "ic0" "stable64_write" ^^
 
         (* let M = pagesize * ic0.stable64_size64() - 1 *)
@@ -5907,8 +5911,7 @@ module Stabilization = struct
               (* restore mem_size *)
               get_M ^^
               compile_add64_const (Int64.sub page_size64 12L) ^^
-              StableMem.read_and_clear_word32 env ^^
-                G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (*TODO: use 64 bits *)
+              extend64 (StableMem.read_and_clear_word32 env) ^^ (*TODO: use 64 bits *)
               StableMem.set_mem_size env ^^
 
               StableMem.get_mem_size env ^^
@@ -5943,9 +5946,9 @@ module Stabilization = struct
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^ (G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))) ^^
+          extend64 (get_blob ^^ Blob.payload_ptr_unskewed) ^^
           get_offset ^^
-          get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          extend64 get_len ^^
           IC.system_call env "ic0" "stable64_read" ^^
 
           let (set_val, get_val) = new_local env "val" in
@@ -5960,8 +5963,8 @@ module Stabilization = struct
 
           (* copy zeros from blob to stable memory *)
           get_offset ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          get_blob ^^ Blob.len env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          extend64 (get_blob ^^ Blob.payload_ptr_unskewed) ^^
+          extend64 (get_blob ^^ Blob.len env) ^^
           IC.system_call env "ic0" "stable64_write" ^^
 
           (* return val *)
