@@ -56,7 +56,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     stream
 }
 
-#[link(name = "ic0")]
+#[link(wasm_import_module = "ic0")]
 extern "C" {
     fn stable64_write(to: u64, ptr: u64, n: u64);
 }
@@ -92,7 +92,7 @@ impl Stream {
 
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
-            assert!(false);
+            //assert!(false);
 	    let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
 	    assert!(next_ptr64 <= (*self).limit64);
 
