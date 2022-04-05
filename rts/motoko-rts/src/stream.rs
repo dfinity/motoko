@@ -93,13 +93,13 @@ impl Stream {
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             //assert!(false);
-	    let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
-	    //assert_eq!((next_ptr64), (68694));
-	    //assert!(next_ptr64 <= (*self).limit64);
+            let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
+            //assert_eq!((next_ptr64), (68694));
+            //assert!(next_ptr64 <= (*self).limit64);
 
-	    stable64_write((*self).ptr64, ptr as u64, n.as_u32() as u64);
-	    (*self).ptr64 = next_ptr64
-	}
+            stable64_write((*self).ptr64, ptr as u64, n.as_u32() as u64);
+            (*self).ptr64 = next_ptr64
+        }
     }
 
     /// Sets up the bottleneck routine to output towards a range of stable memory
@@ -110,7 +110,7 @@ impl Stream {
             (*self).ptr64 = start;
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
-	    //assert_eq!((start, limit), (4, 68694));
+            //assert_eq!((start, limit), (4, 68694));
         }
     }
 
@@ -182,5 +182,4 @@ impl Stream {
     pub unsafe fn shutdown(self: *mut Self) {
         self.flush()
     }
-
 }
