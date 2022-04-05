@@ -5894,13 +5894,17 @@ module Stabilization = struct
       create env (*FIXME: 32k?*)get_data_size set_token get_token header ^^
       StableMem.get_mem_size env ^^ G.i Drop ^^
       compile_const_64 4L ^^
+      get_data_size ^^
+      compile_add_const (Int32.of_int (String.length header)) ^^
+      let (set_len, get_len) = new_local env "len" in
+      set_len ^^
       let (set_dst, get_dst) = new_local64 env "dst" in
       set_dst ^^ get_dst ^^
-      extend64 get_data_size ^^
+      extend64 get_len ^^
       StableMem.ensure env ^^
       get_token ^^
       get_dst ^^
-      get_dst ^^ extend64 get_data_size ^^
+      get_dst ^^ extend64 get_len ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
