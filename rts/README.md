@@ -88,6 +88,19 @@ do step 3.
    value of `rustStdDepsHash`.
 4. Update `rustStdDepsHash` with the expected value in the error message.
 
+--------
+**The above doesn't always work**
+
+E.g. when you get `perhaps a crate was updated and forgotten to be
+re-vendored?`, proceed as follows:
+ - comment out the line `outputHashMode = "recursive";`
+ - `nix-build -A rts`
+ - update `cargoVendorTools.cargoSha256` based on the mismatch error message
+ - revert the line `outputHashMode = "recursive";`
+ - `nix-build -A rts`
+ - now fix `rustStdDepsHash` based on the new error message
+ - `nix-build -A rts` again, this should go through
+
 Running RTS tests
 -----------------
 
