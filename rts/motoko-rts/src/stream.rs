@@ -56,6 +56,11 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     stream
 }
 
+#[link(name = "ic0")]
+extern "C" {
+    fn stable64_write(to: u64, ptr: u64, n: u64) -> bool;
+}
+
 impl Stream {
     #[inline]
     pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
@@ -85,12 +90,19 @@ impl Stream {
         assert!(false)
     }
 
-    fn send_to_stable(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {
-        assert!(false)
+    fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
+        unsafe {
+            assert!(false);
+	    let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
+	    assert!(next_ptr64 <= (*self).limit64);
+
+	    stable64_write((*self).ptr64, ptr as u64, n.as_u32() as u64);
+	    (*self).ptr64 = next_ptr64
+	}
     }
 
     /// Sets up the bottleneck routine to output towards a range of stable memory
-    /// Note: assumes thaat the entre byte range is writable
+    /// Note: assumes thaat the entire byte range is writable
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
@@ -98,7 +110,6 @@ impl Stream {
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
 	    assert_eq!((start, limit), (4, 68613));
-	    // TODO: StableMem.ensure env limit
         }
     }
 
