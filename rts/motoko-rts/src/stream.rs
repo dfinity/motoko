@@ -26,6 +26,7 @@
 //   staging area of the stream, respectively
 // - `flusher` is the function to be called when `len - filled` approaches zero.
 // - INVARIANT: keep `BlobStream.filled_field` (in compile.ml) in sync with the layout!
+// - Note: `len` and `filled` are relative to the encompassing blob.
 
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
@@ -57,8 +58,12 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
 
 impl Stream {
     #[inline]
-    pub unsafe fn payload_addr(self: *const Self) -> *const u8 {
+    pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
         self.add(1) as *const u8 // skip closure header
+    }
+
+    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
+        self as *mut Blob
     }
 
     /// make sure that the cache is empty
@@ -66,7 +71,7 @@ impl Stream {
     fn flush(self: *mut Self) {
         unsafe {
             if (*self).filled > INITIAL_STREAM_FILLED {
-                self.send_to_stable(self.payload_addr(), (*self).filled - INITIAL_STREAM_FILLED);
+                self.send_to_stable(self.cache_addr(), (*self).filled - INITIAL_STREAM_FILLED);
                 (*self).filled = INITIAL_STREAM_FILLED
             }
         }
@@ -85,7 +90,8 @@ impl Stream {
                 self.flush();
                 self.send_to_stable(ptr, n);
             } else {
-                let dest = (self as *mut Blob)
+                let dest = self
+                    .as_blob_mut()
                     .payload_addr()
                     .add((*self).filled.as_usize());
                 (*self).filled += n;
@@ -102,7 +108,7 @@ impl Stream {
             if (*self).filled == (*self).header.len {
                 self.flush()
             }
-            (self as *mut Blob).set((*self).filled.as_u32(), byte);
+            self.as_blob_mut().set((*self).filled.as_u32(), byte);
             (*self).filled += Bytes(1)
         }
     }
@@ -115,7 +121,8 @@ impl Stream {
             if (*self).filled + bytes > (*self).header.len {
                 self.flush()
             }
-            let ptr = (self as *mut Blob)
+            let ptr = self
+                .as_blob_mut()
                 .payload_addr()
                 .add((*self).filled.as_usize());
             (*self).filled += bytes;
@@ -130,7 +137,7 @@ impl Stream {
     pub unsafe fn split(self: *mut Self) -> Value {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
-        let blob = (self.payload_addr() as *mut Blob).sub(1);
+        let blob = (self.cache_addr() as *mut Blob).sub(1);
         (*blob).header.tag = TAG_BLOB;
         debug_assert_eq!(blob.len(), (*self).filled);
         Value::from_ptr(blob as usize)
