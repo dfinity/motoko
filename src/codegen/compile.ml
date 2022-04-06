@@ -5914,6 +5914,11 @@ module Stabilization = struct
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
+  (* The below stream implementation is geared towards the
+     tail section of stable memory, where the serialised
+     stable variables go. As such a few intimate details of
+     the stable memory layout are burnt in, such as the
+     variable `N` from the design document. *)
   module StableMemoryStream : Stream = struct
     include BlobStream
 
@@ -5928,7 +5933,7 @@ module Stabilization = struct
 
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
-      compile_add64_const 4L ^^
+      compile_add64_const 4L ^^ (* `N` is now on the stack *)
       let (set_dst, get_dst) = new_local64 env "dst" in
       set_dst ^^ get_dst ^^
       extend64 get_len ^^
@@ -5951,11 +5956,14 @@ module Stabilization = struct
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-      compile_sub64_const 4L ^^
+      compile_sub64_const 4L ^^  (* `N` is now subtracted *)
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
     let absolute_offset env get_token =
       absolute_offset env get_token ^^
+      (* Now add the current write position minus
+         the original stable memory write position,
+         a.k.a. `N`, ignoring the 4. *)
       get_token ^^
       Heap.load_field64_unskewed ptr64_field ^^
       StableMem.get_mem_size env ^^
