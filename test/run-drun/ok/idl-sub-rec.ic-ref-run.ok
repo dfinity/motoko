@@ -3,14 +3,23 @@
 → update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
 ← replied: ()
 → update go()
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
+debug.print: ok f0
+debug.print: ok_0
+debug.print: ok f0
+debug.print: ok_1
+debug.print: ok f0
+debug.print: ok_2
+debug.print: ok f0
+debug.print: ok_3
+debug.print: ok f0
+debug.print: ok_4
+debug.print: ok 5:canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: incompatible function type"
+debug.print: ok f1
+debug.print: ok_6
+debug.print: ok f1
+debug.print: ok f1
+debug.print: ok_8
+debug.print: ok_9canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: incompatible function type"
+debug.print: ok f4
+debug.print: ok_10
 ← replied: ()

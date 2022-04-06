@@ -43,39 +43,35 @@ actor this {
   func sub3<T>(t : EvenSeq<T>) : Seq<T> { t };
 
   public func f0(l : Seq<Int>) : async EvenList<Nat> { #nil };
-  public func f1(l : List<Nat>) : async Seq<Int> { l };
-  public func f2(l : List<Int>) : async Seq<Nat> { #nil };
-  public func f3(l : Seq<Int>) : async List<Nat> { #nil };
-  public func f4(l : Any) : async None { Prim.trap "bail" };
 
   public func send_f0(
     f : shared EvenList<Nat> -> async Seq<Int>
   ) : async () {
-    Prim.debugPrint("ok 0");
+    Prim.debugPrint("ok f0");
   };
 
   public func send_f1(
     a : [shared EvenList<Nat> -> async Seq<Int>]
   ) : async () {
-    Prim.debugPrint("ok 0");
+    Prim.debugPrint("ok f1");
   };
 
   public func send_f2(
     f : shared List<Nat> -> async EvenSeq<Int>
   ) : async () {
-    Prim.debugPrint("ok 0");
+    Prim.debugPrint("ok f2");
   };
 
   public func send_f3(
     a : [shared List<Nat> -> async EvenSeq<Int>]
   ) : async () {
-    Prim.debugPrint("ok 0");
+    Prim.debugPrint("ok f3");
   };
 
   public func send_f4(
     a : [?(shared List<Nat> -> async EvenSeq<Int>)]
   ) : async () {
-    Prim.debugPrint("ok 0");
+    Prim.debugPrint("ok f4");
   };
 
 
@@ -90,9 +86,11 @@ actor this {
     do {
       try {
         await this.send_f0(f0);
+        Prim.debugPrint "ok_0";
       }
       catch e {
-        Prim.debugPrint "wrong_0"; };
+        Prim.debugPrint "wrong_0";
+      };
     };
 
     do {
@@ -101,9 +99,11 @@ actor this {
       };
       try {
         await this.send_f0(f0);
+        Prim.debugPrint "ok_1";
       }
       catch e {
-        Prim.debugPrint "wrong_1"; };
+        Prim.debugPrint "wrong_1";
+      };
     };
 
 
@@ -113,9 +113,11 @@ actor this {
       };
       try {
         await this.send_f0(f0);
+        Prim.debugPrint "ok_2";
       }
       catch e {
-        Prim.debugPrint "wrong_2"; };
+        Prim.debugPrint "wrong_2";
+      };
     };
 
     do {
@@ -124,6 +126,7 @@ actor this {
       };
       try {
         await this.send_f0(f0);
+        Prim.debugPrint "ok_3";
       }
       catch e {
         Prim.debugPrint "wrong_3";
@@ -136,6 +139,7 @@ actor this {
       };
       try {
         await this.send_f0(f0);
+        Prim.debugPrint "ok_4";
       }
       catch e {
         Prim.debugPrint "wrong_4";
@@ -152,7 +156,7 @@ actor this {
         Prim.debugPrint "wrong_5";
       }
       catch e {
-        Prim.debugPrint ("ok 5" # Prim.errorMessage(e))
+        Prim.debugPrint ("ok 5:" # Prim.errorMessage(e))
       };
     };
 
@@ -160,6 +164,7 @@ actor this {
      do {
       try {
         await this.send_f1(tabulate(1024, f0));
+        Prim.debugPrint "ok_6";
       }
       catch e {
         Prim.debugPrint "wrong_6";
@@ -184,6 +189,7 @@ actor this {
       };
       try {
         await this.send_f1(tabulate(1024, f0));
+        Prim.debugPrint "ok_8";
       }
       catch e {
         Prim.debugPrint "wrong_8";
@@ -200,18 +206,18 @@ actor this {
         Prim.debugPrint "wrong_9";
       }
       catch e {
-        Prim.debugPrint ("ok 9" # Prim.errorMessage(e))
+        Prim.debugPrint ("ok_9" # Prim.errorMessage(e))
       };
     };
 
-    // test defaulting
+    // test vector defaulting, should benefit from memoization
     do {
       let this = actor (t) : actor {
         send_f4 : [?(shared EvenList<Nat> -> async Seq<Int>)] -> async ();
       };
       try {
         await this.send_f4(tabulate(1024, ?f0));
-        Prim.debugPrint ("ok 10")
+        Prim.debugPrint ("ok_10")
       }
       catch e {
         Prim.debugPrint ("wrong_10" # Prim.errorMessage(e))
@@ -224,5 +230,4 @@ actor this {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP comp-ref
 //CALL ingress go "DIDL\x00\x00"

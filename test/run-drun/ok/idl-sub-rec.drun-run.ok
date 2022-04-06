@@ -1,13 +1,22 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
-debug.print: ok 0
+debug.print: ok f0
+debug.print: ok_0
+debug.print: ok f0
+debug.print: ok_1
+debug.print: ok f0
+debug.print: ok_2
+debug.print: ok f0
+debug.print: ok_3
+debug.print: ok f0
+debug.print: ok_4
+debug.print: ok 5:IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: incompatible function type
+debug.print: ok f1
+debug.print: ok_6
+debug.print: ok f1
+debug.print: ok f1
+debug.print: ok_8
+debug.print: ok_9IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: incompatible function type
+debug.print: ok f4
+debug.print: ok_10
 ingress Completed: Reply: 0x4449444c0000

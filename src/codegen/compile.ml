@@ -5492,7 +5492,8 @@ module Serialization = struct
                 read_text () ^^
                 Tuple.from_stack env 2
               ]))
-         (coercion_failed "IDL error: incompatible function type")
+          (skip get_idltyp ^^
+           coercion_failed "IDL error: incompatible function type")
       | Obj (Actor, _) ->
         get_rel_buf_opt ^^
         G.if1 I32Type
@@ -5508,7 +5509,8 @@ module Serialization = struct
         G.if1 I32Type
           (with_composite_typ idl_service
              (fun _get_typ_buf -> read_actor_data ()))
-          (coercion_failed "IDL error: incompatible actor type")
+          (skip get_idltyp ^^
+           coercion_failed "IDL error: incompatible actor type")
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
@@ -5655,8 +5657,8 @@ module Serialization = struct
              compile_unboxed_const 0l ^^ (* initial depth *)
              can_recover ^^
              deserialize_go env t ^^ set_val ^^
-             get_val ^^ compile_eq_const (coercion_error_value env) ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
+             get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (G.if1 I32Type
                (default_or_trap "IDL error: coercion failure encountered")
                get_val)
