@@ -5922,6 +5922,8 @@ module Stabilization = struct
   module StableMemoryStream : Stream = struct
     include BlobStream
 
+    let name_for seed typ_name = "@Sm_" ^ seed ^ "<" ^ typ_name ^ ">"
+
     let create env get_data_size set_token get_token header =
       create env (compile_unboxed_const 0x8000l) set_token get_token header ^^
         (* TODO: push header directly? *)
