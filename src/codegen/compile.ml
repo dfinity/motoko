@@ -8199,7 +8199,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,
-    let tydesc = Serialization.type_desc env [t] in
+    let (tydesc, _, _) = Serialization.type_desc env [t] in
     let tydesc_len = Int32.of_int (String.length tydesc) in
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
