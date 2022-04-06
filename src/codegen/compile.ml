@@ -958,7 +958,12 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
-  (* Although we occasionally want to treat two 32 bit fields as one 64 bit number *)
+  (* Although we occasionally want to treat two consecutive
+     32 bit fields as one 64 bit number *)
+
+  let load_field64_unskewed (i : int32) : G.t =
+    let offset = Int32.mul word_size i in
+    G.i (Load {ty = I64Type; align = 2; offset; sz = None})
 
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -5913,7 +5918,7 @@ module Stabilization = struct
     include BlobStream
 
     let create env get_data_size set_token get_token header =
-      create env (*FIXME: 32k?*)get_data_size set_token get_token header ^^
+      create env (compile_unboxed_const 0x8000l) set_token get_token header ^^
         (* TODO: push header directly? *)
 
       get_data_size ^^
@@ -5921,7 +5926,8 @@ module Stabilization = struct
       let (set_len, get_len) = new_local env "len" in
       set_len ^^
 
-      StableMem.get_mem_size env ^^ compile_shl64_const (Int64.of_int page_size_bits) ^^
+      StableMem.get_mem_size env ^^
+      compile_shl64_const (Int64.of_int page_size_bits) ^^
       compile_add64_const 4L ^^
       let (set_dst, get_dst) = new_local64 env "dst" in
       set_dst ^^ get_dst ^^
@@ -5934,18 +5940,29 @@ module Stabilization = struct
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
+    let ptr64_field = Int32.add Blob.len_field 1l (* see invariant in `stream.rs` *)
+
     let terminate env get_token get_data_size header_size =
-      absolute_offset env get_token ^^ (* FIXME *)
-      compile_sub_const 24l ^^ (* HACK *)
-      let set_len, get_len = new_local env "len" in
-      set_len ^^
       get_token ^^
       E.call_import env "rts" "stream_shutdown" ^^
       compile_unboxed_zero ^^ (* no need to write *)
-      get_len
+      get_token ^^
+      Heap.load_field64_unskewed ptr64_field ^^
+      StableMem.get_mem_size env ^^
+      compile_shl64_const (Int64.of_int page_size_bits) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+      compile_sub64_const 4L ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
     let absolute_offset env get_token =
-      absolute_offset env get_token (* FIXME: add (ptr64 - StableMem.get_mem_size) *)
+      absolute_offset env get_token ^^
+      get_token ^^
+      Heap.load_field64_unskewed ptr64_field ^^
+      StableMem.get_mem_size env ^^
+      compile_shl64_const (Int64.of_int page_size_bits) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
   end
 
   module Externalization = MakeSerialization(StableMemoryStream)
@@ -6025,7 +6042,7 @@ module Stabilization = struct
         get_M ^^
         compile_add64_const (Int64.sub page_size64 12L) ^^
         StableMem.get_mem_size env ^^
-          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
         (* TODO: write word64 *)
         StableMem.write_word32 env ^^
 
