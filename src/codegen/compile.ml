@@ -3506,7 +3506,7 @@ module IC = struct
         | Flags.ICMode | Flags.RefMode ->
             G.i (LocalGet (nr 0l)) ^^
             G.i (LocalGet (nr 1l)) ^^
-            E.call_import env "ic0" "debug_print"
+            system_call env "debug_print"
         | Flags.WASIMode -> begin
           let get_ptr = G.i (LocalGet (nr 0l)) in
           let get_len = G.i (LocalGet (nr 1l)) in
@@ -4093,7 +4093,7 @@ module StableMem = struct
           let (set_size, get_size) = new_local64 env "size" in
           let (set_pages_needed, get_pages_needed) = new_local64 env "pages_needed" in
 
-          E.call_import env "ic0" "stable64_size" ^^
+          IC.system_call env "stable64_size" ^^
           set_size ^^
 
           get_pages ^^
@@ -4106,7 +4106,7 @@ module StableMem = struct
           G.i (Compare (Wasm.Values.I64 I64Op.GtS)) ^^
           G.if1 I64Type
             (get_pages_needed ^^
-             E.call_import env "ic0" "stable64_grow")
+             IC.system_call env "stable64_grow")
             get_size)
     | _ -> assert false
 
@@ -5784,7 +5784,7 @@ module Stabilization = struct
         compile_const_64 4L ^^
         extend64 get_dst ^^
         extend64 get_len ^^
-        E.call_import env "ic0" "stable64_write"
+        IC.system_call env "stable64_write"
       end
       begin
         let (set_N, get_N) = new_local64 env "N" in
@@ -5810,12 +5810,12 @@ module Stabilization = struct
         compile_add64_const 4L ^^
         extend64 get_dst ^^
         extend64 get_len ^^
-        E.call_import env "ic0" "stable64_write" ^^
+        IC.system_call env "stable64_write" ^^
 
         (* let M = pagesize * ic0.stable64_size64() - 1 *)
         (* M is beginning of last page *)
         let (set_M, get_M) = new_local64 env "M" in
-        E.call_import env "ic0" "stable64_size" ^^
+        IC.system_call env "stable64_size" ^^
         compile_sub64_const 1L ^^
         compile_shl64_const (Int64.of_int page_size_bits) ^^
         set_M ^^
@@ -5849,7 +5849,7 @@ module Stabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
-      E.call_import env "ic0" "stable64_size" ^^
+      IC.system_call env "stable64_size" ^^
       set_pages ^^
 
       get_pages ^^
@@ -5882,7 +5882,7 @@ module Stabilization = struct
               let (set_version, get_version) = new_local env "version" in
               let (set_N, get_N) = new_local64 env "N" in
 
-              E.call_import env "ic0" "stable64_size" ^^
+              IC.system_call env "stable64_size" ^^
               compile_sub64_const 1L ^^
               compile_shl64_const (Int64.of_int page_size_bits) ^^
               set_M ^^
