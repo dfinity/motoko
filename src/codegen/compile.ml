@@ -4308,7 +4308,7 @@ module RTS_Exports = struct
         E.add_fun env "stable64_write_moc" (
             Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
               (fun env ->
-                G.nop
+                E.trap_with env "stable64_write_moc is not supposed to be called in WASI"
               )
           )
       else E.reuse_import env "ic0" "stable64_write" in
