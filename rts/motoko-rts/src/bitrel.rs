@@ -24,6 +24,10 @@ impl BitRel {
     }
 
     pub(crate) unsafe fn init(&self) {
+        if (self.end as usize) < (self.ptr as usize) {
+            idl_trap_with("BitRel invalid fields");
+        };
+
         let bytes = ((self.end as usize) - (self.ptr as usize)) as u32;
         if (2 * self.size1 * self.size2 * BITS) > bytes * 8 {
             idl_trap_with("BitRel not enough bytes");
