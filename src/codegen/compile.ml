@@ -5596,6 +5596,9 @@ module Serialization = struct
   let deserialize_from_blob extended env ts =
     let ts_name = typ_seq_hash ts in
     let name =
+      (* TODO(#3185): this specialization on `extended` seems redundant,
+         removing it might simplify things *and* share more code in binaries.
+         The only tricky bit might be the conditional Stack.dynamic_with_words bit... *)
       if extended
       then "@deserialize_extended<" ^ ts_name ^ ">"
       else "@deserialize<" ^ ts_name ^ ">" in
