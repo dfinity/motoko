@@ -533,6 +533,7 @@ unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bo
 
 // https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
 // https://github.com/dfinity/candid/blob/20b84d1c1515e2c1db353ebe02b738486f835466/spec/Candid.md
+// TODO: consider storing fixed args typtbl1...end2 in `rel` to use less stack.
 unsafe fn sub(
     rel: &BitRel,
     p: bool,
