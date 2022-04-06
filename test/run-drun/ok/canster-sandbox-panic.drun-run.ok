@@ -1,7 +1,0 @@
-ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-ingress Completed: Reply: 0x4449444c0000
-debug.print: topping up
-thread '<unnamed>' panicked at 'Failed to serialize message: ErrorImpl { code: Message("The number can't be stored in CBOR"), offset: 0 }', /build/rs/canister_sandbox/common/src/transport.rs:285:55
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-thread 'MR Batch Processor' panicked at 'Thread pool worker panicked', /build/drun-vendor.tar.gz/scoped_threadpool/src/lib.rs:236:13
-thread 'main' panicked at 'failed to send batch XX: background worker is dead', messaging/src/message_routing.rs:949:51
