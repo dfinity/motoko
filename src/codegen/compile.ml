@@ -5915,16 +5915,19 @@ module Stabilization = struct
     let create env get_data_size set_token get_token header =
       create env (*FIXME: 32k?*)get_data_size set_token get_token header ^^
         (* TODO: push header directly? *)
-      StableMem.get_mem_size env ^^ G.i Drop ^^
-      compile_const_64 4L ^^
+
       get_data_size ^^
       compile_add_const (Int32.of_int (String.length header)) ^^
       let (set_len, get_len) = new_local env "len" in
       set_len ^^
+
+      StableMem.get_mem_size env ^^ compile_shl64_const (Int64.of_int page_size_bits) ^^
+      compile_add64_const 4L ^^
       let (set_dst, get_dst) = new_local64 env "dst" in
       set_dst ^^ get_dst ^^
       extend64 get_len ^^
       StableMem.ensure env ^^
+
       get_token ^^
       get_dst ^^
       get_dst ^^ extend64 get_len ^^
@@ -5979,7 +5982,7 @@ module Stabilization = struct
             IC.system_call env "stable64_write"
         end
       end
-      begin G.i Unreachable ^^
+      begin
         let (set_N, get_N) = new_local64 env "N" in
 
         (* let N = !size * page_size *)
@@ -5999,11 +6002,16 @@ module Stabilization = struct
         get_len ^^
         StableMem.write_word32 env ^^
 
-        get_N ^^
-        compile_add64_const 4L ^^
-        extend64 get_dst ^^
-        extend64 get_len ^^
-        IC.system_call env "stable64_write" ^^
+        get_dst ^^ compile_eq_const 0l ^^
+        G.if0
+          G.nop
+          begin
+            get_N ^^
+            compile_add64_const 4L ^^
+            extend64 get_dst ^^
+            extend64 get_len ^^
+            IC.system_call env "stable64_write"
+          end ^^
 
         (* let M = pagesize * ic0.stable64_size64() - 1 *)
         (* M is beginning of last page *)
