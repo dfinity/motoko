@@ -546,14 +546,14 @@ unsafe fn sub(
     if t1 >= 0 && t2 >= 0 {
         let t1 = t1 as u32;
         let t2 = t2 as u32;
-        if rel.get(p, t1, t2, 0) {
+        if rel.visited(p, t1, t2) {
             // visited? (bit 0)
-            // return assumed or determined result (bit 1)
-            return rel.get(p, t1, t2, 1);
+            // return assumed or determined result
+            return rel.related(p, t1, t2);
         };
         // cache and continue
-        rel.set(p, t1, t2, 0, true); // mark bit 0 visited (bit 0)
-        rel.set(p, t1, t2, 1, true); // assume t1 <:/:> t2 true (bit 1)
+        rel.visit(p, t1, t2); // mark visited
+        rel.assume(p, t1, t2); // assume t1 <:/:> t2 true
     };
 
     /* primitives reflexive */
@@ -796,8 +796,7 @@ unsafe fn sub(
     }
     // remember negative result ...
     if t1 >= 0 && t2 >= 0 {
-        // falsify t1 <:/:> t2 (bit 1)
-        rel.set(p, t1 as u32, t2 as u32, 1, false);
+        rel.disprove(p, t1 as u32, t2 as u32);
     }
     // .. only then return false
     return false;

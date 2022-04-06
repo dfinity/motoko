@@ -64,7 +64,7 @@ impl BitRel {
         return (ptr, bit);
     }
 
-    pub(crate) unsafe fn set(&self, p: bool, i_j: u32, j_i: u32, bit: u32, v: bool) {
+    unsafe fn set(&self, p: bool, i_j: u32, j_i: u32, bit: u32, v: bool) {
         let (ptr, bit) = self.locate_ptr_bit(p, i_j, j_i, bit);
         if v {
             *ptr = *ptr | (1 << bit);
@@ -73,9 +73,31 @@ impl BitRel {
         }
     }
 
-    pub(crate) unsafe fn get(&self, p: bool, i_j: u32, j_i: u32, bit: u32) -> bool {
+    unsafe fn get(&self, p: bool, i_j: u32, j_i: u32, bit: u32) -> bool {
         let (ptr, bit) = self.locate_ptr_bit(p, i_j, j_i, bit);
         let mask = 1 << bit;
         return *ptr & mask == mask;
+    }
+
+    pub(crate) unsafe fn visited(&self, p: bool, i_j: u32, j_i: u32) -> bool {
+        self.get(p, i_j, j_i, 0)
+    }
+
+    pub(crate) unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) -> () {
+        self.set(p, i_j, j_i, 0, true)
+    }
+
+    // NB: we store related bits in negated form to avoid setting on assumption
+    // This code is a nop in production code.
+    pub(crate) unsafe fn assume(&self, p: bool, i_j: u32, j_i: u32) -> () {
+        debug_assert!(!self.get(p, i_j, j_i, 1));
+    }
+
+    pub(crate) unsafe fn related(&self, p: bool, i_j: u32, j_i: u32) -> bool {
+        !self.get(p, i_j, j_i, 1)
+    }
+
+    pub(crate) unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) -> () {
+        self.set(p, i_j, j_i, 1, true)
     }
 }
