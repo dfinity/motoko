@@ -8760,7 +8760,7 @@ The compilation of declarations (and patterns!) needs to handle mutual recursion
 This requires conceptually three passes:
  1. First we need to collect all names bound in a block,
     and find locations for then (which extends the environment).
-    The environment is extended monotonicly: The type-checker ensures that
+    The environment is extended monotonically: The type-checker ensures that
     a Block does not bind the same name twice.
     We would not need to pass in the environment, just out ... but because
     it is bundled in the E.t type, threading it through is also easy.
