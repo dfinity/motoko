@@ -6029,6 +6029,7 @@ module Stabilization = struct
         get_len ^^
         StableMem.write_word32 env ^^
 
+        (* copy data to following stable memory FIXME: ask the stream statically *)  
         get_dst ^^ compile_eq_const 0l ^^
         G.if0
           G.nop
