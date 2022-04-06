@@ -4365,6 +4365,10 @@ module type Stream = sig
      Arguments:   env    token  size   header_size *)
   val terminate : E.t -> G.t -> G.t -> int32 -> G.t
 
+  (* Executes code to eliminate the residual buffer
+     that `terminate` returns (if at all) *)
+  val finalize_buffer : G.t -> G.t
+
   (* Builds a unique name for a name seed and a type *)
   val name_for : string -> string -> string
 
@@ -4397,6 +4401,8 @@ module BumpStream : Stream = struct
   let terminate env get_data_buf get_data_size header_size =
     get_data_buf ^^ compile_sub_const header_size ^^
     get_data_size ^^ compile_add_const header_size
+
+  let finalize_buffer code = code
 
   let name_for seed typ_name = "@" ^ seed ^ "<" ^ typ_name ^ ">"
 
@@ -5842,6 +5848,8 @@ module BlobStream : Stream = struct
     get_blob ^^ Blob.payload_ptr_unskewed ^^
     get_blob ^^ Blob.len env
 
+  let finalize_buffer code = code
+
   let name_for seed typ_name = "@Bl_" ^ seed ^ "<" ^ typ_name ^ ">"
 
   let absolute_offset env get_token =
@@ -5961,6 +5969,8 @@ module Stabilization = struct
       compile_sub64_const 4L ^^  (* `N` is now subtracted *)
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
+    let finalize_buffer _ = G.nop (* everything is outputted already *)
+
     let absolute_offset env get_token =
       absolute_offset env get_token ^^
       (* Now add the current write position minus
@@ -5998,16 +6008,14 @@ module Stabilization = struct
         get_len ^^
         StableMem.write_word32 env ^^
 
-        (* copy data to following stable memory FIXME: ask the stream statically  *)
-        get_dst ^^ compile_eq_const 0l ^^
-        G.if0
-          G.nop
+        (* copy data to following stable memory *)
+        StableMemoryStream.finalize_buffer
           begin
             compile_const_64 4L ^^
             extend64 get_dst ^^
             extend64 get_len ^^
             IC.system_call env "stable64_write"
-        end
+          end
       end
       begin
         let (set_N, get_N) = new_local64 env "N" in
@@ -6029,10 +6037,8 @@ module Stabilization = struct
         get_len ^^
         StableMem.write_word32 env ^^
 
-        (* copy data to following stable memory FIXME: ask the stream statically *)  
-        get_dst ^^ compile_eq_const 0l ^^
-        G.if0
-          G.nop
+        (* copy data to following stable memory *)
+        StableMemoryStream.finalize_buffer
           begin
             get_N ^^
             compile_add64_const 4L ^^
