@@ -95,7 +95,7 @@ impl Stream {
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
-	    stable64_write_moc((*self).ptr64, ptr as u64, n.as_u32() as u64);
+            stable64_write_moc((*self).ptr64, ptr as u64, n.as_u32() as u64);
             (*self).ptr64 = next_ptr64
         }
     }
