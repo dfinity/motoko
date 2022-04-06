@@ -1057,8 +1057,12 @@ module Stack = struct
     f get_x ^^
     free_words env n
 
-  (* TODO: check for overflow *)
   let dynamic_alloc_words env get_n =
+    get_stack_ptr env ^^
+    compile_divU_const Heap.word_size ^^
+    get_n ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.then_trap_with env "RTS Stack underflow" ^^
     get_stack_ptr env ^^
     get_n ^^
     compile_mul_const Heap.word_size ^^
@@ -8753,7 +8757,7 @@ The compilation of declarations (and patterns!) needs to handle mutual recursion
 This requires conceptually three passes:
  1. First we need to collect all names bound in a block,
     and find locations for then (which extends the environment).
-    The environment is extended monotonously: The type-checker ensures that
+    The environment is extended monotonicly: The type-checker ensures that
     a Block does not bind the same name twice.
     We would not need to pass in the environment, just out ... but because
     it is bundled in the E.t type, threading it through is also easy.
