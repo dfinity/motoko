@@ -5958,8 +5958,9 @@ module Stabilization = struct
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if0
       begin (* ensure [0,..,3,...len+4) *)
-        compile_const_64 4L ^^  (* reserve one word for size *)
+        compile_const_64 0L ^^
         extend64 get_len ^^
+        compile_add64_const 4L ^^  (* reserve one word for size *)
         StableMem.ensure env ^^
 
         (* write len to initial word of stable memory*)
