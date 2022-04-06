@@ -5551,7 +5551,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.else_trap_with env "data buffer not filled" ^^
 
       get_refs_size ^^
-      compile_unboxed_const 0l ^^
+      compile_eq_const 0l ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
       get_data_start ^^
