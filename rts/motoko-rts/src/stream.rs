@@ -95,12 +95,6 @@ impl Stream {
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
-            //assert_eq!((next_ptr64), (68694));
-            //assert!(next_ptr64 <= (*self).limit64);
-
-            //assert_eq!(((*self).ptr64, n, *ptr, next_ptr64, (*self).limit64), (65540, Bytes(22), 68, 65562, 65562));
-
-
 	    stable64_write_moc((*self).ptr64, ptr as u64, n.as_u32() as u64);
             (*self).ptr64 = next_ptr64
         }
@@ -115,8 +109,6 @@ impl Stream {
             (*self).ptr64 = start;
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
-            //assert_eq!((start, limit), (4, 68694));
-            //assert_eq!((start, limit), (65540, 65562));
         }
     }
 
