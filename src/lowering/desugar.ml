@@ -334,17 +334,36 @@ and export_interface txt =
   let open T in
   let name = "__get_candid_interface_tmp_hack" in
   let v = "$__get_candid_interface_tmp_hack"  in
-  let binds = [T.scope_bind] in
+  let binds = [scope_bind] in
   let typ = Func (Shared Query, Promises, binds, [], [text]) in
 
-  let scope_con = Cons.fresh "T" (Abs ([], T.scope_bound)) in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
-  let bind  = typ_arg scope_con T.Scope T.scope_bound in
-  let bind2 = typ_arg scope_con2 T.Scope T.scope_bound in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
-    funcE v (Shared Query) Promises [bind] [] [text] (
-      asyncE bind2 (textE txt) (T.Con (scope_con, []))
+    funcE v (Shared Query) Promises [bind1] [] [text] (
+      asyncE bind2 (textE txt) (Con (scope_con1, []))
     )
+  )],
+  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+
+and export_footprint self_id name expr =
+  let open T in
+  let v = "$__stable_var_size" in
+  let binds = [scope_bind] in
+  let typ = Func (Shared Query, Promises, binds, [], [nat64]) in
+
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
+  ([ letD (var v typ) (
+       funcE v (Shared Query) Promises [bind1] [] [nat64] (
+           (asyncE bind2
+              (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
+                                        [primE I.ICCallerPrim []; selfRefE caller]))]
+                 (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con1, []))))
   )],
   [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
 
@@ -386,32 +405,34 @@ and build_actor at ts self_id es obj_typ =
   let meta =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
-  let (interface_d, interface_f) = export_interface candid.I.service in
-  I.ActorE (interface_d @ ds', interface_f @ fs,
+  let interface_d, interface_f = export_interface candid.I.service in
+  let with_stable_vars wrap =
+    let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+    blockE
+      ((match call_system_func_opt "preupgrade" es with
+        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
+        | None -> []) @
+         [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
+            (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
+      (wrap
+         (newObjE T.Memory
+            (List.map2 (fun f v ->
+                 { it = {I.name = f.T.lab; I.var = id_of_var v};
+                   at = no_region;
+                   note = f.T.typ }
+               ) fields vs)
+            ty)) in
+  let footprint_d, footprint_f = export_footprint self_id "__motoko_stable_var_size" (with_stable_vars (fun e -> e)) in
+  I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
-       I.preupgrade =
-       (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
-        blockE
-          ((match call_system_func_opt "preupgrade" es with
-            | Some call -> [expD call]
-            | None -> []) @
-           [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
-              (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
-          (primE (I.ICStableWrite ty)
-             [ newObjE T.Memory
-                 (List.map2 (fun f v ->
-                      { it = {I.name = f.T.lab; I.var = id_of_var v};
-                        at = no_region;
-                        note = f.T.typ }
-                    ) fields vs)
-                 ty]));
-        I.postupgrade = (match call_system_func_opt "postupgrade" es with
-                 | Some call -> call
-                 | None -> tupE []);
-        I.heartbeat = match call_system_func_opt "heartbeat" es with
-                 | Some call -> call
-                 | None -> tupE []},
-    obj_typ)
+       preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
+       postupgrade = (match call_system_func_opt "postupgrade" es with
+                      | Some call -> call
+                      | None -> tupE []);
+       heartbeat = match call_system_func_opt "heartbeat" es with
+                   | Some call -> call
+                   | None -> tupE [] },
+     obj_typ))
 
 
 and stabilize stab_opt d =

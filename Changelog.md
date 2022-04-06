@@ -1,5 +1,33 @@
 # Motoko compiler changelog
 
+## FUTURE (2022-03-XX)
+
+* motoko (`moc`)
+
+  * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
+
+## 0.6.25 (2022-03-07)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus elision of type constructors sharing names with primitive types in `--stable-types` section and `.most` file (#3140)
+
+## 0.6.24 (2022-03-06)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus identification of distinct type constructors
+    in --stable-types section and .most file (#3140)
+
+## 0.6.23 (2022-03-05)
+
+* motoko (`moc`)
+
+  * bugfix: fix pretty printing of (stable) types and #3128 (#3130)
+
+    * Collect constructors  *transitively* before emitting a .most file.
+    * Modifies type pretty printer to produce well-formed types and stable type signatures.
+
 ## 0.6.22 (2022-02-24)
 
 * motoko (`moc`)
