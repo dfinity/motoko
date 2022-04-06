@@ -74,7 +74,6 @@ impl Stream {
     }
 
     /// make sure that the cache is empty
-    #[inline]
     fn flush(self: *mut Self) {
         unsafe {
             if (*self).filled > INITIAL_STREAM_FILLED {
