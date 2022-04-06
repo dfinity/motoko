@@ -5625,7 +5625,7 @@ module MakeSerialization (Strm : Stream) = struct
       (* Verify that the stream is correctly filled *)
       Strm.check_filled env get_data_start get_data_size ^^
       get_refs_size ^^
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      compile_eq_const 0l ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
       (* Extract the payload if possible *)
