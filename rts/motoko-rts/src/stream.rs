@@ -114,7 +114,7 @@ impl Stream {
 
     /// Ingest a number of bytes into the stream.
     #[export_name = "stream_write"]
-    pub fn stash(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
+    pub fn write_bytes(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             if (*self).limit64 != 0 && n > STREAM_CHUNK_SIZE
                 || (*self).filled + n > (*self).header.len
@@ -135,7 +135,7 @@ impl Stream {
 
     /// Ingest a single byte into the stream.
     #[export_name = "stream_write_byte"]
-    pub fn stash8(self: *mut Self, byte: u8) {
+    pub fn write_byte(self: *mut Self, byte: u8) {
         unsafe {
             if (*self).filled >= (*self).header.len {
                 self.flush()
