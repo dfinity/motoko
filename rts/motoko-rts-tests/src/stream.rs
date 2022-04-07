@@ -53,5 +53,12 @@ pub unsafe fn test() {
 
     // TODO: cache_bytes more than STREAM_CHUNK_SIZE
 
-    //println!("  Testing stream filling and flushing");
+    println!("  Testing stream flushing");
+    let mut written = Bytes(0);
+    fn just_count(stream: *mut Stream, _ptr: *const u8, n: Bytes<u32>) { written += n }
+    let stream = alloc_stream(&mut mem, Bytes(6000));
+    (*stream).outputter = just_count;
+    let place = stream.reserve(Bytes(20));
+    *place = 'a' as u8;
+    *place.add(1) = 'b' as u8;
 }
