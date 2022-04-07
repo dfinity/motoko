@@ -5941,11 +5941,13 @@ module Stabilization = struct
       let (set_len, get_len) = new_local env "len" in
       set_len ^^
 
+      let (set_dst, get_dst) = new_local64 env "dst" in
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       compile_add64_const 4L ^^ (* `N` is now on the stack *)
-      let (set_dst, get_dst) = new_local64 env "dst" in
-      set_dst ^^ get_dst ^^
+      set_dst ^^ 
+      
+      get_dst ^^
       extend64 get_len ^^
       StableMem.ensure env ^^
 
