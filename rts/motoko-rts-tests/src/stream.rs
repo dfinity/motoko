@@ -56,10 +56,10 @@ pub unsafe fn test() {
     println!("  Testing stream flushing");
     static mut written: Bytes<u32> = Bytes(0);
     fn just_count(stream: *mut Stream, ptr: *const u8, n: Bytes<u32>) {
-	unsafe {
-	    assert_eq!(*ptr, 'a' as u8);
-	    written += n
-	}
+        unsafe {
+            assert_eq!(*ptr, 'a' as u8);
+            written += n
+        }
     }
     let stream = alloc_stream(&mut mem, Bytes(6000));
     (*stream).outputter = just_count;
