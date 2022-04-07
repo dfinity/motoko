@@ -5971,6 +5971,9 @@ module Stabilization = struct
 
     let finalize_buffer _ = G.nop (* everything is outputted already *)
 
+    (* Returns a 32-bit number that is reasonably close to the number of bytes
+       that would bave been written to stable memory if flushed. The difference
+       of two such number will always be an exact byte distance. *)
     let absolute_offset env get_token =
       absolute_offset env get_token ^^
       (* Now add the current write position minus
