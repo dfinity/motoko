@@ -4354,7 +4354,7 @@ module type Stream = sig
   val check_filled : E.t -> G.t -> G.t -> G.t
 
   (* Pushes the stream's current absolute byte offset on stack.
-     The requirement is that the difference between two two uses
+     The requirement is that the difference between two uses
      of this method must give a correct _relative_ offset.
      Arguments:         env    token *)
   val absolute_offset : E.t -> G.t -> G.t
