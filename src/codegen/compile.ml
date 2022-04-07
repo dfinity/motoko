@@ -5936,9 +5936,9 @@ module Stabilization = struct
       create env (compile_unboxed_const 0x8000l) set_token get_token header ^^
         (* TODO: push header directly? *)
 
+      let (set_len, get_len) = new_local env "len" in
       get_data_size ^^
       compile_add_const (Int32.of_int (String.length header)) ^^
-      let (set_len, get_len) = new_local env "len" in
       set_len ^^
 
       let (set_dst, get_dst) = new_local64 env "dst" in
