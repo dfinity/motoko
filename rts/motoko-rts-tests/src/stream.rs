@@ -25,7 +25,7 @@ pub unsafe fn test() {
 
     println!("  Testing stream filling (single bytes)");
     for b in 32..92u8 {
-        stream.as_stream().write_byte(b);
+        stream.as_stream().cache_byte(b);
     }
     assert_eq!(stream.as_blob().get(24), 32);
     assert_eq!(stream.as_blob().get(83), 91);
@@ -41,7 +41,7 @@ pub unsafe fn test() {
     for _ in 0..600 {
         stream
             .as_stream()
-            .write_bytes(&chunk[0], Bytes(chunk.len() as u32));
+            .cache_bytes(&chunk[0], Bytes(chunk.len() as u32));
     }
     assert_eq!(stream.as_blob().get(24), 10);
     assert_eq!(stream.as_blob().get(25), 1);
@@ -51,7 +51,7 @@ pub unsafe fn test() {
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(6000));
 
-    // TODO: write_bytes more than STREAM_CHUNK_SIZE
+    // TODO: cache_bytes more than STREAM_CHUNK_SIZE
 
     //println!("  Testing stream filling and flushing");
 }

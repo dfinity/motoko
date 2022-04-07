@@ -166,7 +166,7 @@ unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
         let s_ptr = s.as_obj();
         if s_ptr.tag() == TAG_BLOB {
             let blob = s_ptr.as_blob();
-            stream.write_bytes(blob.payload_addr(), blob.len());
+            stream.cache_bytes(blob.payload_addr(), blob.len());
             break;
         } else {
             let concat = s_ptr.as_concat();
