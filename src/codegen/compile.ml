@@ -4359,7 +4359,7 @@ module type Stream = sig
      Arguments:         env    token *)
   val absolute_offset : E.t -> G.t -> G.t
 
-  (* Finishes the stream, performing consistence checks.
+  (* Finishes the stream, performing consistency checks.
      Leaves two words on stack, whose interpretation depends
      on the Stream.
      Arguments:   env    token  size   header_size *)
