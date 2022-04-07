@@ -814,7 +814,7 @@ module RTS = struct
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "idl_sub"
-      [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
+      (i32s 9) [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -5038,7 +5038,7 @@ module MakeSerialization (Strm : Stream) = struct
 
 
   let idl_sub env t2 =
-    let idx = List.length (!(env.E.typtbl_typs)) in
+    let idx = List.length !(env.E.typtbl_typs) in
     env.E.typtbl_typs := !(env.E.typtbl_typs) @ [t2];
     get_typtbl_idltyps env ^^
     compile_add_const (Int32.of_int (idx * 4)) ^^
@@ -5224,7 +5224,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       let read_actor_data () =
         read_byte_tagged
-          [ E.trap_with env ("IDL error: unexpected actor reference")
+          [ E.trap_with env "IDL error: unexpected actor reference"
           ; read_principal ()
           ]
       in
@@ -5653,7 +5653,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
-              [ E.trap_with env ("IDL error: unexpected function reference")
+              [ E.trap_with env "IDL error: unexpected function reference"
               ; read_actor_data () ^^
                 read_text () ^^
                 Tuple.from_stack env 2
@@ -5807,12 +5807,12 @@ module MakeSerialization (Strm : Stream) = struct
           let can_recover, default_or_trap = Type.(
             match normalize t with
             | Prim Null | Opt _ | Any ->
-              (compile_unboxed_one, fun msg -> Opt.null_lit env)
+              (true, fun msg -> Opt.null_lit env)
             | _ ->
-              (compile_unboxed_zero, fun msg -> E.trap_with env msg))
+              (false, fun msg -> E.trap_with env msg))
           in
           get_arg_count ^^
-          compile_rel_const I32Op.Eq 0l ^^
+          compile_eq_const 0l ^^
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
@@ -5823,7 +5823,7 @@ module MakeSerialization (Strm : Stream) = struct
              get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
              ReadBuf.read_sleb128 env get_main_typs_buf ^^
              compile_unboxed_const 0l ^^ (* initial depth *)
-             can_recover ^^
+             Bool.lit can_recover ^^
              deserialize_go env t ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
