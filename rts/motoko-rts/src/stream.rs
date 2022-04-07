@@ -134,7 +134,7 @@ impl Stream {
     }
 
     /// Ingest a single byte into the stream.
-    #[export_name = "stream_cache_byte"]
+    #[export_name = "stream_write_byte"]
     pub fn cache_byte(self: *mut Self, byte: u8) {
         unsafe {
             if (*self).filled >= (*self).header.len {
