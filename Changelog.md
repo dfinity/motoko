@@ -1,10 +1,12 @@
 # Motoko compiler changelog
 
-## FUTURE (2022-03-XX)
+## FUTURE (2022-04-XX)
 
 * motoko (`moc`)
 
   * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
+  * Performance fix to not use heap memory upon receiving `Int` (and  `Nat`)  values that fit into 31 bits (#3173)
+  * Added a primitive to obtain stable variable memory footprint (#3049)
 
 ## 0.6.25 (2022-03-07)
 
