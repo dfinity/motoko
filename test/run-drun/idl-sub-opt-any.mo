@@ -1,6 +1,6 @@
 import Prim "mo:⛔";
 
-// test candid subtype test with higher-order arguments
+// test candid subtype test with optional argument extension
 actor this {
 
    public func send_f0(

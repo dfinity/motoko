@@ -1,0 +1,11 @@
+→ update create_canister(record {settings = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+debug.print: ok_0_1_a
+debug.print: ok_0
+debug.print: ok_0_1_b
+debug.print: ok_0
+debug.print: ok_0_1_c
+← replied: ()
