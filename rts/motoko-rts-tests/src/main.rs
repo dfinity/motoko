@@ -22,8 +22,7 @@ fn main() {
     }
 
     unsafe {
-        stream::test();
-        /*bigint::test();
+        bigint::test();
         bitmap::test();
         continuation_table::test();
         crc32::test();
@@ -31,8 +30,9 @@ fn main() {
         leb128::test();
         mark_stack::test();
         principal_id::test();
+        stream::test();
         text::test();
-        utf8::test();*/
+        utf8::test();
     }
 }
 
