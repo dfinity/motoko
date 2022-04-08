@@ -4370,7 +4370,7 @@ module type Stream = sig
   val finalize_buffer : G.t -> G.t
 
   (* Builds a unique name for a name seed and a type *)
-  val name_for : string -> string -> string
+  val name_for : string -> T.typ list -> string
 
   (* Opportunity to flush or update the token. Stream token is on stack. *)
   val checkpoint : E.t -> G.t -> G.t
@@ -4404,7 +4404,7 @@ module BumpStream : Stream = struct
 
   let finalize_buffer code = code
 
-  let name_for seed typ_name = "@" ^ seed ^ "<" ^ typ_name ^ ">"
+  let name_for  fn_name ts = "@" ^ fn_name ^ "<" ^ (typ_seq_hash ts) ^ ">"
 
   let advance_data_buf get_data_buf =
     get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
@@ -4825,7 +4825,7 @@ module MakeSerialization (Strm : Stream) = struct
   let rec serialize_go env t =
     let open Type in
     let t = Type.normalize t in
-    let name = Strm.name_for "serialize_go" (typ_hash t) in
+    let name = Strm.name_for "serialize_go" [t] in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
       let set_ref_buf = G.setter_for get_ref_buf in
@@ -5594,7 +5594,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   let serialize env ts : G.t =
     let ts_name = typ_seq_hash ts in
-    let name = Strm.name_for "serialize" ts_name in
+    let name = Strm.name_for "serialize" ts in
     (* returns data/length pointers (will be GC’ed next time!) *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
@@ -5850,7 +5850,7 @@ module BlobStream : Stream = struct
 
   let finalize_buffer code = code
 
-  let name_for seed typ_name = "@Bl_" ^ seed ^ "<" ^ typ_name ^ ">"
+  let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ (typ_seq_hash ts) ^ ">"
 
   let absolute_offset env get_token =
     let filled_field = Int32.add Blob.len_field 6l in (* see invariant in `stream.rs` *)
