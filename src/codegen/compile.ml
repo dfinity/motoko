@@ -4370,7 +4370,7 @@ module type Stream = sig
   val finalize_buffer : G.t -> G.t
 
   (* Builds a unique name for a name seed and a type *)
-  val name_for : string -> T.typ list -> string
+  val name_for : string -> Type.typ list -> string
 
   (* Opportunity to flush or update the token. Stream token is on stack. *)
   val checkpoint : E.t -> G.t -> G.t
@@ -4404,7 +4404,7 @@ module BumpStream : Stream = struct
 
   let finalize_buffer code = code
 
-  let name_for  fn_name ts = "@" ^ fn_name ^ "<" ^ (typ_seq_hash ts) ^ ">"
+  let name_for fn_name ts = "@" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
   let advance_data_buf get_data_buf =
     get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
@@ -5593,7 +5593,6 @@ module MakeSerialization (Strm : Stream) = struct
     )
 
   let serialize env ts : G.t =
-    let ts_name = typ_seq_hash ts in
     let name = Strm.name_for "serialize" ts in
     (* returns data/length pointers (will be GC’ed next time!) *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
@@ -5850,7 +5849,7 @@ module BlobStream : Stream = struct
 
   let finalize_buffer code = code
 
-  let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ (typ_seq_hash ts) ^ ">"
+  let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
   let absolute_offset env get_token =
     let filled_field = Int32.add Blob.len_field 6l in (* see invariant in `stream.rs` *)
@@ -5930,7 +5929,7 @@ module Stabilization = struct
   module StableMemoryStream : Stream = struct
     include BlobStream
 
-    let name_for seed typ_name = "@Sm_" ^ seed ^ "<" ^ typ_name ^ ">"
+    let name_for fn_name ts = "@Sm_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
     let create env get_data_size set_token get_token header =
       create env (compile_unboxed_const 0x8000l) set_token get_token header ^^
