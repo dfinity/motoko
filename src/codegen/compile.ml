@@ -4488,7 +4488,7 @@ module MakeSerialization (Strm : Stream) = struct
       by the next GC.
   *)
 
-  module Strm : Stream = Strm
+  module Strm = Strm
 
   open Typ_hash
 
