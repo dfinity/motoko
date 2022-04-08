@@ -5806,7 +5806,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.concat_map (fun t ->
           let can_recover, default_or_trap = Type.(
             match normalize t with
-            | Prim Null | Opt _ | Any ->
+            | Opt _ | Any ->
               (true, fun msg -> Opt.null_lit env)
             | _ ->
               (false, fun msg -> E.trap_with env msg))
