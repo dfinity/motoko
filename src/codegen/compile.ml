@@ -4488,6 +4488,8 @@ module MakeSerialization (Strm : Stream) = struct
       by the next GC.
   *)
 
+  module Strm : Stream = Strm
+
   open Typ_hash
 
   let sort_by_hash fs =
@@ -6013,7 +6015,7 @@ module Stabilization = struct
         StableMem.write_word32 env ^^
 
         (* copy data to following stable memory *)
-        StableMemoryStream.finalize_buffer
+        Externalization.Strm.finalize_buffer
           begin
             compile_const_64 4L ^^
             extend64 get_dst ^^
@@ -6042,7 +6044,7 @@ module Stabilization = struct
         StableMem.write_word32 env ^^
 
         (* copy data to following stable memory *)
-        StableMemoryStream.finalize_buffer
+        Externalization.Strm.finalize_buffer
           begin
             get_N ^^
             compile_add64_const 4L ^^
