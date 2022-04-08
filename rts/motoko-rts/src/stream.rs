@@ -167,6 +167,9 @@ impl Stream {
     /// Lengths are adjusted correspondingly.
     #[export_name = "stream_split"]
     pub unsafe fn split(self: *mut Self) -> Value {
+        if (*self).header.len > (*self).filled {
+            self.as_blob_mut().shrink((*self).filled);
+        }
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
