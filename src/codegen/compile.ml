@@ -5687,7 +5687,8 @@ module MakeSerialization (Strm : Stream) = struct
           Heap.store_field MutBox.field
         )
       | Non ->
-        E.trap_with env "IDL error: deserializing value of type None"
+        skip get_idltyp ^^
+        coercion_failed "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
       (* Parsed value on the stack, return that, unless the failure flag is set *)
