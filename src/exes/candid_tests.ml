@@ -78,7 +78,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
   let ignore ts e =
     let open Type in
-    if sub (seq ts) unit then e (* avoid warnign about redundant ignore *)
+    if sub (seq ts) unit then e (* avoid warning about redundant ignore *)
     else "ignore (" ^ e ^ ")\n" in
 
   try
@@ -155,7 +155,7 @@ type outcome =
  | UnwantedTrap of (string * string) (* stdout, stderr *)
  | Timeout
  | Ignored of string
- | CantCompile of (string * string) (* stdout, stderr *)
+ | CantCompile of (string * string * string) (* stdout, stderr, src *)
 
 let red s = "\027[31m" ^ s ^ "\027[0m"
 let green s = "\027[32m" ^ s ^ "\027[0m"
@@ -197,9 +197,9 @@ let report_outcome counts expected_fail outcome =
   | _, Ignored why ->
     bump counts.ignored;
     Printf.printf " %s\n" (grey (Printf.sprintf "ignored (%s)" why))
-  | _, CantCompile (stdout, stderr) ->
+  | _, CantCompile (stdout, stderr, src) ->
     bump counts.fail;
-    Printf.printf " %s\n%s%s\n" (red "not ok (cannot compile)") stdout stderr
+    Printf.printf " %s\n%s%s\n%s" (red "not ok (cannot compile)") stdout stderr src
 
 (* Main *)
 let () =
@@ -260,7 +260,7 @@ let () =
             Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
             write_file "tmp.mo" src;
             match run_cmd "moc -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
-            | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr)
+            | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr, src)
             | (Ok, _, _) ->
               match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache --cranelift tmp.wasm" with
               | ShouldPass, (Ok, _, _) -> WantedPass

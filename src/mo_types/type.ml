@@ -1224,13 +1224,13 @@ and pp_dom parens vs ppf ts =
 and pp_cod vs ppf ts =
   match ts with
   | [Tup _] -> fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) (seq ts)
-  | _ -> pp_typ' vs ppf (seq ts)
+  | _ -> pp_typ_nullary vs ppf (seq ts)
 
 and pp_control_cod sugar c vs ppf ts =
   match c, ts with
   (* sugar *)
   | Returns, [Async (_,t)] when sugar ->
-    fprintf ppf "@[<2>async@ %a@]" (pp_typ' vs) t
+    fprintf ppf "@[<2>async@ %a@]" (pp_typ_nullary vs) t
   | Promises, ts when sugar ->
     fprintf ppf "@[<2>async@ %a@]" (pp_cod vs) ts
   (* explicit *)
