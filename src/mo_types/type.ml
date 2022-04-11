@@ -1184,9 +1184,8 @@ let rec pp_typ_nullary vs ppf = function
     fprintf ppf "@[<1>[var %a]@]" (pp_typ_nullary vs) t
   | Array t ->
     fprintf ppf "@[<1>[%a]@]" (pp_typ_nullary vs) t
-  | Obj (s, fs) ->
-    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
-      (string_of_obj_sort s)
+  | Obj (Object, fs) ->
+    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_field vs)) fs
   | Variant [] -> pr ppf "{#}"
   | Variant fs ->
