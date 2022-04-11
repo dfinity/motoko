@@ -1279,7 +1279,7 @@ and pp_typ' vs ppf t =
     | [tb] ->
       fprintf ppf "@[<2>%s%a ->@ %a@]"
         (string_of_func_sort s)
-        (pp_dom false (vs'vs)) ts1
+        (pp_dom true (vs'vs)) ts1
         (pp_control_cod true c (vs'vs)) ts2
     | _ ->
       fprintf ppf "@[<2>%s%a%a ->@ %a@]"
