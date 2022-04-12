@@ -1284,7 +1284,7 @@ and pp_typ' vs ppf t =
       fprintf ppf "@[<2>%s%a%a ->@ %a@]"
         (string_of_func_sort s)
         (pp_binds (vs'vs) vs'') tbs'
-        (pp_dom (tbs <> []) (vs'vs)) ts1
+        (pp_dom (tbs' <> []) (vs'vs)) ts1
         (pp_control_cod true c (vs'vs)) ts2
     )
   | Func (s, c, [], ts1, ts2) ->
