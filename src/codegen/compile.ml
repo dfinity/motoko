@@ -5041,8 +5041,7 @@ module MakeSerialization (Strm : Stream) = struct
     let idx = List.length !(env.E.typtbl_typs) in
     env.E.typtbl_typs := !(env.E.typtbl_typs) @ [t2];
     get_typtbl_idltyps env ^^
-    compile_add_const (Int32.of_int (idx * 4)) ^^
-    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+    G.i (Load {ty = I32Type; align = 0; offset = Int32.of_int (idx * 4) (*!*); sz = None}) ^^
     Func.share_code6 env ("idl_sub")
       (("rel_buf", I32Type),
        ("typtbl1", I32Type),
