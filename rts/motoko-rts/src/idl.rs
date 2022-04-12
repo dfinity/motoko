@@ -46,6 +46,10 @@ const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
 
+pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
+    (leb128_decode(buf), (*buf).ptr)
+}
+
 unsafe fn is_primitive_type(ty: i32) -> bool {
     ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal)
 }
@@ -199,8 +203,7 @@ unsafe fn parse_idl_header<M: Memory>(
             let mut last_p = core::ptr::null_mut();
             for _ in 0..leb128_decode(buf) {
                 // Name
-                let len = leb128_decode(buf);
-                let p = (*buf).ptr;
+                let (len, p) = leb128_decode_ptr(buf);
                 buf.advance(len);
                 // Method names must be valid unicode
                 utf8_validate(p as *const _, len);
@@ -288,8 +291,7 @@ unsafe fn skip_blob(buf: *mut Buf) {
 }
 
 unsafe fn skip_text(buf: *mut Buf) {
-    let len = leb128_decode(buf);
-    let p = (*buf).ptr;
+    let (len, p) = leb128_decode_ptr(buf);
     buf.advance(len); // advance first; does the bounds check
     utf8_validate(p as *const _, len);
 }
@@ -531,8 +533,6 @@ unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     return t == IDL_CON_opt;
 }
 
-// https://github.com/dfinity/candid/blob/master/rust/candid/src/types/subtype.rs#L10
-// https://github.com/dfinity/candid/blob/20b84d1c1515e2c1db353ebe02b738486f835466/spec/Candid.md
 // TODO: consider storing fixed args typtbl1...end2 in `rel` to use less stack.
 unsafe fn sub(
     rel: &BitRel,
@@ -760,8 +760,7 @@ unsafe fn sub(
                     if n1 == 0 {
                         break 'return_false;
                     };
-                    let len2 = leb128_decode(&mut tb2);
-                    let p2 = tb2.ptr;
+                    let (len2, p2) = leb128_decode_ptr(&mut tb2);
                     Buf::advance(&mut tb2, len2);
                     let t21 = sleb128_decode(&mut tb2);
                     let mut len1: u32;
@@ -769,8 +768,7 @@ unsafe fn sub(
                     let mut t11: i32;
                     let mut cmp: i32;
                     loop {
-                        len1 = leb128_decode(&mut tb1);
-                        p1 = tb1.ptr;
+                        (len1, p1) = leb128_decode_ptr(&mut tb1);
                         Buf::advance(&mut tb1, len1);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
