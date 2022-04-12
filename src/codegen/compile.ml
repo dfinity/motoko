@@ -1034,7 +1034,7 @@ module Stack = struct
      All pointers here are unskewed.
   *)
 
-  let end_ = page_size (* 64k of stack *)
+  let end_ = 2 * page_size (* 128k of stack *)
 
   let register_globals env =
     (* stack pointer *)
