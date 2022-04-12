@@ -831,7 +831,7 @@ unsafe extern "C" fn idl_sub(
 
     debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
 
-    rel.init();
+    rel.init(); // FIX ME
 
     return sub(
         &rel,

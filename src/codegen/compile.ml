@@ -258,7 +258,9 @@ module E = struct
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
     typtbl_typs : Type.typ list ref;
-      (* Types accumulated in global typtbl (for candid subtype checks *)
+      (* Types accumulated in global typtbl (for candid subtype checks)
+         See Note [Candid subtype checks]
+      *)
 
     (* Metadata *)
     args : (bool * string) option ref;
@@ -4676,6 +4678,7 @@ module MakeSerialization (Strm : Stream) = struct
      offsets,
      List.map idx ts)
 
+  (* See Note [Candid subtype checks] *)
   let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
     let typdesc, offsets, idltyps = type_desc env (!(env.E.typtbl_typs)) in
     let static_typedesc =
@@ -5003,20 +5006,7 @@ module MakeSerialization (Strm : Stream) = struct
       I32 Tagged.(int_of_tag CoercionFailure);
     ]
 
-  (* The main deserialization function, generated once per type hash.
-     Its parameters are:
-       * data_buffer: The current position of the input data buffer
-       * ref_buffer:  The current position of the input references buffer
-       * typtbl:      The type table, as returned by parse_idl_header
-       * idltyp:      The idl type (prim type or table index) to decode now
-       * typtbl_size: The size of the type table, used to limit recursion
-       * depth:       Recursion counter; reset when we make progres on the value
-       * can_recover: Whether coercion errors are recoverable, see coercion_failed below
-
-     It returns the value of type t (vanilla representation) or coercion_error_value,
-     It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
-   *)
-
+  (* See Note [Candid subtype checks] *)
   let with_rel_buf_opt env extended get_typtbl_size1 f =
     if extended then
       f (compile_unboxed_const 0l)
@@ -5025,7 +5015,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.call_import env "rts" "idl_sub_buf_words" ^^
       Stack.dynamic_with_words env "rel_buf" f
 
-
+  (* See Note [Candid subtype checks] *)
   let idl_sub env t2 =
     let idx = List.length !(env.E.typtbl_typs) in
     env.E.typtbl_typs := !(env.E.typtbl_typs) @ [t2];
@@ -5041,19 +5031,32 @@ module MakeSerialization (Strm : Stream) = struct
       )
       [I32Type]
       (fun env get_rel_buf get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
-          get_rel_buf ^^
-          E.else_trap_with env "null rel_buf" ^^
-          get_rel_buf ^^
-          get_typtbl1 ^^
-          get_typtbl env ^^
-          get_typtbl_end1 ^^
-          get_typtbl_end env ^^
-          get_typtbl_size1 ^^
-          get_typtbl_size env ^^
-          get_idltyp1 ^^
-          get_idltyp2 ^^
-          E.call_import env "rts" "idl_sub")
+        get_rel_buf ^^
+        E.else_trap_with env "null rel_buf" ^^
+        get_rel_buf ^^
+        get_typtbl1 ^^
+        get_typtbl env ^^
+        get_typtbl_end1 ^^
+        get_typtbl_end env ^^
+        get_typtbl_size1 ^^
+        get_typtbl_size env ^^
+        get_idltyp1 ^^
+        get_idltyp2 ^^
+        E.call_import env "rts" "idl_sub")
 
+  (* The main deserialization function, generated once per type hash.
+     Its parameters are:
+       * data_buffer: The current position of the input data buffer
+       * ref_buffer:  The current position of the input references buffer
+       * typtbl:      The type table, as returned by parse_idl_header
+       * idltyp:      The idl type (prim type or table index) to decode now
+       * typtbl_size: The size of the type table, used to limit recursion
+       * depth:       Recursion counter; reset when we make progres on the value
+       * can_recover: Whether coercion errors are recoverable, see coercion_failed below
+
+     It returns the value of type t (vanilla representation) or coercion_error_value,
+     It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
+   *)
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -5627,6 +5630,7 @@ module MakeSerialization (Strm : Stream) = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
+        (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
         G.if1 I32Type
           (begin
@@ -5649,6 +5653,7 @@ module MakeSerialization (Strm : Stream) = struct
           (skip get_idltyp ^^
            coercion_failed "IDL error: incompatible function type")
       | Obj (Actor, _) ->
+        (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
         G.if1 I32Type
           (begin
@@ -5947,6 +5952,44 @@ To detect and preserve aliasing, these steps are taken:
 
  *)
 
+(*
+Note [Candid subtype checks]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deserializing Candid values now requires a Candid subtype check when
+deserializing reference types (actors and functions).
+
+The subtype test is performed directly on the expected and actual
+candid type tables using RTS functions `idl_sub_buf_words` and
+`idl_sub_init`.  One type table and vector of types is generated
+statically from the list of statically known types encountered during
+code generation, the other is determined dynamically by, e.g. message
+payload.
+
+The known Motoko types are accumulated in a global list when
+encountered and then encoded to global type table and sequence of type
+indices in a final compilation step.  The encoding is stored as static
+data referenced by dedicated wasm globals so that we can generate code
+that references them before their final value is known.
+
+Deserializing a vanilla (not extended) Candid value stack allocates a
+mutable word buffer, of size determined by `idl_sub_buf_words`.  The
+word buffer is used to initialize and provide storage for a Rust memo
+table (see bitrel.rs) memoizing the result of sub and super type tests
+performed during deserialization of a given Candid value sequence.
+The memo table is initialized once and shared between recursive calls
+to deserialize, by threading the (possibly null) wasm address of its
+word buffer as an optional argument.  The word buffer is stack
+allocated in generated code, not Rust, because it's size is dynamic
+and Rust doesn't do dynamically sized stack allocation (AFAICT).
+
+Currently, we only perform Candid subtyp checks when decoding vanilla
+(not extended) Candid values. Extended values are required for stable
+variables only: we can omit the check, because compatibility should
+already be enforced by the static signature compatibility check.  We
+use the null-ness of the word buffer pointer to determine whether to
+omit or perform Candid subtype checks.
+*)
 
 end (* MakeSerialization *)
 
@@ -9349,6 +9392,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
 
+  (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;
 
   let static_roots = GC.store_static_roots env in
@@ -9445,6 +9489,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   Stack.register_globals env;
   StableMem.register_globals env;
 
+  (* See Note [Candid subtype checks] *)
   let set_serialization_globals =  Serialization.register_delayed_globals env in
 
   IC.system_imports env;
