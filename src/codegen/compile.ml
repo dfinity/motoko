@@ -818,6 +818,7 @@ module RTS = struct
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "idl_sub_buf_init" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub"
       [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
@@ -5013,7 +5014,11 @@ module MakeSerialization (Strm : Stream) = struct
     else
       get_typtbl_size1 ^^ get_typtbl_size env ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
-      Stack.dynamic_with_words env "rel_buf" f
+      Stack.dynamic_with_words env "rel_buf"
+      (fun get_ptr ->
+        get_ptr ^^ get_typtbl_size1 ^^ get_typtbl_size env ^^
+        E.call_import env "rts" "idl_sub_buf_init" ^^
+        f get_ptr)
 
   (* See Note [Candid subtype checks] *)
   let idl_sub env t2 =

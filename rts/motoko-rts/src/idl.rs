@@ -809,6 +809,21 @@ unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> 
 }
 
 #[no_mangle]
+unsafe extern "C" fn idl_sub_buf_init(
+    rel_buf: *mut u32,
+    typtbl_size1: u32,
+    typtbl_size2: u32,
+) -> () {
+    let rel = BitRel {
+        ptr: rel_buf,
+        end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),
+        size1: typtbl_size1,
+        size2: typtbl_size2,
+    };
+    rel.init();
+}
+
+#[no_mangle]
 unsafe extern "C" fn idl_sub(
     rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
     typtbl1: *mut *mut u8,
@@ -830,8 +845,6 @@ unsafe extern "C" fn idl_sub(
     };
 
     debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
-
-    rel.init(); // FIX ME
 
     return sub(
         &rel,
