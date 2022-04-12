@@ -257,10 +257,11 @@ module E = struct
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
+
+    (* Types accumulated in global typtbl (for candid subtype checks)
+       See Note [Candid subtype checks]
+    *)
     typtbl_typs : Type.typ list ref;
-      (* Types accumulated in global typtbl (for candid subtype checks)
-         See Note [Candid subtype checks]
-      *)
 
     (* Metadata *)
     args : (bool * string) option ref;
@@ -337,13 +338,12 @@ module E = struct
 
   let mode (env : t) = env.mode
 
-
   let add_anon_local (env : t) ty =
-      let i = reg env.locals ty in
-      Wasm.I32.add env.n_param i
+    let i = reg env.locals ty in
+    Wasm.I32.add env.n_param i
 
   let add_local_name (env : t) li name =
-      let _ = reg env.local_names (li, name) in ()
+    let _ = reg env.local_names (li, name) in ()
 
   let get_locals (env : t) = !(env.locals)
   let get_local_names (env : t) : (int32 * string) list = !(env.local_names)
@@ -547,6 +547,14 @@ module E = struct
     in
     let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
     call_import env "rts" (gc_fn ^ "_gc")
+
+  (* See Note [Candid subtype checks] *)
+  let add_typtbl_typ (env : t) ty : Int32.t =
+    reg env.typtbl_typs ty
+
+  let get_typtbl_typs (env : t) : Type.typ list =
+    !(env.typtbl_typs)
+
 end
 
 
@@ -4458,12 +4466,14 @@ module MakeSerialization (Strm : Stream) = struct
       by the next GC.
   *)
 
+  (* Globals recording known Candid types
+     See Note [Candid subtype checks]
+  *)
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
      E.add_global32_delayed env "__typtbl_size" Immutable,
      E.add_global32_delayed env "__typtbl_idltyps" Immutable)
-
 
   let get_typtbl env =
     G.i (GlobalGet (nr (E.get_global env "__typtbl")))
@@ -4681,7 +4691,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* See Note [Candid subtype checks] *)
   let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
-    let typdesc, offsets, idltyps = type_desc env (!(env.E.typtbl_typs)) in
+    let typdesc, offsets, idltyps = type_desc env (E.get_typtbl_typs env) in
     let static_typedesc =
       E.add_static_unskewed env [StaticBytes.Bytes typdesc]
     in
@@ -5022,10 +5032,9 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* See Note [Candid subtype checks] *)
   let idl_sub env t2 =
-    let idx = List.length !(env.E.typtbl_typs) in
-    env.E.typtbl_typs := !(env.E.typtbl_typs) @ [t2];
+    let idx = E.add_typtbl_typ env t2 in
     get_typtbl_idltyps env ^^
-    G.i (Load {ty = I32Type; align = 0; offset = Int32.of_int (idx * 4) (*!*); sz = None}) ^^
+    G.i (Load {ty = I32Type; align = 0; offset = Int32.mul idx 4l (*!*); sz = None}) ^^
     Func.share_code6 env ("idl_sub")
       (("rel_buf", I32Type),
        ("typtbl1", I32Type),
@@ -5962,38 +5971,46 @@ Note [Candid subtype checks]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deserializing Candid values now requires a Candid subtype check when
-deserializing reference types (actors and functions).
+deserializing value of reference types (actors and functions).
 
 The subtype test is performed directly on the expected and actual
-candid type tables using RTS functions `idl_sub_buf_words` and
-`idl_sub_init`.  One type table and vector of types is generated
-statically from the list of statically known types encountered during
-code generation, the other is determined dynamically by, e.g. message
-payload.
+candid type tables using RTS functions `idl_sub_buf_words`,
+`idl_sub_buf_init` and `idl_sub`.  One type table and vector of types
+is generated statically from the list of statically known types
+encountered during code generation, the other is determined
+dynamically by, e.g. message payload. The latter will vary with
+each payload to decode.
 
-The known Motoko types are accumulated in a global list when
-encountered and then encoded to global type table and sequence of type
-indices in a final compilation step.  The encoding is stored as static
-data referenced by dedicated wasm globals so that we can generate code
-that references them before their final value is known.
+The known Motoko types are accumulated in a global list as required
+and then, in a final compilation step, encoded to global type table
+and sequence of type indices. The encoding is stored as static
+data referenced by dedicated wasm globals so that we can generate
+code that reference the globals before their final definitions are
+known.
 
 Deserializing a vanilla (not extended) Candid value stack allocates a
-mutable word buffer, of size determined by `idl_sub_buf_words`.  The
-word buffer is used to initialize and provide storage for a Rust memo
-table (see bitrel.rs) memoizing the result of sub and super type tests
-performed during deserialization of a given Candid value sequence.
-The memo table is initialized once and shared between recursive calls
-to deserialize, by threading the (possibly null) wasm address of its
-word buffer as an optional argument.  The word buffer is stack
-allocated in generated code, not Rust, because it's size is dynamic
-and Rust doesn't do dynamically sized stack allocation (AFAICT).
+mutable word buffer, of size determined by `idl_sub_buf_words`.
+The word buffer is used to initialize and provide storage for a
+Rust memo table (see bitrel.rs) memoizing the result of sub and
+super type tests performed during deserialization of a given Candid
+value sequence.  The memo table is initialized once, using `idl_sub_buf_init`,
+then shared between recursive calls to deserialize, by threading the (possibly
+null) wasm address of the word buffer as an optional argument.  The
+word buffer is stack allocated in generated code, not Rust, because
+it's size is dynamic and Rust doesn't seem to support dynamically-sized
+stack allocation.
 
-Currently, we only perform Candid subtyp checks when decoding vanilla
-(not extended) Candid values. Extended values are required for stable
-variables only: we can omit the check, because compatibility should
-already be enforced by the static signature compatibility check.  We
-use the null-ness of the word buffer pointer to determine whether to
-omit or perform Candid subtype checks.
+Currently, we only perform Candid subtype checks when decoding vanilla
+(not extended) Candid values. Extended values are required for
+stable variables only: we can omit the check, because compatibility
+should already be enforced by the static signature compatibility
+check.  We use the `null`-ness of the word buffer pointer to
+dynamically determine whether to omit or perform Candid subtype checks.
+
+NB: Extending `idl_sub` to support extended, "stable" types (with mutable,
+invariant type constructors) would require extending the polarity argument
+from a Boolean to a three-valued argument to efficiently check equality for
+invariant type constructors in a single pass.
 *)
 
 end (* MakeSerialization *)
