@@ -21,6 +21,11 @@ debug.print: {topped_up_balance = 18_446_744_073_709_551_616}
 debug.print: {added = 18_446_744_073_709_551_616}
 debug.print: {amount = 18_446_744_073_709_551_616; available = 18_446_744_073_709_551_616}
 debug.print: {balance = 18_446_744_073_709_551_616}
-debug.print: {topped_up_balance = 18_446_844_073_709_551_616}
-debug.print: can't top up more
+debug.print: {topped_up_balance = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {added = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {amount = 79_228_162_514_264_337_593_543_950_335; available = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {balance = 79_228_162_514_264_337_593_543_950_335}
+debug.print: {topped_up_balance = 340_282_366_920_938_463_463_374_607_431_768_211_455}
+debug.print: {added = 340_282_366_920_938_463_463_374_607_431_768_211_455}
+debug.print: {amount = 340_282_366_920_938_463_463_374_607_431_768_211_455; available = 340_282_366_920_938_463_463_374_607_431_768_211_455}
 ingress Completed: Reply: 0x4449444c0000
