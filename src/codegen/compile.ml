@@ -518,6 +518,9 @@ module E = struct
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
 
+  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
+    Int32.add (add_static env data) ptr_unskew
+
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
     !(env.end_of_static_memory)
@@ -4674,39 +4677,25 @@ module MakeSerialization (Strm : Stream) = struct
      List.map idx ts)
 
   let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
-       let typdesc, offsets, idltyps = type_desc env (!(env.E.typtbl_typs)) in
-       let static_typedesc =
-         Int32.(add (Blob.vanilla_lit env typdesc)  Blob.unskewed_payload_offset)
-       in
-       let tbl =
-         let buf = Buffer.create (List.length offsets * 4) in
-         begin
-           List.iter (fun offset ->
-             Buffer.add_int32_le buf
-               Int32.(add static_typedesc (of_int(offset))))
-           offsets;
-           Buffer.contents buf
-         end
-       in
-       let static_typtbl =
-         Int32.add (Blob.vanilla_lit env tbl) Blob.unskewed_payload_offset
-       in
-       let static_idltyps =
-         let buf = Buffer.create (List.length idltyps * 4) in
-         begin
-           List.iter (fun idltyp ->
-             Buffer.add_int32_le buf idltyp)
-           idltyps;
-           Buffer.contents buf
-         end
-       in
-       let static_idltyps =
-         Int32.add (Blob.vanilla_lit env static_idltyps) Blob.unskewed_payload_offset
-       in
-       set_typtbl static_typtbl;
-       set_typtbl_end Int32.(add static_typedesc (of_int (String.length typdesc)));
-       set_typtbl_size (Int32.of_int (List.length offsets));
-       set_typtbl_idltyps static_idltyps
+    let typdesc, offsets, idltyps = type_desc env (!(env.E.typtbl_typs)) in
+    let static_typedesc =
+      E.add_static_unskewed env [StaticBytes.Bytes typdesc]
+    in
+    let static_typtbl =
+      let bytes = StaticBytes.i32s
+        (List.map (fun offset ->
+          Int32.(add static_typedesc (of_int(offset))))
+        offsets)
+      in
+      E.add_static_unskewed env [bytes]
+    in
+    let static_idltyps =
+      E.add_static_unskewed env [StaticBytes.i32s idltyps]
+    in
+    set_typtbl static_typtbl;
+    set_typtbl_end Int32.(add static_typedesc (of_int (String.length typdesc)));
+    set_typtbl_size (Int32.of_int (List.length offsets));
+    set_typtbl_idltyps static_idltyps
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
