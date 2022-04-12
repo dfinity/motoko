@@ -3516,7 +3516,7 @@ module IC = struct
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
 
-  let system_call env modname funcname = E.call_import env modname funcname
+  let system_call env funcname = E.call_import env "ic0" funcname
 
   let register env =
 
@@ -3526,7 +3526,7 @@ module IC = struct
         | Flags.ICMode | Flags.RefMode ->
             G.i (LocalGet (nr 0l)) ^^
             G.i (LocalGet (nr 1l)) ^^
-            E.call_import env "ic0" "debug_print"
+            system_call env "debug_print"
         | Flags.WASIMode -> begin
           let get_ptr = G.i (LocalGet (nr 0l)) in
           let get_len = G.i (LocalGet (nr 1l)) in
@@ -3592,7 +3592,7 @@ module IC = struct
   let _compile_static_print env s =
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
-  let ic_trap env = system_call env "ic0" "trap"
+  let ic_trap env = system_call env "trap"
 
   let trap_ptr_len env =
     match E.mode env with
@@ -3667,7 +3667,7 @@ module IC = struct
     let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
       (* check status is stopped or trap on outstanding callbacks *)
-      system_call env "ic0" "canister_status" ^^ compile_eq_const status_stopped ^^
+      system_call env "canister_status" ^^ compile_eq_const status_stopped ^^
       G.if0
        (G.nop)
        (ContinuationTable.count env ^^
@@ -3702,8 +3702,8 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
         Blob.of_size_copy env
-          (fun env -> system_call env "ic0" "canister_self_size")
-          (fun env -> system_call env "ic0" "canister_self_copy")
+          (fun env -> system_call env "canister_self_size")
+          (fun env -> system_call env "canister_self_copy")
           (fun env -> compile_unboxed_const 0l)
       )
     | _ ->
@@ -3712,7 +3712,7 @@ module IC = struct
   let get_system_time env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      system_call env "ic0" "time"
+      system_call env "time"
     | _ ->
       E.trap_with env "cannot get system time when running locally"
 
@@ -3721,8 +3721,8 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
-        (fun env -> system_call env "ic0" "msg_caller_size")
-        (fun env -> system_call env "ic0" "msg_caller_copy")
+        (fun env -> system_call env "msg_caller_size")
+        (fun env -> system_call env "msg_caller_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get caller when running locally")
@@ -3733,14 +3733,14 @@ module IC = struct
       arg_instrs ^^
       Text.to_blob env ^^
       Blob.as_ptr_len env ^^
-      system_call env "ic0" "msg_reject"
+      system_call env "msg_reject"
     | _ ->
       E.trap_with env (Printf.sprintf "cannot reject when running locally")
 
   let error_code env =
      Func.share_code0 env "error_code" [I32Type] (fun env ->
       let (set_code, get_code) = new_local env "code" in
-      system_call env "ic0" "msg_reject_code" ^^ set_code ^^
+      system_call env "msg_reject_code" ^^ set_code ^^
       List.fold_right (fun (tag, const) code ->
         get_code ^^ compile_unboxed_const const ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -3756,8 +3756,8 @@ module IC = struct
   let error_message env =
     Func.share_code0 env "error_message" [I32Type] (fun env ->
       Blob.of_size_copy env
-        (fun env -> system_call env "ic0" "msg_reject_msg_size")
-        (fun env -> system_call env "ic0" "msg_reject_msg_copy")
+        (fun env -> system_call env "msg_reject_msg_size")
+        (fun env -> system_call env "msg_reject_msg_copy")
         (fun env -> compile_unboxed_const 0l)
     )
 
@@ -3773,8 +3773,8 @@ module IC = struct
       fun env get_data_start get_data_size ->
         get_data_start ^^
         get_data_size ^^
-        system_call env "ic0" "msg_reply_data_append" ^^
-        system_call env "ic0" "msg_reply"
+        system_call env "msg_reply_data_append" ^^
+        system_call env "msg_reply"
    )
 
   (* Actor reference on the stack *)
@@ -3799,18 +3799,18 @@ module IC = struct
     let (set_len2, get_len2) = new_local env "len2" in
     let (set_str1, get_str1) = new_local env "str1" in
     let (set_str2, get_str2) = new_local env "str2" in
-    system_call env "ic0" "canister_self_size" ^^ set_len1 ^^
-    system_call env "ic0" "msg_caller_size" ^^ set_len2 ^^
+    system_call env "canister_self_size" ^^ set_len1 ^^
+    system_call env "msg_caller_size" ^^ set_len2 ^^
     get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call" ^^
 
     get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
     get_str1 ^^ compile_unboxed_const 0l ^^ get_len1 ^^
-    system_call env "ic0" "canister_self_copy" ^^
+    system_call env "canister_self_copy" ^^
 
     get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
     get_str2 ^^ compile_unboxed_const 0l ^^ get_len2 ^^
-    system_call env "ic0" "msg_caller_copy" ^^
+    system_call env "msg_caller_copy" ^^
 
 
     get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
@@ -3823,7 +3823,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "canister_cycle_balance128"
+      system_call env "canister_cycle_balance128"
     | _ ->
       E.trap_with env "cannot read balance when running locally"
 
@@ -3831,7 +3831,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "call_cycles_add128"
+      system_call env "call_cycles_add128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
@@ -3839,7 +3839,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_cycles_accept128"
+      system_call env "msg_cycles_accept128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
@@ -3847,7 +3847,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_cycles_available128"
+      system_call env "msg_cycles_available128"
     | _ ->
       E.trap_with env "cannot get cycles available when running locally"
 
@@ -3855,7 +3855,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "msg_cycles_refunded128"
+      system_call env "msg_cycles_refunded128"
     | _ ->
       E.trap_with env "cannot get cycles refunded when running locally"
 
@@ -3864,7 +3864,7 @@ module IC = struct
     | Flags.ICMode
     | Flags.RefMode ->
       Blob.as_ptr_len env ^^
-      system_call env "ic0" "certified_data_set"
+      system_call env "certified_data_set"
     | _ ->
       E.trap_with env "cannot set certified data when running locally"
 
@@ -3872,13 +3872,13 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
-      system_call env "ic0" "data_certificate_present" ^^
+      system_call env "data_certificate_present" ^^
       G.if1 I32Type
       begin
         Opt.inject_noop env (
           Blob.of_size_copy env
-            (fun env -> system_call env "ic0" "data_certificate_size")
-            (fun env -> system_call env "ic0" "data_certificate_copy")
+            (fun env -> system_call env "data_certificate_size")
+            (fun env -> system_call env "data_certificate_copy")
             (fun env -> compile_unboxed_const 0l)
         )
       end (Opt.null_lit env)
@@ -4049,7 +4049,7 @@ module StableMem = struct
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             get_offset ^^
             compile_const_64 (Int64.of_int32 bytes) ^^
-            IC.system_call env "ic0" "stable64_read" ^^
+            IC.system_call env "stable64_read" ^^
             get_temp_ptr ^^ load))
     | _ -> assert false
 
@@ -4066,7 +4066,7 @@ module StableMem = struct
             get_offset ^^
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 (Int64.of_int32 bytes) ^^
-            IC.system_call env "ic0" "stable64_write"))
+            IC.system_call env "stable64_write"))
     | _ -> assert false
 
   let _read_word32 env =
@@ -4088,7 +4088,7 @@ module StableMem = struct
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             get_offset ^^
             compile_const_64 4L ^^
-            IC.system_call env "ic0" "stable64_read" ^^
+            IC.system_call env "stable64_read" ^^
             get_temp_ptr ^^ load_unskewed_ptr ^^
             set_word ^^
             (* write 0 *)
@@ -4096,7 +4096,7 @@ module StableMem = struct
             get_offset ^^
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 4L ^^
-            IC.system_call env "ic0" "stable64_write" ^^
+            IC.system_call env "stable64_write" ^^
             (* return word *)
             get_word
         ))
@@ -4113,7 +4113,7 @@ module StableMem = struct
           let (set_size, get_size) = new_local64 env "size" in
           let (set_pages_needed, get_pages_needed) = new_local64 env "pages_needed" in
 
-          E.call_import env "ic0" "stable64_size" ^^
+          IC.system_call env "stable64_size" ^^
           set_size ^^
 
           get_pages ^^
@@ -4126,7 +4126,7 @@ module StableMem = struct
           G.i (Compare (Wasm.Values.I64 I64Op.GtS)) ^^
           G.if1 I64Type
             (get_pages_needed ^^
-             E.call_import env "ic0" "stable64_grow")
+             IC.system_call env "stable64_grow")
             get_size)
     | _ -> assert false
 
@@ -4255,7 +4255,7 @@ module StableMem = struct
           get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          IC.system_call env "ic0" "stable64_read" ^^
+          IC.system_call env "stable64_read" ^^
           get_blob)
     | _ -> assert false
 
@@ -4273,7 +4273,7 @@ module StableMem = struct
           get_offset ^^
           get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          IC.system_call env "ic0" "stable64_write")
+          IC.system_call env "stable64_write")
     | _ -> assert false
 
 end (* StableMemory *)
@@ -4426,8 +4426,8 @@ module MakeSerialization (Strm : Stream) = struct
      We can statically create the type description in Ocaml code,
      store it in the program, and just copy it to the beginning of the message.
 
-     At some point this can be factored into a function from AS type to IDL type,
-     and a function like this for IDL types. But due to recursion handling
+     At some point this can be factored into a function from Motoko type to IDL,
+     type and a function like this for IDL types. But due to recursion handling
      it is easier to start like this.
   *)
 
@@ -4650,7 +4650,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-        E.else_trap_with env "object_size/Mut: Unexpected tag " ^^
+        E.else_trap_with env "object_size/Mut: Unexpected tag" ^^
         (* Check if we have seen this before *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0 begin
@@ -5564,15 +5564,14 @@ module MakeSerialization (Strm : Stream) = struct
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      E.else_trap_with env "reference buffer not filled " ^^
+      E.else_trap_with env "reference buffer not filled" ^^
 
       get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      E.else_trap_with env "data buffer not filled " ^^
+      E.else_trap_with env "data buffer not filled" ^^
 
       get_refs_size ^^
-      compile_unboxed_const 0l ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      compile_eq_const 0l ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
       get_data_start ^^
@@ -5658,8 +5657,8 @@ module MakeSerialization (Strm : Stream) = struct
 
   let deserialize env ts =
     Blob.of_size_copy env
-      (fun env -> IC.system_call env "ic0" "msg_arg_data_size")
-      (fun env -> IC.system_call env "ic0" "msg_arg_data_copy")
+      (fun env -> IC.system_call env "msg_arg_data_size")
+      (fun env -> IC.system_call env "msg_arg_data_copy")
       (fun env -> compile_unboxed_const 0l) ^^
     deserialize_from_blob false env ts
 
@@ -5751,7 +5750,7 @@ To detect and preserve aliasing, these steps are taken:
 
    If the memo field is still `0x00000000`, this is the first time we read
    this, so we deserialize to the Motoko heap, and remember the heap position
-   (vanilla pointer) by overriding the memo field.
+   (vanilla pointer) by overwriting the memo field.
    We also store the type hash of the type we are serializing at in the type
    hash field.
 
@@ -5776,6 +5775,8 @@ module Serialization = MakeSerialization(BumpStream)
 
 module Stabilization = struct
 
+  let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
@@ -5788,7 +5789,7 @@ module Stabilization = struct
     G.if0
       begin (* ensure [0,..,3,...len+4) *)
         compile_const_64 0L ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        extend64 get_len ^^
         compile_add64_const 4L ^^  (* reserve one word for size *)
         StableMem.ensure env ^^
 
@@ -5799,9 +5800,9 @@ module Stabilization = struct
 
         (* copy data to following stable memory *)
         compile_const_64 4L ^^
-        get_dst ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        E.call_import env "ic0" "stable64_write"
+        extend64 get_dst ^^
+        extend64 get_len ^^
+        IC.system_call env "stable64_write"
       end
       begin
         let (set_N, get_N) = new_local64 env "N" in
@@ -5815,7 +5816,7 @@ module Stabilization = struct
            N + 4 + len + 4 + 4 + 4 = N + len + 16
         *)
         get_N ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        extend64 get_len ^^
         compile_add64_const 16L ^^
         StableMem.ensure env  ^^
 
@@ -5825,14 +5826,14 @@ module Stabilization = struct
 
         get_N ^^
         compile_add64_const 4L ^^
-        get_dst ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        E.call_import env "ic0" "stable64_write" ^^
+        extend64 get_dst ^^
+        extend64 get_len ^^
+        IC.system_call env "stable64_write" ^^
 
         (* let M = pagesize * ic0.stable64_size64() - 1 *)
         (* M is beginning of last page *)
         let (set_M, get_M) = new_local64 env "M" in
-        E.call_import env "ic0" "stable64_size" ^^
+        IC.system_call env "stable64_size" ^^
         compile_sub64_const 1L ^^
         compile_shl64_const (Int64.of_int page_size_bits) ^^
         set_M ^^
@@ -5866,7 +5867,7 @@ module Stabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
-      E.call_import env "ic0" "stable64_size" ^^
+      IC.system_call env "stable64_size" ^^
       set_pages ^^
 
       get_pages ^^
@@ -5899,7 +5900,7 @@ module Stabilization = struct
               let (set_version, get_version) = new_local env "version" in
               let (set_N, get_N) = new_local64 env "N" in
 
-              E.call_import env "ic0" "stable64_size" ^^
+              IC.system_call env "stable64_size" ^^
               compile_sub64_const 1L ^^
               compile_shl64_const (Int64.of_int page_size_bits) ^^
               set_M ^^
@@ -5928,8 +5929,7 @@ module Stabilization = struct
               (* restore mem_size *)
               get_M ^^
               compile_add64_const (Int64.sub page_size64 12L) ^^
-              StableMem.read_and_clear_word32 env ^^
-                G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (*TODO: use 64 bits *)
+              extend64 (StableMem.read_and_clear_word32 env) ^^ (*TODO: use 64 bits *)
               StableMem.set_mem_size env ^^
 
               StableMem.get_mem_size env ^^
@@ -5964,10 +5964,10 @@ module Stabilization = struct
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^ (G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))) ^^
+          extend64 (get_blob ^^ Blob.payload_ptr_unskewed) ^^
           get_offset ^^
-          get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          IC.system_call env "ic0" "stable64_read" ^^
+          extend64 get_len ^^
+          IC.system_call env "stable64_read" ^^
 
           let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
@@ -5981,9 +5981,9 @@ module Stabilization = struct
 
           (* copy zeros from blob to stable memory *)
           get_offset ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          get_blob ^^ Blob.len env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          IC.system_call env "ic0" "stable64_write" ^^
+          extend64 (get_blob ^^ Blob.payload_ptr_unskewed) ^^
+          extend64 (get_blob ^^ Blob.len env) ^^
+          IC.system_call env "stable64_write" ^^
 
           (* return val *)
           get_val
@@ -6587,8 +6587,8 @@ module FuncDec = struct
          "@callback",
          (fun env ->
            Blob.of_size_copy env
-           (fun env -> IC.system_call env "ic0" "msg_arg_data_size")
-           (fun env -> IC.system_call env "ic0" "msg_arg_data_copy")
+           (fun env -> IC.system_call env "msg_arg_data_size")
+           (fun env -> IC.system_call env "msg_arg_data_copy")
            (fun env -> compile_unboxed_const 0l)))
     in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
@@ -6678,16 +6678,16 @@ module FuncDec = struct
       push_continuations ^^
       set_cb_index  ^^ get_cb_index ^^
       (* initiate call *)
-      IC.system_call env "ic0" "call_new" ^^
+      IC.system_call env "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
-      IC.system_call env "ic0" "call_on_cleanup" ^^
+      IC.system_call env "call_on_cleanup" ^^
       (* the data *)
       add_data get_cb_index ^^
-      IC.system_call env "ic0" "call_data_append" ^^
+      IC.system_call env "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
       (* done! *)
-      IC.system_call env "ic0" "call_perform" ^^
+      IC.system_call env "call_perform" ^^
       (* Check error code *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
@@ -6736,13 +6736,13 @@ module FuncDec = struct
       (* The reject callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
-      IC.system_call env "ic0" "call_new" ^^
+      IC.system_call env "call_new" ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
-      IC.system_call env "ic0" "call_data_append" ^^
+      IC.system_call env "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
-      IC.system_call env "ic0" "call_perform" ^^
+      IC.system_call env "call_perform" ^^
       (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
@@ -7615,10 +7615,9 @@ let compile_eq env =
   | Prim Text -> Text.compare env Operator.EqOp
   | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env Operator.EqOp
   | Func (Shared _, _, _, _, _) -> FuncDec.equate_msgref env
-  | Prim Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Prim (Nat | Int) -> BigNum.compile_eq env
   | Prim (Int64 | Nat64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Prim (Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) ->
+  | Prim (Bool | Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) ->
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Non -> G.i Unreachable
   | Prim Float -> G.i (Compare (Wasm.Values.F64 F64Op.Eq))
@@ -9191,7 +9190,7 @@ and main_actor as_opt mod_env ds fs up =
       | Some [] ->
         (* Liberally accept empty as well as unit argument *)
         assert (arg_tys = []);
-        IC.system_call env "ic0" "msg_arg_data_size" ^^
+        IC.system_call env "msg_arg_data_size" ^^
         G.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
         Serialization.deserialize env arg_tys ^^
