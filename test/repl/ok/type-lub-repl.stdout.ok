@@ -10,10 +10,10 @@ Motoko compiler (source XXX)
 > [func, func] : [([Nat] -> Int)]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A>([Nat]) -> Int)]
+> [func, func] : [(<A>[Nat] -> Int)]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A>([Nat]) -> Int)]
+> [func, func] : [(<A>[Nat] -> Int)]
 > 3 : Int
 > -42 : Int
 > [func, func] : [(<A, B>([A], B) -> A)]
@@ -25,5 +25,5 @@ Motoko compiler (source XXX)
 > 25 : Int
 > 42 : Int
 >   func : (C, D) -> [C]
-> [async (?4), async (?(-42))] : [(async<$top-level> (?Int))]
+> [async (?4), async (?(-42))] : [(async<$top-level> ?Int)]
 > 
