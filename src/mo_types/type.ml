@@ -1226,12 +1226,12 @@ and pp_typ_pre vs ppf t =
   | Prim p -> pr ppf (string_of_prim p) (* refactor *)
   | Async (t1, t2) ->
     (match t1 with
-      | Var(_, n) when fst (List.nth vs n) = "" ->
-         fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) t2
-      | _ ->
-         fprintf ppf "@[<2>async<%a>@ %a@]"
-           (pp_typ' vs) t1
-           (pp_typ_pre vs) t2)
+     | Var(_, n) when fst (List.nth vs n) = "" ->
+       fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) t2
+     | _ ->
+       fprintf ppf "@[<2>async<%a>@ %a@]"
+         (pp_typ' vs) t1
+         (pp_typ_pre vs) t2)
   | Obj ((Module | Actor) as os, fs) ->
      pp_typ_obj vs ppf (os, fs)
   | t ->
@@ -1239,6 +1239,7 @@ and pp_typ_pre vs ppf t =
 
 and pp_typ_nobin vs ppf t =
   match t with
+  (* TODO: simplify Func cases *)
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
     let vs'', tbs' = List.tl vs', List.tl tbs in
