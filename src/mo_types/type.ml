@@ -1212,7 +1212,7 @@ and pp_typ_nullary vs ppf t =
 and pp_typ_un vs ppf t =
   match t with
   | Opt t ->
-     fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
+    fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
   | Mut t ->
     fprintf ppf "@[<1>var@ %a@]" (pp_typ_un vs) t
   | t ->
@@ -1233,35 +1233,21 @@ and pp_typ_pre vs ppf t =
          (pp_typ' vs) t1
          (pp_typ_pre vs) t2)
   | Obj ((Module | Actor | Memory) as os, fs) ->
-     pp_typ_obj vs ppf (os, fs)
+    pp_typ_obj vs ppf (os, fs)
   | t ->
-     pp_typ_un vs ppf t
+    pp_typ_un vs ppf t
 
 and pp_typ_nobin vs ppf t =
   match t with
-  (* TODO: simplify Func cases *)
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
     let vs'', tbs' = List.tl vs', List.tl tbs in
     let vs'vs = vs' @ vs in
-    (match tbs with
-    | [tb] ->
-      fprintf ppf "@[<2>%s%a ->@ %a@]"
-        (string_of_func_sort s)
-        (pp_typ_un (vs'vs)) (seq ts1)
-        (pp_control_cod true c (vs'vs)) ts2
-    | _ ->
-      fprintf ppf "@[<2>%s%a%a ->@ %a@]"
-        (string_of_func_sort s)
-        (pp_binds (vs'vs) vs'') tbs'
-        (pp_typ_un (vs'vs)) (seq ts1)
-        (pp_control_cod true c (vs'vs)) ts2
-    )
-  | Func (s, c, [], ts1, ts2) ->
-    fprintf ppf "@[<2>%s%a ->@ %a@]"
-      (string_of_func_sort s)
-      (pp_typ_un vs) (seq ts1)
-      (pp_control_cod false c vs) ts2
+    fprintf ppf "@[<2>%s%a%a ->@ %a@]"
+     (string_of_func_sort s)
+       (pp_binds (vs'vs) vs'') tbs'
+       (pp_typ_un (vs'vs)) (seq ts1)
+       (pp_control_cod true c (vs'vs)) ts2
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
     let vs'vs = vs' @ vs in
