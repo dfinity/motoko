@@ -1235,7 +1235,7 @@ and pp_typ_nullary vs ppf t =
   | Variant fs ->
     pp_typ_variant vs ppf fs
   | t ->
-    (* In the parser, this case is subsumed by the production for tuples *)
+    (* In the parser, this case is subsumed by the grammar production for `LPAR .. RPAR` *)
     fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) t
 
 and pp_typ_un vs ppf t =
@@ -1247,7 +1247,7 @@ and pp_typ_un vs ppf t =
 
 and pp_typ_pre vs ppf t =
   match t with
-  (* No case for grammar production PRIM s *)
+  (* No case for grammar production `PRIM s` *)
   | Async (t1, t2) ->
     (match t1 with
      | Var(_, n) when fst (List.nth vs n) = "" ->
@@ -1348,7 +1348,6 @@ and pp_binds vs vs' ppf = function
   | tbs ->
     fprintf ppf "@[<1><%a>@]"
       (pp_print_list ~pp_sep:comma (pp_bind vs)) (List.combine vs' tbs)
-
 
 and pps_of_kind' vs k =
   let op, tbs, t =
