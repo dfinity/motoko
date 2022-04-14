@@ -1263,7 +1263,7 @@ and pp_typ_pre vs ppf t =
 
 and pp_typ_nobin vs ppf t =
   match t with
-  | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
+  | Func (s, c, tbs, ts1, ts2) ->
     let sugar = can_sugar t in
     let vs' = vars_of_binds vs tbs in
     let vs'', tbs' =
@@ -1277,7 +1277,7 @@ and pp_typ_nobin vs ppf t =
       (string_of_func_sort s)
       (pp_binds (vs'vs) vs'') tbs'
       (pp_typ_un (vs'vs)) (seq ts1)
-      (pp_control_cod true c (vs'vs)) ts2
+      (pp_control_cod sugar c (vs'vs)) ts2
   | t ->
      pp_typ_pre vs ppf t
 
