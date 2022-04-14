@@ -1175,24 +1175,22 @@ let rec can_sugar t = match t with
 
 and can_omit n t =
   let rec go i t =
-    begin
-      match t with
-      | Var (_, j) -> i <> j
-      | Pre -> assert false
-      | Prim _ | Any | Non -> true
-      | Con (c, ts) -> List.for_all (go i ) ts
-      | Array t | Opt t | Mut t -> go i t
-      | Async (Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
-      | Async (t1, t2) -> go i t1 && go i t2
-      | Tup ts -> List.for_all (go i ) ts
-      | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) ->
-        let i' = i+List.length tbs in
-        List.for_all (fun tb -> (go i' tb.bound)) tbs &&
-        List.for_all (go i') ts1 &&
-        List.for_all (go i') ts2
-      | Typ c -> true (* assumes type defs are closed *)
-    end
+    match t with
+    | Var (_, j) -> i <> j
+    | Pre -> assert false
+    | Prim _ | Any | Non -> true
+    | Con (c, ts) -> List.for_all (go i ) ts
+    | Array t | Opt t | Mut t -> go i t
+    | Async (Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
+    | Async (t1, t2) -> go i t1 && go i t2
+    | Tup ts -> List.for_all (go i ) ts
+    | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
+    | Func (s, c, tbs, ts1, ts2) ->
+      let i' = i+List.length tbs in
+      List.for_all (fun tb -> (go i' tb.bound)) tbs &&
+      List.for_all (go i') ts1 &&
+      List.for_all (go i') ts2
+    | Typ c -> true (* assumes type defs are closed *)
   in go n t
 
 let rec pp_typ_obj vs ppf o =
@@ -1266,22 +1264,20 @@ and pp_typ_pre vs ppf t =
 and pp_typ_nobin vs ppf t =
   match t with
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
+    let sugar = can_sugar t in
     let vs' = vars_of_binds vs tbs in
-    let vs'', tbs' = List.tl vs', List.tl tbs in
-    let vs'vs = vs' @ vs in
-    fprintf ppf "@[<2>%s%a%a ->@ %a@]"
-     (string_of_func_sort s)
-       (pp_binds (vs'vs) vs'') tbs'
-       (pp_typ_un (vs'vs)) (seq ts1)
-       (pp_control_cod true c (vs'vs)) ts2
-  | Func (s, c, tbs, ts1, ts2) ->
-    let vs' = vars_of_binds vs tbs in
+    let vs'', tbs' =
+      if sugar then
+        List.tl vs', List.tl tbs
+      else
+        vs', tbs
+    in
     let vs'vs = vs' @ vs in
     fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
-      (pp_binds (vs'vs) vs') tbs
+      (pp_binds (vs'vs) vs'') tbs'
       (pp_typ_un (vs'vs)) (seq ts1)
-      (pp_control_cod false c (vs'vs)) ts2
+      (pp_control_cod true c (vs'vs)) ts2
   | t ->
      pp_typ_pre vs ppf t
 
