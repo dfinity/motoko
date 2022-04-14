@@ -1,29 +1,29 @@
 Motoko compiler (source XXX)
-> [null, ?42, ?(-25)] : [(?Int)]
+> [null, ?42, ?(-25)] : [?Int]
 > [null, null] : [Null]
 > [{a = 42}, {b = 42}] : [{}]
 > [{a = 42}, {a = 1; b = 42}, {a = -25}] : [{a : Int}]
 > [(12, -1), (-42, 25)] : [(Int, Int)]
 > [-1, 25] : [Int]
 > [[-42], [25]] : [[Int]]
-> [func, func] : [(None -> Int)]
-> [func, func] : [([Nat] -> Int)]
+> [func, func] : [None -> Int]
+> [func, func] : [[Nat] -> Int]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A>[Nat] -> Int)]
+> [func, func] : [<A>[Nat] -> Int]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A>[Nat] -> Int)]
+> [func, func] : [<A>[Nat] -> Int]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A, B>([A], B) -> A)]
->   [func, func] : [({#bar} -> ())]
+> [func, func] : [<A, B>([A], B) -> A]
+>   [func, func] : [{#bar} -> ()]
 > > >   [[42], [25], [77]] : [Any]
 >   [42, 77, [1, 2, 3]] : [Any]
 > [77, [1, 2, 3], 42] : [Any]
-> [func, func] : [(Nat -> Int)]
+> [func, func] : [Nat -> Int]
 > 25 : Int
 > 42 : Int
 >   func : (C, D) -> [C]
-> [async (?4), async (?(-42))] : [(async<$top-level> ?Int)]
+> [async (?4), async (?(-42))] : [async<$top-level> ?Int]
 > 
