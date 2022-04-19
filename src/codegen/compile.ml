@@ -4692,9 +4692,7 @@ module MakeSerialization (Strm : Stream) = struct
   (* See Note [Candid subtype checks] *)
   let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
     let typdesc, offsets, idltyps = type_desc env (E.get_typtbl_typs env) in
-    let static_typedesc =
-      E.add_static_unskewed env [StaticBytes.Bytes typdesc]
-    in
+    let static_typedesc = E.add_static_unskewed env [StaticBytes.Bytes typdesc] in
     let static_typtbl =
       let bytes = StaticBytes.i32s
         (List.map (fun offset ->
@@ -4703,9 +4701,7 @@ module MakeSerialization (Strm : Stream) = struct
       in
       E.add_static_unskewed env [bytes]
     in
-    let static_idltyps =
-      E.add_static_unskewed env [StaticBytes.i32s idltyps]
-    in
+    let static_idltyps = E.add_static_unskewed env [StaticBytes.i32s idltyps] in
     set_typtbl static_typtbl;
     set_typtbl_end Int32.(add static_typedesc (of_int (String.length typdesc)));
     set_typtbl_size (Int32.of_int (List.length offsets));
@@ -5024,8 +5020,7 @@ module MakeSerialization (Strm : Stream) = struct
     else
       get_typtbl_size1 ^^ get_typtbl_size env ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
-      Stack.dynamic_with_words env "rel_buf"
-      (fun get_ptr ->
+      Stack.dynamic_with_words env "rel_buf" (fun get_ptr ->
         get_ptr ^^ get_typtbl_size1 ^^ get_typtbl_size env ^^
         E.call_import env "rts" "idl_sub_buf_init" ^^
         f get_ptr)
@@ -5647,15 +5642,15 @@ module MakeSerialization (Strm : Stream) = struct
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
         G.if1 I32Type
-          (begin
+          begin
             get_rel_buf_opt ^^
             get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
-            end)
-          (compile_unboxed_const 1l) ^^
+          end
+          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
@@ -5670,15 +5665,15 @@ module MakeSerialization (Strm : Stream) = struct
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
         G.if1 I32Type
-          (begin
+          begin
             get_rel_buf_opt ^^
             get_typtbl ^^
             get_typtbl_end ^^
             get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
-            end)
-          (compile_unboxed_const 1l) ^^
+          end
+          (Bool.lit true) ^^
         G.if1 I32Type
           (with_composite_typ idl_service
              (fun _get_typ_buf -> read_actor_data ()))
@@ -5970,7 +5965,7 @@ To detect and preserve aliasing, these steps are taken:
 Note [Candid subtype checks]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Deserializing Candid values now requires a Candid subtype check when
+Deserializing Candid values requires a Candid subtype check when
 deserializing value of reference types (actors and functions).
 
 The subtype test is performed directly on the expected and actual
@@ -5988,7 +5983,7 @@ data referenced by dedicated wasm globals so that we can generate
 code that reference the globals before their final definitions are
 known.
 
-Deserializing a vanilla (not extended) Candid value stack allocates a
+Deserializing a proper (not extended) Candid value stack allocates a
 mutable word buffer, of size determined by `idl_sub_buf_words`.
 The word buffer is used to initialize and provide storage for a
 Rust memo table (see bitrel.rs) memoizing the result of sub and
@@ -6000,7 +5995,7 @@ word buffer is stack allocated in generated code, not Rust, because
 it's size is dynamic and Rust doesn't seem to support dynamically-sized
 stack allocation.
 
-Currently, we only perform Candid subtype checks when decoding vanilla
+Currently, we only perform Candid subtype checks when decoding proper
 (not extended) Candid values. Extended values are required for
 stable variables only: we can omit the check, because compatibility
 should already be enforced by the static signature compatibility
