@@ -16,5 +16,8 @@ actor {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP comp-ref
-//CALL ingress go "DIDL\x00\x00"
+
+
+// CHECK-LABEL: (func $makecalls
+// CHECK-NOT: call_indirect
+// CHECK: call $inline
