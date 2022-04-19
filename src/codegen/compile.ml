@@ -8988,6 +8988,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       let inlineable_prim = function
       | RetPrim -> false
       | BreakPrim _ -> false
+      | ThrowPrim -> fatal "internal error: left-over ThrowPrim"
       | _ -> true in
 
       match sort, control, typ_binds, e.it with
