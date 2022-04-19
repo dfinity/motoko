@@ -2,11 +2,14 @@
 import Prim "mo:⛔";
 
 actor {
-  func inline(t : Text) : () = (prim "printText" : Text -> ()) t;
-  func outline(t : Text) : () = (prim "printText" : Text -> ()) "sometext";
+  func inline(t1: Text, t2 : Text) : Text = t1 # t2;
+  func makecalls() : () {
+    let t1 = inline("a","b"); // should be inlined
+    var p = ("c","d");
+    let t2 = inline p; // should not be inlined, but a still direct call
+  };
   public func go() : async () {
-    inline("inline me"); // should be inlined
-    outline("outline me"); // should not be inlined, but a direct call
+    makecalls();
   }
 }
 
