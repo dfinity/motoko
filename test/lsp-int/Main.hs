@@ -158,7 +158,7 @@ main = do
           hoverTestCase
             doc
             (Position 17 11)
-            (Just "pop : <T>(List<T>) -> (?T, List<T>)")
+            (Just "pop : <T>List<T> -> (?T, List<T>)")
           hoverTestCase
             doc
             (Position 50 50)
