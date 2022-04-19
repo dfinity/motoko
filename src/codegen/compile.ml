@@ -5839,14 +5839,14 @@ module MakeSerialization (Strm : Stream) = struct
         (* Skip any extra arguments *)
         compile_while env
          (get_arg_count ^^ compile_rel_const I32Op.GtU 0l)
-         (begin
-            get_data_buf ^^
-            get_typtbl_ptr ^^ load_unskewed_ptr ^^
-            ReadBuf.read_sleb128 env get_main_typs_buf ^^
-            compile_unboxed_const 0l ^^
-            E.call_import env "rts" "skip_any" ^^
-            get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count
-           end) ^^
+         begin
+           get_data_buf ^^
+           get_typtbl_ptr ^^ load_unskewed_ptr ^^
+           ReadBuf.read_sleb128 env get_main_typs_buf ^^
+           compile_unboxed_const 0l ^^
+           E.call_import env "rts" "skip_any" ^^
+           get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count
+         end ^^
 
         ReadBuf.is_empty env get_data_buf ^^
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
