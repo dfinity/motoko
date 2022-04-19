@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## FUTURE (2022-04-XX)
+## 0.6.26 (2022-04-15)
 
 * motoko (`moc`)
 
