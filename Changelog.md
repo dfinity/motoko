@@ -4,8 +4,9 @@
 
 * motoko (`moc`)
 
+  * Improve type pretty printer to mirror type parser (avoids producing unparseable stable variable signatures) (#3190)
   * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
-  * Performance fix to not use heap memory upon receiving `Int` (and  `Nat`)  values that fit into 31 bits (#3173)
+  * Performance: avoid redundant heap allocation when deserializing compact Candid `int` and  `nat` values (#3173)
   * Added a primitive to obtain stable variable memory footprint (#3049)
 
 ## 0.6.25 (2022-03-07)

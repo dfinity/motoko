@@ -46,7 +46,7 @@ because type parameter T has an open bound
   U__14
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:111.8-111.17: type error [M0098], cannot implicitly instantiate function of type
-  <T <: Int>(T) -> T
+  <T <: Int>T -> T
 to argument of type
   Bool
 to produce result of type
@@ -57,7 +57,7 @@ where
   Bool  </:  Int
 so that no valid instantiation exists
 inference.mo:112.1-112.10: type error [M0098], cannot implicitly instantiate function of type
-  <T <: Int>(T) -> T
+  <T <: Int>T -> T
 to argument of type
   Bool
 to produce result of type
@@ -68,23 +68,23 @@ where
   Bool  </:  None
 so that no valid instantiation exists
 inference.mo:116.1-116.27: type error [M0098], cannot implicitly instantiate function of type
-  <T>(<U>(T) -> U) -> ()
+  <T>(<U>T -> U) -> ()
 to argument of type
-  <V>(V) -> V
+  <V>V -> V
 to produce result of type
   ()
 because no instantiation of T__100 makes
-  <V>(V) -> V  <:  <U>(T__100) -> U
+  <V>V -> V  <:  <U>T__100 -> U
 inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
-  <T>(<U>(U) -> T) -> ()
+  <T>(<U>U -> T) -> ()
 to argument of type
-  <V>(V) -> V
+  <V>V -> V
 to produce result of type
   ()
 because no instantiation of T__101 makes
-  <V>(V) -> V  <:  <U>(U) -> T__101
+  <V>V -> V  <:  <U>U -> T__101
 inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
-  <T>([T]) -> T
+  <T>[T] -> T
 to argument of type
   [var Nat]
 to produce result of type
@@ -92,7 +92,7 @@ to produce result of type
 because no instantiation of T__104 makes
   [var Nat]  <:  [T__104]
 inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
-  <T>([var T]) -> T
+  <T>[var T] -> T
 to argument of type
   [Nat]
 to produce result of type
@@ -102,7 +102,7 @@ because no instantiation of T__105 makes
 and
   T__105  <:  ()
 inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
-  <T>([var T]) -> T
+  <T>[var T] -> T
 to argument of type
   [var Nat]
 to produce result of type
@@ -113,7 +113,7 @@ where
   Nat  </:  None
 so that no valid instantiation exists
 inference.mo:137.4-137.8: type error [M0098], cannot implicitly instantiate function of type
-  <U <: {}>(U) -> ()
+  <U <: {}>U -> ()
 to argument of type
   T__37
 to produce result of type
@@ -124,7 +124,7 @@ where
   T__37  </:  {}
 so that no valid instantiation exists
 inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
-  <U <: T__40>(U) -> U
+  <U <: T__40>U -> U
 to argument of type
   T__40
 to produce result of type
@@ -146,7 +146,7 @@ where
   Int  </:  Nat
 so that no valid instantiation exists
 inference.mo:177.8-177.44: type error [M0098], cannot implicitly instantiate function of type
-  <T>({x : T}) -> T
+  <T>{x : T} -> T
 to argument of type
   {type x = Nat}
 to produce result of type
