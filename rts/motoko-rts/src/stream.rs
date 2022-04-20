@@ -14,9 +14,9 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬───────┬─────────┬───────────┬────────┬──────────┐
-//      │ tag (blob) │ len │ ptr64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴───┴───┴────┴────┴───────────┴────────┴──────────┘
+//      ┌────────────┬─────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
+//      │ tag (blob) │ len │ ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+//      └────────────┴─────┴───┴───┴────┴────┴────┴────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
@@ -37,7 +37,7 @@ use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(24);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
