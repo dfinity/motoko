@@ -5,16 +5,16 @@ import Prim "mo:⛔";
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
 
 
-func checkpointAlpha() {};
-func checkpointBravo() {};
-func checkpointCharlie() {};
-func checkpointDelta() {};
-func checkpointEcho() {};
-func checkpointFoxtrot() {};
-func checkpointGolf() {};
-func checkpointHotel() {};
-func checkpointIndia() {};
-func checkpointJuliett() {};
+func checkpointAlpha() { assert true; };
+func checkpointBravo() { assert true; };
+func checkpointCharlie() { assert true; };
+func checkpointDelta() { assert true; };
+func checkpointEcho() { assert true; };
+func checkpointFoxtrot() { assert true; };
+func checkpointGolf() { assert true; };
+func checkpointHotel() { assert true; };
+func checkpointIndia() { assert true; };
+func checkpointJuliett() { assert true; };
 
 // Nat64 operations
 do {

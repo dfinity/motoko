@@ -102,6 +102,26 @@ module Const = struct
     | Float64 of Numerics.Float.t
     | Blob of string
 
+
+  (* Inlineable functions
+
+     The prelude/prim.mo is full of functions simply wrapping a prim, e.g.
+
+        func int64ToNat64(n : Int64) : Nat64 = (prim "num_wrap_Int64_Nat64" : Int64 -> Nat64) n;
+
+     generating a Wasm function for them and calling them is absurdly expensive
+     when the prim is just a simple Wasm instruction. Also, it requires boxing
+     and unboxing arguments and results.
+
+     So we recognize such functions when creating the `const` summary, and use the prim
+     directly when calling such function.
+
+     Can be extended to cover more forms of inlineable functions.
+  *)
+  type fun_rhs =
+    | Complicated (* no inlining possible *)
+    | PrimWrapper of Ir.prim
+
   (* Constant known values.
 
      These are values that
@@ -114,7 +134,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of (unit -> int32) (* function pointer calculated upon first use *)
+    | Fun of (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
@@ -6099,7 +6119,7 @@ module StackRep = struct
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
 
   and materialize_const_v env = function
-    | Const.Fun get_fi -> Closure.static_closure env (get_fi ())
+    | Const.Fun (get_fi, _) -> Closure.static_closure env (get_fi ())
     | Const.Message fi -> assert false
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
@@ -6363,7 +6383,7 @@ end (* Var *)
 module Internals = struct
   let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
-    | Some (VarEnv.Const(_, Const.Fun mk_fi)) ->
+    | Some (VarEnv.Const (_, Const.Fun (mk_fi, _))) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi ())))
     | _ -> assert false
@@ -6442,7 +6462,7 @@ module FuncDec = struct
     ))
 
   (* Compile a closed function declaration (captures no local variables) *)
-  let closed pre_env sort control name args mk_body ret_tys at =
+  let closed pre_env sort control name args mk_body fun_rhs ret_tys at =
     if Type.is_shared_sort sort
     then begin
       let (fi, fill) = E.reserve_fun pre_env name in
@@ -6452,7 +6472,7 @@ module FuncDec = struct
     end else begin
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
-      ( Const.t_of_v (Const.Fun (fun () -> Lib.AllocOnUse.use lf)), fun env ae ->
+      ( Const.t_of_v (Const.Fun ((fun () -> Lib.AllocOnUse.use lf), fun_rhs)), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -6532,7 +6552,7 @@ module FuncDec = struct
 
     if captured = []
     then
-      let (ct, fill) = closed env sort control name args mk_body ret_tys at in
+      let (ct, fill) = closed env sort control name args mk_body Const.Complicated ret_tys at in
       fill env ae;
       (SR.Const ct, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at
@@ -7676,8 +7696,39 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Type.Promises -> assert false in
 
     let fun_sr, code1 = compile_exp env ae e1 in
+
+    (* we duplicate this pattern match to emulate pattern guards *)
+    let call_as_prim = match fun_sr, sort with
+      | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ ->
+         begin match n_args, e2.it with
+         | 0, _ -> true
+         | 1, _ -> true
+         | n, PrimE (TupPrim, es) when List.length es = n -> true
+         | _, _ -> false
+         end
+      | _ -> false in
+
     begin match fun_sr, sort with
-      | SR.Const (_, Const.Fun mk_fi), _ ->
+      | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ when call_as_prim ->
+         assert (sort = Type.Local);
+         (* Handle argument tuples *)
+         begin match n_args, e2.it with
+         | 0, _ ->
+           let sr, code2 = compile_prim_invocation env ae prim [] at in
+           sr,
+           code1 ^^
+           compile_exp_as env ae (StackRep.of_arity 0) e2 ^^
+           code2
+         | 1, _ ->
+           compile_prim_invocation env ae prim [e2] at
+         | n, PrimE (TupPrim, es) ->
+           assert (List.length es = n);
+           compile_prim_invocation env ae prim es at
+         | _, _ ->
+           (* ugly case; let's just call this as a function for now *)
+           raise (Invalid_argument "call_as_prim was true?")
+         end
+      | SR.Const (_, Const.Fun (mk_fi, _)), _ ->
          assert (sort = Type.Local);
          StackRep.of_arity return_arity,
 
@@ -8931,17 +8982,36 @@ and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
 and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
-      let return_tys = match control with
-        | Type.Returns -> res_tys
-        | Type.Replies -> []
-        | Type.Promises -> assert false in
-      let mk_body env ae =
-        List.iter (fun v ->
-          if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
-          then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
-        ) (Freevars.M.keys (Freevars.exp e));
-        compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
-      FuncDec.closed env sort control name args mk_body return_tys exp.at
+    let fun_rhs =
+
+      (* a few prims cannot be safely inlined *)
+      let inlineable_prim = function
+      | RetPrim -> false
+      | BreakPrim _ -> false
+      | ThrowPrim -> fatal "internal error: left-over ThrowPrim"
+      | _ -> true in
+
+      match sort, control, typ_binds, e.it with
+      (* Special cases for prim-wrapping functions *)
+
+      | Type.Local, Type.Returns, [], PrimE (prim, prim_args) when
+          inlineable_prim prim &&
+          List.length args = List.length prim_args &&
+          List.for_all2 (fun p a -> a.it = VarE p.it) args prim_args ->
+        Const.PrimWrapper prim
+      | _, _, _, _ -> Const.Complicated
+    in
+    let return_tys = match control with
+      | Type.Returns -> res_tys
+      | Type.Replies -> []
+      | Type.Promises -> assert false in
+    let mk_body env ae =
+      List.iter (fun v ->
+        if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
+        then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
+      ) (Freevars.M.keys (Freevars.exp e));
+      compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
+    FuncDec.closed env sort control name args mk_body fun_rhs return_tys exp.at
   | BlockE (decs, e) ->
     let (extend, fill1) = compile_const_decs env pre_ae decs in
     let ae' = extend pre_ae in
