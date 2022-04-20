@@ -51,6 +51,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     }
     let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
     (*stream).ptr64 = 0;
+    (*stream).start64 = 0;
     (*stream).limit64 = 0;
     (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
@@ -107,6 +108,7 @@ impl Stream {
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
             (*self).ptr64 = start;
+            (*self).start64 = start;
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
         }
