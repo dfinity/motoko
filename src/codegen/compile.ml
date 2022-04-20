@@ -5994,18 +5994,16 @@ module Stabilization = struct
 
     let finalize_buffer _ = G.nop (* everything is outputted already *)
 
-    (* Returns a 32-bit number that is reasonably close to the number of bytes
-       that would bave been written to stable memory if flushed. The difference
+    (* Returns a 32-bit number that is the number of bytes that would
+       have been written to stable memory if flushed. The difference
        of two such number will always be an exact byte distance. *)
     let absolute_offset env get_token =
+      let start64_field = Int32.add ptr64_field 2l in (* see invariant in `stream.rs` *)
       absolute_offset env get_token ^^
-      (* Now add the current write position minus
-         the original stable memory write position,
-         a.k.a. `N`, ignoring the 4. *)
       get_token ^^
       Heap.load_field64_unskewed ptr64_field ^^
-      StableMem.get_mem_size env ^^
-      compile_shl64_const (Int64.of_int page_size_bits) ^^
+      get_token ^^
+      Heap.load_field64_unskewed start64_field ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))

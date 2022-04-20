@@ -25,8 +25,8 @@
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
 // - `outputter` is the function to be called when `len - filled` approaches zero.
-// - INVARIANT: keep `BlobStream.{ptr64_field, filled_field}`, (from `compile.ml`) in
-//              sync with the layout!
+// - INVARIANT: keep `BlobStream.{ptr64_field, start64_field, filled_field}`,
+//              (from `compile.ml`) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
 use crate::mem_utils::memcpy_bytes;
