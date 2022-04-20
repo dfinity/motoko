@@ -549,6 +549,8 @@ module E = struct
     call_import env "rts" (gc_fn ^ "_gc")
 
   (* See Note [Candid subtype checks] *)
+  (* NB: we don't bother detecting duplicate registrations here because the code sharing machinery
+     ensures that `add_typtbl_typ t` is called at most once for any `t`  with a distinct type hash *)
   let add_typtbl_typ (env : t) ty : Int32.t =
     reg env.typtbl_typs ty
 
