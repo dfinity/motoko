@@ -7728,7 +7728,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            (* ugly case; let's just call this as a function for now *)
            raise (Invalid_argument "call_as_prim was true?")
          end
-      | SR.Const (_, Const.Fun (mk_fi, Const.Complicated)), _ ->
+      | SR.Const (_, Const.Fun (mk_fi, _)), _ ->
          assert (sort = Type.Local);
          StackRep.of_arity return_arity,
 
