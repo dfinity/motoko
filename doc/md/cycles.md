@@ -1,4 +1,4 @@
-# Managing cycles
+# Managing cycles {#_managing_cycles}
 
 Usage of the {IC} is measured, and paid for, in *cycles*. The {IC} maintains a balance of cycles per canister smart contract. In addition, cycles can be transferred between canisters.
 
@@ -14,7 +14,7 @@ This library is subject to change and likely to be replaced by more high-level s
 
 </div>
 
-## The `ExperimentalCycles` Library
+## The `ExperimentalCycles` Library {#_the_experimentalcycles_library}
 
 The `ExperimentalCycles` library provides imperative operations for observing an actor’s current balance of cycles, transferring cycles and observing refunds.
 
@@ -54,13 +54,13 @@ the implicit register of added amounts, incremented on each `add`, is reset to z
 
 Function `refunded()` reports the `amount` of cycles refunded in the last `await` of the current context, or zero if no await has occurred yet. Calling `refunded()` is solely informational and does not affect `balance()`. Instead, refunds are automatically added to the current balance, whether or not `refunded` is used to observe them.
 
-### Example
+### Example {#_example}
 
 To illustrate, we will now use the `ExperimentalCycles` library to implement a toy *piggy bank* for saving cycles.
 
 Our piggy bank has an implicit owner, a `benefit` callback and a fixed `capacity`, all supplied at time of construction. The callback is used to transfer *withdrawn* amounts.
 
-``` motoko
+``` {#PiggyBank .motoko}
 import Cycles "mo:base/ExperimentalCycles";
 
 shared(msg) actor class PiggyBank(

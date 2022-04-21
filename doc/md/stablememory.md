@@ -1,4 +1,4 @@
-# The `ExperimentalStableMemory` library
+# The `ExperimentalStableMemory` library {#_the_experimentalstablememory_library}
 
 <div class="warning">
 
@@ -12,7 +12,7 @@ To avoid this upgrade hazard, actors can elect to use a lower-level `Experimenta
 
 The Motoko runtime system ensures there is no interference between the abstraction presented by the `ExperimentalStableMemory` library and an actor’s stable variables, even though the two abstractions ultimately use the same underlying (concrete) stable memory facilities available to all IC canisters. This runtime support means that is safe for a Motoko program to exploit both stable variables and `ExperimentalStableMemory`, within the same application.
 
-## The Library
+## The Library {#_the_library}
 
 Support for stable memory is provided by the [ExperimentalStableMemory](../base-libraries/ExperimentalStableMemory.md) library in package `base`.
 
@@ -54,7 +54,7 @@ module {
 }
 ```
 
-## Example
+## Example {#_example}
 
 To demonstrate the `ExperimentalStableMemory` library, we present a dead simple implementation of a logging actor that records text messages in a scalable, persistent log.
 

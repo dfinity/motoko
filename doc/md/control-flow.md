@@ -1,4 +1,4 @@
-# Imperative control flow
+# Imperative control flow {#_imperative_control_flow}
 
 There are two key categories of control flow:
 
@@ -8,13 +8,13 @@ There are two key categories of control flow:
 
 Imperative control flow often goes hand-in-hand with state changes and other flavors of side-effects, such as error handling and input/output.
 
-## Early `return` from `func`
+## Early `return` from `func` {#early-return}
 
 Normally, the result of a function is the value of its body. Sometimes, during evaluation of the body, the result is available before the end of evaluation. In such situations the `return ⟨exp⟩` construct can be used to abandon the rest of the computation and immediately exit the function with a result. Similarly, where permitted, `throw` may be used to abandon a computation with an error.
 
 When a function has unit result type, the shorthand `return` may be used instead of the equivalent `return ()`.
 
-## Loops and labels
+## Loops and labels {#loops-labels}
 
 {proglang} provides several kinds of repetition constructs, including:
 
@@ -41,7 +41,7 @@ label letters for (c in "ran!!dom".chars()) {
 }
 ```
 
-### Labeled expressions
+### Labeled expressions {#_labeled_expressions}
 
 There are two other facets to `label`​s that are less mainstream, but come in handy in certain situations:
 
@@ -73,7 +73,7 @@ let address = label exit : ?(Text, Host) {
 
 Naturally, labeled common expressions don’t allow `continue`. In terms of typing, both `⟨expr⟩` and `⟨alt-expr⟩`​'s types must conform with the label’s declared `⟨type⟩`. If a label is only given a `⟨name⟩`, then its `⟨type⟩` defaults to unit (`()`). Similarly a `break` without an `⟨alt-expr⟩` is shorthand for the value unit (`()`).
 
-## Option blocks and null breaks
+## Option blocks and null breaks {#option-blocks}
 
 Like many other high-level languages, {proglang} lets you opt in to `null` values, tracking possible occurences of `null` values using option types of the form `?T`. This is to both to encourage you to avoid using `null` values when possible, and to consider the possiblity of `null` values when necessary.
 
@@ -118,7 +118,7 @@ Each recursive call is checked for `null` using `!`, immediately exiting the out
 
 (As an exercise that illustrates the concision of option blocks, you might want to try rewriting `eval` using a labeled expression and explicit switches for each null break.)
 
-## Repetition with `loop`
+## Repetition with `loop` {#repetition-loop}
 
 The simplest way to indefinitely repeat a sequence of imperative expressions is by using a `loop` construct
 
@@ -132,7 +132,7 @@ A re-entry condition can be affixed to allow a conditional repetition of the loo
 
 The body of such a loop is always executed at least once.
 
-## `while` loops with precondition
+## `while` loops with precondition {#while-loops}
 
 Sometimes an entry condition is needed to guard the first execution of a loop. For this kind of repetition the `while ⟨cond⟩ ⟨body⟩`-flavor is available
 
@@ -142,7 +142,7 @@ while (earned < need) { earned += earn() };
 
 Unlike a `loop`, the body of a `while` loop may never be executed.
 
-## `for` loops for iteration
+## `for` loops for iteration {#for-loops}
 
 An iteration over elements of some homogeneous collection can be performed using a `for` loop. The values are drawn from an iterator and bound to the loop pattern in turn.
 
@@ -159,7 +159,7 @@ for ((model, year, price) in carsInStock.vals()) {
 inventory
 ```
 
-## Using `range` with a `for` loop
+## Using `range` with a `for` loop {#intro-range}
 
 The `range` function produces an iterator (of type `Iter<Nat>`) with the given lower and upper bound, inclusive.
 
@@ -197,7 +197,7 @@ The value `null` indicates that the iteration sequence has terminated.
 
 Until reaching `null`, each non-`null` value, of the form `?`*n* for some number *n*, contains the next successive element in the iteration sequence.
 
-## Using `revRange`
+## Using `revRange` {#intro-revrange}
 
 Like `range`, the function `revRange` is a `class` that constructs iterators (each of type `Iter<Int>`). As a constructor function, it has a function type:
 
@@ -207,7 +207,7 @@ Like `range`, the function `revRange` is a `class` that constructs iterators (ea
 
 Unlike `range`, the `revRange` function *descends* in its iteration sequence, from an initial *upper* bound to a final *lower* bound.
 
-## Using iterators of specific data structures
+## Using iterators of specific data structures {#other-iterators}
 
 Many built-in data structures come with pre-defined iterators. Below table lists them
 

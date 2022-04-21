@@ -1,4 +1,4 @@
-# Verifying upgrade compatibility
+# Verifying upgrade compatibility {#_verifying_upgrade_compatibility}
 
 Goal: we need to verify that an upgrade can proceed without:
 
@@ -10,7 +10,7 @@ With Motoko, we promised to check these properties statically (before attempting
 
 Let’s deliver on that promise.
 
-## An unstable counter
+## An unstable counter {#_an_unstable_counter}
 
 The following is a simple example of how to declare a stateful counter.
 
@@ -38,7 +38,7 @@ Unfortunately, when we upgrade this counter (say with itself), its state is lost
 | v0      | *0*   | *✗*     | inc()       |
 | v0      | 1     |         |             |
 
-## A stable counter
+## A stable counter {#_a_stable_counter}
 
 In Motoko, we can declare variables to be stable (across upgrades).
 
@@ -67,7 +67,7 @@ Because it’s `stable`, this counter’s `state` is *retained* across upgrades.
 | v1      | 2     | *✓*     | inc()       |
 | v1      | 3     |         |             |
 
-## Evolving the Candid interface:
+## Evolving the Candid interface: {#_evolving_the_candid_interface}
 
 Let’s extend the API - old clients still satisfied, new ones get extra features (the `read` query).
 
@@ -93,7 +93,7 @@ actor Counter_v2 {
 | v2      | 4     | *✓*     | inc()       |
 | v2      | 5     | ✓       | read()      |
 
-## Changing the stable interface
+## Changing the stable interface {#_changing_the_stable_interface}
 
 Observation: the counter is always positive - let’s refactor `Int` to `Nat`!
 
@@ -123,7 +123,7 @@ BOOM: code upgraded, but counter is back to `0`.
 
 *The unthinkable has happened*: state was lost in an upgrade.
 
-## What gives?
+## What gives? {#_what_gives}
 
 The Candid interface evolved safely …​ but the stable types did not.
 
@@ -137,7 +137,7 @@ Since `Int </: Nat`, the upgrade logic discards the saved `Int` (what if it was 
 
 What’s worse, the upgrade silently "succeeded", resetting the counter to `0`.
 
-## Stable type signatures
+## Stable type signatures {#_stable_type_signatures}
 
 A stable type signature looks like the "insides" of a Motoko actor type.
 
@@ -159,7 +159,7 @@ actor {
 
 requires consuming an `Int` as a `Nat`: a ***type error***.
 
-## Dual interface evolution
+## Dual interface evolution {#_dual_interface_evolution}
 
 An upgrade is safe provided:
 
@@ -187,7 +187,7 @@ An upgrade is safe provided:
   stable var state : Nat
 };</code></pre></td></tr></tbody></table>
 
-## Tooling
+## Tooling {#_tooling}
 
 Motoko compiler (`moc`) now supports:
 
@@ -208,7 +208,7 @@ E.g. the upgrade from `v2` to `v3` fails this check:
     cannot be consumed at new type
       var Nat
 
-## Examples in the wild
+## Examples in the wild {#_examples_in_the_wild}
 
 <https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio>
 
@@ -227,7 +227,7 @@ actor {
 
 Adding a new record field (to magic from nothing) is bad.
 
-## Metadata Sections
+## Metadata Sections {#_metadata_sections}
 
 Motoko embeds `.did` and `.most` files as wasm *custom sections*, for use by other tools, e.g. dfx.
 
@@ -239,7 +239,7 @@ In future, `dfx canister upgrade` will, by default:
 
 3.  abort the upgrade when unsafe.
 
-## Why are we seeing data-loss only now?
+## Why are we seeing data-loss only now? {#_why_are_we_seeing_data_loss_only_now}
 
 A side-effect of a revision to Candid (used for stabilizing variables):
 
@@ -249,7 +249,7 @@ A side-effect of a revision to Candid (used for stabilizing variables):
 
 ("fail safe" vs "silent failure")
 
-## The right solution
+## The right solution {#_the_right_solution}
 
 What if we really do want to change `state` to `Nat`.
 

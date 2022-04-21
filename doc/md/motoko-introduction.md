@@ -1,12 +1,12 @@
-# Introduction
+# Introduction {#_introduction}
 
 Motoko is a modern, general-purpose programming language you can use specifically to author [Internet Computer](../developers-guide/concepts/what-is-ic.md#ic-overview) canister smart contracts. Although aimed squarely at the {IC}, its design is general enough to support future compilation to other targets.
 
-## Approachability
+## Approachability {#_approachability}
 
 Motoko is a modern language designed to be approachable for programmers who have some basic familiarity with modern object-oriented and/or functional programming idioms in either JavaScript, or another modern programming language, such as Rust, Swift, TypeScript, C#, or Java.
 
-## Asynchronous messaging and type sound execution
+## Asynchronous messaging and type sound execution {#_asynchronous_messaging_and_type_sound_execution}
 
 Motoko permits modern programming idioms, including special programming abstractions for distributed applications (dapps). Each dapp consists of one or more *actors* that communicate solely by *asynchronous message passing*. The state of an actor is isolated from all other actors, supporting distribution. There is no way to share state between several actors. The actor-based programming abstractions of Motoko permit human-readable message-passing patterns, and they enforce that each network interaction obeys certain rules and avoids certain common mistakes.
 
@@ -14,7 +14,7 @@ Specifically, Motoko programs are *type sound* since Motoko includes a practical
 
 To execute, Motoko statically compiles to [WebAssembly](about-this-guide.md#wasm), a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the [{IC}](../developers-guide/concepts/what-is-ic.md#ic-overview).
 
-## Each canister smart contract as an *actor*
+## Each canister smart contract as an *actor* {#pitch-actors}
 
 Motoko provides an **actor-based** programming model to developers to express *services*, including those of canister smart contracts on the [{IC}](../developers-guide/concepts/what-is-ic.md#ic-overview).
 
@@ -24,7 +24,7 @@ All communication with and between actors involves passing messages asynchronous
 
 The Internet Computer ensures that each message that is sent receives a response. The response is either success with some value, or an error. An error can be the explicit rejection of the message by the receiving canister, a trap due to an illegal instruction such as division by zero, or a system error due to distribution or resource constraints. For example, a system error might be the transient or permanent unavailability of the receiver (either because the receiving actor is oversubscribed or has been deleted).
 
-### Asynchronous actors
+### Asynchronous actors {#pitch-async-actors}
 
 Like other *modern* programming languages, Motoko permits an ergonomic syntax for *asynchronous* communication among components.
 
@@ -56,7 +56,7 @@ In language settings that lack these abstractions, developers would not merely c
 
 Our program instead eschews that more cumbersome programming style for this more natural, *direct* style, where each request resembles an ordinary function call. This simpler, stylized programming form has become increasingly popular for expressing practical systems that interact with an *external environment*, as most modern software does today. However, it requires special compiler and type-system support, as we discuss in more detail below.
 
-### Support for *asynchronous* behavior
+### Support for *asynchronous* behavior {#pitch-async-behavior}
 
 In an *asynchronous* computing setting, a program and its running environment are permitted to perform *internal computations* that occur *concurrently* with one another.
 
@@ -66,7 +66,7 @@ Symmetrically, the environment’s requests of the program do not (necessarily) 
 
 We do not show an example of this “notify” pattern above, since it uses callbacks (and *higher-order* functions and control flow) and is thus more complex.
 
-### Syntactic forms `async` and `await`
+### Syntactic forms `async` and `await` {#pitch-async}
 
 To address the need for clarity and simplicity, Motoko adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a *structured* language for describing potentially-complex asynchronous dependency graphs.
 
@@ -78,7 +78,7 @@ The syntax `await` synchronizes on a future, and suspends computation until the 
 
 When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program’s control- and data-flow that would be tedious to perform by hand in a purely synchronous language. Meanwhile, the type system of Motoko enforces certain correct usage patterns for these constructs, including that types flowing between consumers and producers always agree, and that the types of data sent among services are permitted to flow there, and do not (for example) contain [private mutable state](mutable-state.md).
 
-### Types are static
+### Types are static {#pitch-types}
 
 Like other modern programming languages, Motoko permits each variable to carry the value of a function, object, or a primitive datum (for example, a string, word, or integer). Other [types of values](basic-concepts.md#intro-values) exist too, including records, tuples, and “tagged data” called *variants*.
 

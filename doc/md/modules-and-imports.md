@@ -1,10 +1,10 @@
-# Modules and imports
+# Modules and imports {#_modules_and_imports}
 
 This section provides examples of different scenarios for using the `module` and `import` keywords.
 
 To illustrate how these keywords are used, let’s step through some sample code.
 
-## Importing from the Motoko base library
+## Importing from the Motoko base library {#_importing_from_the_motoko_base_library}
 
 One of the most common import scenarios is one that you see illustrated in the examples in this guide, in the Motoko projects in the examples repository, and in the tutorials involves importing modules from the Motoko base library. Importing modules from the base library enables you to re-use the values, functions and types defined in those modules rather than writing similar ones from scratch.
 
@@ -25,7 +25,7 @@ import { map, find, foldLeft = fold } = "mo:base/Array";
 
 In this example, the functions `map` and `find` are imported unaltered, while the `foldLeft` function is renamed to `fold`.
 
-## Importing local files
+## Importing local files {#_importing_local_files}
 
 Another common approach to writing programs in Motoko involves splitting up the source code into different modules. For example, you might design an application to use the following model:
 
@@ -48,7 +48,7 @@ Because these lines import modules from the local project instead of the Motoko 
 
 In this example, both the `types.mo` and `utils.mo` files are in the same directory as the `main.mo` file. Once again, import does not use the `.mo` file suffix.
 
-## Importing from another package or directory
+## Importing from another package or directory {#_importing_from_another_package_or_directory}
 
 You can also import modules from other packages or from directories other than the local directory.
 
@@ -63,7 +63,7 @@ You can define dependencies for a project using the Vessel package manager or in
 
 In this example, the `Render` module is in the default location for source code in the `redraw` package and the `Mono5x5` module is in a `redraw` package subdirectory called `glyph`.
 
-## Importing actor classes
+## Importing actor classes {#importing_actor_classes}
 
 While module imports are typically used to import libraries of local functions and values, they can also be used to import actor classes. When an imported file consists of a named actor class, the client of the imported field sees a module containing the actor class.
 
@@ -123,7 +123,7 @@ The call to `Counters.Counter(1)` installs a fresh counter on the network. Insta
 
 The type annotation `: Counters.Counter` is redundant here. It’s included only to illustrate that the type of the actor class is available when required.
 
-## Importing from another canister smart contract
+## Importing from another canister smart contract {#_importing_from_another_canister_smart_contract}
 
 In addition to the examples above that import Motoko modules, you can also import actors (and their shared functions) from canister smart constracts by using the `canister:` prefix in place of the `mo:` prefix.
 
@@ -158,7 +158,7 @@ The translation from Motoko actor type to Candid service type is mostly, but not
 
 The type of an imported canister function, therefore, might differ from the type of the original Motoko code that implements it. For example, if the Motoko function had type `shared Nat32 -> async Char` in the implementation, its exported Candid type would be `(nat32) -> (nat32)` but the Motoko type imported from this Candid type will actually be the correct—but perhaps unexpected—type `shared Nat32 -> async Nat32`.
 
-## Naming imported modules
+## Naming imported modules {#_naming_imported_modules}
 
 Although the most common convention is to identify imported modules by the module name as illustrated in the examples above, there’s no requirement for you to do so. For example, you might want to use different names to avoid naming conflicts or to simplify the naming scheme.
 

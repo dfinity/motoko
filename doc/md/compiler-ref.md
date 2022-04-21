@@ -1,20 +1,20 @@
-# Compiler reference
+# Compiler reference {#_compiler_reference}
 
 The Motoko compiler (`moc`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. The compiler runs in the background when you build projects using the DFINITY Canister SDK. If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
 
 This section provides compiler command-line reference information.
 
-## moc
+## moc {#_moc}
 
 Use the Motoko compiler (`moc`) to compile Motoko programs into executable WebAssembly (Wasm) modules.
 
-### Basic usage
+### Basic usage {#_basic_usage}
 
 ``` bash
 moc [option] [file ...]
 ```
 
-### Options
+### Options {#_options}
 
 You can use the following options with the `moc` command.
 

@@ -1,4 +1,4 @@
-# Actor classes
+# Actor classes {#actor_classes}
 
 Actor classes enable you to create networks of actors (canister smart contracts) *programmatically*. Currently, actor classes have to be defined in a separate source file. To illustrate how to define and import actor classes, the following example implements a distributed map of keys of type `Nat` to values of type `Text`. It provides simple insert and lookup functions, `put(k, v)` and `get(k)`, for working with these keys and values.
 

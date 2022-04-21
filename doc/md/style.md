@@ -1,10 +1,10 @@
-# Motoko style guidelines
+# Motoko style guidelines {#_motoko_style_guidelines}
 
 To increase readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
 
-## Layout
+## Layout {#_layout}
 
-### Spacing
+### Spacing {#_spacing}
 
 -   Put spaces around arithmetic operators, except to visually group sub-expressions of more tightly binding operators.
 
@@ -120,7 +120,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     foom(?(bam()! + 1));
     ```
 
-### Line breaks
+### Line breaks {#_line_breaks}
 
 -   Pick a fixed right margin for lines and break definitions or expressions that are longer than that (80 still is considered a good limit by many).
 
@@ -183,7 +183,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: This prevents overlooking an argument when reading code and avoids re-breaking lines when changing one of the expressions.
 
-### Indentation
+### Indentation {#_indentation}
 
 -   Each level of indentation should be 2 spaces.
 
@@ -240,7 +240,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: The interpretation of tabs varies wildly across tools and they get lost or are displayed incorrectly in many contexts, such as web pages, diffs, etc.
 
-### Grouping
+### Grouping {#_grouping}
 
 -   Separate complex multi-line definitions with empty lines. One-liners can be put on consecutive lines.
 
@@ -307,7 +307,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     }
     ```
 
-### Comments
+### Comments {#_comments}
 
 -   Use line comments (`//…​`). Use block comments (`/* …​ */`) only when commenting in the middle of a line or for commenting out pieces of code during development.
 
@@ -346,9 +346,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Capitalize comments that are on separate lines. Use a proper full stop for sentences.
 
-## Punctuation
+## Punctuation {#_punctuation}
 
-### Semicolons
+### Semicolons {#_semicolons}
 
 -   Motoko uniformly requires a semicolon to separate expressions or local declarations in a block, regardless of whether the preceding declaration ends in a closing '}'.
 
@@ -395,7 +395,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Consistently ending lines with semicolon simplifies adding, removing, or swapping lines.
 
-### Braces
+### Braces {#_braces}
 
 -   Put braces around function bodies, `if` or `case` branches, and loop bodies, unless they appear nested as an expression and only contain a single expression.
 
@@ -428,7 +428,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     };
     ```
 
-### Parentheses
+### Parentheses {#parens}
 
 -   Motoko supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already (for example, a tuple, object, or array) or is a simple constant or identifier.
 
@@ -482,7 +482,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     type Get = <X>C<X> -> X;   // DO NOT DO THIS!
     ```
 
-### Miscellaneous
+### Miscellaneous {#_miscellaneous}
 
 -   Use `_` to group digits in numbers.
 
@@ -494,9 +494,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let mask : Nat32 = 0xff00_ff0f;
     ```
 
-## Naming
+## Naming {#_naming}
 
-### Style
+### Style {#_style}
 
 -   Use `UpperCamelCase` for type names (including classes or type parameters), module names, and actor names.
 
@@ -546,7 +546,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     This aligns with the use of the keyword `_` for pattern wildcards.
 
-### Conventions
+### Conventions {#_conventions}
 
 -   The name of functions returning a value should describe that value (as a noun).
 
@@ -628,9 +628,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     }
     ```
 
-## Types
+## Types {#_types}
 
-### Type Annotations
+### Type Annotations {#_type_annotations}
 
 -   Put type annotations on definitions that involve fixed-width numeric types, to disambiguate the type of overloaded arithmetic operators and constants.
 
@@ -784,9 +784,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Mutable data cannot be communicated or share across actors. It is more error-prone and much more difficult to formally reason about, especially when concurrency is involved.
 
-## Features
+## Features {#_features}
 
-### Statements
+### Statements {#_statements}
 
 -   Use `for` loops instead of `while` loops for iterating over a numeric range or a container.
 
@@ -843,7 +843,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     };
     ```
 
-### Objects and records
+### Objects and records {#_objects_and_records}
 
 -   Use the short-hand object syntax `{x1 = e1; …​ ; xN = eN}` when using objects as simple *records*, i.e., data structures with no private state and no methods.
 
@@ -855,7 +855,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use full objects only as a means for encapsulating state or behaviour.
 
-### Classes
+### Classes {#_classes}
 
 -   Use `class` to create multiple objects of the same shape.
 
@@ -885,7 +885,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use modules for "static" classes or methods.
 
-### Modules
+### Modules {#_modules}
 
 -   Use `module` to group definitions (including types) and create a name spae for them.
 

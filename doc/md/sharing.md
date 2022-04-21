@@ -1,4 +1,4 @@
-# Sharing data and behavior
+# Sharing data and behavior {#_sharing_data_and_behavior}
 
 Recall that in {proglang}, mutable state is always private to an actor.
 
@@ -6,7 +6,7 @@ However, two actors can share message data, and those messages can refer to acto
 
 Through these mechanisms, two actors can coordinate their behavior through asynchronous message passing.
 
-## Publisher-subscriber pattern with actors
+## Publisher-subscriber pattern with actors {#_publisher_subscriber_pattern_with_actors}
 
 The examples in this section illustrate how actors share their functions by focusing on variations of the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish-subscribe_pattern). In the publish-subscribe pattern, a **publishing** actor records a list of **subscriber** actors to notify when something notable occurs in the publisher’s state. For example, if the publisher actor publishes a new article, the subscriber actors are notified that a new article is available.
 
@@ -14,11 +14,11 @@ The example below uses two actors in {proglang} to build variations of the publi
 
 To see the complete code for a working project that uses this pattern, see the [pubsub](https://github.com/dfinity/examples/tree/master/motoko/pubsub) example in the [examples repository](https://github.com/dfinity/examples).
 
-### Subscriber actor
+### Subscriber actor {#_subscriber_actor}
 
 The following `Subscriber` actor type provides a possible interface for the subscriber actor and the publisher actor to expose and to call, respectively:
 
-``` motoko
+``` {#tsub .motoko}
 type Subscriber = actor {
   notify : () -> ()
 };
@@ -32,11 +32,11 @@ Note that sub-typing enables the `Subscriber` actor to include additional method
 
 For simplicity, assume that the `notify` function accepts relevant notification data and returns some new status message about the subscriber to the publisher. For example, the subscriber might return a change to its subscription settings based on the notification data.
 
-### Publisher actor
+### Publisher actor {#_publisher_actor}
 
 The publisher side of the code stores an array of subscribers. For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function.
 
-``` motoko
+``` {#pub .motoko}
 import Array "mo:base/Array";
 
 actor Publisher {
@@ -56,7 +56,7 @@ actor Publisher {
 
 Later, when some unspecified external agent invokes the `publish` function, all of the subscribers receive the `notify` message, as defined in the `Subscriber` type given above.
 
-### Subscriber methods
+### Subscriber methods {#_subscriber_methods}
 
 In the simplest case, the subscriber actor has the following methods:
 
@@ -87,7 +87,7 @@ The actor assumes, but does not enforce, that its `init` function is only ever c
 
 If called more than once, the actor will subscribe itself multiple times, and will receive multiple (duplicate) notifications from the publisher. This fragility is the consequence of the basic publisher-subscriber design we show above. With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
 
-## Sharing functions among actors
+## Sharing functions among actors {#_sharing_functions_among_actors}
 
 In {proglang}, a `shared` actor function can be sent in a message to another actor, and then later called by that actor, or by another actor.
 
@@ -99,7 +99,7 @@ See the [the full example](https://github.com/dfinity/examples/tree/master/motok
 
 In particular, suppose that the subscriber wants to avoid being locked into a certain naming scheme for its interface. What really matters is that the publisher can call *some* function that the subscriber chooses.
 
-### The `shared` keyword
+### The `shared` keyword {#_the_shared_keyword}
 
 To permit this flexibility, an actor needs to share a single *function* that permits remote invocation from another actor, not merely a reference to itself.
 
@@ -109,13 +109,13 @@ The ability to share a function requires that it be pre-designated as `shared`, 
 
 Using the `shared` function type, we can extend the example above to be more flexible. For example:
 
-``` motoko
+``` {#submessage .motoko}
 type SubscribeMessage = { callback: shared () -> (); };
 ```
 
 This type differs from the original, in that it describes *a message* record type with a single field called `callback`, and the original type first shown above describes *an actor* type with a single method called `notify`:
 
-``` motoko
+``` {#typesub .motoko}
 type Subscriber = actor { notify : () -> () };
 ```
 
@@ -123,7 +123,7 @@ Notably, the `actor` keyword means that this latter type is not an ordinary reco
 
 By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose another name for their `notify` method:
 
-``` motoko
+``` {#newsub .motoko}
 actor Subscriber {
   var count: Nat = 0;
   public func init() {
@@ -142,7 +142,7 @@ Compared to the original version, the only lines that change are those that rena
 
 Likewise, we can update the publisher to have a matching interface:
 
-``` motoko
+``` {#newpub .motoko}
 import Array "mo:base/Array";
 actor Publisher {
   var subs: [SubscribeMessage] = [];

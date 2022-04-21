@@ -1,4 +1,4 @@
-# Pattern matching
+# Pattern matching {#_pattern_matching}
 
 Pattern matching is a language feature that makes it easy to both test and decompose structured data into its constituent parts. While most programming languages provide familiar ways to build structured data, pattern matching enables you to take apart structured data and bring its fragments into scope by binding them to the names you specify. Syntactically, the patterns resemble the construction of structured data, but generally appear in input-direction positions, such as in function argument positions, after the `case` keyword in `switch` expressions, and after `let` or `var` declarations.
 
@@ -10,7 +10,7 @@ let name : Text = fullName({ first = "Jane"; mid = "M"; last = "Doe" });
 
 This code constructs a record with three fields and passes it to the function `fullName`. The result of the call is named and brought into scope by binding it to the identifier `name`. The last, binding step is called pattern matching, and `name : Text` is one of the simplest forms of pattern. For instance, in the following implementation of the callee:
 
-``` motoko
+``` {#fullname .motoko}
 func fullName({ first : Text; mid : Text; last : Text }) : Text {
   first # " " # mid # " " # last
 };
@@ -47,7 +47,7 @@ The last kind of pattern is the `or` pattern. As its name suggests, these are tw
 
 The following table summarises the different ways of pattern matching.
 
-## Additional information about about patterns
+## Additional information about about patterns {#_additional_information_about_about_patterns}
 
 Since pattern matching has a rich history and interesting mechanics, a few additional comments are justified.
 

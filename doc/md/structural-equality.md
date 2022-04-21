@@ -1,4 +1,4 @@
-# Structural equality
+# Structural equality {#_structural_equality}
 
 Equality (`==`) — and by extension inequality (`!=`) — is **structural**: two values `a` and `b` are equal, `a == b`, whenever they have equal contents, regardless of the physical representation, or identity, of those values in memory.
 
@@ -16,7 +16,7 @@ a == b;
 
 Importantly, this does *not* compare by reference, but by value.
 
-## Subtyping
+## Subtyping {#_subtyping}
 
 Equality respects subtyping so `{ x = 10 } == { x = 10; y = 20 }` returns `true`.
 
@@ -26,7 +26,7 @@ To accommodate subtyping, two values of different types are equal if they are eq
 { x = 10 } == { y = 20 };
 ```
 
-## Generic types
+## Generic types {#_generic_types}
 
 It is not possible to declare that a generic type variable is `shared`, so equality can only be used on non-generic types. For example, the following expression generates a warning like this:
 

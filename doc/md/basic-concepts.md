@@ -1,4 +1,4 @@
-# Basic concepts and terms
+# Basic concepts and terms {#_basic_concepts_and_terms}
 
 Motoko is designed for distributed programming with actors.
 
@@ -36,7 +36,7 @@ The following topics are covered in the section:
 
 -   [Type soundness and type-safe evaluation](#intro-type-soundness)
 
-## Motoko program syntax
+## Motoko program syntax {#intro-progs}
 
 Each Motoko *program* is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see the [language quick reference guide](language-manual.md) for precise program syntax).
 
@@ -68,13 +68,13 @@ let z = do {
 };
 ```
 
-## Declarations and expressions
+## Declarations and expressions {#intro-decls-exps-def}
 
 Declarations introduce immutable variables, mutable state, actors, objects, classes and other types. Expressions describe computations that involve these notions.
 
 For now, we use example programs that declare immutable variables, and compute simple arithmetic.
 
-### Declarations versus expressions
+### Declarations versus expressions {#intro-decls-vs-exps}
 
 [Recall](#intro-progs) that each Motoko *program* is a free mix of declarations and expressions, whose syntactic classes are distinct, but related. In this section, we use examples to illustrate their distinctions and accommodate their intermixing.
 
@@ -100,7 +100,7 @@ When the expression appears as the final declaration, this expression may have a
 
 Expressions that do not appear at the end, but rather *within* the list of declarations must have unit type `()`.
 
-### Ignoring non-unit-typed expressions in declaration lists
+### Ignoring non-unit-typed expressions in declaration lists {#_ignoring_non_unit_typed_expressions_in_declaration_lists}
 
 We can always overcome this unit-type restriction by explicitly using `ignore` to ignore any unused result values. For example:
 
@@ -112,7 +112,7 @@ ignore(y * 42);
 x * y + x;
 ```
 
-### Declarations and variable substitution
+### Declarations and variable substitution {#_declarations_and_variable_substitution}
 
 Declarations can be mutually recursive, but in cases where they are not, they permit substitution semantics. (that is, replacing equals for equals, as familiar from high-school algebraic simplification).
 
@@ -136,7 +136,7 @@ This is also a valid program — of the same type and with the same behavior (re
 
 We can also form a single expression using a block.
 
-### From declarations to block expressions
+### From declarations to block expressions {#_from_declarations_to_block_expressions}
 
 Many of the programs above each consist of a list of declarations, as with this example, just above:
 
@@ -162,7 +162,7 @@ This is also program, but one where the declared variables `x` and `y` are priva
 
 This block form preserves the autonomy of the declaration list and its *choice of variable names*.
 
-### Declarations follow **lexical scoping**
+### Declarations follow **lexical scoping** {#intro-lexical-scoping}
 
 Above, we saw that nesting blocks preserves the autonomy of each separate declaration list and its *choice of variable names*. Language theorists call this idea *lexical scoping*. It means that variables' scopes may nest, but they may not interfere as they nest.
 
@@ -182,7 +182,7 @@ Other languages that lack lexical scoping may give a different meaning to this p
 
 Aside from mathematical clarity, the chief practical benefit of lexical scoping is *security*, and its use in building compositionally-secure systems. Specifically, Motoko gives very strong composition properties. For example, nesting your program within a program you do not trust cannot arbitrarily redefine your variables with different meanings.
 
-## Values and evaluation
+## Values and evaluation {#intro-values}
 
 Once a Motoko expression receives the program’s (single) thread of control, it evaluates eagerly until it reduces to a *result value*.
 
@@ -192,7 +192,7 @@ If this expression never reaches a value form, the expression evaluates indefini
 
 In the material above, we focused on expressions that produced natural numbers. As a broader language overview, however, we briefly summarize the other value forms below:
 
-### Primitive values
+### Primitive values {#_primitive_values}
 
 Motoko permits the following primitive value forms:
 
@@ -210,7 +210,7 @@ For practical reasons, Motoko also includes *bounded* types for integers and nat
 
 The [language quick reference](language-manual.md) contains a complete list of [primitive types](language-manual.md#primitive-types).
 
-### Non-primitive values
+### Non-primitive values {#_non_primitive_values}
 
 Building on the primitive values and types above, the language permits user-defined types, and each of the following non-primitive value forms and associated types:
 
@@ -230,7 +230,7 @@ Building on the primitive values and types above, the language permits user-defi
 
 We discuss the use of these forms in the succeeding chapters. For precise language definitions of primitive and non-primitive values, see the [language quick reference](language-manual.md#exp-error).
 
-### The **unit type** versus the `void` type
+### The **unit type** versus the `void` type {#intro-unit-type}
 
 Motoko has no type named `void`. In many cases where readers may think of return types being “void” from using languages like Java or C++, we encourage them to think instead of the *unit type*, written `()`.
 
@@ -240,7 +240,7 @@ Unlike the `void` type, there *is* a unit value, but like the `void` return valu
 
 Another mathematical way to think of the unit value is as a tuple with no elements - the nullary (“zero-ary”) tuple. There is only one value with these properties, so it is mathematically unique, and thus need not be represented at runtime.
 
-### Natural numbers
+### Natural numbers {#_natural_numbers}
 
 The members of this type consist of the usual values - `0`, `1`, `2`, …​ - but, as in mathematics, the members of `Nat` are not bound to a special maximum size. Rather, the runtime representation of these values accommodates arbitrary-sized numbers, making their "overflow" (nearly) impossible. (*nearly* because it is the same event as running out of program memory, which can always happen for some programs in extreme situations).
 
@@ -252,7 +252,7 @@ let x = 42 + (1 * 37) / 12: Nat
 
 This program evaluates to the value `45`, also of type `Nat`.
 
-## Type soundness
+## Type soundness {#intro-type-soundness}
 
 Each Motoko expression that type-checks we call *well-typed*. The *type* of a Motoko expression serves as a promise from the language to the developer about the future behavior of the program, if executed.
 
@@ -264,7 +264,7 @@ In either case, the static and dynamic views of the program are linked by and ag
 
 The same type system also enforces that asynchronous interactions agree between static and dynamic views of the program, and that the resulting messages generated "under the hood" never mismatch at runtime. This agreement is similar in spirit to the caller/callee argument type and return type agreements that one ordinarily expects in a typed language.
 
-## Type annotations and variables
+## Type annotations and variables {#intro-type-anno}
 
 Variables relate (static) names and (static) types with (dynamic) values that are present only at runtime.
 
@@ -308,7 +308,7 @@ let x : Text = 1 + 1
 
 The type annotation `Text` does not agree with the rest of the program, since the type of `1 + 1` is `Nat` and not `Text`, and these types are unrelated by subtyping. Consequently, this program is not well-typed, and the compiler will signal an error (with a message and location) and will not compile or execute it.
 
-## Type errors and messages
+## Type errors and messages {#_type_errors_and_messages}
 
 Mathematically, the type system of Motoko is *declarative*, meaning that it exists independently of any implementation, as a concept entirely in formal logic. Likewise, the other key aspects of the language definition (for example, its execution semantics) exist outside of an implementation.
 
@@ -318,7 +318,7 @@ The error messages of the *type checker* attempt to help the developer when they
 
 These error messages will evolve over time, and for this reason, we will not include particular error messages in this text. Instead, we will attempt to explain each code example in its surrounding prose.
 
-### Using the Motoko base library
+### Using the Motoko base library {#intro-stdlib}
 
 For various practical language engineering reasons, the design of Motoko strives to minimize builtin types and operations.
 
@@ -335,7 +335,7 @@ D.print("hello world");
 
 In this case, we import Motoko code (not some other module form) with the `mo:` prefix. We specify the `base/` path, followed by the module’s file name `Debug.mo` minus its extension.
 
-### Printing using `Debug.print` and `debug_show`
+### Printing using `Debug.print` and `debug_show` {#intro-printing}
 
 Above, we print the text string using the function `print` in library `Debug.mo`:
 
@@ -360,19 +360,19 @@ D.print(debug_show(("hello", 42, "world")))
 
 Using these text transformations, we can print most Motoko data as we experiment with our programs.
 
-### Accommodating incomplete code
+### Accommodating incomplete code {#_accommodating_incomplete_code}
 
 Sometimes, in the midst of writing a program, we want to run an incomplete version, or a version where one or more execution paths are either missing or simply invalid.
 
 To accommodate these situations, we use the `xxx`, `nyi` and `unreachable` functions from the base `Prelude` library, explained below. Each wraps a [general trap mechanism](#overview-traps), explained further below.
 
-### Use short-term holes
+### Use short-term holes {#_use_short_term_holes}
 
 Short-term holes are never committed to a source repository, and only ever exist in a single development session, for a developer that is still writing the program.
 
 Assuming that earlier, one has imported the prelude as follows:
 
-``` motoko
+``` {#prelude .motoko}
 import P "mo:base/Prelude";
 ```
 
@@ -384,7 +384,7 @@ P.xxx()
 
 The result will *always* type check at compile time, and *will always* trap at run time, if and when this expression ever executes.
 
-### Document longer-term holes
+### Document longer-term holes {#_document_longer_term_holes}
 
 By convention, longer-term holes can be considered "not yet implemented" (`nyi`) features, and marked as such with a similar function from the Prelude module:
 
@@ -392,7 +392,7 @@ By convention, longer-term holes can be considered "not yet implemented" (`nyi`)
 P.nyi()
 ```
 
-### Document `unreachable` code paths
+### Document `unreachable` code paths {#_document_unreachable_code_paths}
 
 In contrast to the situations above, sometimes code will *never* be filled, since it will *never* be evaluated, assuming the coherence of the internal logic of the programs' invariants.
 
@@ -404,7 +404,7 @@ P.unreachable()
 
 As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
 
-### Traps due to execution failure
+### Traps due to execution failure {#overview-traps}
 
 Some errors, such as division by zero, out-of-bounds array indexing, and pattern match failure are not prevented by the type system, but can cause dynamic failures called *traps*.
 
@@ -431,7 +431,7 @@ Traps that occur within actor messages are more subtle: they don’t abort the e
 
 </div>
 
-### Explicit traps
+### Explicit traps {#overview-debug-trap}
 
 Occasionally it can be useful to force an unconditional trap, with a user-defined message.
 
@@ -451,7 +451,7 @@ let swear : Text = Debug.trap("oh my!");
 
 (The `Prelude` functions `nyi()`, `unreachable()` and `xxx()` discussed above are simple wrappers around `Debug.trap`.)
 
-### Assertions
+### Assertions {#overview-assertions}
 
 Assertions allow you to conditionally trap when some Boolean test fails to hold, but continue execution otherwise. For example,
 

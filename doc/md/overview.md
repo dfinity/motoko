@@ -1,10 +1,10 @@
-# Concise overview of Motoko
+# Concise overview of Motoko {#_concise_overview_of_motoko}
 
 This is terse, slide-like introduction to Motoko and its features.
 
 (For a gentler introduction, visit the other sections on this site.)
 
-## Motivation and Goals
+## Motivation and Goals {#_motivation_and_goals}
 
 A simple, useful language for the Internet Computer (IC)
 
@@ -18,7 +18,7 @@ A simple, useful language for the Internet Computer (IC)
 
 -   Making most of present and future WebAssembly
 
-## Key Design Points
+## Key Design Points {#_key_design_points}
 
 -   Object-oriented, functional & imperative
 
@@ -38,7 +38,7 @@ A simple, useful language for the Internet Computer (IC)
 
 Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
-## Semantics
+## Semantics {#_semantics}
 
 -   call-by-value (like Java, C, JS, ML; unlike Haskell)
 
@@ -52,7 +52,7 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 -   no inheritance
 
-## Implementation(s)
+## Implementation(s) {#_implementations}
 
 -   implemented in OCaml (leverages `wasm` libary)
 
@@ -68,9 +68,9 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 -   polymorphism by erasure
 
-# The language
+# The language {#_the_language}
 
-## Expressions
+## Expressions {#_expressions}
 
 -   Identifiers:  
     `x`, `foo_bar`, `test123`, `List`, `Map`
@@ -85,9 +85,9 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
     `(42 : Int)`  
     (zero cost)
 
-## Libraries
+## Libraries {#_libraries}
 
-``` motoko
+``` {#impDebugInt .motoko}
   import Debug "mo:base/Debug";
   import Int "mo:base/Int";
 ```
@@ -98,7 +98,7 @@ Specific bindings can be imported from the module using object patterns
 
       import { cons; nil } = "mo:base/List";
 
-## Libraries
+## Libraries {#_libraries_2}
 
 ``` motoko
   import Debug "mo:base/Debug";
@@ -110,7 +110,7 @@ Specific bindings can be imported from the module using object patterns
   Debug.print(Int.toText(7)); // reference functions/values
 ```
 
-## Blocks and declarations
+## Blocks and declarations {#_blocks_and_declarations}
 
 ``` motoko
   type Delta = Nat;
@@ -129,7 +129,7 @@ Specific bindings can be imported from the module using object patterns
 
 -   Mutable variables marked explicitly
 
-## Control flow
+## Control flow {#_control_flow}
 
 The usual suspects…​
 
@@ -159,9 +159,9 @@ The usual suspects…​
 
 -   `throw`, `try … catch x { … }` *(restricted)*
 
-# Primitive types
+# Primitive types {#_primitive_types}
 
-## Unbounded integers
+## Unbounded integers {#_unbounded_integers}
 
 `Int`
 
@@ -171,7 +171,7 @@ Inferred by default for negative literals.
 
 Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
-## Unbounded naturals
+## Unbounded naturals {#_unbounded_naturals}
 
 `Nat`
 
@@ -189,7 +189,7 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 (you can supply a `Nat` wherever an `Int` is expected)
 
-## Bounded numbers (trapping)
+## Bounded numbers (trapping) {#_bounded_numbers_trapping}
 
 `Nat8`, `Nat16`, `Nat32`, `Nat64`, `Int8`, `Int16`, `Int32`, `Int64`
 
@@ -199,7 +199,7 @@ Needs type annotations (somewhere)
 
 Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
-## Floating point numbers
+## Floating point numbers {#_floating_point_numbers}
 
 `Float`
 
@@ -209,7 +209,7 @@ Inferred for fractional literals
 
 Literals: 0, -10, `2.71`, `-0.3e+15`, `3.141_592_653_589_793_12`
 
-## Numeric operations
+## Numeric operations {#_numeric_operations}
 
 No surprises here
 
@@ -222,7 +222,7 @@ No surprises here
 
 `a +% b, a -% b, …` for wrapping, modular arithmetic (where appropriate)
 
-## Characters and Text
+## Characters and Text {#_characters_and_text}
 
 `Char`, `Text`
 
@@ -234,7 +234,7 @@ Unicode! Character = Unicode scalar value; no random access on text
 
 -   `"Concat" # "enation"`
 
-## Booleans
+## Booleans {#_booleans}
 
 `Bool`
 
@@ -245,9 +245,9 @@ Literals: `true`, `false`
 `not b`  
 `if (b) e1 else e2`
 
-# Functions
+# Functions {#_functions}
 
-## Function types
+## Function types {#_function_types}
 
 -   Simple functions:
 
@@ -274,7 +274,7 @@ Literals: `true`, `false`
     let funcs : [<T>(T) -> T] = …
     ```
 
-## Function Declarations & Use
+## Function Declarations & Use {#_function_declarations_use}
 
 ``` motoko
 func add(x : Int, y : Int) : Int = x + y;
@@ -296,15 +296,15 @@ applyNTimes<Text>(3, "Hello!", func(x) { Debug.print(x) } );
 
 -   Anonymous functions (a.k.a. lambdas)
 
-# Composite types
+# Composite types {#_composite_types}
 
-## Tuples
+## Tuples {#_tuples}
 
 `(Bool, Float, Text)`
 
 immutable, heterogeneous, fixed size
 
-``` motoko
+``` {#tuple .motoko}
 let tuple = (true or false, 0.6 * 2.0, "foo" # "bar");
 ```
 
@@ -317,13 +317,13 @@ let (_,_,t) = tuple;
 t
 ```
 
-## Options
+## Options {#_options}
 
 `?Text`
 
 is either a value of that type, e.g. `?"hello"`, or `null`.
 
-``` motoko
+``` {#display .motoko}
 func display(x : ?Text) : Text {
   switch x {
     case (null) { "No value" };
@@ -336,7 +336,7 @@ func display(x : ?Text) : Text {
 (display(null), display(?"Test"))
 ```
 
-## Option blocks
+## Option blocks {#_option_blocks}
 
 Switching on every option value can be inconvenient …​  
 
@@ -352,7 +352,7 @@ func add(x : ?Nat, y: ?Nat) : ?Nat {
 (add(null, null), add (?1,null), add (?1,?2), add (null,?2));
 ```
 
-## Arrays (immutable)
+## Arrays (immutable) {#_arrays_immutable}
 
 `[Text]`
 
@@ -368,7 +368,7 @@ assert(days[1] == "Tue");
 for (d in days.vals()) { Debug.print(d) };
 ```
 
-## Arrays (mutable)
+## Arrays (mutable) {#_arrays_mutable}
 
 `[var Nat]`
 
@@ -384,7 +384,7 @@ counters[1] := counters[1] + 1;
 counters;
 ```
 
-## Records
+## Records {#_records}
 
 `{first : Text; last : Text; salary : var Nat}`
 
@@ -401,7 +401,7 @@ employee.salary += 79_496;
 employee;
 ```
 
-## Objects
+## Objects {#_objects}
 
 `{first : Text; last : Text; get : () → Nat; add : Nat → ()}`
 
@@ -415,7 +415,7 @@ object self {
 }
 ```
 
-## Classes
+## Classes {#_classes}
 
 ``` motoko
 class Employee(fst : Text, lst : Text) {
@@ -438,7 +438,7 @@ type Employee = {first : Text; last : Text; get : () -> Nat; add : Nat -> ()};
 func Employee(fst : Text, lst : Text) : Employee = object { … }
 ```
 
-## Variants
+## Variants {#_variants}
 
 `{#Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat}`
 
@@ -465,9 +465,9 @@ func sort(d : Day) : { #WeekDay; #WeekEnd } {
 };
 ```
 
-## Recursive Types
+## Recursive Types {#_recursive_types}
 
-``` motoko
+``` {#Lists .motoko}
 type List = {
   #item : {head : Text; tail : List}; // variant with payload!
   #empty                     // ^^^^ recursion!
@@ -488,7 +488,7 @@ func reverse(l : List) : List {
 let l = reverse(#item {head = "A"; tail = #item {head = "B"; tail = #empty}});
 ```
 
-## Generic types
+## Generic types {#_generic_types}
 
 ``` motoko
 type List<T> = {
@@ -515,9 +515,9 @@ let ns : List<Nat> =
   reverse(#item {head = 0; tail = #item {head = 1; tail = #empty}})
 ```
 
-# Packages and modules
+# Packages and modules {#_packages_and_modules}
 
-## Modules
+## Modules {#_modules}
 
 ``` motoko
 // the type of base/Int.mo
@@ -532,7 +532,7 @@ module {
 modules contain named types and values (like objects),  
 but are restricted to *static* content (pure, no state, …)
 
-## Module imports
+## Module imports {#_module_imports}
 
 ``` motoko
 import Debug "mo:base/Debug";  // import from package
@@ -554,13 +554,13 @@ module {
 }
 ```
 
-# Platform features
+# Platform features {#_platform_features}
 
-## Actor types
+## Actor types {#_actor_types}
 
 Like object types, but marked as `actor`:
 
-``` motoko
+``` {#actorTypes .motoko}
 type Broadcast = actor {
   register : Receiver -> ();
   send : Text -> async Nat;
@@ -581,7 +581,7 @@ type Receiver = actor {
 
 IC canister with Candid interface ≈ Motoko actor
 
-## sharable ≈ serializable
+## sharable ≈ serializable {#_sharable_serializable}
 
 **Sharable:**
 
@@ -602,7 +602,7 @@ IC canister with Candid interface ≈ Motoko actor
 
 -   objects (with methods)
 
-## A complete actor
+## A complete actor {#_a_complete_actor}
 
 ``` motoko
 import Array "mo:base/Array";
@@ -628,7 +628,7 @@ actor Broadcast {
 
 a typical actor/canister main file
 
-## Async/await
+## Async/await {#_asyncawait}
 
 `async T`
 
@@ -654,7 +654,7 @@ if the result is an `Error`, `throw`s the error.
 
 (Errors can be handled using `try … catch …`)
 
-## Concurrency Hazards
+## Concurrency Hazards {#_concurrency_hazards}
 
 Functions that `await` are *not* atomic.  
 Suspension introduces *concurrency hazards*.
@@ -676,7 +676,7 @@ A bad implementation of `send`:
 
 Beware of race conditions!
 
-## Actor import
+## Actor import {#_actor_import}
 
 ``` motoko
 import Broadcast "canister:Broadcast";
@@ -699,7 +699,7 @@ actor Self {
 
 (assumes there is a Candid file describing the interface of the import)
 
-## A Candid interface file
+## A Candid interface file {#_a_candid_interface_file}
 
 `Broadcast`'s Candid file (produced by `moc --idl Broadcast.mo` compiler).
 
@@ -720,7 +720,7 @@ A language independent interface definition.
 
 Could just as easily describe a Rust implementation of `Broadcast`.
 
-## Principal and caller
+## Principal and caller {#_principal_and_caller}
 
 ``` motoko
 import Principal "mo:base/Principal";
@@ -739,7 +739,7 @@ actor Self {
 }
 ```
 
-## Errors
+## Errors {#_errors}
 
 ``` motoko
 import Principal "mo:base/Principal";
@@ -766,7 +766,7 @@ async {
 Similar to exceptions in other languages,  
 but *only* available in async contexts, e.g. shared functions; async blocks
 
-## Stable variables
+## Stable variables {#_stable_variables}
 
 If we upgrade the `Broadcast` actor, all current registrations are lost.  
 To preserve them, declare the state variable `r` as `stable`.
@@ -794,9 +794,9 @@ actor Broadcast {
 stable variables must have *stable* types (see manual)  
 `system` hooks can’t send messages
 
-# Type system
+# Type system {#_type_system}
 
-## Structural
+## Structural {#_structural}
 
 ``` motoko
 /*
@@ -823,7 +823,7 @@ but name existing types
 
 Despite their different names, `Stack` and `List` are equivalent types.
 
-## Subtyping (Variants)
+## Subtyping (Variants) {#_subtyping_variants}
 
 `WeekDay <: Day`
 
@@ -862,9 +862,9 @@ let employee : Employee =
 let t = toText(employee); // also works, since Employee <: Person
 ```
 
-# Fin
+# Fin {#_fin}
 
-## Not covered
+## Not covered {#_not_covered}
 
 -   Polymorphic functions with type bounds
 

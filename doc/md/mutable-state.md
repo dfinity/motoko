@@ -1,4 +1,4 @@
-# Mutable states
+# Mutable states {#_mutable_states}
 
 Each actor in Motoko may use, but may *never directly share*, internal mutable state.
 
@@ -8,11 +8,11 @@ In this chapter, we continue using minimal examples to show how to introduce (pr
 
 In [local objects and classes](local-objects-classes.md), we introduce the syntax for local objects, and a minimal `counter` actor with a single mutable variable. In the [following chapter](actors-async.md), we show an actor with the same behavior, exposing the counter variable indirectly behind an associated service interface for using it remotely.
 
-## Immutable versus mutable variables
+## Immutable versus mutable variables {#_immutable_versus_mutable_variables}
 
 The `var` syntax declares mutable variables in a declaration block:
 
-``` motoko
+``` {#init .motoko}
 let text  : Text = "abc";
 let num  : Nat = 30;
 
@@ -22,7 +22,7 @@ var text2 : Text = text;
 
 The declaration list above declares four variables. The first two variables (`text` and `num`) are lexically-scoped, *immutable variables*. The final two variables (`pair` and `text2`) are lexically-scoped, ***mutable*** variables.
 
-## Assignment to mutable memory
+## Assignment to mutable memory {#intro-assignment}
 
 Mutable variables permit assignment, and immutable variables do not.
 
@@ -38,7 +38,7 @@ pair
 
 Above, we update each variable based on applying a simple “update rule” to their current values (for example, we *update* `text2` by appending string constant `"xyz"` to its suffix). Likewise, an actor processes some calls by performing *updates* on its internal (private) mutable variables, using the same assignment syntax as above.
 
-### Special assignment operations
+### Special assignment operations {#_special_assignment_operations}
 
 The assignment operation `:=` is general, and works for all types.
 
@@ -65,7 +65,7 @@ As with `+=`, this combined form avoids repeating the assigned variable’s name
 
 The [full list of assignment operations](language-manual.md#syntax-ops-assignment) lists numerical, logical, and textual operations over appropriate types (number, boolean and text values, respectively).
 
-## Reading from mutable memory
+## Reading from mutable memory {#_reading_from_mutable_memory}
 
 When we updated each variable, we also first *read* from the mutable contents, with no special syntax.
 
@@ -73,7 +73,7 @@ This illustrates a subtle point: Each use of a mutable variable *looks like* the
 
 Below, we explore this point in detail.
 
-## Understanding `var`- versus `let`-bound variables
+## Understanding `var`- versus `let`-bound variables {#_understanding_var_versus_let_bound_variables}
 
 Consider the following two variable declarations, which look similar:
 
@@ -120,15 +120,15 @@ For this practical reason, and others, `var`-bound variables are a core aspect o
 
 Before discussing [mutable arrays](#mutable-arrays), we introduce immutable arrays, which share the same projection syntax, but do not permit mutable updates (assignments) after allocation.
 
-### Allocate an immutable array of constants
+### Allocate an immutable array of constants {#_allocate_an_immutable_array_of_constants}
 
-``` motoko
+``` {#array .motoko}
 let a : [Nat] = [1, 2, 3] ;
 ```
 
 The array `a` above holds three natural numbers, and has type `[Nat]`. In general, the type of an immutable array is `[_]`, using square brackets around the type of the array’s elements, which must share a single common type, in this case `Nat`.
 
-### Project from (read from) an array index
+### Project from (read from) an array index {#_project_from_read_from_an_array_index}
 
 We can project from (*read from*) an array using the usual bracket syntax (`[` and `]`) around the index we want to access:
 
@@ -138,17 +138,17 @@ let x : Nat = a[2] + a[0] ;
 
 Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap, as with an [assertion failure](basic-concepts.md#overview-traps).
 
-## The Array module
+## The Array module {#_the_array_module}
 
 The Motoko standard library provides basic operations for immutable and mutable arrays. It can be imported as follows,
 
-``` motoko
+``` {#import .motoko}
 import Array "mo:base/Array";
 ```
 
 In this section, we discuss some of the most frequently used array operations. For more information about using arrays, see the [Array](base-libraries/array.md) library descriptions.
 
-### Allocate an immutable array with varying content
+### Allocate an immutable array with varying content {#_allocate_an_immutable_array_with_varying_content}
 
 Above, we showed a limited way of creating immutable arrays.
 
@@ -179,7 +179,7 @@ Even though we "changed" `array1` into `array2` in a functional sense, notice th
 
 Next, we consider *mutable* arrays, which are fundamentally distinct.
 
-## Mutable arrays
+## Mutable arrays {#_mutable_arrays}
 
 Above, we introduced *immutable* arrays, which share the same projection syntax as mutable arrays, but do not permit mutable updates (assignments) after allocation. Unlike immutable arrays, each mutable array in Motoko introduces (private) mutable actor state.
 
@@ -187,7 +187,7 @@ Because Motoko’s type system enforces that remote actors do not share their mu
 
 Locally, the mutable arrays can not be used in places that expect immutable ones, since Motoko’s definition of [subtyping](language-manual.md#subtyping) for arrays (correctly) distinguishes those cases for the purposes of type soundness. Additionally, in terms of actor communication, immutable arrays are safe to send and share, while mutable arrays can not be shared or otherwise sent in messages. Unlike immutable arrays, mutable arrays have *non-shareable types*.
 
-### Allocate a mutable array of constants
+### Allocate a mutable array of constants {#_allocate_a_mutable_array_of_constants}
 
 To indicate allocation of *mutable* arrays (in contrast to the forms above, for immutable ones), the mutable array syntax `[var _]` uses the `var` keyword, in both the expression and type forms:
 
@@ -197,7 +197,7 @@ let a : [var Nat] = [var 1, 2, 3] ;
 
 As above, the array `a` above holds three natural numbers, but has type `[var Nat]`.
 
-### Allocate a mutable array with dynamic size
+### Allocate a mutable array with dynamic size {#_allocate_a_mutable_array_with_dynamic_size}
 
 To allocate mutable arrays of non-constant size, use the `Array_init` primitive, and supply an initial value:
 
@@ -214,7 +214,7 @@ let x : [var Nat] = Array.init<Nat>(size, 3);
 
 The variable `size` need not be constant here; the array will have `size` number of entries, each holding the initial value `3`.
 
-### Mutable updates
+### Mutable updates {#_mutable_updates}
 
 Mutable arrays, each with type form `[var _]`, permit mutable updates via assignment to an individual element, in this case element index `2` gets updated from holding `3` to instead hold value `42`:
 
@@ -224,7 +224,7 @@ a[2] := 42;
 a
 ```
 
-### Subtyping does not permit *mutable* to be used as *immutable*
+### Subtyping does not permit *mutable* to be used as *immutable* {#intro-array-subtyping}
 
 Subtyping in Motoko does not permit us to use a mutable array of type `[var Nat]` in places that expect an immutable one of type `[Nat]`.
 

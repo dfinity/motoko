@@ -1,4 +1,4 @@
-# Local objects and classes
+# Local objects and classes {#_local_objects_and_classes}
 
 In Motoko, an `object` may encapsulate local state (`var`-bound variables) by packaging this state with `public` methods that access and update it.
 
@@ -18,7 +18,7 @@ We illustrate this support via a running example, which continues in the next ch
 
 **Actor classes**. When an object class exposes a *[service](actors-async.adoc)* (asynchronous behavior), the corresponding Motoko construct is an [actor class](actors-async.adoc), which follows a similar (but distinct) design.
 
-## Example: The `counter` object
+## Example: The `counter` object {#_example_the_counter_object}
 
 Consider the following *object declaration* of the object value `counter`:
 
@@ -40,7 +40,7 @@ In this example, the developer exposes three *public* functions `inc`, `read` an
 
 In addition to these three functions, the object has one (private) mutable variable `count`, which holds the current count, initially zero.
 
-## Object types
+## Object types {#_object_types}
 
 This object `counter` has the following *object type*, written as a list of field-type pairs, enclosed in braces (`{` and `}`):
 
@@ -60,7 +60,7 @@ By default, all declarations in an object block are `private`, as is `count` her
 
 The inaccessibility of this field comes with a powerful benefit: By not exposing this implementation detail, the object has a *more general* type (fewer fields), and as a result, is interchangeable with objects that implement the same counter object type differently, without using such a field.
 
-## Example: The `byteCounter` object
+## Example: The `byteCounter` object {#_example_the_bytecounter_object}
 
 To illustrate the point just above, consider this variation of the `counter` declaration above, of `byteCounter`:
 
@@ -92,7 +92,7 @@ Neither implementation of a counter comes without some complexity, but in this c
 
 In general, a common type shared among two implementations (of an object or service) affords the potential for the internal implementation complexity to be factored away from the rest of the application that uses it. Here, the common type abstracts over the simple choice of a number’s representation. In general, the implementation choices would each be more complex, and more interesting.
 
-## Object subtyping
+## Object subtyping {#_object_subtyping}
 
 To illustrate the role and use of object subtyping in Motoko, consider implementing a simpler counter with a more general type (fewer public operations):
 
@@ -162,13 +162,13 @@ If a function expects to receive an object of the first type (`{ bump: () → Na
 
 However, if a function expects to receive an object of the last, least general type, the other two will *not* suffice, since they each lack the needed `write` operation, to which this function rightfully expects to have access.
 
-## Object classes
+## Object classes {#_object_classes}
 
 In Motoko, an object encapsulates state, and an object `class` is a package of two entities that share a common name.
 
 Consider this example `class` for counters that start at zero:
 
-``` motoko
+``` {#counter .motoko}
 class Counter() {
   var c = 0;
   public func inc() : Nat {
@@ -180,7 +180,7 @@ class Counter() {
 
 The value of this definition is that we can *construct* new counters, each starting with their own unique state, initially at zero:
 
-``` motoko
+``` {#cinit .motoko}
 let c1 = Counter();
 let c2 = Counter();
 ```
@@ -217,7 +217,7 @@ type Counter = { inc : () -> Nat };
 
 In fact, the `class` keyword syntax shown above is nothing but a shorthand for these two definitions for `Counter`: a factory function `Counter` that constructs objects, and the type `Counter` of these objects. Classes do not provide any new functionality beyond this convenience.
 
-### Class constructor
+### Class constructor {#_class_constructor}
 
 An object class defines a constructor function that may carry zero or more data arguments and zero or more type arguments.
 
@@ -227,7 +227,7 @@ The type arguments, if any, parameterize both the type and the constructor funct
 
 The data arguments, if any, parameterize (only) the constructor function for the class.
 
-#### Data arguments
+#### Data arguments {#_data_arguments}
 
 Suppose we want to initialize the counter with some non-zero value. We can supply that value as a data argument to the `class` constructor:
 
@@ -250,7 +250,7 @@ class Counter(init : Nat) {
 };
 ```
 
-#### Type arguments
+#### Type arguments {#_type_arguments}
 
 Suppose we want the counter to actually carry data that it counts (like a specialized `Buffer`).
 
@@ -274,7 +274,7 @@ class Counter<X>(init : Buffer.Buffer<X>) {
 };
 ```
 
-#### Type annotation
+#### Type annotation {#_type_annotation}
 
 Optionally, the class constructor may also carry a type annotation for its "return type" (the type of objects that it produces). When supplied, Motoko checks that this type annotation is compatible with the body of the class (an object definition). This check ensures that each object produced by the constructor meets the supplied specification.
 
@@ -292,13 +292,13 @@ class Counter<X>(init : Buffer.Buffer<X>) : Accum<X> {
 };
 ```
 
-#### Full syntax
+#### Full syntax {#_full_syntax}
 
 In full, classes are defined by the keyword `class`, followed by: - a name for the constructor and type being defined (for example, `Counter`) - optional type arguments (for example, omitted, or `<X>`, or `<X, Y>`) - an argument list (for example, `()`, or `(init : Nat)`, etc.) - an optional type annotation for the constructed objects (for example, omitted, or `Accum<X>`), - the class "body" is an object definition, parameterized by the type and value arguments (if any).
 
 The constituents of the body marked `public` contribute to the resulting objects' type and these types compared against the (optional) annotation, if given.
 
-##### Another example: `Bits`
+##### Another example: `Bits` {#_another_example_bits}
 
 As another example, let’s consider the task of walking the bits of a natural number (type `Nat`). For this example, we could define the following:
 
@@ -324,7 +324,7 @@ func Bits(n : Nat) : Bits = object {
 };
 ```
 
-## Structural subtyping
+## Structural subtyping {#_structural_subtyping}
 
 Object subtyping in Motoko uses *structural subtyping*, not *nominal subtyping*.
 

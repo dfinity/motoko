@@ -1,4 +1,4 @@
-# Why develop applications to run on the internet computer?
+# Why develop applications to run on the internet computer? {#_why_develop_applications_to_run_on_the_internet_computer}
 
 {proglang} provides:
 
@@ -12,13 +12,13 @@
 
 -   Support for features not-yet implemented that anticipate future extensions and improvement to WebAssembly.
 
-# Why a new language?
+# Why a new language? {#_why_a_new_language}
 
 The Internet Computer provides a blockchain network that can support programs written in different languages. The only requirement is that the program must support compilation to WebAssembly code. WebAssembly (commonly-abbreviated as Wasm) is a low-level computer instruction format for virtual machines. Because WebAssembly code is designed to provide portable low-level instructions that enable applications to be deployed on many platforms such as the web, it is a natural fit for deploying applications that are intended to run on the {IC}. However, most of the higher-level languages - like C, C, and Rust - that support compiling to WebAssembly are either too unsafe (for example, C or C) or too complex (for example, Rust) for developers who want to deliver secure applications without a long learning curve.
 
 To address the need for correctness without complexity, {company-id} has designed its own **{proglang}** programming language. **{proglang}** provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
 
-# Support for other languages
+# Support for other languages {#_support_for_other_languages}
 
 WebAssembly is language-agnostic. It does not require a high-level type system for language inter-operation. Although {proglang} is specifically designed to compile to WebAssembly and make it easy to write programs to run on the internet computer, it is just one of many languages you can eventually use to develop applications for the {IC} blockchain network.
 

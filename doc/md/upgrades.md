@@ -1,4 +1,4 @@
-# Stable variables and upgrade methods
+# Stable variables and upgrade methods {#_stable_variables_and_upgrade_methods}
 
 One key feature of the {IC} is its ability to persist canister smart contract state using WebAssembly memory and globals rather than a traditional database. This means that that the entire state of a canister is magically restored before, and saved after, each message, without explicit user instruction. This automatic and user-transparent preservation of state is called *orthogonal persistence*.
 
@@ -12,7 +12,7 @@ For applications written in {proglang}, the language provides high-level support
 
 Utilizing stable storage depends on you — as the application programmer — anticipating and indicating the data you want to retain after an upgrade. Depending on the application, the data you decide to persist might be some, all, or none of a given actor’s state.
 
-## Declaring stable variables
+## Declaring stable variables {#_declaring_stable_variables}
 
 In an actor, you can nominate a variable for stable storage (in {IC} stable memory) by using the `stable` keyword as a modifier in the variable’s declaration.
 
@@ -38,7 +38,7 @@ You can only use the `stable` or `flexible` modifier on `let` and `var` declarat
 
 </div>
 
-## Typing
+## Typing {#_typing}
 
 Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, the following type restrictions apply to stable state:
 
@@ -54,11 +54,11 @@ In general, object types are not stable because they can contain local functions
 
 </div>
 
-## How stable variables are upgraded
+## How stable variables are upgraded {#_how_stable_variables_are_upgraded}
 
 When you first compile and deploy a canister, all flexible and stable variables in the actor are initialized in sequence. When you deploy a canister using the `upgrade` mode, all stable variables that existed in the previous version of the actor are pre-initialized with their old values. After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
-## Preupgrade and postupgrade system methods
+## Preupgrade and postupgrade system methods {#_preupgrade_and_postupgrade_system_methods}
 
 Declaring a variable to be `stable` requires its type to be stable too. Since not all types are stable, some variables cannot be declared `stable`.
 
@@ -142,7 +142,7 @@ Note that the type of `entries`, being just an array of `Text` and `Nat` pairs, 
 
 In this example, the `preupgrade` system method simply writes the current `map` entries to `entries` before `entries` is saved to stable memory. The `postupgrade` system method resets `entries` to the empty array after `map` has been populated from `entries` to free space.
 
-## Stable type signatures
+## Stable type signatures {#_stable_type_signatures}
 
 The collection of stable variable declarations in an actor can be summarized in a *stable signature*.
 
@@ -186,7 +186,7 @@ The *stable-compatible* relation is quite conservative. In the future, it may be
 
 </div>
 
-## Upgrade safety
+## Upgrade safety {#_upgrade_safety}
 
 Before upgrading a deployed canister, you should ensure that the upgrade is safe and will not
 
@@ -208,13 +208,13 @@ You can check valid Candid subtyping between two services described in `.did` fi
 
 </div>
 
-## Metadata sections
+## Metadata sections {#_metadata_sections}
 
 The Motoko compiler embeds the Candid interface and stable signature of a canister as canister metadata, recorded in additional Wasm custom sections of a compiled binary.
 
 This metadata can be selectively exposed by the IC and used by tools such as `dfx` to verify upgrade compatibility.
 
-## Upgrading a deployed actor or canister smart contract
+## Upgrading a deployed actor or canister smart contract {#_upgrading_a_deployed_actor_or_canister_smart_contract}
 
 After you have deployed a {proglang} actor with the appropriate `stable` variables or `preupgrade` and `postupgrade` system methods, you can use the `dfx canister install` command with the `--mode=upgrade` option to upgrade an already deployed version. For information about upgrading a deployed canister, see [Upgrade a canister smart contract](../developers-guide/working-with-canisters.md#upgrade-canister).
 

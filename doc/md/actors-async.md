@@ -1,4 +1,4 @@
-# Actors and async data
+# Actors and async data {#_actors_and_async_data}
 
 The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of binary data encoding Candid values. A canister processes its messages one-at-a-time, preventing race conditions. A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
 
@@ -10,7 +10,7 @@ In Motoko, actors have dedicated syntax and types; messaging is handled by so ca
 
 To start, we consider the simplest stateful service: a `Counter` actor, the distributed version of our previous, local `counter` object.
 
-## Example: a Counter service
+## Example: a Counter service {#_example_a_counter_service}
 
 Consider the following actor declaration:
 
@@ -48,7 +48,7 @@ A value of type `async T` is a future. The producer of the future completes the 
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, Motoko allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
-``` motoko
+``` {#counter .motoko}
 actor Counter {
 
   var count = 0;
@@ -68,7 +68,7 @@ For now, the only place shared functions can be declared is in the body of an ac
 
 The type of a shared function is specified using a shared function type. For example, the value `inc` has type `shared () → async Nat` and could be supplied as a standalone callback to some other service (see [publish-subscribe](sharing.md) for an example).
 
-## Actor types
+## Actor types {#_actor_types}
 
 Just as objects have object types, actors have *actor types*. The `Counter` actor has the following type:
 
@@ -94,7 +94,7 @@ actor {
 
 Like object types, actor types support subtyping: an actor type is a subtype of a more general one that offers fewer functions with more general types.
 
-## Using `await` to consume async futures
+## Using `await` to consume async futures {#_using_await_to_consume_async_futures}
 
 The caller of a shared function typically receives a future, a value of type `async T` for some T.
 
@@ -140,7 +140,7 @@ For example, the implementation of `bump()` above is guaranteed to increment and
 
 does *not* have the same semantics and allows another client of the actor to interfere with its operation: each `await` suspends execution, allowing an interloper to change the state of the actor. By design, the explicit `await`s make the potential points of interference clear to the reader.
 
-## Traps and Commit Points
+## Traps and Commit Points {#_traps_and_commit_points}
 
 A trap is a non-recoverable runtime failure caused by, for example, division-by-zero, out-of-bounds array indexing, numeric overflow, cycle exhaustion or assertion failure.
 
@@ -195,7 +195,7 @@ Calling (shared) function `atomic()` will fail with an error, since the last sta
 
 Calling (shared) function `nonAtomic()` will fail with an error, since the last statement causes a trap. However, the trap leaves the variable `s` with value `3`, not `0`, and variable `pinged` with value `true`, not `false`. This is because each `await` commits its preceding side-effects, including message sends. Even though `f` is complete by the second await on `f`, this await also forces a commit of the state, suspends execution and allows for interleaved processing of other messages to this actor.
 
-## Query functions
+## Query functions {#_query_functions}
 
 In {IC} terminology, all three `Counter` functions are *update* messages that can alter the state of the canister when called. Effecting a state change requires agreement amongst the distributed replicas before the {IC} can commit the change and return a result. Reaching consensus is an expensive process with relatively high latency.
 
@@ -233,7 +233,7 @@ The `query` modifier is reflected in the type of a query function:
 
 As before, in `query` declarations and actor types the `shared` keyword can be omitted.
 
-## Messaging Restrictions
+## Messaging Restrictions {#_messaging_restrictions}
 
 The {IC} places restrictions on when and how canisters are allowed to communicate. These restrictions are enforced dynamically on the {IC} but prevented statically in Motoko, ruling out a class of dynamic execution errors. Two examples are:
 
@@ -255,7 +255,7 @@ It is only possible to `throw` or `try/catch` errors in an asynchronous context.
 
 These rules also mean that local functions cannot, in general, directly call shared functions or `await` futures. This limitation can sometimes be awkward: we hope to extend the type system to be more permissive in future.
 
-## Actor classes generalize actors
+## Actor classes generalize actors {#actor_classes}
 
 An actor *class* generalizes a single actor declaration to the declaration of family of actors satisfying the same interface. An actor class declares a type, naming the interface of its actors, and a function that constructs a fresh actor of that type each time it is supplied with an argument. An actor class thus serves as a factory for manufacturing actors. Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a future.
 
