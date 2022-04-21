@@ -6,7 +6,7 @@ In Motoko programs targeting the {IC}, each actor represents an {IC} canister, a
 
 Callees can accept all, some or none of the available cycles up to limit determined by their actor’s current balance. Any remaining cycles are refunded to the caller. If a call traps, all its accompanying cycles are automatically refunded to the caller, without loss.
 
-In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../base-libraries/ExperimentalCycles.xml) library in package `base`.
+In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../base-libraries/ExperimentalCycles.md) library in package `base`.
 
 <div class="note">
 
@@ -101,7 +101,7 @@ shared(msg) actor class PiggyBank(
 }
 ```
 
-The owner of the bank is identified with the (implicit) caller of constructor `PiggyBank()`, using the shared pattern, `shared(msg)`. Field `msg.caller` is a `Principal` and is stored in private variable `owner` (for future reference). See [Principals and caller identification](caller-id.xml) for more explanation of this syntax.
+The owner of the bank is identified with the (implicit) caller of constructor `PiggyBank()`, using the shared pattern, `shared(msg)`. Field `msg.caller` is a `Principal` and is stored in private variable `owner` (for future reference). See [Principals and caller identification](caller-id.md) for more explanation of this syntax.
 
 The piggy bank is initially empty, with zero current `savings`.
 

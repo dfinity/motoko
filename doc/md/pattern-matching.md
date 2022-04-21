@@ -64,7 +64,7 @@ enumerated types
 Other programming languages — for example C, but not Motoko — often use a keyword `enum` to introduce enumerations. These are impoverished relatives of Motoko’s variant types, as the alternatives are not allowed to carry any payload. Correspondingly, in those languages the `switch`-like statements lack the full power of pattern matching. Motoko provides the short-hand syntax (as in `type Weekday = { #mon; #tue; …​ }`) to define basic enumerations, for which no payloads are required.
 
 error handling  
-Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure (for example, an option value or a variant), pattern matching can be used to distinguish between the two as discussed in [Error handling](errors.xml).
+Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure (for example, an option value or a variant), pattern matching can be used to distinguish between the two as discussed in [Error handling](errors.md).
 
 irrefutable matching  
 Some types contain just a single value. We call these *singleton types*. Examples of these are the unit type (also known as an empty tuple) or tuples of singleton types. Variants with a single tag and no (or singleton-typed) payload are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible outcome: a successful match.

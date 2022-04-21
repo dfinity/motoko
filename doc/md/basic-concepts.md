@@ -38,13 +38,13 @@ The following topics are covered in the section:
 
 ## Motoko program syntax
 
-Each Motoko *program* is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see the [language quick reference guide](language-manual.xml) for precise program syntax).
+Each Motoko *program* is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see the [language quick reference guide](language-manual.md) for precise program syntax).
 
-For programs that we deploy on the Internet Computer, a valid program consists of an *actor expression*, introduced with specific syntax (keyword `actor`) that we discuss in [Actors and async data](actors-async.xml).
+For programs that we deploy on the Internet Computer, a valid program consists of an *actor expression*, introduced with specific syntax (keyword `actor`) that we discuss in [Actors and async data](actors-async.md).
 
-In preparing for that discussion, we discuss programs in this chapter and in [Mutable state](mutable-state.xml) that are not meant to be Internet Computer services. Rather, these tiny programs illustrate snippets of Motoko for writing those services, and each can (usually) be run on its own as a (non-service) Motoko program, possibly with some printed terminal output.
+In preparing for that discussion, we discuss programs in this chapter and in [Mutable state](mutable-state.md) that are not meant to be Internet Computer services. Rather, these tiny programs illustrate snippets of Motoko for writing those services, and each can (usually) be run on its own as a (non-service) Motoko program, possibly with some printed terminal output.
 
-The examples in this section illustrate basic principles using simple expressions, such as arithmetic. For an overview of the full expression syntax of Motoko, see the [Language quick reference](language-manual.xml).
+The examples in this section illustrate basic principles using simple expressions, such as arithmetic. For an overview of the full expression syntax of Motoko, see the [Language quick reference](language-manual.md).
 
 As a starting point, the following code snippet consists of two declarations — for the variables `x` and `y` — followed by an expression to form a single program:
 
@@ -208,27 +208,27 @@ By default, **integers** and **natural numbers** are *unbounded* and do not over
 
 For practical reasons, Motoko also includes *bounded* types for integers and natural numbers, distinct from the default versions. Each bounded variant has a fixed width (one of `8`, `16`, `32`, `64`) and each carries the potential for “overflow”. If and when this event occurs, it is an error and causes the [program to trap](#overview-traps). There are no unchecked, uncaught overflows in Motoko, except in well-defined situations, for explicitly *wrapping* operations (indicated by a `%` character in the operator). The language provides primitive built-ins to convert between these various number representations.
 
-The [language quick reference](language-manual.xml) contains a complete list of [primitive types](language-manual.xml#primitive-types).
+The [language quick reference](language-manual.md) contains a complete list of [primitive types](language-manual.md#primitive-types).
 
 ### Non-primitive values
 
 Building on the primitive values and types above, the language permits user-defined types, and each of the following non-primitive value forms and associated types:
 
--   [Tuples](language-manual.xml#exp-tuple), including the unit value (the "empty tuple")
+-   [Tuples](language-manual.md#exp-tuple), including the unit value (the "empty tuple")
 
--   [Arrays](language-manual.xml#exp-arrays), with both *immutable* and *mutable* variants.
+-   [Arrays](language-manual.md#exp-arrays), with both *immutable* and *mutable* variants.
 
--   [Objects](language-manual.xml#exp-object), with named, unordered fields and methods
+-   [Objects](language-manual.md#exp-object), with named, unordered fields and methods
 
--   [Variants](language-manual.xml#variant-types), with named constructors and optional payload values
+-   [Variants](language-manual.md#variant-types), with named constructors and optional payload values
 
--   [Function values](language-manual.xml#exp-func), including [shareable functions](sharing.xml).
+-   [Function values](language-manual.md#exp-func), including [shareable functions](sharing.md).
 
--   [Async values](language-manual.xml#exp-async), also known as *promises* or *futures*.
+-   [Async values](language-manual.md#exp-async), also known as *promises* or *futures*.
 
--   [Error values](language-manual.xml#type-Error) carry the payload of exceptions and system failures
+-   [Error values](language-manual.md#type-Error) carry the payload of exceptions and system failures
 
-We discuss the use of these forms in the succeeding chapters. For precise language definitions of primitive and non-primitive values, see the [language quick reference](language-manual.xml#exp-error).
+We discuss the use of these forms in the succeeding chapters. For precise language definitions of primitive and non-primitive values, see the [language quick reference](language-manual.md#exp-error).
 
 ### The **unit type** versus the `void` type
 
@@ -324,7 +324,7 @@ For various practical language engineering reasons, the design of Motoko strives
 
 Instead, whenever possible, the Motoko base library provides the types and operations that make the language feel complete. ***However**, this base library is still under development, and is still incomplete*.
 
-The [Motoko Base Library](base-libraries/stdlib-intro.xml) lists a *selection* of modules from the Motoko base library, focusing on core features used in the examples that are unlikely to change radically. However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
+The [Motoko Base Library](base-libraries/stdlib-intro.md) lists a *selection* of modules from the Motoko base library, focusing on core features used in the examples that are unlikely to change radically. However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
 
 To import from the base library, use the `import` keyword. Give a local module name to introduce, in this example `D` for “**D**ebug”, and a URL where the `import` declaration may locate the imported module:
 

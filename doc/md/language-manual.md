@@ -550,25 +550,25 @@ The category of a type determines the operators (unary, binary, relational and i
 
 | Identifier                                  | Category | Description                                                            |
 |---------------------------------------------|----------|------------------------------------------------------------------------|
-| [`Bool`](base-libraries/bool.xml)           | L        | Boolean values `true` and `false` and logical operators                |
-| [`Char`](base-libraries/char.xml)           | O        | Unicode characters                                                     |
-| [`Text`](base-libraries/text.xml)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
-| [`Float`](base-libraries/float.xml)         | A, O     | 64-bit floating point values                                           |
-| [`Int`](base-libraries/int.xml)             | A, O     | signed integer values with arithmetic (unbounded)                      |
-| [`Int8`](base-libraries/int8.xml)           | A, O     | signed 8-bit integer values with checked arithmetic                    |
-| [`Int16`](base-libraries/int16.xml)         | A, O     | signed 16-bit integer values with checked arithmetic                   |
-| [`Int32`](base-libraries/int32.xml)         | A, O     | signed 32-bit integer values with checked arithmetic                   |
-| [`Int64`](base-libraries/int64.xml)         | A, O     | signed 64-bit integer values with checked arithmetic                   |
-| [`Nat`](base-libraries/nat.xml)             | A, O     | non-negative integer values with arithmetic (unbounded)                |
-| [`Nat8`](base-libraries/nat8.xml)           | A, O     | non-negative 8-bit integer values with checked arithmetic              |
-| [`Nat16`](base-libraries/nat16.xml)         | A, O     | non-negative 16-bit integer values with checked arithmetic             |
-| [`Nat32`](base-libraries/nat32.xml)         | A, O     | non-negative 32-bit integer values with checked arithmetic             |
-| [`Nat64`](base-libraries/nat64.xml)         | A, O     | non-negative 64-bit integer values with checked arithmetic             |
-| [`Blob`](base-libraries/blob.xml)           | O        | binary blobs with iterators                                            |
-| [`Principal`](base-libraries/principal.xml) | O        | principals                                                             |
-| [`Error`](base-libraries/error.xml)         |          | (opaque) error values                                                  |
+| [`Bool`](base-libraries/bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
+| [`Char`](base-libraries/char.md)           | O        | Unicode characters                                                     |
+| [`Text`](base-libraries/text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
+| [`Float`](base-libraries/float.md)         | A, O     | 64-bit floating point values                                           |
+| [`Int`](base-libraries/int.md)             | A, O     | signed integer values with arithmetic (unbounded)                      |
+| [`Int8`](base-libraries/int8.md)           | A, O     | signed 8-bit integer values with checked arithmetic                    |
+| [`Int16`](base-libraries/int16.md)         | A, O     | signed 16-bit integer values with checked arithmetic                   |
+| [`Int32`](base-libraries/int32.md)         | A, O     | signed 32-bit integer values with checked arithmetic                   |
+| [`Int64`](base-libraries/int64.md)         | A, O     | signed 64-bit integer values with checked arithmetic                   |
+| [`Nat`](base-libraries/nat.md)             | A, O     | non-negative integer values with arithmetic (unbounded)                |
+| [`Nat8`](base-libraries/nat8.md)           | A, O     | non-negative 8-bit integer values with checked arithmetic              |
+| [`Nat16`](base-libraries/nat16.md)         | A, O     | non-negative 16-bit integer values with checked arithmetic             |
+| [`Nat32`](base-libraries/nat32.md)         | A, O     | non-negative 32-bit integer values with checked arithmetic             |
+| [`Nat64`](base-libraries/nat64.md)         | A, O     | non-negative 64-bit integer values with checked arithmetic             |
+| [`Blob`](base-libraries/blob.md)           | O        | binary blobs with iterators                                            |
+| [`Principal`](base-libraries/principal.md) | O        | principals                                                             |
+| [`Error`](base-libraries/error.md)         |          | (opaque) error values                                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related functions and values (see [Motoko Base Library](base-libraries/stdlib-intro.xml)). For example, the [`Text`](base-libraries/text.xml) library provides common functions on `Text` values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related functions and values (see [Motoko Base Library](base-libraries/stdlib-intro.md)). For example, the [`Text`](base-libraries/text.md) library provides common functions on `Text` values.
 
 ### Type `Bool`
 

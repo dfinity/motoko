@@ -66,7 +66,7 @@ actor Counter {
 
 For now, the only place shared functions can be declared is in the body of an actor or actor class. Despite this restriction, shared functions are still first-class values in Motoko and can be passed as arguments or results, and stored in data structures.
 
-The type of a shared function is specified using a shared function type. For example, the value `inc` has type `shared () → async Nat` and could be supplied as a standalone callback to some other service (see [publish-subscribe](sharing.xml) for an example).
+The type of a shared function is specified using a shared function type. For example, the value `inc` has type `shared () → async Nat` and could be supplied as a standalone callback to some other service (see [publish-subscribe](sharing.md) for an example).
 
 ## Actor types
 
@@ -296,6 +296,6 @@ The last two lines above *instantiate* the actor class twice. The first invocati
 
 <div class="note">
 
-For now, the Motoko compiler gives an error when compiling programs that do not consist of a single actor or actor class. Compiled programs may still, however, reference imported actor classes. For more information, see [Importing actor classes](modules-and-imports.xml#importing_actor_classes) and [Actor classes](actor-classes.xml#actor_classes).
+For now, the Motoko compiler gives an error when compiling programs that do not consist of a single actor or actor class. Compiled programs may still, however, reference imported actor classes. For more information, see [Importing actor classes](modules-and-imports.md#importing_actor_classes) and [Actor classes](actor-classes.md#actor_classes).
 
 </div>
