@@ -10,7 +10,7 @@ If they were shareable, that would mean either conceptually moving a mobile obje
 
 To compensate for this necessary limitation, `actor` objects *are shareable*, but always execute remotely. They communicate with shareable Motoko data only. Local objects interact in less restricted ways with themselves, and can pass any Motoko data to each other’s methods, including other objects. In most other ways, local objects (and classes) are non-shareable counterparts to actor objects (and classes).
 
-The [Mutable state](mutable-state.html) introduced declarations of private mutable state, in the form of `var`-bound variables and (mutable) array allocation. In this chapter, we use mutable state to implement simple objects, much like how we would implement simple objects in object-oriented programming.
+The [Mutable state](mutable-state.md) introduced declarations of private mutable state, in the form of `var`-bound variables and (mutable) array allocation. In this chapter, we use mutable state to implement simple objects, much like how we would implement simple objects in object-oriented programming.
 
 We illustrate this support via a running example, which continues in the next chapter. The following example illustrates a general evolution path for Motoko programs. Each *object*, if important enough, has the potential to be refactored into an Internet *service*, by refactoring this *(local) object* into an *actor object*.
 

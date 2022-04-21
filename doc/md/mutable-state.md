@@ -2,11 +2,11 @@
 
 Each actor in Motoko may use, but may *never directly share*, internal mutable state.
 
-Later, we discuss [sharing among actors](sharing.html), where actors send and receive *immutable* data, and also handles to each others external entry points, which serve as *shareable functions*. Unlike those cases of shareable data, a key Motoko design invariant is that ***mutable data** is kept internal (private) to the actor that allocates it, and **is never shared remotely***.
+Later, we discuss [sharing among actors](sharing.md), where actors send and receive *immutable* data, and also handles to each others external entry points, which serve as *shareable functions*. Unlike those cases of shareable data, a key Motoko design invariant is that ***mutable data** is kept internal (private) to the actor that allocates it, and **is never shared remotely***.
 
 In this chapter, we continue using minimal examples to show how to introduce (private) actor state, and use mutation operations to change it over time.
 
-In [local objects and classes](local-objects-classes.html), we introduce the syntax for local objects, and a minimal `counter` actor with a single mutable variable. In the [following chapter](actors-async.html), we show an actor with the same behavior, exposing the counter variable indirectly behind an associated service interface for using it remotely.
+In [local objects and classes](local-objects-classes.md), we introduce the syntax for local objects, and a minimal `counter` actor with a single mutable variable. In the [following chapter](actors-async.md), we show an actor with the same behavior, exposing the counter variable indirectly behind an associated service interface for using it remotely.
 
 ## Immutable versus mutable variables
 
@@ -63,7 +63,7 @@ text2
 
 As with `+=`, this combined form avoids repeating the assigned variable’s name on the right hand side of the (special) assignment operator `#=`.
 
-The [full list of assignment operations](language-manual.html#syntax-ops-assignment) lists numerical, logical, and textual operations over appropriate types (number, boolean and text values, respectively).
+The [full list of assignment operations](language-manual.md#syntax-ops-assignment) lists numerical, logical, and textual operations over appropriate types (number, boolean and text values, respectively).
 
 ## Reading from mutable memory
 
@@ -136,7 +136,7 @@ We can project from (*read from*) an array using the usual bracket syntax (`[` a
 let x : Nat = a[2] + a[0] ;
 ```
 
-Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap, as with an [assertion failure](basic-concepts.html#overview-traps).
+Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap, as with an [assertion failure](basic-concepts.md#overview-traps).
 
 ## The Array module
 
@@ -146,7 +146,7 @@ The Motoko standard library provides basic operations for immutable and mutable 
 import Array "mo:base/Array";
 ```
 
-In this section, we discuss some of the most frequently used array operations. For more information about using arrays, see the [Array](base-libraries/array.html) library descriptions.
+In this section, we discuss some of the most frequently used array operations. For more information about using arrays, see the [Array](base-libraries/array.md) library descriptions.
 
 ### Allocate an immutable array with varying content
 
@@ -185,7 +185,7 @@ Above, we introduced *immutable* arrays, which share the same projection syntax 
 
 Because Motoko’s type system enforces that remote actors do not share their mutable state, the Motoko type system introduces a firm distinction between mutable and immutable arrays that impacts typing, subtyping and the language abstractions for asynchronous communication.
 
-Locally, the mutable arrays can not be used in places that expect immutable ones, since Motoko’s definition of [subtyping](language-manual.html#subtyping) for arrays (correctly) distinguishes those cases for the purposes of type soundness. Additionally, in terms of actor communication, immutable arrays are safe to send and share, while mutable arrays can not be shared or otherwise sent in messages. Unlike immutable arrays, mutable arrays have *non-shareable types*.
+Locally, the mutable arrays can not be used in places that expect immutable ones, since Motoko’s definition of [subtyping](language-manual.md#subtyping) for arrays (correctly) distinguishes those cases for the purposes of type soundness. Additionally, in terms of actor communication, immutable arrays are safe to send and share, while mutable arrays can not be shared or otherwise sent in messages. Unlike immutable arrays, mutable arrays have *non-shareable types*.
 
 ### Allocate a mutable array of constants
 
@@ -228,4 +228,4 @@ a
 
 Subtyping in Motoko does not permit us to use a mutable array of type `[var Nat]` in places that expect an immutable one of type `[Nat]`.
 
-There are two reasons for this. First, as with all mutable state, mutable arrays require different rules for sound subtyping. In particular, mutable arrays have a less flexible subtyping definition, necessarily. Second, Motoko forbids uses of mutable arrays across [asynchronous communication](actors-async.html), where mutable state is never shared.
+There are two reasons for this. First, as with all mutable state, mutable arrays require different rules for sound subtyping. In particular, mutable arrays have a less flexible subtyping definition, necessarily. Second, Motoko forbids uses of mutable arrays across [asynchronous communication](actors-async.md), where mutable state is never shared.

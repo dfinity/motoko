@@ -76,4 +76,4 @@ Simple actor declarations do not let you access their installer. If you need acc
 
 </div>
 
-Principals support equality, ordering, and hashing, so you can efficiently store principals in containers, for example, to maintain an allow or deny list. More operations on principals are available in [Principal](../base-libraries/principal.html) base library.
+Principals support equality, ordering, and hashing, so you can efficiently store principals in containers, for example, to maintain an allow or deny list. More operations on principals are available in [Principal](../base-libraries/principal.md) base library.
