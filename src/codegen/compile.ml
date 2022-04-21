@@ -5873,7 +5873,7 @@ module BlobStream : Stream = struct
 
   let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
-  let absolute_offset env get_token =
+  let absolute_offset _env get_token =
     let filled_field = Int32.add Blob.len_field 8l in (* see invariant in `stream.rs` *)
     get_token ^^ Heap.load_field_unskewed filled_field
 
