@@ -5994,9 +5994,9 @@ module Stabilization = struct
 
     let finalize_buffer _ = G.nop (* everything is outputted already *)
 
-    (* Returns a 32-bit number that is the number of bytes that would
+    (* Returns a 32-bit unsigned int that is the number of bytes that would
        have been written to stable memory if flushed. The difference
-       of two such number will always be an exact byte distance. *)
+       of two such numbers will always be an exact byte distance. *)
     let absolute_offset env get_token =
       let start64_field = Int32.add ptr64_field 2l in (* see invariant in `stream.rs` *)
       absolute_offset env get_token ^^
