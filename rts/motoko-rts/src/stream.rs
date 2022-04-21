@@ -14,9 +14,9 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬───────┬─────────┬───────────┬────────┬──────────┐
-//      │ tag (blob) │ len │ ptr64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴───┴───┴────┴────┴───────────┴────────┴──────────┘
+//      ┌────────────┬─────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
+//      │ tag (blob) │ len │ ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+//      └────────────┴─────┴───┴───┴────┴────┴────┴────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
@@ -25,8 +25,8 @@
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
 // - `outputter` is the function to be called when `len - filled` approaches zero.
-// - INVARIANT: keep `BlobStream.{ptr64_field, filled_field}`, (from `compile.ml`) in
-//              sync with the layout!
+// - INVARIANT: keep `BlobStream.{ptr64_field, start64_field, filled_field}`,
+//              (from `compile.ml`) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
 use crate::mem_utils::memcpy_bytes;
@@ -37,7 +37,7 @@ use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(24);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
@@ -51,6 +51,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     }
     let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
     (*stream).ptr64 = 0;
+    (*stream).start64 = 0;
     (*stream).limit64 = 0;
     (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
@@ -107,6 +108,7 @@ impl Stream {
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
             (*self).ptr64 = start;
+            (*self).start64 = start;
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
         }

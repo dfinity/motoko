@@ -500,6 +500,7 @@ impl Blob {
 pub struct Stream {
     pub header: Blob,
     pub ptr64: u64,
+    pub start64: u64,
     pub limit64: u64,
     pub outputter: fn(*mut Self, *const u8, Bytes<u32>) -> (),
     pub filled: Bytes<u32>, // cache data follows ..
