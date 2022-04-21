@@ -61,6 +61,11 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({ i with it = Test (I32 I32Op.Eqz)} :: r')
     | ({it = Compare (I64 I64Op.Eq); _} as i) :: {it = Const {it = I64 0L; _}; _} :: l', r' ->
       assert (2l = 21l); go l' ({ i with it = Test (I64 I64Op.Eqz)} :: r')
+    (* Constants before `Eqz` reduce trivially *)
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Const {it = I32 n; _}; _} :: l', r' ->
+      assert (2l = 23l); go l' ({ i with it = Const {it = I32 (if n = 0l then 1l else 0l); at = i.at}} :: r')
+    | ({it = Test (I64 I64Op.Eqz); _} as i) :: {it = Const {it = I64 n; _}; _} :: l', r' ->
+      assert (2l = 22l); go l' ({ i with it = Const {it = I32 (if n = 0L then 1l else 0l); at = i.at}} :: r')
     (* eqz after eq/ne becomes ne/eq *)
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Eq); _} :: l', r' ->
       go l' ({ i with it = Compare (I32 I32Op.Ne)} :: r')
