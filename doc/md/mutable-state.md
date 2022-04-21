@@ -146,7 +146,7 @@ The Motoko standard library provides basic operations for immutable and mutable 
 import Array "mo:base/Array";
 ```
 
-In this section, we discuss some of the most frequently used array operations. For more information about using arrays, see the [Array](stdlib/array.xml) library descriptions.
+In this section, we discuss some of the most frequently used array operations. For more information about using arrays, see the [Array](base-libraries/array.xml) library descriptions.
 
 ### Allocate an immutable array with varying content
 
