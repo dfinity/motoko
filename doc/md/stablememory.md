@@ -6,7 +6,7 @@ The `ExperimentalStableMemory` library is experimental, subject to change and ma
 
 </div>
 
-Motoko stable variables, while convenient to use, require serialization and deserialization of all stable variables on upgrade (see [Stable variables and upgrade methods](upgrades.xml)). During an upgrade, the current values of stable variables are first saved to IC stable memory, then restored from stable memory after the new code is installed. Unfortunately, this mechanism does not scale to canisters that maintain *large* amounts of data in stable variables: there may not be enough cycle budget to store then restore all stable variables within an upgrade, resulting in failed upgrades.
+Motoko stable variables, while convenient to use, require serialization and deserialization of all stable variables on upgrade (see [Stable variables and upgrade methods](upgrades.html)). During an upgrade, the current values of stable variables are first saved to IC stable memory, then restored from stable memory after the new code is installed. Unfortunately, this mechanism does not scale to canisters that maintain *large* amounts of data in stable variables: there may not be enough cycle budget to store then restore all stable variables within an upgrade, resulting in failed upgrades.
 
 To avoid this upgrade hazard, actors can elect to use a lower-level `ExperimentalStableMemory` library. The library allows the programmer to incrementally allocate pages of (64-bit) IC stable memory and use those pages to incrementally read and write data in a user-defined binary format.
 
@@ -14,7 +14,7 @@ The Motoko runtime system ensures there is no interference between the abstracti
 
 ## The Library
 
-Support for stable memory is provided by the [ExperimentalStableMemory](../base-libraries/ExperimentalStableMemory.xml) library in package `base`.
+Support for stable memory is provided by the [ExperimentalStableMemory](../base-libraries/ExperimentalStableMemory.html) library in package `base`.
 
 The interface to the `ExperimentalStableMemory` library consists of functions for querying and growing the currently allocated set of stable memory pages, plus matching pairs of `load`, `store` operations for most of Motoko’s fixed-size scalar types.
 
