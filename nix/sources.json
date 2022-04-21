@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "9a0930048fc300cc4388eb39def77e38cae10d52",
-        "sha256": "1xpv5gy6fyzrfdbby7s38raqavha7jb49mgd7xc9xpxny4f8rz92",
+        "rev": "10c71a8b660b55d9e7b3dddb047c72f00536e849",
+        "sha256": "0g5ql9nlfljgxj3ra35ry2j2hm0d11k7gcxvyn6gvdn4crij80wl",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/9a0930048fc300cc4388eb39def77e38cae10d52.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/10c71a8b660b55d9e7b3dddb047c72f00536e849.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -116,10 +116,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "15b7a05f20aab51c4ffbefddb1b448e862dccb7d",
-        "sha256": "0admybxrjan9a04wq54c3zykpw81sc1z1nqclm74a7pgjdp7iqv1",
+        "rev": "e1f7540fc0a8b989fb8cf701dc4fd7fc76bcf168",
+        "sha256": "1b6p0rly0rywq60ks84ghc0n5zrqiafc2r64nlbnlkh9whmh5fmj",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/15b7a05f20aab51c4ffbefddb1b448e862dccb7d.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/e1f7540fc0a8b989fb8cf701dc4fd7fc76bcf168.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
