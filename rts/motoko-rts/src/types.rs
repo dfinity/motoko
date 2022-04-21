@@ -277,9 +277,9 @@ impl Value {
 
     /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
-    pub unsafe fn as_concat(self) -> *mut Concat {
+    pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.get_ptr() as *mut Concat
+        self.get_ptr() as *const Concat
     }
 
     /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
@@ -287,6 +287,14 @@ impl Value {
     pub unsafe fn as_blob(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         self.get_ptr() as *mut Blob
+    }
+
+    /// Get the pointer as `Stream`, which is a glorified `Blob`.
+    /// In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `Blob`.
+    pub unsafe fn as_stream(self) -> *mut Stream {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.get_ptr() as *mut Stream
     }
 
     /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
@@ -355,9 +363,9 @@ impl Obj {
         self as *mut Blob
     }
 
-    pub unsafe fn as_concat(self: *mut Self) -> *mut Concat {
+    pub unsafe fn as_concat(self: *mut Self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self as *mut Concat
+        self as *const Concat
     }
 }
 
@@ -488,6 +496,15 @@ impl Blob {
     }
 }
 
+#[repr(C)] // See the note at the beginning of this module
+pub struct Stream {
+    pub header: Blob,
+    pub ptr64: u64,
+    pub limit64: u64,
+    pub outputter: fn(*mut Self, *const u8, Bytes<u32>) -> (),
+    pub filled: Bytes<u32>, // cache data follows ..
+}
+
 /// A forwarding pointer placed by the GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
@@ -562,11 +579,11 @@ pub struct Concat {
 }
 
 impl Concat {
-    pub unsafe fn text1(self: *mut Self) -> Value {
+    pub unsafe fn text1(self: *const Self) -> Value {
         (*self).text1
     }
 
-    pub unsafe fn text2(self: *mut Self) -> Value {
+    pub unsafe fn text2(self: *const Self) -> Value {
         (*self).text2
     }
 }
