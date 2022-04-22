@@ -284,7 +284,12 @@ impl Value {
 
     /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
-    pub unsafe fn as_blob(self) -> *mut Blob {
+    pub unsafe fn as_blob(self) -> *const Blob {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.get_ptr() as *const Blob
+    }
+
+    pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         self.get_ptr() as *mut Blob
     }
@@ -460,12 +465,16 @@ impl Blob {
         self.add(1) as *mut u8 // skip closure header
     }
 
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+    pub unsafe fn payload_const(self: *const Self) -> *const u8 {
+        self.add(1) as *mut u8 // skip closure header
+    }
+
+    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
         (*self).len
     }
 
-    pub unsafe fn get(self: *mut Self, idx: u32) -> u8 {
-        *self.payload_addr().add(idx as usize)
+    pub unsafe fn get(self: *const Self, idx: u32) -> u8 {
+        *self.payload_const().add(idx as usize)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
