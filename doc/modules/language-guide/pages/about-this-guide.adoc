@@ -26,8 +26,8 @@ Although this guide is intended to help readers from different backgrounds under
 
 == Using this guide
 
-To provide a framework for learning {proglang}, you might want to start by reviewing <<Engineering values and goals>>.
-The <<Engineering values and goals>> describe the core design considerations for the development and evolution of the {proglang} programming language.
+To provide a framework for learning {proglang}, you might want to start by reviewing <<engineering-values-and-goals>>.
+The <<engineering-values-and-goals>> describe the core design considerations for the development and evolution of the {proglang} programming language.
 
 With those considerations in mind, you can start to explore fundamental concepts, including the role of types and type annotations, in simple code examples and small programs.
 
@@ -48,6 +48,7 @@ The following conventions are used in this guide:
 - The WARNING style is used to indicate where content is outdated or potentially inaccurate.
 - The NOTE style is used to indicate content that describes a feature that is not yet supported but is planned for a future release.
 
+[#engineering-values-and-goals]
 == Engineering values and goals
 
 The engineering effort behind the design and implementation of {proglang} is driven by a core set of values and goals.
@@ -87,11 +88,13 @@ For background information on various topics relevant to the design, use, or dep
 
 [[wasm]]
 === WebAssembly
+
 - https://webassembly.org/[WebAssembly home page].
 - https://www.youtube.com/watch?v=fvkIQfRZ-Y0[WebAssembly overview video (youtube)].
 
 [[modern-types]]
 === Modern type systems
+
  - link:++http://www.cs.cmu.edu/~rwh/pfpl/++[Practical Foundations for Programming Languages]
    by Robert Harper. Cambridge University Press, 2016.
  - link:++https://www.cis.upenn.edu/~bcpierce/tapl/++[Types and Programming Languages]

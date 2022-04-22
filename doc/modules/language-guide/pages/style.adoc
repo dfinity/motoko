@@ -115,7 +115,7 @@ func id<X>(x : X) : X { x };
 id<Nat>(5);
 ....
 
-* Put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see <<Parentheses>>) or a record used as a named parameter list (see <<Picking types>>).
+* Put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see <<parentheses>>) or a record used as a named parameter list (see <<picking-types>>).
 +
 [source, motoko]
 ....
@@ -460,7 +460,7 @@ switch (opt) {
 };
 ....
 
-[[parens]]
+[#parentheses]
 === Parentheses
 
 * {proglang} supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already (for example, a tuple, object, or array) or is a simple constant or identifier.
@@ -534,6 +534,7 @@ let mask : Nat32 = 0xff00_ff0f;
 
 == Naming
 
+[#style]
 === Style
 
 * Use `UpperCamelCase` for type names (including classes or type parameters), module names, and actor names.
@@ -768,7 +769,7 @@ let mask : Nat32 = 0xfc03_ff00;
 let offset : Nat32 = size + 1;
 ....
 
-[[picking-types]]
+[#picking-types]
 === Picking types
 
 * Use `Nat` for any integral value that cannot be negative.

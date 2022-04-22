@@ -14,7 +14,7 @@ Although this guide is intended to help readers from different backgrounds under
 
 ## Using this guide
 
-To provide a framework for learning Motoko, you might want to start by reviewing [Engineering values and goals](#_engineering_values_and_goals). The [Engineering values and goals](#_engineering_values_and_goals) describe the core design considerations for the development and evolution of the Motoko programming language.
+To provide a framework for learning Motoko, you might want to start by reviewing [Engineering values and goals](#engineering-values-and-goals). The [Engineering values and goals](#engineering-values-and-goals) describe the core design considerations for the development and evolution of the Motoko programming language.
 
 With those considerations in mind, you can start to explore fundamental concepts, including the role of types and type annotations, in simple code examples and small programs.
 

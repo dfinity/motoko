@@ -103,7 +103,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     id<Nat>(5);
     ```
 
--   Put a space between a function and its argument if it is *not* a tuple or parenthesized expression (see [Parentheses](#parens)) or a record used as a named parameter list (see [Picking types](#picking-types)).
+-   Put a space between a function and its argument if it is *not* a tuple or parenthesized expression (see [Parentheses](#parentheses)) or a record used as a named parameter list (see [Picking types](#picking-types)).
 
     ``` motoko
     sin 0.0;
@@ -595,7 +595,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: In Motoko, functions are first-class values, so functions and other value identifiers share the same name space.
 
-    Identifiers with a leading `_` should *not* be used for private state, since that indicates an unused name (see [???](#style)).
+    Identifiers with a leading `_` should *not* be used for private state, since that indicates an unused name (see [Style](#style)).
 
 -   Use longer, more descriptive names for global or public identifier or ones with large scope, and short names for local ones with small scope.
 
