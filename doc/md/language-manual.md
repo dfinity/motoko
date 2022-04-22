@@ -588,7 +588,7 @@ The type `Text` of categories T and O (Text, Ordered) represents sequences of Un
 
 The type `Float` represents 64-bit floating point values of categories A (Arithmetic) and O (Ordered).
 
-The semantics of `Float` and its operations is in accordance with standard [IEEE 754-2019](https://ieeexplore.ieee.org/document/8766229) (See [\[IEEE754\]](#IEEE754)).
+The semantics of `Float` and its operations is in accordance with standard [IEEE 754-2019](https://ieeexplore.ieee.org/document/8766229) (See [References](#references)).
 
 Common functions and values are defined in base library "base/Float".
 
@@ -671,7 +671,7 @@ type ErrorCode = {
 
 A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.message(e) = t`.
 
-`Error` values can be thrown and caught within an `async` expression or `shared` function (only). See [Throw](#exp-throw) and [Try](#exp-try).
+`Error` values can be thrown and caught within an `async` expression or `shared` function (only). See [Throw](#throw) and [Try](#try).
 
 Errors with codes other than `#canister_reject` (i.e. *system* errors) may be caught and thrown, but not user-constructed.
 
@@ -683,7 +683,7 @@ Exiting an async block or shared function with a non-`#canister-reject` system e
 
 ### Constructed types
 
-`<path> <typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type **arguments**. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#wf-types)).
+`<path> <typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type **arguments**. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
 
 Though typically a type identifier, more generally, `<path>` may be a `.`-separated sequence of actor, object or module identifiers ending in an identifier accessing a type component of a value (for example, `Acme.Collections.List`).
 
@@ -977,7 +977,7 @@ The (current) value of such a field is preserved upon *upgrade*, whereas the val
 
 Below, we give a detailed account of the semantics of Motoko programs.
 
-For each [expression form](#syntax-expressions) and each [declaration form](#syntax-decls), we summarize its semantics, both in static terms (based on typing) and dynamic terms (based on program evaluation).
+For each [expression form](#expression-syntax) and each [declaration form](#declaration-syntax), we summarize its semantics, both in static terms (based on typing) and dynamic terms (based on program evaluation).
 
 ### Programs
 
@@ -1232,7 +1232,7 @@ The declaration `var <id>` has type `()` provided:
 
 -   If the annotation `(:<typ>)?` is present, then `T` == `<typ>`.
 
-Within the scope of the declaration, `<id>` has type `var T` (see [Assignment](#exp-assn)).
+Within the scope of the declaration, `<id>` has type `var T` (see [Assignment](#assignment)).
 
 Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. Otherwise, the `r` is some value `v` that determines the initial value of mutable variable `<id>`. The result of the declaration is `()` and `<id>` is bound to a fresh location that contains `v`.
 
@@ -1345,7 +1345,7 @@ Let `T = <sort> { [var0] id0 : T0, …​ , [varn] idn : T0 }` denote the type o
 
     -   for all `i in 0 <= i <= n`, `[vari] Ti == T(idi)`.
 
-3.  If `<sort>` is `module`, then the declarations in `<dec>;*` must be *static* (see [Static declarations](#decl-static)).
+3.  If `<sort>` is `module`, then the declarations in `<dec>;*` must be *static* (see [Static declarations](#static-declarations)).
 
 Note that requirement 1. imposes further constraints on the field types of `T`. In particular, if the sort is `actor` then:
 
@@ -1353,7 +1353,7 @@ Note that requirement 1. imposes further constraints on the field types of `T`. 
 
 Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
 
-Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
+Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
@@ -1566,7 +1566,7 @@ The variant injection `# <id>` is just syntactic sugar for `# <id> ()`.
 
 The variant injection\`# \<id> \<exp>\` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be a value `v` and the result of the injection is the tagged value `# <id> v`.
 
-The tag and contents of a variant value can be tested and accessed using a [variant pattern](#pat-variant).
+The tag and contents of a variant value can be tested and accessed using a [variant pattern](#variant-pattern).
 
 ### Objects
 
@@ -1617,7 +1617,7 @@ The projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap
 
 <div class="note">
 
-the `chars`, `vals`, `keys` and `vals` members produce stateful **iterator objects** than can be consumed by `for` expressions (see [For](#exp-for)).
+the `chars`, `vals`, `keys` and `vals` members produce stateful **iterator objects** than can be consumed by `for` expressions (see [For](#for)).
 
 </div>
 
@@ -1709,7 +1709,7 @@ Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <:
 
 <div class="note">
 
-The exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see [Functions](#exp-func)).
+The exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see [Functions](#functions)).
 
 </div>
 
@@ -1753,7 +1753,7 @@ The bindings of identifiers declared in `{ dec;* }` are local to the block.
 
 The type system ensures that a value identifier cannot be evaluated before its declaration has been evaluated, precluding run-time errors at the cost of rejection some well-behaved programs.
 
-Identifiers whose types cannot be inferred from their declaration, but are used in a forward reference, may require an additional type annotation (see [Annotated pattern](#pat-anno)) to satisfy the type checker.
+Identifiers whose types cannot be inferred from their declaration, but are used in a forward reference, may require an additional type annotation (see [Annotated pattern](#annotated-pattern)) to satisfy the type checker.
 
 The block expression `{ <dec>;* }` evaluates each declaration in `<dec>;*` in sequence (program order). The first declaration in `<dec>;*` that results in a trap causes the block to result in `trap`, without evaluating subsequent declarations.
 
@@ -1773,7 +1773,7 @@ The expression `do ? <bock>` has type `?T` provided `<block>` has type `T`.
 
 The `do ? <block>` expression evaluates `<block>` and returns its result as an optional value.
 
-Within `<block>` the null break expression `<exp1> !` exits the nearest enclosing `do ?` block with value `null` whenever `<exp1>` has value `null`, or continues evaluation with the contents of `<exp1>`'s option value. (See [Null break](#exp-null-break).)
+Within `<block>` the null break expression `<exp1> !` exits the nearest enclosing `do ?` block with value `null` whenever `<exp1>` has value `null`, or continues evaluation with the contents of `<exp1>`'s option value. (See [Null break](#null-break).)
 
 Option blocks nest with the target of a null break determined by the nearest enclosing option block.
 
@@ -1783,7 +1783,7 @@ The null break expression `<exp> !` invokes scoped handling of null values and r
 
 It has type `T` provided:
 
--   the expression appears in the body, `<block>`, of an enclosing option block of the form `do ? <block>` (see [Option block](#exp-do-opt)).
+-   the expression appears in the body, `<block>`, of an enclosing option block of the form `do ? <block>` (see [Option block](#do-opt)).
 
 -   `<exp>` has option type `? T`.
 
@@ -1892,7 +1892,7 @@ In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon
 
 <div class="note">
 
-Although general purpose, `for` loops are commonly used to consume iterators produced by [Special member access](#exp-dot) to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
+Although general purpose, `for` loops are commonly used to consume iterators produced by [Special member access](#special-member-access) to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
 
 </div>
 
@@ -1934,7 +1934,7 @@ The evaluation of `break <id> <exp>` evaluates exp to some result `r`. If `r` is
 
 ### Continue
 
-The expression `continue <id>` is equivalent to `break <id_continue>`, where `<id_continue>` is implicitly declared around the bodies of `<id>`-labelled looping constructs (see [Labeled loops](#exp-labeled-loops)).
+The expression `continue <id>` is equivalent to `break <id_continue>`, where `<id_continue>` is implicitly declared around the bodies of `<id>`-labelled looping constructs (see [Labeled loops](#labeled-loops)).
 
 ### Return
 
@@ -2012,7 +2012,7 @@ Because the `Error` type is opaque, the pattern match cannot fail (typing ensure
 
 </div>
 
-See [Error type](#type-Error).
+See [Error type](#error-type).
 
 ### Assert
 
@@ -2107,3 +2107,5 @@ Whenever `<exp>` has type `T` and `T <: U` (`T` subtypes `U`) then by virtue of 
 In general, this means that an expression of a more specific type may appear wherever an expression of a more general type is expected, provided the specific and general types are related by subtyping. This static change of type has no runtime cost.
 
 ## References
+
+-   *IEEE Standard for Floating-Point Arithmetic*, in IEEE Std 754-2019 (Revision of IEEE 754-2008), vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
