@@ -213,7 +213,7 @@ impl Value {
     /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
     /// cycle.
     pub fn get(&self) -> PtrOrScalar {
-        if self.0 & 0b1 == 0b1 {
+        if self.0 & 0b1 != 0 {
             PtrOrScalar::Ptr(unskew(self.0 as usize))
         } else {
             PtrOrScalar::Scalar(self.0 >> 1)
@@ -312,7 +312,7 @@ impl Value {
 
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
 pub fn is_ptr(value: u32) -> bool {
-    value & 0b1 == 0b1
+    value & 0b1 != 0
 }
 
 pub const fn skew(ptr: usize) -> usize {
