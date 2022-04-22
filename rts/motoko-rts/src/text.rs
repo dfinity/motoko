@@ -84,7 +84,11 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
 
         let r = alloc_text_blob(mem, new_len);
         let r_payload: *mut u8 = r.as_blob_mut().payload_addr();
-        memcpy_bytes(r_payload as usize, blob1.payload_const() as usize, blob1_len);
+        memcpy_bytes(
+            r_payload as usize,
+            blob1.payload_const() as usize,
+            blob1_len,
+        );
         memcpy_bytes(
             r_payload.add(blob1_len.as_usize()) as usize,
             blob2.payload_const() as usize,
