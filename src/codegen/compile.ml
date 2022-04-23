@@ -7922,22 +7922,24 @@ let compile_load_field env typ name =
 
 
 (* compile_lexp is used for expressions on the left of an assignment operator.
-   Produces some code (with side effect), an expected stack rep, and some pure code *)
+   Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
-  (fun (code, fill_code) -> (G.with_region lexp.at code, G.with_region lexp.at fill_code)) @@
+  (fun (code, sr, fill_code) -> (G.with_region lexp.at code, sr, G.with_region lexp.at fill_code)) @@
   match lexp.it with
   | VarLE var ->
-     G.nop,
-     Var.set_val_vanilla env ae var
+     let sr, code = Var.set_val env ae var in
+     G.nop, sr, code
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      Arr.idx_bigint env,
+     SR.Vanilla,
      store_ptr
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n,
+     SR.Vanilla,
      store_ptr
 
 and compile_prim_invocation (env : E.t) ae p es at =
@@ -8800,9 +8802,9 @@ and compile_exp (env : E.t) ae exp =
     Var.get_val env ae var
   | AssignE (e1,e2) ->
     SR.unit,
-    let (prepare_code, store_code) = compile_lexp env ae e1 in
+    let (prepare_code, sr, store_code) = compile_lexp env ae e1 in
     prepare_code ^^
-    compile_exp_vanilla env ae e2 ^^
+    compile_exp_as env ae sr e2 ^^
     store_code
   | LitE l ->
     compile_lit env l
@@ -9173,7 +9175,8 @@ and compile_unboxed_pat env ae how pat =
     (* Variable patterns *)
     | VarP name ->
       let sr, code = Var.set_val env ae1 name in
-      Some sr, code
+      Some sr,
+      code
     (* The general case: Create a single value, match that. *)
     | _ ->
       Some SR.Vanilla,
@@ -9215,7 +9218,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
 
       ( pre_ae1,
         alloc_code,
-        (fun ae -> compile_exp_vanilla env ae e ^^ Var.set_val_vanilla env ae name),
+        (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
         unmodified
       )
 
