@@ -6595,14 +6595,15 @@ module Var = struct
   *)
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
     match VarEnv.lookup_var ae0 var with
-    | Some (Local (SR.Vanilla, i)) ->
-      ( G.i (LocalGet (nr i))
+    | Some (Local (sr, i)) ->
+      ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
       , fun new_env ae1 ->
+        (* we use SR.Vanilla in the restored environment. We could use sr;
+           like for parameters hard to predict what’s better *)
         let ae2, j = VarEnv.add_direct_local new_env ae1 var SR.Vanilla in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
-    | Some (Local (_, _)) -> fatal "capture_old_env: Unknown SR"
     | Some (HeapInd i) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
