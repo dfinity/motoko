@@ -41,7 +41,6 @@ The declaration list above declares four variables.
 The first two variables (`text` and `num`) are lexically-scoped, _immutable variables_.
 The final two variables (`pair` and `text2`) are lexically-scoped, *_mutable_* variables.
 
-[[intro-assignment]]
 == Assignment to mutable memory
 
 Mutable variables permit assignment, and immutable variables do not.
@@ -170,7 +169,6 @@ will be easier to read than those of variable `y`.
 For this practical reason, and others, `var`-bound variables are a
 core aspect of the language design.
 
-[[immutable-arrays]]
 == Immutable arrays
 
 Before discussing <<mutable-arrays, mutable arrays>>, we introduce immutable arrays, which share the same projection syntax, but do not permit mutable updates (assignments) after allocation.
@@ -255,7 +253,6 @@ Even though we "changed" `array1` into `array2` in a functional sense, notice th
 Next, we consider _mutable_ arrays, which are fundamentally distinct.
 
 == Mutable arrays
-[[mutable-arrays]]
 
 Above, we introduced _immutable_ arrays, which share the same projection syntax as mutable arrays, but do not permit mutable updates (assignments) after allocation.  Unlike immutable arrays, each mutable array in {proglang} introduces (private) mutable actor state.
 
@@ -307,7 +304,6 @@ a[2] := 42;
 a
 ....
 
-[[intro-array-subtyping]]
 === Subtyping does not permit _mutable_ to be used as _immutable_
 
 Subtyping in {proglang} does not permit us to use a mutable array of type `[var Nat]` in places that expect an immutable one of type `[Nat]`.

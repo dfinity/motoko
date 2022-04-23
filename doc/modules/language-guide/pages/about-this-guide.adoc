@@ -86,13 +86,11 @@ For information about using {proglang} with the {sdk-short-name}, see the link:.
 
 For background information on various topics relevant to the design, use, or deployment of {proglang} services, or the language's design itself, consider the following resources as a starting point:
 
-[[wasm]]
 === WebAssembly
 
 - https://webassembly.org/[WebAssembly home page].
 - https://www.youtube.com/watch?v=fvkIQfRZ-Y0[WebAssembly overview video (youtube)].
 
-[[modern-types]]
 === Modern type systems
 
  - link:++http://www.cs.cmu.edu/~rwh/pfpl/++[Practical Foundations for Programming Languages]

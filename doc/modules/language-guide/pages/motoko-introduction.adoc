@@ -23,7 +23,6 @@ Consequently, entire classes of common programming pitfalls that are common in o
 
 To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
-[[pitch-actors]]
 == Each canister smart contract as an _actor_
 
 {proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
@@ -35,7 +34,6 @@ An actor's messages are processed in sequence, so state modifications never admi
 
 The Internet Computer ensures that each message that is sent receives a response. The response is either success with some value, or an error. An error can be the explicit rejection of the message by the receiving canister, a trap due to an illegal instruction such as division by zero, or a system error due to distribution or resource constraints. For example, a system error might be the transient or permanent unavailability of the receiver (either because the receiving actor is oversubscribed or has been deleted).
 
-[[pitch-async-actors]]
 === Asynchronous actors
 
 Like other _modern_ programming languages, {proglang} permits an ergonomic syntax for _asynchronous_ communication among components.
@@ -77,7 +75,6 @@ Our program instead eschews that more cumbersome programming style for this more
 This simpler, stylized programming form has become increasingly popular for expressing practical systems that interact with an _external environment_, as most modern software does today.
 However, it requires special compiler and type-system support, as we discuss in more detail below.
 
-[[pitch-async-behavior]]
 === Support for _asynchronous_ behavior
 
 In an _asynchronous_ computing setting, a program and its running environment are permitted to perform _internal computations_ that occur _concurrently_ with one another.
@@ -89,7 +86,6 @@ Symmetrically, the environment's requests of the program do not (necessarily) re
 
 We do not show an example of this "`notify`" pattern above, since it uses callbacks (and _higher-order_ functions and control flow) and is thus more complex.
 
-[[pitch-async]]
 === Syntactic forms `async` and `await`
 
 To address the need for clarity and simplicity, {proglang} adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a _structured_ language for describing potentially-complex asynchronous dependency graphs.
@@ -108,7 +104,6 @@ to obtain the results from two calls to services.
 When the developer uses these keywords, the compiler transforms the program as necessary, often doing complex transformations to the program's control- and data-flow that would be tedious to perform by hand in a purely synchronous language.
 Meanwhile, the type system of {proglang} enforces certain correct usage patterns for these constructs, including that types flowing between consumers and producers always agree, and that the types of data sent among services are permitted to flow there, and do not (for example) contain link:mutable-state{outfilesuffix}[private mutable state].
 
-[[pitch-types]]
 === Types are static
 
 Like other modern programming languages, {proglang} permits each variable to carry the value of a function, object, or a primitive datum (for example, a string, word, or integer).
