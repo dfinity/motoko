@@ -7198,7 +7198,7 @@ module AllocHow = struct
   let stackrep_of_type t =
     let open Type in
     match normalize t with
-    | Prim Nat32 -> SR.UnboxedWord32
+    | Prim (Nat32 | Int32) -> SR.UnboxedWord32
     | _ -> SR.Vanilla
 
   let dec lvl how_outer (seen, how0) dec =
