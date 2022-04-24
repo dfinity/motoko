@@ -189,6 +189,16 @@ module SR = struct
     | Const (p1, _), Const (p2, _) -> p1 == p2
     | _ -> t1 = t2
 
+  let to_var_type : t -> value_type = function
+    | Vanilla -> I32Type
+    | UnboxedBool -> I32Type
+    | UnboxedWord64 -> I64Type
+    | UnboxedWord32 -> I32Type
+    | UnboxedFloat64 -> F64Type
+    | UnboxedTuple n -> fatal "to_var_type: UnboxedTuple"
+    | Const _ -> fatal "to_var_type: Const"
+    | Unreachable -> fatal "to_var_type: Unreachable"
+
 end (* SR *)
 
 (*
@@ -6279,6 +6289,8 @@ module StackRep = struct
     | Func (Shared _, _, _, _, _) -> Vanilla
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
+  (* The env looks unused, but will be needed once we can use multi-value, to register
+     the complex types in the environment *)
   let to_block_type env = function
     | Vanilla -> [I32Type]
     | UnboxedBool -> [I32Type]
@@ -6497,7 +6509,7 @@ module VarEnv = struct
       { ae with vars = NameEnv.add name (Local (sr, i)) ae.vars }
 
   let add_direct_local env (ae : t) name sr =
-      let i = E.add_anon_local env I32Type in
+      let i = E.add_anon_local env (SR.to_var_type sr) in
       E.add_local_name env i name;
       (add_local_local env ae name sr i, i)
 
@@ -7199,6 +7211,8 @@ module AllocHow = struct
     let open Type in
     match normalize t with
     | Prim (Nat32 | Int32) -> SR.UnboxedWord32
+    | Prim (Nat64 | Int64) -> SR.UnboxedWord64
+    | Prim Float -> SR.UnboxedFloat64
     | _ -> SR.Vanilla
 
   let dec lvl how_outer (seen, how0) dec =
