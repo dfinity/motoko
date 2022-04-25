@@ -69,9 +69,13 @@ and exp' at note = function
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
   | S.ToCandidE (ot, es) ->
-    begin match !ot with
-    | T.Tup ts1 ->
-      I.PrimE (I.SerializePrim [T.Tup ts1], [tupE (exps es)])
+    begin match T.normalize (!ot) with
+    | T.Opt t1 ->
+      begin match T.normalize t1 with
+        | T.Tup ts1 ->
+          I.PrimE (I.SerializePrim [T.Tup ts1], [tupE (exps es)])
+        | _ -> assert false
+      end
     | _ -> assert false
     end
   | S.FromCandidE (ot, e) ->
