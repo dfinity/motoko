@@ -207,7 +207,7 @@ unsafe extern "C" fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
-        crate::rts_trap(msg.as_blob().payload_addr(), msg.as_blob().len());
+        crate::rts_trap(msg.as_blob().payload_const(), msg.as_blob().len());
     }
 
     mp_get_u32(mp_int)
