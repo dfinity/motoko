@@ -340,18 +340,24 @@ and call_system_func_opt name es obj_typ =
                {T.lab = "msg"; T.typ = typ_of_var msg; T.depr = None}])
            in
            let record = fresh_var "record" record_typ in
-           (* TBD
-           let ides = List.map (fun tf ->
-             match tf.lab with
-               "caller" -> (fresh_var "caller" T.principal, primE (ICCallerPrim []))
-               "arg" -> (fresh_var "arg" T.blob, blobE "") (* TBC *)
-               "message" -> (fresh_var "message" (T.Variant ), lookE (unitE()))a
-            *)
+           let msg_variant =
+             switch_textE (primE Ir.ICMethodNamePrim [])
+               (List.map (fun tf ->
+                  (tf.T.lab,
+                   match tf.T.typ with
+                   | T.Func(T.Shared _, _,  [_], ts1, ts2) ->
+                     let unit = fresh_var "unit" T.unit in
+                     tagE tf.T.lab (unit --> (primE (Ir.DeserializePrim ts1) [varE arg]))))
+               tfs)
+             msg_typ
+           in
            blockE
              [ letD record (
-                 blockE [ letD caller (primE Ir.ICCallerPrim []);
-                          letD arg (primE Ir.ICMethodNamePrim []);
-                          letD msg (loopE (unitE())) ] (* TBC *)
+                 blockE [
+                     letD caller (primE Ir.ICCallerPrim []);
+                     letD arg (primE Ir.ICArgDataPrim []);
+                     letD msg msg_variant
+                   ]
                    (newObjE T.Object
                       [{it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
                        {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };

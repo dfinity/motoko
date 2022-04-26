@@ -372,6 +372,27 @@ let switch_variantE exp1 cases typ1 =
     }
   }
 
+let switch_textE exp1 cases typ1 =
+  { it =
+      SwitchE (exp1,
+        List.map (fun (t, e) ->
+          { it = {pat = {it = LitP (TextLit t);
+                         at = no_region;
+                         note = typ exp1};
+                  exp = e};
+            at = no_region;
+            note = ()
+          })
+          cases
+      );
+    at = no_region;
+    note = Note.{ def with
+      typ = typ1;
+      eff = List.fold_left max_eff (eff exp1) (List.map (fun (t, e) -> eff e) cases)
+    }
+  }
+
+
 let tupE exps =
   let effs = List.map eff exps in
   let eff = List.fold_left max_eff T.Triv effs in
