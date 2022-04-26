@@ -7183,8 +7183,7 @@ module AllocHow = struct
     | _ -> false
 
   let is_local _ = function
-    | LocalImmut _ -> true
-    | LocalMut _ -> true
+    | LocalImmut _ | LocalMut _ -> true
     | _ -> false
 
   let how_captured lvl how seen captured =
