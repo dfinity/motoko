@@ -567,6 +567,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
          T.Async(t0, Type.open_ [t0] (T.seq ts1)) <: t
        | _ -> error env exp.at "CPSAsync unexpected typ")
       (* TODO: We can check more here, can we *)
+    | ICArgDataPrim, [] ->
+      T.blob <: t
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
@@ -601,6 +603,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
       typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
       T.unit <: t
+    | ICMethodNamePrim, [] ->
+      T.text <: t
     | ICStableRead t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";

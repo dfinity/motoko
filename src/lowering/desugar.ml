@@ -318,7 +318,7 @@ and call_system_func_opt name es obj_typ =
            blockE
              [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
              (unitE ())
-         else if name = "inspect" then
+         else if name = "inspect_message" then (* TBD *)
            let _, tfs = T.as_obj obj_typ in
            let caller = fresh_var "caller" T.principal in
            let arg = fresh_var "arg" T.blob in

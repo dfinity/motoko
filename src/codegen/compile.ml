@@ -3677,6 +3677,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
+  let export_inspect_message env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_inspect_message"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "inspect_message_exp")))
+        (* no need to GC !*)))
+    in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_inspect_message";
+      edesc = nr (FuncExport (nr fi))
+    })
+
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
@@ -9444,6 +9456,15 @@ and main_actor as_opt mod_env ds fs up =
        Func.define_built_in env "heartbeat_exp" [] [] (fun env ->
          compile_exp_as env ae2 SR.unit up.heartbeat);
        IC.export_heartbeat env;
+    end;
+
+    (* Export inspect_message (but only when required) *)
+    begin match up.inspect_message.it with
+     | Ir.PrimE (Ir.TupPrim, []) -> ()
+     | _ ->
+       Func.define_built_in env "inspect_message_exp" [] [] (fun env ->
+         compile_exp_as env ae2 SR.unit up.inspect_message);
+       IC.export_inspect_message env;
     end;
 
     (* Export metadata *)
