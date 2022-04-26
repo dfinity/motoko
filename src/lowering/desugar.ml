@@ -477,12 +477,19 @@ and build_actor at ts self_id es obj_typ =
   I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
-       postupgrade = (match call_system_func_opt "postupgrade" es obj_typ with
-                      | Some call -> call
-                      | None -> tupE []);
-       heartbeat = match call_system_func_opt "heartbeat" es obj_typ with
-                   | Some call -> call
-                   | None -> tupE [] },
+       postupgrade =
+         (match call_system_func_opt "postupgrade" es obj_typ with
+          | Some call -> call
+          | None -> tupE []);
+       heartbeat =
+         (match call_system_func_opt "heartbeat" es obj_typ with
+          | Some call -> call
+          | None -> tupE []);
+       inspect_message =
+         (match call_system_func_opt "inspect_message" es obj_typ with
+          | Some call -> call
+          | None -> tupE [])
+     },
      obj_typ))
 
 

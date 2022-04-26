@@ -80,7 +80,8 @@ and system = {
   meta : meta;
   preupgrade : exp;
   postupgrade : exp;
-  heartbeat : exp
+  heartbeat : exp;
+  inspect_message : exp
 }
 
 and candid = {
