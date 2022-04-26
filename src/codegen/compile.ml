@@ -3518,6 +3518,8 @@ module IC = struct
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "msg_method_name_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_method_name_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
@@ -3743,7 +3745,6 @@ module IC = struct
       E.trap_with env "cannot get system time when running locally"
 
   let caller env =
-    SR.Vanilla,
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
@@ -3752,6 +3753,26 @@ module IC = struct
         (fun env -> compile_unboxed_const 0l)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get caller when running locally")
+
+  let method_name env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Blob.of_size_copy env
+        (fun env -> system_call env "msg_method_name_size")
+        (fun env -> system_call env "msg_method_name_copy")
+        (fun env -> compile_unboxed_const 0l)
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot get method_name when running locally")
+
+  let arg_data env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Blob.of_size_copy env
+        (fun env -> system_call env "msg_arg_data_size")
+        (fun env -> system_call env "msg_arg_data_copy")
+        (fun env -> compile_unboxed_const 0l)
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot get arg_data when running locally")
 
   let reject env arg_instrs =
     match E.mode env with
@@ -3779,6 +3800,7 @@ module IC = struct
          "canister_reject", 4l;
          "canister_error", 5l]
         (Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env)))
+
   let error_message env =
     Func.share_code0 env "error_message" [I32Type] (fun env ->
       Blob.of_size_copy env
@@ -5742,10 +5764,7 @@ module MakeSerialization (Strm : Stream) = struct
     )
 
   let deserialize env ts =
-    Blob.of_size_copy env
-      (fun env -> IC.system_call env "msg_arg_data_size")
-      (fun env -> IC.system_call env "msg_arg_data_copy")
-      (fun env -> compile_unboxed_const 0l) ^^
+    IC.arg_data env ^^
     deserialize_from_blob false env ts
 
 (*
@@ -8675,8 +8694,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp env ae e
 
   | SelfRef _, [] ->
-    SR.Vanilla,
-    IC.get_self_reference env
+    SR.Vanilla, IC.get_self_reference env
+
+  | ICArgDataPrim, [] ->
+    SR.Vanilla, IC.arg_data env
 
   | ICReplyPrim ts, [e] ->
     SR.unit, begin match E.mode env with
@@ -8694,7 +8715,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit, IC.reject env (compile_exp_vanilla env ae e)
 
   | ICCallerPrim, [] ->
-    IC.caller env
+    SR.Vanilla, IC.caller env
 
   | ICCallPrim, [f;e;k;r] ->
     SR.unit, begin
@@ -8727,6 +8748,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae r ^^ set_r ^^
     FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r add_cycles
     end
+
+  | ICMethodNamePrim, [] ->
+    SR.Vanilla, IC.method_name env
+
   | ICStableRead ty, [] ->
     (*
       * On initial install:

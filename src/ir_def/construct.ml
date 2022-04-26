@@ -84,10 +84,12 @@ let varLE (id, typ) =
 let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
+    | ICArgDataPrim -> T.blob
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
+    | ICMethodNamePrim -> T.text
     | ICPerformGC
     | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64

@@ -350,7 +350,7 @@ and call_system_func_opt name es obj_typ =
            blockE
              [ letD record (
                  blockE [ letD caller (primE Ir.ICCallerPrim []);
-                          letD arg (blobE ""); (* TBC: ICMessagePrim[] *)
+                          letD arg (primE Ir.ICMethodNamePrim []);
                           letD msg (loopE (unitE())) ] (* TBC *)
                    (newObjE T.Object
                       [{it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
