@@ -8,16 +8,17 @@ actor {
    public func reset() : () { c := 0 }; // oneway
 
    system func inspect_message(
-     caller : Principal,
-     b : Blob,
-     msg : {
-       #inc : Any;
-       #set : () -> Nat;
-       #read : Any;
-       #reset : () -> ();
-     }
+     { caller : Principal;
+       arg : Blob;
+       msg : {
+         #inc : Any;
+         #set : () -> Nat;
+         #read : Any;
+         #reset : () -> ();
+      }
+    }
     ) : Bool  {
-      if (b.size() > 512) return false;
+      if (arg.size() > 512) return false;
       switch (msg) {
          case (#inc _) { true };
          case (#read _) { true };

@@ -7,11 +7,7 @@ actor {
    public query func read() : async Nat { c };
    public func reset() : () { c := 0 }; // oneway
 
-   system func inspect_message(
-     caller : Any,
-     b : Blob,
-     msg : Any
-   ) : Bool  {
-      return (b.size() <= 512);
+   system func inspect_message({ arg : Blob }) : Bool  {
+      return arg.size() <= 512;
    }
 };

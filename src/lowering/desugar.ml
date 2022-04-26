@@ -305,7 +305,7 @@ and build_fields obj_typ =
 and with_self i typ decs =
   let_no_shadow (var i typ) (selfRefE typ) decs
 
-and call_system_func_opt name es =
+and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
@@ -317,6 +317,47 @@ and call_system_func_opt name es =
          if name = "heartbeat" then
            blockE
              [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+             (unitE ())
+         else if name = "inspect" then
+           let _, tfs = T.as_obj obj_typ in
+           let caller = fresh_var "caller" T.principal in
+           let arg = fresh_var "arg" T.blob in
+           let msg_typ = T.Variant
+             (List.sort T.compare_field (List.map (fun
+               { T.lab;
+                 T.typ = T.Func(T.Shared _, _,  [_], ts1, ts2);
+                 T.depr } ->
+               { lab;
+                 T.typ = T.Func(T.Local, T.Returns, [], [], List.map (T.open_ [T.Any]) ts1);
+                 T.depr = None })
+                 tfs))
+           in
+           let msg = fresh_var "msg" msg_typ in
+           let record_typ =
+             T.Obj (T.Object, List.sort T.compare_field
+              [{T.lab = "caller"; T.typ = typ_of_var caller; T.depr = None};
+               {T.lab = "arg"; T.typ = typ_of_var arg; T.depr = None};
+               {T.lab = "msg"; T.typ = typ_of_var msg; T.depr = None}])
+           in
+           let record = fresh_var "record" record_typ in
+           (* TBD
+           let ides = List.map (fun tf ->
+             match tf.lab with
+               "caller" -> (fresh_var "caller" T.principal, primE (ICCallerPrim []))
+               "arg" -> (fresh_var "arg" T.blob, blobE "") (* TBC *)
+               "message" -> (fresh_var "message" (T.Variant ), lookE (unitE()))a
+            *)
+           blockE
+             [ letD record (
+                 blockE [ letD caller (primE Ir.ICCallerPrim []);
+                          letD arg (blobE ""); (* TBC: ICMessagePrim[] *)
+                          letD msg (loopE (unitE())) ] (* TBC *)
+                   (newObjE T.Object
+                      [{it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
+                       {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
+                       {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
+                      record_typ));
+               expD (callE (varE (var id.it p.note)) [] (varE record))]
              (unitE ())
          else
            callE (varE (var id.it p.note)) [] (tupE []))
@@ -409,7 +450,7 @@ and build_actor at ts self_id es obj_typ =
   let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
-      ((match call_system_func_opt "preupgrade" es with
+      ((match call_system_func_opt "preupgrade" es obj_typ with
         | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
@@ -426,10 +467,10 @@ and build_actor at ts self_id es obj_typ =
   I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
-       postupgrade = (match call_system_func_opt "postupgrade" es with
+       postupgrade = (match call_system_func_opt "postupgrade" es obj_typ with
                       | Some call -> call
                       | None -> tupE []);
-       heartbeat = match call_system_func_opt "heartbeat" es with
+       heartbeat = match call_system_func_opt "heartbeat" es obj_typ with
                    | Some call -> call
                    | None -> tupE [] },
      obj_typ))
