@@ -6660,7 +6660,7 @@ module FuncDec = struct
     let rec go i ae = function
     | [] -> ae
     | a::args ->
-      (* Function arguments are always vanialla, due to subtyping and uniform representation.
+      (* Function arguments are always vanilla, due to subtyping and uniform representation.
          We keep them as such here for now. We _could_ always unpack those that can be unpacked
          (Nat32 etc.). It is generally hard to predict which strategy is better. *)
       let ae' = VarEnv.add_local_local env ae a.it SR.Vanilla (Int32.of_int i) in
