@@ -6426,7 +6426,7 @@ module VarEnv = struct
     (* A Wasm Local of the current function, directly containing the value,
        in the given stackrep (Vanilla or UnboxedWord32) so far
        Used for immutable and mutable, non-captured data *)
-    | Local of (SR.t * int32)
+    | Local of SR.t * int32
     (* A Wasm Local of the current function, that points to memory location,
        which is a MutBox.  Used for mutable captured data *)
     | HeapInd of int32
@@ -7248,7 +7248,7 @@ module AllocHow = struct
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
     | VarEnv.HeapInd _      -> StoreHeap
-    | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume immutable *)
+    | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
     ) ae.VarEnv.vars
 
@@ -9162,7 +9162,7 @@ and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (ae1, fill_code)
 
 (* Used for let patterns: If the pattern can consume its scrutinee in a better form
-   than vanilla (e.g. unboxed tuple, unboxed 32), lets do that.
+   than vanilla (e.g. unboxed tuple, unboxed 32/64), lets do that.
 *)
 and compile_unboxed_pat env ae how pat =
   (* It returns:
