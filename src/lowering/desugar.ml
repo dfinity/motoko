@@ -70,20 +70,18 @@ and exp' at note = function
     I.PrimE (I.ShowPrim !ot, [exp e])
   | S.ToCandidE (ot, es) ->
     begin match T.normalize (!ot) with
-    | T.Opt t1 ->
-      begin match T.normalize t1 with
-        | T.Tup ts1 ->
-          I.PrimE (I.SerializePrim [T.Tup ts1], [tupE (exps es)])
-        | _ -> assert false
-      end
+    | T.Tup ts1 ->
+      (optE (primE (I.SerializePrim ts1) (exps es))).it
     | _ -> assert false
     end
   | S.FromCandidE (ot, e) ->
-    begin match !ot with
-    | T.Opt (T.Tup ts1) ->
-      I.PrimE (I.DeserializePrim ts1, [exp e])
+    (* begin match T.normalize note.Note.typ with *) (* not a T.Tup _ *)
+    begin match T.normalize (!ot) with
     | T.Opt t ->
-      I.PrimE (I.DeserializePrim [t], [exp e])
+      begin match T.normalize t with
+        | T.Tup ts1 -> I.PrimE (I.DeserializePrim ts1, [exp e])
+        | t (* XXX check me. *) -> I.PrimE (I.DeserializePrim [t], [exp e])
+      end
     | _ -> assert false
     end
   | S.TupE es -> (tupE (exps es)).it
