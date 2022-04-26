@@ -75,7 +75,6 @@ and exp' at note = function
     | _ -> assert false
     end
   | S.FromCandidE (ot, e) ->
-    (* begin match T.normalize note.Note.typ with *) (* not a T.Tup _ *)
     begin match T.normalize (!ot) with
     | T.Opt t ->
       begin match T.normalize t with
