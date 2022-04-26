@@ -6424,7 +6424,7 @@ module VarEnv = struct
   (* A type to record where Motoko names are stored. *)
   type varloc =
     (* A Wasm Local of the current function, directly containing the value,
-       in the given stackrep (Vanilla or UnboxedWord32) so far
+       in the given stackrep (Vanilla, UnboxedWord32, …) so far
        Used for immutable and mutable, non-captured data *)
     | Local of SR.t * int32
     (* A Wasm Local of the current function, that points to memory location,
