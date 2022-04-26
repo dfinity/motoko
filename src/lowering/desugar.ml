@@ -349,7 +349,9 @@ and call_system_func_opt name es obj_typ =
                      let unit = fresh_var "unit" T.unit in
                      tagE tf.T.lab (unit --> (primE (Ir.DeserializePrim ts1) [varE arg]))))
                tfs)
-             msg_typ
+               msg_typ
+           in
+           let accept = fresh_var "accept" T.bool
            in
            blockE
              [ letD record (
@@ -363,8 +365,10 @@ and call_system_func_opt name es obj_typ =
                        {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
                        {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
                       record_typ));
-               expD (callE (varE (var id.it p.note)) [] (varE record))]
-             (unitE ())
+               letD accept (callE (varE (var id.it p.note)) [] (varE record))]
+             (ifE (varE accept)
+                (unitE ()) (* TBC call accept *)
+                (unitE ()) T.unit)
          else
            callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
