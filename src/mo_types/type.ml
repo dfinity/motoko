@@ -1086,19 +1086,19 @@ let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 let motoko_async_helper_fld =
   { lab = "__motoko_async_helper";
-    typ = Func(Shared Write, Replies, [scope_bind], [Prim Nat32], []);
+    typ = Func(Shared Write, Promises, [scope_bind], [Prim Nat32], []);
     depr = None;
   }
 
 let motoko_stable_var_size_fld =
   { lab = "__motoko_stable_var_size";
-    typ = Func(Shared Query, Replies, [scope_bind], [], [nat64]);
+    typ = Func(Shared Query, Promises, [scope_bind], [], [nat64]);
     depr = None;
   }
 
 let get_candid_interface_fld =
   { lab = "__get_candid_interface_tmp_hack";
-    typ = Func(Shared Query, Replies, [scope_bind], [], [text]);
+    typ = Func(Shared Query, Promises, [scope_bind], [], [text]);
     depr = None;
   }
 
@@ -1107,6 +1107,17 @@ let well_known_actor_fields = [
     motoko_stable_var_size_fld;
     get_candid_interface_fld
   ]
+
+let decode_msg_typ tfs =
+  Variant
+    (List.sort compare_field (List.map (fun tf ->
+       match normalize tf.typ with
+       | Func(Shared _, _, [_], ts1, ts2) ->
+         { tf with
+           typ = Func(Local, Returns, [], [], List.map (open_ [Any]) ts1);
+           depr = None }
+       | _ -> assert false)
+     tfs))
 
 (* Pretty printing *)
 
@@ -1516,4 +1527,3 @@ let string_of_stab_sig fields : string =
   let module Pretty = MakePretty(ParseableStamps) in
   "// Version: 1.0.0\n" ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) fields
-

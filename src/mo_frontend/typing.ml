@@ -210,16 +210,7 @@ let system_funcs tfs =
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("inspect_message",
-     (let msg_typ = T.Variant
-       (List.sort T.compare_field (List.map (fun
-         { T.lab;
-           T.typ = T.Func(T.Shared _, _,  [_], ts1, ts2);
-           T.depr} ->
-          { lab;
-            T.typ = T.Func(T.Local, T.Returns, [], [], List.map (T.open_ [T.Any]) ts1);
-            T.depr = None })
-         tfs))
-      in
+     (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
         T.Obj (T.Object, List.sort T.compare_field
           [{T.lab = "caller"; T.typ = T.principal; T.depr = None};

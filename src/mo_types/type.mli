@@ -244,6 +244,7 @@ val motoko_stable_var_size_fld : field
 val get_candid_interface_fld : field
 
 val well_known_actor_fields : field list
+val decode_msg_typ : field list -> typ
 
 (* Pretty printing *)
 

@@ -3854,7 +3854,7 @@ module IC = struct
     in
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
 
-  let async_method_name = Type.motoko_async_helper_fld.lab
+  let async_method_name = Type.(motoko_async_helper_fld.lab)
 
   let assert_caller_self env =
     let (set_len1, get_len1) = new_local env "len1" in

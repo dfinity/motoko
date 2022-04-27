@@ -322,16 +322,7 @@ and call_system_func_opt name es obj_typ =
            let _, tfs = T.as_obj obj_typ in
            let caller = fresh_var "caller" T.principal in
            let arg = fresh_var "arg" T.blob in
-           let msg_typ = T.Variant
-             (List.sort T.compare_field (List.map (fun
-               { T.lab;
-                 T.typ = T.Func(T.Shared _, _,  [_], ts1, ts2);
-                 T.depr } ->
-               { lab;
-                 T.typ = T.Func(T.Local, T.Returns, [], [], List.map (T.open_ [T.Any]) ts1);
-                 T.depr = None })
-                 tfs))
-           in
+           let msg_typ = T.decode_msg_typ tfs in
            let msg = fresh_var "msg" msg_typ in
            let record_typ =
              T.Obj (T.Object, List.sort T.compare_field
@@ -394,9 +385,9 @@ and export_interface txt =
   )],
   [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
 
-and export_footprint self_id name expr =
+and export_footprint self_id expr =
   let open T in
-  let {lab;typ;_} = motoko_stable_variable_size_fld in
+  let {lab;typ;_} = motoko_stable_var_size_fld in
   let v = "$"^lab in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
@@ -409,7 +400,7 @@ and export_footprint self_id name expr =
                                         [primE I.ICCallerPrim []; selfRefE caller]))]
                  (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con1, []))))
   )],
-  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
