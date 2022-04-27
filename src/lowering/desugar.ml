@@ -71,7 +71,8 @@ and exp' at note = function
   | S.ToCandidE (ot, es) ->
     begin match T.normalize (!ot) with
     | T.Tup ts1 ->
-      (primE (I.SerializePrim ts1) (exps es)).it
+      (* desugaring to_candid introduces explicit IR tuple: *)
+        (primE (I.SerializePrim [(T.Tup ts1)]) [(tupE (exps es))]).it
     | _ -> assert false
     end
   | S.FromCandidE (ot, e) ->
