@@ -2187,13 +2187,6 @@ module I32Leb = struct
   let compile_store_to_data_buf_signed env get_x get_buf =
     get_x ^^ get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
     compile_sleb128_size get_x
-(*
-  let compile_store_to_stream_unsigned env get_x get_stream =
-    failwith "compile_store_to_stream_unsigned"
-
-  let compile_store_to_stream_signed env get_x get_stream =
-    failwith "compile_store_to_stream_signed"
- *)
 end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
@@ -2537,7 +2530,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
-  let compile_store_to_stream_unsigned env get_x get_stream =
+  let compile_store_to_stream_unsigned env =
     failwith "compile_store_to_stream_unsigned"
 
   let compile_store_to_stream_signed env get_x get_stream =
