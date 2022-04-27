@@ -366,9 +366,7 @@ and call_system_func_opt name es obj_typ =
                        {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
                       record_typ));
                letD accept (callE (varE (var id.it p.note)) [] (varE record))]
-             (ifE (varE accept)
-                (unitE ()) (* TBC call accept *)
-                (unitE ()) T.unit)
+             (assertE (varE accept))
          else
            callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es

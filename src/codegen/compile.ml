@@ -3497,6 +3497,7 @@ module IC = struct
   let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
+      E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
@@ -3681,7 +3682,8 @@ module IC = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let fi = E.add_fun env "canister_inspect_message"
       (Func.of_body env [] [] (fun env ->
-        G.i (Call (nr (E.built_in env "inspect_message_exp")))
+        G.i (Call (nr (E.built_in env "inspect_message_exp"))) ^^
+        system_call env "accept_message" (* assumes inspect_message_exp traps to reject *)
         (* no need to GC !*)))
     in
     E.add_export env (nr {
