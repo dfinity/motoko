@@ -1075,7 +1075,6 @@ let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
 
 module Env = Env.Make(String)
 
-
 (* Scopes *)
 
 let scope_var var = "$" ^ var
@@ -1083,6 +1082,31 @@ let default_scope_var = scope_var ""
 let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
+(* Well-known fields *)
+
+let motoko_async_helper_fld =
+  { lab = "__motoko_async_helper";
+    typ = Func(Shared Write, Replies, [scope_bind], [Prim Nat32], []);
+    depr = None;
+  }
+
+let motoko_stable_var_size_fld =
+  { lab = "__motoko_stable_var_size";
+    typ = Func(Shared Query, Replies, [scope_bind], [], [nat64]);
+    depr = None;
+  }
+
+let get_candid_interface_fld =
+  { lab = "__get_candid_interface_tmp_hack";
+    typ = Func(Shared Query, Replies, [scope_bind], [], [text]);
+    depr = None;
+  }
+
+let well_known_actor_fields = [
+    motoko_async_helper_fld;
+    motoko_stable_var_size_fld;
+    get_candid_interface_fld
+  ]
 
 (* Pretty printing *)
 
@@ -1492,3 +1516,4 @@ let string_of_stab_sig fields : string =
   let module Pretty = MakePretty(ParseableStamps) in
   "// Version: 1.0.0\n" ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) fields
+

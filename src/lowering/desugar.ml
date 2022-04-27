@@ -381,11 +381,8 @@ and build_candid ts obj_typ =
 and export_interface txt =
   (* This is probably a temporary hack. *)
   let open T in
-  let name = "__get_candid_interface_tmp_hack" in
-  let v = "$__get_candid_interface_tmp_hack"  in
-  let binds = [scope_bind] in
-  let typ = Func (Shared Query, Promises, binds, [], [text]) in
-
+  let {lab;typ;_} = get_candid_interface_fld in
+  let v = "$"^lab  in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
@@ -395,14 +392,12 @@ and export_interface txt =
       asyncE bind2 (textE txt) (Con (scope_con1, []))
     )
   )],
-  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
 
 and export_footprint self_id name expr =
   let open T in
-  let v = "$__stable_var_size" in
-  let binds = [scope_bind] in
-  let typ = Func (Shared Query, Promises, binds, [], [nat64]) in
-
+  let {lab;typ;_} = motoko_stable_variable_size_fld in
+  let v = "$"^lab in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
@@ -471,7 +466,7 @@ and build_actor at ts self_id es obj_typ =
                    note = f.T.typ }
                ) fields vs)
             ty)) in
-  let footprint_d, footprint_f = export_footprint self_id "__motoko_stable_var_size" (with_stable_vars (fun e -> e)) in
+  let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
   I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
