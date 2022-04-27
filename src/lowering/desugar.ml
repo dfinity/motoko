@@ -71,15 +71,15 @@ and exp' at note = function
   | S.ToCandidE (ot, es) ->
     begin match T.normalize (!ot) with
     | T.Tup ts1 ->
-      (optE (primE (I.SerializePrim ts1) (exps es))).it
+      (primE (I.SerializePrim ts1) (exps es)).it
     | _ -> assert false
     end
   | S.FromCandidE (ot, e) ->
     begin match T.normalize (!ot) with
     | T.Opt t ->
       begin match T.normalize t with
-        | T.Tup ts1 -> I.PrimE (I.DeserializePrim ts1, [exp e])
-        | t (* XXX check me. *) -> I.PrimE (I.DeserializePrim [t], [exp e])
+        | T.Tup ts1 -> (optE (primE (I.DeserializePrim ts1) [exp e])).it
+        | t -> (optE (primE (I.DeserializePrim [t]) [exp e])).it
       end
     | _ -> assert false
     end

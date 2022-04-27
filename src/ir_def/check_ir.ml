@@ -528,6 +528,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (Show.can_show ot) "show is not defined for operand type";
       typ exp1 <: ot;
       T.text <: t
+    | SerializePrim ots, [] -> (* unit argument (no arguments). *)
+      T.blob <: t
     | SerializePrim ots, [exp1] ->
       check (T.shared (T.seq ots)) "debug_serialize is not defined for operand type";
       typ exp1 <: T.seq ots;
@@ -535,7 +537,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | DeserializePrim ots, [exp1] ->
       check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
       typ exp1 <: T.blob;
-      T.Opt (T.seq ots) <: t
+      T.seq ots <: t
     | CPSAwait cont_typ, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
