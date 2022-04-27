@@ -164,6 +164,14 @@ impl Stream {
         }
     }
 
+    pub(crate) unsafe fn try_reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
+        if bytes > (*self).header.len - INITIAL_STREAM_FILLED {
+	    return core::ptr::null_mut();
+	}
+
+	self.reserve(bytes)
+    }
+
     /// Split the stream object into two `Blob`s, a front-runner (small) one
     /// and a latter one that comprises the current amount of the cached bytes.
     /// Lengths are adjusted correspondingly.

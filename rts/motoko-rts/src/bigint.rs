@@ -437,7 +437,7 @@ unsafe fn bigint_leb128_stream_encode_go(tmp: *mut mp_int, stream: *mut Stream, 
     }
 
     // decide if we can simply reserve and dump
-    let mut buf: *mut u8 = stream./*try_*/reserve(Bytes(bytes));
+    let mut buf: *mut u8 = stream.try_reserve(Bytes(bytes));
     if !buf.is_null() {
 	return bigint_leb128_encode_go(tmp, buf, add_bit)
     }
