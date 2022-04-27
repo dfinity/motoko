@@ -2092,6 +2092,13 @@ sig
    *)
   val compile_store_to_data_buf_signed : E.t -> G.t
   val compile_store_to_data_buf_unsigned : E.t -> G.t
+  (* given on stack
+     - numeric object (vanilla, TOS)
+     - (unskewed) stream
+    store the binary representation of the numeric object into the stream
+   *)
+  val compile_store_to_stream_signed : E.t -> G.t
+  val compile_store_to_stream_unsigned : E.t -> G.t
   (* given a ReadBuf on stack, consume bytes from it,
      deserializing to a numeric object
      and leave it on the stack (vanilla).
@@ -2180,7 +2187,13 @@ module I32Leb = struct
   let compile_store_to_data_buf_signed env get_x get_buf =
     get_x ^^ get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
     compile_sleb128_size get_x
+(*
+  let compile_store_to_stream_unsigned env get_x get_stream =
+    failwith "compile_store_to_stream_unsigned"
 
+  let compile_store_to_stream_signed env get_x get_stream =
+    failwith "compile_store_to_stream_signed"
+ *)
 end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
@@ -2524,6 +2537,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
+  let compile_store_to_stream_unsigned env get_x get_stream =
+    failwith "compile_store_to_stream_unsigned"
+
+  let compile_store_to_stream_signed env get_x get_stream =
+    failwith "compile_store_to_stream_signed"
+
+
+
   let compile_data_size_unsigned env =
     try_unbox I32Type
       (fun _ ->
@@ -2637,12 +2658,17 @@ module BigNumLibtommath : BigNumType = struct
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_leb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_leb128_size"
+  let compile_store_to_stream_unsigned env =
+    E.call_import env "rts" "bigint_leb128_stream_encode"
+
   let compile_store_to_data_buf_signed env =
     let (set_buf, get_buf) = new_local env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
+  let compile_store_to_stream_signed env =
+    E.call_import env "rts" "bigint_sleb128_stream_encode"
 
   let compile_load_from_data_buf env get_data_buf = function
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
