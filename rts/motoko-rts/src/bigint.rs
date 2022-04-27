@@ -35,7 +35,7 @@ use crate::buf::{read_byte, Buf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
-use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
+use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -415,6 +415,31 @@ pub unsafe extern "C" fn bigint_leb128_size(a: Value) -> u32 {
 unsafe fn bigint_leb128_encode_go(tmp: *mut mp_int, mut buf: *mut u8, add_bit: bool) {
     if mp_isneg(tmp) {
         bigint_trap();
+    }
+
+    loop {
+        let byte = mp_get_u32(tmp) as u8;
+        check(mp_div_2d(tmp, 7, tmp, core::ptr::null_mut()));
+        if !mp_iszero(tmp) || (add_bit && byte & (1 << 6) != 0) {
+            *buf = byte | (1 << 7);
+            buf = buf.add(1);
+        } else {
+            *buf = byte;
+            break;
+        }
+    }
+}
+
+/// like `bigint_leb128_encode_go`, but to a stream
+unsafe fn bigint_leb128_stream_encode_go(tmp: *mut mp_int, stream: *mut Stream, bytes: u32, add_bit: bool) {
+    if mp_isneg(tmp) {
+        bigint_trap();
+    }
+
+    // decide if we can simply reserve and dump
+    let mut buf: *mut u8 = stream./*try_*/reserve(Bytes(bytes));
+    if !buf.is_null() {
+	return bigint_leb128_encode_go(tmp, buf, add_bit)
     }
 
     loop {
