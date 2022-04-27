@@ -443,7 +443,7 @@ unsafe fn bigint_leb128_stream_encode_go(
 
     // decide if we can simply reserve and dump
     {
-        let mut buf: *mut u8 = stream.try_reserve(Bytes(bytes));
+        let buf: *mut u8 = stream.try_reserve(Bytes(bytes));
         if !buf.is_null() {
             return bigint_leb128_encode_go(tmp, buf, add_bit);
         }
@@ -466,6 +466,12 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     bigint_leb128_encode_go(&mut tmp, buf, false)
+}
+
+pub unsafe extern "C" fn bigint_leb128_stream_encode(n: Value, stream: *mut Stream) {
+    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
+    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
+    bigint_leb128_stream_encode_go(&mut tmp, stream, bigint_leb128_size(n), false)
 }
 
 #[no_mangle]
@@ -501,6 +507,24 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
         bigint_leb128_encode_go(&mut tmp, buf, false)
     } else {
         bigint_leb128_encode_go(&mut tmp, buf, true)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bigint_sleb128_stream_encode(n: Value, stream: *mut Stream) {
+    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
+    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
+
+    let bytes = bigint_sleb128_size(n);
+    if mp_isneg(&tmp) {
+        // Turn negative numbers into the two's complement of the right size
+        let mut big: mp_int = core::mem::zeroed();
+        check(mp_init(&mut big));
+        check(mp_2expt(&mut big, 7 * bytes as i32));
+        check(mp_add(&mut tmp, &big, &mut tmp));
+        bigint_leb128_stream_encode_go(&mut tmp, stream, bytes, false)
+    } else {
+        bigint_leb128_stream_encode_go(&mut tmp, stream, bytes, true)
     }
 }
 
