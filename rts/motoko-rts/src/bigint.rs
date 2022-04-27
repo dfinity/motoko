@@ -431,26 +431,32 @@ unsafe fn bigint_leb128_encode_go(tmp: *mut mp_int, mut buf: *mut u8, add_bit: b
 }
 
 /// like `bigint_leb128_encode_go`, but to a stream
-unsafe fn bigint_leb128_stream_encode_go(tmp: *mut mp_int, stream: *mut Stream, bytes: u32, add_bit: bool) {
+unsafe fn bigint_leb128_stream_encode_go(
+    tmp: *mut mp_int,
+    stream: *mut Stream,
+    bytes: u32,
+    add_bit: bool,
+) {
     if mp_isneg(tmp) {
         bigint_trap();
     }
 
     // decide if we can simply reserve and dump
-    let mut buf: *mut u8 = stream.try_reserve(Bytes(bytes));
-    if !buf.is_null() {
-	return bigint_leb128_encode_go(tmp, buf, add_bit)
+    {
+        let mut buf: *mut u8 = stream.try_reserve(Bytes(bytes));
+        if !buf.is_null() {
+            return bigint_leb128_encode_go(tmp, buf, add_bit);
+        }
     }
 
+    // otherwise cache bytewise
     loop {
         let byte = mp_get_u32(tmp) as u8;
         check(mp_div_2d(tmp, 7, tmp, core::ptr::null_mut()));
         if !mp_iszero(tmp) || (add_bit && byte & (1 << 6) != 0) {
-            *buf = byte | (1 << 7);
-            buf = buf.add(1);
+            stream.cache_byte(byte | (1 << 7));
         } else {
-            *buf = byte;
-            break;
+            return stream.cache_byte(byte);
         }
     }
 }
