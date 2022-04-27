@@ -68,15 +68,15 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
-  | S.ToCandidE (ot, es) ->
-    begin match T.normalize (!ot) with
-    | T.Tup ts1 ->
-      (* desugaring to_candid introduces explicit IR tuple: *)
-        (primE (I.SerializePrim [(T.Tup ts1)]) [(tupE (exps es))]).it
+  | S.ToCandidE es ->
+    (* desugaring to_candid introduces explicit IR tuple: *)
+    let arg = tupE (exps es) in
+    begin match T.normalize arg.note.Note.typ with
+    | T.Tup ts -> (primE (I.SerializePrim [T.Tup ts]) [arg]).it
     | _ -> assert false
     end
-  | S.FromCandidE (ot, e) ->
-    begin match T.normalize (!ot) with
+  | S.FromCandidE e ->
+    begin match T.normalize note.Note.typ with
     | T.Opt t ->
       begin match T.normalize t with
         | T.Tup ts1 -> (optE (primE (I.DeserializePrim ts1) [exp e])).it

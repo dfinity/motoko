@@ -972,11 +972,15 @@ and infer_exp'' env exp : T.typ =
       ot := t
     end;
     T.text
-  | ToCandidE (ot, exps) ->
-    let ts = List.map (infer_exp env) exps in
-    ot := T.Tup ts;
+  | ToCandidE exps ->
+    if not env.pre then begin
+        let ts = List.map (infer_exp env) exps in
+        if not (T.shared (T.Tup ts)) then
+          error env exp.at "MXXXX" "to_candid argument types be shared, but instead found %a"
+            display_typ_expand (T.Tup ts);
+      end;
     T.Prim T.Blob
-  | FromCandidE (ot, exp1) ->
+  | FromCandidE exp1 ->
     error env exp.at "MXXXX" "from_candid requires but is missing a known type (from context)"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
@@ -1385,22 +1389,21 @@ and check_exp' env0 t exp : T.typ =
       warn env exp.at "M0155" "operator may trap for inferred type%a"
         display_typ_expand t;
     t
-  | ToCandidE (ot, exps), _ ->
-    begin match t with
-    | T.Prim T.Blob -> begin
-        let ts = List.map (infer_exp env) exps in
-        ot := T.Tup ts;
-        T.Prim T.Blob
-      end
-    | _ ->
-      error env exp.at "MXXXX" "to_candid produces Blob, not type%a"
-        display_typ_expand t
-    end
-  | FromCandidE (ot, exp1), t when T.shared t && T.is_opt t ->
-    ot := t;
+  | ToCandidE exps, _ ->
+    if not env.pre then begin
+      let ts = List.map (infer_exp env) exps in
+      if not (T.sub (T.Prim T.Blob) t) then
+        error env exp.at "MXXXX" "to_candid produces a Blob that is not a subtype of %a"
+          display_typ_expand t;
+      if not (T.shared (T.Tup ts)) then
+        error env exp.at "MXXXX" "to_candid argument types be shared, but instead found %a"
+          display_typ_expand (T.Tup ts);
+      end;
+    T.Prim T.Blob
+  | FromCandidE exp1, t when T.shared t && T.is_opt t ->
     check_exp env (T.Prim T.Blob) exp1;
     t
-  | FromCandidE (_, _), t ->
+  | FromCandidE _, t ->
       error env exp.at "MXXXX" "from_candid produces an optional shared type, not type%a"
         display_typ_expand t    
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->

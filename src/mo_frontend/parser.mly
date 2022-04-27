@@ -607,9 +607,9 @@ exp_un(B) :
   | DEBUG_SHOW e=exp_un(ob)
     { ShowE (ref Type.Pre, e) @? at $sloc }
   | TO_CANDID LPAR es=seplist(exp(ob), COMMA) RPAR
-    { ToCandidE (ref Type.Pre, es) @? at $sloc }
+    { ToCandidE es @? at $sloc }
   | FROM_CANDID e=exp_un(ob)
-    { FromCandidE (ref Type.Pre, e) @? at $sloc }
+    { FromCandidE e @? at $sloc }
 
 exp_bin(B) :
   | e=exp_un(B)
