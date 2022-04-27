@@ -468,6 +468,7 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
     bigint_leb128_encode_go(&mut tmp, buf, false)
 }
 
+#[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_stream_encode(n: Value, stream: *mut Stream) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
