@@ -850,10 +850,12 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "bigint_leb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
