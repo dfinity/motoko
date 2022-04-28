@@ -1,5 +1,4 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
-//MOC-FLAG -v
 import Prim "mo:⛔";
 
 func serUnit() : Blob = to_candid ();
@@ -32,6 +31,6 @@ assert(?(true) == deserBool (serBool true));
 assert(?(false) == deserBool (serBool false));
 assert (?("Hello World!") == deserText (serText "Hello World!"));
 
-// SKIP run
-// SKIP run-ir
-// SKIP run-low
+//SKIP run
+//SKIP run-ir
+//SKIP run-low
