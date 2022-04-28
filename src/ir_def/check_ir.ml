@@ -528,11 +528,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (Show.can_show ot) "show is not defined for operand type";
       typ exp1 <: ot;
       T.text <: t
-(*    | SerializePrim ots, [] -> (* unit argument (no arguments). *)
-      T.blob <: t *)
-    | SerializePrim ots, [exp1] ->
+    | SerializePrim ots, exps ->
       check (T.shared (T.seq ots)) "debug_serialize is not defined for operand type";
-      typ exp1 <: T.seq ots;
+      (* List.iter2 (fun e t -> typ e <: t) exps ots; *) (* TO DO *)
       T.blob <: t
     | DeserializePrim ots, [exp1] ->
       check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";

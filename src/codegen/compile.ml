@@ -7826,7 +7826,7 @@ and compile_exp (env : E.t) ae exp =
       Blob.of_ptr_size env
 
     | SerializePrim ts, _ ->
-      invalid_arg "to do -- generalize unary case of compile_exp(SerializePrim _)"
+      invalid_arg "compile_exp(SerializePrim _): expected unary case only."
 
     | DeserializePrim ts, [e] ->
       (* to do -- deserialize should yield null, not trap, on failure. *)

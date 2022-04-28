@@ -14,6 +14,7 @@ func deserBool(x: Blob) : ?(Bool) = from_candid x;
 func serText(x: Text) : Blob = to_candid (x);
 func deserText(x: Blob) : ?(Text) = from_candid x;
 
+Prim.debugPrint("\noutput");
 Prim.debugPrint(debug_show (serUnit ()));
 Prim.debugPrint(debug_show (serNats (1,2,3)));
 Prim.debugPrint(debug_show (serText "Hello World!"));

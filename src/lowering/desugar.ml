@@ -72,7 +72,12 @@ and exp' at note = function
     (* desugaring to_candid introduces explicit IR tuple: *)
     let arg = tupE (exps es) in
     begin match T.normalize arg.note.Note.typ with
-    | T.Tup ts -> (primE (I.SerializePrim [T.Tup ts]) [arg]).it
+    | T.Tup ts (* our original idea: *)
+        when false -> (primE (I.SerializePrim [T.Tup ts]) [arg]).it
+
+    | T.Tup ts -> (* my proposal 2022-04-28: *)
+      (primE (I.SerializePrim ts) (exps es)).it
+
     | _ -> assert false
     end
   | S.FromCandidE e ->
