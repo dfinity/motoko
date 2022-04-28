@@ -1110,13 +1110,15 @@ let well_known_actor_fields = [
 
 let decode_msg_typ tfs =
   Variant
-    (List.sort compare_field (List.map (fun tf ->
+    (List.sort compare_field (List.filter_map (fun tf ->
        match normalize tf.typ with
-       | Func(Shared _, _, [_], ts1, ts2) ->
-         { tf with
-           typ = Func(Local, Returns, [], [], List.map (open_ [Any]) ts1);
+       | Func(Shared _, _, tbs, ts1, ts2) ->
+         Some { tf with
+           typ =
+             Func(Local, Returns, [], [],
+               List.map (open_ (List.map (fun _ -> Non) tbs)) ts1);
            depr = None }
-       | _ -> assert false)
+       | _ -> None)
      tfs))
 
 (* Pretty printing *)
