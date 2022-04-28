@@ -975,9 +975,9 @@ and infer_exp'' env exp : T.typ =
   | ToCandidE exps ->
     if not env.pre then begin
         let ts = List.map (infer_exp env) exps in
-        if not (T.shared (T.Tup ts)) then
-          error env exp.at "MXXXX" "to_candid argument types be shared, but instead found %a"
-            display_typ_expand (T.Tup ts);
+        if not (T.shared (T.seq ts)) then
+          error env exp.at "MXXXX" "to_candid argument must have shared type, but instead found non-shared type %a"
+            display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob
   | FromCandidE exp1 ->
@@ -1395,9 +1395,9 @@ and check_exp' env0 t exp : T.typ =
       if not (T.sub (T.Prim T.Blob) t) then
         error env exp.at "MXXXX" "to_candid produces a Blob that is not a subtype of %a"
           display_typ_expand t;
-      if not (T.shared (T.Tup ts)) then
+      if not (T.shared (T.seq ts)) then
         error env exp.at "MXXXX" "to_candid argument types be shared, but instead found %a"
-          display_typ_expand (T.Tup ts);
+          display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob
   | FromCandidE exp1, t when T.shared t && T.is_opt t ->

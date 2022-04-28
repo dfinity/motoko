@@ -256,8 +256,6 @@ let (@?) it at = Source.({it; at; note = empty_typ_note})
 let (@!) it at = Source.({it; at; note = Type.Pre})
 let (@=) it at = Source.({it; at; note = None})
 
-let is_tuple_lit e = match e.Source.it with TupE _ -> true | _ -> false
-
 (* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
