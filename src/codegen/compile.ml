@@ -2538,8 +2538,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type
       (fun env ->
         BitTagged.untag_i32 ^^ set_x ^^
-          (* get size & reserve & encode *)
-          I32Leb.compile_store_to_data_buf_unsigned env get_x
+        (* get size & reserve & encode *)
+        I32Leb.compile_store_to_data_buf_unsigned env get_x
           begin
             get_stream ^^
             I32Leb.compile_leb128_size get_x ^^
