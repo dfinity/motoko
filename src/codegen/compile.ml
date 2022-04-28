@@ -2552,7 +2552,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env ^^
       G.i Drop
 
-  let compile_store_to_stream_signed env get_x get_stream =
+  let compile_store_to_stream_signed env =
     let set_x, get_x = new_local env "x" in
     let set_stream, get_stream = new_local env "stream" in
     set_x ^^ set_stream ^^
