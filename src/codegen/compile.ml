@@ -2531,7 +2531,26 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env
 
   let compile_store_to_stream_unsigned env =
-    failwith "compile_store_to_stream_unsigned"
+    let set_x, get_x = new_local env "x" in
+    let set_stream, get_stream = new_local env "stream" in
+    set_x ^^ set_stream ^^
+    get_x ^^
+    try_unbox I32Type
+      (fun env ->
+        BitTagged.untag_i32 ^^ set_x ^^
+          (* get size & reserve & encode *)
+          I32Leb.compile_store_to_data_buf_unsigned env get_x
+          begin
+            get_stream ^^
+            I32Leb.compile_leb128_size get_x ^^
+            E.call_import env "rts" "stream_reserve"
+          end ^^
+        G.i Drop
+      )
+      (fun env ->
+        G.i Drop ^^
+        get_stream ^^ get_x ^^ Num.compile_store_to_stream_unsigned env)
+      env
 
   let compile_store_to_stream_signed env get_x get_stream =
     failwith "compile_store_to_stream_signed"
