@@ -20,7 +20,7 @@ open Construct
      a manifest tuple argument extended with a final reply continuation.
  *)
 
-module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
+module ConRenaming = E.Make(struct type t = T.con let compare = Cons.compare end)
 
 (* Helpers *)
 
@@ -202,16 +202,16 @@ let transform mode prog =
       T.Def (t_binds typ_binds, t_typ typ)
 
   and t_con c =
-    match Con.kind c with
+    match Cons.kind c with
     | T.Def ([], T.Prim _) -> c
     | _ ->
       match  ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
-        let clone = Con.clone c (Abs ([], Pre)) in
+        let clone = Cons.clone c (Abs ([], Pre)) in
         con_renaming := ConRenaming.add c clone (!con_renaming);
         (* Need to extend con_renaming before traversing the kind *)
-        Type.set_kind clone (t_kind (Con.kind c));
+        Type.set_kind clone (t_kind (Cons.kind c));
         clone
 
   and t_prim p = Ir.map_prim t_typ (fun id -> id) p
@@ -284,6 +284,23 @@ let transform mode prog =
             [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
             )
           )
+         )
+         (varE nary_async))
+        .it
+    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->
+      let exp1' = t_exp exp1 in
+      let exp2' = t_exp exp2 in
+      let exp3' = t_exp exp3 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode [T.blob] in
+      let _ = letEta in
+      (blockE (
+        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+          letEta exp1' (fun v1 ->
+          letEta exp2' (fun v2 ->
+          letEta exp3' (fun v3 ->
+            [ expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject)) ]
+            )
+          ))
          )
          (varE nary_async))
         .it
@@ -374,8 +391,8 @@ let transform mode prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, {pre; post}, typ) ->
-      ActorE (t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ typ)
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat}, typ) ->
+      ActorE (t_decs ds, t_fields fs, {meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade; heartbeat = t_exp heartbeat}, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
@@ -444,9 +461,9 @@ let transform mode prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {pre; post}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
-        { pre = t_exp pre; post = t_exp post }, t_typ t)
+        { meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade; heartbeat = t_exp heartbeat }, t_typ t)
 
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in

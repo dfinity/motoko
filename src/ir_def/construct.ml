@@ -4,7 +4,7 @@ open Source
 open Ir
 open Ir_effect
 open Mo_values
-module Con = Mo_types.Con
+module Cons = Mo_types.Cons
 module T = Mo_types.Type
 
 (* Field names *)
@@ -84,18 +84,26 @@ let varLE (id, typ) =
 let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
-    | ICReplyPrim _ -> T.Non
+    | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
+    | ICPerformGC
     | ICStableWrite _ -> T.unit
+    | ICStableSize _ -> T.nat64
+    | IdxPrim
+    | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
+    | NextArrayOffset _ -> T.nat
+    | ValidArrayOffset -> T.bool
+    | GetPastArrayOffset _ -> T.nat
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
+    | BinPrim (t, _) -> t
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
-    | SystemCyclesAvailablePrim -> T.nat64
-    | SystemCyclesAcceptPrim -> T.nat64
+    | SystemCyclesAvailablePrim
+    | SystemCyclesAcceptPrim -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -115,7 +123,7 @@ let selfRefE typ =
 let assertE e =
   { it = PrimE (AssertPrim, [e]);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff e}
+    note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
 
@@ -170,6 +178,14 @@ let ic_callE f e k r =
     note = Note.{ def with typ = T.unit; eff = eff }
   }
 
+let ic_call_rawE p m a k r =
+  let es = [p; m; a; k; r] in
+  let effs = List.map eff es in
+  let eff = List.fold_left max_eff T.Triv effs in
+  { it = PrimE (ICCallRawPrim, es);
+    at = no_region;
+    note = Note.{ def with typ = T.unit; eff = eff }
+  }
 
 (* tuples *)
 
@@ -219,6 +235,12 @@ let blockE decs exp =
       note = Note.{ def with typ; eff }
     }
 
+let natE n =
+  { it = LitE (NatLit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat }
+  }
+
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;
@@ -249,7 +271,7 @@ let nullE () =
 let funcE name sort ctrl typ_binds args typs exp =
   let cs = List.map (function { it = {con;_ }; _ } -> con) typ_binds in
   let tbs = List.map (function { it = { sort; bound; con}; _ } ->
-    {T.var = Con.name con; T.sort; T.bound = T.close cs bound})
+    {T.var = Cons.name con; T.sort; T.bound = T.close cs bound})
     typ_binds
   in
   let ts1 = List.map (function arg -> T.close cs arg.note) args in
@@ -445,7 +467,7 @@ let thenE exp1 exp2 = blockE [expD exp1] exp2
 let ignoreE exp =
   if typ exp = T.unit
   then exp
-  else thenE exp (tupE [])
+  else thenE exp (unitE ())
 
 
 (* Mono-morphic function expression *)
@@ -540,7 +562,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Con.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =
@@ -576,7 +598,7 @@ let whileE exp1 exp2 =
       loopE (
           ifE exp1
             exp2
-            (breakE lab (tupE []))
+            (breakE lab (unitE ()))
             T.unit
         )
     )
@@ -593,33 +615,33 @@ let loopWhileE exp1 exp2 =
       loopE (
           thenE exp1
             ( ifE exp2
-               (tupE [])
-               (breakE lab (tupE []))
+               (unitE ())
+               (breakE lab (unitE ()))
                T.unit
             )
         )
     )
 
 let forE pat exp1 exp2 =
-  (* for p in e1 e2
+  (* for (p in e1) e2
      ~~>
      let nxt = e1.next ;
      label l loop {
        switch nxt () {
          case null { break l };
-         case p    { e2 };
+         case ?p    { e2 };
        }
      } *)
   let lab = fresh_id "done" () in
   let ty1 = exp1.note.Note.typ in
-  let _, tfs = T.as_obj_sub ["next"] ty1 in
-  let tnxt = T.lookup_val_field "next" tfs in
+  let _, tfs = T.as_obj_sub [nextN] ty1 in
+  let tnxt = T.lookup_val_field nextN tfs in
   let nxt = fresh_var "nxt" tnxt in
-  letE nxt (dotE exp1 (nameN "next") tnxt) (
+  letE nxt (dotE exp1 nextN tnxt) (
     labelE lab T.unit (
       loopE (
-        switch_optE (callE (varE nxt) [] (tupE []))
-          (breakE lab (tupE []))
+        switch_optE (callE (varE nxt) [] (unitE ()))
+          (breakE lab (unitE ()))
           pat exp2 T.unit
       )
     )

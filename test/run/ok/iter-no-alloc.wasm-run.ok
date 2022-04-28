@@ -2,7 +2,7 @@ Allocation per iteration (Nat): 0
 Allocation per iteration (Nat16): 0
 Allocation per iteration (Nat32): 0
 Allocation per iteration (?Nat, all null): 0
-Allocation per iteration (FixOpt, all ?null): 8
-Allocation per iteration (FixOpt, all ??null): 8
+Allocation per iteration (FixOpt, all ?null): 0
+Allocation per iteration (FixOpt, all ??null): 0
 Allocation per iteration (?Nat, all values): 0
 Allocation per iteration (record): 0

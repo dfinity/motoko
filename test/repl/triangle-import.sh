@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 moc -v -i <<__END__
-import "lib/b";
-import "lib/a";
-import "lib/c";
-import "lib/triangle";
+import _ = "lib/b";
+import _ = "lib/a";
+import _ = "lib/c";
+import _ = "lib/triangle";
 __END__

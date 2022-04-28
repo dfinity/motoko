@@ -9,14 +9,14 @@ code, and cannot be shadowed.
 
 type @Iter<T_> = {next : () -> ?T_};
 
-var @cycles : Nat64 = 0;
+var @cycles : Nat = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
 func @add_cycles() {
   let cycles = @cycles;
   @reset_cycles();
-  (prim "cyclesAdd" : (Nat64) -> ()) (cycles);
+  (prim "cyclesAdd" : (Nat) -> ()) (cycles);
 };
 
 // Function called by backend to zero cycles on context switch.
@@ -285,7 +285,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ?(() -> ());
 
-type @Refund = Nat64;
+type @Refund = Nat;
 type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
 
 type @Waiter<T> = (@Refund,T) -> () ;
@@ -299,7 +299,7 @@ func @reset_refund() {
 };
 
 func @getSystemRefund() : @Refund {
-  return (prim "cyclesRefunded" : () -> Nat64) ();
+  return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
@@ -393,8 +393,8 @@ let @ic00 = actor "aaaaa-aa" :
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
-  let available = (prim "cyclesAvailable" : () -> Nat64) ();
-  let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
+  let available = (prim "cyclesAvailable" : () -> Nat) ();
+  let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
   @cycles += accepted;
   let { canister_id = canister_id_ } =
     await @ic00.create_canister({settings = null});
@@ -405,4 +405,18 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
     arg = arg_;
   });
   return canister_id_;
+};
+
+// raw calls
+func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
+  await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
+};
+
+// stable variable footprint
+func @stable_var_info(self : actor {}) : async { size : Nat64 } {
+  let size =
+    (prim "deserialize" : Blob -> Nat64)
+      (await @call_raw((prim "cast" : (actor {}) -> Principal) self, "__motoko_stable_var_size",
+                       (prim "serialize" : () -> Blob) ()));
+  { size }
 };

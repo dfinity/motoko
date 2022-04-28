@@ -147,7 +147,7 @@ let is_enum =
 
 (* Mutable state for the already referencable type DIEs *)
 let any_type = ref None
-module TypedefRefs = Map.Make (struct type t = Type.kind Con.t let compare = compare end)
+module TypedefRefs = Map.Make (struct type t = Type.kind Cons.t let compare = compare end)
 let dw_typedefs = ref TypedefRefs.empty
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty

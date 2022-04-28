@@ -14,7 +14,7 @@ Although aimed squarely at the {IC}, its design is general enough to support fut
 == Asynchronous messaging and type sound execution
 
 {proglang} permits modern programming idioms, including special programming abstractions for distributed applications (dapps).
-Each dapp consists of one or more  _actor_s that communicate solely by asynchronous message passing. The state of an actor is isolated from all other actors, supporting distribution. There is no way to share state between several actors. 
+Each dapp consists of one or more  _actors_ that communicate solely by _asynchronous message passing_. The state of an actor is isolated from all other actors, supporting distribution. There is no way to share state between several actors. 
 The actor-based programming abstractions of {proglang} permit human-readable message-passing patterns, and they enforce that each network interaction obeys certain rules and avoids certain common mistakes.
 
 Specifically, {proglang} programs are _type sound_ since {proglang} includes a practical, modern type system that checks each one before it executes.
@@ -24,14 +24,14 @@ Consequently, entire classes of common programming pitfalls that are common in o
 To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
 [[pitch-actors]]
-== Each canister smart constract as an _actor_
+== Each canister smart contract as an _actor_
 
 {proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
 
 An actor is similar to an object, but is special in that its state is completely isolated, and all its interactions with the world are by _asynchronous_ messaging.
 
 All communication with and between actors involves passing messages asynchronously over the network using the Internet Computer's messaging protocol.
-An actor’s messages are processed in sequence, so state modifications never admit race conditions (unless explicitly allowed by punctuating `await`s).
+An actor's messages are processed in sequence, so state modifications never admit race conditions (unless explicitly allowed by punctuating `await` expressions).
 
 The Internet Computer ensures that each message that is sent receives a response. The response is either success with some value, or an error. An error can be the explicit rejection of the message by the receiving canister, a trap due to an illegal instruction such as division by zero, or a system error due to distribution or resource constraints. For example, a system error might be the transient or permanent unavailability of the receiver (either because the receiving actor is oversubscribed or has been deleted).
 
@@ -95,7 +95,7 @@ We do not show an example of this "`notify`" pattern above, since it uses callba
 To address the need for clarity and simplicity, {proglang} adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a _structured_ language for describing potentially-complex asynchronous dependency graphs.
 
 The link:language-manual{outfilesuffix}#exp-async[async] syntax introduces futures. A future value
-represents a _"`promise`" of a result that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
+represents a _promise_ of a result _that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
 You'll learn more about futures when we introduce actors in link:actors-async{outfilesuffix}[Actors and async data].
 
 Here, we merely use the ones that arise from calling `service1.computeAnswer(params)` and

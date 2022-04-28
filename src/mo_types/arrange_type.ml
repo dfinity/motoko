@@ -39,7 +39,7 @@ let prim p = match p with
   | Error -> Atom "Error"
   | Principal -> Atom "Principal"
 
-let con c = Atom (Con.to_string c)
+let con c = Atom (Type.string_of_con c)
 
 let rec typ (t:Type.typ) = match t with
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]

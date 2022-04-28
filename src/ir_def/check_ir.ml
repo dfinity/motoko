@@ -168,7 +168,7 @@ let rec check_typ env typ : unit =
   | T.Con (c, typs) ->
     List.iter (check_typ env) typs;
     begin
-      match Con.kind c with
+      match Cons.kind c with
       | T.Def (tbs,_) ->
         check_con env c;
         check_typ_bounds env tbs typs no_region
@@ -253,7 +253,7 @@ and check_con env c =
   else
   begin
     env.seen := T.ConSet.add c !(env.seen);
-    let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    let T.Abs (binds,typ) | T.Def (binds, typ) = Cons.kind c in
     check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
     check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
@@ -464,7 +464,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       List.iter (fun e -> typ e <: t0) exps;
       let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
       t1 <: t
-    | IdxPrim, [exp1; exp2] ->
+    | (IdxPrim | DerefArrayOffset), [exp1; exp2] ->
       let t1 = T.promote (typ exp1) in
       let t2 = try T.as_array_sub t1 with
                | Invalid_argument _ ->
@@ -473,6 +473,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | GetPastArrayOffset _, [exp1] ->
+      let t1 = T.promote (typ exp1) in
+      ignore
+        (try T.as_array_sub t1 with
+         | Invalid_argument _ ->
+           error env exp1.at "expected array type, but expression produces type\n  %s"
+             (T.string_of_typ_expand t1));
+      T.nat <: t
+    | NextArrayOffset _, [exp1] ->
+      typ exp1 <: T.nat;
+      T.nat <: t
+    | ValidArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.nat;
+      typ exp2 <: T.nat;
+      T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
@@ -578,6 +593,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+      (* TODO: T.unit <: t ? *)
+    | ICCallRawPrim, [exp1; exp2; exp3; k; r] ->
+      typ exp1 <: T.principal;
+      typ exp2 <: T.text;
+      typ exp3 <: T.blob;
+      typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
+      typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+      T.unit <: t
     | ICStableRead t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
@@ -624,15 +647,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
          the environment and see if this lines up. *)
       t1 <: t;
     | SystemTimePrim, [] ->
-      T.(Prim Nat64) <: t;
+      T.nat64 <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
-      T.nat64 <: t
+      T.nat <: t
     | SystemCyclesAcceptPrim, [e1] ->
-      typ e1 <: T.nat64;
-      T.nat64 <: t
+      typ e1 <: T.nat;
+      T.nat <: t
     | SystemCyclesAddPrim, [e1] ->
-      typ e1 <: T.nat64;
+      typ e1 <: T.nat;
       T.unit <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
@@ -640,6 +663,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | GetCertificate, [] ->
       T.Opt T.blob <: t
+    | ICPerformGC, [] ->
+      T.unit <: t
+    | ICStableSize t1, [e1] ->
+      typ e1 <: t1;
+      T.nat64 <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -757,15 +785,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, { pre; post}, t0) ->
+  | ActorE (ds, fs, { preupgrade; postupgrade; meta; heartbeat }, t0) ->
+    (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
-    check_exp env'' pre;
-    check_exp env'' post;
-    typ pre <: T.unit;
-    typ post <: T.unit;
+    check_exp env'' preupgrade;
+    check_exp env'' postupgrade;
+    check_exp env'' heartbeat;
+    typ preupgrade <: T.unit;
+    typ postupgrade <: T.unit;
+    typ heartbeat <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -937,7 +968,8 @@ and check_pat env pat : val_env =
     T.Env.empty
   | LitP lit ->
     let t1 = T.Prim (type_lit env lit pat.at) in
-    t <: t1;
+    let t1' = if T.eq t1 T.nat then T.int else t1 in  (* account for subtyping *)
+    t <: t1';
     T.Env.empty
   | TupP pats ->
     let ve = check_pats pat.at env pats T.Env.empty in
@@ -986,7 +1018,9 @@ and check_pat_field env t (pf : pat_field) =
 
 and check_pat_tag env t l pat =
   let (<:) = check_sub env pat.at in
-  T.lookup_val_field l (T.as_variant_sub l t) <: pat.note
+  match T.lookup_val_field_opt l (T.as_variant_sub l t) with
+  | Some t -> t <: pat.note
+  | None -> ()
 
 (* Objects *)
 
@@ -1027,7 +1061,7 @@ and check_open_typ_bind env typ_bind =
   | _ -> assert false
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; sort; bound} -> {Type.var = Con.name con; sort = sort; bound = Type.close cs bound}) tbs
+  List.map (fun {con; sort; bound} -> {Type.var = Cons.name con; sort = sort; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
@@ -1073,7 +1107,7 @@ let check_comp_unit env = function
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds
-  | ActorU (as_opt, ds, fs, { pre; post}, t0) ->
+  | ActorU (as_opt, ds, fs, { preupgrade; postupgrade; meta; heartbeat }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1086,10 +1120,11 @@ let check_comp_unit env = function
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
-    check_exp env'' pre;
-    check_exp env'' post;
-    typ pre <: T.unit;
-    typ post <: T.unit;
+    check_exp env'' preupgrade;
+    check_exp env'' postupgrade;
+    check_exp env'' heartbeat;
+    typ preupgrade <: T.unit;
+    typ postupgrade <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in

@@ -19,8 +19,8 @@ Running `make` should produce `mo-rts.wasm`.
 
 If run within `nix-shell`, the environment variables `WASM_CLANG` and `WASM_LD`
 should point to suitable binaries (we track a specific unreleased version of
-`llvm`). If not present, the `Makefile` will try to use `clang-10` and
-`wasm-ld-10`.
+`llvm`). If not present, the `Makefile` will try to use `clang-13` and
+`wasm-ld-13`.
 
 The runtime compiles and links in [libtommath]. It needs the source, so
 `nix-build` and `nix-shell` will set the environment variable `TOMMATHSRC` to
@@ -58,30 +58,48 @@ See `motoko-rts/src/bigint.rs` for the technical details.
 Rust build
 ----------
 
-The Rust parts are built from `motoko-rts`, using `xargo` and `cargo`.
+To build Motoko RTS in nix we need pre-fetch Rust dependencies. This works in
+`nix-build` by:
 
-To build this in nix, we need pre-fetch some dependencies (currently
-`compiler_builtins` and `libc`). This works in `nix-build` by:
-
- * Adding`compiler_builtins` as a dependency in `Cargo.toml` (even though not
-   needed), so that it shows up with a hash in `Cargo.lock`
-
- * Building a directory with vendored sources in `default.nix` (see `rustDeps`)
+ * Building a directory with vendored sources in `default.nix`
 
  * Configuring `cargo` to use that vendored directory (see `preBuild`)
 
 If you change dependencies (e.g. bump versions, add more crates),
 
- 1. Add them to `Cargo.toml`
- 2. Make sure that `Cargo.lock` is up to date
- 3. In `default.nix`, invalidate the `sha256` of `rustDeps` (e.g. change one
+ 1. Make sure that `motoko-rts-tests/Cargo.lock` is up to date. This can be
+    done by running `cargo build --target=wasm32-wasi` in `motoko-rts-tests/`
+    directory.
+ 2. In `default.nix`, invalidate the `sha256` of `rtsDeps` (e.g. change one
     character)
- 4. Run `nix-build -A rts`. You should get an error message about the actual
+ 3. Run `nix-build -A rts`. You should get an error message about the actual
     checksum.
- 5. Set that as `sha256` of `rustDeps` in `default.nix`
+ 4. Set that as `sha256` of `rtsDeps` in `default.nix`
 
 Warning: nix will happily use a stale version of the dependencies if you do not
 do step 3.
+
+**Updating rustc**:
+
+1. Update Rust version in `nix/default.nix`, in the line with
+   `moz_overlay.rustChannelOf { ... }`.
+2. Invalidate `rustStdDepsHash` in `default.nix`.
+3. Run `nix-build -A rts`. You should get an error message about the expected
+   value of `rustStdDepsHash`.
+4. Update `rustStdDepsHash` with the expected value in the error message.
+
+--------
+**The above doesn't always work**
+
+E.g. when you get `perhaps a crate was updated and forgotten to be
+re-vendored?`, proceed as follows:
+ - comment out the line `outputHashMode = "recursive";`
+ - `nix-build -A rts`
+ - update `cargoVendorTools.cargoSha256` based on the mismatch error message
+ - revert the line `outputHashMode = "recursive";`
+ - `nix-build -A rts`
+ - now fix `rustStdDepsHash` based on the new error message
+ - `nix-build -A rts` again, this should go through
 
 Running RTS tests
 -----------------

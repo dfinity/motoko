@@ -1,14 +1,7 @@
 //! Implements Motoko runtime system
 
 #![no_std]
-// TODO (osa): Some of these are stabilized, we need to update rustc
-#![feature(
-    arbitrary_self_types,
-    assoc_char_funcs,
-    core_intrinsics,
-    panic_info_message,
-    ptr_offset_from
-)]
+#![feature(arbitrary_self_types, core_intrinsics, panic_info_message)]
 
 #[macro_use]
 mod print;
@@ -33,6 +26,7 @@ mod mem_utils;
 pub mod memory;
 pub mod principal_id;
 mod static_checks;
+pub mod stream;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;

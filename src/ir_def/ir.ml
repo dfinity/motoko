@@ -72,14 +72,26 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of dec list * field list * upgrade * Type.typ (* actor *)
+  | ActorE of dec list * field list * system * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | TryE of exp * case list                    (* try/catch *)
 
-and upgrade = {
-  pre : exp;
-  post : exp
+and system = {
+  meta : meta;
+  preupgrade : exp;
+  postupgrade : exp;
+  heartbeat : exp
 }
+
+and candid = {
+    args : string;
+    service : string;
+  }
+
+and meta = {
+    candid : candid;  (* Candid (of service, never actor class) *)
+    sig_ : string  (* Motoko stable signature *)
+  }
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
@@ -128,6 +140,11 @@ and prim =
   | IcUrlOfBlob
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
+  (* Array field iteration/access *)
+  | NextArrayOffset of spacing        (* advance array offset *)
+  | ValidArrayOffset                  (* verify array offset *)
+  | DerefArrayOffset                  (* array offset indexing *)
+  | GetPastArrayOffset of spacing     (* array offset past the last element *)
   (* Funds *)
   | SystemCyclesAddPrim
   | SystemCyclesAcceptPrim
@@ -141,20 +158,24 @@ and prim =
   (* backend stuff *)
   | CPSAwait of Type.typ
   | CPSAsync of Type.typ
+  | ICPerformGC
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim
+  | ICCallRawPrim
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
+  | ICStableSize of Type.typ
 
+and spacing = One | ElementSize        (* increment units when iterating over arrays *)
 
 (* Declarations *)
 
 and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                          (* immutable *)
-  | VarD of id * Type.typ * exp                           (* mutable *)
+  | VarD of id * Type.typ * exp                (* mutable *)
 
 (* Literals *)
 
@@ -210,7 +231,7 @@ let full_flavor () : flavor = {
 type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
-  | ActorU of arg list option * dec list * field list * upgrade * Type.typ (* actor (class) *)
+  | ActorU of arg list option * dec list * field list * system * Type.typ (* actor (class) *)
 
 type prog = comp_unit * flavor
 
@@ -240,7 +261,11 @@ let map_prim t_typ t_id p =
   | DotPrim _
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
-  | IdxPrim -> p
+  | IdxPrim
+  | NextArrayOffset _
+  | ValidArrayOffset
+  | DerefArrayOffset
+  | GetPastArrayOffset _ -> p
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim
@@ -270,9 +295,12 @@ let map_prim t_typ t_id p =
   | CPSAwait t -> CPSAwait (t_typ t)
   | CPSAsync t -> CPSAsync (t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
+  | ICPerformGC
   | ICRejectPrim
   | ICCallerPrim
-  | ICCallPrim -> p
+  | ICCallPrim
+  | ICCallRawPrim -> p
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
+  | ICStableSize t -> ICStableSize (t_typ t)
 

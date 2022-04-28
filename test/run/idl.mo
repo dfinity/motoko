@@ -29,6 +29,23 @@ assert(debug_show (1,2,3) == debug_show (deserNats (serNats (1,2,3)) : (Nat,Nat,
 assert(true == deserBool (serBool true));
 assert(false == deserBool (serBool false));
 
+let arrayNat : [Nat] = [0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864,134217728,268435456,536870912,1073741824,2147483648,4294967296,8589934592,17179869184,34359738368];
+
+let arrayInt : [Int] = [-1,-2,-4,-8,-16,-32,-64,-128,-256,-512,-1024,-2048,-4096,-8192,-16384,-32768,-65536,-131072,-262144,-524288,-1048576,-2097152,-4194304,-8388608,-16777216,-33554432,-67108864,-134217728,-268435456,-536870912,-1073741824,-2147483648,-4294967296,-8589934592,-17179869184,-34359738368,-68719476736];
+
+func serArrayNat(a: [Nat]) : Blob = (prim "serialize" : [Nat] -> Blob) a;
+func deserArrayNat(b: Blob) : [Nat] = (prim "deserialize" : Blob -> [Nat]) b;
+
+func serArrayInt(a: [Int]) : Blob = (prim "serialize" : [Int] -> Blob) a;
+func deserArrayInt(b: Blob) : [Int] = (prim "deserialize" : Blob -> [Int]) b;
+
+let started_with = Prim.rts_heap_size();
+assert(arrayNat == deserArrayNat (serArrayNat arrayNat));
+assert(arrayNat == deserArrayInt (serArrayNat arrayNat));
+assert(arrayNat == deserArrayInt (serArrayInt arrayNat));
+assert(arrayInt == deserArrayInt (serArrayInt arrayInt));
+Prim.debugPrint(debug_show (Prim.rts_heap_size() : Int - started_with));
+
 //SKIP run
 //SKIP run-ir
 //SKIP run-low

@@ -7,7 +7,12 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
-    if super::should_do_gc() {
+    // Half of the heap.
+    // NB. This expression is evaluated in compile time to a constant.
+    let max_live: Bytes<u64> =
+        Bytes(u64::from((crate::constants::WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
+
+    if super::should_do_gc(max_live) {
         copying_gc(mem);
     }
 }
@@ -129,7 +134,7 @@ unsafe fn evac<M: Memory>(
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
-    // Update the field if the object is already evacauted
+    // Update the field if the object is already evacuated
     if obj.tag() == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;

@@ -17,9 +17,10 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v13
-
-    - run: nix-env -iA nix-build-uncached -f nix/
+    - uses: cachix/install-nix-action@v16
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
@@ -32,13 +33,15 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
+    - run: nix-env -iA nix-build-uncached -f nix/
+
     - name: "nix-build"
-      run: nix-build-uncached --max-jobs 4 -A all-systems-go
+      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
-        from="$( git merge-base origin/${{ github.base_ref}} HEAD )"
+        from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
         nix-build --max-jobs 4 perf-delta.nix -o perf-delta.txt \
@@ -62,8 +65,10 @@ jobs:
         comment-author: 'github-actions[bot]'
         body-includes: '<!-- perf comment -->'
 
+    # Forks can't add comments so this job does not run on forks, see
+    # motoko#2864.
     - name: Create or update performance comment
-      if: runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       uses: peter-evans/create-or-update-comment@v1
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -72,3 +77,28 @@ jobs:
           <!-- perf comment -->
           ${{ steps.perf.outputs.content }}
         edit-mode: replace
+
+  reports:
+    if: github.ref == 'refs/heads/master'
+    needs: tests
+    concurrency: ci-${{ github.ref }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v16
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command
+    - uses: cachix/cachix-action@v10
+      with:
+        name: ic-hs-test
+    - name: Fetch report
+      run: nix-build -A report-site -o report-site
+    - name: Resolve symlinks
+      run: cp -rL report-site report-site-copy
+    - name: Push report to gitub pages
+      uses: JamesIves/github-pages-deploy-action@v4.2.5
+      with:
+        branch: gh-pages
+        folder: report-site-copy
+        single-commit: true

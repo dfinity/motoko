@@ -79,25 +79,25 @@ Mergify reacts to the `automerge-squash` label. Once approved and CI passes, it
 merges master into the branch (using normal merge, which is important for
 stashed PRs) and then squash-merges the PR.
 
-Render and show generated base docs
------------------------------------
+Render and provide various reports
+----------------------------------
 
 **Use-case:**
-To be able to see and share the effects on the generated documentation for the base library, caused by a change to `mo-doc`, without needing the reviewer to generate the documentation locally.
+Various build artifacts are most useful when available directly in the browser, namely:
 
-**Implementation:**
-This was lost in the move from the internal CI to the public CI and is not yet
-implemented again (<https://github.com/dfinity/motoko/issues/2568>).
+ * The motoko user guide
+ * The “overview slides”
+ * The documentation for `motoko-base`, in the version pinned by motoko
+ * Flamegraphs for the programs in `tests/perf`
+ * A coverage report
 
-Render and show slides
-----------------------
-**Use-case:**
-To be able to see and share the “overview slides”, the rendered version should be hosted somewhere.
+A stable link to these should exist for `master`, and an easy-to-find link for each PR.
 
-**Implementation:**
-This was lost in the move from the internal CI to the public CI and is not yet
-implemented again (<https://github.com/dfinity/motoko/issues/2568>).
-
+**Implementation (external):**
+The latest `master` version of the file is availble at
+<https://dfinity.github.io/motoko/>.
+The reports are calculated in PRs (so failures would be caught), but are not
+hosted anywhere.
 
 Performance changes are known
 -----------------------------
