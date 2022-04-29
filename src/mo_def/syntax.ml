@@ -122,7 +122,6 @@ and vis' =
 
 let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 
-
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
 
@@ -255,6 +254,7 @@ let (@@) = Source.(@@)
 let (@?) it at = Source.({it; at; note = empty_typ_note})
 let (@!) it at = Source.({it; at; note = Type.Pre})
 let (@=) it at = Source.({it; at; note = None})
+
 
 (* NB: This function is currently unused *)
 let string_of_lit = function
