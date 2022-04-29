@@ -415,11 +415,8 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 // stable variable footprint
 func @stable_var_info(self : actor {}) : async { size : Nat64 } {
   let size =
-    (prim "deserialize" : Blob -> ?Nat64)
+    (prim "deserialize" : Blob -> Nat64)
       (await @call_raw((prim "cast" : (actor {}) -> Principal) self, "__motoko_stable_var_size",
                        (prim "serialize" : () -> Blob) ()));
-  switch size {
-  case null { assert false; loop { } };
-  case (?n) { ( { size = n } : { size : Nat64 } ) };
-  }
+  { size }
 };
