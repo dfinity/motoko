@@ -1,10 +1,10 @@
 func go () {
-  let foobar1 = func foobar1() = ();
+  let foobar1 = func foobar1() { assert true; };
   foobar1();
 };
 go();
 
-let foobar2 = func foobar2() = ();
+let foobar2 = func foobar2() { assert true; };
 foobar2();
 
 // CHECK-LABEL: func $init

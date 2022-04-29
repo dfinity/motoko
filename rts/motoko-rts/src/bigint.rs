@@ -207,7 +207,7 @@ unsafe extern "C" fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
-        crate::rts_trap(msg.as_blob().payload_addr(), msg.as_blob().len());
+        crate::rts_trap(msg.as_blob().payload_const(), msg.as_blob().len());
     }
 
     mp_get_u32(mp_int)
@@ -461,7 +461,7 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 
     if mp_isneg(&tmp) {
-        // Turn negatiave numbers into the two's complement of the right size
+        // Turn negative numbers into the two's complement of the right size
         let bytes = bigint_sleb128_size(n);
         let mut big: mp_int = core::mem::zeroed();
         check(mp_init(&mut big));
@@ -494,6 +494,44 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
+/// Decode at most 5 bytes of LEB128 data to a compact bignum `Value`.
+/// The number of 7-bit chunks are located in the lower portion of `leb`
+/// as indicated by `bits`.
+///
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe extern "C" fn bigint_leb128_decode_word64(
+    mut leb: u64,
+    mut bits: u64,
+    buf: *mut Buf,
+) -> Value {
+    let continuations = bits as u32 / 8;
+    buf.advance(continuations + 1);
+
+    let mut mask: u64 = 0b111_1111; // sliding mask
+    let mut acc = 0;
+    loop {
+        acc |= leb & mask;
+        if bits < 8 {
+            if continuations == 4 {
+                break;
+            }
+            return Value::from_signed_scalar(acc as i32);
+        }
+        bits -= 8;
+        mask <<= 7;
+        leb >>= 1;
+    }
+
+    let tentative = (acc as i32) << 1 >> 1; // top two bits must match
+    if tentative as u64 == acc {
+        // roundtrip is valid
+        return Value::from_signed_scalar(tentative);
+    }
+
+    bigint_of_word64(acc)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     let mut i = tmp_bigint();
@@ -522,4 +560,44 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     }
 
     persist_bigint(i)
+}
+
+/// Decode at most 5 bytes of SLEB128 data to a compact bignum `Value`.
+/// The number of 7-bit chunks are located in the lower portion of `sleb`
+/// as indicated by `bits`.
+///
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe extern "C" fn bigint_sleb128_decode_word64(
+    mut sleb: u64,
+    mut bits: u64,
+    buf: *mut Buf,
+) -> Value {
+    let continuations = bits as u32 / 8;
+    buf.advance(continuations + 1);
+
+    let mut mask: u64 = 0b111_1111; // sliding mask
+    let mut acc = 0;
+    loop {
+        acc |= sleb & mask;
+        if bits < 8 {
+            if continuations == 4 {
+                break;
+            }
+            let sext = 25 - 7 * continuations; // this many top bits will get a copy of the sign
+            return Value::from_signed_scalar((acc as i32) << sext >> sext);
+        }
+        bits -= 8;
+        mask <<= 7;
+        sleb >>= 1;
+    }
+
+    let signed = (acc as i64) << 29 >> 29; // sign extend
+    let tentative = (signed as i32) << 1 >> 1; // top two bits must match
+    if tentative as i64 == signed {
+        // roundtrip is valid
+        return Value::from_signed_scalar(tentative);
+    }
+
+    bigint_of_int64(signed)
 }

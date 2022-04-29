@@ -1,10 +1,26 @@
 # Motoko compiler changelog
 
+## 0.6.26 (2022-04-20)
+
+* motoko (`moc`)
+
+  * Performance: inline prim-wrapping functions (thanks to nomeata) (#3159)
+  * Improve type pretty printer to mirror type parser (avoids producing unparseable stable variable signatures) (#3190)
+  * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
+  * Performance: avoid redundant heap allocation when deserializing compact Candid `int` and  `nat` values (#3173)
+  * Added a primitive to obtain stable variable memory footprint (#3049)
+
+* motoko-base
+
+  * Fixed the 32-bit range limitation of `Hash.hash: Nat -> Nat32` and
+    deprecate most functions in `Hash` (dfinity/motoko-base#366).
+  * Add `List.toIter` (thanks to hoosan) (dfinity/motoko-base#336).
+
 ## 0.6.25 (2022-03-07)
 
 * motoko (`moc`)
 
-  * bugfix: fix bogus elision of type constructors sharing names with primitive types in --stable-types section and .most file (#3140)
+  * bugfix: fix bogus elision of type constructors sharing names with primitive types in `--stable-types` section and `.most` file (#3140)
 
 ## 0.6.24 (2022-03-06)
 
