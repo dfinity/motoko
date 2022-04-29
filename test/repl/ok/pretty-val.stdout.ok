@@ -277,12 +277,12 @@ Motoko compiler (source XXX)
       }
   } =
   #A(#A(#A(#A(#A(#Foo)))))
->   let o : <T, U>(T) -> ?T = func
+>   let o : <T, U>T -> ?T = func
 > let o1 : ?Nat = ?666
-> let o2 : ?(?Nat) = ?(?666)
-> let o3 : ?(?(?Nat)) = ?(?(?666))
-> let o4 : ?(?(?(?Nat))) = ?(?(?(?666)))
-> let o5 : ?(?(?(?(?Nat)))) = ?(?(?(?(?666))))
+> let o2 : ??Nat = ?(?666)
+> let o3 : ???Nat = ?(?(?666))
+> let o4 : ????Nat = ?(?(?(?666)))
+> let o5 : ?????Nat = ?(?(?(?(?666))))
 >         type c<T, U> = {type List<T_1> = ?(T_1, List<T_1>); A : T; B : U}
 let c : <T, U>(T, U) -> c<T, U> = func
 > let c1 :
