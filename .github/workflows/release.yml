@@ -39,10 +39,9 @@ jobs:
         echo "::set-output name=release_body::$r"
 
     outputs:
-      version: ${{ steps.get_version.outputs.version }}
       release_body: ${{ steps.read_changelog.outputs.release_body }}
 
-  # Now build the release on both linux and darwin, with the version number set
+  # Now build the release on both linux and darwin
   build:
     strategy:
       matrix:
@@ -69,8 +68,7 @@ jobs:
     - name: "nix-build"
       # these are the dependencies listed in release-files. Sorry for the duplication
       run: |
-        nix-build --max-jobs 1 --argstr releaseVersion ${{needs.changelog.outputs.version}} \
-          -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
+        nix-build --max-jobs 1 --arg officialRelease true -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
 
   # Finally do the upload. Hopefully the previous job has uploaded the
   # build product to the cachix cache, as we cannot build the darwin products on
@@ -87,7 +85,7 @@ jobs:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
 
-    - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion '${{ needs.changelog.outputs.version }}'
+    - run: nix-build --max-jobs 1 --arg officialRelease true release-files.nix
 
     - name: Upload Release Assets
       uses: svenstaro/upload-release-action@v2
