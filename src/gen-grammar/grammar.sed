@@ -138,6 +138,8 @@ s/ADDOP/\'+\'/g
 s/ASSIGN/\':=\'/g
 s/DO/\'do\'/g
 s/OR/\'or\'/g
+s/TO_CANDID/\'to_candid\'/g
+s/FROM_CANDID/\'from_candid\'/g
 s/AND/\'and\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/
