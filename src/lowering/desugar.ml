@@ -69,12 +69,9 @@ and exp' at note = function
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
   | S.ToCandidE es ->
-    (* desugaring to_candid introduces explicit IR tuple: *)
-    let arg = tupE (exps es) in
-    begin match T.normalize arg.note.Note.typ with
-    | T.Tup ts -> (primE (I.SerializePrim [T.Tup ts]) [arg]).it
-    | _ -> assert false
-    end
+    let args = exps es in
+    let ts = List.map (fun e -> e.note.Note.typ) args in
+    (primE (I.SerializePrim ts) [seqE args]).it
   | S.FromCandidE e ->
     begin match T.normalize note.Note.typ with
     | T.Opt t -> (optE (primE (I.DeserializePrim (T.as_seq t)) [exp e])).it
