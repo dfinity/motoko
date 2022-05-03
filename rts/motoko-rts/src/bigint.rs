@@ -471,7 +471,7 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_stream_encode(n: Value, stream: *mut Stream) {
+pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     stream.leb128_encode(&mut tmp, false)
@@ -514,7 +514,7 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_stream_encode(n: Value, stream: *mut Stream) {
+pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 
