@@ -167,21 +167,12 @@ impl Stream {
         }
     }
 
-    pub(crate) unsafe fn try_reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
-        if bytes > (*self).header.len - INITIAL_STREAM_FILLED {
-            return core::ptr::null_mut();
-        }
-
-        self.reserve(bytes)
-    }
-
     /// like `bigint_leb128_encode_go`, but to a stream
     pub(crate) unsafe fn leb128_encode(self: *mut Stream, tmp: *mut mp_int, add_bit: bool) {
         if mp_isneg(tmp) {
             bigint_trap();
         }
 
-        // cache bytewise
         loop {
             let byte = mp_get_u32(tmp) as u8;
             check(mp_div_2d(tmp, 7, tmp, core::ptr::null_mut()));
