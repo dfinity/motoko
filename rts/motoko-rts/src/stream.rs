@@ -29,7 +29,7 @@
 //              (from `compile.ml`) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
-use crate::bigint::{bigint_trap, check, mp_get_u32, mp_isneg, mp_iszero};
+use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -169,9 +169,7 @@ impl Stream {
 
     /// like `bigint_leb128_encode_go`, but to a stream
     pub(crate) unsafe fn write_leb128(self: *mut Stream, tmp: *mut mp_int, add_bit: bool) {
-        if mp_isneg(tmp) {
-            bigint_trap();
-        }
+        debug_assert!(!mp_isneg(tmp));
 
         loop {
             let byte = mp_get_u32(tmp) as u8;
