@@ -168,7 +168,7 @@ impl Stream {
     }
 
     /// like `bigint_leb128_encode_go`, but to a stream
-    pub(crate) unsafe fn leb128_encode(self: *mut Stream, tmp: *mut mp_int, add_bit: bool) {
+    pub(crate) unsafe fn write_leb128(self: *mut Stream, tmp: *mut mp_int, add_bit: bool) {
         if mp_isneg(tmp) {
             bigint_trap();
         }
