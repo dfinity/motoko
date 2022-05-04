@@ -15,6 +15,9 @@ actor {
          #set : () -> Nat;
          #read : Any;
          #reset : () -> ();
+         #__get_candid_interface_tmp_hack: Any;
+         #__motoko_async_helper: Any;
+         #__motoko_stable_var_size: Any;
       }
     }
     ) : Bool  {
@@ -22,8 +25,10 @@ actor {
       switch (msg) {
          case (#inc _) { true };
          case (#read _) { true };
-         case (#set n)  { (n()) >= 0 };
-         case (#reset f) { true };
+         case (#set n)  { (n()) != 666 };
+         case (#reset f) { false };
+         case (#__get_candid_interface_tmp_hack _) { true };
+         case _ { false };
       }
      }
 };

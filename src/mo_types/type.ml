@@ -1119,7 +1119,7 @@ let decode_msg_typ tfs =
                List.map (open_ (List.map (fun _ -> Non) tbs)) ts1);
            depr = None }
        | _ -> None)
-     tfs))
+     (tfs @ well_known_actor_fields)))
 
 (* Pretty printing *)
 

@@ -336,13 +336,13 @@ and call_system_func_opt name es obj_typ =
                (List.map (fun tf ->
                   (tf.T.lab,
                    match tf.T.typ with
-                   | T.Func(T.Shared _, _,  [_], ts1, ts2) ->
+                   | T.Func(T.Local, _,  [], [], ts) ->
                      let unit = fresh_var "unit" T.unit in
-                     let ts1 = List.map (T.open_ [T.scope_bound]) ts1 in
                      tagE tf.T.lab (unit -->
-                       (primE (Ir.DeserializePrim ts1) [varE arg]))
+                       (primE (Ir.DeserializePrim ts) [varE arg]))
                    | _ -> assert false))
-               tfs)
+                (T.as_variant msg_typ)
+               )
                msg_typ
            in
            let accept = fresh_var "accept" T.bool
