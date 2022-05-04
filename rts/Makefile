@@ -1,8 +1,8 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-13
-WASM_CLANG ?= clang-13
-WASM_LD ?= wasm-ld-12
+CLANG ?= clang-14
+WASM_CLANG ?= clang-14
+WASM_LD ?= wasm-ld-14
 
 #
 # We manually list all the .c files of libtommath that we care about.
