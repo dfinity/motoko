@@ -14,8 +14,7 @@
 * motoko-base
 
   * Fixed a bug in `Trie.filter` (and `Trie.mapFilter`) which could
-    lead to lost matches in case of certain configurations and
-    predicates (dfinity/motoko-base#371).
+    lead to missing matches in some cases (dfinity/motoko-base#371).
 
 ## 0.6.26 (2022-04-20)
 
