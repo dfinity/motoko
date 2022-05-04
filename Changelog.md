@@ -5,11 +5,12 @@
 * motoko (`moc`)
 
   * Importing modules by relative path is now more robust (#3215).
-  * Performance: externalising stable variables to stable memory is now
-    performed in a streaming manner, reducing heap consumption and
-    copying when an upgrade is being performed (#3149).
-  * Performance: local variables are now stored in unboxed form when
-    possible (thanks to nomeata) (#3207).
+  * Performance: persisting stable variables to stable memory is now
+    performed in streaming fashion, reducing heap consumption and
+	copying during an upgrade (#3149).
+  * Performance: local 32- and 64-bit numeric values are now stored in
+    local variables using unboxed form when possible (thanks to
+    nomeata) (#3207).
 
 * motoko-base
 
