@@ -154,7 +154,6 @@ end (* Const *)
 module SR = struct
   (* This goes with the StackRep module, but we need the types earlier *)
 
-
   (* Value representation on the stack:
 
      Compiling an expression means putting its value on the stack. But
@@ -189,6 +188,16 @@ module SR = struct
   let eq (t1 : t) (t2 : t) = match t1, t2 with
     | Const (p1, _), Const (p2, _) -> p1 == p2
     | _ -> t1 = t2
+
+  let to_var_type : t -> value_type = function
+    | Vanilla -> I32Type
+    | UnboxedBool -> I32Type
+    | UnboxedWord64 -> I64Type
+    | UnboxedWord32 -> I32Type
+    | UnboxedFloat64 -> F64Type
+    | UnboxedTuple n -> fatal "to_var_type: UnboxedTuple"
+    | Const _ -> fatal "to_var_type: Const"
+    | Unreachable -> fatal "to_var_type: Unreachable"
 
 end (* SR *)
 
@@ -352,7 +361,6 @@ module E = struct
      bunch of accessors. *)
 
   let mode (env : t) = env.mode
-
 
   let add_anon_local (env : t) ty =
       let i = reg env.locals ty in
@@ -850,10 +858,12 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "bigint_leb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
@@ -2090,6 +2100,13 @@ sig
    *)
   val compile_store_to_data_buf_signed : E.t -> G.t
   val compile_store_to_data_buf_unsigned : E.t -> G.t
+  (* given on stack
+     - numeric object (vanilla, TOS)
+     - (unskewed) stream
+    store the binary representation of the numeric object into the stream
+   *)
+  val compile_store_to_stream_signed : E.t -> G.t
+  val compile_store_to_stream_unsigned : E.t -> G.t
   (* given a ReadBuf on stack, consume bytes from it,
      deserializing to a numeric object
      and leave it on the stack (vanilla).
@@ -2178,7 +2195,6 @@ module I32Leb = struct
   let compile_store_to_data_buf_signed env get_x get_buf =
     get_x ^^ get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
     compile_sleb128_size get_x
-
 end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
@@ -2522,6 +2538,48 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
+  let compile_store_to_stream_unsigned env =
+    let set_x, get_x = new_local env "x" in
+    let set_stream, get_stream = new_local env "stream" in
+    set_x ^^ set_stream ^^
+    get_x ^^
+    try_unbox I32Type
+      (fun env ->
+        BitTagged.untag_i32 ^^ set_x ^^
+        (* get size & reserve & encode *)
+        let dest =
+          get_stream ^^
+          I32Leb.compile_leb128_size get_x ^^
+          E.call_import env "rts" "stream_reserve" in
+        I32Leb.compile_store_to_data_buf_unsigned env get_x dest)
+      (fun env ->
+        G.i Drop ^^
+        get_stream ^^ get_x ^^ Num.compile_store_to_stream_unsigned env ^^
+        compile_unboxed_zero)
+      env ^^
+      G.i Drop
+
+  let compile_store_to_stream_signed env =
+    let set_x, get_x = new_local env "x" in
+    let set_stream, get_stream = new_local env "stream" in
+    set_x ^^ set_stream ^^
+    get_x ^^
+    try_unbox I32Type
+      (fun env ->
+        BitTagged.untag_i32 ^^ set_x ^^
+        (* get size & reserve & encode *)
+        let dest =
+          get_stream ^^
+          I32Leb.compile_sleb128_size get_x ^^
+          E.call_import env "rts" "stream_reserve" in
+        I32Leb.compile_store_to_data_buf_signed env get_x dest)
+      (fun env ->
+        G.i Drop ^^
+        get_stream ^^ get_x ^^ Num.compile_store_to_stream_signed env ^^
+        compile_unboxed_zero)
+      env ^^
+      G.i Drop
+
   let compile_data_size_unsigned env =
     try_unbox I32Type
       (fun _ ->
@@ -2635,12 +2693,19 @@ module BigNumLibtommath : BigNumType = struct
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_leb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_leb128_size"
+
+  let compile_store_to_stream_unsigned env =
+    E.call_import env "rts" "bigint_leb128_stream_encode"
+
   let compile_store_to_data_buf_signed env =
     let (set_buf, get_buf) = new_local env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
+
+  let compile_store_to_stream_signed env =
+    E.call_import env "rts" "bigint_sleb128_stream_encode"
 
   let compile_load_from_data_buf env get_data_buf = function
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
@@ -5946,20 +6011,12 @@ module BlobStream : Stream = struct
     E.call_import env "rts" "stream_write_text"
 
   let write_bignum_leb env get_token get_x =
-    get_token ^^
-    get_x ^^ BigNum.compile_data_size_unsigned env ^^
-    E.call_import env "rts" "stream_reserve" ^^ (* FIXME: might overflow! *)
-    get_x ^^
-    BigNum.compile_store_to_data_buf_unsigned env ^^
-    G.i Drop
+    get_token ^^ get_x ^^
+    BigNum.compile_store_to_stream_unsigned env
 
   let write_bignum_sleb env get_token get_x =
-    get_token ^^
-    get_x ^^ BigNum.compile_data_size_signed env ^^
-    E.call_import env "rts" "stream_reserve" ^^ (* FIXME: might overflow! *)
-    get_x ^^
-    BigNum.compile_store_to_data_buf_signed env ^^
-    G.i Drop
+    get_token ^^ get_x ^^
+    BigNum.compile_store_to_stream_signed env
 
 end
 
@@ -6314,6 +6371,8 @@ module StackRep = struct
     | Func (Shared _, _, _, _, _) -> Vanilla
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
+  (* The env looks unused, but will be needed once we can use multi-value, to register
+     the complex types in the environment *)
   let to_block_type env = function
     | Vanilla -> [I32Type]
     | UnboxedBool -> [I32Type]
@@ -6446,10 +6505,10 @@ module VarEnv = struct
 
   (* A type to record where Motoko names are stored. *)
   type varloc =
-    (* A Wasm Local of the current function, directly containing the value
-       (note that most values are pointers, but not all)
+    (* A Wasm Local of the current function, directly containing the value,
+       in the given stackrep (Vanilla, UnboxedWord32, …) so far
        Used for immutable and mutable, non-captured data *)
-    | Local of int32
+    | Local of SR.t * int32
     (* A Wasm Local of the current function, that points to memory location,
        which is a MutBox.  Used for mutable captured data *)
     | HeapInd of int32
@@ -6528,13 +6587,13 @@ module VarEnv = struct
   let add_local_const (ae : t) name cv =
       { ae with vars = NameEnv.add name (Const cv : varloc) ae.vars }
 
-  let add_local_local env (ae : t) name i =
-      { ae with vars = NameEnv.add name (Local i) ae.vars }
+  let add_local_local env (ae : t) name sr i =
+      { ae with vars = NameEnv.add name (Local (sr, i)) ae.vars }
 
-  let add_direct_local env (ae : t) name =
-      let i = E.add_anon_local env I32Type in
+  let add_direct_local env (ae : t) name sr =
+      let i = E.add_anon_local env (SR.to_var_type sr) in
       E.add_local_name env i name;
-      (add_local_local env ae name i, i)
+      (add_local_local env ae name sr i, i)
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_arguments env (ae : t) as_local = function
@@ -6543,7 +6602,7 @@ module VarEnv = struct
       if as_local name then
         let i = E.add_anon_local env I32Type in
         E.add_local_name env i name;
-        let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
+        let ae' = { ae with vars = NameEnv.add name (Local (SR.Vanilla, i)) ae.vars } in
         add_arguments env ae' as_local names
       else (* needs to go to static memory *)
         let ptr = MutBox.static env in
@@ -6576,17 +6635,20 @@ module Var = struct
 
   open VarEnv
 
-  (* Stores the payload (which is found on the stack) *)
+  (* Desired stack rep, and code to store payload on the stack *)
   let set_val env ae var = match VarEnv.lookup_var ae var with
-    | Some (Local i) ->
+    | Some (Local (sr, i)) ->
+      sr,
       G.i (LocalSet (nr i))
     | Some (HeapInd i) ->
+      SR.Vanilla,
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
       G.i (LocalGet (nr i)) ^^
       get_new_val ^^
       Heap.store_field MutBox.field
     | Some (HeapStatic ptr) ->
+      SR.Vanilla,
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
       compile_unboxed_const ptr ^^
@@ -6596,10 +6658,15 @@ module Var = struct
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
 
+  (* Stores the payload (which is found on the stack, in Vanilla stackrep) *)
+  let set_val_vanilla env ae var =
+    let (sr, code) = set_val env ae var in
+    StackRep.adjust env SR.Vanilla sr ^^ code
+
   (* Returns the payload (optimized representation) *)
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
-    | Some (Local i) ->
-      SR.Vanilla, G.i (LocalGet (nr i))
+    | Some (Local (sr, i)) ->
+      sr, G.i (LocalGet (nr i))
     | Some (HeapInd i) ->
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field MutBox.field
     | Some (HeapStatic i) ->
@@ -6622,10 +6689,12 @@ module Var = struct
   *)
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
     match VarEnv.lookup_var ae0 var with
-    | Some (Local i) ->
-      ( G.i (LocalGet (nr i))
+    | Some (Local (sr, i)) ->
+      ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
       , fun new_env ae1 ->
-        let ae2, j = VarEnv.add_direct_local new_env ae1 var in
+        (* we use SR.Vanilla in the restored environment. We could use sr;
+           like for parameters hard to predict what’s better *)
+        let ae2, j = VarEnv.add_direct_local new_env ae1 var SR.Vanilla in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
@@ -6673,7 +6742,10 @@ module FuncDec = struct
     let rec go i ae = function
     | [] -> ae
     | a::args ->
-      let ae' = VarEnv.add_local_local env ae a.it (Int32.of_int i) in
+      (* Function arguments are always vanilla, due to subtyping and uniform representation.
+         We keep them as such here for now. We _could_ always unpack those that can be unpacked
+         (Nat32 etc.). It is generally hard to predict which strategy is better. *)
+      let ae' = VarEnv.add_local_local env ae a.it SR.Vanilla (Int32.of_int i) in
       go (i+1) ae' args in
     go first_arg ae0 args
 
@@ -6730,7 +6802,7 @@ module FuncDec = struct
       let arg_tys = List.map (fun a -> a.note) args in
       let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
       Serialization.deserialize env arg_tys ^^
-      G.concat_map (Var.set_val env ae1) (List.rev arg_names) ^^
+      G.concat_map (Var.set_val_vanilla env ae1) (List.rev arg_names) ^^
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
@@ -7164,7 +7236,7 @@ module AllocHow = struct
   (*
   We represent this as a lattice as follows:
   *)
-  type how = Const | LocalImmut | LocalMut | StoreHeap | StoreStatic
+  type how = Const | LocalImmut of SR.t | LocalMut of SR.t | StoreHeap | StoreStatic
   type allocHow = how M.t
 
   let disjoint_union : allocHow -> allocHow -> allocHow =
@@ -7175,10 +7247,10 @@ module AllocHow = struct
       | StoreStatic, StoreHeap | StoreHeap, StoreStatic
       ->  fatal "AllocHow.join: cannot join StoreStatic and StoreHeap"
 
-      | _, StoreHeap   | StoreHeap,   _ -> StoreHeap
-      | _, StoreStatic | StoreStatic, _ -> StoreStatic
-      | _, LocalMut    | LocalMut,    _ -> LocalMut
-      | _, LocalImmut  | LocalImmut,  _ -> LocalImmut
+      | _, StoreHeap     | StoreHeap,      _ -> StoreHeap
+      | _, StoreStatic   | StoreStatic,    _ -> StoreStatic
+      | _, LocalMut sr   | LocalMut sr,    _ -> LocalMut sr
+      | _, LocalImmut sr | LocalImmut sr,  _ -> LocalImmut sr
 
       | Const, Const -> Const
     ))
@@ -7189,12 +7261,11 @@ module AllocHow = struct
 
   (* Various filters used in the set operations below *)
   let is_local_mut _ = function
-    | LocalMut -> true
+    | LocalMut _ -> true
     | _ -> false
 
   let is_local _ = function
-    | LocalImmut -> true
-    | LocalMut -> true
+    | LocalImmut _ | LocalMut _ -> true
     | _ -> false
 
   let how_captured lvl how seen captured =
@@ -7215,6 +7286,16 @@ module AllocHow = struct
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
+  (* A bit like StackRep.of_type, but only for those types and stackreps that
+     we support in local variables *)
+  let stackrep_of_type t =
+    let open Type in
+    match normalize t with
+    | Prim (Nat32 | Int32) -> SR.UnboxedWord32
+    | Prim (Nat64 | Int64) -> SR.UnboxedWord64
+    | Prim Float -> SR.UnboxedFloat64
+    | _ -> SR.Vanilla
+
   let dec lvl how_outer (seen, how0) dec =
     let how_all = disjoint_union how_outer how0 in
 
@@ -7225,7 +7306,7 @@ module AllocHow = struct
     let how1 = match dec.it with
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
-      M.map (fun _t -> LocalMut) d
+      M.map (fun t -> LocalMut (stackrep_of_type t)) d
 
       (* Constant expressions (trusting static_vals.ml) *)
       | LetD (_, e) when e.note.Note.const ->
@@ -7233,7 +7314,7 @@ module AllocHow = struct
 
       (* Everything else needs at least a local *)
       | _ ->
-      M.map (fun _t -> LocalImmut) d in
+      M.map (fun t -> LocalImmut (stackrep_of_type t)) d in
 
     (* Which allocation does this require for its captured things? *)
     let how2 = how_captured lvl how_all seen captured in
@@ -7245,11 +7326,11 @@ module AllocHow = struct
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
   let how_of_ae ae : allocHow = M.map (function
-    | VarEnv.Const _ -> (Const : how)
-    | VarEnv.HeapStatic _ -> StoreStatic
-    | VarEnv.HeapInd _ -> StoreHeap
-    | VarEnv.Local _ -> LocalMut (* conservatively assume immutable *)
-    | VarEnv.PublicMethod _ -> LocalMut
+    | VarEnv.Const _        -> (Const : how)
+    | VarEnv.HeapStatic _   -> StoreStatic
+    | VarEnv.HeapInd _      -> StoreHeap
+    | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
+    | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
     ) ae.VarEnv.vars
 
   let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
@@ -7272,8 +7353,8 @@ module AllocHow = struct
   let add_local env ae how name : VarEnv.t * G.t =
     match M.find name how with
     | (Const : how) -> (ae, G.nop)
-    | LocalImmut | LocalMut ->
-      let (ae1, i) = VarEnv.add_direct_local env ae name in
+    | LocalImmut sr | LocalMut sr ->
+      let (ae1, i) = VarEnv.add_direct_local env ae name sr in
       (ae1, G.nop)
     | StoreHeap ->
       let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
@@ -7605,7 +7686,7 @@ let compile_smallNat_kernel env ty name op =
   compile_smallNat_kernel' env ty name (G.i (Binary (Wasm.Values.I32 op)))
 
 (* The first returned StackRep is for the arguments (expected), the second for the results (produced) *)
-let compile_binop env t op =
+let compile_binop env t op : SR.t * SR.t * G.t =
   if t = Type.Non then SR.Vanilla, SR.Unreachable, G.i Unreachable else
   StackRep.of_type t,
   StackRep.of_type t,
@@ -7936,23 +8017,25 @@ let compile_load_field env typ name =
   Object.load_idx env typ name
 
 
-(* compile_lexp is used for expressions on the left of an
-assignment operator, produces some code (with side effect), and some pure code *)
+(* compile_lexp is used for expressions on the left of an assignment operator.
+   Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
-  (fun (code, fill_code) -> (G.with_region lexp.at code, G.with_region lexp.at fill_code)) @@
+  (fun (code, sr, fill_code) -> (G.with_region lexp.at code, sr, G.with_region lexp.at fill_code)) @@
   match lexp.it with
   | VarLE var ->
-     G.nop,
-     Var.set_val env ae var
+     let sr, code = Var.set_val env ae var in
+     G.nop, sr, code
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      Arr.idx_bigint env,
+     SR.Vanilla,
      store_ptr
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n,
+     SR.Vanilla,
      store_ptr
 
 and compile_prim_invocation (env : E.t) ae p es at =
@@ -8821,9 +8904,9 @@ and compile_exp (env : E.t) ae exp =
     Var.get_val env ae var
   | AssignE (e1,e2) ->
     SR.unit,
-    let (prepare_code, store_code) = compile_lexp env ae e1 in
+    let (prepare_code, sr, store_code) = compile_lexp env ae e1 in
     prepare_code ^^
-    compile_exp_vanilla env ae e2 ^^
+    compile_exp_as env ae sr e2 ^^
     store_code
   | LitE l ->
     compile_lit env l
@@ -8888,7 +8971,7 @@ and compile_exp (env : E.t) ae exp =
   | DefineE (name, _, e) ->
     SR.unit,
     compile_exp_vanilla env ae e ^^
-    Var.set_val env ae name
+    Var.set_val_vanilla env ae name
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
@@ -9110,7 +9193,7 @@ and fill_pat env ae pat : patternCode =
         compile_lit_pat env l ^^
         G.if0 G.nop fail_code)
   | VarP name ->
-      CannotFail (Var.set_val env ae name)
+      CannotFail (Var.set_val_vanilla env ae name)
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
       let rec go i = function
@@ -9141,7 +9224,7 @@ and fill_pat env ae pat : patternCode =
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
   AllocHow.M.fold (fun v _ty ae ->
-    let (ae1, _i) = VarEnv.add_direct_local env ae v
+    let (ae1, _i) = VarEnv.add_direct_local env ae v SR.Vanilla
     in ae1
   ) d ae
 
@@ -9165,16 +9248,16 @@ and compile_pat_local env ae pat : VarEnv.t * patternCode =
   let fill_code = fill_pat env ae1 pat in
   (ae1, fill_code)
 
-(* Used for let patterns: If the patterns is an n-ary tuple pattern,
-   we want to compile the expression accordingly, to avoid the reboxing.
+(* Used for let patterns: If the pattern can consume its scrutinee in a better form
+   than vanilla (e.g. unboxed tuple, unboxed 32/64), lets do that.
 *)
-and compile_n_ary_pat env ae how pat =
+and compile_unboxed_pat env ae how pat =
   (* It returns:
      - the extended environment
      - the code to allocate memory
-     - the arity
+     - the desired stack rep
      - the code to do the pattern matching.
-       This expects the  undestructed value is on top of the stack,
+       This expects the undestructed value is on top of the stack,
        consumes it, and fills the heap
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
@@ -9184,13 +9267,18 @@ and compile_n_ary_pat env ae how pat =
     match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
     | WildP -> None, G.nop
-    (* The good case: We have a tuple pattern *)
+    (* Tuple patterns *)
     | TupP ps when List.length ps <> 1 ->
       Some (SR.UnboxedTuple (List.length ps)),
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
       G.concat_mapi (fun i p -> orTrap env (fill_pat env ae1 p)) (List.rev ps)
+    (* Variable patterns *)
+    | VarP name ->
+      let sr, code = Var.set_val env ae1 name in
+      Some sr,
+      code
     (* The general case: Create a single value, match that. *)
     | _ ->
       Some SR.Vanilla,
@@ -9218,21 +9306,21 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
-    let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
+    let (pre_ae1, alloc_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
-      (fun ae -> compile_exp_as_opt env ae pat_arity e ^^ fill_code),
+      (fun ae -> compile_exp_as_opt env ae sr e ^^ fill_code),
       unmodified
     )
 
   | VarD (name, _, e) ->
     assert AllocHow.(match M.find_opt name how with
-                     | Some (LocalMut | StoreHeap | StoreStatic) -> true
+                     | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
       let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
       ( pre_ae1,
         alloc_code,
-        (fun ae -> compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
+        (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
         unmodified
       )
 
@@ -9484,7 +9572,7 @@ and main_actor as_opt mod_env ds fs up =
         G.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
         Serialization.deserialize env arg_tys ^^
-        G.concat_map (Var.set_val env ae1) (List.rev arg_names)
+        G.concat_map (Var.set_val_vanilla env ae1) (List.rev arg_names)
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop
