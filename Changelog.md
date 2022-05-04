@@ -7,7 +7,7 @@
   * Importing modules by relative path is now more robust (#3215).
   * Performance: externalising `stable var`iables to stable memory is now
     performed in a streaming manner, reducing heap consumption and
-    copying (#3149).
+    copying when an upgrade is being performed (#3149).
   * Performance: local variables are now stored in unboxed form when
     possible (thanks to nomeata) (#3207).
 
