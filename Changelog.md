@@ -9,7 +9,7 @@
     performed in a streaming manner, reducing heap consumption and
     copying (#3149).
   * Performance: local variables are now stored in unboxed form when
-    possible (thanks to nomeata) (#3207)
+    possible (thanks to nomeata) (#3207).
 
 * motoko-base
 
