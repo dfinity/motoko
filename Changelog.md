@@ -6,7 +6,7 @@
 
   * Importing modules by relative path is now more robust (#3215).
   * Performance: persisting stable variables to stable memory is now
-    performed in streaming fashion, reducing heap consumption and
+	performed in streaming fashion, reducing heap consumption and
 	copying during an upgrade (#3149).
   * Performance: local 32- and 64-bit numeric values are now stored in
     local variables using unboxed form when possible (thanks to
