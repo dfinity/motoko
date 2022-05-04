@@ -1,5 +1,19 @@
 # Motoko compiler changelog
 
+## 0.6.27 (FUTURE)
+
+* motoko (`moc`)
+
+  * Performance: externalising stable variables to stable memory is now
+    performed in a streaming manner, reducing heap consumption and
+    copying (#3149).
+
+* motoko-base
+
+  * Fixed a bug in `Trie.filter` (and `Trie.mapFilter`) which could
+    lead to lost matches in case of certain configurations and
+    predicates (dfinity/motoko-base#371).
+
 ## 0.6.26 (2022-04-20)
 
 * motoko (`moc`)
