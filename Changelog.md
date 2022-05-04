@@ -9,8 +9,7 @@
     performed in streaming fashion, reducing heap consumption and
     copying during an upgrade (#3149).
   * Performance: local 32- and 64-bit numeric values are now stored in
-    local variables using unboxed form when possible (thanks to
-    nomeata) (#3207).
+    using unboxed form when possible (thanks to nomeata) (#3207).
 
 * motoko-base
 
