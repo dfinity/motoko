@@ -24,8 +24,8 @@ pkgs:
 
       buildInputs = with pkgs; [
         openssl
-        llvm_13
-        llvmPackages_13.libclang
+        llvm_14
+        llvmPackages_14.libclang
         lmdb
         libunwind
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
@@ -33,8 +33,8 @@ pkgs:
       ];
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_13.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_14.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_14.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";

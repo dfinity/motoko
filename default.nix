@@ -26,10 +26,10 @@ let haskellPackages = nixpkgs.haskellPackages.override {
 let
   rtsBuildInputs = with nixpkgs; [
     # pulls in clang (wrapped) and clang-13 (unwrapped)
-    llvmPackages_13.clang
+    llvmPackages_14.clang
     # pulls in wasm-ld
-    llvmPackages_13.lld
-    llvmPackages_13.bintools
+    llvmPackages_14.lld
+    llvmPackages_14.bintools
     rustc-nightly
     cargo-nightly
     wasmtime
@@ -46,13 +46,13 @@ let
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
     # that otherwise the wrapped clang would take care for us
-    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_13.clang-unwrapped.lib}"
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_14.clang-unwrapped.lib}"
 
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
     # there we use plain clang-13. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_13}/bin/clang"
+    export CLANG="${nixpkgs.clang_14}/bin/clang"
   '';
 in
 
@@ -319,7 +319,7 @@ rec {
 
     # extra deps for test/ld
     ldTestDeps =
-      with nixpkgs; [ llvmPackages_13.bintools llvmPackages_13.clang ];
+      with nixpkgs; [ llvmPackages_14.bintools llvmPackages_14.clang ];
 
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
