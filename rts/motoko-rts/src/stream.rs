@@ -29,9 +29,11 @@
 //              (from `compile.ml`) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
+use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
+use crate::tommath_bindings::{mp_div_2d, mp_int};
 use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
@@ -136,6 +138,7 @@ impl Stream {
     }
 
     /// Ingest a single byte into the stream.
+    #[inline]
     #[export_name = "stream_write_byte"]
     pub fn cache_byte(self: *mut Self, byte: u8) {
         unsafe {
@@ -161,6 +164,21 @@ impl Stream {
                 .add((*self).filled.as_usize());
             (*self).filled += bytes;
             ptr
+        }
+    }
+
+    /// like `bigint_leb128_encode_go`, but to a stream
+    pub(crate) unsafe fn write_leb128(self: *mut Stream, tmp: *mut mp_int, add_bit: bool) {
+        debug_assert!(!mp_isneg(tmp));
+
+        loop {
+            let byte = mp_get_u32(tmp) as u8;
+            check(mp_div_2d(tmp, 7, tmp, core::ptr::null_mut()));
+            if !mp_iszero(tmp) || (add_bit && byte & (1 << 6) != 0) {
+                self.cache_byte(byte | (1 << 7));
+            } else {
+                return self.cache_byte(byte);
+            }
         }
     }
 
