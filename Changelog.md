@@ -9,7 +9,7 @@
     performed in a streaming manner, reducing heap consumption and
     copying (#3149).
   * Performance: local variables are now stored in unboxed form when
-    possible (thanks to @nomeata) (#3207)
+    possible (thanks to nomeata) (#3207)
 
 * motoko-base
 
@@ -21,7 +21,7 @@
 
 * motoko (`moc`)
 
-  * Performance: inline prim-wrapping functions (thanks to @nomeata) (#3159)
+  * Performance: inline prim-wrapping functions (thanks to nomeata) (#3159)
   * Improve type pretty printer to mirror type parser (avoids producing unparseable stable variable signatures) (#3190)
   * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
   * Performance: avoid redundant heap allocation when deserializing compact Candid `int` and  `nat` values (#3173)
