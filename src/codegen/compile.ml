@@ -2547,12 +2547,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env ->
         BitTagged.untag_i32 ^^ set_x ^^
         (* get size & reserve & encode *)
-        I32Leb.compile_store_to_data_buf_unsigned env get_x
-          begin
-            get_stream ^^
-            I32Leb.compile_leb128_size get_x ^^
-            E.call_import env "rts" "stream_reserve"
-          end)
+        let dest =
+          get_stream ^^
+          I32Leb.compile_leb128_size get_x ^^
+          E.call_import env "rts" "stream_reserve" in
+        I32Leb.compile_store_to_data_buf_unsigned env get_x dest)
       (fun env ->
         G.i Drop ^^
         get_stream ^^ get_x ^^ Num.compile_store_to_stream_unsigned env ^^
@@ -2569,12 +2568,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env ->
         BitTagged.untag_i32 ^^ set_x ^^
         (* get size & reserve & encode *)
-        I32Leb.compile_store_to_data_buf_signed env get_x
-          begin
-            get_stream ^^
-            I32Leb.compile_sleb128_size get_x ^^
-            E.call_import env "rts" "stream_reserve"
-          end)
+        let dest =
+          get_stream ^^
+          I32Leb.compile_sleb128_size get_x ^^
+          E.call_import env "rts" "stream_reserve" in
+        I32Leb.compile_store_to_data_buf_signed env get_x dest)
       (fun env ->
         G.i Drop ^^
         get_stream ^^ get_x ^^ Num.compile_store_to_stream_signed env ^^
