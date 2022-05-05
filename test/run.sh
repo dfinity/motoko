@@ -28,6 +28,7 @@ WASMTIME_OPTIONS="--disable-cache --cranelift"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
+SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
@@ -81,8 +82,8 @@ function normalize () {
         -e 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' \
         -e 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
     sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
-        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
-        -e 's/compiler (source .*)/compiler (source XXX)/ig' |
+        -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
+        -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
     # Normalize canister id prefixes in debug prints
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
@@ -166,7 +167,7 @@ then
       echo "ERROR: Could not run drun, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run drun, will skip some tests"
+      echo "WARNING: Could not run drun, will skip running some tests"
       HAVE_drun=no
     fi
   fi
@@ -183,7 +184,7 @@ then
       echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run ic-ref-run, will skip some tests"
+      echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
     fi
   fi
@@ -318,8 +319,11 @@ do
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
-        run_if wasm valid wasm-validate $out/$base.wasm
-        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        if [ "$SKIP_VALIDATE" != yes ]
+        then
+          run_if wasm valid wasm-validate $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        fi
 
         if [ -e $out/$base.wasm ]
         then

@@ -94,6 +94,8 @@ and prim = function
   | OtherPrim s       -> Atom s
   | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | ICStableSize t    -> "ICStableSize" $$ [typ t]
+  | ICPerformGC       -> Atom "ICPerformGC"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"
@@ -118,8 +120,7 @@ and pat p = match p.it with
 
 and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
-  | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
-  | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
+  | BoolLit b     -> "BoolLit"   $$ [ Atom (if b then "true" else "false") ]
   | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
   | Nat8Lit w     -> "Nat8Lit"   $$ [ Atom (Numerics.Nat8.to_pretty_string w) ]
   | Nat16Lit w    -> "Nat16Lit"  $$ [ Atom (Numerics.Nat16.to_pretty_string w) ]
@@ -148,7 +149,7 @@ and dec d = match d.it with
   | VarD (i, t, e) -> "VarD" $$ [id i; typ t; exp e]
 
 and typ_bind (tb : typ_bind) =
-  Cons.to_string tb.it.con $$ [typ tb.it.bound]
+  Type.string_of_con tb.it.con $$ [typ tb.it.bound]
 
 and comp_unit = function
   | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]

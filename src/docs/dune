@@ -1,3 +1,5 @@
 (library
   (name docs)
-  (libraries cow mo_def mo_types mo_frontend pipeline))
+  (libraries cow mo_def mo_types mo_frontend pipeline)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
+)

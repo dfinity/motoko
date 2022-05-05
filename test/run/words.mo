@@ -2,19 +2,37 @@ import Prim "mo:⛔";
 
 // CHECK: func $init
 
+// check for `Eqz` optimisation
+// CHECK: i64.const 424242
+assert not (424242 : Nat64 == 1);
+// CHECK-NOT: i64.eqz
+assert not (3 : Nat64 == 0);
+assert (0 : Nat64 == 0);
+// CHECK: i64.const 424342
+assert not (424342 : Nat64 == 1);
+
+// check for `Eqz` optimisation
+// CHECK: i32.const 424542
+assert not (424542 : Nat32 == 1);
+// CHECK-NOT: i32.eqz
+assert not (3 : Nat32 == 0);
+assert (0 : Nat32 == 0);
+// CHECK: i32.const 424842
+assert not (424842 : Nat32 == 1);
+
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
 
 
-func checkpointAlpha() {};
-func checkpointBravo() {};
-func checkpointCharlie() {};
-func checkpointDelta() {};
-func checkpointEcho() {};
-func checkpointFoxtrot() {};
-func checkpointGolf() {};
-func checkpointHotel() {};
-func checkpointIndia() {};
-func checkpointJuliett() {};
+func checkpointAlpha() { assert true; };
+func checkpointBravo() { assert true; };
+func checkpointCharlie() { assert true; };
+func checkpointDelta() { assert true; };
+func checkpointEcho() { assert true; };
+func checkpointFoxtrot() { assert true; };
+func checkpointGolf() { assert true; };
+func checkpointHotel() { assert true; };
+func checkpointIndia() { assert true; };
+func checkpointJuliett() { assert true; };
 
 // Nat64 operations
 do {

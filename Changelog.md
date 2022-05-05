@@ -1,5 +1,70 @@
 # Motoko compiler changelog
 
+## 0.6.27 (2022-05-04)
+
+* motoko (`moc`)
+
+  * Importing modules by relative path is now more robust (#3215).
+  * Performance: persisting stable variables to stable memory is now
+    performed in streaming fashion, reducing heap consumption and
+    copying during an upgrade (#3149).
+  * Performance: local 32- and 64-bit numeric values are now stored in
+    using unboxed form when possible (thanks to nomeata) (#3207).
+
+* motoko-base
+
+  * Fixed a bug in `Trie.filter` (and `Trie.mapFilter`) which could
+    lead to missing matches in some cases (dfinity/motoko-base#371).
+
+## 0.6.26 (2022-04-20)
+
+* motoko (`moc`)
+
+  * Performance: inline prim-wrapping functions (thanks to nomeata) (#3159)
+  * Improve type pretty printer to mirror type parser (avoids producing unparseable stable variable signatures) (#3190)
+  * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
+  * Performance: avoid redundant heap allocation when deserializing compact Candid `int` and  `nat` values (#3173)
+  * Added a primitive to obtain stable variable memory footprint (#3049)
+
+* motoko-base
+
+  * Fixed the 32-bit range limitation of `Hash.hash: Nat -> Nat32` and
+    deprecate most functions in `Hash` (dfinity/motoko-base#366).
+  * Add `List.toIter` (thanks to hoosan) (dfinity/motoko-base#336).
+
+## 0.6.25 (2022-03-07)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus elision of type constructors sharing names with primitive types in `--stable-types` section and `.most` file (#3140)
+
+## 0.6.24 (2022-03-06)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus identification of distinct type constructors
+    in --stable-types section and .most file (#3140)
+
+## 0.6.23 (2022-03-05)
+
+* motoko (`moc`)
+
+  * bugfix: fix pretty printing of (stable) types and #3128 (#3130)
+
+    * Collect constructors  *transitively* before emitting a .most file.
+    * Modifies type pretty printer to produce well-formed types and stable type signatures.
+
+## 0.6.22 (2022-02-24)
+
+* motoko (`moc`)
+
+  * Fix: remove bogus error when transitively importing module with
+    selective field imports (#3121)
+  * Fix: Treating eponymous types from separate candid files (#3103)
+
+* Various reports from CI are now pushed to
+  https://dfinity.github.io/motoko (#3113)
+
 ## 0.6.21 (2022-01-31)
 
 * motoko (`moc`)

@@ -21,4 +21,5 @@
   )
   (inline_tests)
   (preprocess (per_module ((pps ppx_inline_test) resolve_import_test)))
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

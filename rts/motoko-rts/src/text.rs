@@ -28,7 +28,7 @@
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
@@ -43,7 +43,7 @@ const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
 
 unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     if size > MAX_STR_SIZE {
-        rts_trap_with("alloc_text_bloc: Text too large");
+        rts_trap_with("alloc_text_blob: Text too large");
     }
     alloc_blob(mem, size)
 }
@@ -51,7 +51,7 @@ unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
 #[ic_mem_fn]
 pub unsafe fn text_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<u32>) -> Value {
     let blob = alloc_text_blob(mem, n);
-    let payload_addr = blob.as_blob().payload_addr();
+    let payload_addr = blob.as_blob_mut().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
     blob
 }
@@ -83,11 +83,15 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
         let blob2 = s2.as_blob();
 
         let r = alloc_text_blob(mem, new_len);
-        let r_payload: *const u8 = r.as_blob().payload_addr();
-        memcpy_bytes(r_payload as usize, blob1.payload_addr() as usize, blob1_len);
+        let r_payload: *mut u8 = r.as_blob_mut().payload_addr();
+        memcpy_bytes(
+            r_payload as usize,
+            blob1.payload_const() as usize,
+            blob1_len,
+        );
         memcpy_bytes(
             r_payload.add(blob1_len.as_usize()) as usize,
-            blob2.payload_addr() as usize,
+            blob2.payload_const() as usize,
             blob2_len,
         );
 
@@ -137,10 +141,9 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
             s = (*next_crumb).t;
             next_crumb = (*next_crumb).next;
         } else {
-            debug_assert_eq!(s_ptr.tag(), TAG_CONCAT);
-            let concat = s_ptr as *const Concat;
-            let s1 = (*concat).text1;
-            let s2 = (*concat).text2;
+            let concat = s_ptr.as_concat();
+            let s1 = concat.text1();
+            let s2 = concat.text2();
 
             let s1_len = text_size(s1);
             let s2_len = text_size(s2);
@@ -161,6 +164,22 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
     }
 }
 
+#[no_mangle]
+unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
+    loop {
+        let s_ptr = s.as_obj();
+        if s_ptr.tag() == TAG_BLOB {
+            let blob = s_ptr.as_blob();
+            stream.cache_bytes(blob.payload_addr(), blob.len());
+            break;
+        } else {
+            let concat = s_ptr.as_concat();
+            stream_write_text(stream, concat.text1());
+            s = concat.text2()
+        }
+    }
+}
+
 // Straighten into contiguous memory, if needed (e.g. for system calls)
 #[ic_mem_fn]
 pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
@@ -170,7 +189,7 @@ pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
     } else {
         let concat = obj.as_concat();
         let r = alloc_text_blob(mem, (*concat).n_bytes);
-        text_to_buf(s, r.as_blob().payload_addr());
+        text_to_buf(s, r.as_blob_mut().payload_addr());
         r
     }
 }
@@ -202,13 +221,13 @@ unsafe fn text_compare_range(
 
     // Decompose concats
     if s1_obj.tag() == TAG_CONCAT {
-        let s1_concat = s1_obj as *const Concat;
-        let n_compared = text_size((*s1_concat).text1) - offset1;
-        let cmp = text_compare_range((*s1_concat).text1, offset1, s2, offset2, n_compared);
+        let s1_concat = s1_obj.as_concat();
+        let n_compared = text_size(s1_concat.text1()) - offset1;
+        let cmp = text_compare_range(s1_concat.text1(), offset1, s2, offset2, n_compared);
         match cmp {
             Ordering::Less | Ordering::Greater => cmp,
             Ordering::Equal => text_compare_range(
-                (*s1_concat).text2,
+                s1_concat.text2(),
                 Bytes(0),
                 s2,
                 offset2 + n_compared,
@@ -216,15 +235,15 @@ unsafe fn text_compare_range(
             ),
         }
     } else if s2_obj.tag() == TAG_CONCAT {
-        let s2_concat = s2_obj as *const Concat;
-        let n_compared = text_size((*s2_concat).text1) - offset2;
-        let cmp = text_compare_range(s1, offset1, (*s2_concat).text1, offset2, n_compared);
+        let s2_concat = s2_obj.as_concat();
+        let n_compared = text_size(s2_concat.text1()) - offset2;
+        let cmp = text_compare_range(s1, offset1, s2_concat.text1(), offset2, n_compared);
         match cmp {
             Ordering::Less | Ordering::Greater => cmp,
             Ordering::Equal => text_compare_range(
                 s1,
                 offset1 + n_compared,
-                (*s2_concat).text2,
+                s2_concat.text2(),
                 Bytes(0),
                 n - n_compared,
             ),
@@ -265,7 +284,7 @@ unsafe fn text_get_range(
         if s_obj.tag() == TAG_CONCAT {
             let s_concat = s_obj.as_concat();
 
-            let left = (*s_concat).text1;
+            let left = s_concat.text1();
             let left_size = text_size(left);
 
             // Follow left node?
@@ -276,7 +295,7 @@ unsafe fn text_get_range(
 
             // Follow right node?
             if offset >= left_size {
-                s = (*s_concat).text2;
+                s = s_concat.text2();
                 offset -= left_size;
                 continue;
             }
@@ -316,8 +335,8 @@ pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
     let n2 = text_size(s2);
     let n = min(n1, n2);
 
-    let payload1 = s1.as_blob().payload_addr();
-    let payload2 = s2.as_blob().payload_addr();
+    let payload1 = s1.as_blob().payload_const();
+    let payload2 = s2.as_blob().payload_const();
     let cmp = libc::memcmp(payload1 as *const _, payload2 as *const _, n.as_usize());
 
     if cmp == 0 {
@@ -338,7 +357,7 @@ pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
 pub unsafe extern "C" fn text_len(text: Value) -> u32 {
     if text.tag() == TAG_BLOB {
         let blob = text.as_blob();
-        let payload_addr = blob.payload_addr();
+        let payload_addr = blob.payload_const();
         let len = blob.len();
 
         str::from_utf8_unchecked(slice::from_raw_parts(
@@ -387,7 +406,7 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
 
     let blob_ptr = alloc_text_blob(mem, Bytes(str_len));
 
-    let blob = blob_ptr.as_blob();
+    let blob = blob_ptr.as_blob_mut();
 
     for i in 0..str_len {
         blob.set(i, buf[i as usize]);

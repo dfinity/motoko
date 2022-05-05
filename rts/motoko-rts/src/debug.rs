@@ -8,7 +8,7 @@ use core::fmt::Write;
 /// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn print_value(value: Value) {
+pub unsafe extern "C" fn print_value(value: Value) {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
@@ -199,8 +199,8 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             );
         }
         TAG_BLOB => {
-            let blob = obj as *const Blob;
-            let _ = write!(buf, "<Blob len={:#x}>", (*blob).len.as_u32());
+            let blob = obj.as_blob();
+            let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_u32());
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
@@ -215,7 +215,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<BigInt>");
         }
         TAG_CONCAT => {
-            let concat = obj as *const Concat;
+            let concat = obj.as_concat();
             let _ = write!(
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
