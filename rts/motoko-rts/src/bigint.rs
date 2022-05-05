@@ -148,7 +148,6 @@ pub(crate) unsafe fn mp_isneg(p: *const mp_int) -> bool {
 }
 
 pub(crate) unsafe fn mp_iszero(p: *const mp_int) -> bool {
-    debug_assert_eq!((*p).used, (*p).used & 1);
     (*p).used == 0
 }
 
