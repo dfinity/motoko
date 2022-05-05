@@ -8312,40 +8312,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | (Nat8|Nat16), Nat ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-(*<<<<<<< HEAD
-      Heap.load_field Arr.len_field ^^
-      BigNum.from_word30 env
-
-    | OtherPrim "text_len", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len env
-    | OtherPrim "text_iter", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter env
-    | OtherPrim "text_iter_done", [e] ->
-      SR.bool, compile_exp_vanilla env ae e ^^ Text.iter_done env
-    | OtherPrim "text_iter_next", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_next env
-
-    | OtherPrim "blob_size", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env ^^ BigNum.from_word32 env
-    | OtherPrim "blob_vals_iter", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
-    | OtherPrim "blob_iter_done", [e] ->
-      SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env
-    | OtherPrim "blob_iter_next", [e] ->
-      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
-
-    | OtherPrim "lshd", [e1; e2] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e1 ^^
-      compile_exp_as env ae SR.UnboxedWord32 e2 ^^
-      BigNum.compile_lshd env
-
-    | OtherPrim "abs", [e] ->
-=======*)
       Prim.prim_shiftWordNtoUnsigned env (TaggedSmallWord.shift_of_type t1)
 
     | (Int8|Int16), Int ->
-      (*>>>>>>> origin/master*)
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Prim.prim_shiftWordNtoSigned env (TaggedSmallWord.shift_of_type t1)
@@ -8448,6 +8417,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env
   | OtherPrim "blob_iter_next", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
+
+  | OtherPrim "lshd", [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^
+    compile_exp_as env ae SR.UnboxedWord32 e2 ^^
+    BigNum.compile_lshd env
 
   | OtherPrim "abs", [e] ->
     SR.Vanilla,
