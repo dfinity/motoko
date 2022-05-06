@@ -93,8 +93,9 @@ pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
 
 #[cfg(feature = "ic")]
 #[panic_handler]
-fn panic(info: &core::panic::PanicInfo) -> ! {
+fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe {
+        /*
         if let Some(msg) = info.payload().downcast_ref::<&str>() {
             println!(1000, "RTS panic: {}", msg);
         } else if let Some(args) = info.message() {
@@ -114,7 +115,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
                 location.line(),
             );
         }
-
+*/
         rts_trap_with("RTS panicked");
     }
 }
