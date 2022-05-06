@@ -96,26 +96,26 @@ pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe {
         /*
-        if let Some(msg) = info.payload().downcast_ref::<&str>() {
-            println!(1000, "RTS panic: {}", msg);
-        } else if let Some(args) = info.message() {
-            let mut buf = [0 as u8; 1000];
-            let mut fmt = print::WriteBuf::new(&mut buf);
-            let _ = core::fmt::write(&mut fmt, *args);
-            print::print(&fmt);
-        } else {
-            println!(1000, "RTS panic: weird payload");
-        }
+                if let Some(msg) = info.payload().downcast_ref::<&str>() {
+                    println!(1000, "RTS panic: {}", msg);
+                } else if let Some(args) = info.message() {
+                    let mut buf = [0 as u8; 1000];
+                    let mut fmt = print::WriteBuf::new(&mut buf);
+                    let _ = core::fmt::write(&mut fmt, *args);
+                    print::print(&fmt);
+                } else {
+                    println!(1000, "RTS panic: weird payload");
+                }
 
-        if let Some(location) = info.location() {
-            println!(
-                1000,
-                "panic occurred in file '{}' at line {}",
-                location.file(),
-                location.line(),
-            );
-        }
-*/
+                if let Some(location) = info.location() {
+                    println!(
+                        1000,
+                        "panic occurred in file '{}' at line {}",
+                        location.file(),
+                        location.line(),
+                    );
+                }
+        */
         rts_trap_with("RTS panicked");
     }
 }
