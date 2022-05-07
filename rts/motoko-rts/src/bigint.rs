@@ -143,7 +143,8 @@ unsafe fn mp_get_u64(p: *const mp_int) -> u64 {
 }
 
 pub(crate) unsafe fn mp_isneg(p: *const mp_int) -> bool {
-    (*p).sign == 1
+    debug_assert_eq!((*p).sign, (*p).sign & 1);
+    (*p).sign != 0
 }
 
 pub(crate) unsafe fn mp_iszero(p: *const mp_int) -> bool {
