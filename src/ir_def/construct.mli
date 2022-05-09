@@ -80,7 +80,7 @@ val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> Type.lab -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
-val switch_textE : exp -> (string * exp) list -> typ -> exp
+val switch_textE : exp -> (string * exp) list -> (pat * exp) -> typ -> exp
 val tupE : exp list -> exp
 val breakE: id -> exp -> exp
 val retE: exp -> exp

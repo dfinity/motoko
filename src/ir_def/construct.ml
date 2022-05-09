@@ -374,23 +374,27 @@ let switch_variantE exp1 cases typ1 =
     }
   }
 
-let switch_textE exp1 cases typ1 =
-  { it =
-      SwitchE (exp1,
-        List.map (fun (t, e) ->
-          { it = {pat = {it = LitP (TextLit t);
-                         at = no_region;
-                         note = typ exp1};
-                  exp = e};
-            at = no_region;
-            note = ()
-          })
-          cases
-      );
+let switch_textE exp1 cases (pat, exp2) typ1 =
+  let cs =
+    (List.map (fun (t, e) ->
+      {it = {pat =
+        {it = LitP (TextLit t);
+         at = no_region;
+         note = typ exp1};
+         exp = e};
+         at = no_region;
+         note = ()})
+      cases) @
+    [{it = {pat = pat; exp = exp2};
+      at = no_region;
+      note = ()}]
+  in
+  { it = SwitchE (exp1, cs);
     at = no_region;
-    note = Note.{ def with
+    note = Note.{
+      def with
       typ = typ1;
-      eff = List.fold_left max_eff (eff exp1) (List.map (fun (t, e) -> eff e) cases)
+      eff = List.fold_left max_eff (eff exp1) (List.map (fun c -> eff c.it.exp) cs)
     }
   }
 

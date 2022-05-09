@@ -343,6 +343,11 @@ and call_system_func_opt name es obj_typ =
                    | _ -> assert false))
                 (T.as_variant msg_typ)
                )
+               (* Trap early, refusing all other messages,
+                  including those in T.well_known_actor_fields. *)
+               (wildP,
+                 (primE (Ir.OtherPrim "trap")
+                   [textE "canister_inspect_message implicitly refused message"]))
                msg_typ
            in
            let accept = fresh_var "accept" T.bool
@@ -363,7 +368,7 @@ and call_system_func_opt name es obj_typ =
              (ifE (varE accept)
                (unitE ())
                (primE (Ir.OtherPrim "trap")
-                 [textE "canister_inspect_message rejected message"])
+                 [textE "canister_inspect_message explicitly refused message"])
                T.unit)
          else
            callE (varE (var id.it p.note)) [] (tupE []))
