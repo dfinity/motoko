@@ -151,7 +151,7 @@ pub(crate) unsafe fn mp_iszero(p: *const mp_int) -> bool {
     (*p).used == 0
 }
 
-// Allocates a mp_int on the stack
+// Allocates an mp_int on the stack
 unsafe fn tmp_bigint() -> mp_int {
     let mut i: mp_int = core::mem::zeroed();
     check(mp_init(&mut i));
