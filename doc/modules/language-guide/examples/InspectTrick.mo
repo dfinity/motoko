@@ -8,11 +8,11 @@ actor {
    public func set(n : Nat) : async () { c := n };
    public query func read() : async Nat { c };
    public func reset() : () { c := 0 }; // oneway
-
+/*
 // tag::inspect-trick[]
    system func inspect_message() : Bool {
      false
    }
 // end::inspect-trick[]
-
+*/
 };
