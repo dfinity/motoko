@@ -1,0 +1,14 @@
+inspect_message_wrong.mo:10.4-10.37: type error [M0127], system function inspect_message is declared with type
+  () -> ()
+instead of expected type
+  {
+    arg : Blob;
+    caller : Principal;
+    msg :
+      {
+        #inc : () -> ();
+        #read : () -> ();
+        #reset : () -> ();
+        #set : () -> Nat
+      }
+  } -> Bool
