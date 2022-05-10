@@ -77,7 +77,7 @@ of type `Any` as message argument variants):
 include::../examples/InspectName.mo[tag=inspect-name]
 ----
 
-A combination of the previous three, specifing the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases.
+A combination of the previous three, specifying the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases.
 
 [source.no-repl,motoko]
 ----
@@ -88,7 +88,7 @@ include::../examples/InspectMixed.mo[tag=inspect-mixed]
 
 Implementing `inspect_message` after the fact, once all shared functions of an actor have already been implemented, can be tedious, since you'll need to declare a correctly typed
 variant for public function.
-A simple trick is to first implement the function _incorrecty_, with a `()` argument, compile the code, then use the compiler's error message
+A simple trick is to first implement the function _incorrectly_, with a `()` argument, compile the code, then use the compiler's error message
 to obtain the required argument type.
 
 For example, in the actor from the previous section, incorrectly declaring:

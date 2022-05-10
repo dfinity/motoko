@@ -1276,7 +1276,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 |  name | type | description
 
 | `heartbeat`  | `+() -> async ()+` | heartbeat action
-| `inspect_message` | `+{ caller : Principal; msg: <Variant>; arg: Blob } -> Bool+` | message predicate
+| `inspect_message` | `+{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool+` | message predicate
 | `preupgrade`  | `+() -> ()+` | pre upgrade action
 | `postupgrade` | `+() -> ()+` | post upgrade action
 
@@ -1294,7 +1294,7 @@ heartbeat was issued by the subnet.
 
 These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
-During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
+During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 
 [#inspect-message]
 ===== `inspect_message`
