@@ -19,27 +19,25 @@ https://smartcontracts.org/docs/current/references/ic-interface-spec/#ingress-me
 > NOTE: The `canister_inspect_message` is _not_ invoked for query calls, inter-canister calls or calls to the management canister.
 > -- IC Interface specification
 
-In {proglang}, actors can elect to inspect and accept or deny ingress messages by declaring a particular `system` function called `inspect_message`.
+In {proglang}, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect_message`.
 Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or deny the message by returning `true` or `false`.
 The function is invoked (by the system) on each ingress message. Similar to a query, any side-effects of an invocation are discarded and transient.
 A call that traps due to some fault has the same result as returning `false` (message denial).
 
 Unlike other system functions, that have a fixed argument type, the argument type of `inspect_message` depends on the interface of the enclosing actor.
-In particular, the formal argument of `inspect_message` is a record that contains fields of the following types.
+In particular, the formal argument of `inspect_message` is a record of fields of the following types:
 
-* `caller : Principal`: the principal, possibly anonymous, of the caller of the method.
+* `caller : Principal`: the principal, possibly anonymous, of the caller of the message;
+* `arg : Blob` : the raw, binary content of the message argument;
+* `msg : <variant>` where `<variant> == {...; #<id>: () -> T; ...}` is a variant of _decoding_ functions,
+   one per shared function of the actor called `<id>`. Each variant contains a function that, when applied, returns the argument of function `<id>` as a value of type `T`.
 
-* `arg : Blob` : the raw, binary content of the message argument.
-
-* `msg : {...; #name: () -> T; ...}` : a variant of decoding functions, one per shared function of the actor called `name`, carrying a function that, when applied to a unit value `()`,
-  returns the decoded arguments of that function as a value of (argument) type `T`.
-
-Using a variant, tagged by method name, allows the return type, `T`, of the decoding function to vary with the name, `name`, of the shared function.
+Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the identifier, `<id>`, of the shared function.
 
 Exploiting {proglang}'s subtyping, the formal argument can omit record fields it does not require, or selectively ignore the arguments of particular shared functions, for example,
 in order to simply dispatch on the name of a function without inspecting its actual argument.
 
-WARNING: An actor that fails to declare system method `inspect_message` will simply accept all ingress messages.
+WARNING: An actor that fails to declare system field `inspect_message` will simply accept all ingress messages.
 
 A simple, contrived example is a counter actor, that inspects some of its messages in detail, and others only superficially:
 
@@ -52,41 +50,72 @@ Note that, due to subtyping, all of the following variations, in order of increa
 
 Blanket denial of all ingress messages, ignoring further information:
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 include::../examples/InspectNone.mo[tag=inspect-none]
 ----
 
-Denying anonymous calls:
+Declining anonymous calls:
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 include::../examples/InspectCaller.mo[tag=inspect-caller]
 ----
 
-Denying large messages, based on argument's size (in bytes).
+Declining large messages, based on `arg`'s size (in bytes).
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 include::../examples/InspectArg.mo[tag=inspect-arg]
 ----
 
-Denying messages by name only, ignoring message arguments (note the use
+Declining messages by name only, ignoring message arguments (note the use
 of type `Any` as message argument variants):
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 include::../examples/InspectName.mo[tag=inspect-name]
 ----
 
-A combination of the previous three, specifing the argument types of some variants while ignoring others at type `Any` and using
-pattern matching to conflate identical cases.
+A combination of the previous three, specifing the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases.
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 include::../examples/InspectMixed.mo[tag=inspect-mixed]
 ----
 
+== Tips on authoring `inspect_message`
 
-TIP: Implementing `inspect_message` after the fact, once all shared functions of an actor have already been implemented can be tedious if you want to declare a variant for each shared function.
-A simple trick is to first implement the method incorrecty, with a `()` argument, and then use the compiler's corresponding error message to construct the required argument type for you.
+Implementing `inspect_message` after the fact, once all shared functions of an actor have already been implemented, can be tedious, since you'll need to declare a correctly typed
+variant for public function.
+A simple trick is to first implement the function _incorrecty_, with a `()` argument, compile the code, then use the compiler's error message
+to obtain the required argument type.
+
+For example, in the actor from the previous section, incorrectly declaring:
+
+[source.no-repl,motoko]
+----
+include::../examples/InspectTrick.mo[tag=inspect-trick]
+----
+
+forces the compiler to cough up the expected type below:
+
+[source.no-repl,motoko]
+----
+Inspect.mo:13.4-15.5: type error [M0127], system function inspect_message is declared with type
+  () -> Bool
+instead of expected type
+  {
+    arg : Blob;
+    caller : Principal;
+    msg :
+      {
+        #inc : () -> ();
+        #read : () -> ();
+        #reset : () -> ();
+        #set : () -> Nat
+      }
+  } -> Bool
+----
+
+which you can now cut-and-paste into your code.

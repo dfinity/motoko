@@ -25,8 +25,8 @@ actor {
     switch (msg) {
       case (#inc _) { true };
       case (#set n) { n() != 13 };
+      case (#read _) { true };
       case (#reset _) { false };
-      case (#reset _) { true };
     }
   }
 };
