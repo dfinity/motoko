@@ -14,4 +14,4 @@ debugPrint (debug_show shiftLeft(42, 25 + 64)); // 89
 debugPrint (debug_show shiftLeft(42, 125));
 debugPrint (debug_show shiftLeft(0, 125));
 debugPrint (debug_show shiftLeft(10 ** 10, 25));
-for (i in range(0, 200)) { debugPrint (debug_show shiftLeft(42, i)) }
+for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(42, i))) }
