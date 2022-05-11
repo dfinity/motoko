@@ -2374,7 +2374,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
         G.if1 I32Type
           get_res
-          (get_n ^^ get_amount ^^ Num.compile_lshd env)
+          (get_n ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lshd env)
       )
       (get_n ^^ get_amount ^^ Num.compile_lshd env)
 
