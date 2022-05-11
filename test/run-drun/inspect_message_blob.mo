@@ -1,3 +1,5 @@
+// NB: inspect_message cannot be tested in drun.
+//     (requires dfx or playground for HTTP interface)
 actor {
 
    var c = 0;

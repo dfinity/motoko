@@ -40,7 +40,7 @@ In particular, the formal argument of `inspect_message` is a record of fields of
    The variant's tag identifies the function to be called;
    The variant's argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
 
-Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type `T`, of the shared function `<id>`.
+Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type (also `T`) of the shared function `<id>`.
 
 The variant's argument is a function so that one can avoid the expense of message decoding (when appropriate).
 
@@ -97,7 +97,7 @@ include::../examples/InspectMixed.mo[tag=inspect-mixed]
 == Tips on authoring `inspect_message`
 
 Implementing `inspect_message` after the fact, once all shared functions of an actor have already been implemented, can be tedious, since you'll need to declare a correctly typed
-variant for public function.
+variant for each shared function.
 A simple trick is to first implement the function _incorrectly_, with a `()` argument, compile the code, then use the compiler's error message
 to obtain the required argument type.
 
