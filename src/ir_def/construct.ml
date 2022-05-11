@@ -105,6 +105,7 @@ let primE prim es =
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
+    | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in

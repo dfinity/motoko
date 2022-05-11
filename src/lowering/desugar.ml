@@ -74,7 +74,7 @@ and exp' at note = function
     (primE (I.SerializePrim ts) [seqE args]).it
   | S.FromCandidE e ->
     begin match T.normalize note.Note.typ with
-    | T.Opt t -> (optE (primE (I.DeserializePrim (T.as_seq t)) [exp e])).it
+    | T.Opt t -> (primE (I.DeserializeOptPrim (T.as_seq t)) [exp e]).it
     | _ -> assert false
     end
   | S.TupE es -> (tupE (exps es)).it
