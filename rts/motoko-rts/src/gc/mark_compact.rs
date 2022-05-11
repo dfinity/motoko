@@ -160,7 +160,7 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
         let field_value = *field_addr;
-	assert!(!field_value.is_ptr()); // REMOVE THIS!
+        assert!(!field_value.is_ptr()); // REMOVE THIS!
         mark_object(mem, field_value);
 
         // Thread if backwards or self pointer
