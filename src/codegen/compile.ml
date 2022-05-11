@@ -2369,12 +2369,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
         let set_res, get_res = new_local env "res" in
         set_res ^^ get_res ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ (* exclude sign flip *)
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ (* exclude sign flip *)
         get_remember ^^
         G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
         G.if1 I32Type
           get_res
-          (get_n ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lshd env)
+          (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lshd env)
       )
       (get_n ^^ get_amount ^^ Num.compile_lshd env)
 
