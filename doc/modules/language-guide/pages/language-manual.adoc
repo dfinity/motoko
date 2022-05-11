@@ -1308,13 +1308,15 @@ The argument type of `inspect_message` depends on the interface of the enclosing
 In particular, the formal argument of `inspect_message` is a record of fields of the following types:
 
 * `caller : Principal`: the principal, possibly anonymous, of the caller of the message;
-* `arg : Blob` : the raw, binary content of the message argument;
-* `msg : <variant>` where `<variant> == {...; #<id>: () -> T; ...}` is a variant of _decoding_ functions,
-   one per shared function, '<id>', of the actor. The  `msg` arguments contains a function that, when applied, returns the (decoded) argument of function `<id>` as a value of type `T`.
+* `arg : Blob`: the raw, binary content of the message argument;
+* `msg : <variant>`: a variant of _decoding_ functions,  where `<variant> == {...; #<id>: () -> T; ...}` contains one variant
+   per shared function, `<id>`, of the actor.
+   The variant's tag identifies the function to be called;
+   The variant's argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
 
-Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the identifier, `<id>`, of the shared function.
+Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type `T`, of the shared function `<id>`.
 
-The variant's arguments are functions so that one can avoid the expense of message decoding (when appropriate).
+The variant's argument is a function so that one can avoid the expense of message decoding (when appropriate).
 
 WARNING: An actor that fails to declare system field `inspect_message` will simply accept all ingress messages.
 
