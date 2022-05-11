@@ -218,7 +218,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     set_hp(free);
 }
 
-/// Thread forwards pointers in object
+/// Thread forward pointers in object
 unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
         if (*field_addr).get_ptr() > obj as usize {
