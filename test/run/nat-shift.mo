@@ -15,4 +15,5 @@ class range(x : Nat32, y : Nat32) {
     public func next() : ?Nat32 { if (i > y) null else {let j = i; i += 1; ?j} };
 };
 
+for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(1, i))) };
 for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(42, i))) }
