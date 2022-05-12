@@ -28,8 +28,8 @@ pub unsafe fn visit_pointer_fields<F, G>(
         TAG_ARRAY => {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
-            //assert!(array.len() < 128); // REMOVE THIS!
             let stop = visit_field_range(array_payload, array.len());
+            debug_assert!(stop <= array.len());
             for i in 0..stop {
                 let field_addr = array_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
