@@ -1,0 +1,15 @@
+IDL error: empty input. Expected Candid-encoded argument, but received a zero-length argument
+Error: failed to run main module `_out/candid.wasm`
+
+Caused by:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: rts_trap
+         1: motoko_rts[7af4dbf3bad7698a]::trap_with_prefix
+         2: motoko_rts[7af4dbf3bad7698a]::idl_trap_with
+         3: parse_idl_header
+         4: @deserialize<a>
+         5: init
+         6: _start
+       
