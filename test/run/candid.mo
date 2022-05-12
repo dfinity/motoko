@@ -28,9 +28,9 @@ assert (?(-1,true,null) == (from_candid(to_candid(-1,true,'a')) : ?(Int,Bool,?Te
 // etc. (please add more)
 
 
+// don't test for now as output needs normalization, or test in drun using try-catch instead
 // traps on invalid candid (check last)
-
-let trap = from_candid("") : ?Any;
+//let trap = from_candid("") : ?Any;
 
 //SKIP run
 //SKIP run-ir
