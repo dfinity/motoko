@@ -172,7 +172,14 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
                 thread(field_addr);
             }
         },
-        |field_addr, fields| fields,
+        |field_addr, fields| {
+            if fields > 127 {
+		mark_object(mem, *field_addr.add(fields as usize - 1));
+                fields - 1
+            } else {
+                fields
+            }
+        },
     );
 }
 

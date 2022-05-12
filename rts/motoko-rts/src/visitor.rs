@@ -8,10 +8,10 @@ pub unsafe fn visit_pointer_fields<F, G>(
     tag: Tag,
     heap_base: usize,
     mut visit_ptr_field: F,
-    visit_field_range: G,
+    mut visit_field_range: G,
 ) where
     F: FnMut(*mut Value),
-    G: Fn(*mut Value, u32) -> u32,
+    G: FnMut(*mut Value, u32) -> u32,
 {
     match tag {
         TAG_OBJECT => {
