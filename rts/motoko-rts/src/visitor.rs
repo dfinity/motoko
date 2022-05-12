@@ -3,15 +3,16 @@ use crate::types::*;
 
 /// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
-pub unsafe fn visit_pointer_fields<F, G>(
+pub unsafe fn visit_pointer_fields<C, F, G>(
+    ctx: &mut C,
     obj: *mut Obj,
     tag: Tag,
     heap_base: usize,
-    mut visit_ptr_field: F,
-    mut visit_field_range: G,
+    visit_ptr_field: F,
+    visit_field_range: G,
 ) where
-    F: FnMut(*mut Value),
-    G: FnMut(*mut Value, u32) -> u32,
+    F: Fn(&mut C, *mut Value),
+    G: Fn(&mut C, *mut Value, u32) -> u32,
 {
     match tag {
         TAG_OBJECT => {
@@ -20,7 +21,7 @@ pub unsafe fn visit_pointer_fields<F, G>(
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
-                    visit_ptr_field(obj_payload.add(i as usize));
+                    visit_ptr_field(ctx, obj_payload.add(i as usize));
                 }
             }
         }
@@ -28,12 +29,12 @@ pub unsafe fn visit_pointer_fields<F, G>(
         TAG_ARRAY => {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
-            let stop = visit_field_range(array_payload, array.len());
+            let stop = visit_field_range(ctx, array_payload, array.len());
             debug_assert!(stop <= array.len());
             for i in 0..stop {
                 let field_addr = array_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
-                    visit_ptr_field(field_addr);
+                    visit_ptr_field(ctx, field_addr);
                 }
             }
         }
@@ -42,7 +43,7 @@ pub unsafe fn visit_pointer_fields<F, G>(
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
             if pointer_to_dynamic_heap(field_addr, heap_base) {
-                visit_ptr_field(field_addr);
+                visit_ptr_field(ctx, field_addr);
             }
         }
 
@@ -52,7 +53,7 @@ pub unsafe fn visit_pointer_fields<F, G>(
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
-                    visit_ptr_field(field_addr);
+                    visit_ptr_field(ctx, field_addr);
                 }
             }
         }
@@ -61,7 +62,7 @@ pub unsafe fn visit_pointer_fields<F, G>(
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
             if pointer_to_dynamic_heap(field_addr, heap_base) {
-                visit_ptr_field(field_addr);
+                visit_ptr_field(ctx, field_addr);
             }
         }
 
@@ -69,7 +70,7 @@ pub unsafe fn visit_pointer_fields<F, G>(
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
             if pointer_to_dynamic_heap(field_addr, heap_base) {
-                visit_ptr_field(field_addr);
+                visit_ptr_field(ctx, field_addr);
             }
         }
 
@@ -77,11 +78,11 @@ pub unsafe fn visit_pointer_fields<F, G>(
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
             if pointer_to_dynamic_heap(field1_addr, heap_base) {
-                visit_ptr_field(field1_addr);
+                visit_ptr_field(ctx, field1_addr);
             }
             let field2_addr = &mut (*concat).text2;
             if pointer_to_dynamic_heap(field2_addr, heap_base) {
-                visit_ptr_field(field2_addr);
+                visit_ptr_field(ctx, field2_addr);
             }
         }
 
@@ -89,7 +90,7 @@ pub unsafe fn visit_pointer_fields<F, G>(
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
             if pointer_to_dynamic_heap(field_addr, heap_base) {
-                visit_ptr_field(field_addr);
+                visit_ptr_field(ctx, field_addr);
             }
         }
 

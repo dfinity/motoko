@@ -159,12 +159,13 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(
+        mem,
         obj,
         obj_tag,
         heap_base as usize,
-        |field_addr| {
+        |mem, field_addr| {
             let field_value = *field_addr;
-            assert!(field_value.is_ptr()); // REMOVE THIS!
+            //assert!(field_value.is_ptr()); // REMOVE THIS!
             mark_object(mem, field_value);
 
             // Thread if backwards or self pointer
@@ -172,9 +173,9 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
                 thread(field_addr);
             }
         },
-        |field_addr, fields| {
+        |mem, field_addr, fields| {
             if fields > 127 {
-		mark_object(mem, *field_addr.add(fields as usize - 1));
+                mark_object(mem, *field_addr.add(fields as usize - 1));
                 fields - 1
             } else {
                 fields
@@ -235,15 +236,16 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 /// Thread forward pointers in object
 unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(
+        &mut (),
         obj,
         obj.tag(),
         heap_base as usize,
-        |field_addr| {
+        |_, field_addr| {
             if (*field_addr).get_ptr() > obj as usize {
                 thread(field_addr)
             }
         },
-        |_field_addr, fields| fields,
+        |_, _field_addr, fields| fields,
     );
 }
 

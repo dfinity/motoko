@@ -165,13 +165,14 @@ unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: 
     let obj = obj as *mut Obj;
 
     crate::visitor::visit_pointer_fields(
+        mem,
         obj,
         obj.tag(),
         begin_from_space,
-        |field_addr| {
+        |mem, field_addr| {
             evac(mem, begin_from_space, begin_to_space, field_addr as usize);
         },
-        |_field_addr, fields| fields,
+        |mem, _field_addr, fields| fields,
     );
 }
 
