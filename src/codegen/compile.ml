@@ -8317,7 +8317,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       Opt.inject env Tuple.compile_unit
     | [t] ->
       (* save to locals, propagate any errors as null or return some value *)
-      let (get_val, set_val) = new_local env "val" in
+      let (set_val, get_val) = new_local env "val" in
       set_val ^^
       get_val ^^
       compile_eq_const (Serialization.coercion_error_value env) ^^
@@ -8332,12 +8332,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
           vs ^^
           Opt.inject env (Tuple.from_stack env n)
         | t::ts' ->
-          let (get_val, set_val) = new_local env "val" in
+          let (set_val, get_val) = new_local env (Printf.sprintf "val_%i" n) in
           set_val ^^
           get_val ^^
           compile_eq_const (Serialization.coercion_error_value env) ^^
           G.if1 I32Type
-            (Opt.null_lit env)
+            (List.fold_right (fun _ code -> G.i Drop ^^ code) ts' (Opt.null_lit env))
             (go (vs ^^ get_val) (n + 1) ts')
           in go G.nop 0 (List.rev ts)
     end
