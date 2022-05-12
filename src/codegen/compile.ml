@@ -8325,21 +8325,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
         (Opt.null_lit env)
         (Opt.inject env get_val)
     | ts ->
-      (* save to locals, propagate any errors as null or return some tuple *)
-      let rec go vs n ts =
-        match ts with
+       (* save to locals, propagate any errors as null or return some tuple *)
+      let locals = List.mapi (fun i _ -> new_local env (Printf.sprintf "val_%i" i)) ts in
+      let rec go loc =
+        match loc with
         | [] ->
-          vs ^^
-          Opt.inject env (Tuple.from_stack env n)
-        | t::ts' ->
-          let (set_val, get_val) = new_local env (Printf.sprintf "val_%i" n) in
-          set_val ^^
+          G.concat_map (fun (_, get_val) -> get_val) locals ^^
+          Opt.inject env (Tuple.from_stack env (List.length locals))
+        | (_, get_val)::locs' ->
           get_val ^^
           compile_eq_const (Serialization.coercion_error_value env) ^^
           G.if1 I32Type
-            (List.fold_right (fun _ code -> G.i Drop ^^ code) ts' (Opt.null_lit env))
-            (go (vs ^^ get_val) (n + 1) ts')
-          in go G.nop 0 (List.rev ts)
+            (Opt.null_lit env)
+            (go locs')
+      in
+      G.concat_map (fun (set_val, _) -> set_val) (List.rev locals) ^^
+      go (List.rev locals)
     end
   | ICPerformGC, [] ->
     SR.unit,
