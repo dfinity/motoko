@@ -16,13 +16,13 @@ assert (?(-1,true) == (from_candid(to_candid(-1,true)) : ?(Int,Bool)));
 
 // triples
 assert (?(1,true,?'a') == (from_candid(to_candid(1,true,'a')) : ?(Nat,Bool,?Char)));
-assert (null == (from_candid(to_candid(-1,true,'a')) : ?(Nat,Bool,?Char)));
+assert (null == (from_candid(to_candid(-1,true,'a')) : ?(Nat,Bool,?Char))); // subtype failure
 assert (?(-1,true,?'a') == (from_candid(to_candid(-1,true,'a')) : ?(Int,Bool,?Char)));
 
 
 // defaulting
 assert (?(1,true,null) == (from_candid(to_candid(1,true,'a')) : ?(Nat,Bool,?Text)));
-assert (null == (from_candid(to_candid(-1,true,'a')) : ?(Nat,Bool,?Text)));
+assert (null == (from_candid(to_candid(-1,true,'a')) : ?(Nat,Bool,?Text))); // subtype failure
 assert (?(-1,true,null) == (from_candid(to_candid(-1,true,'a')) : ?(Int,Bool,?Text)));
 
 // etc. (please add more)
