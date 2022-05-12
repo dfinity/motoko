@@ -6,8 +6,8 @@ Caused by:
     1: wasm trap: unreachable
        wasm backtrace:
          0: rts_trap
-         1: motoko_rts[7af4dbf3bad7698a]::trap_with_prefix
-         2: motoko_rts[7af4dbf3bad7698a]::idl_trap_with
+         1: motoko_rts::trap_with_prefix::ha2d5c22b24787ee9
+         2: motoko_rts::idl_trap_with::hfdfb68e4c100bd8b
          3: parse_idl_header
          4: @deserialize<a>
          5: init
