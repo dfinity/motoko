@@ -173,9 +173,18 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
                 thread(field_addr);
             }
         },
-        |mem, field_addr, fields| {
+        |mem, field_addr0, fields| {
             if fields > 127 {
-                mark_object(mem, *field_addr.add(fields as usize - 1));
+                let field_addr = field_addr0.add(fields as usize - 1);
+                if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
+                    let field_value = *field_addr;
+                    mark_object(mem, field_value);
+
+                    // Thread if backwards or self pointer
+                    if field_value.get_ptr() <= obj as usize {
+                        thread(field_addr);
+                    }
+                }
                 fields - 1
             } else {
                 fields
