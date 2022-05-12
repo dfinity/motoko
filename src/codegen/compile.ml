@@ -8316,7 +8316,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       (* return some () *)
       Opt.inject env Tuple.compile_unit
     | [t] ->
-      (* save to locals, propagate any errors as null or return some value *)
+      (* save to local, propagate error as null or return some value *)
       let (set_val, get_val) = new_local env "val" in
       set_val ^^
       get_val ^^
@@ -8325,23 +8325,27 @@ and compile_prim_invocation (env : E.t) ae p es at =
         (Opt.null_lit env)
         (Opt.inject env get_val)
     | ts ->
-       (* save to locals, propagate any errors as null or return some tuple *)
-      let locals = List.mapi (fun i _ -> new_local env (Printf.sprintf "val_%i" i)) ts in
-      let rec go loc =
-        match loc with
-        | [] ->
-          G.concat_map (fun (_, get_val) -> get_val) locals ^^
-          Opt.inject env (Tuple.from_stack env (List.length locals))
-        | (_, get_val)::locs' ->
-          get_val ^^
-          compile_eq_const (Serialization.coercion_error_value env) ^^
-          G.if1 I32Type
-            (Opt.null_lit env)
-            (go locs')
-      in
-      G.concat_map (fun (set_val, _) -> set_val) (List.rev locals) ^^
-      go (List.rev locals)
+      (* propagate any errors as null or return some tuples using shared code *)
+      let n = List.length ts in
+      let name = Printf.sprintf "to_opt_%i_tuple" n in
+      let args = Lib.List.table n (fun i -> (Printf.sprintf "arg%i" i, I32Type)) in
+      Func.share_code env name args [I32Type] (fun env ->
+        let locals =
+          Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))) in
+        let rec go ls =
+          match ls with
+          | get_val::ls' ->
+            get_val ^^
+            compile_eq_const (Serialization.coercion_error_value env) ^^
+            G.if1 I32Type
+              (Opt.null_lit env)
+              (go ls')
+          | [] ->
+            Opt.inject env (Arr.lit env locals)
+        in
+        go locals)
     end
+
   | ICPerformGC, [] ->
     SR.unit,
     E.collect_garbage env
