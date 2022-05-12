@@ -3,13 +3,15 @@ use crate::types::*;
 
 /// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
-pub unsafe fn visit_pointer_fields<F>(
+pub unsafe fn visit_pointer_fields<F, G>(
     obj: *mut Obj,
     tag: Tag,
     heap_base: usize,
     mut visit_ptr_field: F,
+    visit_field_range: G,
 ) where
     F: FnMut(*mut Value),
+    G: Fn(*mut Value, u32) -> u32,
 {
     match tag {
         TAG_OBJECT => {
@@ -26,7 +28,9 @@ pub unsafe fn visit_pointer_fields<F>(
         TAG_ARRAY => {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
-            for i in 0..array.len() {
+            //assert!(array.len() < 128); // REMOVE THIS!
+            let stop = visit_field_range(array_payload, array.len());
+            for i in 0..stop {
                 let field_addr = array_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
                     visit_ptr_field(field_addr);

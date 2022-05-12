@@ -158,16 +158,22 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 }
 
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
-    visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
-        let field_value = *field_addr;
-        assert!(!field_value.is_ptr()); // REMOVE THIS!
-        mark_object(mem, field_value);
+    visit_pointer_fields(
+        obj,
+        obj_tag,
+        heap_base as usize,
+        |field_addr| {
+            let field_value = *field_addr;
+            assert!(field_value.is_ptr()); // REMOVE THIS!
+            mark_object(mem, field_value);
 
-        // Thread if backwards or self pointer
-        if field_value.get_ptr() <= obj as usize {
-            thread(field_addr);
-        }
-    });
+            // Thread if backwards or self pointer
+            if field_value.get_ptr() <= obj as usize {
+                thread(field_addr);
+            }
+        },
+        |field_addr, fields| fields,
+    );
 }
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
@@ -221,11 +227,17 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 
 /// Thread forward pointers in object
 unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
-    visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
-        if (*field_addr).get_ptr() > obj as usize {
-            thread(field_addr)
-        }
-    });
+    visit_pointer_fields(
+        obj,
+        obj.tag(),
+        heap_base as usize,
+        |field_addr| {
+            if (*field_addr).get_ptr() > obj as usize {
+                thread(field_addr)
+            }
+        },
+        |_field_addr, fields| fields,
+    );
 }
 
 /// Thread a pointer field
