@@ -310,70 +310,68 @@ and call_system_func_opt name es obj_typ =
     match es.it with
     | { S.vis = { it = S.System; _ };
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
-        _
-      } when id.it = name
-      ->
-       Some (
-         if name = "heartbeat" then
-           blockE
-             [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
-             (unitE ())
-         else if name = "inspect_message" then (* TBD *)
-           let _, tfs = T.as_obj obj_typ in
-           let caller = fresh_var "caller" T.principal in
-           let arg = fresh_var "arg" T.blob in
-           let msg_typ = T.decode_msg_typ tfs in
-           let msg = fresh_var "msg" msg_typ in
-           let record_typ =
-             T.Obj (T.Object, List.sort T.compare_field
-              [{T.lab = "caller"; T.typ = typ_of_var caller; T.depr = None};
+        _ }
+      when id.it = name ->
+      Some (
+        match name with
+        | "heartbeat" ->
+          blockE
+            [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+           (unitE ())
+        | "inspect_message" ->
+          let _, tfs = T.as_obj obj_typ in
+          let caller = fresh_var "caller" T.principal in
+          let arg = fresh_var "arg" T.blob in
+          let msg_typ = T.decode_msg_typ tfs in
+          let msg = fresh_var "msg" msg_typ in
+          let record_typ =
+            T.Obj (T.Object, List.sort T.compare_field
+             [{T.lab = "caller"; T.typ = typ_of_var caller; T.depr = None};
                {T.lab = "arg"; T.typ = typ_of_var arg; T.depr = None};
                {T.lab = "msg"; T.typ = typ_of_var msg; T.depr = None}])
-           in
-           let record = fresh_var "record" record_typ in
-           let msg_variant =
-             switch_textE (primE Ir.ICMethodNamePrim [])
-               (List.map (fun tf ->
-                  (tf.T.lab,
-                   match tf.T.typ with
-                   | T.Func(T.Local, _,  [], [], ts) ->
-                     let unit = fresh_var "unit" T.unit in
-                     tagE tf.T.lab (unit -->
-                       (primE (Ir.DeserializePrim ts) [varE arg]))
-                   | _ -> assert false))
-                (T.as_variant msg_typ)
-               )
+          in
+          let record = fresh_var "record" record_typ in
+          let msg_variant =
+            switch_textE (primE Ir.ICMethodNamePrim [])
+              (List.map (fun tf ->
+                (tf.T.lab,
+                  match tf.T.typ with
+                  | T.Func(T.Local, _,  [], [], ts) ->
+                    let unit = fresh_var "unit" T.unit in
+                    tagE tf.T.lab (unit -->
+                      (primE (Ir.DeserializePrim ts) [varE arg]))
+                  | _ -> assert false))
+                (T.as_variant msg_typ))
                (* Trap early, refusing all other messages,
                   including those in T.well_known_actor_fields. *)
-               (wildP,
-                 (primE (Ir.OtherPrim "trap")
-                   [textE "canister_inspect_message implicitly refused message"]))
-               msg_typ
-           in
-           let accept = fresh_var "accept" T.bool
-           in
-           blockE
-             [ letD record (
-                 blockE [
-                     letD caller (primE Ir.ICCallerPrim []);
-                     letD arg (primE Ir.ICArgDataPrim []);
-                     letD msg msg_variant
-                   ]
-                   (newObjE T.Object
-                      [{it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
-                       {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
-                       {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
-                      record_typ));
-               letD accept (callE (varE (var id.it p.note)) [] (varE record))]
-             (ifE (varE accept)
-               (unitE ())
-               (primE (Ir.OtherPrim "trap")
-                 [textE "canister_inspect_message explicitly refused message"])
-               T.unit)
-         else
-           callE (varE (var id.it p.note)) [] (tupE []))
+              (wildP,
+                (primE (Ir.OtherPrim "trap")
+                  [textE "canister_inspect_message implicitly refused message"]))
+              msg_typ
+          in
+          let accept = fresh_var "accept" T.bool
+          in
+            blockE
+              [ letD record (
+                  blockE [
+                    letD caller (primE Ir.ICCallerPrim []);
+                    letD arg (primE Ir.ICArgDataPrim []);
+                    letD msg msg_variant
+                  ]
+                  (newObjE T.Object [
+                    {it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
+                    {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
+                    {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
+                    record_typ));
+                letD accept (callE (varE (var id.it p.note)) [] (varE record))]
+              (ifE (varE accept)
+                (unitE ())
+                (primE (Ir.OtherPrim "trap")
+                  [textE "canister_inspect_message explicitly refused message"])
+                T.unit)
+        | _name ->
+          callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
-
 and build_candid ts obj_typ =
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
   I.{
