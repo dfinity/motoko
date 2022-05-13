@@ -63,13 +63,31 @@ pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) 
     STACK_PTR = STACK_PTR.add(2);
 }
 
+fn is_ptr(p: usize) -> bool {
+    p & 1 == 0
+}
+
 pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
     if STACK_PTR == STACK_BASE {
         None
     } else {
         STACK_PTR = STACK_PTR.sub(2);
         let p = *STACK_PTR;
-        let tag = *STACK_PTR.add(1);
-        Some((p, tag as u32))
+        let mut tag = *STACK_PTR.add(1);
+        if is_ptr(p) {
+	    return Some((p, tag as u32))
+	} else {
+	    assert!(false);
+	    // we pop from a range
+	    let len = *(p as *const u32);
+	    let before_field = (p as *const crate::types::Value).add(tag);
+	    let obj = (*before_field.add(1)).as_obj();
+	    tag -= 1; // start_index
+	    if len > tag as u32 {
+		*STACK_PTR.add(1) = tag;
+		STACK_PTR = STACK_PTR.add(2)
+	    }
+	    return Some((obj as usize, obj.tag()))
+	}
     }
 }
