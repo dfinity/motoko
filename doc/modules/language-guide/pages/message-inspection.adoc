@@ -16,8 +16,7 @@ _inspect_ and _accept_ or _decline_ ingress messages submitted through the HTTP 
 > This function traps if invoked twice.
 > If the canister traps in `canister_inspect_message` or does not call `ic0.accept_message`, then the access is denied.
 >
-> NOTE: The `canister_inspect_message` is _not_ invoked for HTTP query calls, inter-canister calls or calls to the management canister.
-> NOTE:  Confusingly, a `shared query` function _can_ be called using a regular HTTP call to obtain a certified response: this is why the variant type also includes `shared query` functions.
+> The `canister_inspect_message` is _not_ invoked for HTTP query calls, inter-canister calls or calls to the management canister.
 > -- https://smartcontracts.org/docs/current/references/ic-interface-spec/#ingress-message-inspection[IC Interface Specification]
 
 Message inspection mitigates some denial of service attacks,
@@ -46,6 +45,8 @@ The variant's argument is a function so that one can avoid the expense of messag
 
 Exploiting subtyping, the formal argument can omit record fields it does not require, or selectively ignore the arguments of particular shared functions, for example,
 in order to simply dispatch on the name of a function without inspecting its actual argument.
+
+NOTE:  Confusingly, a `shared query` function _can_ be called using a regular HTTP call to obtain a certified response: this is why the variant type also includes `shared query` functions.
 
 WARNING: An actor that fails to declare system field `inspect_message` will simply accept all ingress messages.
 
