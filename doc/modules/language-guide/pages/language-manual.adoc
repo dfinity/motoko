@@ -2307,13 +2307,12 @@ The _Candid serialization_ expression `to_candid ( <exp>,*)` has type `Blob` pro
 
 * `(<exp>,*)` has type `(T1,...,TN)`, and each `Ti` is _shared_.
 
-
-Expression `+to_candid ( <exp>,* )+` evaluates the expression sequence `+( <exp>,* )_` to a result `r`.
+Expression `+to_candid ( <exp>,* )+` evaluates the expression sequence `+( <exp>,* )+` to a result `r`.
 If `r` is `trap`, evaluation returns `trap`.
 Otherwise, `r` is a sequence of Motoko values `vs`.
 The result of evaluating `to_candid ( <exp>,* )` is some Candid blob `+b = encode((T1,...,TN))(vs)+`, encoding `vs`.
 
-The Candid _deserialization_ expression `from_candid <exp>` had type `?(T1,...,Tn)` provided:
+The Candid _deserialization_ expression `from_candid <exp>` has type `?(T1,...,Tn)` provided:
 
 * `?(T1,...,Tn)` is the expected type from the context;
 * `<exp>` has type `Blob`; and
@@ -2324,12 +2323,14 @@ If `b` Candid-decodes to Candid value sequence `Vs` of type `+ea((T1,...,TN))+` 
 If `b` Candid-decodes to a Candid value sequence `Vs` that is not of  Candid type `+ea((T1,...,TN))+` (but well-formed at some other type) then the result is `null`.
 If `b` is not the encoding of any well-typed Candid value, but some arbitrary binary blob, then the result of `from_candid` is a trap.
 
-(Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `+encode/decode((T1,...,TN))(_)+` are type-directed Motoko-Candid value translations).
+(Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `+encode/decode((T1,...,TN))(_)+` are type-directed Motoko-Candid value translations.)
 
 ////
 ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `decode` are not explicitly defined anywhere except in the implementation.
 ////
 
+
+NOTE: `from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
 
 NOTE: `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
 
