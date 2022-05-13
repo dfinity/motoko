@@ -99,12 +99,10 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and assert await break case
-catch class continue debug debug_show do else flexible
-false for func if ignore in import not null object or
-label let loop private public query return
-shared stable system switch true try
-type var while
+actor and assert await break case catch class continue debug
+debug_show do else flexible false for from_candid func if ignore in
+import not null object or label let loop private public query return
+shared stable system switch to_candid true try type var while
 ```
 
 [[syntax-ids]]
@@ -407,7 +405,7 @@ The syntax of an _import_ `<imp>`  is as follows:
 ```
 
 An import introduces a resource referring to a local source module, module from a package of modules, or canister (imported as an actor).
-The contents of the resource are bound to `<pat>`. 
+The contents of the resource are bound to `<pat>`.
 
 Though typically a simple identifier, `<id>`, `<pat>` can also be any composite pattern binding selective components of the resource.
 
@@ -558,6 +556,8 @@ The syntax of an _expression_ is as follows:
   <exp> !                                        null break
   debug <block-or-exp>                           debug expression
   actor <exp>                                    actor reference
+  to_candid ( <exp>,* )                          Candid serialization
+  from_candid <exp>                              Candid deserialization
   ( <exp> )                                      parentheses
 
 <block-or-exp> ::=
@@ -2299,6 +2299,43 @@ Type annotation may be used to aid the type-checker when it cannot otherwise det
 The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
 NOTE: Type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
+
+[#candid-serialization]
+=== Candid Serialization
+
+The _Candid serialization_ expression `to_candid ( <exp>,*)` has type `Blob` provided:
+
+* `(<exp>,*)` has type `(T1,...,TN)`, and each `Ti` is _shared_.
+
+
+Expression `+to_candid ( <exp>,* )+` evaluates the expression sequence `+( <exp>,* )_` to a result `r`.
+If `r` is `trap`, evaluation returns `trap`.
+Otherwise, `r` is a sequence of Motoko values `vs`.
+The result of evaluating `to_candid ( <exp>,* )` is some Candid blob `+b = encode((T1,...,TN))(vs)+`, encoding `vs`.
+
+The Candid _deserialization_ expression `from_candid <exp>` had type `?(T1,...,Tn)` provided:
+
+* `?(T1,...,Tn)` is the expected type from the context;
+* `<exp>` has type `Blob`; and
+* `?(T1,...TN)` is _shared_.
+
+Expression `+from_candid <exp>+` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a binary blob `b`.
+If `b` Candid-decodes to Candid value sequence `Vs` of type `+ea((T1,...,TN))+` then the result of `from_candid` is `?v` where  `+v = decode((T1,...,TN))(Vs)+`.
+If `b` Candid-decodes to a Candid value sequence `Vs` that is not of  Candid type `+ea((T1,...,TN))+` (but well-formed at some other type) then the result is `null`.
+If `b` is not the encoding of any well-typed Candid value, but some arbitrary binary blob, then the result of `from_candid` is a trap.
+
+(Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `+encode/decode((T1,...,TN))(_)+` are type-directed Motoko-Candid value translations).
+
+////
+ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `decode` are not explicitly defined anywhere except in the implementation.
+////
+
+
+NOTE: `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
+
+WARNING: the Candid encoding of a value as a blob is not unique and the same value may have many different Candid-representations as a blob.
+For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler
+versions or even just different programs.
 
 [[exp-decl]]
 === Declaration
