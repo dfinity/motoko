@@ -6,7 +6,9 @@ pub mod bitmap;
 pub mod mark_stack;
 
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
+use mark_stack::{
+    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack, push_range_mark_stack,
+};
 
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
@@ -173,21 +175,14 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
                 thread(field_addr);
             }
         },
-        |mem, field_addr0, fields| {
-            if fields > 127 {
-                let field_addr = field_addr0.add(fields as usize - 1);
-                if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
-                    let field_value = *field_addr;
-                    mark_object(mem, field_value);
+        |mem, len_field_addr| {
+            if *len_field_addr > 127 {
+                //TODO mark_objects(mem, field_value);
 
-                    // Thread if backwards or self pointer
-                    if field_value.get_ptr() <= obj as usize {
-                        thread(field_addr);
-                    }
-                }
-                fields - 1
+                push_range_mark_stack(mem, len_field_addr, 128);
+                127
             } else {
-                fields
+                *len_field_addr
             }
         },
     );
@@ -254,7 +249,7 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
                 thread(field_addr)
             }
         },
-        |_, _field_addr, fields| fields,
+        |_, len_field_addr| *len_field_addr,
     );
 }
 

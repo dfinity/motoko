@@ -12,7 +12,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     visit_field_range: G,
 ) where
     F: Fn(&mut C, *mut Value),
-    G: Fn(&mut C, *mut Value, u32) -> u32,
+    G: Fn(&mut C, *const u32) -> u32,
 {
     match tag {
         TAG_OBJECT => {
@@ -29,7 +29,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_ARRAY => {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
-            let stop = visit_field_range(ctx, array_payload, array.len());
+            let stop = visit_field_range(ctx, &(*array).len);
             debug_assert!(stop <= array.len());
             for i in 0..stop {
                 let field_addr = array_payload.add(i as usize);

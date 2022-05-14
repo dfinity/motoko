@@ -172,7 +172,7 @@ unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: 
         |mem, field_addr| {
             evac(mem, begin_from_space, begin_to_space, field_addr as usize);
         },
-        |_, _, fields| fields,
+        |_, len_field_addr| *len_field_addr,
     );
 }
 
