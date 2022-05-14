@@ -70,7 +70,13 @@ fn is_ptr(p: usize) -> bool {
 
 pub unsafe fn push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, start: usize) {
     debug_assert!(is_ptr(ptr as usize));
-    // TODO
+    if STACK_PTR == STACK_TOP {
+        grow_stack(mem);
+    }
+
+    *STACK_PTR = ptr as usize + 1;
+    *(STACK_PTR.add(1)) = start;
+    STACK_PTR = STACK_PTR.add(2);
 }
 
 pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
@@ -84,7 +90,7 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
         if is_ptr(p) {
             return Some((p, tag as u32));
         } else {
-            debug_assert!(false);
+            let p = p - 1;
             // we pop from a range
             let len = *(p as *const u32);
             let before_field = (p as *mut crate::types::Value).add(tag);
