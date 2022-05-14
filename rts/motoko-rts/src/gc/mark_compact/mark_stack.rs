@@ -68,10 +68,11 @@ fn is_ptr(p: usize) -> bool {
     p & 1 == 0
 }
 
-pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
-    if STACK_PTR == STACK_BASE {
-        None
-    } else {
+pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
+    loop {
+        if STACK_PTR == STACK_BASE {
+            return None;
+        }
         STACK_PTR = STACK_PTR.sub(2);
         let p = *STACK_PTR;
         let mut tag = *STACK_PTR.add(1);
@@ -81,7 +82,7 @@ pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
             debug_assert!(false);
             // we pop from a range
             let len = *(p as *const u32);
-            let before_field = (p as *const crate::types::Value).add(tag);
+            let before_field = (p as *mut crate::types::Value).add(tag);
             let obj = (*before_field.add(1)).as_obj();
             tag -= 1; // start_index
             if len > tag as u32 {
@@ -89,9 +90,14 @@ pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
                 STACK_PTR = STACK_PTR.add(2)
             }
             // check for dynamic heap
-            // TODO
+            let field_addr = before_field.add(1);
+            if !crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
+                continue;
+            }
             // perform the threading
-            // TODO
+            if (*field_addr).get_ptr() <= obj as usize {
+                crate::gc::mark_compact::thread(field_addr);
+            }
             return Some((obj as usize, obj.tag()));
         }
     }

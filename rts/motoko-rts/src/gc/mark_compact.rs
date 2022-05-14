@@ -152,7 +152,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
-    while let Some((obj, tag)) = pop_mark_stack() {
+    while let Some((obj, tag)) = pop_mark_stack(heap_base as usize) {
         mark_fields(mem, obj as *mut Obj, tag, heap_base);
     }
 }
@@ -259,7 +259,7 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
 }
 
 /// Thread a pointer field
-unsafe fn thread(field: *mut Value) {
+pub(crate) unsafe fn thread(field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
     let pointed = (*field).as_obj();
     let pointed_header = pointed.tag();
