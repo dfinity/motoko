@@ -1282,7 +1282,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 
 |===
 
-* `heartbeat`, when declared, is called on every Internet Computer subnet *heartbeat*,
+* `heartbeat`, when declared, is called on every {IC} subnet *heartbeat*,
 scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including
 any trap or thrown error, is ignored. The implicit context switch means that
 the time the heartbeat body is executed may be later than the time the
