@@ -1301,7 +1301,7 @@ During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `p
 
 Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
 The function is invoked (by the system) on each ingress message (excluding non-replicated queries).
-Similar to a query, any side-effects of an invocation are discarded and transient.
+Similar to a query, any side-effects of an invocation are transient and discarded.
 A call that traps due to some fault has the same result as returning `false` (message denial).
 
 The argument type of `inspect_message` depends on the interface of the enclosing actor.
