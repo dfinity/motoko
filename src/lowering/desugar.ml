@@ -318,7 +318,7 @@ and call_system_func_opt name es obj_typ =
           blockE
             [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
            (unitE ())
-        | "inspect_message" ->
+        | "inspect" ->
           let _, tfs = T.as_obj obj_typ in
           let caller = fresh_var "caller" T.principal in
           let arg = fresh_var "arg" T.blob in
@@ -479,8 +479,8 @@ and build_actor at ts self_id es obj_typ =
          (match call_system_func_opt "heartbeat" es obj_typ with
           | Some call -> call
           | None -> tupE []);
-       inspect_message =
-         (match call_system_func_opt "inspect_message" es obj_typ with
+       inspect =
+         (match call_system_func_opt "inspect" es obj_typ with
           | Some call -> call
           | None -> tupE [])
      },

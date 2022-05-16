@@ -3743,12 +3743,12 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
-  let export_inspect_message env =
+  let export_inspect env =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let fi = E.add_fun env "canister_inspect_message"
       (Func.of_body env [] [] (fun env ->
-        G.i (Call (nr (E.built_in env "inspect_message_exp"))) ^^
-        system_call env "accept_message" (* assumes inspect_message_exp traps to reject *)
+        G.i (Call (nr (E.built_in env "inspect_exp"))) ^^
+        system_call env "accept_message" (* assumes inspect_exp traps to reject *)
         (* no need to GC !*)))
     in
     E.add_export env (nr {
@@ -9548,13 +9548,13 @@ and main_actor as_opt mod_env ds fs up =
        IC.export_heartbeat env;
     end;
 
-    (* Export inspect_message (but only when required) *)
-    begin match up.inspect_message.it with
+    (* Export inspect (but only when required) *)
+    begin match up.inspect.it with
      | Ir.PrimE (Ir.TupPrim, []) -> ()
      | _ ->
-       Func.define_built_in env "inspect_message_exp" [] [] (fun env ->
-         compile_exp_as env ae2 SR.unit up.inspect_message);
-       IC.export_inspect_message env;
+       Func.define_built_in env "inspect_exp" [] [] (fun env ->
+         compile_exp_as env ae2 SR.unit up.inspect);
+       IC.export_inspect env;
     end;
 
     (* Export metadata *)

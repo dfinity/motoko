@@ -33,12 +33,12 @@ let rec exp e = match e.it with
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
-and system { meta; preupgrade; postupgrade; heartbeat; inspect_message} = (* TODO: show meta? *)
+and system { meta; preupgrade; postupgrade; heartbeat; inspect} = (* TODO: show meta? *)
   "System" $$ [
       "Pre" $$ [exp preupgrade];
       "Post" $$ [exp postupgrade];
       "Heartbeat" $$ [exp heartbeat];
-      "Inspect_Message" $$ [exp inspect_message];
+      "Inspect" $$ [exp inspect];
     ]
 
 and lexp le = match le.it with

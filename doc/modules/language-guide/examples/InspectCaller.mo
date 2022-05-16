@@ -10,7 +10,7 @@ actor {
    public func reset() : () { c := 0 }; // oneway
 
 // tag::inspect-caller[]
-   system func inspect_message({ caller : Principal }) : Bool {
+   system func inspect({ caller : Principal }) : Bool {
      not (Principal.isAnonymous(caller));
    }
 // end::inspect-caller[]

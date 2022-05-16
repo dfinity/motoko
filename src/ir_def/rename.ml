@@ -27,7 +27,7 @@ and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; inspect_message }, t) ->
+  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; inspect }, t) ->
     let ds', rho' = decs rho ds in
     ActorE
       (ds',
@@ -36,7 +36,7 @@ and exp' rho e  = match e with
         preupgrade = exp rho' preupgrade;
         postupgrade = exp rho' postupgrade;
         heartbeat = exp rho' heartbeat;
-        inspect_message = exp rho' inspect_message;
+        inspect = exp rho' inspect;
        },
        t)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
@@ -155,7 +155,7 @@ let comp_unit rho cu = match cu with
   | LibU (ds, e) ->
     let ds', rho' = decs rho ds
     in LibU (ds', exp rho' e)
-  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; inspect_message }, t) ->
+  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; inspect }, t) ->
     let as_opt', rho' = match as_opt with
       | None -> None, rho
       | Some as_ ->
@@ -168,5 +168,5 @@ let comp_unit rho cu = match cu with
         preupgrade = exp rho'' preupgrade;
         postupgrade = exp rho'' postupgrade;
         heartbeat = exp rho'' heartbeat;
-        inspect_message = exp rho'' inspect_message;
+        inspect = exp rho'' inspect;
       }, t)

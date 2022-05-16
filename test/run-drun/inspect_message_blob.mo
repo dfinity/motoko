@@ -1,4 +1,4 @@
-// NB: inspect_message cannot be tested in drun.
+// NB: inspect cannot be tested in drun.
 //     (requires dfx or playground for HTTP interface)
 actor {
 
@@ -9,7 +9,7 @@ actor {
    public query func read() : async Nat { c };
    public func reset() : () { c := 0 }; // oneway
 
-   system func inspect_message({ arg : Blob }) : Bool  {
+   system func inspect({ arg : Blob }) : Bool  {
       return arg.size() <= 512;
    }
 };

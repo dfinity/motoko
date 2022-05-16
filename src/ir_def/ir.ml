@@ -81,7 +81,7 @@ and system = {
   preupgrade : exp;
   postupgrade : exp;
   heartbeat : exp;
-  inspect_message : exp
+  inspect : exp
 }
 
 and candid = {

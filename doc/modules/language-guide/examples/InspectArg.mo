@@ -10,7 +10,7 @@ actor {
    public func reset() : () { c := 0 }; // oneway
 
 // tag::inspect-arg[]
-   system func inspect_message({ arg : Blob }) : Bool {
+   system func inspect({ arg : Blob }) : Bool {
      arg.size() <= 512;
    }
 // end::inspect-arg[]

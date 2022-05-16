@@ -10,7 +10,7 @@ actor {
    public func reset() : () { c := 0 }; // oneway
 /*
 // tag::inspect-trick[]
-   system func inspect_message() : Bool {
+   system func inspect() : Bool {
      false
    }
 // end::inspect-trick[]
