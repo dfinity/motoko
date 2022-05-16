@@ -179,7 +179,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
             if *len_field_addr > 127 {
                 //TODO mark_objects(mem, field_value);
 
-                push_range_mark_stack(mem, len_field_addr, 128);
+                push_range_mark_stack(mem, len_field_addr, 127);
                 127
             } else {
                 *len_field_addr
