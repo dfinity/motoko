@@ -50,6 +50,7 @@ NOTE:  Confusingly, a `shared query` function _can_ be called using a regular HT
 
 WARNING: An actor that fails to declare system field `inspect_message` will simply accept all ingress messages.
 
+WARNING: `inspect_message` should *not* be used for definitive access control; reliable access control checks can only be performed within the `shared` functions guarded by `inspect_message`. This is because `inspect_message` is executed by a single replica, without consensus and its result could be spoofed by a malicious boundary node.
 A simple, contrived example is a counter actor, that inspects some of its messages in detail, and others only superficially:
 
 [source,motoko]
