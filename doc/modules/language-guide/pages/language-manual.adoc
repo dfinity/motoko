@@ -1296,7 +1296,7 @@ These `preupgrade` and `postupgrade` system methods provide the opportunity to s
 
 During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
 
-[#inspect-message]
+[#inspect]
 ===== `inspect`
 
 Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.

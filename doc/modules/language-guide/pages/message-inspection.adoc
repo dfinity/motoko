@@ -1,4 +1,4 @@
-= Message Inspection
+= Message inspection
 :proglang: Motoko
 :company-id: DFINITY
 
@@ -22,7 +22,7 @@ _inspect_ and _accept_ or _decline_ ingress messages submitted through the HTTP 
 Message inspection mitigates some denial of service attacks,
 designed to drain canisters of cycles by placing unsolicited free calls.
 
-REMARK: You can think of method inspection as providing the "Collect call from <name>. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
+REMARK: You can think of method inspection as providing the "Collect call from _name_. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
 
 In {proglang}, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect`.
 Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
@@ -50,8 +50,11 @@ NOTE:  Confusingly, a `shared query` function _can_ be called using a regular HT
 
 WARNING: An actor that fails to declare system field `inspect` will simply accept all ingress messages.
 
-WARNING: `inspect` should *not* be used for definitive access control; reliable access control checks can only be performed within the `shared` functions guarded by `inspect`. This is because `inspect` is executed by a single replica, without consensus and its result could be spoofed by a malicious boundary node.
-A simple, contrived example is a counter actor, that inspects some of its messages in detail, and others only superficially:
+WARNING: System function`inspect` should *not* be used for definitive access control. This is because `inspect` is executed by a single replica, without full consensus, and its result could be spoofed by a malicious boundary node. Reliable access control checks can only be performed within the `shared` functions guarded by `inspect`.
+
+== Example
+
+A simple, contrived example of method inspection is a counter actor, that inspects some of its messages in detail, and others only superficially:
 
 [source,motoko]
 ----
@@ -74,7 +77,7 @@ Declining anonymous calls:
 include::../examples/InspectCaller.mo[tag=inspect-caller]
 ----
 
-Declining large messages, based on `arg`'s size (in bytes).
+Declining large messages, based on `+arg+`'s size (in bytes).
 
 [source.no-repl,motoko]
 ----
