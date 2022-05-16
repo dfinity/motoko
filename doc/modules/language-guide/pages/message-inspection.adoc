@@ -110,7 +110,7 @@ For example, in the actor from the previous section, incorrectly declaring:
 include::../examples/InspectTrick.mo[tag=inspect-trick]
 ----
 
-forces the compiler to cough up the expected type below:
+forces the compiler to report the expected type below:
 
 [source.no-repl,motoko]
 ----
