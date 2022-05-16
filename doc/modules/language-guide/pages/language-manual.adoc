@@ -1287,7 +1287,7 @@ scheduling an asynchronous call to the `heartbeat` function. Due to its `async` 
 any trap or thrown error, is ignored. The implicit context switch means that
 the time the heartbeat body is executed may be later than the time the
 heartbeat was issued by the subnet.
-* `inspect_message`, when declared, is called as a predicate on every {IC} ingress message (with the exception of queries). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see <<inspect-message>>).
+* `inspect_message`, when declared, is called as a predicate on every {IC} ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see <<inspect-message>>).
 * `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable variables are transferred to the replacement actor.
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
