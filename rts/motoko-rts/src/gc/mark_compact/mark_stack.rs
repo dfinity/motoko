@@ -75,6 +75,8 @@ pub unsafe fn push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, sta
     }
 
     *STACK_PTR = ptr as usize + 1;
+//println!(100, "range PTR: {} {} {}", *ptr, *STACK_PTR, start);
+//println!(100, "range TAG <=  {} : {}", (*(ptr as *mut crate::types::Value).add(start+1)).get_raw(), (*(ptr as *mut crate::types::Value).add(start+1)).tag());
     *(STACK_PTR.add(1)) = start;
     STACK_PTR = STACK_PTR.add(2);
 }
@@ -90,6 +92,7 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
         if is_ptr(p) {
             return Some((p, tag as u32));
         } else {
+//println!(100, "range PTR <= : {}", p);
             let p = p - 1;
             // we pop from a range
             let len = *(p as *const u32);
@@ -105,11 +108,14 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
             if !crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
                 continue;
             }
+	    // `obj.tag` will be overwritten
+	    let obj_tag = obj.tag();
             // perform the threading
             if (*field_addr).get_ptr() <= obj as usize {
                 crate::gc::mark_compact::thread(field_addr);
             }
-            return Some((obj as usize, obj.tag()));
+//println!(100, "range TAG <=  {} : {}", obj as usize, obj_tag);
+            return Some((obj as usize, obj_tag));
         }
     }
 }
