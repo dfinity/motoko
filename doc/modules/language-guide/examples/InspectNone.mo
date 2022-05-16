@@ -1,5 +1,3 @@
-// NB: inspect cannot be tested in drun.
-//     (requires dfx or playground for HTTP interface)
 actor {
 
    var c = 0;
@@ -9,7 +7,9 @@ actor {
    public query func read() : async Nat { c };
    public func reset() : () { c := 0 }; // oneway
 
-   system func inspect({ arg : Blob }) : Bool  {
-      return arg.size() <= 512;
-   }
+// tag::inspect-none[]
+   system func inspect({}) : Bool { false }
+// end::inspect-none[]
+
 };
+

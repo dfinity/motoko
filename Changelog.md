@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * New `system` field 'inspect_message' for accepting/declining canister ingress messages (see doc) (#3210)
+  * New `system` field 'inspect' for accepting/declining canister ingress messages (see doc) (#3210)
 
 ## 0.6.27 (2022-05-04)
 

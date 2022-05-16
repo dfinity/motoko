@@ -1,4 +1,4 @@
-= Message Inspection
+= Message inspection
 :proglang: Motoko
 :company-id: DFINITY
 
@@ -22,15 +22,15 @@ _inspect_ and _accept_ or _decline_ ingress messages submitted through the HTTP 
 Message inspection mitigates some denial of service attacks,
 designed to drain canisters of cycles by placing unsolicited free calls.
 
-REMARK: You can think of method inspection as providing the "Collect call from <name>. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
+REMARK: You can think of method inspection as providing the "Collect call from _name_. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
 
-In {proglang}, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect_message`.
+In {proglang}, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect`.
 Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
 The function is invoked (by the system) on each ingress message. Similar to a query, any side-effects of an invocation are discarded and transient.
 A call that traps due to some fault has the same result as returning `false` (message declination).
 
-Unlike other system functions, that have a fixed argument type, the argument type of `inspect_message` depends on the interface of the enclosing actor.
-In particular, the formal argument of `inspect_message` is a record of fields of the following types:
+Unlike other system functions, that have a fixed argument type, the argument type of `inspect` depends on the interface of the enclosing actor.
+In particular, the formal argument of `inspect` is a record of fields of the following types:
 
 * `caller : Principal`: the principal, possibly anonymous, of the caller of the message;
 * `arg : Blob`: the raw, binary content of the message argument;
@@ -48,17 +48,20 @@ in order to simply dispatch on the name of a function without inspecting its act
 
 NOTE:  Confusingly, a `shared query` function _can_ be called using a regular HTTP call to obtain a certified response: this is why the variant type also includes `shared query` functions.
 
-WARNING: An actor that fails to declare system field `inspect_message` will simply accept all ingress messages.
+WARNING: An actor that fails to declare system field `inspect` will simply accept all ingress messages.
 
-WARNING: `inspect_message` should *not* be used for definitive access control; reliable access control checks can only be performed within the `shared` functions guarded by `inspect_message`. This is because `inspect_message` is executed by a single replica, without consensus and its result could be spoofed by a malicious boundary node.
-A simple, contrived example is a counter actor, that inspects some of its messages in detail, and others only superficially:
+WARNING: System function `inspect` should *not* be used for definitive access control. This is because `inspect` is executed by a single replica, without full consensus, and its result could be spoofed by a malicious boundary node. Reliable access control checks can only be performed within the `shared` functions guarded by `inspect`.
+
+== Example
+
+A simple, contrived example of method inspection is a counter actor, that inspects some of its messages in detail, and others only superficially:
 
 [source,motoko]
 ----
 include::../examples/InspectFull.mo[]
 ----
 
-Note that, due to subtyping, all of the following variations, in order of increasing argument specificity, are legal definitions of `inspect_message`.
+Note that, due to subtyping, all of the following variations, in order of increasing argument specificity, are legal definitions of `inspect`.
 
 Blanket denial of all ingress messages, ignoring further information:
 
@@ -74,7 +77,7 @@ Declining anonymous calls:
 include::../examples/InspectCaller.mo[tag=inspect-caller]
 ----
 
-Declining large messages, based on `arg`'s size (in bytes).
+Declining large messages, based on `+arg+`'s size (in bytes).
 
 [source.no-repl,motoko]
 ----
@@ -96,9 +99,9 @@ A combination of the previous three, specifying the argument types of some varia
 include::../examples/InspectMixed.mo[tag=inspect-mixed]
 ----
 
-== Tips on authoring `inspect_message`
+== Tips on authoring `inspect`
 
-Implementing `inspect_message` after the fact, once all shared functions of an actor have already been implemented, can be tedious, since you'll need to declare a correctly typed
+Implementing `inspect` after the fact, once all shared functions of an actor have already been implemented, can be tedious, since you'll need to declare a correctly typed
 variant for each shared function.
 A simple trick is to first implement the function _incorrectly_, with a `()` argument, compile the code, then use the compiler's error message
 to obtain the required argument type.
@@ -114,7 +117,7 @@ forces the compiler to report the expected type below:
 
 [source.no-repl,motoko]
 ----
-Inspect.mo:13.4-15.5: type error [M0127], system function inspect_message is declared with type
+Inspect.mo:13.4-15.5: type error [M0127], system function inspect is declared with type
   () -> Bool
 instead of expected type
   {

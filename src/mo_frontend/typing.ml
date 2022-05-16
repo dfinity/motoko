@@ -209,7 +209,7 @@ let system_funcs tfs =
     ("heartbeat", T.Func (T.Local, T.Returns, [T.scope_bind], [], [T.Async (T.Var (T.default_scope_var, 0), T.unit)]));
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
-    ("inspect_message",
+    ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
         T.Obj (T.Object, List.sort T.compare_field

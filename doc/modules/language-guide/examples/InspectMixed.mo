@@ -10,7 +10,7 @@ actor {
    public func reset() : () { c := 0 }; // oneway
 
 // tag::inspect-mixed[]
-   system func inspect_message(
+   system func inspect(
      {
        caller : Principal;
        arg : Blob;
