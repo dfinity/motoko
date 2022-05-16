@@ -50,7 +50,7 @@ NOTE:  Confusingly, a `shared query` function _can_ be called using a regular HT
 
 WARNING: An actor that fails to declare system field `inspect` will simply accept all ingress messages.
 
-WARNING: System function`inspect` should *not* be used for definitive access control. This is because `inspect` is executed by a single replica, without full consensus, and its result could be spoofed by a malicious boundary node. Reliable access control checks can only be performed within the `shared` functions guarded by `inspect`.
+WARNING: System function `inspect` should *not* be used for definitive access control. This is because `inspect` is executed by a single replica, without full consensus, and its result could be spoofed by a malicious boundary node. Reliable access control checks can only be performed within the `shared` functions guarded by `inspect`.
 
 == Example
 
