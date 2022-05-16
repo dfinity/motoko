@@ -22,7 +22,7 @@ _inspect_ and _accept_ or _decline_ ingress messages submitted through the HTTP 
 Message inspection mitigates some denial of service attacks,
 designed to drain canisters of cycles by placing unsolicited free calls.
 
-REMARK: You can think of `inspect_message` as providing the "Collect call from <name>. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
+REMARK: You can think of method inspection as providing the "Collect call from <name>. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
 
 In {proglang}, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect_message`.
 Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
