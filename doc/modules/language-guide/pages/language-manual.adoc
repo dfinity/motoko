@@ -1276,22 +1276,49 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 |  name | type | description
 
 | `heartbeat`  | `+() -> async ()+` | heartbeat action
+| `inspect` | `+{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool+` | message predicate
 | `preupgrade`  | `+() -> ()+` | pre upgrade action
 | `postupgrade` | `+() -> ()+` | post upgrade action
+
 |===
 
-* `heartbeat`, when declared, is called on every Internet Computer subnet *heartbeat*,
+* `heartbeat`, when declared, is called on every {IC} subnet *heartbeat*,
 scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including
 any trap or thrown error, is ignored. The implicit context switch means that
 the time the heartbeat body is executed may be later than the time the
 heartbeat was issued by the subnet.
+* `inspect`, when declared, is called as a predicate on every {IC} ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see <<inspect-message>>).
 * `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable variables are transferred to the replacement actor.
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
 
 These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
-During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
+During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
+
+[#inspect]
+===== `inspect`
+
+Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
+The function is invoked (by the system) on each ingress message (excluding non-replicated queries).
+Similar to a query, any side-effects of an invocation are transient and discarded.
+A call that traps due to some fault has the same result as returning `false` (message denial).
+
+The argument type of `inspect` depends on the interface of the enclosing actor.
+In particular, the formal argument of `inspect` is a record of fields of the following types:
+
+* `caller : Principal`: the principal, possibly anonymous, of the caller of the message;
+* `arg : Blob`: the raw, binary content of the message argument;
+* `msg : <variant>`: a variant of _decoding_ functions,  where `<variant> == {...; #<id>: () -> T; ...}` contains one variant
+   per shared function, `<id>`, of the actor.
+   The variant's tag identifies the function to be called;
+   The variant's argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
+
+Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type (also `T`) of the shared function `<id>`.
+
+The variant's argument is a function so that one can avoid the expense of message decoding (when appropriate).
+
+WARNING: An actor that fails to declare system field `inspect` will simply accept all ingress messages.
 
 [[decl-seq]]
 === Sequence of declarations
