@@ -2334,7 +2334,7 @@ NOTE: `from_candid` returns `null` when the argument is a valid Candid encoding 
 
 NOTE: `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
 
-WARNING: the Candid encoding of a value as a blob is not unique and the same value may have many different Candid-representations as a blob.
+WARNING: the Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob.
 For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler
 versions or even just different programs.
 
