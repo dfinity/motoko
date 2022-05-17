@@ -144,9 +144,9 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
     let obj_idx = obj / WORD_SIZE;
 
-    if !get_bit(obj_idx) {
+    /*if !get_bit(obj_idx) {
         println!(100, "mark_object obj {} tag {}", obj, obj_tag);
-    }
+    }*/
     if get_bit(obj_idx) {
         // Already marked
         return;
@@ -169,15 +169,17 @@ unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap
         let obj_idx = obj / WORD_SIZE;
         println!(
             100,
-            "mark_range len: {} obj {} tag {}",
+            "mark_range len: {} obj {} tag {} already {}",
             *len,
             obj as usize,
-            (*field.add(i)).tag()
+            (*field.add(i)).tag(),
+	    get_bit(obj_idx)
         );
         if get_bit(obj_idx) {
 	    // remember in field
-	    
+	    *field = Value::from_raw((*field).get_raw() - 2)
 	} else {
+            println!(100, "SETTING MARK: {} tag: {}", (*field).get_ptr() as u32, (*field).tag() as u32);
             set_bit(obj_idx)
 	}
     }
