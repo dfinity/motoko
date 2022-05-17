@@ -976,7 +976,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
         let ts = List.map (infer_exp env) exps in
         if not (T.shared (T.seq ts)) then
-          error env exp.at "MXXXX" "to_candid argument must have shared type, but instead found non-shared type %a"
+          error env exp.at "MXXXX" "to_candid argument must have shared type, but instead has non-shared type %a"
             display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob
