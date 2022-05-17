@@ -144,9 +144,9 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
     let obj_idx = obj / WORD_SIZE;
 
-    /*if !get_bit(obj_idx) {
+    if get_bit(obj_idx) {
         println!(100, "mark_object obj {} tag {}", obj, obj_tag);
-    }*/
+    }
     if get_bit(obj_idx) {
         // Already marked
         return;
@@ -159,9 +159,11 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap_base: u32) {
     let fields = (len as *mut Value).add(1);
     for i in start..*len as usize {
-	let field = fields.add(i);
-	if !pointer_to_dynamic_heap(field, heap_base as usize) { continue }
-            println!(100, "SETTING MARK: raw {}", (*field).get_raw());
+        let field = fields.add(i);
+        if !pointer_to_dynamic_heap(field, heap_base as usize) {
+            continue;
+        }
+        println!(100, "SETTING MARK: raw {}", (*field).get_raw());
         let obj = (*field).get_ptr() as u32;
 
         // Check object alignment to avoid undefined behavior. See also static_checks module.
@@ -174,15 +176,16 @@ unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap
             *len,
             obj as usize,
             (*field).tag(),
-	    get_bit(obj_idx)
+            get_bit(obj_idx)
         );
         if get_bit(obj_idx) {
-	    // remember in field
-            println!(100, "SETTING MARK: {}", obj);
-	    *field = Value::from_raw((*field).get_raw() - 2)
-	} else {
+            // remember in field
+            println!(100, "SETTING ALREADY: {}", obj);
+            *field = Value::from_raw((*field).get_raw() - 2)
+        } else {
+            println!(100, "SETTING MARK: {} tag: {}", obj, (*field).tag());
             set_bit(obj_idx)
-	}
+        }
     }
 }
 

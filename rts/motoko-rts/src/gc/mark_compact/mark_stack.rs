@@ -78,7 +78,7 @@ pub unsafe fn push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, sta
     println!(100, "range PTR: {} {} {}", *ptr, *STACK_PTR, start);
     println!(
         100,
-        "range TAG <=  {} : {}",
+        "PUSH range TAG <=  {} : {}",
         (*(ptr as *mut crate::types::Value).add(start + 1)).get_raw(),
         (*(ptr as *mut crate::types::Value).add(start + 1)).tag()
     );
@@ -102,37 +102,43 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
             let len = *(p as *const u32);
             let before_field = (p as *mut crate::types::Value).add(tag);
             let obj = (*before_field.add(1)).get_raw();
-	    let remembered_mark = obj & 3 == 1;
-            println!(100, "range PTR <= : {} obj {} marked: {}", p, obj, remembered_mark);
+            let remembered_mark = obj & 3 == 1;
+            println!(
+                100,
+                "range PTR <= : {} obj {} marked: {}", p, obj, remembered_mark
+            );
             tag += 1; // increment start_index
             if len > tag as u32 {
                 *STACK_PTR.add(1) = tag;
                 STACK_PTR = STACK_PTR.add(2)
             }
             let field_addr = before_field.add(1);
-	    if remembered_mark {
-		// undo remember
-		let obj = obj + 2;
-		*field_addr = crate::types::Value::from_raw(obj);
-		// perform the threading anyway
-		if (*field_addr).get_ptr() <= obj as usize {
-		    crate::gc::mark_compact::thread(field_addr);
-		}
+            if remembered_mark {
+                // undo remember
+                let obj = obj + 2;
+                *field_addr = crate::types::Value::from_raw(obj);
+                // perform the threading anyway
+                if (*field_addr).get_ptr() <= obj as usize {
+                    crate::gc::mark_compact::thread(field_addr);
+                }
                 continue;
-	    }
-            let obj = (*before_field.add(1)).get_ptr();
+            }
+            let obj = (*field_addr).as_obj();
             // check for dynamic heap
-            if !crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
-                continue;
+            if crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
+                // `obj.tag` will be overwritten
+                let obj_tag = (*obj).tag;
+                // perform the threading
+                if (*field_addr).get_ptr() <= obj as usize {
+                    crate::gc::mark_compact::thread(field_addr);
+                }
+                if obj_tag & 1 != 0 {
+                    // no intervening threading happened
+                    println!(100, "range TAG <=  {} : {}", obj as usize, obj_tag);
+                    return Some((obj as usize, obj_tag));
+                }
             }
-            // `obj.tag` will be overwritten
-            let obj_tag = (*field_addr).tag();
-            // perform the threading
-            if (*field_addr).get_ptr() <= obj as usize {
-                crate::gc::mark_compact::thread(field_addr);
-            }
-            println!(100, "range TAG <=  {} : {}", obj as usize, obj_tag);
-            return Some((obj as usize, obj_tag));
+            continue;
         }
     }
 }
