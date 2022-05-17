@@ -138,13 +138,15 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
-    println!(100, "mark_object obj {} tag {}", obj, obj_tag);
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);
 
     let obj_idx = obj / WORD_SIZE;
 
+    if !get_bit(obj_idx) {
+        println!(100, "mark_object obj {} tag {}", obj, obj_tag);
+    }
     if get_bit(obj_idx) {
         // Already marked
         return;
@@ -154,11 +156,17 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     push_mark_stack(mem, obj as usize, obj_tag);
 }
 
-unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize) {
-    let field = (len as *mut Value).add(1);
+unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap_base: u32) {
+    let fields = (len as *mut Value).add(1);
     for i in start..*len as usize {
-	// FIXME: only if dynamic!
-        let obj = (*field.add(i)).get_ptr() as u32;
+	let field = fields.add(i);
+	if !pointer_to_dynamic_heap(field, heap_base as usize) { continue }
+        let obj = (*field).get_ptr() as u32;
+
+        // Check object alignment to avoid undefined behavior. See also static_checks module.
+        debug_assert_eq!(obj % WORD_SIZE, 0);
+
+        let obj_idx = obj / WORD_SIZE;
         println!(
             100,
             "mark_range len: {} obj {} tag {}",
@@ -166,12 +174,12 @@ unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize) {
             obj as usize,
             (*field.add(i)).tag()
         );
-
-        // Check object alignment to avoid undefined behavior. See also static_checks module.
-        debug_assert_eq!(obj % WORD_SIZE, 0);
-
-        let obj_idx = obj / WORD_SIZE;
-        set_bit(obj_idx);
+        if get_bit(obj_idx) {
+	    // remember in field
+	    
+	} else {
+            set_bit(obj_idx)
+	}
     }
 }
 
@@ -199,7 +207,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         },
         |mem, len_field_addr| {
             if *len_field_addr > 127 {
-                mark_range(mem, len_field_addr, 127);
+                mark_range(mem, len_field_addr, 127, heap_base);
                 push_range_mark_stack(mem, len_field_addr, 127);
                 127
             } else {
