@@ -5678,7 +5678,7 @@ module MakeSerialization (Strm : Stream) = struct
       if extended
       then "@deserialize_extended<" ^ ts_name ^ ">"
       else "@deserialize<" ^ ts_name ^ ">" in
-    Func.share_code1 env name ("blob", I32Type) (List.map (fun _ -> I32Type) ts) (fun env get_blob ->
+    Func.share_code2 env name (("blob", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
       let (set_data_start, get_data_start) = new_local env "data_start" in
@@ -5725,10 +5725,13 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
           get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
           compile_unboxed_const 0l ^^ (* initial depth *)
-          compile_unboxed_const 0l ^^ (* initially, cannot recover *)
+          get_can_recover ^^
           deserialize_go env t ^^ set_val ^^
-          get_val ^^ compile_eq_const (coercion_error_value env) ^^
-          E.then_trap_with env ("IDL error: coercion failure encountered") ^^
+          get_can_recover ^^
+          G.if0
+            (G.nop)
+            (get_val ^^ compile_eq_const (coercion_error_value env) ^^
+             E.then_trap_with env ("IDL error: coercion failure encountered")) ^^
           get_val
         ) ts ^^
 
@@ -5754,6 +5757,7 @@ module MakeSerialization (Strm : Stream) = struct
       (fun env -> IC.system_call env "msg_arg_data_size")
       (fun env -> IC.system_call env "msg_arg_data_copy")
       (fun env -> compile_unboxed_const 0l) ^^
+    Bool.lit false ^^ (* can't recover *)
     deserialize_from_blob false env ts
 
 (*
@@ -6221,6 +6225,7 @@ module Stabilization = struct
           let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
           get_blob ^^
+          Bool.lit false ^^ (* can't recover *)
           Serialization.deserialize_from_blob true env [ty] ^^
           set_val ^^
 
@@ -8298,7 +8303,48 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | DeserializePrim ts, [e] ->
     StackRep.of_arity (List.length ts),
     compile_exp_vanilla env ae e ^^
+    Bool.lit false ^^ (* can't recover *)
     Serialization.deserialize_from_blob false env ts
+
+  | DeserializeOptPrim ts, [e] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e ^^
+    Bool.lit true ^^ (* can (!) recover *)
+    Serialization.deserialize_from_blob false env ts ^^
+    begin match ts with
+    | [] ->
+      (* return some () *)
+      Opt.inject env Tuple.compile_unit
+    | [t] ->
+      (* save to local, propagate error as null or return some value *)
+      let (set_val, get_val) = new_local env "val" in
+      set_val ^^
+      get_val ^^
+      compile_eq_const (Serialization.coercion_error_value env) ^^
+      G.if1 I32Type
+        (Opt.null_lit env)
+        (Opt.inject env get_val)
+    | ts ->
+      (* propagate any errors as null or return some tuples using shared code *)
+      let n = List.length ts in
+      let name = Printf.sprintf "to_opt_%i_tuple" n in
+      let args = Lib.List.table n (fun i -> (Printf.sprintf "arg%i" i, I32Type)) in
+      Func.share_code env name args [I32Type] (fun env ->
+        let locals =
+          Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))) in
+        let rec go ls =
+          match ls with
+          | get_val::ls' ->
+            get_val ^^
+            compile_eq_const (Serialization.coercion_error_value env) ^^
+            G.if1 I32Type
+              (Opt.null_lit env)
+              (go ls')
+          | [] ->
+            Opt.inject env (Arr.lit env locals)
+        in
+        go locals)
+    end
 
   | ICPerformGC, [] ->
     SR.unit,

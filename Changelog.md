@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Add `to_candid`, `from_candid` language constructs for Candid serialization to/from Blobs (#3155)
+
 ## 0.6.26 (2022-04-20)
 
 * motoko (`moc`)
