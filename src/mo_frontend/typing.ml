@@ -1396,7 +1396,7 @@ and check_exp' env0 t exp : T.typ =
         error env exp.at "MXXXX" "to_candid produces a Blob that is not a subtype of %a"
           display_typ_expand t;
       if not (T.shared (T.seq ts)) then
-        error env exp.at "MXXXX" "to_candid argument types be shared, but instead found %a"
+          error env exp.at "MXXXX" "to_candid argument must have shared type, but instead has non-shared type %a"
           display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob
