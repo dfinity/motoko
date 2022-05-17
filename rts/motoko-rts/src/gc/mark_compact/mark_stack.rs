@@ -127,16 +127,18 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
             // check for dynamic heap
             if crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
                 // `obj.tag` will be overwritten
-                let obj_tag = (*obj).tag;
+                let mut obj_tag = (*obj).tag;
+                while obj_tag & 1 == 0 {
+                    // intervening threading may have happened,
+                    // so chase the real tag
+                    obj_tag = *(obj_tag as *const u32)
+                }
                 // perform the threading
                 if (*field_addr).get_ptr() <= obj as usize {
                     crate::gc::mark_compact::thread(field_addr);
                 }
-                if obj_tag & 1 != 0 {
-                    // no intervening threading happened
-                    //println!(100, "range TAG <=  {} : {}", obj as usize, obj_tag);
-                    return Some((obj as usize, obj_tag));
-                }
+                //println!(100, "range TAG <=  {} : {}", obj as usize, obj_tag);
+                return Some((obj as usize, obj_tag));
             }
             continue;
         }
