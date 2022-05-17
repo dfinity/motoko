@@ -161,6 +161,7 @@ unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap
     for i in start..*len as usize {
 	let field = fields.add(i);
 	if !pointer_to_dynamic_heap(field, heap_base as usize) { continue }
+            println!(100, "SETTING MARK: raw {}", (*field).get_raw());
         let obj = (*field).get_ptr() as u32;
 
         // Check object alignment to avoid undefined behavior. See also static_checks module.
@@ -172,14 +173,14 @@ unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap
             "mark_range len: {} obj {} tag {} already {}",
             *len,
             obj as usize,
-            (*field.add(i)).tag(),
+            (*field).tag(),
 	    get_bit(obj_idx)
         );
         if get_bit(obj_idx) {
 	    // remember in field
+            println!(100, "SETTING MARK: {}", obj);
 	    *field = Value::from_raw((*field).get_raw() - 2)
 	} else {
-            println!(100, "SETTING MARK: {} tag: {}", (*field).get_ptr() as u32, (*field).tag() as u32);
             set_bit(obj_idx)
 	}
     }

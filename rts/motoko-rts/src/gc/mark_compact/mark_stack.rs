@@ -109,16 +109,19 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
                 *STACK_PTR.add(1) = tag;
                 STACK_PTR = STACK_PTR.add(2)
             }
-            // check for dynamic heap
             let field_addr = before_field.add(1);
 	    if remembered_mark {
-		*field_addr = crate::types::Value::from_raw(obj + 2);
+		// undo remember
+		let obj = obj + 2;
+		*field_addr = crate::types::Value::from_raw(obj);
 		// perform the threading anyway
 		if (*field_addr).get_ptr() <= obj as usize {
 		    crate::gc::mark_compact::thread(field_addr);
 		}
                 continue;
 	    }
+            let obj = (*before_field.add(1)).get_ptr();
+            // check for dynamic heap
             if !crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
                 continue;
             }
