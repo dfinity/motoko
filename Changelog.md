@@ -3,6 +3,23 @@
 * motoko (`moc`)
 
   * Add `to_candid`, `from_candid` language constructs for Candid serialization to/from Blobs (#3155)
+  * New `system` field 'inspect' for accepting/declining canister ingress messages (see doc) (#3210)
+
+## 0.6.27 (2022-05-04)
+
+* motoko (`moc`)
+
+  * Importing modules by relative path is now more robust (#3215).
+  * Performance: persisting stable variables to stable memory is now
+    performed in streaming fashion, reducing heap consumption and
+    copying during an upgrade (#3149).
+  * Performance: local 32- and 64-bit numeric values are now stored in
+    using unboxed form when possible (thanks to nomeata) (#3207).
+
+* motoko-base
+
+  * Fixed a bug in `Trie.filter` (and `Trie.mapFilter`) which could
+    lead to missing matches in some cases (dfinity/motoko-base#371).
 
 ## 0.6.26 (2022-04-20)
 

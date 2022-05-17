@@ -1075,7 +1075,6 @@ let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
 
 module Env = Env.Make(String)
 
-
 (* Scopes *)
 
 let scope_var var = "$" ^ var
@@ -1083,6 +1082,44 @@ let default_scope_var = scope_var ""
 let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
+(* Well-known fields *)
+
+let motoko_async_helper_fld =
+  { lab = "__motoko_async_helper";
+    typ = Func(Shared Write, Promises, [scope_bind], [Prim Nat32], []);
+    depr = None;
+  }
+
+let motoko_stable_var_size_fld =
+  { lab = "__motoko_stable_var_size";
+    typ = Func(Shared Query, Promises, [scope_bind], [], [nat64]);
+    depr = None;
+  }
+
+let get_candid_interface_fld =
+  { lab = "__get_candid_interface_tmp_hack";
+    typ = Func(Shared Query, Promises, [scope_bind], [], [text]);
+    depr = None;
+  }
+
+let well_known_actor_fields = [
+    motoko_async_helper_fld;
+    motoko_stable_var_size_fld;
+    get_candid_interface_fld
+  ]
+
+let decode_msg_typ tfs =
+  Variant
+    (List.sort compare_field (List.filter_map (fun tf ->
+       match normalize tf.typ with
+       | Func(Shared _, _, tbs, ts1, ts2) ->
+         Some { tf with
+           typ =
+             Func(Local, Returns, [], [],
+               List.map (open_ (List.map (fun _ -> Non) tbs)) ts1);
+           depr = None }
+       | _ -> None)
+     tfs))
 
 (* Pretty printing *)
 
