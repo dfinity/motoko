@@ -33,8 +33,13 @@ let rec exp e = match e.it with
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
-and system { meta; preupgrade; postupgrade; heartbeat } = (* TODO: show meta? *)
-  "System" $$ ["Pre" $$ [exp preupgrade]; "Post" $$ [exp postupgrade]; "Heartbeat" $$ [exp heartbeat]]
+and system { meta; preupgrade; postupgrade; heartbeat; inspect} = (* TODO: show meta? *)
+  "System" $$ [
+      "Pre" $$ [exp preupgrade];
+      "Post" $$ [exp postupgrade];
+      "Heartbeat" $$ [exp heartbeat];
+      "Inspect" $$ [exp inspect];
+    ]
 
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]
@@ -95,6 +100,7 @@ and prim = function
   | OtherPrim s       -> Atom s
   | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | ICArgDataPrim     -> Atom "ICArgDataPrim"
   | ICStableSize t    -> "ICStableSize" $$ [typ t]
   | ICPerformGC       -> Atom "ICPerformGC"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
@@ -102,6 +108,7 @@ and prim = function
   | ICCallerPrim      -> Atom "ICCallerPrim"
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
+  | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
 
