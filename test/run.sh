@@ -158,7 +158,7 @@ FLAGS_ic_ref_run=-ref-system-api
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
-  if drun --version >& /dev/null
+  if drun --help >& /dev/null
   then
     HAVE_drun=yes
   else
