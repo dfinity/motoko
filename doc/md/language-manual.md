@@ -1585,11 +1585,13 @@ The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `nu
 
 ### Variant injection
 
-The variant injection `# <id> <exp>` has variant type `{# id T}` provided: \* `<exp>` has type `T`.
+The variant injection `# <id> <exp>` has variant type `{# id T}` provided:
+
+-   `<exp>` has type `T`.
 
 The variant injection `# <id>` is just syntactic sugar for `# <id> ()`.
 
-The variant injection\`# \<id> \<exp>\` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be a value `v` and the result of the injection is the tagged value `# <id> v`.
+The variant injection `# <id> <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be a value `v` and the result of the injection is the tagged value `# <id> v`.
 
 The tag and contents of a variant value can be tested and accessed using a [variant pattern](#variant-pattern).
 
@@ -1625,7 +1627,7 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 
 |            |         |                         |                                              |
 |------------|---------|-------------------------|----------------------------------------------|
-| U          | \<id>   | T                       | Description                                  |
+| U          | `<id>`  | T                       | Description                                  |
 | `Text`     | `size`  | `Nat`                   | size (or length) in characters               |
 | `Text`     | `chars` | `{ next: () -> Char? }` | character iterator, first to last            |
 |            |         |                         |                                              |
