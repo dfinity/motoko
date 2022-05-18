@@ -4,8 +4,8 @@
 :company-id: DFINITY
 :!page-repl:
 
-The {proglang} compiler (`+moc+`) is the primary tool for compiling {proglang} programs into executable WebAssembly (Wasm) modules. 
-The compiler runs in the background when you build projects using the {sdk-short-name}. 
+The {proglang} compiler (`+moc+`) is the primary tool for compiling {proglang} programs into executable WebAssembly (Wasm) modules.
+The compiler runs in the background when you build projects using the {sdk-short-name}.
 If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
 
 This section provides compiler command-line reference information.
@@ -34,7 +34,7 @@ You can use the following options with the `+moc+` command.
 
 |`+--args <file>+` |Read additional newline separated command line arguments from <file>
 
-|`+--args0 <file>+` |Read additional NUL separated command line arguments from <file>
+|`+--args0 <file>+` |Read additional `NUL` separated command line arguments from `<file>`
 
 |`+-c+` |Compile to WebAssembly.
 
@@ -84,11 +84,11 @@ You can use the following options with the `+moc+` command.
 
 |`+-p <n>+` |Sets the print depth.
 
-|`+--package <package-name> <package-path>+` |Specifies a package-name package-path pair, separated by a space.
+|`+--package <package-name> <package-path>+` |Specifies a `<package-name>` `<package-path>` pair, separated by a space.
 
-|`+--public-metadata <name>+` |Emit icp custom section <name> (candid:args or candid:service or motoko:stable-types or motoko:compiler) as `public` (default is `private`)
+|`+--public-metadata <name>+` |Emit icp custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `+motoko:compiler+`) as `public` (default is `private`)
 
-|`+--omit-metadata <name>+` |omit icp custom section <name> (candid:args or candid:service or motoko:stable-types or motoko:compiler)
+|`+--omit-metadata <name>+` |omit icp custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `motoko:compiler`)
 
 |`+--print-deps+` |Prints the dependencies for a given source file.
 
@@ -108,7 +108,7 @@ You can use the following options with the `+moc+` command.
 
 | `--stable-types` |Compile binary and emit signature of stable types to `.most` file.
 
-| `--stable-compatible <pre> <post>` |Test upgrade compatibility between stable-type signatures <pre> and <post>
+| `--stable-compatible <pre> <post>` |Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.
 
 |`+-t+` |Activates tracing in interpreter.
 
@@ -116,6 +116,6 @@ You can use the following options with the `+moc+` command.
 
 |`+--version+` |Displays version information.
 
-|`+-wasi-system-api+` |Uses the WASI system API (wasmtime).
+|`+-wasi-system-api+` |Uses the WASI system API (`wasmtime`).
 |===
 
