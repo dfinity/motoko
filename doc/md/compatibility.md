@@ -167,25 +167,76 @@ An upgrade is safe provided:
 
 -   the stable interface evolves to a compatible one (variable to supertype or new)
 
-<table><colgroup><col style="width: 9%" /><col style="width: 45%" /><col style="width: 45%" /></colgroup><tbody><tr class="odd"><td style="text-align: left;"><p>version</p></td><td style="text-align: left;"><p>candid interface</p></td><td style="text-align: left;"><p>stable type interface</p></td></tr><tr class="even"><td style="text-align: left;"><p>v0</p></td><td style="text-align: left;"><pre class="candid"><code>service : {
-  inc: () -&gt; (int);
-}</code></pre></td><td style="text-align: left;"><pre class="motoko"><code>actor {
+Given version `v0` with candid interface `v0.did` and stable type interface `v0.most`:
 
-};</code></pre></td></tr><tr class="odd"><td style="text-align: left;"></td><td style="text-align: left;"><p>:&gt; ✓</p></td><td style="text-align: left;"><p>&lt;&lt;: ✓</p></td></tr><tr class="even"><td style="text-align: left;"><p>v1</p></td><td style="text-align: left;"><pre class="candid"><code>service : {
-  inc: () -&gt; (int);
-}</code></pre></td><td style="text-align: left;"><pre class="motoko"><code>actor {
+``` candid
+service : {
+  inc: () -> (int);
+}
+```
+
+``` motoko
+actor {
+
+};
+```
+
+And version `v1` with candid interface `v1.did` and stable type interface `v1.most`,
+
+``` candid
+service : {
+  inc: () -> (int);
+}
+```
+
+``` motoko
+actor {
   stable var state : Int
-};</code></pre></td></tr><tr class="odd"><td style="text-align: left;"></td><td style="text-align: left;"><p>:&gt; ✓</p></td><td style="text-align: left;"><p>&lt;&lt;: ✓</p></td></tr><tr class="even"><td style="text-align: left;"><p>v2</p></td><td style="text-align: left;"><pre class="candid"><code>service : {
-  inc: () -&gt; (int);
-  read: () -&gt; (int) query;
-}</code></pre></td><td style="text-align: left;"><pre class="motoko"><code>actor {
+};
+```
+
+And version `v2` with candid interface `v2.did` and stable type interface `v2.most`,
+
+``` candid
+service : {
+  inc: () -> (int);
+  read: () -> (int) query;
+}
+```
+
+``` motoko
+actor {
   stable var state : Int
-};</code></pre></td></tr><tr class="odd"><td style="text-align: left;"></td><td style="text-align: left;"><p>:&gt; ✓</p></td><td style="text-align: left;"><p>&lt;&lt;: <em>✗</em></p></td></tr><tr class="even"><td style="text-align: left;"><p>v3</p></td><td style="text-align: left;"><pre class="candid"><code>service : {
-  inc: () -&gt; (nat);
-  read: () -&gt; (nat) query;
-}</code></pre></td><td style="text-align: left;"><pre class="motoko"><code>actor {
+};
+```
+
+And, finally, version `v3` with candid interface `v3.did` and stable type interface `v3.most`:
+
+``` candid
+service : {
+  inc: () -> (nat);
+  read: () -> (nat) query;
+}
+```
+
+``` motoko
+actor {
   stable var state : Nat
-};</code></pre></td></tr></tbody></table>
+};
+```
+
+The following table summarizes the (in)compatibilities between them:
+
+|         |                  |                       |
+|---------|------------------|-----------------------|
+| version | candid interface | stable type interface |
+| `v0`    | `v0.did`         | `v0.most`             |
+|         | :> ✓             | \<\<: ✓               |
+| `v1`    | `v1.did`         | `v1.most`             |
+|         | :> ✓             | \<\<: ✓               |
+| `v2`    | `v2.did`         | `v2.most`             |
+|         | :> ✓             | \<\<: *✗*             |
+| `v3`    | `v3.did`         | `v3.most`             |
 
 ## Tooling
 
@@ -210,22 +261,32 @@ E.g. the upgrade from `v2` to `v3` fails this check:
 
 ## Examples in the wild
 
-<https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio>
+A common, real-world example of an incompatible upgrade can be found on the forum: <https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio>
 
-<table><colgroup><col style="width: 100%" /></colgroup><tbody><tr class="odd"><td style="text-align: left;"><pre class="motoko"><code>type Card = {
+In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
+
+``` motoko
+type Card = {
   title : Text
 };
 actor {
   stable var map: [(Nat32, Card)]
-}</code></pre></td></tr><tr class="even"><td style="text-align: left;"><p>&lt;&lt;: <em>✗</em></p></td></tr><tr class="odd"><td style="text-align: left;"><pre class="motoko"><code>type Card = {
+}
+```
+
+to *incompatible* stable type interface:
+
+``` motoko
+type Card = {
   title : Text;
   description : Text
 };
 actor {
   stable var map : [(Nat32, Card)]
-}</code></pre></td></tr></tbody></table>
+}
+```
 
-Adding a new record field (to magic from nothing) is bad.
+Adding a new record field (to magic from nothing) does not work.
 
 ## Metadata Sections
 
