@@ -1557,7 +1557,7 @@ The relational expression `<exp1> <relop> <exp2>` has type `Bool` provided:
 
 -   the category O (Ordered) is a category of `T` and `<relop>`; or
 
-The binary operator expression `<exp1> <relop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
+The binary operator expression `<exp1> <relop> <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
