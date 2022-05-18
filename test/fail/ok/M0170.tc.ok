@@ -1,2 +1,0 @@
-M0170.mo:1.1-1.20: type error [M0170], to_candid argument must have shared type, but instead has non-shared type 
-  [var Nat]
