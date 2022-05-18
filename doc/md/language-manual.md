@@ -699,7 +699,7 @@ When `<sort>?` is `actor`, all fields have `shared` function type (specifying me
 
 ### Variant types
 
-`{ <typ-tag>;* }` specifies a variant type by listing its variant type fields as a sequence of \`\<typ-tag>\`s.
+`{ <typ-tag>;* }` specifies a variant type by listing its variant type fields as a sequence of `<typ-tag>`s.
 
 Within a variant type, the tags of its variants must be distinct (both by name and hash value).
 
@@ -1206,7 +1206,7 @@ The result of matching `<pat1> or <pat2>` against a value is the result of match
 
 The declaration `<exp>` has type `T` provided the expression `<exp>` has type `T` . It declares no bindings.
 
-The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically for \`\<exp>’s side-effect).
+The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically for `<exp>`'s side-effect).
 
 Note that if `<exp>` appears within a sequence of declarations, but not as the last declaration of that sequence, then `T` must be `()`.
 
@@ -1641,7 +1641,7 @@ The unary compound assignment `<unop>= <exp>` has type `()` provided:
 
 -   `<exp>` has type `var T`, and
 
--   `` `<unop>’s category is a category of `T ``.
+-   `<unop>`'s category is a category of `T`.
 
 The unary compound assignment `<unop>= <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to contain the value `<unop> v`.
 
