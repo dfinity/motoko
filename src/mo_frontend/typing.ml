@@ -204,10 +204,20 @@ let infer_mut mut : T.typ -> T.typ =
 
 (* System method types *)
 
-let system_funcs = [
+let system_funcs tfs =
+  [
     ("heartbeat", T.Func (T.Local, T.Returns, [T.scope_bind], [], [T.Async (T.Var (T.default_scope_var, 0), T.unit)]));
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
-    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
+    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    ("inspect",
+     (let msg_typ = T.decode_msg_typ tfs in
+      let record_typ =
+        T.Obj (T.Object, List.sort T.compare_field
+          [{T.lab = "caller"; T.typ = T.principal; T.depr = None};
+           {T.lab = "arg"; T.typ = T.blob; T.depr = None};
+           {T.lab = "msg"; T.typ = msg_typ; T.depr = None}])
+      in
+        T.Func (T.Local, T.Returns, [],  [record_typ], [T.bool])))
   ]
 
 
@@ -2029,19 +2039,19 @@ and infer_obj env s dec_fields at : T.typ =
       ) dec_fields;
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
-    check_system_fields env s scope dec_fields;
+    check_system_fields env s scope tfs dec_fields;
     check_stab env s scope dec_fields;
   end;
   t
 
-and check_system_fields env sort scope dec_fields =
+and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
     match sort, df.it.vis.it, df.it.dec.it with
     | T.Actor, vis,
       LetD({ it = VarP id; _ },
            { it = FuncE _; _ }) ->
       begin
-        match List.assoc_opt id.it system_funcs with
+        match List.assoc_opt id.it (system_funcs tfs) with
         | Some t ->
           (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
           if vis = System then
@@ -2056,7 +2066,7 @@ and check_system_fields env sort scope dec_fields =
         | None ->
           if vis = System then
             local_error env id.at "M0129" "unexpected system method named %s, expected %s"
-              id.it (String.concat " or " (List.map fst system_funcs))
+              id.it (String.concat " or " (List.map fst (system_funcs tfs)))
           else ()
       end
     | _, System, _ ->

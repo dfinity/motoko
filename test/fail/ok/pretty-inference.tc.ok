@@ -1,5 +1,5 @@
 pretty-inference.mo:13.1-13.5: type error [M0098], cannot implicitly instantiate function of type
-  <T <: ()>(T) -> ()
+  <T <: ()>T -> ()
 to argument of type
   Nat
 to produce result of type
@@ -10,7 +10,7 @@ where
   Nat  </:  ()
 so that no valid instantiation exists
 pretty-inference.mo:15.1-15.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: ()>(T) -> ()
+  <T <: ()>T -> ()
 to argument of type
   (Nat, Bool)
 to produce result of type
@@ -21,7 +21,7 @@ where
   (Nat, Bool)  </:  ()
 so that no valid instantiation exists
 pretty-inference.mo:17.1-17.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: ()>(T) -> ()
+  <T <: ()>T -> ()
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
@@ -32,7 +32,7 @@ where
   ((Nat, Bool), (Nat, Bool))  </:  ()
 so that no valid instantiation exists
 pretty-inference.mo:19.1-19.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: ()>(T) -> ()
+  <T <: ()>T -> ()
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
@@ -43,7 +43,7 @@ where
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  </:  ()
 so that no valid instantiation exists
 pretty-inference.mo:21.1-21.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: ()>(T) -> ()
+  <T <: ()>T -> ()
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
@@ -59,7 +59,7 @@ where
     ()
 so that no valid instantiation exists
 pretty-inference.mo:23.1-23.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: ()>(T) -> ()
+  <T <: ()>T -> ()
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -81,7 +81,7 @@ where
     ()
 so that no valid instantiation exists
 pretty-inference.mo:28.1-28.5: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   Nat
 to produce result of type
@@ -92,7 +92,7 @@ where
   Nat  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:30.1-30.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   (Nat, Bool)
 to produce result of type
@@ -103,7 +103,7 @@ where
   (Nat, Bool)  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:32.1-32.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
@@ -114,7 +114,7 @@ where
   ((Nat, Bool), (Nat, Bool))  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:34.1-34.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
@@ -127,7 +127,7 @@ where
     C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:36.1-36.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
@@ -143,7 +143,7 @@ where
     C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:38.1-38.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(T) -> ()
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),

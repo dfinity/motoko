@@ -1,12 +1,12 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
-
-  # version to embed in the release. Used by `.github/workflows/release.yml`
-  releaseVersion ? null,
+  officialRelease ? false,
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
+
+let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -162,14 +162,14 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256-CrtZQTac95MEbk3uapviLgcQjEt5VUnTOG9fiJXIAU8";
+        cargoSha256 = "sha256:0kq1r2aqhpvg739ljmbr9f6101rfwadnmvjddq297xww6r0mkfqa";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-+D0OXpU3/MJ06DsmQQiGWohvZz5ALTmJpc7HfAhd7S4";
+      rustStdDepsHash = "sha256:1nky4lrj8vd55h2lg4r0vhfg15xm2gfkbjv783qdkxy8afqagqph";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -432,7 +432,7 @@ rec {
       checkPhase = ''
         patchShebangs .
         type -p moc && moc --version
-        type -p drun && drun --version
+        type -p drun && drun --help
         ./profile-report.sh
       '';
       installPhase = ''
