@@ -175,4 +175,9 @@ let error_codes : (string * string option) list =
     "M0169", None; (* Stable variable cannot be discarded *)
     "M0170", None; (* Stable variable must subtype *)
     "M0171", None; (* Stable variable changing mutability *)
+    "M0172", None; (* to_candid produces Blob, not -- *)
+    "M0173", None; (* to_candid arg must have shared type, not -- *)
+    "M0174", None; (* from_candid produces an optional shared, not -- *)
+    "M0175", None; (* to_candid argument must have shared type, not -- *)
+    "M0176", None; (* from_candid requires known type from context *)
   ]
