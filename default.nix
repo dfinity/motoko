@@ -432,7 +432,7 @@ rec {
       checkPhase = ''
         patchShebangs .
         type -p moc && moc --version
-        type -p drun && drun --version
+        type -p drun && drun --help
         ./profile-report.sh
       '';
       installPhase = ''
