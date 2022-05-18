@@ -1555,7 +1555,7 @@ The relational expression `<exp1> <relop> <exp2>` has type `Bool` provided:
 
 -   `<relop>` is equality `==` or inequality `!=`, `T` is *shared*, and `T` is the least type such that `<exp1>` and `<exp2>` have type `T`;
 
--   the category O (Ordered) is a category of `T` and \<relop>; or
+-   the category O (Ordered) is a category of `T` and `<relop>`; or
 
 The binary operator expression `<exp1> <relop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 

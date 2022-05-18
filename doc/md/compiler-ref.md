@@ -22,8 +22,8 @@ You can use the following options with the `moc` command.
 |-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--actor-idl <idl-path>`                  | Specifies a path to actor IDL (Candid) files.                                                                                                         |
 | `--actor-alias <alias> <principal>`       | Specifies an actor import alias.                                                                                                                      |
-| `--args <file>`                           | Read additional newline separated command line arguments from \<file>                                                                                 |
-| `--args0 <file>`                          | Read additional `NUL` separated command line arguments from `<file>`                                                                                  |
+| `--args <file>`                           | Read additional newline separated command line arguments from `<file>`.                                                                               |
+| `--args0 <file>`                          | Read additional `NUL` separated command line arguments from `<file>`.                                                                                 |
 | `-c`                                      | Compile to WebAssembly.                                                                                                                               |
 | `--check`                                 | Performs type checking only.                                                                                                                          |
 | `--compacting-gc`                         | Use compacting GC                                                                                                                                     |
