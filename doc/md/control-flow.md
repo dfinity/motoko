@@ -16,7 +16,7 @@ When a function has unit result type, the shorthand `return` may be used instead
 
 ## Loops and labels
 
-{proglang} provides several kinds of repetition constructs, including:
+Motoko provides several kinds of repetition constructs, including:
 
 -   `for` expressions for iterating over members of structured data.
 
@@ -75,9 +75,9 @@ Naturally, labeled common expressions don’t allow `continue`. In terms of typi
 
 ## Option blocks and null breaks
 
-Like many other high-level languages, {proglang} lets you opt in to `null` values, tracking possible occurences of `null` values using option types of the form `?T`. This is to both to encourage you to avoid using `null` values when possible, and to consider the possiblity of `null` values when necessary.
+Like many other high-level languages, Motoko lets you opt in to `null` values, tracking possible occurences of `null` values using option types of the form `?T`. This is to both to encourage you to avoid using `null` values when possible, and to consider the possiblity of `null` values when necessary.
 
-The latter could be cumbersome, if the only way to test a value for `null` were with a verbose `switch` expression, but {proglang} simplifies the handling of option types with some dedicated syntax: *option blocks* and *null breaks*.
+The latter could be cumbersome, if the only way to test a value for `null` were with a verbose `switch` expression, but Motoko simplifies the handling of option types with some dedicated syntax: *option blocks* and *null breaks*.
 
 The option block, `do ? <block>`, produces a value of type `?T`, when block `<block>` has type `T` and, importantly, introduces the possibility of a break from `<block>`. Within a `do ? <block>`, the null break `<exp> !`, tests whether the result of the expression, '\<exp>', of unrelated option type, `?U`, is `null`. If the result `<exp>` is `null`, control immediately exits the `do ? <block>` with value `null`. Otherwise, the result of `<exp>` must be an option value `?v`, and evaluation of `<exp> !` proceeds with its contents, `v` (of type `U`).
 

@@ -1,8 +1,8 @@
 # Actors and async data
 
-The programming model of the {IC} consists of memory-isolated canisters communicating by asynchronous message passing of binary data encoding Candid values. A canister processes its messages one-at-a-time, preventing race conditions. A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
+The programming model of the Internet Computer consists of memory-isolated canisters communicating by asynchronous message passing of binary data encoding Candid values. A canister processes its messages one-at-a-time, preventing race conditions. A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
 
-Motoko abstracts the complexity of the {IC} with a well known, higher-level abstraction: the *actor model*. Each canister is represented as a typed actor. The type of an actor lists the messages it can handle. Each message is abstracted as a typed, asynchronous function. A translation from actor types to Candid types imposes structure on the raw binary data of the underlying {IC}. An actor is similar to an object, but is different in that its state is completely isolated, its interactions with the world are entirely through asynchronous messaging, and its messages are processed one-at-a-time, even when issued in parallel by concurrent actors.
+Motoko abstracts the complexity of the Internet Computer with a well known, higher-level abstraction: the *actor model*. Each canister is represented as a typed actor. The type of an actor lists the messages it can handle. Each message is abstracted as a typed, asynchronous function. A translation from actor types to Candid types imposes structure on the raw binary data of the underlying Internet Computer. An actor is similar to an object, but is different in that its state is completely isolated, its interactions with the world are entirely through asynchronous messaging, and its messages are processed one-at-a-time, even when issued in parallel by concurrent actors.
 
 In Motoko, sending a message to an actor is a function call, but instead of blocking the caller until the call has returned, the message is enqueued on the callee, and a *future* representing that pending request immediately returned to the caller. The future is a placeholder for the eventual result of the request, that the caller can later query. Between issuing the request, and deciding to wait for the result, the caller is free to do other work, including issuing more requests to the same or other actors. Once the callee has processed the request, the future is completed and its result made available to the caller. If the caller is waiting on the future, its execution can resume with the result, otherwise the result is simply stored in the future for later use.
 
@@ -197,11 +197,11 @@ Calling (shared) function `nonAtomic()` will fail with an error, since the last 
 
 ## Query functions
 
-In {IC} terminology, all three `Counter` functions are *update* messages that can alter the state of the canister when called. Effecting a state change requires agreement amongst the distributed replicas before the {IC} can commit the change and return a result. Reaching consensus is an expensive process with relatively high latency.
+In Internet Computer terminology, all three `Counter` functions are *update* messages that can alter the state of the canister when called. Effecting a state change requires agreement amongst the distributed replicas before the Internet Computer can commit the change and return a result. Reaching consensus is an expensive process with relatively high latency.
 
-For the parts of applications that don’t require the guarantees of consensus, the {IC} supports more efficient *query* operations. These are able to read the state of a canister from a single replica, modify a snapshot during their execution and return a result, but cannot permanently alter the state or send further {IC} messages.
+For the parts of applications that don’t require the guarantees of consensus, the Internet Computer supports more efficient *query* operations. These are able to read the state of a canister from a single replica, modify a snapshot during their execution and return a result, but cannot permanently alter the state or send further Internet Computer messages.
 
-Motoko supports the implementation of {IC} queries using `query` functions. The `query` keyword modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster, {IC} query semantics.
+Motoko supports the implementation of Internet Computer queries using `query` functions. The `query` keyword modifies the declaration of a (shared) actor function so that it executes with non-committing, and faster, Internet Computer query semantics.
 
 For example, we can extend the `Counter` actor with a fast-and-loose variant of the trustworthy `read` function, called `peek`:
 
@@ -221,7 +221,7 @@ actor Counter {
 
 The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy, display of the current counter value.
 
-It is a compile-time error for a query method to call an actor function since this would violate dynamic restrictions imposed by the {IC}. Calls to ordinary functions are permitted.
+It is a compile-time error for a query method to call an actor function since this would violate dynamic restrictions imposed by the Internet Computer. Calls to ordinary functions are permitted.
 
 Query functions can be called from non-query functions. Because those nested calls require consensus, the efficiency gains of nested query calls will be modest at best.
 
@@ -235,7 +235,7 @@ As before, in `query` declarations and actor types the `shared` keyword can be o
 
 ## Messaging Restrictions
 
-The {IC} places restrictions on when and how canisters are allowed to communicate. These restrictions are enforced dynamically on the {IC} but prevented statically in Motoko, ruling out a class of dynamic execution errors. Two examples are:
+The Internet Computer places restrictions on when and how canisters are allowed to communicate. These restrictions are enforced dynamically on the Internet Computer but prevented statically in Motoko, ruling out a class of dynamic execution errors. Two examples are:
 
 -   canister installation can execute code, but not send messages.
 
@@ -257,7 +257,7 @@ These rules also mean that local functions cannot, in general, directly call sha
 
 ## Actor classes generalize actors
 
-An actor *class* generalizes a single actor declaration to the declaration of family of actors satisfying the same interface. An actor class declares a type, naming the interface of its actors, and a function that constructs a fresh actor of that type each time it is supplied with an argument. An actor class thus serves as a factory for manufacturing actors. Because canister installation is asynchronous on the {IC}, the constructor function is asynchronous too, and returns its actor in a future.
+An actor *class* generalizes a single actor declaration to the declaration of family of actors satisfying the same interface. An actor class declares a type, naming the interface of its actors, and a function that constructs a fresh actor of that type each time it is supplied with an argument. An actor class thus serves as a factory for manufacturing actors. Because canister installation is asynchronous on the Internet Computer, the constructor function is asynchronous too, and returns its actor in a future.
 
 For example, we can generalize `Counter` given above to `Counter(init)` below, by introducing a constructor parameter, variable `init` of type `Nat`:
 

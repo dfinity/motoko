@@ -2,7 +2,7 @@
 
 Motoko is designed for distributed programming with actors.
 
-When programming on the Internet Computer in Motoko, each **actor** represents an **{IC} canister smart contract** with a Candid interface, whether written in Motoko, Rust, Wasm or some other language that compiles to Wasm. Within Motoko, we use the term **actor** to refer to any canister, authored in any language that deploys to the {IC}. The role of Motoko is to make these actors easy to author, and easy to use programmatically, once deployed.
+When programming on the Internet Computer in Motoko, each **actor** represents an **Internet Computer canister smart contract** with a Candid interface, whether written in Motoko, Rust, Wasm or some other language that compiles to Wasm. Within Motoko, we use the term **actor** to refer to any canister, authored in any language that deploys to the Internet Computer. The role of Motoko is to make these actors easy to author, and easy to use programmatically, once deployed.
 
 Before you begin writing distributed applications using actors, you should be familiar with a few of the basic building blocks of any programming language and with Motoko in particular. To get you started, this section introduces the following key concepts and terms that are used throughout the remainder of the documentation and that are essential to learning to program in Motoko:
 

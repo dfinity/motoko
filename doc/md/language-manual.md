@@ -10,7 +10,7 @@ This section serves as a technical reference for the previous chapters and has s
 
 The language quick reference is intended to provide complete reference information about Motoko, but this section does *not* provide explanatory text or usage information. Therefore, this section is typically not suitable for readers who are new to programming languages or who are looking for a general introduction to using Motoko.
 
-Throughout, we use the term canister to refer to an {IC} canister smart contract.
+Throughout, we use the term canister to refer to an Internet Computer canister smart contract.
 
 ## Basic language syntax
 
@@ -1097,9 +1097,9 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 | `preupgrade`  | `() -> ()`                                                    | pre upgrade action  |
 | `postupgrade` | `() -> ()`                                                    | post upgrade action |
 
--   `heartbeat`, when declared, is called on every {IC} subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
+-   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
 
--   `inspect`, when declared, is called as a predicate on every {IC} ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [???](#inspect-message)).
+-   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [???](#inspect-message)).
 
 -   `preupgrade`, when declared, is called during an upgrade, immediately *before* the (current) values of the (retired) actor’s stable variables are transferred to the replacement actor.
 

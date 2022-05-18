@@ -129,7 +129,7 @@ In addition to the examples above that import Motoko modules, you can also impor
 
 <div class="note">
 
-Unlike a Motoko library, an imported canister can be implemented in any other {IC} language that emits Candid interfaces for its canister smart contracts (for instance Rust). It could even be an older or newer version of Motoko.
+Unlike a Motoko library, an imported canister can be implemented in any other Internet Computer language that emits Candid interfaces for its canister smart contracts (for instance Rust). It could even be an older or newer version of Motoko.
 
 </div>
 

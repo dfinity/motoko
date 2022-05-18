@@ -1,6 +1,6 @@
 # Sharing data and behavior
 
-Recall that in {proglang}, mutable state is always private to an actor.
+Recall that in Motoko, mutable state is always private to an actor.
 
 However, two actors can share message data, and those messages can refer to actors, including themselves and one another. Additionally, messages can refer to individual functions, if those functions are `shared`.
 
@@ -10,7 +10,7 @@ Through these mechanisms, two actors can coordinate their behavior through async
 
 The examples in this section illustrate how actors share their functions by focusing on variations of the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish-subscribe_pattern). In the publish-subscribe pattern, a **publishing** actor records a list of **subscriber** actors to notify when something notable occurs in the publisher’s state. For example, if the publisher actor publishes a new article, the subscriber actors are notified that a new article is available.
 
-The example below uses two actors in {proglang} to build variations of the publisher-subscriber relationship.
+The example below uses two actors in Motoko to build variations of the publisher-subscriber relationship.
 
 To see the complete code for a working project that uses this pattern, see the [pubsub](https://github.com/dfinity/examples/tree/master/motoko/pubsub) example in the [examples repository](https://github.com/dfinity/examples).
 
@@ -89,7 +89,7 @@ If called more than once, the actor will subscribe itself multiple times, and wi
 
 ## Sharing functions among actors
 
-In {proglang}, a `shared` actor function can be sent in a message to another actor, and then later called by that actor, or by another actor.
+In Motoko, a `shared` actor function can be sent in a message to another actor, and then later called by that actor, or by another actor.
 
 The code shown above has been simplified for illustrative purposes. The full version offers additional features to the publisher-subscriber relationship, and uses shared functions to make this relationship more flexible.
 
@@ -105,7 +105,7 @@ To permit this flexibility, an actor needs to share a single *function* that per
 
 The ability to share a function requires that it be pre-designated as `shared`, and the type system enforces that these functions follow certain rules around the types of data that these functions accept, return, and over which their closures close.
 
-{proglang} lets you omit this keyword for *public* actor methods since, implicitly, *any public function of an actor must be \`shared\`*, whether marked explicitly or not.
+Motoko lets you omit this keyword for *public* actor methods since, implicitly, *any public function of an actor must be \`shared\`*, whether marked explicitly or not.
 
 Using the `shared` function type, we can extend the example above to be more flexible. For example:
 

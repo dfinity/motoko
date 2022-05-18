@@ -1,8 +1,8 @@
 # Managing cycles
 
-Usage of the {IC} is measured, and paid for, in *cycles*. The {IC} maintains a balance of cycles per canister smart contract. In addition, cycles can be transferred between canisters.
+Usage of the Internet Computer is measured, and paid for, in *cycles*. The Internet Computer maintains a balance of cycles per canister smart contract. In addition, cycles can be transferred between canisters.
 
-In Motoko programs targeting the {IC}, each actor represents an {IC} canister, and has an associated balance of cycles. The ownership of cycles can be transferred between actors. Cycles are selectively sent and received through messages, that is, shared function calls. A caller can choose to transfer cycles with a call, and a callee can choose to accept cycles that are made available by the caller. Unless explicitly instructed, no cycles are transferred by callers or accepted by callees.
+In Motoko programs targeting the Internet Computer, each actor represents an Internet Computer canister, and has an associated balance of cycles. The ownership of cycles can be transferred between actors. Cycles are selectively sent and received through messages, that is, shared function calls. A caller can choose to transfer cycles with a call, and a callee can choose to accept cycles that are made available by the caller. Unless explicitly instructed, no cycles are transferred by callers or accepted by callees.
 
 Callees can accept all, some or none of the available cycles up to limit determined by their actor’s current balance. Any remaining cycles are refunded to the caller. If a call traps, all its accompanying cycles are automatically refunded to the caller, without loss.
 
@@ -114,7 +114,7 @@ Only calls from `owner` may:
 The restriction on the caller is enforced by the statements `assert (msg.caller ==
 owner)`, whose failure causes the enclosing function to trap, without revealing the balance or moving any cycles.
 
-Any caller may `deposit` an amount of cycles, provided the savings will not exceed `capacity`, breaking the piggy bank. Because the deposit function only accepts a portion of the available amount, a caller whose deposit exceeds the limit will receive an implicit refund of any unaccepted cycles. Refunds are automatic and ensured by the {IC} infrastructure.
+Any caller may `deposit` an amount of cycles, provided the savings will not exceed `capacity`, breaking the piggy bank. Because the deposit function only accepts a portion of the available amount, a caller whose deposit exceeds the limit will receive an implicit refund of any unaccepted cycles. Refunds are automatic and ensured by the Internet Computer infrastructure.
 
 Since transfer of cycles is one-directional (from caller to callee), retrieving cycles requires the use of an explicit callback (the `benefit` function, taken by the constructor as an argument). Here, `benefit` is called by the `withdraw` function, but only after authenticating the caller as `owner`. Invoking `benefit` in `withdraw` inverts the caller/caller relationship, allowing cycles to flow "upstream".
 
