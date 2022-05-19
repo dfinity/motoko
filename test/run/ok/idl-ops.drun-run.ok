@@ -1,8 +1,0 @@
-ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-debug.print: "\44\49\44\4C\00\00"
-debug.print: "\44\49\44\4C\00\03\7D\7D\7D\01\02\03"
-debug.print: "\44\49\44\4C\00\01\71\0C\48\65\6C\6C\6F\20\57\6F\72\6C\64\21"
-debug.print: "\44\49\44\4C\00\01\7E\01"
-debug.print: "\44\49\44\4C\00\01\7E\00"
-debug.print: +12_912
-ingress Completed: Reply: 0x4449444c0000
