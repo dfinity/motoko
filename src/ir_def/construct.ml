@@ -107,6 +107,7 @@ let primE prim es =
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
+    | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
     | _ -> assert false (* implement more as needed *)
   in

@@ -101,6 +101,8 @@ s/LABEL/\'label\'/g
 s/CONTINUE/\'continue\'/g
 s/IN/\'in\'/g
 s/IF/\'if\'/g
+s/TO_CANDID/\'to_candid\'/g
+s/FROM_CANDID/\'from_candid\'/g
 s/ID/<id>/g
 s/HASH/\'#\'/g
 s/GTOP/\' > \'/g
