@@ -330,7 +330,7 @@ For various practical language engineering reasons, the design of Motoko strives
 
 Instead, whenever possible, the Motoko base library provides the types and operations that make the language feel complete. ***However**, this base library is still under development, and is still incomplete*.
 
-The [Motoko Base Library](base-libraries/stdlib-intro.md) lists a *selection* of modules from the Motoko base library, focusing on core features used in the examples that are unlikely to change radically. However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
+The [Motoko Base Library](../../../../references/motoko-ref/stdlib-intro) lists a *selection* of modules from the Motoko base library, focusing on core features used in the examples that are unlikely to change radically. However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
 
 To import from the base library, use the `import` keyword. Give a local module name to introduce, in this example `D` for “**D**ebug”, and a URL where the `import` declaration may locate the imported module:
 
