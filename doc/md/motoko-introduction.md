@@ -1,6 +1,6 @@
 # Introduction
 
-Motoko is a modern, general-purpose programming language you can use specifically to author [Internet Computer](../developers-guide/concepts/what-is-ic.md#ic-overview) canister smart contracts. Although aimed squarely at the Internet Computer, its design is general enough to support future compilation to other targets.
+Motoko is a modern, general-purpose programming language you can use specifically to author [Internet Computer](../../../../concepts/what-is-ic) canister smart contracts. Although aimed squarely at the Internet Computer, its design is general enough to support future compilation to other targets.
 
 ## Approachability
 
@@ -12,11 +12,11 @@ Motoko permits modern programming idioms, including special programming abstract
 
 Specifically, Motoko programs are *type sound* since Motoko includes a practical, modern type system that checks each one before it executes. The Motoko type system statically checks that each Motoko program will execute safely, without dynamic type errors, on all possible inputs. Consequently, entire classes of common programming pitfalls that are common in other languages, and web programming languages in particular, are ruled out. This includes null reference errors, mis-matched argument or result types, missing field errors and many others.
 
-To execute, Motoko statically compiles to [WebAssembly](about-this-guide.md#wasm), a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the [Internet Computer](../developers-guide/concepts/what-is-ic.md#ic-overview).
+To execute, Motoko statically compiles to [WebAssembly](about-this-guide.md#wasm), a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the [Internet Computer](../../../../concepts/what-is-ic).
 
 ## Each canister smart contract as an *actor*
 
-Motoko provides an **actor-based** programming model to developers to express *services*, including those of canister smart contracts on the [Internet Computer](../developers-guide/concepts/what-is-ic.md#ic-overview).
+Motoko provides an **actor-based** programming model to developers to express *services*, including those of canister smart contracts on the [Internet Computer](../../../../concepts/what-is-ic).
 
 An actor is similar to an object, but is special in that its state is completely isolated, and all its interactions with the world are by *asynchronous* messaging.
 
