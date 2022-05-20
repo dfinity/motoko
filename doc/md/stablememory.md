@@ -14,7 +14,7 @@ The Motoko runtime system ensures there is no interference between the abstracti
 
 ## The Library
 
-Support for stable memory is provided by the [ExperimentalStableMemory](../base-libraries/ExperimentalStableMemory.md) library in package `base`.
+Support for stable memory is provided by the [ExperimentalStableMemory](../../../../references/motoko-ref/experimentalstablememory) library in package `base`.
 
 The interface to the `ExperimentalStableMemory` library consists of functions for querying and growing the currently allocated set of stable memory pages, plus matching pairs of `load`, `store` operations for most of Motoko’s fixed-size scalar types.
 
