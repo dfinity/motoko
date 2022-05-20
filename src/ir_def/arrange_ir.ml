@@ -79,6 +79,7 @@ and prim = function
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
   | SerializePrim t   -> "SerializePrim" $$ List.map typ t
   | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
+  | DeserializeOptPrim t -> "DeserializeOptPrim" $$ List.map typ t
   | NumConvWrapPrim (t1, t2) -> "NumConvWrapPrim" $$ [prim_ty t1; prim_ty t2]
   | NumConvTrapPrim (t1, t2) -> "NumConvTrapPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]

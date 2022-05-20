@@ -131,6 +131,8 @@ and prim =
   | ShowPrim of Type.typ              (* debug_show *)
   | SerializePrim of Type.typ list    (* Candid serialization prim *)
   | DeserializePrim of Type.typ list  (* Candid deserialization prim *)
+  | DeserializeOptPrim of Type.typ list
+     (* Candid deserialization prim (returning Opt) *)
   | NumConvTrapPrim of Type.prim * Type.prim
   | NumConvWrapPrim of Type.prim * Type.prim
   | DecodeUtf8
@@ -277,6 +279,7 @@ let map_prim t_typ t_id p =
   | ShowPrim t -> ShowPrim (t_typ t)
   | SerializePrim ts -> SerializePrim (List.map t_typ ts)
   | DeserializePrim ts -> DeserializePrim (List.map t_typ ts)
+  | DeserializeOptPrim ts -> DeserializeOptPrim (List.map t_typ ts)
   | NumConvTrapPrim _
   | NumConvWrapPrim _
   | DecodeUtf8

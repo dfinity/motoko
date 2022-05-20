@@ -174,6 +174,8 @@ This section describes the concrete syntax, or grammar, of Motoko. The specifica
     'actor' <exp_plain>
     'not' <exp_un>
     'debug_show' <exp_un>
+    'to_candid' '(' <list(<exp>, ',')> ')'
+    'from_candid' <exp_un>
 
 <exp_bin> ::=
     <exp_un>

@@ -707,7 +707,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -982,6 +982,16 @@ and infer_exp'' env exp : T.typ =
       ot := t
     end;
     T.text
+  | ToCandidE exps ->
+    if not env.pre then begin
+        let ts = List.map (infer_exp env) exps in
+        if not (T.shared (T.seq ts)) then
+          error env exp.at "M0175" "to_candid argument must have shared type, but instead has non-shared type %a"
+            display_typ_expand (T.seq ts);
+      end;
+    T.Prim T.Blob
+  | FromCandidE exp1 ->
+    error env exp.at "M0176" "from_candid requires but is missing a known type (from context)"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -1389,6 +1399,23 @@ and check_exp' env0 t exp : T.typ =
       warn env exp.at "M0155" "operator may trap for inferred type%a"
         display_typ_expand t;
     t
+  | ToCandidE exps, _ ->
+    if not env.pre then begin
+      let ts = List.map (infer_exp env) exps in
+      if not (T.sub (T.Prim T.Blob) t) then
+        error env exp.at "M0172" "to_candid produces a Blob that is not a subtype of %a"
+          display_typ_expand t;
+      if not (T.shared (T.seq ts)) then
+          error env exp.at "M0173" "to_candid argument must have shared type, but instead has non-shared type %a"
+          display_typ_expand (T.seq ts);
+      end;
+    T.Prim T.Blob
+  | FromCandidE exp1, t when T.shared t && T.is_opt t ->
+    check_exp env (T.Prim T.Blob) exp1;
+    t
+  | FromCandidE _, t ->
+      error env exp.at "M0174" "from_candid produces an optional shared type, not type%a"
+        display_typ_expand t    
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
@@ -2636,5 +2663,3 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           List.sort T.compare_field fs
         ) sig_.it
     )
-
-

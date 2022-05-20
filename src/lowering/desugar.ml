@@ -68,6 +68,15 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
+  | S.ToCandidE es ->
+    let args = exps es in
+    let ts = List.map (fun e -> e.note.Note.typ) args in
+    (primE (I.SerializePrim ts) [seqE args]).it
+  | S.FromCandidE e ->
+    begin match T.normalize note.Note.typ with
+    | T.Opt t -> (primE (I.DeserializeOptPrim (T.as_seq t)) [exp e]).it
+    | _ -> assert false
+    end
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it

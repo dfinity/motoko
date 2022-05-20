@@ -56,12 +56,10 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-actor and assert await break case
-catch class continue debug debug_show do else flexible
-false for func if ignore in import not null object or
-label let loop private public query return
-shared stable system switch true try
-type var while
+actor and assert await break case catch class continue debug
+debug_show do else flexible false for from_candid func if ignore in
+import not null object or label let loop private public query return
+shared stable system switch to_candid true try type var while
 ```
 
 ### Identifiers
@@ -476,6 +474,8 @@ The syntax of an *expression* is as follows:
   <exp> !                                        null break
   debug <block-or-exp>                           debug expression
   actor <exp>                                    actor reference
+  to_candid ( <exp>,* )                          Candid serialization
+  from_candid <exp>                              Candid deserialization
   ( <exp> )                                      parentheses
 
 <block-or-exp> ::=
@@ -2066,6 +2066,44 @@ The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 <div class="note">
 
 Type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
+
+</div>
+
+### Candid Serialization
+
+The *Candid serialization* expression `to_candid ( <exp>,*)` has type `Blob` provided:
+
+-   `(<exp>,*)` has type `(T1,…​,Tn)`, and each `Ti` is *shared*.
+
+Expression `to_candid ( <exp>,* )` evaluates the expression sequence `( <exp>,* )` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise, `r` is a sequence of Motoko values `vs`. The result of evaluating `to_candid ( <exp>,* )` is some Candid blob `b = encode((T1,...,Tn))(vs)`, encoding `vs`.
+
+The Candid *deserialization* expression `from_candid <exp>` has type `?(T1,…​,Tn)` provided:
+
+-   `?(T1,…​,Tn)` is the expected type from the context;
+
+-   `<exp>` has type `Blob`; and
+
+-   `?(T1,…​,Tn)` is *shared*.
+
+Expression `from_candid <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a binary blob `b`. If `b` Candid-decodes to Candid value sequence `Vs` of type `ea((T1,...,Tn))` then the result of `from_candid` is `?v` where `v = decode((T1,...,Tn))(Vs)`. If `b` Candid-decodes to a Candid value sequence `Vs` that is not of Candid type `ea((T1,...,Tn))` (but well-formed at some other type) then the result is `null`. If `b` is not the encoding of any well-typed Candid value, but some arbitrary binary blob, then the result of `from_candid` is a trap.
+
+(Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `encode/decode((T1,...,Tn))(_)` are type-directed Motoko-Candid value translations.)
+
+<div class="note">
+
+`from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
+
+</div>
+
+<div class="note">
+
+`to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
+
+</div>
+
+<div class="warning">
+
+the Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
 
 </div>
 

@@ -58,6 +58,8 @@ type token =
   | IMPORT
   | MODULE
   | DEBUG_SHOW
+  | TO_CANDID
+  | FROM_CANDID
   | ASSERT
   | ADDOP
   | SUBOP
@@ -177,6 +179,8 @@ let to_parser_token :
   | IMPORT -> Ok Parser.IMPORT
   | MODULE -> Ok Parser.MODULE
   | DEBUG_SHOW -> Ok Parser.DEBUG_SHOW
+  | TO_CANDID -> Ok Parser.TO_CANDID
+  | FROM_CANDID -> Ok Parser.FROM_CANDID
   | ASSERT -> Ok Parser.ASSERT
   | ADDOP -> Ok Parser.ADDOP
   | SUBOP -> Ok Parser.SUBOP
@@ -296,6 +300,8 @@ let string_of_parser_token = function
   | Parser.IMPORT -> "IMPORT"
   | Parser.MODULE -> "MODULE"
   | Parser.DEBUG_SHOW -> "DEBUG_SHOW"
+  | Parser.TO_CANDID -> "TO_CANDID"
+  | Parser.FROM_CANDID -> "FROM_CANDID"
   | Parser.ASSERT -> "ASSERT"
   | Parser.ADDOP -> "ADDOP"
   | Parser.SUBOP -> "SUBOP"
