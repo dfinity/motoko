@@ -12,3 +12,6 @@ result*
 /samples/**/*.txt
 
 enable-internals
+
+.idea
+.vscode
