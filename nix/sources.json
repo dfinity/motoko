@@ -90,10 +90,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "9886d3d6200fcc3726329966860fc058707406cd",
-        "sha256": "0s10fdwajpq1fc20dzhrmqqn6i867jqkwcznqrms1lm2q7q0bz88",
+        "rev": "ba81b409b044f7b166cdf3db9572963b33d6c6ac",
+        "sha256": "09hjqy2zf5b31zrg133pigwrbzpk81504qmjg3qd4yy1qly14syx",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/9886d3d6200fcc3726329966860fc058707406cd.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/ba81b409b044f7b166cdf3db9572963b33d6c6ac.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
