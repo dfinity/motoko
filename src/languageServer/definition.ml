@@ -36,17 +36,42 @@ let definition_handler index position file_contents project_root file_path =
       Source_file.identifier_at_pos project_root file_path file_contents
         position
     in
-    let* path, region =
+    (* Find the relevant path for the declaration *)
+    let* path =
       match ident with
-      | Alias _ -> None
+      | Alias (_, path) -> Some path
       | Unresolved _ -> None
-      | Resolved resolved ->
-          let* module_ = DI.lookup_module project_root resolved.path index in
-          find_named resolved.ident module_
-      | Ident ident ->
-          let* uri = Lib.FilePath.relative_to project_root file_path in
-          let* module_ = DI.lookup_module project_root uri index in
-          find_named ident module_
+      | Resolved { path; _ } -> Some path
+      | Ident _ -> Lib.FilePath.relative_to project_root file_path
+    in
+    let* module_ = DI.lookup_module project_root path index in
+    (* Update `path` from the relevant module *)
+    let path, _ = module_ in
+    (* Try to find the start/end cursor range in the relevant module *)
+    let* decl_range =
+      match
+        let* decl_ident =
+          match ident with
+          | Alias _ -> None
+          | Unresolved { ident; _ } -> Some ident (* Currently unreachable *)
+          | Resolved { ident; _ } -> Some ident
+          | Ident ident -> Some ident
+        in
+        (* Note: ignoring `path` output value from `find_named` *)
+        let* _, region = find_named decl_ident module_ in
+        Some (range_of_region region)
+      with
+      | Some range -> Some range
+      | None -> (
+          match ident with
+          | Ident _ -> None (* Unresolved identifiers in the same file *)
+          | _ ->
+              (* By default, point to the top of the relevant file *)
+              (* TODO: use the module declaration start/end positions when possible *)
+              let file_start =
+                Lsp.{ position_line = 0; position_character = 0 }
+              in
+              Some Lsp.{ range_start = file_start; range_end_ = file_start })
     in
     Some
       Lsp.
@@ -55,7 +80,7 @@ let definition_handler index position file_contents project_root file_path =
             (if Source_file.is_non_file_path path then
              Option.get (Source_file.uri_for_package path)
             else Vfs.uri_from_file path);
-          location_range = range_of_region region;
+          location_range = decl_range;
         }
   in
   `TextDocumentDefinitionResponse (Option.to_list location)
