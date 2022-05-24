@@ -75,17 +75,20 @@ let import_relative_to_project_root root module_path dependency =
         |> Lib.FilePath.normalise
         |> Option.some
 
-(* Given the source of a module, figure out under what names what
-   modules have been imported. Normalizes the imported modules
-   filepaths relative to the project root *)
-let parse_module_header project_root current_file_path file =
+type header_part =
+  | ImportAlias of string * string (* import <alias> <path> *)
+  | ImportSymbol of string * string
+(* import {<symbol>} <path> *)
+
+(* Parse both import aliases and explicit symbol imports (see issue #3078) *)
+let parse_module_header_parts project_root current_file_path file =
   let lexbuf = Lexing.from_string file in
   let tokenizer, _ = Lexer.tokenizer Lexer.mode lexbuf in
   let next () =
     let t, _, _ = tokenizer () in
     t
   in
-  let res = ref [] in
+  let header_parts = ref [] in
   let rec loop = function
     | Parser.IMPORT -> (
         match next () with
@@ -97,15 +100,52 @@ let parse_module_header project_root current_file_path file =
                     path
                 in
                 (match path with
-                | Some path -> res := (alias, path) :: !res
+                | Some path ->
+                    header_parts := ImportAlias (alias, path) :: !header_parts
                 | None -> ());
                 loop (next ())
             | tkn -> loop tkn)
+        | Parser.LCURLY -> loop_symbols []
         | tkn -> loop tkn)
-    | Parser.EOF -> List.rev !res
+    | Parser.EOF -> ()
     | tkn -> loop (next ())
+  and loop_symbols symbols =
+    (* Account for basic object pattern syntax *)
+    match next () with
+    | Parser.ID symbol -> loop_symbols (symbol :: symbols)
+    | Parser.COMMA -> loop_symbols symbols
+    | Parser.RCURLY -> (
+        match next () with
+        | Parser.TEXT path ->
+            let path =
+              import_relative_to_project_root project_root current_file_path
+                path
+            in
+            List.iter
+              (fun symbol ->
+                match path with
+                | Some path ->
+                    header_parts := ImportSymbol (symbol, path) :: !header_parts
+                | None -> ())
+              symbols;
+            loop (next ())
+        | tkn -> loop tkn)
+    | tkn -> loop tkn
   in
-  try loop (next ()) with _ -> List.rev !res
+  (try loop (next ()) with _ -> ());
+  List.rev !header_parts
+
+(* Given the source of a module, figure out under what names what
+   modules have been imported. Normalizes the imported modules
+   filepaths relative to the project root. *)
+let parse_module_header project_root current_file_path file =
+  let header_parts =
+    parse_module_header_parts project_root current_file_path file
+  in
+  List.filter_map
+    (function
+      | ImportAlias (alias, path) -> Some (alias, path) | ImportSymbol _ -> None)
+    header_parts
 
 type unresolved_target = { qualifier : string; ident : string }
 
