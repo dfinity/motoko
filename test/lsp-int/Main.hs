@@ -186,6 +186,13 @@ main = do
             (Position 5 31)
             [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
 
+          log "Definition for an imported module alias"
+          definitionsTestCase
+            project
+            doc
+            (Position 1 10)
+            [("lib/list.mo", Range (Position 0 0) (Position 0 0))]
+
         log "Completion tests"
         log "Completing top level definitions"
         withDoc "ListClient.mo" \doc -> do
