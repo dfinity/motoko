@@ -158,14 +158,28 @@ type identifier_target =
   | Resolved of resolved_target
 
 let identifier_at_pos project_root file_path file_contents position =
-  let imported = parse_module_header project_root file_path file_contents in
+  let header_parts =
+    parse_module_header_parts project_root file_path file_contents
+  in
   cursor_target_at_pos position file_contents
   |> Option.map (function
        | CIdent s -> (
-           match List.find_opt (fun (alias, _) -> alias = s) imported with
+           match
+             List.find_opt
+               (function
+                 | ImportAlias (alias, _) -> alias = s | ImportSymbol _ -> false)
+               header_parts
+           with
            | None -> Ident s
-           | Some (alias, path) -> Alias (alias, path))
+           | Some (ImportAlias (alias, path)) -> Alias (alias, path))
        | CQualified (qual, ident) -> (
-           match List.find_opt (fun (alias, _) -> alias = qual) imported with
+           match
+             List.find_opt
+               (function
+                 | ImportAlias _ -> false
+                 | ImportSymbol (alias, _) -> alias = qual)
+               header_parts
+           with
            | None -> Unresolved { qualifier = qual; ident }
-           | Some (alias, path) -> Resolved { qualifier = qual; ident; path }))
+           | Some (ImportSymbol (alias, path)) ->
+               Resolved { qualifier = qual; ident; path }))
