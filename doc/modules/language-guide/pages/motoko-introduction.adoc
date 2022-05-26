@@ -4,7 +4,7 @@
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 
-{proglang} is a modern, general-purpose programming language you can use specifically to author link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[Internet Computer]  canister smart contracts.
+{proglang} is a modern, general-purpose programming language you can use specifically to author link:../../../../concepts/what-is-ic{outfilesuffix}[Internet Computer]  canister smart contracts.
 Although aimed squarely at the {IC}, its design is general enough to support future compilation to other targets.
 
 == Approachability
@@ -21,11 +21,11 @@ Specifically, {proglang} programs are _type sound_ since {proglang} includes a p
 The {proglang} type system statically checks that each {proglang} program will execute safely, without dynamic type errors, on all possible inputs.
 Consequently, entire classes of common programming pitfalls that are common in other languages, and web programming languages in particular, are ruled out. This includes null reference errors, mis-matched argument or result types, missing field errors and many others.
 
-To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
+To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../../../../concepts/what-is-ic{outfilesuffix}[{IC}].
 
 == Each canister smart contract as an _actor_
 
-{proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC}].
+{proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../../../../concepts/what-is-ic{outfilesuffix}[{IC}].
 
 An actor is similar to an object, but is special in that its state is completely isolated, and all its interactions with the world are by _asynchronous_ messaging.
 

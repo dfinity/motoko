@@ -58,4 +58,4 @@ include::../examples/Counters-caller-pat.mo[]
 NOTE: Simple actor declarations do not let you access their installer. If you need access to the installer of an actor, rewrite the actor declaration as a zero-argument actor class instead.
 
 Principals support equality, ordering, and hashing, so you can efficiently store principals in containers, for example, to maintain an allow or deny list.
-More operations on principals are available in link:../base-libraries/principal{outfilesuffix}[Principal] base library.
+More operations on principals are available in link:../../../../references/motoko-ref/principal{outfilesuffix}[Principal] base library.

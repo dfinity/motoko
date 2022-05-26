@@ -84,7 +84,7 @@ This module has two components, both named after the actor class:
 * a type definition, describing the interface of the class, and
 * an asynchronous function, that takes the class parameters as arguments an asynchronously returns a fresh instance of the class.
 
-For example, a {proglang} actor can import and instantiate the `Counter` class described in link:actors-async{outfilesuffix#actor_class[Actors and async data] as follows:
+For example, a {proglang} actor can import and instantiate the `Counter` class described in link:actors-async{outfilesuffix}#actor_class[Actors and async data] as follows:
 
 [source#Counters, motoko]
 .Counters.mo

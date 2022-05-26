@@ -60,7 +60,7 @@ For transparency into the principles that guide the engineering effort, the engi
 
 The following guiding principles represent the core values of the engineering organization in prioritized order:
 
-. Seamless integration with the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} blockchain network] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
+. Seamless integration with the link:../../../../concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} blockchain network] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
 . Ergonomics to ensure that {proglang} embraces familiarity, simplicity, clarity, explicitness, and other human factors.
 . Formal correctness to ensure that {proglang} maintains state isolation, a sound type system and type safety, precision, pattern matching, appropriate defaults, and coding best-practices.
 
@@ -82,7 +82,7 @@ As a counterpoint to the core values and goals, the engineering organization als
 
 == Finding more information
 
-For information about using {proglang} with the {sdk-short-name}, see the link:../developers-guide/sdk-guide{outfilesuffix}[SDK Developer Tools].
+For information about using {proglang} with the {sdk-short-name}, see the link:../../index{outfilesuffix}[SDK Developer Tools].
 
 For background information on various topics relevant to the design, use, or deployment of {proglang} services, or the language's design itself, consider the following resources as a starting point:
 
