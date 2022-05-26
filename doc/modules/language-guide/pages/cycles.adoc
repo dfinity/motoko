@@ -22,7 +22,7 @@ loss.
 In future, we may see {proglang} adopt dedicated syntax and types to
 support safer programming with cycles.
 For now, we provide a temporary way to manage cycles through a low-level imperative API
-provided by the link:../base-libraries/ExperimentalCycles{outfilesuffix}[ExperimentalCycles]
+provided by the link:../../../../references/motoko-ref/ExperimentalCycles{outfilesuffix}[ExperimentalCycles]
 library in package `+base+`.
 
 NOTE: This library is subject to change and likely to be replaced by

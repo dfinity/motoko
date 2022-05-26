@@ -73,7 +73,7 @@ This module has two components, both named after the actor class:
 
 -   an asynchronous function, that takes the class parameters as arguments an asynchronously returns a fresh instance of the class.
 
-For example, a Motoko actor can import and instantiate the `Counter` class described in [Actors and async data](actors-async{outfilesuffix#actor_class) as follows:
+For example, a Motoko actor can import and instantiate the `Counter` class described in [Actors and async data](actors-async.md#actor_class) as follows:
 
 <div class="formalpara-title">
 

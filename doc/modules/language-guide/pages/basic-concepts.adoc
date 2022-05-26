@@ -379,7 +379,7 @@ Instead, whenever possible, the {proglang} base library provides the types and o
 __**However**, this base library is still under development,
 and is still incomplete__.
 
-The link:base-libraries/stdlib-intro{outfilesuffix}[Motoko Base Library] lists a _selection_ of modules from the {proglang} base library, focusing on core features used in the examples that are unlikely to change radically.
+The link:../../../../references/motoko-ref/stdlib-intro{outfilesuffix}[Motoko Base Library] lists a _selection_ of modules from the {proglang} base library, focusing on core features used in the examples that are unlikely to change radically.
 However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
 
 To import from the base library, use the `import` keyword.
