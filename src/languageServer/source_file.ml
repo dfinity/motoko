@@ -76,12 +76,15 @@ let import_relative_to_project_root root module_path dependency =
         |> Option.some
 
 type header_part =
-  | ImportAlias of string * string (* import <alias> <path> *)
+  (* import <alias> "<path>" *)
+  | ImportAlias of string * string
+  (* import { <symbol> } "<path>" *)
   | ImportSymbol of string * string
-(* import {<symbol>} <path> *)
 
-(* Parse both import aliases and explicit symbol imports (see issue #3078) *)
-let parse_module_header_parts project_root current_file_path file =
+(* Given the source of a module, figure out under what names what
+   modules have been imported. Normalizes the imported modules
+   filepaths relative to the project root. *)
+let parse_module_header project_root current_file_path file =
   let lexbuf = Lexing.from_string file in
   let tokenizer, _ = Lexer.tokenizer Lexer.mode lexbuf in
   let next () =
@@ -127,25 +130,13 @@ let parse_module_header_parts project_root current_file_path file =
                 | Some path ->
                     header_parts := ImportSymbol (symbol, path) :: !header_parts
                 | None -> ())
-              symbols;
+              (List.rev symbols);
             loop (next ())
         | tkn -> loop tkn)
     | tkn -> loop tkn
   in
   (try loop (next ()) with _ -> ());
   List.rev !header_parts
-
-(* Given the source of a module, figure out under what names what
-   modules have been imported. Normalizes the imported modules
-   filepaths relative to the project root. *)
-let parse_module_header project_root current_file_path file =
-  let header_parts =
-    parse_module_header_parts project_root current_file_path file
-  in
-  List.filter_map
-    (function
-      | ImportAlias (alias, path) -> Some (alias, path) | ImportSymbol _ -> None)
-    header_parts
 
 type unresolved_target = { qualifier : string; ident : string }
 
@@ -158,28 +149,27 @@ type identifier_target =
   | Resolved of resolved_target
 
 let identifier_at_pos project_root file_path file_contents position =
-  let header_parts =
-    parse_module_header_parts project_root file_path file_contents
+  let header_parts = parse_module_header project_root file_path file_contents in
+  (* import <alias> "<path>" *)
+  let aliases =
+    List.filter_map
+      (function ImportAlias (alias, path) -> Some (alias, path) | _ -> None)
+      header_parts
+  in
+  (* import { <symbol> } "<path>" *)
+  let symbols =
+    List.filter_map
+      (function
+        | ImportSymbol (symbol, path) -> Some (symbol, path) | _ -> None)
+      header_parts
   in
   cursor_target_at_pos position file_contents
   |> Option.map (function
-       | CIdent s -> (
-           match
-             List.find_opt
-               (function
-                 | ImportAlias (alias, _) -> alias = s | ImportSymbol _ -> false)
-               header_parts
-           with
-           | None -> Ident s
-           | Some (ImportAlias (alias, path)) -> Alias (alias, path))
+       | CIdent ident -> (
+           match List.find_opt (fun (alias, _) -> alias = ident) aliases with
+           | None -> Ident ident
+           | Some (alias, path) -> Alias (alias, path))
        | CQualified (qual, ident) -> (
-           match
-             List.find_opt
-               (function
-                 | ImportAlias _ -> false
-                 | ImportSymbol (alias, _) -> alias = qual)
-               header_parts
-           with
+           match List.find_opt (fun (alias, _) -> alias = qual) symbols with
            | None -> Unresolved { qualifier = qual; ident }
-           | Some (ImportSymbol (alias, path)) ->
-               Resolved { qualifier = qual; ident; path }))
+           | Some (alias, path) -> Resolved { qualifier = qual; ident; path }))

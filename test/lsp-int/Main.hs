@@ -176,15 +176,22 @@ main = do
           definitionsTestCase
             project
             doc
-            (Position 6 25)
+            (Position 7 25)
             [("lib/list.mo", Range (Position 31 14) (Position 31 17))]
 
           log "Definition for a Class"
           definitionsTestCase
             project
             doc
-            (Position 5 31)
+            (Position 6 31)
             [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
+
+          log "Definition for an imported symbol"
+          definitionsTestCase
+            project
+            doc
+            (Position 2 9)
+            [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
 
         log "Completion tests"
         log "Completing top level definitions"

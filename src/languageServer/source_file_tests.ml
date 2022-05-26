@@ -32,12 +32,13 @@ let hovered_identifier_test_case file expected =
 
 let parse_module_header_test_case project_root current_file file expected =
   let actual = Source_file.parse_module_header project_root current_file file in
-  let display_result (alias, path) = Printf.sprintf "%s => \"%s\"" alias path in
-  let result =
-    Lib.List.equal
-      (fun (x, y) (x', y') -> String.equal x x' && String.equal y y')
-      actual expected
+  let display_result = function
+    | Source_file.ImportAlias (alias, path) ->
+        Printf.sprintf "%s => \"%s\"" alias path
+    | Source_file.ImportSymbol (symbol, path) ->
+        Printf.sprintf "{ %s } => \"%s\"" symbol path
   in
+  let result = Lib.List.equal ( = ) actual expected in
   if not result then
     Printf.printf "\nExpected: %s\nActual:   %s"
       (Completion.string_of_list display_result expected)
@@ -58,16 +59,17 @@ let%test "it finds a qualified identifier" =
 let%test "it parses a simple module header" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
     "import P \"lib/prelude\""
-    [ ("P", "src/lib/prelude") ]
+    [ Source_file.ImportAlias ("P", "src/lib/prelude") ]
 
 let%test "it parses a simple module header that contains a prim import" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
-    "import Prim \"mo:⛔\"" [ ("Prim", "mo:⛔") ]
+    "import Prim \"mo:⛔\""
+    [ Source_file.ImportAlias ("Prim", "mo:⛔") ]
 
 let%test "it parses a simple module header with package paths" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
     "import P \"mo:stdlib/prelude\""
-    [ ("P", "mo:stdlib/prelude") ]
+    [ Source_file.ImportAlias ("P", "mo:stdlib/prelude") ]
 
 let%test "it parses a simple module header" =
   parse_module_header_test_case "/project" "/project/Main.mo"
@@ -89,4 +91,33 @@ func singleton(x: Int): Stack =
   ListFuncs.doubleton<Int>(x, x);
 }
 |}
-    [ ("List", "lib/ListLib"); ("ListFuncs", "lib/ListFuncs") ]
+    [
+      Source_file.ImportAlias ("List", "lib/ListLib");
+      Source_file.ImportAlias ("ListFuncs", "lib/ListFuncs");
+    ]
+
+let%test "it parses a simple module header with explicit symbol imports" =
+  parse_module_header_test_case "/project" "/project/Main.mo"
+    {|
+import { List, nil, cons } "lib/ListLib";
+
+module {
+
+private import { doubleton } "lib/ListFuncs";
+
+func push(x: Int, s: Stack): Stack =
+  cons<Int>(x, s);
+
+func empty(): Stack =
+  nil<Int>();
+
+func singleton(x: Int): Stack =
+  doubleton<Int>(x, x);
+}
+|}
+    [
+      Source_file.ImportSymbol ("List", "lib/ListLib");
+      Source_file.ImportSymbol ("nil", "lib/ListLib");
+      Source_file.ImportSymbol ("cons", "lib/ListLib");
+      Source_file.ImportSymbol ("doubleton", "lib/ListFuncs");
+    ]
