@@ -11,7 +11,7 @@ let
   };
 
   # dump nixpkgs patches here
-  nixpkgs-patches = [];
+  nixpkgs-patches = [ ];
 
   nixpkgs-patched =
     if nixpkgs-patches == []
@@ -37,7 +37,7 @@ let
         })
 
         # Selecting the ocaml version
-        # (self: super: { ocamlPackages = super.ocamlPackages; })
+        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
 
         (
           self: super: {
