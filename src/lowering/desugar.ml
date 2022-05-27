@@ -534,9 +534,15 @@ and build_obj at s self_id dfs obj_typ =
       let self = var self_id.it obj_typ in
       (letE self e (varE self)).it
 
-and exp_field ef =
+and exp_field obj_typ ef =
+  let _, fts = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
-  let typ = e.note.S.note_typ in
+  let typ =
+    match List.find_opt (fun ft -> ft.T.lab = id.it) fts with
+    | Some {T.typ = T.Mut typ;_} -> typ
+    | Some {T.typ; _} -> typ
+    | None -> e.note.S.note_typ
+  in
   match mut.it with
   | S.Var ->
     let id' = fresh_var id.it (T.Mut typ) in
@@ -550,7 +556,7 @@ and exp_field ef =
     (d, f)
 
 and obj obj_typ efs =
-  let (ds, fs) = List.map exp_field efs |> List.split in
+  let (ds, fs) = List.map (exp_field obj_typ) efs |> List.split in
   let obj_e = newObjE T.Object fs obj_typ in
   I.BlockE(ds, obj_e)
 
