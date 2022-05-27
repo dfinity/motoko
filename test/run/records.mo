@@ -23,7 +23,3 @@ assert(rec3.y == y);
 assert(rec3.z == 13);
 assert(rec3.a == 4);
 assert(rec3.b == 5);
-
-type List<X> = ?(X, List<X>);
-func nil<X>() : List<X> = null;
-let rec4 : { var myList : List<Nat> } = { var myList = nil() };
