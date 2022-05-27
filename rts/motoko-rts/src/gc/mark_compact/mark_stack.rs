@@ -112,9 +112,9 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
                 }
                 continue;
             }
-            let obj = (*field_addr).as_obj();
             // check for dynamic heap
             if crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
+                let obj = (*field_addr).as_obj();
                 // `obj.tag` will be overwritten
                 let mut obj_tag = (*obj).tag;
                 while obj_tag & 1 == 0 {
@@ -128,7 +128,7 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
                 }
                 return Some((obj as usize, obj_tag));
             }
-            continue;
+            //continue;
         }
     }
 }
