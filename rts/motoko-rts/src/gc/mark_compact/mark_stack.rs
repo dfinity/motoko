@@ -90,7 +90,7 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
         if is_ptr(p) {
             return Some((p, tag as u32));
         } else {
-	    use crate::types::{Value, TAG_OBJECT, TAG_NULL, Obj};
+            use crate::types::{Obj, Value, TAG_NULL, TAG_OBJECT};
             let p = p - 1;
             // we pop from a range
             let len = *(p as *const u32);
@@ -120,10 +120,10 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
                 let mut obj_tag = (*obj).tag;
                 while obj_tag & 1 == 0 {
                     // intervening threading may have happened, so chase the real tag
-                    obj_tag =  (*(obj_tag as *const Obj)).tag
+                    obj_tag = (*(obj_tag as *const Obj)).tag
                 }
-		// the end of the chain is the original header for the object
-		debug_assert!(obj_tag >= TAG_OBJECT && obj_tag <= TAG_NULL);
+                // the end of the chain is the original header for the object
+                debug_assert!(obj_tag >= TAG_OBJECT && obj_tag <= TAG_NULL);
 
                 // perform the threading
                 if (*field_addr).get_ptr() <= obj as usize {
