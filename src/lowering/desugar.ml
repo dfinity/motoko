@@ -68,6 +68,15 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
+  | S.ToCandidE es ->
+    let args = exps es in
+    let ts = List.map (fun e -> e.note.Note.typ) args in
+    (primE (I.SerializePrim ts) [seqE args]).it
+  | S.FromCandidE e ->
+    begin match T.normalize note.Note.typ with
+    | T.Opt t -> (primE (I.DeserializeOptPrim (T.as_seq t)) [exp e]).it
+    | _ -> assert false
+    end
   | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
@@ -305,23 +314,73 @@ and build_fields obj_typ =
 and with_self i typ decs =
   let_no_shadow (var i typ) (selfRefE typ) decs
 
-and call_system_func_opt name es =
+and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
         S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
-        _
-      } when id.it = name
-      ->
-       Some (
-         if name = "heartbeat" then
-           blockE
-             [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
-             (unitE ())
-         else
-           callE (varE (var id.it p.note)) [] (tupE []))
+        _ }
+      when id.it = name ->
+      Some (
+        match name with
+        | "heartbeat" ->
+          blockE
+            [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+           (unitE ())
+        | "inspect" ->
+          let _, tfs = T.as_obj obj_typ in
+          let caller = fresh_var "caller" T.principal in
+          let arg = fresh_var "arg" T.blob in
+          let msg_typ = T.decode_msg_typ tfs in
+          let msg = fresh_var "msg" msg_typ in
+          let record_typ =
+            T.Obj (T.Object, List.sort T.compare_field
+             [{T.lab = "caller"; T.typ = typ_of_var caller; T.depr = None};
+               {T.lab = "arg"; T.typ = typ_of_var arg; T.depr = None};
+               {T.lab = "msg"; T.typ = typ_of_var msg; T.depr = None}])
+          in
+          let record = fresh_var "record" record_typ in
+          let msg_variant =
+            switch_textE (primE Ir.ICMethodNamePrim [])
+              (List.map (fun tf ->
+                (tf.T.lab,
+                  match tf.T.typ with
+                  | T.Func(T.Local, _,  [], [], ts) ->
+                    let unit = fresh_var "unit" T.unit in
+                    tagE tf.T.lab (unit -->
+                      (primE (Ir.DeserializePrim ts) [varE arg]))
+                  | _ -> assert false))
+                (T.as_variant msg_typ))
+               (* Trap early, refusing all other messages,
+                  including those in T.well_known_actor_fields. *)
+              (wildP,
+                (primE (Ir.OtherPrim "trap")
+                  [textE "canister_inspect_message implicitly refused message"]))
+              msg_typ
+          in
+          let accept = fresh_var "accept" T.bool
+          in
+            blockE
+              [ letD record (
+                  blockE [
+                    letD caller (primE Ir.ICCallerPrim []);
+                    letD arg (primE Ir.ICArgDataPrim []);
+                    letD msg msg_variant
+                  ]
+                  (newObjE T.Object [
+                    {it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
+                    {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
+                    {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
+                    record_typ));
+                letD accept (callE (varE (var id.it p.note)) [] (varE record))]
+              (ifE (varE accept)
+                (unitE ())
+                (primE (Ir.OtherPrim "trap")
+                  [textE "canister_inspect_message explicitly refused message"])
+                T.unit)
+        | _name ->
+          callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
-
 and build_candid ts obj_typ =
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
   I.{
@@ -332,11 +391,8 @@ and build_candid ts obj_typ =
 and export_interface txt =
   (* This is probably a temporary hack. *)
   let open T in
-  let name = "__get_candid_interface_tmp_hack" in
-  let v = "$__get_candid_interface_tmp_hack"  in
-  let binds = [scope_bind] in
-  let typ = Func (Shared Query, Promises, binds, [], [text]) in
-
+  let {lab;typ;_} = get_candid_interface_fld in
+  let v = "$"^lab  in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
@@ -346,14 +402,12 @@ and export_interface txt =
       asyncE bind2 (textE txt) (Con (scope_con1, []))
     )
   )],
-  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
 
-and export_footprint self_id name expr =
+and export_footprint self_id expr =
   let open T in
-  let v = "$__stable_var_size" in
-  let binds = [scope_bind] in
-  let typ = Func (Shared Query, Promises, binds, [], [nat64]) in
-
+  let {lab;typ;_} = motoko_stable_var_size_fld in
+  let v = "$"^lab in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
@@ -365,7 +419,7 @@ and export_footprint self_id name expr =
                                         [primE I.ICCallerPrim []; selfRefE caller]))]
                  (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con1, []))))
   )],
-  [{ it = { I.name = name; var = v }; at = no_region; note = typ }])
+  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -409,7 +463,7 @@ and build_actor at ts self_id es obj_typ =
   let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
-      ((match call_system_func_opt "preupgrade" es with
+      ((match call_system_func_opt "preupgrade" es obj_typ with
         | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
@@ -422,16 +476,23 @@ and build_actor at ts self_id es obj_typ =
                    note = f.T.typ }
                ) fields vs)
             ty)) in
-  let footprint_d, footprint_f = export_footprint self_id "__motoko_stable_var_size" (with_stable_vars (fun e -> e)) in
+  let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
   I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
-       postupgrade = (match call_system_func_opt "postupgrade" es with
-                      | Some call -> call
-                      | None -> tupE []);
-       heartbeat = match call_system_func_opt "heartbeat" es with
-                   | Some call -> call
-                   | None -> tupE [] },
+       postupgrade =
+         (match call_system_func_opt "postupgrade" es obj_typ with
+          | Some call -> call
+          | None -> tupE []);
+       heartbeat =
+         (match call_system_func_opt "heartbeat" es obj_typ with
+          | Some call -> call
+          | None -> tupE []);
+       inspect =
+         (match call_system_func_opt "inspect" es obj_typ with
+          | Some call -> call
+          | None -> tupE [])
+     },
      obj_typ))
 
 

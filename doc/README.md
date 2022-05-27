@@ -5,7 +5,7 @@ You can build the documentation locally as follows:
 ```
 make
 python3 -m http.server --directory build/site/
-# now open http://0.0.0.0:8000/motoko/language-guide/motoko.html
+# now open http://0.0.0.0:8000/docs/language-guide/motoko.html
 ```
 
 This is somewhat hackish

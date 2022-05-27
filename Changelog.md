@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+## 0.6.28 (2022-05-19)
+
+* motoko (`moc`)
+
+  * Add `to_candid`, `from_candid` language constructs for Candid serialization to/from Blobs (#3155)
+  * New `system` field 'inspect' for accepting/declining canister ingress messages (see doc) (#3210)
+
 ## 0.6.27 (2022-05-04)
 
 * motoko (`moc`)
