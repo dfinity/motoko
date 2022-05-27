@@ -77,9 +77,9 @@ let import_relative_to_project_root root module_path dependency =
 
 type header_part =
   (* import <alias> "<path>" *)
-  | ImportAlias of string * string
+  | AliasImport of string * string
   (* import { <symbol> } "<path>" *)
-  | ImportSymbol of string * string
+  | SymbolImport of string * string
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules
@@ -104,7 +104,7 @@ let parse_module_header project_root current_file_path file =
                 in
                 (match path with
                 | Some path ->
-                    header_parts := ImportAlias (alias, path) :: !header_parts
+                    header_parts := AliasImport (alias, path) :: !header_parts
                 | None -> ());
                 loop (next ())
             | tkn -> loop tkn)
@@ -128,7 +128,7 @@ let parse_module_header project_root current_file_path file =
               (fun symbol ->
                 match path with
                 | Some path ->
-                    header_parts := ImportSymbol (symbol, path) :: !header_parts
+                    header_parts := SymbolImport (symbol, path) :: !header_parts
                 | None -> ())
               (List.rev symbols);
             loop (next ())
@@ -153,14 +153,14 @@ let identifier_at_pos project_root file_path file_contents position =
   (* import <alias> "<path>" *)
   let aliases =
     List.filter_map
-      (function ImportAlias (alias, path) -> Some (alias, path) | _ -> None)
+      (function AliasImport (alias, path) -> Some (alias, path) | _ -> None)
       header_parts
   in
   (* import { <symbol> } "<path>" *)
   let symbols =
     List.filter_map
       (function
-        | ImportSymbol (symbol, path) -> Some (symbol, path) | _ -> None)
+        | SymbolImport (symbol, path) -> Some (symbol, path) | _ -> None)
       header_parts
   in
   cursor_target_at_pos position file_contents

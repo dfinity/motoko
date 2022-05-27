@@ -33,9 +33,9 @@ let hovered_identifier_test_case file expected =
 let parse_module_header_test_case project_root current_file file expected =
   let actual = Source_file.parse_module_header project_root current_file file in
   let display_result = function
-    | Source_file.ImportAlias (alias, path) ->
+    | Source_file.AliasImport (alias, path) ->
         Printf.sprintf "%s => \"%s\"" alias path
-    | Source_file.ImportSymbol (symbol, path) ->
+    | Source_file.SymbolImport (symbol, path) ->
         Printf.sprintf "{ %s } => \"%s\"" symbol path
   in
   let result = Lib.List.equal ( = ) actual expected in
@@ -59,17 +59,17 @@ let%test "it finds a qualified identifier" =
 let%test "it parses a simple module header" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
     "import P \"lib/prelude\""
-    [ Source_file.ImportAlias ("P", "src/lib/prelude") ]
+    [ Source_file.AliasImport ("P", "src/lib/prelude") ]
 
 let%test "it parses a simple module header that contains a prim import" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
     "import Prim \"mo:⛔\""
-    [ Source_file.ImportAlias ("Prim", "mo:⛔") ]
+    [ Source_file.AliasImport ("Prim", "mo:⛔") ]
 
 let%test "it parses a simple module header with package paths" =
   parse_module_header_test_case "/project" "/project/src/Main.mo"
     "import P \"mo:stdlib/prelude\""
-    [ Source_file.ImportAlias ("P", "mo:stdlib/prelude") ]
+    [ Source_file.AliasImport ("P", "mo:stdlib/prelude") ]
 
 let%test "it parses a simple module header" =
   parse_module_header_test_case "/project" "/project/Main.mo"
@@ -92,8 +92,8 @@ func singleton(x: Int): Stack =
 }
 |}
     [
-      Source_file.ImportAlias ("List", "lib/ListLib");
-      Source_file.ImportAlias ("ListFuncs", "lib/ListFuncs");
+      Source_file.AliasImport ("List", "lib/ListLib");
+      Source_file.AliasImport ("ListFuncs", "lib/ListFuncs");
     ]
 
 let%test "it parses a simple module header with explicit symbol imports" =
@@ -116,8 +116,8 @@ func singleton(x: Int): Stack =
 }
 |}
     [
-      Source_file.ImportSymbol ("List", "lib/ListLib");
-      Source_file.ImportSymbol ("nil", "lib/ListLib");
-      Source_file.ImportSymbol ("cons", "lib/ListLib");
-      Source_file.ImportSymbol ("doubleton", "lib/ListFuncs");
+      Source_file.SymbolImport ("List", "lib/ListLib");
+      Source_file.SymbolImport ("nil", "lib/ListLib");
+      Source_file.SymbolImport ("cons", "lib/ListLib");
+      Source_file.SymbolImport ("doubleton", "lib/ListFuncs");
     ]
