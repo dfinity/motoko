@@ -18,7 +18,8 @@ overview-slides.html : overview-slides.md
 
 antora:
 	rm -rf build
-	antora antora-test-playbook.yml
-	./patch-antora-js.sh
+	echo "disabled (nixpkgs 22.05)"
+	# antora antora-test-playbook.yml
+	# ./patch-antora-js.sh
 
 .PHONY: antora
