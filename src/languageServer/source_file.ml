@@ -108,7 +108,6 @@ let parse_module_header project_root current_file_path file =
   try loop (next ()) with _ -> List.rev !res
 
 type unresolved_target = { qualifier : string; ident : string }
-
 type resolved_target = { qualifier : string; ident : string; path : string }
 
 type identifier_target =
