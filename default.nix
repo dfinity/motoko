@@ -582,7 +582,7 @@ rec {
 
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
-    buildInputs = with nixpkgs; [ ocamlformat ];
+    buildInputs = [ nixpkgs.ocamlformat ];
     src = subpath ./src;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";

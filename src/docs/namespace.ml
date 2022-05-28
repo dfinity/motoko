@@ -149,7 +149,7 @@ let lookup_type : t -> Syntax.path -> Xref.t option =
           let* sub_ns =
             List.fold_left
               (fun ns id ->
-                let* ns in
+                let* ns = ns in
                 let* sub_ns = StringMap.find_opt id ns.values in
                 snd sub_ns)
               sub_ns xs
