@@ -359,7 +359,7 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub unsafe fn tag(self: *mut Self) -> Tag {
+    pub unsafe fn tag(self: *const Self) -> Tag {
         (*self).tag
     }
 
