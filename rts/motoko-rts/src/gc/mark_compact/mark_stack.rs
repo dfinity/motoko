@@ -117,10 +117,10 @@ pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
             if crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
                 let obj = (*field_addr).as_obj();
                 // `obj.tag` will be overwritten
-                let mut obj_tag = (*obj).tag;
+                let mut obj_tag = obj.tag();
                 while obj_tag & 1 == 0 {
                     // intervening threading may have happened, so chase the real tag
-                    obj_tag = (*(obj_tag as *const Obj)).tag
+                    obj_tag = (obj_tag as *const Obj).tag()
                 }
                 // the end of the chain is the original header for the object
                 debug_assert!(obj_tag >= TAG_OBJECT && obj_tag <= TAG_NULL);
