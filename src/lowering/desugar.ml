@@ -534,23 +534,27 @@ and build_obj at s self_id dfs obj_typ =
       let self = var self_id.it obj_typ in
       (letE self e (varE self)).it
 
-and exp_field ef =
+and exp_field obj_typ ef =
+  let _, fts = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
-  let typ = e.note.S.note_typ in
-  match mut.it with
-  | S.Var ->
-    let id' = fresh_var id.it (T.Mut typ) in
-    let d = varD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
-    (d, f)
-  | S.Const ->
-    let id' = fresh_var id.it typ in
-    let d = letD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+  let typ =
+    match T.lookup_val_field_opt id.it fts with
+    | Some typ -> typ
+    | None -> e.note.S.note_typ
+  in
+  let id' = fresh_var id.it typ in
+  let d = match mut.it with
+    | S.Var -> varD id' (exp e)
+    | S.Const -> letD id' (exp e) in
+  let f =
+    { it = { I.name = id.it; I.var = id_of_var id'};
+      at = no_region;
+      note = typ }
+  in
     (d, f)
 
 and obj obj_typ efs =
-  let (ds, fs) = List.map exp_field efs |> List.split in
+  let (ds, fs) = List.map (exp_field obj_typ) efs |> List.split in
   let obj_e = newObjE T.Object fs obj_typ in
   I.BlockE(ds, obj_e)
 
