@@ -538,21 +538,19 @@ and exp_field obj_typ ef =
   let _, fts = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
   let typ =
-    match List.find_opt (fun ft -> ft.T.lab = id.it) fts with
-    | Some {T.typ = T.Mut typ;_} -> typ
-    | Some {T.typ; _} -> typ
+    match T.lookup_val_field_opt id.it fts with
+    | Some typ -> typ
     | None -> e.note.S.note_typ
   in
-  match mut.it with
-  | S.Var ->
-    let id' = fresh_var id.it (T.Mut typ) in
-    let d = varD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
-    (d, f)
-  | S.Const ->
-    let id' = fresh_var id.it typ in
-    let d = letD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+  let id' = fresh_var id.it typ in
+  let d = match mut.it with
+    | S.Var -> varD id' (exp e)
+    | S.Const -> letD id' (exp e) in
+  let f =
+    { it = { I.name = id.it; I.var = id_of_var id'};
+      at = no_region;
+      note = typ }
+  in
     (d, f)
 
 and obj obj_typ efs =
