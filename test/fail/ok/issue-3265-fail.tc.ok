@@ -1,0 +1,8 @@
+issue-3265-fail.mo:2.41-2.48: type error [M0096], expression of type
+  Int
+cannot produce expected type
+  Nat
+issue-3265-fail.mo:8.57-8.67: type error [M0096], expression of type
+  List<Nat> = ?(Nat, List<Nat>)
+cannot produce expected type
+  ?(None, List<None>)

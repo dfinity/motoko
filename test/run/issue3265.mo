@@ -1,5 +1,5 @@
 // simplest example of failure
-let rec1 : { var myList : Int } = { var myList = (0 : Nat)};
+let rec1 : { var x : Int } = { var x = (0 : Nat)};
 
 // repro from #3265
 type List<X> = ?(X, List<X>);
