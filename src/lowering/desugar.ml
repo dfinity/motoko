@@ -550,8 +550,8 @@ and exp_field obj_typ ef =
     (d, f)
   | S.Const ->
     let typ = match T.lookup_val_field_opt id.it fts with
-    | Some typ -> typ
-    | None -> e.note.S.note_typ
+      | Some typ -> typ
+      | None -> e.note.S.note_typ
     in
     assert (not (T.is_mut typ));
     let id' = fresh_var id.it typ in
