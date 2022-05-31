@@ -537,19 +537,26 @@ and build_obj at s self_id dfs obj_typ =
 and exp_field obj_typ ef =
   let _, fts = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
-  let typ = match T.lookup_val_field_opt id.it fts with
+  match mut.it with
+  | S.Var ->
+    let typ = match T.lookup_val_field_opt id.it fts with
+      | Some typ -> typ
+      | None -> T.Mut e.note.S.note_typ
+    in
+    assert (T.is_mut typ);
+    let id' = fresh_var id.it typ in
+    let d = varD id' (exp e) in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+    (d, f)
+  | S.Const ->
+    let typ = match T.lookup_val_field_opt id.it fts with
     | Some typ -> typ
     | None -> e.note.S.note_typ
-  in
-  let id' = fresh_var id.it typ in
-  let d = match mut.it with
-    | S.Var -> varD id' (exp e)
-    | S.Const -> letD id' (exp e) in
-  let f =
-    { it = { I.name = id.it; I.var = id_of_var id'};
-      at = no_region;
-      note = typ }
-  in
+    in
+    assert (not (T.is_mut typ));
+    let id' = fresh_var id.it typ in
+    let d = letD id' (exp e) in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
 
 and obj obj_typ efs =
