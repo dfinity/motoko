@@ -154,6 +154,10 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 }
 
 unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap_base: u32) {
+    // nothing to do
+}
+
+unsafe fn OLD_mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap_base: u32) {
     let fields = (len as *mut Value).add(1);
     for i in start..*len as usize {
         let field = fields.add(i);
@@ -177,7 +181,15 @@ unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack(heap_base as usize) {
-        mark_fields(mem, obj as *mut Obj, tag, heap_base);
+        if tag <= TAG_SLICE {
+	    mark_fields(mem, obj as *mut Obj, tag, heap_base)
+	} else {
+	    // we have just popped a slice from an array
+	    // temporarily make it look like a heap object
+	    debug_assert_eq!(obj & 1, 0);
+	    let arr = (obj as *mut u32).sub(1) as *mut Obj;
+	    mark_fields(mem, obj as *mut Obj, tag, heap_base)
+	}
     }
 }
 
@@ -189,7 +201,6 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         heap_base as usize,
         |mem, field_addr| {
             let field_value = *field_addr;
-            //assert!(field_value.is_ptr()); // REMOVE THIS!
             mark_object(mem, field_value);
 
             // Thread if backwards or self pointer

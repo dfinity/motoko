@@ -351,6 +351,7 @@ pub const TAG_CONCAT: Tag = 25;
 pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
+pub const TAG_SLICE: Tag = 33;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module

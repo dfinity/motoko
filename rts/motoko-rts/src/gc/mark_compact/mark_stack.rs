@@ -74,12 +74,23 @@ pub unsafe fn push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, sta
         grow_stack(mem);
     }
 
-    *STACK_PTR = ptr as usize + 1;
-    *(STACK_PTR.add(1)) = start;
+    debug_assert!(start > crate::types::TAG_SLICE as usize);
+    *STACK_PTR = ptr as usize; // + 1;
+    *STACK_PTR.add(1) = start;
     STACK_PTR = STACK_PTR.add(2);
 }
 
 pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
+    if STACK_PTR == STACK_BASE {
+        return None;
+    }
+    STACK_PTR = STACK_PTR.sub(2);
+    let p = *STACK_PTR;
+    let mut tag = *STACK_PTR.add(1);
+    return Some((p, tag as u32));
+}
+
+pub unsafe fn OLD_pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
     loop {
         if STACK_PTR == STACK_BASE {
             return None;

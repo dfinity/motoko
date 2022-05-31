@@ -102,9 +102,23 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             rts_trap_with("encountered NULL object tag in visit_pointer_fields");
         }
 
+        slice_start if slice_start > TAG_SLICE => {
+            let array = obj as *mut Array;
+            let array_payload = array.payload_addr();
+            let stop = visit_field_range(ctx, /*slice_start,*/ &(*array).len);
+            debug_assert!(stop <= array.len());
+            for i in slice_start..stop {
+                let field_addr = array_payload.add(i as usize);
+                if pointer_to_dynamic_heap(field_addr, heap_base) {
+                    visit_ptr_field(ctx, field_addr);
+                }
+            }
+        }
+
         TAG_FWD_PTR | _ => {
             rts_trap_with("invalid object tag in visit_pointer_fields");
         }
+
     }
 }
 
