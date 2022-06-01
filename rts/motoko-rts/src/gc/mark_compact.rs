@@ -174,10 +174,10 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         },
         |mem, slice_start, arr| {
             const SLICE_INCREMENT: u32 = 127;
-	    debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_LOW_LIMIT);
+            debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_LOW_LIMIT);
             if arr.len() - slice_start > SLICE_INCREMENT {
                 let new_start = slice_start + SLICE_INCREMENT;
-		// push an entire (suffix) array slice
+                // push an entire (suffix) array slice
                 push_mark_stack(mem, arr as usize, new_start);
                 new_start
             } else {
