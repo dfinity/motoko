@@ -155,7 +155,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack() {
-        if tag <= TAG_FREE_SPACE {
+        if tag < TAG_ARRAY_SLICE_LIMIT {
             mark_fields(mem, obj as *mut Obj, tag, heap_base)
         } else {
             // we have just popped a slice from an array
