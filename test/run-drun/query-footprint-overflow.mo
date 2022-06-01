@@ -1,4 +1,4 @@
-import { Array_tabulate; stableVarQuery } = "mo:⛔"
+import { Array_tabulate; stableVarInfo } = "mo:⛔"
 
 actor footprint = {
     let e0 = Array_tabulate<Text>(125, // length 1144 below...
@@ -21,7 +21,6 @@ actor footprint = {
     stable var expl = e15;
 
     public func delegate() : async Nat64 {
-        let stableVarInfo = stableVarQuery();
         let { size } = await stableVarInfo();
         size
     };

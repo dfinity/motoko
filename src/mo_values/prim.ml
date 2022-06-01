@@ -82,7 +82,7 @@ let prim =
   let float_formatter prec : int -> float -> string =
     let open Printf in
     function
-    | 0 -> sprintf "%.*f" prec 
+    | 0 -> sprintf "%.*f" prec
     | 1 -> sprintf "%.*e" prec
     | 2 -> sprintf "%.*g" prec
     | 3 -> sprintf "%.*h" prec
@@ -316,6 +316,12 @@ let prim =
         end
 
   | "encodeUtf8" ->
-      fun _ v k -> k (Blob (as_text v))
+     fun _ v k -> k (Blob (as_text v))
+
+  | "stableVarQuery" ->
+     (* result (a query) fails if applied in interpreter *)
+     fun _ v k ->
+       k (async_func Type.Query 0 1 (fun _ v k ->
+         raise (Invalid_argument ("stableVarInfo"))))
 
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

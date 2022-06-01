@@ -411,3 +411,9 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
+
+// A query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
+// (Defined here to avoid `static` check, omitted for internals.mo)
+let @stableVarInfo : shared query () -> async {size : Nat64} =
+  (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
+

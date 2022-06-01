@@ -363,3 +363,5 @@ func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
   (prim "stableMemoryStoreBlob" : (Nat64, Blob) -> ()) (offset, val);
 
 let call_raw = @call_raw;
+
+let stableVarInfo = @stableVarInfo;
