@@ -260,7 +260,7 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
 }
 
 /// Thread a pointer field
-pub(crate) unsafe fn thread(field: *mut Value) {
+unsafe fn thread(field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
     let pointed = (*field).as_obj();
     let pointed_header = pointed.tag();
