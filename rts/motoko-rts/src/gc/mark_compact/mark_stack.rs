@@ -68,7 +68,7 @@ fn is_ptr(p: usize) -> bool {
     p & 1 == 0
 }
 
-pub unsafe fn push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, start: usize) {
+pub unsafe fn OLD_push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, start: usize) {
     debug_assert!(is_ptr(ptr as usize));
     if STACK_PTR == STACK_TOP {
         grow_stack(mem);

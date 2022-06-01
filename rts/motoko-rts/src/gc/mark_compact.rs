@@ -6,9 +6,7 @@ pub mod bitmap;
 pub mod mark_stack;
 
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-use mark_stack::{
-    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack, push_range_mark_stack,
-};
+use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
@@ -160,8 +158,8 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
         } else {
             // we have just popped a slice from an array
             debug_assert_eq!(obj & 1, 0);
-            let arr = (obj as *mut u32).sub(1) as *mut Obj;
-            mark_fields(mem, arr, tag, heap_base)
+            //let arr = (obj as *mut u32).sub(1) as *mut Obj;
+            mark_fields(mem, obj as *mut Obj, tag, heap_base)
         }
     }
 }
@@ -181,13 +179,14 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
                 thread(field_addr);
             }
         },
-        |mem, slice_start, len_field_addr| {
-            if *len_field_addr - slice_start > 127 {
-                let new_start = slice_start as usize + 127;
-                push_range_mark_stack(mem, len_field_addr, new_start);
-                new_start as u32
+        |mem, slice_start, arr| {
+            const SLICE_INCREMENT: u32 = 127;
+            if arr.len() - slice_start > SLICE_INCREMENT {
+                let new_start = slice_start + SLICE_INCREMENT;
+                push_mark_stack(mem, arr as usize, new_start);
+                new_start
             } else {
-                *len_field_addr
+                arr.len()
             }
         },
     );
@@ -254,7 +253,7 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
                 thread(field_addr)
             }
         },
-        |_, _, len_field_addr| *len_field_addr,
+        |_, _, arr| arr.len(),
     );
 }
 
