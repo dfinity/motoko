@@ -153,7 +153,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, tag, heap_base);
+        mark_fields(mem, obj as *mut Obj, tag, heap_base)
     }
 }
 
@@ -218,7 +218,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     set_hp(free);
 }
 
-/// Thread forwards pointers in object
+/// Thread forward pointers in object
 unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
         if (*field_addr).get_ptr() > obj as usize {
@@ -243,7 +243,7 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
     while header & 0b1 == 0 {
-        let tmp = (*(header as *mut Obj)).tag;
+        let tmp = (header as *const Obj).tag();
         (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
