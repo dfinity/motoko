@@ -60,7 +60,7 @@ pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) 
     }
 
     *STACK_PTR = obj;
-    *(STACK_PTR.add(1)) = obj_tag as usize;
+    *STACK_PTR.add(1) = obj_tag as usize;
     STACK_PTR = STACK_PTR.add(2);
 }
 
