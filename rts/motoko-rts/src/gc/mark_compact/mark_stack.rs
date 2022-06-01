@@ -75,73 +75,17 @@ pub unsafe fn push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, sta
     }
 
     debug_assert!(start > crate::types::TAG_SLICE as usize);
-    *STACK_PTR = ptr as usize; // + 1;
+    *STACK_PTR = ptr as usize;
     *STACK_PTR.add(1) = start;
     STACK_PTR = STACK_PTR.add(2);
 }
 
-pub unsafe fn pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
+pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
     if STACK_PTR == STACK_BASE {
         return None;
     }
     STACK_PTR = STACK_PTR.sub(2);
     let p = *STACK_PTR;
-    let mut tag = *STACK_PTR.add(1);
+    let tag = *STACK_PTR.add(1);
     return Some((p, tag as u32));
-}
-
-pub unsafe fn OLD_pop_mark_stack(heap_base: usize) -> Option<(usize, Tag)> {
-    loop {
-        if STACK_PTR == STACK_BASE {
-            return None;
-        }
-        STACK_PTR = STACK_PTR.sub(2);
-        let p = *STACK_PTR;
-        let mut tag = *STACK_PTR.add(1);
-        if is_ptr(p) {
-            return Some((p, tag as u32));
-        } else {
-            use crate::types::{Obj, Value, TAG_NULL, TAG_OBJECT};
-            let p = p - 1;
-            // we pop from a range
-            let len = *(p as *const u32);
-            let before_field = (p as *mut Value).add(tag);
-            let obj = (*before_field.add(1)).get_raw();
-            let remembered_mark = obj & 3 == 1;
-            tag += 1; // increment start_index
-            if len > tag as u32 {
-                *STACK_PTR.add(1) = tag;
-                STACK_PTR = STACK_PTR.add(2)
-            }
-            let field_addr = before_field.add(1);
-            if remembered_mark {
-                // undo remember
-                let obj = obj + 2;
-                *field_addr = Value::from_raw(obj);
-                // perform the threading anyway
-                if (*field_addr).get_ptr() <= obj as usize {
-                    crate::gc::mark_compact::thread(field_addr);
-                }
-                continue;
-            }
-            // check for dynamic heap
-            if crate::visitor::pointer_to_dynamic_heap(field_addr, heap_base) {
-                let obj = (*field_addr).as_obj();
-                // `obj.tag` will be overwritten
-                let mut obj_tag = obj.tag();
-                while obj_tag & 1 == 0 {
-                    // intervening threading may have happened, so chase the real tag
-                    obj_tag = (obj_tag as *const Obj).tag()
-                }
-                // the end of the chain is the original header for the object
-                debug_assert!(obj_tag >= TAG_OBJECT && obj_tag <= TAG_NULL);
-
-                // perform the threading
-                if (*field_addr).get_ptr() <= obj as usize {
-                    crate::gc::mark_compact::thread(field_addr);
-                }
-                return Some((obj as usize, obj_tag));
-            }
-        }
-    }
 }

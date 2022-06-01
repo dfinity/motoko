@@ -105,7 +105,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         slice_start if slice_start > TAG_SLICE => {
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
-	    debug_assert_eq!((*array).len, 65536);
             let stop = visit_field_range(ctx, slice_start, &(*array).len);
             debug_assert!(stop <= array.len());
             for i in slice_start..stop {
@@ -119,7 +118,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_FWD_PTR | _ => {
             rts_trap_with("invalid object tag in visit_pointer_fields");
         }
-
     }
 }
 

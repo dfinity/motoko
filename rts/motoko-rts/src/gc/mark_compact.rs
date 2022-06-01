@@ -153,44 +153,16 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     push_mark_stack(mem, obj as usize, obj_tag);
 }
 
-unsafe fn mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap_base: u32) {
-    // nothing to do
-}
-
-unsafe fn OLD_mark_range<M: Memory>(mem: &mut M, len: *const u32, start: usize, heap_base: u32) {
-    let fields = (len as *mut Value).add(1);
-    for i in start..*len as usize {
-        let field = fields.add(i);
-        if !pointer_to_dynamic_heap(field, heap_base as usize) {
-            continue;
-        }
-        let obj = (*field).get_ptr() as u32;
-
-        // Check object alignment to avoid undefined behavior. See also static_checks module.
-        debug_assert_eq!(obj % WORD_SIZE, 0);
-
-        let obj_idx = obj / WORD_SIZE;
-        if get_bit(obj_idx) {
-            // remember in field
-            *field = Value::from_raw((*field).get_raw() - 2)
-        } else {
-            set_bit(obj_idx)
-        }
-    }
-}
-
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
-    while let Some((obj, tag)) = pop_mark_stack(heap_base as usize) {
+    while let Some((obj, tag)) = pop_mark_stack() {
         if tag <= TAG_SLICE {
-	    mark_fields(mem, obj as *mut Obj, tag, heap_base)
-	} else {
-	    // we have just popped a slice from an array
-	    debug_assert_eq!(obj & 1, 0);
-	    assert_eq!(*(obj as *mut u32), 65536);
-	    let arr = (obj as *mut u32).sub(1) as *mut Array;
-	    assert_eq!(arr.len(), 65536);
-	    mark_fields(mem, arr as *mut Obj, tag, heap_base)
-	}
+            mark_fields(mem, obj as *mut Obj, tag, heap_base)
+        } else {
+            // we have just popped a slice from an array
+            debug_assert_eq!(obj & 1, 0);
+            let arr = (obj as *mut u32).sub(1) as *mut Obj;
+            mark_fields(mem, arr, tag, heap_base)
+        }
     }
 }
 
@@ -211,9 +183,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         },
         |mem, slice_start, len_field_addr| {
             if *len_field_addr - slice_start > 127 {
-		let new_start = slice_start as usize + 127;
-                mark_range(mem, len_field_addr, new_start, heap_base);
-		debug_assert_eq!(*len_field_addr, 65536);
+                let new_start = slice_start as usize + 127;
                 push_range_mark_stack(mem, len_field_addr, new_start);
                 new_start as u32
             } else {
