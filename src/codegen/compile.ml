@@ -8799,7 +8799,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim ("stableVarQuery"), [] ->
     SR.UnboxedTuple 2,
-    IC.get_self_reference env ^^
+    (match E.mode env with
+     | Flags.ICMode | Flags.RefMode ->
+       IC.get_self_reference env
+     | _ ->
+       Blob.lit env "") ^^
     Blob.lit env Type.(motoko_stable_var_info_fld.lab)
 
   (* Other prims, binary*)
