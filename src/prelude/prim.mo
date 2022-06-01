@@ -262,7 +262,7 @@ func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) ->
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
-// An async function for querying stable variable statistics
+// Returns a query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
 func stableVarInfo() : shared query () -> async {size : Nat64} =
   (prim "stableVarInfo" : () -> (shared query () -> async {size : Nat64})) () ;
 
