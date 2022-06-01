@@ -1,4 +1,4 @@
-import { stableVarInfo } "mo:⛔";
+import { stableVarQuery } "mo:⛔";
 
 actor footprint = {
     stable var s : Nat64 = 42;
@@ -18,7 +18,8 @@ actor footprint = {
     stable var expl = e10;
 
     public func delegate() : async Nat64 {
-        let { size } = await (stableVarInfo())();
+        let stableVarInfo = stableVarQuery();
+        let { size } = await stableVarInfo();
         size
     };
 

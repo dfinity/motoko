@@ -8797,7 +8797,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.logical_grow env
 
-  | OtherPrim ("stableVarInfo"), [] ->
+  | OtherPrim ("stableVarQuery"), [] ->
     SR.UnboxedTuple 2,
     IC.get_self_reference env ^^
     Blob.lit env Type.(motoko_stable_var_info_fld.lab)
