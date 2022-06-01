@@ -263,7 +263,7 @@ unsafe fn thread(field: *mut Value) {
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
 unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
-    let mut header = (*obj).tag;
+    let mut header = obj.tag();
 
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
