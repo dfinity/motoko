@@ -275,7 +275,7 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
     while header & 0b1 == 0 {
-        let tmp = (*(header as *const Obj)).tag;
+        let tmp = (header as *const Obj).tag();
         (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
