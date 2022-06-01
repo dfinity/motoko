@@ -61,7 +61,7 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
         }
 
         for obj in objs.iter().copied().rev() {
-            let popped = pop_mark_stack(0);
+            let popped = pop_mark_stack();
             if popped != Some((obj as usize * 2, TAGS[(obj as usize) % TAGS.len()])) {
                 free_mark_stack();
                 return Err(TestCaseError::Fail(
