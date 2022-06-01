@@ -351,8 +351,13 @@ pub const TAG_CONCAT: Tag = 25;
 pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
-// special value to visit only a range
-// of array fields
+
+// Special value to visit only a range of array fields.
+// This and all values above it are reserved and mean
+// a slice of an array object (i.e. start index) for
+// purposes of `visit_pointer_fields`.
+// Invariant: the value of this (pseudo-)tag must be
+//            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_LOW_LIMIT: Tag = 32;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
