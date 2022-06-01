@@ -52,7 +52,6 @@ pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
 }
 
 pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) {
-    debug_assert!(is_ptr(obj));
     // We add 2 words in a push, and `STACK_PTR` and `STACK_TOP` are both multiples of 2, so we can
     // do simple equality check here
     if STACK_PTR == STACK_TOP {
@@ -61,22 +60,6 @@ pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) 
 
     *STACK_PTR = obj;
     *STACK_PTR.add(1) = obj_tag as usize;
-    STACK_PTR = STACK_PTR.add(2);
-}
-
-fn is_ptr(p: usize) -> bool {
-    p & 1 == 0
-}
-
-pub unsafe fn OLD_push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, start: usize) {
-    debug_assert!(is_ptr(ptr as usize));
-    if STACK_PTR == STACK_TOP {
-        grow_stack(mem);
-    }
-
-    debug_assert!(start > crate::types::TAG_FREE_SPACE as usize);
-    *STACK_PTR = ptr as usize;
-    *STACK_PTR.add(1) = start;
     STACK_PTR = STACK_PTR.add(2);
 }
 
