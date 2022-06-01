@@ -21,7 +21,7 @@ actor footprint = {
     stable var expl = e15;
 
     public func delegate() : async Nat64 {
-        let { size } = await stableVarInfo(footprint);
+        let { size } = await (stableVarInfo())();
         size
     };
 

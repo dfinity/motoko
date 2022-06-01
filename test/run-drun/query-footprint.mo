@@ -18,7 +18,7 @@ actor footprint = {
     stable var expl = e10;
 
     public func delegate() : async Nat64 {
-        let { size } = await stableVarInfo(footprint);
+        let { size } = await (stableVarInfo())();
         size
     };
 
@@ -27,8 +27,8 @@ actor footprint = {
     }
 };
 
-//CALL ingress __motoko_stable_var_size "DIDL\x00\x00"
-//CALL query __motoko_stable_var_size "DIDL\x00\x00"
+//CALL ingress __motoko_stable_var_info "DIDL\x00\x00"
+//CALL query __motoko_stable_var_info "DIDL\x00\x00"
 //CALL ingress delegate "DIDL\x00\x00"
 //CALL ingress delegate "DIDL\x00\x00"
 //CALL query __get_candid_interface_tmp_hack "DIDL\x00\x00"

@@ -263,7 +263,8 @@ func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) ->
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
 // An async function for querying stable variable statistics
-let stableVarInfo = @stable_var_info;
+func stableVarInfo() : shared query () -> async {size : Nat64} =
+  (prim "stableVarInfo" : () -> (shared query () -> async {size : Nat64})) () ;
 
 func cyclesBalance() : Nat {
   (prim "cyclesBalance" : () -> Nat) ();

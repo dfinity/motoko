@@ -240,7 +240,7 @@ val string_of_stab_sig : field list -> string
 (* Well-known fields *)
 
 val motoko_async_helper_fld : field
-val motoko_stable_var_size_fld : field
+val motoko_stable_var_info_fld : field
 val get_candid_interface_fld : field
 
 val well_known_actor_fields : field list

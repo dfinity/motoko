@@ -406,18 +406,27 @@ and export_interface txt =
 
 and export_footprint self_id expr =
   let open T in
-  let {lab;typ;_} = motoko_stable_var_size_fld in
+  let {lab;typ;_} = motoko_stable_var_info_fld in
   let v = "$"^lab in
+  let size = fresh_var "size" T.nat64 in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; depr = None}]) in
   ([ letD (var v typ) (
-       funcE v (Shared Query) Promises [bind1] [] [nat64] (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
            (asyncE bind2
               (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
-                                        [primE I.ICCallerPrim []; selfRefE caller]))]
-                 (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con1, []))))
+                                        [primE I.ICCallerPrim []; selfRefE caller]));
+                       letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
+                 ]
+                 (newObjE T.Object
+                   [{ it = {Ir.name = "size"; var = id_of_var size};
+                      at = no_region;
+                      note = T.nat64 }]
+                   ret_typ))
+              (Con (scope_con1, []))))
   )],
   [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
 
