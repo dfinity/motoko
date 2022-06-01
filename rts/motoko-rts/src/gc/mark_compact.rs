@@ -153,14 +153,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack() {
-        if tag < TAG_ARRAY_SLICE_LOW_LIMIT {
-            mark_fields(mem, obj as *mut Obj, tag, heap_base)
-        } else {
-            // we have just popped a slice from an array
-            debug_assert_eq!(obj & 1, 0);
-            //let arr = (obj as *mut u32).sub(1) as *mut Obj;
-            mark_fields(mem, obj as *mut Obj, tag, heap_base)
-        }
+        mark_fields(mem, obj as *mut Obj, tag, heap_base)
     }
 }
 
