@@ -74,7 +74,7 @@ pub unsafe fn push_range_mark_stack<M: Memory>(mem: &mut M, ptr: *const u32, sta
         grow_stack(mem);
     }
 
-    debug_assert!(start > crate::types::TAG_SLICE as usize);
+    debug_assert!(start > crate::types::TAG_FREE_SPACE as usize);
     *STACK_PTR = ptr as usize;
     *STACK_PTR.add(1) = start;
     STACK_PTR = STACK_PTR.add(2);
