@@ -57,12 +57,12 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
         alloc_mark_stack(mem);
 
         for obj in &objs {
-            push_mark_stack(mem, *obj as usize * 2, TAGS[(*obj as usize) % TAGS.len()]);
+            push_mark_stack(mem, *obj as usize, TAGS[(*obj as usize) % TAGS.len()]);
         }
 
         for obj in objs.iter().copied().rev() {
             let popped = pop_mark_stack();
-            if popped != Some((obj as usize * 2, TAGS[(obj as usize) % TAGS.len()])) {
+            if popped != Some((obj as usize, TAGS[(obj as usize) % TAGS.len()])) {
                 free_mark_stack();
                 return Err(TestCaseError::Fail(
                     format!(
