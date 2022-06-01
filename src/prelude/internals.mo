@@ -414,6 +414,5 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 
 // A query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
 // (Defined here to avoid `static` check, omitted for internals.mo)
-let @stableVarInfo : shared query () -> async {size : Nat64} =
+let @stableVarInfo =
   (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
-
