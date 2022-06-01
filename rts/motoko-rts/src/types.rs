@@ -403,7 +403,7 @@ impl Array {
         *(slot_addr as *mut Value) = ptr;
     }
 
-    pub unsafe fn len(self: *mut Self) -> u32 {
+    pub unsafe fn len(self: *const Self) -> u32 {
         (*self).len
     }
 }
