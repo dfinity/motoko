@@ -116,7 +116,7 @@ let parse_module_header project_root current_file_path file =
     (* Account for basic object pattern syntax *)
     match next () with
     | Parser.ID symbol -> loop_symbols (symbol :: symbols)
-    | Parser.COMMA -> loop_symbols symbols
+    | Parser.SEMICOLON -> loop_symbols symbols
     | Parser.RCURLY -> (
         match next () with
         | Parser.TEXT path ->

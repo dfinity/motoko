@@ -99,7 +99,7 @@ func singleton(x: Int): Stack =
 let%test "it parses a simple module header with explicit symbol imports" =
   parse_module_header_test_case "/project" "/project/Main.mo"
     {|
-import { List, nil, cons } "lib/ListLib";
+import { List; nil; cons } "lib/ListLib";
 
 module {
 
