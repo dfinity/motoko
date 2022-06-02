@@ -40,6 +40,9 @@ let hover_handler (index : DI.t) (position : Lsp.position)
     match ident_target with
     | Source_file.Alias (_, path) ->
         Some Lsp.{ hover_result_contents = markup_content path }
+    | Source_file.Symbol (_, path) ->
+        (* TODO: add symbol-specific information *)
+        Some Lsp.{ hover_result_contents = markup_content path }
     | Source_file.Resolved resolved ->
         let* _, decls =
           lookup_module project_root resolved.Source_file.path index

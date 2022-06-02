@@ -145,24 +145,46 @@ type resolved_target = { qualifier : string; ident : string; path : string }
 type identifier_target =
   | Ident of string
   | Alias of string * string
+  | Symbol of string * string
   | Unresolved of unresolved_target
   | Resolved of resolved_target
 
 let identifier_at_pos project_root file_path file_contents position =
   let header_parts = parse_module_header project_root file_path file_contents in
-  let imports =
-    List.map
-      (function
-        | SymbolImport (ident, path) | AliasImport (ident, path) -> (ident, path))
-      header_parts
-  in
+  (* let imports =
+       List.map
+         (function
+           | SymbolImport (ident, path) | AliasImport (ident, path) -> (ident, path))
+         header_parts
+     in *)
   cursor_target_at_pos position file_contents
   |> Option.map (function
        | CIdent ident -> (
-           match List.find_opt (fun (ident', _) -> ident' = ident) imports with
+           match
+             List.find_map
+               (function
+                 | AliasImport (alias, path) ->
+                     if alias = ident then Some (Alias (ident, path)) else None
+                 | SymbolImport (symbol, path) ->
+                     if symbol = ident then Some (Symbol (ident, path))
+                     else None)
+               header_parts
+           with
            | None -> Ident ident
-           | Some (_, path) -> Alias (ident, path))
+           | Some x -> x)
        | CQualified (qual, ident) -> (
-           match List.find_opt (fun (ident', _) -> ident' = qual) imports with
+           match
+             List.find_map
+               (function
+                 | AliasImport (alias, path) ->
+                     if alias = qual then
+                       Some (Resolved { qualifier = qual; ident; path })
+                     else None
+                 | SymbolImport (symbol, path) ->
+                     if symbol = qual then
+                       Some (Resolved { qualifier = qual; ident; path })
+                     else None)
+               header_parts
+           with
            | None -> Unresolved { qualifier = qual; ident }
-           | Some (_, path) -> Resolved { qualifier = qual; ident; path }))
+           | Some x -> x))
