@@ -186,11 +186,25 @@ main = do
             (Position 6 31)
             [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
 
-          log "Definition for an imported symbol"
+          log "Definition for a function via an explicit symbol import"
           definitionsTestCase
             project
             doc
             (Position 8 15)
+            [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
+          
+          log "Definition for an imported module alias"
+          definitionsTestCase
+            project
+            doc
+            (Position 1 7)
+            [("lib/list.mo", Range (Position 0 0) (Position 0 0))]
+          
+          log "Definition for an imported symbol"
+          definitionsTestCase
+            project
+            doc
+            (Position 2 9)
             [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
 
         log "Completion tests"
