@@ -150,26 +150,19 @@ type identifier_target =
 
 let identifier_at_pos project_root file_path file_contents position =
   let header_parts = parse_module_header project_root file_path file_contents in
-  (* import <alias> "<path>" *)
-  let aliases =
-    List.filter_map
-      (function AliasImport (alias, path) -> Some (alias, path) | _ -> None)
-      header_parts
-  in
-  (* import { <symbol> } "<path>" *)
-  let symbols =
-    List.filter_map
+  let imports =
+    List.map
       (function
-        | SymbolImport (symbol, path) -> Some (symbol, path) | _ -> None)
+        | SymbolImport (ident, path) | AliasImport (ident, path) -> (ident, path))
       header_parts
   in
   cursor_target_at_pos position file_contents
   |> Option.map (function
        | CIdent ident -> (
-           match List.find_opt (fun (alias, _) -> alias = ident) aliases with
+           match List.find_opt (fun (ident', _) -> ident' = ident) imports with
            | None -> Ident ident
-           | Some (alias, path) -> Alias (alias, path))
+           | Some (_, path) -> Alias (ident, path))
        | CQualified (qual, ident) -> (
-           match List.find_opt (fun (alias, _) -> alias = qual) symbols with
+           match List.find_opt (fun (ident', _) -> ident' = qual) imports with
            | None -> Unresolved { qualifier = qual; ident }
-           | Some (alias, path) -> Resolved { qualifier = qual; ident; path }))
+           | Some (_, path) -> Resolved { qualifier = qual; ident; path }))
