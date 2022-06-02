@@ -358,7 +358,7 @@ pub const TAG_FREE_SPACE: Tag = 31;
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_LOW_LIMIT: Tag = 32;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
