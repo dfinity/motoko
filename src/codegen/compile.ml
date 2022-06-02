@@ -8797,6 +8797,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.logical_grow env
 
+  | OtherPrim ("stableVarQuery"), [] ->
+    SR.UnboxedTuple 2,
+    IC.get_self_reference env ^^
+    Blob.lit env Type.(motoko_stable_var_info_fld.lab)
+
   (* Other prims, binary*)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
