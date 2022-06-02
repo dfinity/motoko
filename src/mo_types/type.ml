@@ -1090,9 +1090,11 @@ let motoko_async_helper_fld =
     depr = None;
   }
 
-let motoko_stable_var_size_fld =
-  { lab = "__motoko_stable_var_size";
-    typ = Func(Shared Query, Promises, [scope_bind], [], [nat64]);
+let motoko_stable_var_info_fld =
+  { lab = "__motoko_stable_var_info";
+    typ =
+      Func(Shared Query, Promises, [scope_bind], [],
+        [ Obj(Object, [{lab = "size"; typ = nat64; depr = None}]) ]);
     depr = None;
   }
 
@@ -1104,7 +1106,7 @@ let get_candid_interface_fld =
 
 let well_known_actor_fields = [
     motoko_async_helper_fld;
-    motoko_stable_var_size_fld;
+    motoko_stable_var_info_fld;
     get_candid_interface_fld
   ]
 
