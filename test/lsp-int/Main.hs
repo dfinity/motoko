@@ -190,7 +190,7 @@ main = do
           definitionsTestCase
             project
             doc
-            (Position 2 9)
+            (Position 8 15)
             [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
 
         log "Completion tests"
