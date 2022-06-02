@@ -262,10 +262,6 @@ func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) ->
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
-// Returns a query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
-func stableVarQuery() : shared query () -> async {size : Nat64} =
-  (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
-
 func cyclesBalance() : Nat {
   (prim "cyclesBalance" : () -> Nat) ();
 };
@@ -364,4 +360,5 @@ func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
 
 let call_raw = @call_raw;
 
-let stableVarInfo = @stableVarInfo;
+// A query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
+let stableVarInfo = (prim "stableVarInfo" : shared query () -> async {size : Nat64});

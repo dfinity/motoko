@@ -188,6 +188,9 @@ and exp' at note = function
     I.PrimE (I.SetCertifiedData, [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.GetCertificate, [])
+  (* stableVarInfo *)
+  | PrimE "stableVarInfo" ->
+    I.PrimE (I.OtherPrim "stableVarQuery", [])
   (* Other *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)

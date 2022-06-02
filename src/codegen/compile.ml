@@ -473,6 +473,10 @@ module E = struct
 
   let get_types (env : t) = !(env.func_types)
 
+  let trap_with env msg = env.trap_with env msg
+  let then_trap_with env msg = G.if0 (trap_with env msg) G.nop
+  let else_trap_with env msg = G.if0 G.nop (trap_with env msg)
+
   let add_func_import (env : t) modname funcname arg_tys ret_tys =
     if !(env.funcs) <> [] then
       raise (CodegenError "Add all imports before all functions!");
@@ -492,7 +496,7 @@ module E = struct
     match NameEnv.find_opt name !(env.named_imports) with
       | Some fi -> G.i (Call (nr fi))
       | _ ->
-        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
+        trap_with env (Printf.sprintf "Function import not declared: %s\n" name)
 
   let reuse_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
@@ -510,10 +514,6 @@ module E = struct
 
   let if_ env tys thn els = G.if_ (as_block_type env tys) thn els
   let block_ env tys bdy = G.block_ (as_block_type env tys) bdy
-
-  let trap_with env msg = env.trap_with env msg
-  let then_trap_with env msg = G.if0 (trap_with env msg) G.nop
-  let else_trap_with env msg = G.if0 G.nop (trap_with env msg)
 
   let reserve_static_memory (env : t) size : int32 =
     if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
@@ -4105,6 +4105,9 @@ module StableMem = struct
   (* start from 1 to avoid accidental reads of 0 *)
   let version = Int32.of_int 1
 
+  let trap env =
+    E.trap_with env "cannot use stable memory when running locally"
+
   let register_globals env =
     (* size (in pages) *)
     E.add_global64 env "__stablemem_size" Mutable 0L
@@ -4127,7 +4130,7 @@ module StableMem = struct
           get_mem_size env  ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.else_trap_with env "StableMemory offset out of bounds")
-    | _ -> assert false
+    | _ -> trap env
 
   (* check [offset,.., offset + size) within bounds, assumes size > 0 *)
   let guard_range env =
@@ -4152,7 +4155,7 @@ module StableMem = struct
           G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
           E.else_trap_with env "StableMemory range out of bounds")
-    | _ -> assert false
+    | _ -> trap env
 
   let add_guard env guarded get_offset bytes =
     if guarded then
@@ -4178,7 +4181,7 @@ module StableMem = struct
             compile_const_64 (Int64.of_int32 bytes) ^^
             IC.system_call env "stable64_read" ^^
             get_temp_ptr ^^ load))
-    | _ -> assert false
+    | _ -> trap env
 
   let write env guarded name typ bytes store =
     match E.mode env with
@@ -4194,7 +4197,7 @@ module StableMem = struct
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 (Int64.of_int32 bytes) ^^
             IC.system_call env "stable64_write"))
-    | _ -> assert false
+    | _ -> trap env
 
   let _read_word32 env =
     read env false "word32" I32Type 4l load_unskewed_ptr
@@ -4227,7 +4230,7 @@ module StableMem = struct
             (* return word *)
             get_word
         ))
-    | _ -> assert false
+    | _ -> trap env
 
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
@@ -4255,7 +4258,7 @@ module StableMem = struct
             (get_pages_needed ^^
              IC.system_call env "stable64_grow")
             get_size)
-    | _ -> assert false
+    | _ -> trap env
 
   (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
   let ensure env =
@@ -4284,7 +4287,7 @@ module StableMem = struct
           compile_const_64 0L ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
           E.then_trap_with env "Out of stable memory.")
-    | _ -> assert false
+    | _ -> trap env
 
   (* API *)
 
@@ -4334,7 +4337,7 @@ module StableMem = struct
                  (* return old logical size *)
                  get_size)
             end)
-   | _ -> assert false
+   | _ -> trap env
 
   let load_word32 env =
     read env true "word32" I32Type 4l load_unskewed_ptr
@@ -4384,7 +4387,7 @@ module StableMem = struct
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_read" ^^
           get_blob)
-    | _ -> assert false
+    | _ -> trap env
 
   let store_blob env =
     match E.mode env with
@@ -4401,7 +4404,8 @@ module StableMem = struct
           get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_write")
-    | _ -> assert false
+    | _ -> trap env
+
 
 end (* StableMemory *)
 
