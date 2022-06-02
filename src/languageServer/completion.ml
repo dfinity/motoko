@@ -159,7 +159,7 @@ let completions index project_root file_path file_contents line column =
                | Source_file.AliasImport (ident, path)
                | Source_file.SymbolImport (ident, path)
                -> (ident, path))
-        |> List.find_opt (fun (ident, _) -> String.equal ident alias)
+        |> List.find_opt (fun (ident, _) -> String.equal alias ident)
       in
       match module_path with
       | Some mp -> (
