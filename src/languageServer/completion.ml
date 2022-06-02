@@ -136,14 +136,14 @@ let completions index project_root file_path file_contents line column =
   match find_completion_prefix file_contents line column with
   | None ->
       (* If we don't have any prefix to work with, just suggest the
-         imported module aliases/symbols, as well as top-level definitions in
+         imported module aliases/fields, as well as top-level definitions in
          the current file *)
       let decls = List.map item_of_ide_decl toplevel_decls in
       decls
       @ List.map
           (function
             | Source_file.AliasImport (ident, _)
-            | Source_file.SymbolImport (_, ident, _) ->
+            | Source_file.FieldImport (_, ident, _) ->
                 module_alias_completion_item ident)
           imported
   | Some ("", prefix) ->
@@ -157,7 +157,7 @@ let completions index project_root file_path file_contents line column =
         imported
         |> List.map (function
                | Source_file.AliasImport (ident, path)
-               | Source_file.SymbolImport (_, ident, path)
+               | Source_file.FieldImport (_, ident, path)
                -> (ident, path))
         |> List.find_opt (fun (ident, _) -> String.equal alias ident)
       in

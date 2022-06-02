@@ -78,8 +78,8 @@ let import_relative_to_project_root root module_path dependency =
 type header_part =
   (* import <alias> "<path>" *)
   | AliasImport of string * string
-  (* import { <alias> = <symbol> } "<path>" *)
-  | SymbolImport of string * string * string
+  (* import { <alias> = <field> } "<path>" *)
+  | FieldImport of string * string * string
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules
@@ -108,23 +108,23 @@ let parse_module_header project_root current_file_path file =
                 | None -> ());
                 loop (next ())
             | tkn -> loop tkn)
-        | Parser.LCURLY -> loop_symbols [] (next ())
+        | Parser.LCURLY -> loop_fields [] (next ())
         | tkn -> loop tkn)
     | Parser.EOF -> ()
     | tkn -> loop (next ())
   (* Account for basic object pattern syntax *)
-  and loop_symbols symbols = function
+  and loop_fields fields = function
     (* Slightly lenient for new users *)
     | Parser.SEMICOLON | Parser.COMMA | Parser.EQ ->
-        loop_symbols symbols (next ())
+        loop_fields fields (next ())
     | Parser.ID ident -> (
         match next () with
         | Parser.EQ -> (
             match next () with
-            | Parser.ID symbol ->
-                loop_symbols ((ident, symbol) :: symbols) (next ())
-            | tkn -> loop_symbols ((ident, ident) :: symbols) tkn)
-        | tkn -> loop_symbols ((ident, ident) :: symbols) tkn)
+            | Parser.ID field ->
+                loop_fields ((ident, field) :: fields) (next ())
+            | tkn -> loop_fields ((ident, ident) :: fields) tkn)
+        | tkn -> loop_fields ((ident, ident) :: fields) tkn)
     | Parser.RCURLY -> (
         match next () with
         | Parser.TEXT path ->
@@ -133,13 +133,13 @@ let parse_module_header project_root current_file_path file =
                 path
             in
             List.iter
-              (fun (alias, symbol) ->
+              (fun (alias, field) ->
                 match path with
                 | Some path ->
                     header_parts :=
-                      SymbolImport (alias, symbol, path) :: !header_parts
+                      FieldImport (alias, field, path) :: !header_parts
                 | None -> ())
-              (List.rev symbols);
+              (List.rev fields);
             loop (next ())
         | tkn -> loop tkn)
     | tkn -> loop tkn
@@ -154,7 +154,7 @@ type resolved_target = { qualifier : string; ident : string; path : string }
 type identifier_target =
   | Ident of string
   | Alias of string * string
-  | Symbol of string * string
+  | Field of string * string
   | Unresolved of unresolved_target
   | Resolved of resolved_target
 
@@ -168,9 +168,8 @@ let identifier_at_pos project_root file_path file_contents position =
                (function
                  | AliasImport (alias, path) ->
                      if alias = ident then Some (Alias (alias, path)) else None
-                 | SymbolImport (alias, symbol, path) ->
-                     if alias = ident then Some (Symbol (symbol, path))
-                     else None)
+                 | FieldImport (alias, field, path) ->
+                     if alias = ident then Some (Field (field, path)) else None)
                header_parts
            with
            | None -> Ident ident
@@ -183,10 +182,10 @@ let identifier_at_pos project_root file_path file_contents position =
                      if alias = qual then
                        Some (Resolved { qualifier = qual; ident; path })
                      else None
-                 | SymbolImport (alias, symbol, path) ->
+                 | FieldImport (alias, field, path) ->
                      if alias = qual then
                        (* TODO: find the qualified record / object key definition when possible *)
-                       Some (Symbol (symbol, path))
+                       Some (Field (field, path))
                      else None)
                header_parts
            with

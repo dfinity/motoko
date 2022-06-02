@@ -40,7 +40,7 @@ let definition_handler index position file_contents project_root file_path =
     let* path =
       match ident with
       | Alias (_, path) -> Some path
-      | Symbol (_, path) -> Some path
+      | Field (_, path) -> Some path
       | Unresolved _ -> None
       | Resolved { path; _ } -> Some path
       | Ident _ -> Lib.FilePath.relative_to project_root file_path
@@ -54,8 +54,7 @@ let definition_handler index position file_contents project_root file_path =
         let* decl_ident =
           match ident with
           | Alias _ | Unresolved _ -> None
-          | Symbol (ident, _) | Resolved { ident; _ } | Ident ident ->
-              Some ident
+          | Field (ident, _) | Resolved { ident; _ } | Ident ident -> Some ident
         in
         (* Note: ignoring `path` output value from `find_named` *)
         let* _, region = find_named decl_ident module_ in

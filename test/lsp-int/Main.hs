@@ -186,7 +186,7 @@ main = do
             (Position 6 31)
             [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
 
-          log "Definition for a function via an explicit symbol import"
+          log "Definition for a function via an explicit field import"
           definitionsTestCase
             project
             doc
@@ -200,7 +200,7 @@ main = do
             (Position 1 7)
             [("lib/list.mo", Range (Position 0 0) (Position 0 0))]
           
-          log "Definition for an imported symbol"
+          log "Definition for an imported field"
           definitionsTestCase
             project
             doc
