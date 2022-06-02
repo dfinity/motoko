@@ -143,7 +143,7 @@ let completions index project_root file_path file_contents line column =
       @ List.map
           (function
             | Source_file.AliasImport (ident, _)
-            | Source_file.SymbolImport (ident, _) ->
+            | Source_file.SymbolImport (_, ident, _) ->
                 module_alias_completion_item ident)
           imported
   | Some ("", prefix) ->
@@ -157,7 +157,7 @@ let completions index project_root file_path file_contents line column =
         imported
         |> List.map (function
                | Source_file.AliasImport (ident, path)
-               | Source_file.SymbolImport (ident, path)
+               | Source_file.SymbolImport (_, ident, path)
                -> (ident, path))
         |> List.find_opt (fun (ident, _) -> String.equal alias ident)
       in

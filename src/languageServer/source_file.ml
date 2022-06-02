@@ -78,8 +78,8 @@ let import_relative_to_project_root root module_path dependency =
 type header_part =
   (* import <alias> "<path>" *)
   | AliasImport of string * string
-  (* import { <symbol> } "<path>" *)
-  | SymbolImport of string * string
+  (* import { <alias> = <symbol> } "<path>" *)
+  | SymbolImport of string * string * string
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules
@@ -108,15 +108,23 @@ let parse_module_header project_root current_file_path file =
                 | None -> ());
                 loop (next ())
             | tkn -> loop tkn)
-        | Parser.LCURLY -> loop_symbols []
+        | Parser.LCURLY -> loop_symbols [] (next ())
         | tkn -> loop tkn)
     | Parser.EOF -> ()
     | tkn -> loop (next ())
-  and loop_symbols symbols =
-    (* Account for basic object pattern syntax *)
-    match next () with
-    | Parser.ID symbol -> loop_symbols (symbol :: symbols)
-    | Parser.SEMICOLON -> loop_symbols symbols
+  (* Account for basic object pattern syntax *)
+  and loop_symbols symbols = function
+    (* Slightly lenient for new users *)
+    | Parser.SEMICOLON | Parser.COMMA | Parser.EQ ->
+        loop_symbols symbols (next ())
+    | Parser.ID ident -> (
+        match next () with
+        | Parser.EQ -> (
+            match next () with
+            | Parser.ID symbol ->
+                loop_symbols ((ident, symbol) :: symbols) (next ())
+            | tkn -> loop_symbols ((ident, ident) :: symbols) tkn)
+        | tkn -> loop_symbols ((ident, ident) :: symbols) tkn)
     | Parser.RCURLY -> (
         match next () with
         | Parser.TEXT path ->
@@ -125,10 +133,11 @@ let parse_module_header project_root current_file_path file =
                 path
             in
             List.iter
-              (fun symbol ->
+              (fun (alias, symbol) ->
                 match path with
                 | Some path ->
-                    header_parts := SymbolImport (symbol, path) :: !header_parts
+                    header_parts :=
+                      SymbolImport (alias, symbol, path) :: !header_parts
                 | None -> ())
               (List.rev symbols);
             loop (next ())
@@ -151,12 +160,6 @@ type identifier_target =
 
 let identifier_at_pos project_root file_path file_contents position =
   let header_parts = parse_module_header project_root file_path file_contents in
-  (* let imports =
-       List.map
-         (function
-           | SymbolImport (ident, path) | AliasImport (ident, path) -> (ident, path))
-         header_parts
-     in *)
   cursor_target_at_pos position file_contents
   |> Option.map (function
        | CIdent ident -> (
@@ -164,9 +167,9 @@ let identifier_at_pos project_root file_path file_contents position =
              List.find_map
                (function
                  | AliasImport (alias, path) ->
-                     if alias = ident then Some (Alias (ident, path)) else None
-                 | SymbolImport (symbol, path) ->
-                     if symbol = ident then Some (Symbol (ident, path))
+                     if alias = ident then Some (Alias (alias, path)) else None
+                 | SymbolImport (alias, symbol, path) ->
+                     if alias = ident then Some (Symbol (symbol, path))
                      else None)
                header_parts
            with
@@ -180,9 +183,10 @@ let identifier_at_pos project_root file_path file_contents position =
                      if alias = qual then
                        Some (Resolved { qualifier = qual; ident; path })
                      else None
-                 | SymbolImport (symbol, path) ->
-                     if symbol = qual then
-                       Some (Resolved { qualifier = qual; ident; path })
+                 | SymbolImport (alias, symbol, path) ->
+                     if alias = qual then
+                       (* TODO: find the qualified record / object key definition when possible *)
+                       Some (Symbol (symbol, path))
                      else None)
                header_parts
            with

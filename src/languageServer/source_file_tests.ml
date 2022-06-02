@@ -35,8 +35,9 @@ let parse_module_header_test_case project_root current_file file expected =
   let display_result = function
     | Source_file.AliasImport (alias, path) ->
         Printf.sprintf "%s => \"%s\"" alias path
-    | Source_file.SymbolImport (symbol, path) ->
-        Printf.sprintf "{ %s } => \"%s\"" symbol path
+    | Source_file.SymbolImport (alias, symbol, path) ->
+        if alias = symbol then Printf.sprintf "{ %s } => \"%s\"" symbol path
+        else Printf.sprintf "{ %s = %s } => \"%s\"" alias symbol path
   in
   let result = Lib.List.equal ( = ) actual expected in
   if not result then
@@ -99,7 +100,7 @@ func singleton(x: Int): Stack =
 let%test "it parses a simple module header with explicit symbol imports" =
   parse_module_header_test_case "/project" "/project/Main.mo"
     {|
-import { List; nil; cons } "lib/ListLib";
+import { List; nil; next = cons } "lib/ListLib";
 
 module {
 
@@ -116,8 +117,8 @@ func singleton(x: Int): Stack =
 }
 |}
     [
-      Source_file.SymbolImport ("List", "lib/ListLib");
-      Source_file.SymbolImport ("nil", "lib/ListLib");
-      Source_file.SymbolImport ("cons", "lib/ListLib");
-      Source_file.SymbolImport ("doubleton", "lib/ListFuncs");
+      Source_file.SymbolImport ("List", "List", "lib/ListLib");
+      Source_file.SymbolImport ("nil", "nil", "lib/ListLib");
+      Source_file.SymbolImport ("next", "cons", "lib/ListLib");
+      Source_file.SymbolImport ("doubleton", "doubleton", "lib/ListFuncs");
     ]
