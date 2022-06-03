@@ -2358,7 +2358,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_amount ^^
     set_n ^^ get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      ( (* non-ptr, shift amount < 30: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
+      ( (* non-ptr, shift amount <= 42: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
         get_n ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
         get_amount ^^
@@ -2372,6 +2372,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ (* exclude sign flip *)
         get_remember ^^
         G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
+        get_amount ^^ compile_rel_const I32Op.LeU 42l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         G.if1 I32Type
           get_res
           (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lshd env)
