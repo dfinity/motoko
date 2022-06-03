@@ -2129,7 +2129,7 @@ sig
   val compile_unsigned_div : E.t -> G.t
   val compile_unsigned_rem : E.t -> G.t
   val compile_unsigned_pow : E.t -> G.t
-  val compile_lshd : E.t -> G.t
+  val compile_lsh : E.t -> G.t
 
   (* comparisons *)
   val compile_eq : E.t -> G.t
@@ -2352,7 +2352,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       end)
 
 
-  let compile_lshd env =
+  let compile_lsh env =
     let set_amount, get_amount = new_local env "amount" in
     let set_n, get_n = new_local env "n" in
     set_amount ^^
@@ -2376,9 +2376,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         G.if1 I32Type
           get_res
-          (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lshd env)
+          (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
       )
-      (get_n ^^ get_amount ^^ Num.compile_lshd env)
+      (get_n ^^ get_amount ^^ Num.compile_lsh env)
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
@@ -2792,7 +2792,7 @@ module BigNumLibtommath : BigNumType = struct
   let compile_unsigned_rem env = E.call_import env "rts" "bigint_rem"
   let compile_unsigned_div env = E.call_import env "rts" "bigint_div"
   let compile_unsigned_pow env = E.call_import env "rts" "bigint_pow"
-  let compile_lshd env = E.call_import env "rts" "bigint_lsh"
+  let compile_lsh env = E.call_import env "rts" "bigint_lsh"
 
   let compile_eq env = E.call_import env "rts" "bigint_eq"
   let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
@@ -8503,7 +8503,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
-    BigNum.compile_lshd env
+    BigNum.compile_lsh env
 
   | OtherPrim "abs", [e] ->
     SR.Vanilla,
