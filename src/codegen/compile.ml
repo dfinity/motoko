@@ -4084,8 +4084,8 @@ module Cycles = struct
       (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
       BigNum.from_word64 env ^^
       (* shift left 64 *)
-      compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 64)) ^^
-      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
+      compile_unboxed_const 64l ^^
+      BigNum.compile_lsh env ^^
       BigNum.compile_add env)
 
   (* takes a bignum from the stack, traps if ≥2^128, and leaves two 64bit words on the stack *)
