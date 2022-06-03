@@ -362,4 +362,8 @@ func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
 func stableVarQuery() : shared query () -> async {size : Nat64} =
   (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
 
+
 let call_raw = @call_raw;
+
+func performanceCounter(counter : Nat32) : Nat64 =
+  (prim "performanceCounter" : (Nat32) -> Nat64) counter;
