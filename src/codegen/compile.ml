@@ -2389,7 +2389,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_n ^^ get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
       begin
-        get_n
+        get_n ^^
+        get_amount ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+        compile_bitand_const 0xFFFFFFFEl
       end
       (get_n ^^ get_amount ^^ Num.compile_rsh env)
 
