@@ -855,6 +855,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_pow" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lsh" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_rsh" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
