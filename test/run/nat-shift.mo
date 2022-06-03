@@ -1,4 +1,4 @@
-import { debugPrint; shiftLeft } = "mo:⛔"
+import { debugPrint; shiftLeft; shiftRight } = "mo:⛔"
 
 debugPrint (debug_show shiftLeft(42, 7));
 debugPrint (debug_show shiftLeft(42, 24));
@@ -16,4 +16,11 @@ class range(x : Nat32, y : Nat32) {
 };
 
 for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(1, i))) };
-for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(42, i))) }
+for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(42, i))) };
+
+for (i in range(0, 40)) { debugPrint (debug_show (i, shiftRight(1, i))) };
+for (i in range(0, 40)) { debugPrint (debug_show (i, shiftRight(42, i))) };
+
+let huge = 2 ** 190;
+for (i in range(0, 200)) { debugPrint (debug_show (i, shiftRight(huge, i))) };
+for (i in range(0, 200)) { debugPrint (debug_show (i, shiftRight(huge - 1, i))) }

@@ -183,6 +183,10 @@ let prim =
     (match as_tup v with
      | [x; shift] -> k (Int Numerics.Int.(mul (as_int x) (pow (of_int 2) (of_big_int (Nat32.to_big_int (as_nat32 shift))))))
      | _ -> failwith "lshd")
+  | "rshd" -> fun _ v k ->
+    (match as_tup v with
+     | [x; shift] -> k (Int Numerics.Int.(div (as_int x) (pow (of_int 2) (of_big_int (Nat32.to_big_int (as_nat32 shift))))))
+     | _ -> failwith "rshd")
 
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)

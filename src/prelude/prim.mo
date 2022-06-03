@@ -40,6 +40,7 @@ module Types = {
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 func shiftLeft(x : Nat, shift : Nat32) : Nat { (prim "lshd" : (Nat, Nat32) -> Nat) (x, shift) };
+func shiftRight(x : Nat, shift : Nat32) : Nat { (prim "rshd" : (Nat, Nat32) -> Nat) (x, shift) };
 
 // for testing
 func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
