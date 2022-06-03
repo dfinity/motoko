@@ -4,12 +4,13 @@ actor {
 
   public func go() : async () {
      let c1 = Prim.performanceCounter(0);
-     var n = 1000_0000_000;
+     var n = 1000;
      while (n > 0) {
         n-=1;
      };
      let c2 = Prim.performanceCounter(0);
-     assert (c2 > c1);
+     Prim.debugPrint(debug_show(c2 - c1));
+     assert (c2 >= c1);
   }
 }
 
@@ -17,4 +18,4 @@ actor {
 //SKIP run-low
 //SKIP run-ir
 
-//CALL go "DIDL\x00\x00"
+//CALL ingress go "DIDL\x00\x00"

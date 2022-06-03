@@ -1,2 +1,3 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Err: IC0505: Wasm module of canister rwlgt-iiaaa-aaaaa-aaaaa-cai is not valid: Wasm module has an invalid import section. Module imports function 'performance_counter' from 'ic0' that is not exported by the runtime.
+ingress Err: IC0304: Attempt to execute a message on canister rwlgt-iiaaa-aaaaa-aaaaa-cai which contains no Wasm module
