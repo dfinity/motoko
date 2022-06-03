@@ -352,6 +352,14 @@ pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
 
+// Special value to visit only a range of array fields.
+// This and all values above it are reserved and mean
+// a slice of an array object (i.e. start index) for
+// purposes of `visit_pointer_fields`.
+// Invariant: the value of this (pseudo-)tag must be
+//            higher than all other tags defined above
+pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
+
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
@@ -359,7 +367,7 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub unsafe fn tag(self: *mut Self) -> Tag {
+    pub unsafe fn tag(self: *const Self) -> Tag {
         (*self).tag
     }
 
@@ -402,7 +410,7 @@ impl Array {
         *(slot_addr as *mut Value) = ptr;
     }
 
-    pub unsafe fn len(self: *mut Self) -> u32 {
+    pub unsafe fn len(self: *const Self) -> u32 {
         (*self).len
     }
 }

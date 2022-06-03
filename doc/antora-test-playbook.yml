@@ -34,5 +34,5 @@ asciidoc:
     IC: Internet Computer
     #sdk-short-name: DFINITY Canister SDK
     sdk-long-name: DFINITY Canister Software Development Kit (SDK)
-    page-moc-version: 0.5.5
-    page-moc-base-tag: dfx-0.6.18
+    page-moc-version: 0.6.27
+    page-moc-base-tag: moc-0.6.27

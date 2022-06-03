@@ -1,0 +1,20 @@
+issue-3265-fail.mo:2.41-2.48: type error [M0096], expression of type
+  Int
+cannot produce expected type
+  Nat
+issue-3265-fail.mo:3.33-3.46: type error [M0149], expected mutable 'var' field x of type
+  Int
+but found immutable field (insert 'var'?)
+issue-3265-fail.mo:4.29-4.46: type error [M0150], expected immutable field x of type
+  Int
+but found mutable 'var' field (delete 'var'?)
+issue-3265-fail.mo:10.57-10.67: type error [M0096], expression of type
+  List<Nat> = ?(Nat, List<Nat>)
+cannot produce expected type
+  ?(None, List<None>)
+issue-3265-fail.mo:11.40-11.64: type error [M0150], expected immutable field myList of type
+  List<Nat>
+but found mutable 'var' field (delete 'var'?)
+issue-3265-fail.mo:12.44-12.64: type error [M0149], expected mutable 'var' field myList of type
+  List<Nat>
+but found immutable field (insert 'var'?)
