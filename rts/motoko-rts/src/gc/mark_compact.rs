@@ -158,15 +158,33 @@ unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
 }
 
 unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
-    visit_pointer_fields(obj, obj_tag, heap_base as usize, |field_addr| {
-        let field_value = *field_addr;
-        mark_object(mem, field_value);
+    visit_pointer_fields(
+        mem,
+        obj,
+        obj_tag,
+        heap_base as usize,
+        |mem, field_addr| {
+            let field_value = *field_addr;
+            mark_object(mem, field_value);
 
-        // Thread if backwards or self pointer
-        if field_value.get_ptr() <= obj as usize {
-            thread(field_addr);
-        }
-    });
+            // Thread if backwards or self pointer
+            if field_value.get_ptr() <= obj as usize {
+                thread(field_addr);
+            }
+        },
+        |mem, slice_start, arr| {
+            const SLICE_INCREMENT: u32 = 127;
+            debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
+            if arr.len() - slice_start > SLICE_INCREMENT {
+                let new_start = slice_start + SLICE_INCREMENT;
+                // push an entire (suffix) array slice
+                push_mark_stack(mem, arr as usize, new_start);
+                new_start
+            } else {
+                arr.len()
+            }
+        },
+    );
 }
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
@@ -220,11 +238,18 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 
 /// Thread forward pointers in object
 unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
-    visit_pointer_fields(obj, obj.tag(), heap_base as usize, |field_addr| {
-        if (*field_addr).get_ptr() > obj as usize {
-            thread(field_addr)
-        }
-    });
+    visit_pointer_fields(
+        &mut (),
+        obj,
+        obj.tag(),
+        heap_base as usize,
+        |_, field_addr| {
+            if (*field_addr).get_ptr() > obj as usize {
+                thread(field_addr)
+            }
+        },
+        |_, _, arr| arr.len(),
+    );
 }
 
 /// Thread a pointer field
@@ -238,7 +263,7 @@ unsafe fn thread(field: *mut Value) {
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
 unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
-    let mut header = (*obj).tag;
+    let mut header = obj.tag();
 
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
