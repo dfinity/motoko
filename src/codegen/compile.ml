@@ -4083,7 +4083,7 @@ module Cycles = struct
       compile_add_const 8l ^^
       (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
       BigNum.from_word64 env ^^
-      (* shift left 64 *)
+      (* shift left 64 bits *)
       compile_unboxed_const 64l ^^
       BigNum.compile_lsh env ^^
       BigNum.compile_add env)
@@ -4100,8 +4100,8 @@ module Cycles = struct
 
     get_val ^^
     (* shift right 64 bits *)
-    compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 64)) ^^
-    BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
+    compile_unboxed_const 64l ^^
+    BigNum.compile_rsh env ^^
     BigNum.truncate_to_word64 env ^^
 
     get_val ^^
