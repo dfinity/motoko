@@ -1,6 +1,0 @@
-OOPS! You've triggered a compiler bug.
-Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
-
-Motoko (source 0.6.27-57-g0043d0abd-dirty)
-
-Fatal error: exception (Invalid_argument "Function import not declared: rts.bigint_rsh\n")
