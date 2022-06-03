@@ -16,6 +16,5 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-// too slow on ic-ref-run:
 
 //CALL go "DIDL\x00\x00"
