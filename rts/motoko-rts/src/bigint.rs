@@ -404,7 +404,12 @@ unsafe extern "C" fn bigint_lsh(a: Value, b: i32) -> Value {
 #[no_mangle]
 unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
     let mut i = tmp_bigint();
-    check(mp_div_2d(a.as_bigint().mp_int_ptr(), b, &mut i, core::ptr::null_mut()));
+    check(mp_div_2d(
+        a.as_bigint().mp_int_ptr(),
+        b,
+        &mut i,
+        core::ptr::null_mut(),
+    ));
     persist_bigint(i)
 }
 
