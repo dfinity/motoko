@@ -352,6 +352,14 @@ pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
 
+// Special value to visit only a range of array fields.
+// This and all values above it are reserved and mean
+// a slice of an array object (i.e. start index) for
+// purposes of `visit_pointer_fields`.
+// Invariant: the value of this (pseudo-)tag must be
+//            higher than all other tags defined above
+pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
+
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
