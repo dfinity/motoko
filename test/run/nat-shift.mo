@@ -25,6 +25,11 @@ let huge = 2 ** 190;
 for (i in range(0, 200)) { debugPrint (debug_show (i, shiftRight(huge, i))) };
 for (i in range(0, 200)) { debugPrint (debug_show (i, shiftRight(huge - 1, i))) };
 
+// iterated
+
+assert 1 == shiftRight(shiftRight(huge, 189), 1);
+assert 0 == shiftRight(shiftRight(huge, 189), 33);
+
 // roundtrips
 for (i in range(0, 200)) { assert 1 == shiftRight(shiftLeft(1, i), i) };
 for (i in range(0, 200)) { assert 42 == shiftRight(shiftLeft(42, i), i) };
