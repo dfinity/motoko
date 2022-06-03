@@ -1,6 +1,8 @@
 # The `ExperimentalStableMemory` library
 
-//// TODO: extend example to illustrate stableVarQuery
+////
+TODO: extend example to illustrate stableVarQuery
+////
 
 WARNING: The `ExperimentalStableMemory` library is experimental, subject to change and may be
 replaced by safer alternatives in later versions of Motoko. Use at
