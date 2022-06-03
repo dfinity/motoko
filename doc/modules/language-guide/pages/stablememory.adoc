@@ -1,5 +1,7 @@
 # The `ExperimentalStableMemory` library
 
+//// TODO: extend example to illustrate stableVarQuery
+
 WARNING: The `ExperimentalStableMemory` library is experimental, subject to change and may be
 replaced by safer alternatives in later versions of Motoko. Use at
 your own risk and discretion.
@@ -72,6 +74,10 @@ module {
   // Traps on out-of-bounds access.
   storeBlob : (offset : Nat64, value : Blob) -> ()
 
+  // Returns a query that, when called, returns the number of bytes of
+  // (real) IC stable memory that would be occupied by persisting its
+  // current stable variables before an upgrade.
+  stableVarQuery : () -> (shared query () -> async {size : Nat64})
 }
 ----
 
@@ -110,3 +116,4 @@ amount of storage for actual stable variables (here `base`), upgrading
 `StableLog` to a new implementation (perhaps to provide more
 functionality) should not consume too many cycles, regardless of the
 current size of the log.
+

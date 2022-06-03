@@ -1,5 +1,14 @@
 # Motoko compiler changelog
 
+* motoko-base
+
+  * Add
+    ```motoko
+    ExperimentalStableMemory.stableVarQuery : () -> (shared query () -> async {size : Nat64})
+    ```
+    for estimating stable variable storage requirements during
+    upgrade (dfinity/motoko-base#365).
+
 ## 0.6.28 (2022-05-19)
 
 * motoko (`moc`)
