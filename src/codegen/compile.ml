@@ -2394,7 +2394,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
         compile_bitand_const 0xFFFFFFFEl
       end
-      (get_n ^^ get_amount ^^ Num.compile_rsh env)
+      begin
+        get_n ^^ get_amount ^^ Num.compile_rsh env ^^
+        let set_res, get_res = new_local env "res" in
+        set_res ^^ get_res ^^
+        fits_in_vanilla env ^^
+        G.if1 I32Type
+          (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
+          get_res
+      end
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
