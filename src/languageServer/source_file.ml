@@ -117,14 +117,14 @@ let parse_module_header project_root current_file_path file =
     (* Slightly lenient for new users *)
     | Parser.SEMICOLON | Parser.COMMA | Parser.EQ ->
         loop_fields fields (next ())
-    | Parser.ID ident -> (
+    | Parser.ID field -> (
         match next () with
         | Parser.EQ -> (
             match next () with
-            | Parser.ID field ->
-                loop_fields ((ident, field) :: fields) (next ())
-            | tkn -> loop_fields ((ident, ident) :: fields) tkn)
-        | tkn -> loop_fields ((ident, ident) :: fields) tkn)
+            | Parser.ID alias ->
+                loop_fields ((field, alias) :: fields) (next ())
+            | tkn -> loop_fields ((field, field) :: fields) tkn)
+        | tkn -> loop_fields ((field, field) :: fields) tkn)
     | Parser.RCURLY -> (
         match next () with
         | Parser.TEXT path ->
@@ -132,14 +132,14 @@ let parse_module_header project_root current_file_path file =
               import_relative_to_project_root project_root current_file_path
                 path
             in
-            List.iter
-              (fun (alias, field) ->
-                match path with
-                | Some path ->
-                    header_parts :=
-                      FieldImport (alias, field, path) :: !header_parts
-                | None -> ())
-              (List.rev fields);
+            fields
+            |> List.rev
+            |> List.iter (fun (field, alias) ->
+                   match path with
+                   | Some path ->
+                       header_parts :=
+                         FieldImport (field, alias, path) :: !header_parts
+                   | None -> ());
             loop (next ())
         | tkn -> loop tkn)
     | tkn -> loop tkn
@@ -168,7 +168,7 @@ let identifier_at_pos project_root file_path file_contents position =
                (function
                  | AliasImport (alias, path) ->
                      if alias = ident then Some (Alias (alias, path)) else None
-                 | FieldImport (alias, field, path) ->
+                 | FieldImport (field, alias, path) ->
                      if alias = ident then Some (Field (field, path)) else None)
                header_parts
            with
@@ -182,7 +182,7 @@ let identifier_at_pos project_root file_path file_contents position =
                      if alias = qual then
                        Some (Resolved { qualifier = qual; ident; path })
                      else None
-                 | FieldImport (alias, field, path) ->
+                 | FieldImport (field, alias, path) ->
                      if alias = qual then
                        (* TODO: find the qualified record / object key definition when possible *)
                        Some (Field (field, path))

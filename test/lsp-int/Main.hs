@@ -205,6 +205,13 @@ main = do
             project
             doc
             (Position 2 9)
+            [("lib/list.mo", Range (Position 31 14) (Position 31 17))]
+          
+          log "Definition for an imported field alias"
+          definitionsTestCase
+            project
+            doc
+            (Position 2 21)
             [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
 
         log "Completion tests"
