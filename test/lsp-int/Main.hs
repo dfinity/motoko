@@ -176,22 +176,43 @@ main = do
           definitionsTestCase
             project
             doc
-            (Position 6 25)
+            (Position 7 25)
             [("lib/list.mo", Range (Position 31 14) (Position 31 17))]
 
           log "Definition for a Class"
           definitionsTestCase
             project
             doc
-            (Position 5 31)
+            (Position 6 31)
             [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
 
+          log "Definition for a function via an explicit field import"
+          definitionsTestCase
+            project
+            doc
+            (Position 8 15)
+            [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
+          
           log "Definition for an imported module alias"
           definitionsTestCase
             project
             doc
-            (Position 1 10)
+            (Position 1 7)
             [("lib/list.mo", Range (Position 0 0) (Position 0 0))]
+          
+          log "Definition for an imported field"
+          definitionsTestCase
+            project
+            doc
+            (Position 2 9)
+            [("lib/list.mo", Range (Position 31 14) (Position 31 17))]
+          
+          log "Definition for an imported field alias"
+          definitionsTestCase
+            project
+            doc
+            (Position 2 21)
+            [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
 
         log "Completion tests"
         log "Completing top level definitions"
