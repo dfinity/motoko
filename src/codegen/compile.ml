@@ -3675,7 +3675,7 @@ module IC = struct
 
   let performance_counter env =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "performance_counter"
     | _ ->
       E.trap_with env "cannot get performance counter when running locally"
