@@ -3592,6 +3592,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
+      E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
       E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
@@ -3670,6 +3671,14 @@ module IC = struct
         name = Wasm.Utf8.decode "print_ptr";
         edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
       })
+
+
+  let performance_counter env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "performance_counter"
+    | _ ->
+      E.trap_with env "cannot get performance counter when running locally"
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
 
@@ -8683,6 +8692,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_vanilla env ae e ^^
     IC.print_text env
+
+  | OtherPrim "performanceCounter", [e] ->
+    SR.UnboxedWord64,
+    compile_exp_as env ae SR.UnboxedWord32 e ^^
+    IC.performance_counter env
 
   | OtherPrim "trap", [e] ->
     SR.unit,
