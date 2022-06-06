@@ -4,6 +4,12 @@
 
   * Add
     ```motoko
+    ExperimentalInternetComputer.countInstruction : (comp : () -> ()) -> Nat64
+    ```
+    to count the Wasm instructions performed during execution of `comp()` (dfinity/motoko-base#381).
+
+  * Add
+    ```motoko
     ExperimentalStableMemory.stableVarQuery : () -> (shared query () -> async {size : Nat64})
     ```
     for estimating stable variable storage requirements during
