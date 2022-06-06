@@ -51,6 +51,10 @@ module {
   // Traps on out-of-bounds access.
   storeBlob : (offset : Nat64, value : Blob) -> ()
 
+  // Returns a query that, when called, returns the number of bytes of
+  // (real) IC stable memory that would be occupied by persisting its
+  // current stable variables before an upgrade.
+  stableVarQuery : () -> (shared query () -> async {size : Nat64})
 }
 ```
 
