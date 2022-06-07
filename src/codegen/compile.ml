@@ -8467,6 +8467,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.bool, compile_exp_vanilla env ae e ^^ Text.iter_done env
   | OtherPrim "text_iter_next", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_next env
+  | OtherPrim "text_compare", [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^
+    compile_exp_vanilla env ae e2 ^^
+    E.call_import env "rts" "text_compare" ^^
+    TaggedSmallWord.msb_adjust Type.Int8
 
   | OtherPrim "blob_size", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env ^^ BigNum.from_word32 env

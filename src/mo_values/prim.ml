@@ -216,6 +216,10 @@ let prim =
     end
   | "text_len" -> fun _ v k ->
     k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
+  | "text_compare" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] -> k (Int8 (Int_8.of_int 0))
+     | _ -> assert false)
   | "text_iter" -> fun _ v k ->
     let s = Wasm.Utf8.decode (Value.as_text v) in
     let i = Seq.map (fun c -> Char c) (List.to_seq s) in
