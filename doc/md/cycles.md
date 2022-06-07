@@ -60,7 +60,7 @@ To illustrate, we will now use the `ExperimentalCycles` library to implement a t
 
 Our piggy bank has an implicit owner, a `benefit` callback and a fixed `capacity`, all supplied at time of construction. The callback is used to transfer *withdrawn* amounts.
 
-``` motoko filename=PiggyBank
+``` motoko name=PiggyBank
 import Cycles "mo:base/ExperimentalCycles";
 
 shared(msg) actor class PiggyBank(

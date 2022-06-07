@@ -81,7 +81,7 @@ For example, a Motoko actor can import and instantiate the `Counter` class descr
 
 </div>
 
-``` motoko filename=Counters
+``` motoko name=Counters
 actor class Counter(init : Nat) {
   var count = init;
 

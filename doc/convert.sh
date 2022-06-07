@@ -10,11 +10,11 @@ for f in $(find $1 -name '*.adoc'); do
   sed -i 's/\[source, *candid\]/\[source,candid\]/g' $f
   sed -i 's/\[source, *bnf\]/\[source,bnf\]/g' $f
   sed -i 's/\[source, *bash\]/\[source,bash\]/g' $f
-  sed -i 's/\[source\#\([a-zA-Z]*\), *motoko\]/\[source, motoko filename=\1\]/g' $f
+  sed -i 's/\[source\#\([a-zA-Z]*\), *motoko\]/\[source, motoko name=\1\]/g' $f
   sed -i 's/\[source\.include\_\([a-zA-Z]*\), *motoko\]/\[source, motoko include\=\1\]/p' $f
   sed -i 's/\[source\.include\_\([a-zA-Z]*\)\_\([a-zA-Z]*\), *motoko\]/\[source, motoko include=\1KOMMA\2\]/g' $f #dirt German hack
-  sed -i 's/\[source\#\([a-zA-Z]*\)\.include\_\([a-zA-Z]*\), *motoko\]/\[source, motoko filename=\1 include\=\2\]/g' $f
-  sed -i 's/\[source\#\([a-zA-Z]*\)\.include\_\([a-zA-Z]*\)\_\([a-zA-Z]*\), *motoko\]/\[source, motoko filename=\1 include\=\2KOMMA\3\]/g' $f #dirty German hack
+  sed -i 's/\[source\#\([a-zA-Z]*\)\.include\_\([a-zA-Z]*\), *motoko\]/\[source, motoko name=\1 include\=\2\]/g' $f
+  sed -i 's/\[source\#\([a-zA-Z]*\)\.include\_\([a-zA-Z]*\)\_\([a-zA-Z]*\), *motoko\]/\[source, motoko name=\1 include\=\2KOMMA\3\]/g' $f #dirty German hack
   asciidoctor -a IC="Internet Computer" -a proglang=Motoko -a company-id=DFINITY -b docbook -a leveloffset=+1 -o $2/$(basename $f .adoc).xml $f
   pandoc -t gfm  --no-highlight --wrap=none -f docbook $2/$(basename $f .adoc).xml \
   > $2/$(basename $f .adoc).md || true

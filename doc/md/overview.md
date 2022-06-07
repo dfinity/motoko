@@ -87,7 +87,7 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 ## Libraries
 
-``` motoko filename=impDebugInt
+``` motoko name=impDebugInt
   import Debug "mo:base/Debug";
   import Int "mo:base/Int";
 ```
@@ -304,7 +304,7 @@ applyNTimes<Text>(3, "Hello!", func(x) { Debug.print(x) } );
 
 immutable, heterogeneous, fixed size
 
-``` motoko filename=tuple
+``` motoko name=tuple
 let tuple = (true or false, 0.6 * 2.0, "foo" # "bar");
 ```
 
@@ -323,7 +323,7 @@ t
 
 is either a value of that type, e.g. `?"hello"`, or `null`.
 
-``` motoko filename=display
+``` motoko name=display
 func display(x : ?Text) : Text {
   switch x {
     case (null) { "No value" };
@@ -467,7 +467,7 @@ func sort(d : Day) : { #WeekDay; #WeekEnd } {
 
 ## Recursive Types
 
-``` motoko filename=Lists
+``` motoko name=Lists
 type List = {
   #item : {head : Text; tail : List}; // variant with payload!
   #empty                     // ^^^^ recursion!
@@ -560,7 +560,7 @@ module {
 
 Like object types, but marked as `actor`:
 
-``` motoko filename=actorTypes
+``` motoko name=actorTypes
 type Broadcast = actor {
   register : Receiver -> ();
   send : Text -> async Nat;

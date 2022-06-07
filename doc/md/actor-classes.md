@@ -12,7 +12,7 @@ The actor responsible for bucket `i` is obtained as an instance of the actor cla
 
 </div>
 
-``` motoko filename=Buckets
+``` motoko name=Buckets
 import Nat "mo:base/Nat";
 import Map "mo:base/RBTree";
 

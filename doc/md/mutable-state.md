@@ -12,7 +12,7 @@ In [local objects and classes](local-objects-classes.md), we introduce the synta
 
 The `var` syntax declares mutable variables in a declaration block:
 
-``` motoko filename=init
+``` motoko name=init
 let text  : Text = "abc";
 let num  : Nat = 30;
 
@@ -122,7 +122,7 @@ Before discussing [mutable arrays](#mutable-arrays), we introduce immutable arra
 
 ### Allocate an immutable array of constants
 
-``` motoko filename=array
+``` motoko name=array
 let a : [Nat] = [1, 2, 3] ;
 ```
 
@@ -142,7 +142,7 @@ Every array access in Motoko is safe. Accesses that are out of bounds will not a
 
 The Motoko standard library provides basic operations for immutable and mutable arrays. It can be imported as follows,
 
-``` motoko filename=import
+``` motoko name=import
 import Array "mo:base/Array";
 ```
 

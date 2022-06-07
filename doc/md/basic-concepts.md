@@ -378,7 +378,7 @@ Short-term holes are never committed to a source repository, and only ever exist
 
 Assuming that earlier, one has imported the prelude as follows:
 
-``` motoko filename=prelude
+``` motoko name=prelude
 import P "mo:base/Prelude";
 ```
 

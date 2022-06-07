@@ -48,7 +48,7 @@ A value of type `async T` is a future. The producer of the future completes the 
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, Motoko allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
-``` motoko filename=counter
+``` motoko name=counter
 actor Counter {
 
   var count = 0;
@@ -267,7 +267,7 @@ For example, we can generalize `Counter` given above to `Counter(init)` below, b
 
 </div>
 
-``` motoko filename=Counters
+``` motoko name=Counters
 actor class Counter(init : Nat) {
   var count = init;
 
