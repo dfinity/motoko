@@ -12,7 +12,7 @@ There are three primary ways to represent and handle errors values in Motoko:
 
 Let’s assume we’re building an API for a Todo application and want to expose a function that lets a user mark one of their Todo’s as **Done**. To keep it simple we’ll accept a `TodoId` and return an `Int` that represents how many seconds the Todo has been open. We’re also assuming we’re running in our own actor so we return an async value. If nothing would ever go wrong that would leave us with the following API:
 
-``` motoko
+``` motoko no-repl
 func markDone(id : TodoId) : async Int
 ```
 

@@ -91,13 +91,13 @@ Note that, due to subtyping, all of the following variations, in order of increa
 
 Blanket denial of all ingress messages, ignoring further information:
 
-``` motoko
+``` motoko no-repl
    system func inspect({}) : Bool { false }
 ```
 
 Declining anonymous calls:
 
-``` motoko
+``` motoko no-repl
    system func inspect({ caller : Principal }) : Bool {
      not (Principal.isAnonymous(caller));
    }
@@ -105,7 +105,7 @@ Declining anonymous calls:
 
 Declining large messages, based on \`arg’s size (in bytes).
 
-``` motoko
+``` motoko no-repl
    system func inspect({ arg : Blob }) : Bool {
      arg.size() <= 512;
    }
@@ -113,7 +113,7 @@ Declining large messages, based on \`arg’s size (in bytes).
 
 Declining messages by name only, ignoring message arguments (note the use of type `Any` as message argument variants):
 
-``` motoko
+``` motoko no-repl
    system func inspect(
      {
        msg : {
@@ -132,7 +132,7 @@ Declining messages by name only, ignoring message arguments (note the use of typ
 
 A combination of the previous three, specifying the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases.
 
-``` motoko
+``` motoko no-repl
    system func inspect(
      {
        caller : Principal;
@@ -160,7 +160,7 @@ Implementing `inspect` after the fact, once all shared functions of an actor hav
 
 For example, in the actor from the previous section, incorrectly declaring:
 
-``` motoko
+``` motoko no-repl
    system func inspect() : Bool {
      false
    }
@@ -168,7 +168,7 @@ For example, in the actor from the previous section, incorrectly declaring:
 
 forces the compiler to report the expected type below:
 
-``` motoko
+``` motoko no-repl
 Inspect.mo:13.4-15.5: type error [M0127], system function inspect is declared with type
   () -> Bool
 instead of expected type

@@ -638,7 +638,7 @@ The type `Principal` of category O (Ordered) represents opaque principals such a
 
 Assuming base library import,
 
-``` motoko
+``` motoko no-repl
 import E "mo:base/Error";
 ```
 
@@ -652,7 +652,7 @@ Errors are opaque values constructed and examined with operations:
 
 Type `E.ErrorCode` is equivalent to variant type:
 
-``` motoko
+``` motoko no-repl
 type ErrorCode = {
   // Fatal error.
   #system_fatal;
@@ -1289,7 +1289,7 @@ Motoko requires all type declarations to be productive.
 
 For example, the type definitions:
 
-``` motoko
+``` motoko no-repl
   type Person = { first : Text; last : Text };
 
   type List<T> = ?(T, List<T>);
@@ -1303,7 +1303,7 @@ are all productive and legal.
 
 But the type definitions,
 
-``` motoko
+``` motoko no-repl
   type C = C;
 
   type D<T, U> = D<U, T>;
@@ -1336,13 +1336,13 @@ The graph is expansive if, and only if, it contains a cycle with at least one ex
 
 For example, the type definition:
 
-``` motoko
+``` motoko no-repl
   type List<T> = ?(T, List<T>),
 ```
 
 that recursively instantiates `List` at the same parameter `T`, is non-expansive and accepted, but the similar looking definition:
 
-``` motoko
+``` motoko no-repl
   type Seq<T> = ?(T, Seq<[T]>),
 ```
 

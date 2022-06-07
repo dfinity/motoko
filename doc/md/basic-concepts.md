@@ -308,7 +308,7 @@ If we were to try to do something *inconsistent* with our annotation type, howev
 
 Consider this program, which is not well-typed:
 
-``` motoko
+``` motoko run
 let x : Text = 1 + 1
 ```
 
@@ -345,7 +345,7 @@ In this case, we import Motoko code (not some other module form) with the `mo:` 
 
 Above, we print the text string using the function `print` in library `Debug.mo`:
 
-``` motoko
+``` motoko no-repl
 print: Text -> ()
 ```
 
@@ -378,13 +378,13 @@ Short-term holes are never committed to a source repository, and only ever exist
 
 Assuming that earlier, one has imported the prelude as follows:
 
-``` motoko
+``` motoko filename=prelude
 import P "mo:base/Prelude";
 ```
 
 The developer can fill *any missing expression* with the following one:
 
-``` motoko
+``` motoko include=prelude
 P.xxx()
 ```
 
@@ -394,7 +394,7 @@ The result will *always* type check at compile time, and *will always* trap at r
 
 By convention, longer-term holes can be considered "not yet implemented" (`nyi`) features, and marked as such with a similar function from the Prelude module:
 
-``` motoko
+``` motoko include=prelude
 P.nyi()
 ```
 
@@ -404,7 +404,7 @@ In contrast to the situations above, sometimes code will *never* be filled, sinc
 
 To document a code path as logically impossible, or *unreachable*, use the base library function `unreachable`:
 
-``` motoko
+``` motoko include=prelude
 P.unreachable()
 ```
 

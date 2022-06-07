@@ -16,7 +16,7 @@ Motoko has native support for Internet Computer canister smart contracts.
 
 A canister smart contract (or canister for short) is expressed as a Motoko actor. An actor is an autonomous object that fully encapsulates its state and communicates with other actors only through asynchronous messages.
 
-``` motoko
+``` motoko filename=counter
 actor Counter {
 
   var value = 0;
@@ -34,7 +34,7 @@ On the Internet Computer, canisters can communicate with other canisters by send
 
 Asynchronous programming is hard, so Motoko enables you to author asynchronous code in much simpler, sequential style. Asynchronous messages are function calls that return a *future*, and the `await` construct allows you to suspend execution until a future has completed. This simple feature avoids the "callback hell" of explicit asynchronous programming in other languages.
 
-``` motoko
+``` motoko include=counter
 actor Factorial {
 
   var last = 1;

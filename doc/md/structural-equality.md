@@ -8,7 +8,7 @@ Equality is defined only on `shared` types or on types that don’t contain muta
 
 For example, we can compare arrays of objects.
 
-``` motoko
+``` motoko run
 let a = [ { x = 10 }, { x = 20 } ];
 let b = [ { x = 10 }, { x = 20 } ];
 a == b;
@@ -22,7 +22,7 @@ Equality respects subtyping so `{ x = 10 } == { x = 10; y = 20 }` returns `true`
 
 To accommodate subtyping, two values of different types are equal if they are equal at their most specific, common supertype, meaning they agree on their common structure. The compiler will warn in cases where this might lead to subtle unwanted behaviour. For example: `{ x = 10 } == { y = 20 }` will return `true` because the two values get compared at the empty record type. That’s unlikely the intention, so the compiler will emit a warning here.
 
-``` motoko
+``` motoko run
 { x = 10 } == { y = 20 };
 ```
 
@@ -30,7 +30,7 @@ To accommodate subtyping, two values of different types are equal if they are eq
 
 It is not possible to declare that a generic type variable is `shared`, so equality can only be used on non-generic types. For example, the following expression generates a warning like this:
 
-``` motoko
+``` motoko run
 func eq<A>(a : A, b : A) : Bool = a == b;
 ```
 
@@ -40,7 +40,7 @@ If you run into this limitation in your code, you should accept a comparison fun
 
 Let’s look at a list membership test for example. This first implementation *does not* work:
 
-``` motoko
+``` motoko run
 import List "mo:base/List";
 
 func contains<A>(element : A, list : List.List<A>) : Bool {
@@ -58,7 +58,7 @@ This assertion will trap because the compiler compares the type `A` at `Any` whi
 
 This second implementation shows how to accept the comparison function explicitly instead:
 
-``` motoko
+``` motoko run
 import List "mo:base/List";
 import Nat "mo:base/Nat";
 

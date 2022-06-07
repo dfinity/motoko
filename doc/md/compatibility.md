@@ -14,7 +14,7 @@ Let’s deliver on that promise.
 
 The following is a simple example of how to declare a stateful counter.
 
-``` motoko
+``` motoko no-repl
 actor Counter_v0 {
 
   var state : Int = 0;
@@ -42,7 +42,7 @@ Unfortunately, when we upgrade this counter (say with itself), its state is lost
 
 In Motoko, we can declare variables to be stable (across upgrades).
 
-``` motoko
+``` motoko no-repl
 actor Counter_v1 {
 
   stable var state : Int = 0;
@@ -71,7 +71,7 @@ Because it’s `stable`, this counter’s `state` is *retained* across upgrades.
 
 Let’s extend the API - old clients still satisfied, new ones get extra features (the `read` query).
 
-``` motoko
+``` motoko no-repl
 actor Counter_v2 {
 
   stable var state : Int = 0;
@@ -97,7 +97,7 @@ actor Counter_v2 {
 
 Observation: the counter is always positive - let’s refactor `Int` to `Nat`!
 
-``` motoko
+``` motoko no-repl
 actor Counter_v3 {
 
   stable var state : Nat = 0;
@@ -143,7 +143,7 @@ A stable type signature looks like the "insides" of a Motoko actor type.
 
 For example, `v2`'s stable types:
 
-``` motoko
+``` motoko no-repl
 actor {
   stable var state : Int
 };
@@ -151,7 +151,7 @@ actor {
 
 An upgrade from `v2` to `v3`'s stable types:
 
-``` motoko
+``` motoko no-repl
 actor {
   stable var state : Nat
 };
@@ -175,7 +175,7 @@ service : {
 }
 ```
 
-``` motoko
+``` motoko no-repl
 actor {
 
 };
@@ -189,7 +189,7 @@ service : {
 }
 ```
 
-``` motoko
+``` motoko no-repl
 actor {
   stable var state : Int
 };
@@ -204,7 +204,7 @@ service : {
 }
 ```
 
-``` motoko
+``` motoko no-repl
 actor {
   stable var state : Int
 };
@@ -219,7 +219,7 @@ service : {
 }
 ```
 
-``` motoko
+``` motoko no-repl
 actor {
   stable var state : Nat
 };
@@ -265,7 +265,7 @@ A common, real-world example of an incompatible upgrade can be found on the foru
 
 In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
 
-``` motoko
+``` motoko no-repl
 type Card = {
   title : Text
 };
@@ -276,7 +276,7 @@ actor {
 
 to *incompatible* stable type interface:
 
-``` motoko
+``` motoko no-repl
 type Card = {
   title : Text;
   description : Text
@@ -316,7 +316,7 @@ What if we really do want to change `state` to `Nat`.
 
 Solution: introduce a new stable variable, `newState`, initialized from the old one:
 
-``` motoko
+``` motoko no-repl
 import Int "mo:base/Int";
 
 actor Counter_v4 {
@@ -333,7 +333,7 @@ actor Counter_v4 {
 }
 ```
 
-``` motoko
+``` motoko no-repl
 actor {
   stable var newState : Nat;
   stable var state : Int

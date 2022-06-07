@@ -18,7 +18,7 @@ To see the complete code for a working project that uses this pattern, see the [
 
 The following `Subscriber` actor type provides a possible interface for the subscriber actor and the publisher actor to expose and to call, respectively:
 
-``` motoko
+``` motoko filename=tsub
 type Subscriber = actor {
   notify : () -> ()
 };
@@ -36,7 +36,7 @@ For simplicity, assume that the `notify` function accepts relevant notification 
 
 The publisher side of the code stores an array of subscribers. For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function.
 
-``` motoko
+``` motoko filename=pub include=tsub
 import Array "mo:base/Array";
 
 actor Publisher {
@@ -68,7 +68,7 @@ In the simplest case, the subscriber actor has the following methods:
 
 The following code illustrates implementing these methods:
 
-``` motoko
+``` motoko include=tsub,pub
 actor Subscriber {
   var count: Nat = 0;
   public func init() {
@@ -109,13 +109,13 @@ Motoko lets you omit this keyword for *public* actor methods since, implicitly, 
 
 Using the `shared` function type, we can extend the example above to be more flexible. For example:
 
-``` motoko
+``` motoko filename=submessage
 type SubscribeMessage = { callback: shared () -> (); };
 ```
 
 This type differs from the original, in that it describes *a message* record type with a single field called `callback`, and the original type first shown above describes *an actor* type with a single method called `notify`:
 
-``` motoko
+``` motoko filename=typesub
 type Subscriber = actor { notify : () -> () };
 ```
 
@@ -123,7 +123,7 @@ Notably, the `actor` keyword means that this latter type is not an ordinary reco
 
 By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose another name for their `notify` method:
 
-``` motoko
+``` motoko filename=newsub include=submessage,newpub
 actor Subscriber {
   var count: Nat = 0;
   public func init() {
@@ -142,7 +142,7 @@ Compared to the original version, the only lines that change are those that rena
 
 Likewise, we can update the publisher to have a matching interface:
 
-``` motoko
+``` motoko filename=newpub include=submessage
 import Array "mo:base/Array";
 actor Publisher {
   var subs: [SubscribeMessage] = [];

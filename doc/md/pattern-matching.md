@@ -4,13 +4,13 @@ Pattern matching is a language feature that makes it easy to both test and decom
 
 Consider the following function call:
 
-``` motoko
+``` motoko include=fullname
 let name : Text = fullName({ first = "Jane"; mid = "M"; last = "Doe" });
 ```
 
 This code constructs a record with three fields and passes it to the function `fullName`. The result of the call is named and brought into scope by binding it to the identifier `name`. The last, binding step is called pattern matching, and `name : Text` is one of the simplest forms of pattern. For instance, in the following implementation of the callee:
 
-``` motoko
+``` motoko filename=fullname
 func fullName({ first : Text; mid : Text; last : Text }) : Text {
   first # " " # mid # " " # last
 };

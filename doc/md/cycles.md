@@ -20,7 +20,7 @@ The `ExperimentalCycles` library provides imperative operations for observing an
 
 The library provides the following operations:
 
-``` motoko
+``` motoko no-repl
 func balance() : (amount : Nat)
 
 func available() : (amount : Nat)
@@ -60,7 +60,7 @@ To illustrate, we will now use the `ExperimentalCycles` library to implement a t
 
 Our piggy bank has an implicit owner, a `benefit` callback and a fixed `capacity`, all supplied at time of construction. The callback is used to transfer *withdrawn* amounts.
 
-``` motoko
+``` motoko filename=PiggyBank
 import Cycles "mo:base/ExperimentalCycles";
 
 shared(msg) actor class PiggyBank(
@@ -122,7 +122,7 @@ Note that the owner of the `PiggyBank` could, in fact, supply a callback that re
 
 Here’s how an owner, `Alice`, might use an instance of `PiggyBank`:
 
-``` motoko
+``` motoko include=PiggyBank
 import Cycles = "mo:base/ExperimentalCycles";
 import Lib = "PiggyBank";
 

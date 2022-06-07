@@ -87,7 +87,7 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 ## Libraries
 
-``` motoko
+``` motoko filename=impDebugInt
   import Debug "mo:base/Debug";
   import Int "mo:base/Int";
 ```
@@ -112,7 +112,7 @@ Specific bindings can be imported from the module using object patterns
 
 ## Blocks and declarations
 
-``` motoko
+``` motoko include=impDebugInt
   type Delta = Nat;
   func print() {
     Debug.print(Int.toText(counter));
@@ -251,32 +251,32 @@ Literals: `true`, `false`
 
 -   Simple functions:
 
-    ``` motoko
+    ``` motoko no-repl
     Int.toText : Int -> Text
     ```
 
 -   multiple arguments and return values
 
-    ``` motoko
+    ``` motoko no-repl
     divRem : (Int, Int) -> (Int, Int)
     ```
 
 -   can be generic/polymorphic
 
-    ``` motoko
+    ``` motoko no-repl
     Option.unwrapOr : <T>(?T, default : T) -> T
     ```
 
 -   first-class (can be passed around, stored)
 
-    ``` motoko
+    ``` motoko no-repl
     map : <A, B>(f : A -> B, xs : [A]) -> [B]
     let funcs : [<T>(T) -> T] = …
     ```
 
 ## Function Declarations & Use
 
-``` motoko
+``` motoko include=impDebugInt
 func add(x : Int, y : Int) : Int = x + y;
 
 func applyNTimes<T>(n : Int, x : T, f : T -> ()) {
@@ -304,15 +304,15 @@ applyNTimes<Text>(3, "Hello!", func(x) { Debug.print(x) } );
 
 immutable, heterogeneous, fixed size
 
-``` motoko
+``` motoko filename=tuple
 let tuple = (true or false, 0.6 * 2.0, "foo" # "bar");
 ```
 
-``` motoko
+``` motoko include=tuple
 tuple.1;
 ```
 
-``` motoko
+``` motoko include=tuple
 let (_,_,t) = tuple;
 t
 ```
@@ -323,7 +323,7 @@ t
 
 is either a value of that type, e.g. `?"hello"`, or `null`.
 
-``` motoko
+``` motoko filename=display
 func display(x : ?Text) : Text {
   switch x {
     case (null) { "No value" };
@@ -332,7 +332,7 @@ func display(x : ?Text) : Text {
 };
 ```
 
-``` motoko
+``` motoko include=display
 (display(null), display(?"Test"))
 ```
 
@@ -356,7 +356,7 @@ func add(x : ?Nat, y: ?Nat) : ?Nat {
 
 `[Text]`
 
-``` motoko
+``` motoko include=impDebugInt
 let days = [ "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" ];
 
 assert(days.size() == 7);
@@ -388,7 +388,7 @@ counters;
 
 `{first : Text; last : Text; salary : var Nat}`
 
-``` motoko
+``` motoko include=impDebugInt
 let employee = {first = "John"; last = "Doe"; var salary = 81_932};
 
 Debug.print(
@@ -432,7 +432,7 @@ A class introduces a type and a function (for constructing instances).
 
 Just sugar for:
 
-``` motoko
+``` motoko no-repl
 type Employee = {first : Text; last : Text; get : () -> Nat; add : Nat -> ()};
 
 func Employee(fst : Text, lst : Text) : Employee = object { … }
@@ -467,7 +467,7 @@ func sort(d : Day) : { #WeekDay; #WeekEnd } {
 
 ## Recursive Types
 
-``` motoko
+``` motoko filename=Lists
 type List = {
   #item : {head : Text; tail : List}; // variant with payload!
   #empty                     // ^^^^ recursion!
@@ -519,7 +519,7 @@ let ns : List<Nat> =
 
 ## Modules
 
-``` motoko
+``` motoko no-repl
 // the type of base/Int.mo
 module {
   type Int = Prim.Types.Int;
@@ -534,7 +534,7 @@ but are restricted to *static* content (pure, no state, …)
 
 ## Module imports
 
-``` motoko
+``` motoko no-repl
 import Debug "mo:base/Debug";  // import from package
 import Int "mo:base/Int";
 import MyLib "lib/MyLib";  // import from local file MyLib.mo
@@ -546,7 +546,7 @@ More libraries popping up!
 
 `MyLib.mo` *must* contain a module or actor class, eg:
 
-``` motoko
+``` motoko no-repl
 module {
   public type List<T> = …;
 
@@ -560,7 +560,7 @@ module {
 
 Like object types, but marked as `actor`:
 
-``` motoko
+``` motoko filename=actorTypes
 type Broadcast = actor {
   register : Receiver -> ();
   send : Text -> async Nat;
@@ -642,7 +642,7 @@ suspends computation pending `e`’s result:
 if the result is a value, continues with that value,  
 if the result is an `Error`, `throw`s the error.
 
-``` motoko
+``` motoko no-repl
   public func send(t : Text) : async Nat {
     var sum = 0;
     for (a in r.vals()) {
@@ -661,7 +661,7 @@ Suspension introduces *concurrency hazards*.
 
 A bad implementation of `send`:
 
-``` motoko
+``` motoko no-repl
   var sum = 0; // shared state!
   public func send(t : Text) : async Nat {
     sum := 0;
@@ -741,7 +741,7 @@ actor Self {
 
 ## Errors
 
-``` motoko
+``` motoko no-repl
 import Principal "mo:base/Principal";
 import Error "mo:base/Error";
 
@@ -771,7 +771,7 @@ but *only* available in async contexts, e.g. shared functions; async blocks
 If we upgrade the `Broadcast` actor, all current registrations are lost.  
 To preserve them, declare the state variable `r` as `stable`.
 
-``` motoko
+``` motoko no-repl
 import Array "mo:base/Array";
 
 actor Broadcast {
@@ -798,7 +798,7 @@ stable variables must have *stable* types (see manual)
 
 ## Structural
 
-``` motoko
+``` motoko include=Lists
 /*
 type List = {
   #item : {head : Text; tail : List};

@@ -12,7 +12,7 @@ The actor responsible for bucket `i` is obtained as an instance of the actor cla
 
 </div>
 
-``` motoko
+``` motoko filename=Buckets
 import Nat "mo:base/Nat";
 import Map "mo:base/RBTree";
 
@@ -46,7 +46,7 @@ Both functions use the class parameters `n` and `i` to verify that the key is ap
 
 Clients of the map can then communicate with a coordinating `Map` actor, implemented as follows:
 
-``` motoko
+``` motoko include=Buckets
 import Array "mo:base/Array";
 import Buckets "Buckets";
 
@@ -106,7 +106,7 @@ On `put(k, v)`, the `Map` actor:
 
 While this example sets the number of buckets to `8`, you can easily generalize the example by making the `Map` actor an actor *class*, adding a parameter `(n : Nat)` and omitting the declaration `let n = 8;`. For example:
 
-``` motoko
+``` motoko no-repl
 actor class Map(n : Nat) {
 
   type Key = Nat

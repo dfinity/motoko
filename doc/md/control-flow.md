@@ -122,7 +122,7 @@ Each recursive call is checked for `null` using `!`, immediately exiting the out
 
 The simplest way to indefinitely repeat a sequence of imperative expressions is by using a `loop` construct
 
-``` motoko
+``` motoko no-repl
 loop { <expr1>; <expr2>; ... }
 ```
 
@@ -136,7 +136,7 @@ The body of such a loop is always executed at least once.
 
 Sometimes an entry condition is needed to guard the first execution of a loop. For this kind of repetition the `while <cond> <body>`-flavor is available
 
-``` motoko
+``` motoko no-repl
 while (earned < need) { earned += earn() };
 ```
 
@@ -181,13 +181,13 @@ More generally, the function `range` is a `class` that constructs iterators over
 
 As a constructor function, `range` has a function type:
 
-``` motoko
+``` motoko no-repl
 (lower : Nat, upper : Int) -> Iter<Nat>
 ```
 
 Where `Iter<Nat>` is an iterator object type with a `next` method that produces optional elements, each of type `?Nat`:
 
-``` motoko
+``` motoko no-repl
 type Iter<A> = {next : () -> ?A};
 ```
 
@@ -201,7 +201,7 @@ Until reaching `null`, each non-`null` value, of the form `?`*n* for some number
 
 Like `range`, the function `revRange` is a `class` that constructs iterators (each of type `Iter<Int>`). As a constructor function, it has a function type:
 
-``` motoko
+``` motoko no-repl
 (upper : Int, lower : Int) -> Iter<Int>
 ```
 

@@ -148,7 +148,7 @@ The collection of stable variable declarations in an actor can be summarized in 
 
 The textual representation of an actor’s stable signature resembles the internals of a Motoko actor type:
 
-``` motoko
+``` motoko no-repl
 actor {
   stable x : Nat;
   stable var y : Int;

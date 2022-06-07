@@ -1,6 +1,7 @@
 all: overview-slides.html antora
 
 SRC=modules/language-guide/pages
+TMP=modules/language-guide/tmp
 OUT=md
 SHELL=bash
 
@@ -18,7 +19,9 @@ overview-slides.html : overview-slides.md
 	  # # -V maxScale=2
 
 md:
-	./convert.sh $(SRC) $(OUT)
+	rm -r -f $(TMP)
+	cp -r $(SRC) $(TMP)
+	./convert.sh $(TMP) $(OUT)
 
 antora:
 	rm -rf build

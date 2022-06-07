@@ -44,7 +44,7 @@ In addition to these three functions, the object has one (private) mutable varia
 
 This object `counter` has the following *object type*, written as a list of field-type pairs, enclosed in braces (`{` and `}`):
 
-``` motoko
+``` motoko no-repl
 {
   inc  : () -> () ;
   read : () -> Nat ;
@@ -76,7 +76,7 @@ object byteCounter {
 
 This object has the same type as the previous one, and thus from the standpoint of type checking, this object is interchangeable with the prior one:
 
-``` motoko
+``` motoko no-repl
 {
   inc  : () -> () ;
   read : () -> Nat ;
@@ -108,7 +108,7 @@ object bumpCounter {
 
 The object `bumpCounter` has the following object type, exposing exactly one operation, `bump`:
 
-``` motoko
+``` motoko no-repl
 {
   bump : () -> Nat ;
  }
@@ -118,7 +118,7 @@ This type exposes the most common operation, and one that only permits certain b
 
 In other parts of a system, we may in fact implement and use a *less general* version, with *more* operations:
 
-``` motoko
+``` motoko no-repl
 fullCounter : {
   inc   : () -> () ;
   read  : () -> Nat ;
@@ -133,13 +133,13 @@ Here, we consider a counter named `fullCounter` with a less general type than an
 
 -   Most general:
 
-``` motoko
+``` motoko no-repl
 { bump : () -> Nat }
 ```
 
 -   Middle generality:
 
-``` motoko
+``` motoko no-repl
 {
   inc  : () -> () ;
   read : () -> Nat ;
@@ -149,7 +149,7 @@ Here, we consider a counter named `fullCounter` with a less general type than an
 
 -   Least generality:
 
-``` motoko
+``` motoko no-repl
 {
   inc  : () -> () ;
   read : () -> Nat ;
@@ -168,7 +168,7 @@ In Motoko, an object encapsulates state, and an object `class` is a package of t
 
 Consider this example `class` for counters that start at zero:
 
-``` motoko
+``` motoko filename=counter
 class Counter() {
   var c = 0;
   public func inc() : Nat {
@@ -180,14 +180,14 @@ class Counter() {
 
 The value of this definition is that we can *construct* new counters, each starting with their own unique state, initially at zero:
 
-``` motoko
+``` motoko filename=cinit include=counter
 let c1 = Counter();
 let c2 = Counter();
 ```
 
 Each is independent:
 
-``` motoko
+``` motoko include=counter,cinit
 let x = c1.inc();
 let y = c2.inc();
 (x, y)
@@ -205,13 +205,13 @@ func Counter() : { inc : () -> Nat } =
 
 Notice the return type of this *constructor function* (an object type):
 
-``` motoko
+``` motoko no-repl
 { inc : () -> Nat }
 ```
 
 We may want to name this type, for example, `Counter`, as follows, for use in further type declarations:
 
-``` motoko
+``` motoko no-repl
 type Counter = { inc : () -> Nat };
 ```
 

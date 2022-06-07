@@ -12,7 +12,7 @@ In [local objects and classes](local-objects-classes.md), we introduce the synta
 
 The `var` syntax declares mutable variables in a declaration block:
 
-``` motoko
+``` motoko filename=init
 let text  : Text = "abc";
 let num  : Nat = 30;
 
@@ -30,7 +30,7 @@ If we try to assign new values to either `text` or `num` above, we will get stat
 
 However, we may freely update the value of mutable variables `pair` and `text2` using the syntax for assignment, written as `:=`, as follows:
 
-``` motoko
+``` motoko include=init
 text2 := text2 # "xyz";
 pair := (text2, pair.1);
 pair
@@ -56,7 +56,7 @@ After the second line, the variable `num2` holds `42`, as one would expect.
 
 Motoko includes other combinations as well. For example, we can rewrite the line above that updates `text2` more concisely as:
 
-``` motoko
+``` motoko include=init
 text2 #= "xyz";
 text2
 ```
@@ -122,7 +122,7 @@ Before discussing [mutable arrays](#mutable-arrays), we introduce immutable arra
 
 ### Allocate an immutable array of constants
 
-``` motoko
+``` motoko filename=array
 let a : [Nat] = [1, 2, 3] ;
 ```
 
@@ -132,7 +132,7 @@ The array `a` above holds three natural numbers, and has type `[Nat]`. In genera
 
 We can project from (*read from*) an array using the usual bracket syntax (`[` and `]`) around the index we want to access:
 
-``` motoko
+``` motoko include=array
 let x : Nat = a[2] + a[0] ;
 ```
 
@@ -142,7 +142,7 @@ Every array access in Motoko is safe. Accesses that are out of bounds will not a
 
 The Motoko standard library provides basic operations for immutable and mutable arrays. It can be imported as follows,
 
-``` motoko
+``` motoko filename=import
 import Array "mo:base/Array";
 ```
 
@@ -156,7 +156,7 @@ In general, each new array allocated by a program will contain a varying number 
 
 To accommodate this need, the Motoko language provides *the higher-order* array-allocation function `Array.tabulate`, which allocates a new array by consulting a user-provided "generation function" `gen` for each element.
 
-``` motoko
+``` motoko no-repl
 func tabulate<T>(size : Nat,  gen : Nat -> T) : [T]
 ```
 
@@ -166,7 +166,7 @@ The function `gen` actually *functions* as the array during its initialization: 
 
 For instance, we can first allocate `array1` consisting of some initial constants, and then functionally-update *some* of the indices by "changing" them (in a pure, functional way), to produce `array2`, a second array that does not destroy the first.
 
-``` motoko
+``` motoko include=import
 let array1 : [Nat] = [1, 2, 3, 4, 6, 7, 8] ;
 
 let array2 : [Nat] = Array.tabulate<Nat>(7, func(i:Nat) : Nat {
@@ -201,13 +201,13 @@ As above, the array `a` above holds three natural numbers, but has type `[var Na
 
 To allocate mutable arrays of non-constant size, use the `Array_init` primitive, and supply an initial value:
 
-``` motoko
+``` motoko no-repl
 func init<T>(size : Nat,  x : T) : [var T]
 ```
 
 For example:
 
-``` motoko
+``` motoko include=import
 var size : Nat = 42 ;
 let x : [var Nat] = Array.init<Nat>(size, 3);
 ```

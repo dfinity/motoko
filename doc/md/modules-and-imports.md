@@ -39,7 +39,7 @@ In this scenario, you might place all three files in the same directory and use 
 
 For example, the `main.mo` contains the following lines to reference the modules in the same directory:
 
-``` motoko
+``` motoko no-repl
 import Types "types";
 import Utils "utils";
 ```
@@ -54,7 +54,7 @@ You can also import modules from other packages or from directories other than t
 
 For example, the following lines import modules from a `redraw` package that is defined as a dependency:
 
-``` motoko
+``` motoko no-repl
 import Render "mo:redraw/Render";
 import Mono5x5 "mo:redraw/glyph/Mono5x5";
 ```
@@ -81,7 +81,7 @@ For example, a Motoko actor can import and instantiate the `Counter` class descr
 
 </div>
 
-``` motoko
+``` motoko filename=Counters
 actor class Counter(init : Nat) {
   var count = init;
 
@@ -102,7 +102,7 @@ actor class Counter(init : Nat) {
 
 </div>
 
-``` motoko
+``` motoko include=Counters
 import Counters "Counters";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
@@ -145,7 +145,7 @@ These three canisters are declared in the project’s `dfx.json` configuration f
 
 You can then use the following lines to import the `BigMap` and `Connectd` canisters as actors in the Motoko LinkedUp actor:
 
-``` motoko
+``` motoko no-repl
 import BigMap "canister:BigMap";
 import Connectd "canister:connectd";
 ```
@@ -164,7 +164,7 @@ Although the most common convention is to identify imported modules by the modul
 
 The following examples illustrate different names you might use when importing the `List` base library module, avoiding a clash with another `List` library from a fictional `collections` package.
 
-``` motoko
+``` motoko no-repl
 import List "mo:base/List:";
 import Sequence "mo:collections/List";
 import L "mo:base/List";

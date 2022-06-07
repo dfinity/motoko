@@ -32,7 +32,7 @@ In the case of Motoko, each communicating component is an actor.
 
 As an example of *using* actors, perhaps as an actor ourselves, consider this three-line program:
 
-``` motoko
+``` motoko no-repl
 let result1 = service1.computeAnswer(params);
 let result2 = service2.computeAnswer(params);
 finalStep(await result1, await result2)

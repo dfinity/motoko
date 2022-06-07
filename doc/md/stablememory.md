@@ -20,7 +20,7 @@ The interface to the `ExperimentalStableMemory` library consists of functions fo
 
 More general `loadBlob` and `storeBlob` operations are also available for reading/writing binary blobs and other types that can be encoded as `Blob`s (e.g. `Text` values) of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
 
-``` motoko
+``` motoko no-repl
 module {
 
   // Current size of the stable memory, in pages.
@@ -64,7 +64,7 @@ To demonstrate the `ExperimentalStableMemory` library, we present a dead simple 
 
 The example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable to keep track of the next available offset, but stores the contents of the log directly in stable memory.
 
-``` motoko
+``` motoko no-repl
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";

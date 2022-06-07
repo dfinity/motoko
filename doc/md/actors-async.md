@@ -48,7 +48,7 @@ A value of type `async T` is a future. The producer of the future completes the 
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, Motoko allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
-``` motoko
+``` motoko filename=counter
 actor Counter {
 
   var count = 0;
@@ -72,7 +72,7 @@ The type of a shared function is specified using a shared function type. For exa
 
 Just as objects have object types, actors have *actor types*. The `Counter` actor has the following type:
 
-``` motoko
+``` motoko no-repl
 actor {
   inc  : shared () -> async ();
   read : shared () -> async Nat;
@@ -84,7 +84,7 @@ Again, because the `shared` modifier is required on every member of an actor, Mo
 
 Thus the previous type can be expressed more succinctly as:
 
-``` motoko
+``` motoko no-repl
 actor {
   inc  : () -> async ();
   read : () -> async Nat;
@@ -104,7 +104,7 @@ To access the result of an `async` value, the receiver of the future use an `awa
 
 For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
 
-``` motoko
+``` motoko include=counter
 let a : async Nat = Counter.read();
 let n : Nat = await a;
 ```
@@ -115,7 +115,7 @@ The second line `await`s this future and extracts the result, a natural number. 
 
 Typically, one rolls the two steps into one and one just awaits an asynchronous call directly:
 
-``` motoko
+``` motoko include=counter
 let n : Nat = await Counter.read();
 ```
 
@@ -131,7 +131,7 @@ A function that does not `await` in its body is guaranteed to execute atomically
 
 For example, the implementation of `bump()` above is guaranteed to increment and read the value of `count`, in one atomic step. The alternative implementation:
 
-``` motoko
+``` motoko no-repl
   public shared func bump() : async Nat {
     await inc();
     await read();
@@ -160,7 +160,7 @@ A trap will only revoke changes made since the last commit point. In particular,
 
 For example, consider the following (contrived) stateful `Atomicity` actor:
 
-``` motoko
+``` motoko no-repl
 actor Atomicity {
 
   var s = 0;
@@ -227,7 +227,7 @@ Query functions can be called from non-query functions. Because those nested cal
 
 The `query` modifier is reflected in the type of a query function:
 
-``` motoko
+``` motoko no-repl
   peek : shared query () -> async Nat
 ```
 
@@ -267,7 +267,7 @@ For example, we can generalize `Counter` given above to `Counter(init)` below, b
 
 </div>
 
-``` motoko
+``` motoko filename=Counters
 actor class Counter(init : Nat) {
   var count = init;
 
@@ -284,7 +284,7 @@ actor class Counter(init : Nat) {
 
 If this class is stored in file `Counters.mo`, then we can import the file as a module and use it to create several actors with different initial values:
 
-``` motoko
+``` motoko include=Counters
 import Counters "Counters";
 
 let C1 = await Counters.Counter(1);
