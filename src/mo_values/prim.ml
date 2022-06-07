@@ -218,7 +218,9 @@ let prim =
     k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
   | "text_compare" -> fun _ v k ->
     (match Value.as_tup v with
-     | [a; b] -> k (Int8 (Int_8.of_int 0))
+     | [a; b] -> k (Int8 (Int_8.of_int
+                            (let a, b = Value.as_text a, Value.as_text b in
+                             if a = b then 0 else if a < b then -1 else 1)))
      | _ -> assert false)
   | "text_iter" -> fun _ v k ->
     let s = Wasm.Utf8.decode (Value.as_text v) in
