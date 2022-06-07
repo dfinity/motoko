@@ -3,12 +3,13 @@
 
 # It imports default.nix both for linux and darwin, thus it cannot be part of
 # it.
-
-{ releaseVersion ? "latest" }:
+{ officialRelease ? false }:
 let
   nixpkgs = import ./nix { };
-  linux = import ./default.nix { system = "x86_64-linux"; inherit releaseVersion; };
-  darwin = import ./default.nix { system = "x86_64-darwin"; inherit releaseVersion; };
+  linux = import ./default.nix { system = "x86_64-linux"; inherit officialRelease; };
+  darwin = import ./default.nix { system = "x86_64-darwin"; inherit officialRelease; };
+
+  releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; };
 
   as_tarball = dir: derivations:
     nixpkgs.runCommandNoCC "motoko-${releaseVersion}.tar.gz" {

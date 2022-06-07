@@ -80,7 +80,8 @@ and system = {
   meta : meta;
   preupgrade : exp;
   postupgrade : exp;
-  heartbeat : exp
+  heartbeat : exp;
+  inspect : exp
 }
 
 and candid = {
@@ -130,6 +131,8 @@ and prim =
   | ShowPrim of Type.typ              (* debug_show *)
   | SerializePrim of Type.typ list    (* Candid serialization prim *)
   | DeserializePrim of Type.typ list  (* Candid deserialization prim *)
+  | DeserializeOptPrim of Type.typ list
+     (* Candid deserialization prim (returning Opt) *)
   | NumConvTrapPrim of Type.prim * Type.prim
   | NumConvWrapPrim of Type.prim * Type.prim
   | DecodeUtf8
@@ -164,6 +167,8 @@ and prim =
   | ICCallerPrim
   | ICCallPrim
   | ICCallRawPrim
+  | ICMethodNamePrim
+  | ICArgDataPrim
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
@@ -274,6 +279,7 @@ let map_prim t_typ t_id p =
   | ShowPrim t -> ShowPrim (t_typ t)
   | SerializePrim ts -> SerializePrim (List.map t_typ ts)
   | DeserializePrim ts -> DeserializePrim (List.map t_typ ts)
+  | DeserializeOptPrim ts -> DeserializeOptPrim (List.map t_typ ts)
   | NumConvTrapPrim _
   | NumConvWrapPrim _
   | DecodeUtf8
@@ -295,11 +301,13 @@ let map_prim t_typ t_id p =
   | CPSAwait t -> CPSAwait (t_typ t)
   | CPSAsync t -> CPSAsync (t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
+  | ICArgDataPrim
   | ICPerformGC
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim
-  | ICCallRawPrim -> p
+  | ICCallRawPrim
+  | ICMethodNamePrim -> p
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)

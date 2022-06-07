@@ -38,6 +38,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     T.Triv
   | UnE (_, _, exp1)
   | ShowE (_, exp1)
+  | FromCandidE exp1
   | ProjE (exp1, _)
   | OptE exp1
   | DoOptE exp1
@@ -68,6 +69,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     max_eff t1 t2
   | DebugE exp1 ->
     effect_exp exp1
+  | ToCandidE exps
   | TupE exps
   | ArrayE (_, exps) ->
     let es = List.map effect_exp exps in

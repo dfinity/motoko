@@ -213,7 +213,7 @@ impl Value {
     /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
     /// cycle.
     pub fn get(&self) -> PtrOrScalar {
-        if self.0 & 0b1 == 0b1 {
+        if self.0 & 0b1 != 0 {
             PtrOrScalar::Ptr(unskew(self.0 as usize))
         } else {
             PtrOrScalar::Scalar(self.0 >> 1)
@@ -284,7 +284,12 @@ impl Value {
 
     /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
-    pub unsafe fn as_blob(self) -> *mut Blob {
+    pub unsafe fn as_blob(self) -> *const Blob {
+        debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.get_ptr() as *const Blob
+    }
+
+    pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         self.get_ptr() as *mut Blob
     }
@@ -312,7 +317,7 @@ impl Value {
 
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
 pub fn is_ptr(value: u32) -> bool {
-    value & 0b1 == 0b1
+    value & 0b1 != 0
 }
 
 pub const fn skew(ptr: usize) -> usize {
@@ -347,6 +352,14 @@ pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
 
+// Special value to visit only a range of array fields.
+// This and all values above it are reserved and mean
+// a slice of an array object (i.e. start index) for
+// purposes of `visit_pointer_fields`.
+// Invariant: the value of this (pseudo-)tag must be
+//            higher than all other tags defined above
+pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
+
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
@@ -354,7 +367,7 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub unsafe fn tag(self: *mut Self) -> Tag {
+    pub unsafe fn tag(self: *const Self) -> Tag {
         (*self).tag
     }
 
@@ -397,7 +410,7 @@ impl Array {
         *(slot_addr as *mut Value) = ptr;
     }
 
-    pub unsafe fn len(self: *mut Self) -> u32 {
+    pub unsafe fn len(self: *const Self) -> u32 {
         (*self).len
     }
 }
@@ -460,12 +473,16 @@ impl Blob {
         self.add(1) as *mut u8 // skip closure header
     }
 
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+    pub unsafe fn payload_const(self: *const Self) -> *const u8 {
+        self.add(1) as *mut u8 // skip closure header
+    }
+
+    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
         (*self).len
     }
 
-    pub unsafe fn get(self: *mut Self, idx: u32) -> u8 {
-        *self.payload_addr().add(idx as usize)
+    pub unsafe fn get(self: *const Self, idx: u32) -> u8 {
+        *self.payload_const().add(idx as usize)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
@@ -500,6 +517,7 @@ impl Blob {
 pub struct Stream {
     pub header: Blob,
     pub ptr64: u64,
+    pub start64: u64,
     pub limit64: u64,
     pub outputter: fn(*mut Self, *const u8, Bytes<u32>) -> (),
     pub filled: Bytes<u32>, // cache data follows ..

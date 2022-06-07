@@ -27,13 +27,13 @@ pub unsafe fn test() {
     for b in 32..92u8 {
         stream.as_stream().cache_byte(b);
     }
-    assert_eq!(stream.as_blob().get(24), 32);
-    assert_eq!(stream.as_blob().get(83), 91);
+    assert_eq!(stream.as_blob().get(32), 32);
+    assert_eq!(stream.as_blob().get(91), 91);
 
     println!("  Testing stream decay");
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(60));
-    assert_eq!(stream.as_blob().len(), Bytes(16));
+    assert_eq!(stream.as_blob().len(), Bytes(24));
 
     println!("  Testing stream filling (blocks)");
     let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(6000)) as usize);
@@ -43,11 +43,11 @@ pub unsafe fn test() {
             .as_stream()
             .cache_bytes(&chunk[0], Bytes(chunk.len() as u32));
     }
-    assert_eq!(stream.as_blob().get(24), 10);
-    assert_eq!(stream.as_blob().get(25), 1);
-    assert_eq!(stream.as_blob().get(33), 9);
-    assert_eq!(stream.as_blob().get(34), 10);
-    assert_eq!(stream.as_blob().get(6023), 9);
+    assert_eq!(stream.as_blob().get(32), 10);
+    assert_eq!(stream.as_blob().get(33), 1);
+    assert_eq!(stream.as_blob().get(41), 9);
+    assert_eq!(stream.as_blob().get(42), 10);
+    assert_eq!(stream.as_blob().get(6031), 9);
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(6000));
 

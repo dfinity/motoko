@@ -82,8 +82,8 @@ function normalize () {
         -e 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' \
         -e 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
     sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
-        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
-        -e 's/compiler (source .*)/compiler (source XXX)/ig' |
+        -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
+        -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
     # Normalize canister id prefixes in debug prints
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
@@ -158,7 +158,7 @@ FLAGS_ic_ref_run=-ref-system-api
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
-  if drun --version >& /dev/null
+  if drun --help >& /dev/null
   then
     HAVE_drun=yes
   else
