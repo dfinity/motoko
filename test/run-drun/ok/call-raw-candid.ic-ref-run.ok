@@ -7,7 +7,7 @@ debug.print: unit!
 debug.print: ("int", +1)
 debug.print: ("text", "hello")
 debug.print: ("text", (1, true, 'a'))
-debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: too few arguments Nbc"
+debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: unexpected IDL type when parsing Nat"
 debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: ohoh"
 debug.print: supercalifragilisticexpialidocious
 ← replied: ()
