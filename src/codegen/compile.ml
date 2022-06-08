@@ -162,7 +162,6 @@ module SR = struct
    *)
   type t =
     | Vanilla
-    | UnboxedBool (* 0 or 1 *)
     | UnboxedTuple of int
     | UnboxedWord64
     | UnboxedWord32
@@ -172,7 +171,7 @@ module SR = struct
 
   let unit = UnboxedTuple 0
 
-  let bool = UnboxedBool
+  let bool = Vanilla
 
   (* Because t contains Const.t, and that contains Const.v, and that contains
      Const.lit, and that contains Big_int, we cannot just use normal `=`. So we
@@ -191,7 +190,6 @@ module SR = struct
 
   let to_var_type : t -> value_type = function
     | Vanilla -> I32Type
-    | UnboxedBool -> I32Type
     | UnboxedWord64 -> I64Type
     | UnboxedWord32 -> I32Type
     | UnboxedFloat64 -> F64Type
@@ -1105,8 +1103,7 @@ module ContinuationTable = struct
 end (* ContinuationTable *)
 
 module Bool = struct
-  (* Boolean literals are either 0 or 1,
-     at StackRep UnboxedBool
+  (* Boolean literals are either 0 or 1, at StackRep Vanilla
      They need not be shifted before put in the heap,
      because the "zero page" never contains GC-ed objects
   *)
@@ -6390,7 +6387,6 @@ module StackRep = struct
      the complex types in the environment *)
   let to_block_type env = function
     | Vanilla -> [I32Type]
-    | UnboxedBool -> [I32Type]
     | UnboxedWord64 -> [I64Type]
     | UnboxedWord32 -> [I32Type]
     | UnboxedFloat64 -> [F64Type]
@@ -6402,7 +6398,6 @@ module StackRep = struct
 
   let to_string = function
     | Vanilla -> "Vanilla"
-    | UnboxedBool -> "UnboxedBool"
     | UnboxedWord64 -> "UnboxedWord64"
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedFloat64 -> "UnboxedFloat64"
@@ -6420,8 +6415,6 @@ module StackRep = struct
     | Vanilla, _ -> Vanilla
     | Const _, Const _ -> Vanilla
 
-    | Const _, UnboxedBool -> UnboxedBool
-    | UnboxedBool, Const _ -> UnboxedBool
     | Const _, UnboxedWord32 -> UnboxedWord32
     | UnboxedWord32, Const _ -> UnboxedWord32
     | Const _, UnboxedWord64 -> UnboxedWord64
@@ -6446,7 +6439,7 @@ module StackRep = struct
 
   let drop env (sr_in : t) =
     match sr_in with
-    | Vanilla | UnboxedBool | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
+    | Vanilla | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
@@ -6488,9 +6481,6 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
-    | UnboxedBool, Vanilla
-    | Vanilla, UnboxedBool -> G.nop
-
     | UnboxedWord64, Vanilla -> BoxedWord64.box env
     | Vanilla, UnboxedWord64 -> BoxedWord64.unbox env
 
@@ -6500,8 +6490,8 @@ module StackRep = struct
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
+    | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
-    | Const (_, Const.Lit (Const.Bool b)), UnboxedBool -> Bool.lit b
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
