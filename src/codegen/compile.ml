@@ -1108,14 +1108,11 @@ module Bool = struct
      because the "zero page" never contains GC-ed objects
   *)
 
-  (* in SR.Bool *)
-  let lit = function
-    | false -> compile_unboxed_const 0l
-    | true -> compile_unboxed_const 1l
-
   let vanilla_lit = function
     | false -> 0l
     | true -> 1l
+
+  let lit b = compile_unboxed_const (vanilla_lit b)
 
   let neg = G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
