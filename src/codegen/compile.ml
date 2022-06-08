@@ -1106,8 +1106,9 @@ end (* ContinuationTable *)
 
 module Bool = struct
   (* Boolean literals are either 0 or 1,
-     at StackRep UnboxedWord32
-     They need to be shifted before put in the heap
+     at StackRep UnboxedBool
+     They need not be shifted before put in the heap,
+     because the "zero page" never contains GC-ed objects
   *)
 
   (* in SR.Bool *)
@@ -1117,7 +1118,7 @@ module Bool = struct
 
   let vanilla_lit = function
     | false -> 0l
-    | true -> 2l
+    | true -> 1l
 
   let neg = G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
@@ -6487,8 +6488,8 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
-    | UnboxedBool, Vanilla -> BitTagged.tag_i32
-    | Vanilla, UnboxedBool -> BitTagged.untag_i32
+    | UnboxedBool, Vanilla
+    | Vanilla, UnboxedBool -> G.nop
 
     | UnboxedWord64, Vanilla -> BoxedWord64.box env
     | Vanilla, UnboxedWord64 -> BoxedWord64.unbox env
