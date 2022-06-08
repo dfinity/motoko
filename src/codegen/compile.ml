@@ -5035,7 +5035,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim (Int8|Nat8) ->
         write_byte env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
       | Prim Bool ->
-        write_byte env get_data_buf (get_x ^^ BoxedSmallWord.unbox env) (* essentially SR.adjust SR.Vanilla SR.bool *)
+        write_byte env get_data_buf get_x
       | Tup [] -> (* e(()) = null *)
         G.nop
       | Tup ts ->
@@ -5496,8 +5496,7 @@ module MakeSerialization (Strm : Stream) = struct
           read_byte_tagged
             [ Bool.lit false
             ; Bool.lit true
-            ] ^^
-          BoxedSmallWord.box env (* essentially SR.adjust SR.bool SR.Vanilla *)
+            ]
         end
       | Prim Null ->
         with_prim_typ t (Opt.null_lit env)
