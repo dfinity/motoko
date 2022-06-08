@@ -1141,15 +1141,14 @@ module BitTagged = struct
      signed numbers as well.
 
      Boolean false is a non-pointer by construction.
-     Boolean true (1) needs to be shifted to be a non-pointer.
-     No unshifting necessary before a branch.
+     Boolean true (1) needs not be shifted as GC will not consider it.
 
      Summary:
 
        0b…11: A pointer
        0b…x0: A shifted scalar
        0b000: `false`
-       0b010: `true`
+       0b001: `true`
 
      Note that {Nat,Int}{8,16} do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
