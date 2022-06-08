@@ -14,9 +14,9 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬───────┬─────────┬───────────┬────────┬──────────┐
-//      │ tag (blob) │ len │ ptr64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴───┴───┴────┴────┴───────────┴────────┴──────────┘
+//      ┌────────────┬─────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
+//      │ tag (blob) │ len │ ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+//      └────────────┴─────┴───┴───┴────┴────┴────┴────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
@@ -25,19 +25,21 @@
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
 // - `outputter` is the function to be called when `len - filled` approaches zero.
-// - INVARIANT: keep `BlobStream.{ptr64_field, filled_field}`, (from `compile.ml`) in
-//              sync with the layout!
+// - INVARIANT: keep `BlobStream.{ptr64_field, start64_field, filled_field}`,
+//              (from `compile.ml`) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
+use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
+use crate::tommath_bindings::{mp_div_2d, mp_int};
 use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(24);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
@@ -51,6 +53,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     }
     let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
     (*stream).ptr64 = 0;
+    (*stream).start64 = 0;
     (*stream).limit64 = 0;
     (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
@@ -107,6 +110,7 @@ impl Stream {
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
             (*self).ptr64 = start;
+            (*self).start64 = start;
             (*self).limit64 = limit;
             (*self).outputter = Self::send_to_stable;
         }
@@ -134,6 +138,7 @@ impl Stream {
     }
 
     /// Ingest a single byte into the stream.
+    #[inline]
     #[export_name = "stream_write_byte"]
     pub fn cache_byte(self: *mut Self, byte: u8) {
         unsafe {
@@ -159,6 +164,21 @@ impl Stream {
                 .add((*self).filled.as_usize());
             (*self).filled += bytes;
             ptr
+        }
+    }
+
+    /// like `bigint_leb128_encode_go`, but to a stream
+    pub(crate) unsafe fn write_leb128(self: *mut Stream, tmp: *mut mp_int, add_bit: bool) {
+        debug_assert!(!mp_isneg(tmp));
+
+        loop {
+            let byte = mp_get_u32(tmp) as u8;
+            check(mp_div_2d(tmp, 7, tmp, core::ptr::null_mut()));
+            if !mp_iszero(tmp) || (add_bit && byte & (1 << 6) != 0) {
+                self.cache_byte(byte | (1 << 7));
+            } else {
+                return self.cache_byte(byte);
+            }
         }
     }
 

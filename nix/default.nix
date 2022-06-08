@@ -52,10 +52,14 @@ let
           }
         )
 
+        # Mozilla overlay
+        (self: super:
+          { moz_overlay = import self.sources.nixpkgs-mozilla self super; }
+        )
+
         # Rust nightly
         (self: super: let
-          moz_overlay = import self.sources.nixpkgs-mozilla self super;
-          rust-channel = moz_overlay.rustChannelOf { date = "2022-04-01"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-04-01"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
@@ -66,9 +70,19 @@ let
             extensions = ["rust-src"];
           };
           cargo-nightly = rustc-nightly;
-          rustPlatform-nightly = pkgs.makeRustPlatform {
+          rustPlatform-nightly = self.makeRustPlatform {
             rustc = rustc-nightly;
             cargo = cargo-nightly;
+          };
+        })
+
+        # Rust 1.60
+        (self: super: let
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-04-07"; channel = "stable"; };
+        in {
+          rustPlatform_moz_stable = self.makeRustPlatform {
+            rustc = rust-channel.rust;
+            cargo = rust-channel.rust;
           };
         })
 

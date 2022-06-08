@@ -84,10 +84,12 @@ let varLE (id, typ) =
 let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
+    | ICArgDataPrim -> T.blob
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
+    | ICMethodNamePrim -> T.text
     | ICPerformGC
     | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64
@@ -104,6 +106,9 @@ let primE prim es =
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat
+    | DeserializePrim ts -> T.seq ts
+    | DeserializeOptPrim ts -> T.Opt (T.seq ts)
+    | OtherPrim "trap" -> T.Non
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -369,6 +374,31 @@ let switch_variantE exp1 cases typ1 =
       eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
     }
   }
+
+let switch_textE exp1 cases (pat, exp2) typ1 =
+  let cs =
+    (List.map (fun (t, e) ->
+      {it = {pat =
+        {it = LitP (TextLit t);
+         at = no_region;
+         note = typ exp1};
+         exp = e};
+         at = no_region;
+         note = ()})
+      cases) @
+    [{it = {pat = pat; exp = exp2};
+      at = no_region;
+      note = ()}]
+  in
+  { it = SwitchE (exp1, cs);
+    at = no_region;
+    note = Note.{
+      def with
+      typ = typ1;
+      eff = List.fold_left max_eff (eff exp1) (List.map (fun c -> eff c.it.exp) cs)
+    }
+  }
+
 
 let tupE exps =
   let effs = List.map eff exps in

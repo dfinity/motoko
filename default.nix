@@ -1,12 +1,12 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
-
-  # version to embed in the release. Used by `.github/workflows/release.yml`
-  releaseVersion ? null,
+  officialRelease ? false,
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
+
+let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -432,7 +432,7 @@ rec {
       checkPhase = ''
         patchShebangs .
         type -p moc && moc --version
-        type -p drun && drun --version
+        type -p drun && drun --help
         ./profile-report.sh
       '';
       installPhase = ''
