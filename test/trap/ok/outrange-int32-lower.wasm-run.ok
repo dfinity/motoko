@@ -6,7 +6,6 @@ Caused by:
     1: wasm trap: unreachable
        wasm backtrace:
          0: Int-><Int32>
-         1: intToInt32
-         2: init
-         3: _start
+         1: init
+         2: _start
        

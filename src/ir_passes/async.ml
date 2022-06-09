@@ -287,6 +287,23 @@ let transform mode prog =
          )
          (varE nary_async))
         .it
+    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->
+      let exp1' = t_exp exp1 in
+      let exp2' = t_exp exp2 in
+      let exp3' = t_exp exp3 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode [T.blob] in
+      let _ = letEta in
+      (blockE (
+        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+          letEta exp1' (fun v1 ->
+          letEta exp2' (fun v2 ->
+          letEta exp3' (fun v3 ->
+            [ expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject)) ]
+            )
+          ))
+         )
+         (varE nary_async))
+        .it
     | PrimE (p, exps) ->
       PrimE (t_prim p, List.map t_exp exps)
     | BlockE b ->
@@ -374,8 +391,14 @@ let transform mode prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat}, typ) ->
-      ActorE (t_decs ds, t_fields fs, {meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade; heartbeat = t_exp heartbeat}, t_typ typ)
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
+      ActorE (t_decs ds, t_fields fs,
+        {meta;
+         preupgrade = t_exp preupgrade;
+         postupgrade = t_exp postupgrade;
+         heartbeat = t_exp heartbeat;
+         inspect = t_exp inspect
+        }, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
@@ -444,9 +467,14 @@ let transform mode prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
-        { meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade; heartbeat = t_exp heartbeat }, t_typ t)
+        { meta;
+          preupgrade = t_exp preupgrade;
+          postupgrade = t_exp postupgrade;
+          heartbeat = t_exp heartbeat;
+          inspect = t_exp inspect
+        }, t_typ t)
 
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in

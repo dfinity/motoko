@@ -131,6 +131,9 @@ func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bo
 func decodeUtf8(b : Blob) : ?Text = (prim "decodeUtf8" : Blob -> ?Text) b;
 func encodeUtf8(t : Text) : Blob = (prim "encodeUtf8" : Text -> Blob) t;
 
+// Text comparison
+func textCompare(t1 : Text, t2 : Text) : Int8 = (prim "text_compare" : (Text, Text) -> Int8) (t1, t2);
+
 // Exotic bitwise operations
 func popcntNat8(w : Nat8) : Nat8 = (prim "popcnt8" : Nat8 -> Nat8) w;
 func clzNat8(w : Nat8) : Nat8 = (prim "clz8" : Nat8 -> Nat8) w;
@@ -357,3 +360,13 @@ func stableMemoryLoadBlob(offset : Nat64, size : Nat) : Blob =
 
 func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
   (prim "stableMemoryStoreBlob" : (Nat64, Blob) -> ()) (offset, val);
+
+// Returns a query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
+func stableVarQuery() : shared query () -> async {size : Nat64} =
+  (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
+
+
+let call_raw = @call_raw;
+
+func performanceCounter(counter : Nat32) : Nat64 =
+  (prim "performanceCounter" : (Nat32) -> Nat64) counter;

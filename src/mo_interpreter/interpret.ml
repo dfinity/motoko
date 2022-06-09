@@ -407,6 +407,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           trap exp.at "arithmetic overflow")
       )
     )
+  | ToCandidE _ -> invalid_arg "to do: ToCandidE"
+  | FromCandidE _ -> invalid_arg "to do: FromCandidE"
   | ShowE (ot, exp1) ->
     interpret_exp env exp1 (fun v ->
       if Show.can_show !ot

@@ -12,3 +12,15 @@ result*
 /samples/**/*.txt
 
 enable-internals
+
+# Editor configuration
+*.swp
+*.swo
+Session.vim
+*.iml
+.idea
+.vscode
+.project
+.cproject
+.favorites.json
+.settings/

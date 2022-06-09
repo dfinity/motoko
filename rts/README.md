@@ -19,8 +19,8 @@ Running `make` should produce `mo-rts.wasm`.
 
 If run within `nix-shell`, the environment variables `WASM_CLANG` and `WASM_LD`
 should point to suitable binaries (we track a specific unreleased version of
-`llvm`). If not present, the `Makefile` will try to use `clang-10` and
-`wasm-ld-10`.
+`llvm`). If not present, the `Makefile` will try to use `clang-13` and
+`wasm-ld-13`.
 
 The runtime compiles and links in [libtommath]. It needs the source, so
 `nix-build` and `nix-shell` will set the environment variable `TOMMATHSRC` to
@@ -87,6 +87,19 @@ do step 3.
 3. Run `nix-build -A rts`. You should get an error message about the expected
    value of `rustStdDepsHash`.
 4. Update `rustStdDepsHash` with the expected value in the error message.
+
+--------
+**The above doesn't always work**
+
+E.g. when you get `perhaps a crate was updated and forgotten to be
+re-vendored?`, proceed as follows:
+ - comment out the line `outputHashMode = "recursive";`
+ - `nix-build -A rts`
+ - update `cargoVendorTools.cargoSha256` based on the mismatch error message
+ - revert the line `outputHashMode = "recursive";`
+ - `nix-build -A rts`
+ - now fix `rustStdDepsHash` based on the new error message
+ - `nix-build -A rts` again, this should go through
 
 Running RTS tests
 -----------------

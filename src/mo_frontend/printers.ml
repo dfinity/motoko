@@ -110,6 +110,8 @@ let string_of_symbol symbol : string =
   | X (T T_DIVASSIGN) -> binassign "/="
   | X (T T_DISALLOWED) -> "<disallowed>"
   | X (T T_DEBUG_SHOW) -> "debug_show"
+  | X (T T_TO_CANDID) -> "to_candid"
+  | X (T T_FROM_CANDID) -> "from_candid"
   | X (T T_DEBUG) -> "debug"
   | X (T T_CONTINUE) -> "continue"
   | X (T T_COMMA) -> ","

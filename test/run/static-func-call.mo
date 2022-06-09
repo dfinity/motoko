@@ -1,4 +1,4 @@
-(func() = ()) ()
+(func() { assert true; })()
 
 // CHECK: func $init
 // CHECK-NOT: call_indirect

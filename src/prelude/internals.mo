@@ -406,3 +406,8 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
   });
   return canister_id_;
 };
+
+// raw calls
+func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
+  await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
+};

@@ -210,6 +210,7 @@ and objblock s dec_fields =
 %token AND OR NOT
 %token IMPORT MODULE
 %token DEBUG_SHOW
+%token TO_CANDID FROM_CANDID
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token WRAPADDOP WRAPSUBOP WRAPMULOP WRAPPOWOP
@@ -607,6 +608,10 @@ exp_un(B) :
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
     { ShowE (ref Type.Pre, e) @? at $sloc }
+  | TO_CANDID LPAR es=seplist(exp(ob), COMMA) RPAR
+    { ToCandidE es @? at $sloc }
+  | FROM_CANDID e=exp_un(ob)
+    { FromCandidE e @? at $sloc }
 
 exp_bin(B) :
   | e=exp_un(B)

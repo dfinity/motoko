@@ -56,6 +56,7 @@ val cps_awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
+val ic_call_rawE : exp -> exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
 val tagE : id -> exp -> exp
@@ -79,6 +80,7 @@ val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> Type.lab -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
+val switch_textE : exp -> (string * exp) list -> (pat * exp) -> typ -> exp
 val tupE : exp list -> exp
 val breakE: id -> exp -> exp
 val retE: exp -> exp

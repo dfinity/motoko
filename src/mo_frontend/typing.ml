@@ -204,10 +204,20 @@ let infer_mut mut : T.typ -> T.typ =
 
 (* System method types *)
 
-let system_funcs = [
+let system_funcs tfs =
+  [
     ("heartbeat", T.Func (T.Local, T.Returns, [T.scope_bind], [], [T.Async (T.Var (T.default_scope_var, 0), T.unit)]));
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
-    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
+    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    ("inspect",
+     (let msg_typ = T.decode_msg_typ tfs in
+      let record_typ =
+        T.Obj (T.Object, List.sort T.compare_field
+          [{T.lab = "caller"; T.typ = T.principal; T.depr = None};
+           {T.lab = "arg"; T.typ = T.blob; T.depr = None};
+           {T.lab = "msg"; T.typ = msg_typ; T.depr = None}])
+      in
+        T.Func (T.Local, T.Returns, [],  [record_typ], [T.bool])))
   ]
 
 
@@ -697,7 +707,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -973,6 +983,16 @@ and infer_exp'' env exp : T.typ =
       ot := t
     end;
     T.text
+  | ToCandidE exps ->
+    if not env.pre then begin
+        let ts = List.map (infer_exp env) exps in
+        if not (T.shared (T.seq ts)) then
+          error env exp.at "M0175" "to_candid argument must have shared type, but instead has non-shared type %a"
+            display_typ_expand (T.seq ts);
+      end;
+    T.Prim T.Blob
+  | FromCandidE exp1 ->
+    error env exp.at "M0176" "from_candid requires but is missing a known type (from context)"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -1385,6 +1405,23 @@ and check_exp' env0 t exp : T.typ =
       warn env exp.at "M0155" "operator may trap for inferred type%a"
         display_typ_expand t;
     t
+  | ToCandidE exps, _ ->
+    if not env.pre then begin
+      let ts = List.map (infer_exp env) exps in
+      if not (T.sub (T.Prim T.Blob) t) then
+        error env exp.at "M0172" "to_candid produces a Blob that is not a subtype of %a"
+          display_typ_expand t;
+      if not (T.shared (T.seq ts)) then
+          error env exp.at "M0173" "to_candid argument must have shared type, but instead has non-shared type %a"
+          display_typ_expand (T.seq ts);
+      end;
+    T.Prim T.Blob
+  | FromCandidE exp1, t when T.shared t && T.is_opt t ->
+    check_exp env (T.Prim T.Blob) exp1;
+    t
+  | FromCandidE _, t ->
+      error env exp.at "M0174" "from_candid produces an optional shared type, not type%a"
+        display_typ_expand t    
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
@@ -2035,19 +2072,19 @@ and infer_obj env s dec_fields at : T.typ =
       ) dec_fields;
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
-    check_system_fields env s scope dec_fields;
+    check_system_fields env s scope tfs dec_fields;
     check_stab env s scope dec_fields;
   end;
   t
 
-and check_system_fields env sort scope dec_fields =
+and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
     match sort, df.it.vis.it, df.it.dec.it with
     | T.Actor, vis,
       LetD({ it = VarP id; _ },
            { it = FuncE _; _ }) ->
       begin
-        match List.assoc_opt id.it system_funcs with
+        match List.assoc_opt id.it (system_funcs tfs) with
         | Some t ->
           (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
           if vis = System then
@@ -2062,7 +2099,7 @@ and check_system_fields env sort scope dec_fields =
         | None ->
           if vis = System then
             local_error env id.at "M0129" "unexpected system method named %s, expected %s"
-              id.it (String.concat " or " (List.map fst system_funcs))
+              id.it (String.concat " or " (List.map fst (system_funcs tfs)))
           else ()
       end
     | _, System, _ ->
@@ -2632,5 +2669,3 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           List.sort T.compare_field fs
         ) sig_.it
     )
-
-

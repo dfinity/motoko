@@ -9,6 +9,7 @@ mod leb128;
 mod mark_stack;
 mod memory;
 mod principal_id;
+mod stream;
 mod text;
 mod utf8;
 
@@ -29,6 +30,7 @@ fn main() {
         leb128::test();
         mark_stack::test();
         principal_id::test();
+        stream::test();
         text::test();
         utf8::test();
     }

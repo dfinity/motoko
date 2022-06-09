@@ -1,10 +1,10 @@
 func go () {
-  func foobar1() = ();
+  func foobar1() { assert true; };
   foobar1();
 };
 go();
 
-func foobar2() = ();
+func foobar2() { assert true; };
 foobar2();
 
 // CHECK-LABEL: func $init

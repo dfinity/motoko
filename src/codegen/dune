@@ -1,4 +1,5 @@
 (library
   (name codegen)
   (libraries wasm lib mo_config source_id lang_utils wasm_exts ir_def linking)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

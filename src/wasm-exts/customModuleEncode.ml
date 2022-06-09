@@ -847,6 +847,7 @@ let encode (em : extended_module) =
 
     let motoko_sections motoko =
       icp_custom_section "motoko:stable-types" utf8 motoko.stable_types;
+      icp_custom_section "motoko:compiler" utf8 motoko.compiler;
       custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> []) (* TODO: make an icp_section *)
 
     let candid_sections candid =
