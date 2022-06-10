@@ -585,7 +585,7 @@ and obj_extend obj_typ efs base =
   let frob T.{ lab; typ; _ } =
     match List.find_opt (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs with
     | Some ef ->
-      exp_field ef
+      exp_field obj_typ ef
     | _ ->
       let id = fresh_var lab typ in
       let d = letD id (dotE (varE base_var) lab typ) in
