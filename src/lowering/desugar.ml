@@ -577,24 +577,32 @@ and obj obj_typ efs =
   let obj_e = newObjE T.Object fs obj_typ in
   I.BlockE(ds, obj_e)
 
-and obj_extend obj_typ efs base =
-  let base, base_t = exp base, (typ_note base.note).Note.typ in
-  let base_var = fresh_var "base" base_t in
-  let base_dec = letD base_var base in
+and obj_extend obj_typ efs bases =
+  let base_info base =
+    let base_exp, base_t = exp base, (typ_note base.note).Note.typ in
+    let base_var = fresh_var "base" base_t in
+    let base_dec = letD base_var base_exp in
+    let pred l =
+      let open Lib.Option.Syntax in
+      let* base_field = List.find_opt (fun { T.lab; _ } -> lab = l) (snd (T.as_obj base_t)) in
+      Some base_var in
+    base_dec, pred in
 
+  let base_decs, preds = List.(map base_info bases |> split) in
   let frob T.{ lab; typ; _ } =
     match List.find_opt (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs with
     | Some ef ->
       exp_field obj_typ ef
     | _ ->
       let id = fresh_var lab typ in
+      let base_var = List.(find (fun pred -> Lib.Option.is_some (pred lab)) preds) |> Lib.Option.get in
       let d = letD id (dotE (varE base_var) lab typ) in
       let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
       d, f in
 
   let ds, fs = List.(map frob (snd (T.as_obj obj_typ)) |> split) in
   let obj_e = newObjE T.Object fs obj_typ in
-  I.BlockE(base_dec :: ds, obj_e)
+  I.BlockE(append base_decs ds, obj_e)
 
 and typ_binds tbs = List.map typ_bind tbs
 
