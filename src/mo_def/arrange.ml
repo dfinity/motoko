@@ -85,7 +85,7 @@ and pat p = match p.it with
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
   | ParP p          -> "ParP"       $$ [pat p]
 
-and lit (l:lit) = match l with
+and lit = function
   | NullLit       -> Atom "NullLit"
   | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
   | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]

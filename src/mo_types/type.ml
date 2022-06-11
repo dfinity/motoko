@@ -1203,7 +1203,7 @@ let string_of_var (x, i) =
 
 let string_of_con c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
 
-let rec can_sugar t = match t with
+let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)
   | Func((Shared _ as s), Returns, tbs, ts1, ([] as ts2))
   | Func(s, Returns, tbs, ts1, ([Async (Var(_, 0),_)] as ts2)) ->
@@ -1213,8 +1213,7 @@ let rec can_sugar t = match t with
   | _ -> false
 
 and can_omit n t =
-  let rec go i t =
-    match t with
+  let rec go i = function
     | Var (_, j) -> i <> j
     | Pre -> assert false
     | Prim _ | Any | Non -> true
