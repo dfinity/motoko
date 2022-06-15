@@ -77,7 +77,7 @@ pub unsafe fn compacting_gc_internal<
     mark_compact(
         mem,
         set_hp,
-        heap_base,
+        heap_base - 1, // skew it
         old_hp,
         static_roots,
         continuation_table_ptr_loc,
@@ -98,6 +98,8 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
 ) {
+    assert_eq!(heap_base % WORD_SIZE, 3);
+
     let mem_size = Bytes(heap_end - heap_base);
 
     alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
