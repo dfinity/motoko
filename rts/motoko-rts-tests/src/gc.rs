@@ -45,7 +45,7 @@ fn test_heaps() -> Vec<TestHeap> {
         // - Unreachable objects
         // - Forward pointers
         // - Backwards pointers
-        // - More than one fields in an object
+        // - More than one field in an object
         TestHeap {
             heap: vec![
                 (0, vec![0, 2]),
