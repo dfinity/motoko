@@ -77,7 +77,7 @@ pub unsafe fn compacting_gc_internal<
     mark_compact(
         mem,
         set_hp,
-        heap_base - 1, // skew it
+        heap_base,
         old_hp,
         static_roots,
         continuation_table_ptr_loc,
@@ -98,14 +98,16 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
 ) {
-    assert_eq!(heap_base % WORD_SIZE, 3);
+    {
+	let skew_aligned_heap_base = heap_base - 32;
+	let mem_size = Bytes(heap_end - skew_aligned_heap_base);
 
-    let mem_size = Bytes(heap_end - heap_base);
-
-    alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
+	alloc_bitmap(mem, mem_size, skew_aligned_heap_base / WORD_SIZE);
+    }
     alloc_mark_stack(mem);
 
-    mark_static_roots(mem, static_roots, heap_base);
+    let skewed_heap_base = heap_base - 1;
+    mark_static_roots(mem, static_roots, skewed_heap_base);
 
     if (*continuation_table_ptr_loc).is_ptr() {
         mark_object(mem, *continuation_table_ptr_loc);
@@ -114,9 +116,9 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         thread(continuation_table_ptr_loc);
     }
 
-    mark_stack(mem, heap_base);
+    mark_stack(mem, skewed_heap_base);
 
-    update_refs(set_hp, heap_base);
+    update_refs(set_hp, skewed_heap_base);
 
     free_mark_stack();
     free_bitmap();
@@ -137,10 +139,10 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
-    let obj = obj.get_ptr() as u32;
+    let obj = obj.get_raw();
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
-    debug_assert_eq!(obj % WORD_SIZE, 0);
+    debug_assert_eq!(obj % WORD_SIZE, WORD_SIZE - 1);
 
     let obj_idx = obj / WORD_SIZE;
 
@@ -210,7 +212,8 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
 /// - Thread forward pointers of the object
 ///
 unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
-    let mut free = heap_base;
+    let mut free = heap_base + 1; // unskew
+    debug_assert_eq!(free % WORD_SIZE, 0);
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
