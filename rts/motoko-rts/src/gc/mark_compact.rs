@@ -99,10 +99,10 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     continuation_table_ptr_loc: *mut Value,
 ) {
     {
-	let skew_aligned_heap_base = heap_base - 32;
-	let mem_size = Bytes(heap_end - skew_aligned_heap_base);
+        let skew_aligned_heap_base = heap_base - 32;
+        let mem_size = Bytes(heap_end - skew_aligned_heap_base);
 
-	alloc_bitmap(mem, mem_size, skew_aligned_heap_base / WORD_SIZE);
+        alloc_bitmap(mem, mem_size, skew_aligned_heap_base / WORD_SIZE);
     }
     alloc_mark_stack(mem);
 
