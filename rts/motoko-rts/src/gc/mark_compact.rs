@@ -157,7 +157,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, tag, heap_base)
+        mark_fields(mem, (obj + 1) as *mut Obj, tag, heap_base)
     }
 }
 
@@ -182,7 +182,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
             if arr.len() - slice_start > SLICE_INCREMENT {
                 let new_start = slice_start + SLICE_INCREMENT;
                 // push an entire (suffix) array slice
-                push_mark_stack(mem, arr as usize, new_start);
+                push_mark_stack(mem, arr as usize - 1, new_start);
                 new_start
             } else {
                 arr.len()
