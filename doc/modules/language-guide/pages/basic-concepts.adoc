@@ -179,6 +179,20 @@ This is also program, but one where the declared variables `x` and `y` are priva
 
 This block form preserves the autonomy of the declaration list and its _choice of variable names_.
 
+A block expression produces a value and, when enclosed in parentheses,
+can occur within some larger, compound expression. For example:
+
+[source, motoko]
+....
+100 +
+  (do {
+     let x = 1;
+     let y = x + 1;
+     x * y + x
+   })
+....
+
+
 [#declarations-follow-lexical-scoping]
 === Declarations follow *lexical scoping*
 

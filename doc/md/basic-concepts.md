@@ -164,6 +164,17 @@ This is also program, but one where the declared variables `x` and `y` are priva
 
 This block form preserves the autonomy of the declaration list and its *choice of variable names*.
 
+A block expression produces a value and, when enclosed in parentheses, can occur within some larger, compound expression. For example:
+
+``` motoko
+100 +
+  (do {
+     let x = 1;
+     let y = x + 1;
+     x * y + x
+   })
+```
+
 ### Declarations follow **lexical scoping**
 
 Above, we saw that nesting blocks preserves the autonomy of each separate declaration list and its *choice of variable names*. Language theorists call this idea *lexical scoping*. It means that variables' scopes may nest, but they may not interfere as they nest.
