@@ -1299,6 +1299,12 @@ and pp_typ_pre vs ppf t =
   | t ->
     pp_typ_un vs ppf t
 
+and sequence ts =
+  match ts with
+  | [Tup _] ->
+    Tup ts
+  | ts -> seq ts
+
 and pp_typ_nobin vs ppf t =
   match t with
   | Func (s, c, tbs, ts1, ts2) ->
@@ -1314,7 +1320,7 @@ and pp_typ_nobin vs ppf t =
     fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
       (pp_binds (vs'vs) vs'') tbs'
-      (pp_typ_un (vs'vs)) (seq ts1)
+      (pp_typ_un (vs'vs)) (sequence ts1)
       (pp_control_cod sugar c (vs'vs)) ts2
   | t ->
      pp_typ_pre vs ppf t
@@ -1325,11 +1331,11 @@ and pp_control_cod sugar c vs ppf ts =
   | Returns, [Async (_,t)] when sugar ->
     fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) t
   | Promises, ts ->
-    fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) (seq ts)
+    fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) (sequence ts)
   | Returns, _ ->
-    pp_typ_nobin vs ppf (seq ts)
+    pp_typ_nobin vs ppf (sequence ts)
   | Replies, _ ->
-    fprintf ppf "@[<2>replies@ %a@]" (pp_typ_nobin vs) (seq ts)
+    fprintf ppf "@[<2>replies@ %a@]" (pp_typ_nobin vs) (sequence ts)
 
 and pp_typ' vs ppf t =
   match t with
