@@ -16,7 +16,7 @@ let
   diff-stats = nixpkgs.stdenvNoCC.mkDerivation {
     name = "diff-stats";
     src = ./test/diff-stats.pl;
-    phases = [ "installPhase fixupPhase" ];
+    phases = "installPhase fixupPhase";
     buildInputs = [ nixpkgs.perl ];
     installPhase = ''
       mkdir -p $out/bin

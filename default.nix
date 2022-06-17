@@ -148,7 +148,7 @@ let ocaml_exe = name: bin: rts:
   musl-wasi-sysroot = stdenv.mkDerivation {
     name = "musl-wasi-sysroot";
     src = nixpkgs.sources.musl-wasi;
-    phases = [ "unpackPhase" "installPhase" ];
+    phases = "unpackPhase installPhase";
     installPhase = ''
       make SYSROOT="$out" include_dirs
     '';
@@ -808,7 +808,7 @@ rec {
     # so that after `nix-build -A shell` (or just `nix-build`) they are guaranteed
     # to be present in the local nix store (else this might just download an
     # empty build result path from the nix cache.)
-    phases = ["installPhase" "fixupPhase"];
+    phases = "installPhase fixupPhase";
     installPhase = ''
       mkdir $out
     '';
