@@ -195,7 +195,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
 unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
     let field_addr = &mut (*mutbox).field;
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
-        mark_object(mem, *field_addr);
+        mark_object(mem, *field_addr);assert!(false);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);
