@@ -229,19 +229,19 @@ The [language quick reference](language-manual.md) contains a complete list of [
 
 Building on the primitive values and types above, the language permits user-defined types, and each of the following non-primitive value forms and associated types:
 
--   [Tuples](language-manual.md#exp-tuple), including the unit value (the "empty tuple");
+-   [Tuples](language-manual.md#tuples), including the unit value (the "empty tuple");
 
--   [Arrays](language-manual.md#exp-arrays), with both *immutable* and *mutable* variants;
+-   [Arrays](language-manual.md#arrays), with both *immutable* and *mutable* variants;
 
--   [Objects](language-manual.md#exp-object), with named, unordered fields and methods;
+-   [Objects](language-manual.md#objects), with named, unordered fields and methods;
 
 -   [Variants](language-manual.md#variant-types), with named constructors and optional payload values;
 
--   [Function values](language-manual.md#exp-func), including [shareable functions](sharing.md);
+-   [Function values](language-manual.md#functions), including [shareable functions](sharing.md);
 
--   [Async values](language-manual.md#exp-async), also known as *promises* or *futures*;
+-   [Async values](language-manual.md#async), also known as *promises* or *futures*;
 
--   [Error values](language-manual.md#type-Error) carry the payload of exceptions and system failures.
+-   [Error values](language-manual.md#error-types) carry the payload of exceptions and system failures.
 
 We discuss the use of these forms in the next sections.
 

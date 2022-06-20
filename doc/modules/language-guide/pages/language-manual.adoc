@@ -804,6 +804,7 @@ Object types that differ only in the ordering of the fields are equivalent.
 
 When `<sort>?` is `actor`, all fields have `shared` function type (specifying messages).
 
+[#variant-types]
 === Variant types
 
 `{ <typ-tag>;* }` specifies a variant type by listing its variant type fields as a sequence of ``<typ-tag>``s.
@@ -1696,6 +1697,7 @@ the Boolean result of `v1 <relop> v2`.
 
 For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` (not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise).
 
+[#tuples]
 === Tuples
 
 Tuple expression `(<exp1>, ..., <expn>)` has tuple type `(T1, ..., Tn)`, provided
@@ -1729,6 +1731,7 @@ Otherwise, `r` must be a value `v` and the result of the injection is the tagged
 
 The tag and contents of a variant value can be tested and accessed using a <<variant-pattern, variant pattern>>.
 
+[#objects]
 === Objects
 
 Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list of expression fields:
@@ -1828,6 +1831,7 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 
 Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifier, an item of a mutable array or a mutable field of object) and a value `v2`. The expression updates the current value, `w` stored in `v1` with the new value `w <binop> v2` and returns the empty tuple `()`.
 
+[#arrays]
 === Arrays
 
 The expression `[ var? <exp>,* ]` has type `[var? T]` provided
@@ -2137,6 +2141,7 @@ The `return` expression exits the corresponding dynamic function invocation or c
 
 // TBR async traps?
 
+[#async]
 === Async
 
 The async expression `async <block-or-exp>` has type `async T` provided:
