@@ -33,7 +33,7 @@ which simplifies building objects of the same type and implementation.
 We introduce these after discussing objects.
 
 *Actor classes*.
-When an object class exposes a _link:actors-async.adoc[service]_ (asynchronous behavior), the corresponding {proglang} construct is an link:actors-async.adoc[actor class], which follows a similar (but distinct) design.
+When an object class exposes a _link:actors-async{outfilesuffix}[service]_ (asynchronous behavior), the corresponding {proglang} construct is an link:actors-async{outfilesuffix}[actor class], which follows a similar (but distinct) design.
 
 
 == Example: The `counter` object

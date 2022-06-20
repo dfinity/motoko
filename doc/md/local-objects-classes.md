@@ -16,7 +16,7 @@ We illustrate this support via a running example, which continues in the next ch
 
 **Object classes**. Frequently, one needs *a family* of related objects to perform a task. When objects exhibit similar behavior, it makes sense to fabricate them according to the same blueprint, but with customizable initial state. To this end, Motoko provides a syntactical construct, called a `class` definition, which simplifies building objects of the same type and implementation. We introduce these after discussing objects.
 
-**Actor classes**. When an object class exposes a *[service](actors-async.adoc)* (asynchronous behavior), the corresponding Motoko construct is an [actor class](actors-async.adoc), which follows a similar (but distinct) design.
+**Actor classes**. When an object class exposes a *[service](actors-async.md)* (asynchronous behavior), the corresponding Motoko construct is an [actor class](actors-async.md), which follows a similar (but distinct) design.
 
 ## Example: The `counter` object
 
