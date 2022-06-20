@@ -2347,13 +2347,28 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_res
       end)
 
+  (*
+    Note [left shifting compact Nat]
+    For compact Nats (i.e. non-heap allocated ones) we first try to perform the shift in the i64 domain.
+    for this we extend (signed, but that doesn't really matter) to 64 bits and then perform the left shift.
+    Then we check whether the result will fit back into the compact representation by either
+     - comparing: truncate to i32, then sign-extend back to i64, with the shift result
+     - count leading zeros >= 33 (currently we don't use this idea).
+    If the test works out, we have to ensure that the shift amount was smaller than 64, due to Wasm semantics.
+    If this is the case then the truncated i32 is the result (lowest bit is guaranteed to be clear),
+    otherwise we have to fall back to bignum arithmetic. We have two choices:
+     - reuse the 64-bit shift result going to heap (not currently, amount must be less than 33 for this to work)
+     - convert the original base to bigum and do the shift there.
+
+    N.B. we currently choose the shift cutoff as 42, just because (it must be <64).
+   *)
 
   let compile_lsh env =
     Func.share_code2 env "B_lsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
     (fun env get_n get_amount ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
-        ( (* non-ptr, shift amount <= 42: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
+        ( (* see Note [left shifting compact Nat] *)
           get_n ^^
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
           get_amount ^^
