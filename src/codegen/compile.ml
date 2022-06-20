@@ -2351,60 +2351,52 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_lsh env =
     Func.share_code2 env "B_lsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
     (fun env get_n get_amount ->
-    (*let set_amount, get_amount = new_local env "amount" in
-    let set_n, get_n = new_local env "n" in
-    set_amount ^^
-    set_n ^^ *)
-    get_n ^^
-    BitTagged.if_tagged_scalar env [I32Type]
-      ( (* non-ptr, shift amount <= 42: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
-        get_n ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-        get_amount ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-        let set_remember, get_remember = new_local64 env "remember" in
-        set_remember ^^ get_remember ^^
-        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-        let set_res, get_res = new_local env "res" in
-        set_res ^^ get_res ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ (* exclude sign flip *)
-        get_remember ^^
-        G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
-        get_amount ^^ compile_rel_const I32Op.LeU 42l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-        G.if1 I32Type
-          get_res
-          (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
-      )
-      (get_n ^^ get_amount ^^ Num.compile_lsh env))
+      get_n ^^
+      BitTagged.if_tagged_scalar env [I32Type]
+        ( (* non-ptr, shift amount <= 42: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
+          get_n ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
+          get_amount ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+          let set_remember, get_remember = new_local64 env "remember" in
+          set_remember ^^ get_remember ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          let set_res, get_res = new_local env "res" in
+          set_res ^^ get_res ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ (* exclude sign flip *)
+          get_remember ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
+          get_amount ^^ compile_rel_const I32Op.LeU 42l ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+          G.if1 I32Type
+            get_res
+            (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
+        )
+        (get_n ^^ get_amount ^^ Num.compile_lsh env))
 
   let compile_rsh env =
     Func.share_code2 env "B_rsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
     (fun env get_n get_amount ->
-    (*let set_amount, get_amount = new_local env "amount" in
-    let set_n, get_n = new_local env "n" in
-    set_amount ^^
-    set_n ^^ *)
-    get_n ^^
-    BitTagged.if_tagged_scalar env [I32Type]
-      begin
-        get_n ^^
-        get_amount ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
-        compile_bitand_const 0xFFFFFFFEl ^^
-        get_amount ^^ compile_rel_const I32Op.LeU 31l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
-      end
-      begin
-        get_n ^^ get_amount ^^ Num.compile_rsh env ^^
-        let set_res, get_res = new_local env "res" in
-        set_res ^^ get_res ^^
-        fits_in_vanilla env ^^
-        G.if1 I32Type
-          (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
-          get_res
-      end)
+      get_n ^^
+      BitTagged.if_tagged_scalar env [I32Type]
+        begin
+          get_n ^^
+          get_amount ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+          compile_bitand_const 0xFFFFFFFEl ^^
+          get_amount ^^ compile_rel_const I32Op.LeU 31l ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Mul))
+        end
+        begin
+          get_n ^^ get_amount ^^ Num.compile_rsh env ^^
+          let set_res, get_res = new_local env "res" in
+          set_res ^^ get_res ^^
+          fits_in_vanilla env ^^
+          G.if1 I32Type
+            (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
+            get_res
+        end)
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
