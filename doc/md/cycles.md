@@ -6,7 +6,7 @@ In Motoko programs targeting the Internet Computer, each actor represents an Int
 
 Callees can accept all, some or none of the available cycles up to limit determined by their actor’s current balance. Any remaining cycles are refunded to the caller. If a call traps, all its accompanying cycles are automatically refunded to the caller, without loss.
 
-In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../../../../references/motoko-ref/ExperimentalCycles.md) library in package `base`.
+In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../../../../references/motoko-ref/experimentalcycles.md) library in package `base`.
 
 :::note
 

@@ -4,7 +4,7 @@
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 
-{proglang} is a modern, general-purpose programming language you can use specifically to author link:../../../../concepts/what-is-ic{outfilesuffix}[Internet Computer]  canister smart contracts.
+{proglang} is a modern, general-purpose programming language you can use specifically to author link:../../../../concepts/what-is-IC{outfilesuffix}[Internet Computer] canister smart contracts.
 Although aimed squarely at the {IC}, its design is general enough to support future compilation to other targets.
 
 == Approachability
@@ -21,11 +21,11 @@ Specifically, {proglang} programs are _type sound_ since {proglang} includes a p
 The {proglang} type system statically checks that each {proglang} program will execute safely, without dynamic type errors, on all possible inputs.
 Consequently, entire classes of common programming pitfalls that are common in other languages, and web programming languages in particular, are ruled out. This includes null reference errors, mis-matched argument or result types, missing field errors and many others.
 
-To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#wasm[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../../../../concepts/what-is-ic{outfilesuffix}[{IC}].
+To execute, {proglang} statically compiles to link:about-this-guide{outfilesuffix}#webassembly[WebAssembly], a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the link:../../../../concepts/what-is-IC{outfilesuffix}[{IC}].
 
 == Each canister smart contract as an _actor_
 
-{proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../../../../concepts/what-is-ic{outfilesuffix}[{IC}].
+{proglang} provides an *actor-based* programming model to developers to express _services_, including those of canister smart contracts on the link:../../../../concepts/what-is-IC{outfilesuffix}[{IC}].
 
 An actor is similar to an object, but is special in that its state is completely isolated, and all its interactions with the world are by _asynchronous_ messaging.
 
@@ -90,7 +90,7 @@ We do not show an example of this "`notify`" pattern above, since it uses callba
 
 To address the need for clarity and simplicity, {proglang} adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a _structured_ language for describing potentially-complex asynchronous dependency graphs.
 
-The link:language-manual{outfilesuffix}#exp-async[async] syntax introduces futures. A future value
+The link:language-manual{outfilesuffix}#async[async] syntax introduces futures. A future value
 represents a _promise_ of a result _that will be delivered, asynchronously, sometime in the future_ (not shown in the first example above).
 You'll learn more about futures when we introduce actors in link:actors-async{outfilesuffix}[Actors and async data].
 
@@ -110,7 +110,7 @@ Like other modern programming languages, {proglang} permits each variable to car
 Other link:basic-concepts{outfilesuffix}#intro-values[types of values] exist too, including records, tuples, and "`tagged data`" called _variants_.
 
 {proglang} enjoys the formal property of type safety, also known as _type soundness_.
-We often summarize this idea with the phrase: link:basic-concepts{outfilesuffix}#intro-type-soundness[Well-typed {proglang} programs don't go wrong], meaning that the only operations that will be performed on data are those permitted by its
+We often summarize this idea with the phrase: link:basic-concepts{outfilesuffix}#type-soundness[Well-typed {proglang} programs don't go wrong], meaning that the only operations that will be performed on data are those permitted by its
 static type.
 
 For example, each variable in a {proglang} program carries an associated _type_, and this type is known _statically_, before the program executes.
@@ -120,4 +120,4 @@ In this sense, {proglang} types provide a form of _trustworthy, **compiler-verif
 
 As usual, dynamic testing can check properties that are beyond the reach of the {proglang} type system.
 While modern, the {proglang} type system is intentionally _not_ "`advanced`" or particularly exotic.
-Rather, the type system of {proglang} integrates standard concepts from modern, but well-understood, link:about-this-guide{outfilesuffix}#modern-types[practical type systems] to provide an approachable, expressive yet safe language for programming general-purpose, distributed applications.
+Rather, the type system of {proglang} integrates standard concepts from modern, but well-understood, link:about-this-guide{outfilesuffix}#modern-type-systems[modern type systems] to provide an approachable, expressive yet safe language for programming general-purpose, distributed applications.

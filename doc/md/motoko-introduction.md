@@ -1,6 +1,6 @@
 # Introduction
 
-Motoko is a modern, general-purpose programming language you can use specifically to author [Internet Computer](../../../../concepts/what-is-ic.md) canister smart contracts. Although aimed squarely at the Internet Computer, its design is general enough to support future compilation to other targets.
+Motoko is a modern, general-purpose programming language you can use specifically to author [Internet Computer](../../../../concepts/what-is-IC.md) canister smart contracts. Although aimed squarely at the Internet Computer, its design is general enough to support future compilation to other targets.
 
 ## Approachability
 
@@ -12,11 +12,11 @@ Motoko permits modern programming idioms, including special programming abstract
 
 Specifically, Motoko programs are *type sound* since Motoko includes a practical, modern type system that checks each one before it executes. The Motoko type system statically checks that each Motoko program will execute safely, without dynamic type errors, on all possible inputs. Consequently, entire classes of common programming pitfalls that are common in other languages, and web programming languages in particular, are ruled out. This includes null reference errors, mis-matched argument or result types, missing field errors and many others.
 
-To execute, Motoko statically compiles to [WebAssembly](about-this-guide.md#wasm), a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the [Internet Computer](../../../../concepts/what-is-ic.md).
+To execute, Motoko statically compiles to [WebAssembly](about-this-guide.md#webassembly), a portable binary format that abstracts cleanly over modern computer hardware, and thus permits its execution broadly on the Internet, and the [Internet Computer](../../../../concepts/what-is-IC.md).
 
 ## Each canister smart contract as an *actor*
 
-Motoko provides an **actor-based** programming model to developers to express *services*, including those of canister smart contracts on the [Internet Computer](../../../../concepts/what-is-ic.md).
+Motoko provides an **actor-based** programming model to developers to express *services*, including those of canister smart contracts on the [Internet Computer](../../../../concepts/what-is-IC.md).
 
 An actor is similar to an object, but is special in that its state is completely isolated, and all its interactions with the world are by *asynchronous* messaging.
 
@@ -70,7 +70,7 @@ We do not show an example of this “notify” pattern above, since it uses call
 
 To address the need for clarity and simplicity, Motoko adopts the increasingly-common program constructs `async` and `await`, which afford the programmer a *structured* language for describing potentially-complex asynchronous dependency graphs.
 
-The [async](language-manual.md#exp-async) syntax introduces futures. A future value represents a *promise* of a result *that will be delivered, asynchronously, sometime in the future* (not shown in the first example above). You’ll learn more about futures when we introduce actors in [Actors and async data](actors-async.md).
+The [async](language-manual.md#async) syntax introduces futures. A future value represents a *promise* of a result *that will be delivered, asynchronously, sometime in the future* (not shown in the first example above). You’ll learn more about futures when we introduce actors in [Actors and async data](actors-async.md).
 
 Here, we merely use the ones that arise from calling `service1.computeAnswer(params)` and `service2.computeAnswer(params)`.
 
@@ -82,10 +82,10 @@ When the developer uses these keywords, the compiler transforms the program as n
 
 Like other modern programming languages, Motoko permits each variable to carry the value of a function, object, or a primitive datum (for example, a string, word, or integer). Other [types of values](basic-concepts.md#intro-values) exist too, including records, tuples, and “tagged data” called *variants*.
 
-Motoko enjoys the formal property of type safety, also known as *type soundness*. We often summarize this idea with the phrase: [Well-typed Motoko programs don’t go wrong](basic-concepts.md#intro-type-soundness), meaning that the only operations that will be performed on data are those permitted by its static type.
+Motoko enjoys the formal property of type safety, also known as *type soundness*. We often summarize this idea with the phrase: [Well-typed Motoko programs don’t go wrong](basic-concepts.md#type-soundness), meaning that the only operations that will be performed on data are those permitted by its static type.
 
 For example, each variable in a Motoko program carries an associated *type*, and this type is known *statically*, before the program executes. Each use of each variable is checked by the compiler to prevent runtime type errors, including null reference errors, invalid field access and the like.
 
 In this sense, Motoko types provide a form of *trustworthy, **compiler-verified** documentation* in the program source code.
 
-As usual, dynamic testing can check properties that are beyond the reach of the Motoko type system. While modern, the Motoko type system is intentionally *not* “advanced” or particularly exotic. Rather, the type system of Motoko integrates standard concepts from modern, but well-understood, [practical type systems](about-this-guide.md#modern-types) to provide an approachable, expressive yet safe language for programming general-purpose, distributed applications.
+As usual, dynamic testing can check properties that are beyond the reach of the Motoko type system. While modern, the Motoko type system is intentionally *not* “advanced” or particularly exotic. Rather, the type system of Motoko integrates standard concepts from modern, but well-understood, [modern type systems](about-this-guide.md#modern-type-systems) to provide an approachable, expressive yet safe language for programming general-purpose, distributed applications.

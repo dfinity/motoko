@@ -268,7 +268,7 @@ Building on the primitive values and types above, the language permits user-defi
  - link:language-manual{outfilesuffix}#variant-types[Variants], with named constructors and optional payload values;
  - link:language-manual{outfilesuffix}#functions[Function values], including link:sharing{outfilesuffix}[shareable functions];
  - link:language-manual{outfilesuffix}#async[Async values], also known as _promises_ or _futures_;
- - link:language-manual{outfilesuffix}#error-types[Error values] carry the payload of exceptions and system failures.
+ - link:language-manual{outfilesuffix}#error-type[Error values] carry the payload of exceptions and system failures.
 
 We discuss the use of these forms in the next sections.
 
@@ -487,6 +487,7 @@ P.unreachable()
 As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
 
 // TODO: add more general intro to traps, including section on prelude functions, reference that instead
+
 [#traps-due-to-faults]
 === Traps due to faults
 

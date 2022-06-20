@@ -63,7 +63,7 @@ text2
 
 As with `+=`, this combined form avoids repeating the assigned variable’s name on the right hand side of the (special) assignment operator `#=`.
 
-The [full list of assignment operations](language-manual.md#syntax-ops-assignment) lists numerical, logical, and textual operations over appropriate types (number, boolean and text values, respectively).
+The full table [assignment operators](language-manual.md#assignment-operators) lists numerical, logical, and textual operations over appropriate types (number, boolean and text values, respectively).
 
 ## Reading from mutable memory
 
@@ -136,7 +136,7 @@ We can project from (*read from*) an array using the usual bracket syntax (`[` a
 let x : Nat = a[2] + a[0] ;
 ```
 
-Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap, as with an [assertion failure](basic-concepts.md#overview-traps).
+Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap, as with an [assertion](basic-concepts.md#assertions) failure.
 
 ## The Array module
 

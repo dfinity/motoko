@@ -292,6 +292,6 @@ The last two lines above *instantiate* the actor class twice. The first invocati
 
 :::note
 
-For now, the Motoko compiler gives an error when compiling programs that do not consist of a single actor or actor class. Compiled programs may still, however, reference imported actor classes. For more information, see [Importing actor classes](modules-and-imports.md#importing_actor_classes) and [Actor classes](actor-classes.md#actor_classes).
+For now, the Motoko compiler gives an error when compiling programs that do not consist of a single actor or actor class. Compiled programs may still, however, reference imported actor classes. For more information, see [Importing actor classes](modules-and-imports.md#importing-actor-classes) and [Actor classes](actor-classes.md#actor-classes).
 
 :::

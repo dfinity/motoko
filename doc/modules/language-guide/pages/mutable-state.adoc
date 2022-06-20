@@ -96,7 +96,7 @@ As with `+=`, this combined form avoids repeating the assigned
 variable's name on the right hand side of the (special) assignment
 operator `#=`.
 
-The link:language-manual{outfilesuffix}#syntax-ops-assignment[full list of assignment operations]
+The full table link:language-manual{outfilesuffix}#assignment-operators[assignment operators]
 lists numerical, logical, and textual operations over appropriate
 types (number, boolean and text values, respectively).
 
@@ -196,7 +196,7 @@ let x : Nat = a[2] + a[0] ;
 ....
 
 Every array access in {proglang} is safe.  Accesses that are out of
-bounds will not access memory unsafely, but instead will cause the program to trap, as with an link:basic-concepts{outfilesuffix}#overview-traps[assertion failure].
+bounds will not access memory unsafely, but instead will cause the program to trap, as with an link:basic-concepts{outfilesuffix}#assertions[assertion] failure.
 
 == The Array module
 

@@ -210,7 +210,7 @@ And as we can see we can now give the user a useful error message.
 
 ### Pattern matching
 
-The first and most common way of working with `Option` and `Result` is to use 'pattern matching'. If we have a value of type `?Text` we can use the 'switch' keyword to access the potential `Text` contents:
+The first and most common way of working with `Option` and `Result` is to use 'pattern matching'. If we have a value of type `?Text` we can use the `switch` keyword to access the potential `Text` contents:
 
 ``` motoko
 func greetOptional(optionalName : ?Text) : Text {

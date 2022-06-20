@@ -65,6 +65,7 @@ service Counter : {
 }
 ....
 
+[#orthogonal-persistence]
 == Orthogonal persistence
 
 The {IC} persists the memory and other state of your canister as it executes. Thus the state of a Motoko actor, including its in-memory data structures, survive indefinitely.

@@ -62,7 +62,7 @@ When you first compile and deploy a canister, all flexible and stable variables 
 
 Declaring a variable to be `stable` requires its type to be stable too. Since not all types are stable, some variables cannot be declared `stable`.
 
-As a simple example, consider the Registry\` actor from the discussion of [orthogonal persistence](motoko.md#orthogonal_persistence).
+As a simple example, consider the `Registry` actor from the discussion of [orthogonal persistence](motoko.md#orthogonal-persistence).
 
 ``` motoko
 import Text "mo:base/Text";

@@ -241,7 +241,7 @@ Building on the primitive values and types above, the language permits user-defi
 
 -   [Async values](language-manual.md#async), also known as *promises* or *futures*;
 
--   [Error values](language-manual.md#error-types) carry the payload of exceptions and system failures.
+-   [Error values](language-manual.md#error-type) carry the payload of exceptions and system failures.
 
 We discuss the use of these forms in the next sections.
 

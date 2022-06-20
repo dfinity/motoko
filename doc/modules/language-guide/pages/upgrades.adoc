@@ -73,7 +73,7 @@ After the stable variables are initialized with their previous values, the remai
 Declaring a variable to be `+stable+` requires its type to be stable too.
 Since not all types are stable, some variables cannot be declared `+stable+`.
 
-As a simple example, consider the +Registry+` actor from the discussion of link:motoko{outfilesuffix}#orthogonal_persistence[orthogonal persistence].
+As a simple example, consider the `+Registry+` actor from the discussion of link:motoko{outfilesuffix}#orthogonal-persistence[orthogonal persistence].
 
 [source,motoko]
 ----

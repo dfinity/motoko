@@ -10,6 +10,7 @@ There are three primary ways to represent and handle errors values in {proglang}
 - `Error` values (that, in an asynchronous context, can be thrown and caught - similar to exceptions - and contain a numeric code and message).
 
 == Our Example API ==
+
 Let's assume we're building an API for a Todo application and want to expose a function that lets a user mark one of their Todo's as *Done*.
 To keep it simple we'll accept a `TodoId` and return an `Int` that represents how many seconds the Todo has been open.
 We're also assuming we're running in our own actor so we return an async value.
@@ -22,13 +23,13 @@ func markDone(id : TodoId) : async Int
 
 The full definition of all types and helpers we'll use in this document is included for reference:
 
-[%collapsible]
+
 ====
 [source,motoko]
 ----
 include::../examples/todo-error.mo[tag=imports]
 ----
-[%collapsible]
+
 [source,motoko]
 ----
 include::../examples/todo-error.mo[tag=intro]
@@ -37,6 +38,7 @@ include::../examples/todo-error.mo[tag=intro]
 
 
 == When things go wrong ==
+
 We now realize that there are conditions under which marking a Todo as done fails.
 
 * The `id` could reference a non-existing Todo
@@ -133,7 +135,7 @@ In this chapter we'll look at the different ways to create, destructure, convert
 === Pattern matching ===
 
 The first and most common way of working with `Option` and `Result` is to use 'pattern matching'.
-If we have a value of type `?Text` we can use the 'switch' keyword to access the potential `Text` contents:
+If we have a value of type `?Text` we can use the `switch` keyword to access the potential `Text` contents:
 
 [source,motoko]
 ----
@@ -173,6 +175,7 @@ Definition:
 ----
 include::../examples/todo-error.mo[tag=exception-definition]
 ----
+
 Callsite:
 [source,motoko]
 ----

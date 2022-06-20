@@ -292,6 +292,7 @@ Equality and inequality are structural and based on the observable content of th
 |  `#` | T | concatenation
 |===
 
+[#assignment-operators]
 === Assignment operators
 
 |===
@@ -977,6 +978,7 @@ A type `T` is well-formed only if (recursively) its constituent types are well-f
 ** `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 \<= i \<= n`.
 * if `T` is `actor { ... }` then all fields in `...` are immutable and have `shared` function type.
 
+[#subtyping]
 === Subtyping
 
 Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true:
