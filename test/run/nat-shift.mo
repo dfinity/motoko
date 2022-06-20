@@ -1,7 +1,7 @@
 import { debugPrint; shiftLeft; shiftRight; nat32ToNat } = "mo:⛔"
 
 func checkShiftLeft(base : Nat, amount : Nat32) =
-         assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
+         assert base * (2 ** nat32ToNat amount) == shiftLeft(base, amount);
 
 checkShiftLeft(42, 7);
 checkShiftLeft(42, 24);
@@ -22,10 +22,10 @@ for (i in range(0, 200)) { checkShiftLeft(1, i) };
 for (i in range(0, 200)) { checkShiftLeft(42, i) };
 
 func checkShiftRight(base : Nat, amount : Nat32) =
-         assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
+         assert base / 2 ** nat32ToNat amount == shiftRight(base, amount);
 
-for (i in range(0, 40)) { checkShiftRight(1, i)) };
-for (i in range(0, 40)) { checkShiftRight(42, i)) };
+for (i in range(0, 40)) { checkShiftRight(1, i) };
+for (i in range(0, 40)) { checkShiftRight(42, i) };
 
 let huge = 2 ** 190;
 for (i in range(0, 200)) { checkShiftRight(huge, i) };
