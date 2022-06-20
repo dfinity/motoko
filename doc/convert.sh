@@ -20,5 +20,9 @@ for f in $(find $1 -name '*.adoc'); do
   > $2/$(basename $f .adoc).md || true
   sed -i 's/KOMMA/,/g' $2/$(basename $f .adoc).md #undo German HACK above
   sed -i 's/.xml/.md/g' $2/$(basename $f .adoc).md
+  sed -i 's/<\/div>/:::/g' $2/$(basename $f .adoc).md
+  sed -i 's/<div class="tip">/:::tip/g' $2/$(basename $f .adoc).md
+  sed -i 's/<div class="warning">/:::danger/g' $2/$(basename $f .adoc).md
+  sed -i 's/<div class="note">/:::note/g' $2/$(basename $f .adoc).md
   echo $f
 done

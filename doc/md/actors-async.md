@@ -123,11 +123,11 @@ Unlike a local function call, which blocks the caller until the callee has retur
 
 Awaiting a future a second time will just produce the same result, including re-throwing any error stored in the future. Suspension occurs even if the future is already complete; this ensures state changes and message sends prior to *every* `await` are committed.
 
-<div class="warning">
+:::danger
 
 A function that does not `await` in its body is guaranteed to execute atomically - in particular, the environment cannot change the state of the actor while the function is executing. If a function performs an `await`, however, atomicity is no longer guaranteed. Between suspension and resumption around the `await`, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer’s responsibility to guard against non-synchronized state changes. A programmer may, however, rely on any state change prior to the await being committed.
 
-</div>
+:::
 
 For example, the implementation of `bump()` above is guaranteed to increment and read the value of `count`, in one atomic step. The alternative implementation:
 
@@ -261,11 +261,7 @@ An actor *class* generalizes a single actor declaration to the declaration of fa
 
 For example, we can generalize `Counter` given above to `Counter(init)` below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
-<div class="formalpara-title">
-
-**Counters.mo**
-
-</div>
+`Counters.mo`:
 
 ``` motoko name=Counters
 actor class Counter(init : Nat) {
@@ -294,8 +290,8 @@ let C2 = await Counters.Counter(2);
 
 The last two lines above *instantiate* the actor class twice. The first invocation uses the initial value `1`, where the second uses initial value `2`. Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a future that can be `await`ed for the resulting actor value. Both `C1` and `C2` have the same type, `Counters.Counter` and can be used interchangeably.
 
-<div class="note">
+:::note
 
 For now, the Motoko compiler gives an error when compiling programs that do not consist of a single actor or actor class. Compiled programs may still, however, reference imported actor classes. For more information, see [Importing actor classes](modules-and-imports.md#importing_actor_classes) and [Actor classes](actor-classes.md#actor_classes).
 
-</div>
+:::

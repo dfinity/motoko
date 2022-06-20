@@ -102,11 +102,11 @@ let float =
 
 The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a base 2, binary exponent. In both cases, the exponent is in decimal notation.
 
-<div class="note">
+:::note
 
 the use of decimal notation, even for the base 2 exponent, is in keeping with the established hexadecimal floating point literal syntax of the `C` language.
 
-</div>
+:::
 
 ### Characters
 
@@ -675,11 +675,11 @@ A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.
 
 Errors with codes other than `#canister_reject` (i.e. *system* errors) may be caught and thrown, but not user-constructed.
 
-<div class="note">
+:::note
 
 Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message. This prevents programmatic forgery of system errors.
 
-</div>
+:::
 
 ### Constructed types
 
@@ -1125,11 +1125,11 @@ Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decodi
 
 The variant’s argument is a function so that one can avoid the expense of message decoding (when appropriate).
 
-<div class="warning">
+:::danger
 
 An actor that fails to declare system field `inspect` will simply accept all ingress messages.
 
-</div>
+:::
 
 ### Sequence of declarations
 
@@ -1382,11 +1382,11 @@ Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (i
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
-<div class="warning">
+:::danger
 
 Actor declaration is (implicitly) asynchronous and the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer’s responsibility to guard against non-synchronized state changes.
 
-</div>
+:::
 
 #### Static declarations
 
@@ -1460,11 +1460,11 @@ But when `<id>?` is absent and the function is anonymous:
 
 Named function definitions support recursion (a named function can call itself).
 
-<div class="note">
+:::note
 
 In compiled code, `shared` functions can only appear as public actor fields.
 
-</div>
+:::
 
 ### Class declaration
 
@@ -1642,11 +1642,11 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 
 The projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T` whose semantics is given by the Description column of the previous table.
 
-<div class="note">
+:::note
 
 the `chars`, `vals`, `keys` and `vals` members produce stateful **iterator objects** than can be consumed by `for` expressions (see [For](#for)).
 
-</div>
+:::
 
 ### Assignment
 
@@ -1734,11 +1734,11 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the `Principal` invoking the function (typically a user or canister). Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
-<div class="note">
+:::note
 
 The exhaustiveness side condition on `shared` function expressions ensures that argument pattern matching cannot fail (see [Functions](#functions)).
 
-</div>
+:::
 
 ### Functions
 
@@ -1766,11 +1766,11 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
 
-<div class="note">
+:::note
 
 The context type is a record to allow extension with further fields in future releases.
 
-</div>
+:::
 
 ### Blocks
 
@@ -1917,11 +1917,11 @@ where `x` and `l` are fresh identifiers.
 
 In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon as `x.next()` traps, or the value of `x.next()` does not match pattern `<pat>`, or when `<block-or-exp2>` traps.
 
-<div class="note">
+:::note
 
 Although general purpose, `for` loops are commonly used to consume iterators produced by [Special member access](#special-member-access) to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array (here `a`).
 
-</div>
+:::
 
 ### Label
 
@@ -2005,11 +2005,11 @@ Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, ev
 
 Note: suspending computation on `await`, regardless of the dynamic status of the future, ensures that all tentative state changes and message sends prior to the `await` are committed and irrevocable.
 
-<div class="warning">
+:::danger
 
 Between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer’s responsibility to guard against non-synchronized state changes.
 
-</div>
+:::
 
 ### Throw
 
@@ -2033,11 +2033,11 @@ The `try` expression `try <block-or-exp1> catch <pat> <block-or-exp2>` has type 
 
 Expression `try <block-or-exp1> catch <pat> <block-or-exp2>` evaluates `<block-or-exp1>` to a result `r`. If evaluation of `<block-or-exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<block-or-exp2>` under the bindings determined by the match of `e` against `pat`.
 
-<div class="note">
+:::note
 
 Because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
 
-</div>
+:::
 
 See [Error type](#error-type).
 
@@ -2063,11 +2063,11 @@ Type annotation may be used to aid the type-checker when it cannot otherwise det
 
 The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
-<div class="note">
+:::note
 
 Type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
 
-</div>
+:::
 
 ### Candid Serialization
 
@@ -2089,23 +2089,23 @@ Expression `from_candid <exp>` evaluates `<exp>` to a result `r`. If `r` is `tra
 
 (Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `encode/decode((T1,...,Tn))(_)` are type-directed Motoko-Candid value translations.)
 
-<div class="note">
+:::note
 
 `from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
 
-</div>
+:::
 
-<div class="note">
+:::note
 
 `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
 
-</div>
+:::
 
-<div class="warning">
+:::danger
 
 the Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
 
-</div>
+:::
 
 ### Declaration
 
@@ -2147,17 +2147,17 @@ The validity of the canister identifier and its asserted type `T` are promises a
 
 An invalid canister identifier or type may manifest itself, if at all, as a later dynamic failure when calling a function on the actor’s proclaimed interface, which will either fail or be rejected.
 
-<div class="note">
+:::note
 
 The argument to `actor` should *not* include the `ic:` resource locator used to specify an `import`. For example, use `actor "lg264-qjkae"`, not `actor "ic:lg264-qjkae"`.
 
-</div>
+:::
 
-<div class="warning">
+:::danger
 
 Although they do not compromise type safety, actor references can easily introduce latent, dynamic errors. Accordingly, actor references should be used sparingly and only when needed.
 
-</div>
+:::
 
 ### Parentheses
 

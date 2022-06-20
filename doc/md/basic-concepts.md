@@ -442,11 +442,11 @@ We say that code *traps* when its exection causes a *trap*.
 
 Because the meaning of execution is ill-defined after a faulting trap, execution of the code ends by aborting at the trap.
 
-<div class="note">
+:::note
 
 Traps that occur within actor messages are more subtle: they don’t abort the entire actor, but prevent that particular message from proceeding, rolling back any yet uncommitted state changes. Other messages on the actor will continue execution.
 
-</div>
+:::
 
 ### Explicit traps
 

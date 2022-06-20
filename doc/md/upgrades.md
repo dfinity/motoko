@@ -32,11 +32,11 @@ actor Counter {
 }
 ```
 
-<div class="note">
+:::note
 
 You can only use the `stable` or `flexible` modifier on `let` and `var` declarations that are **actor fields**. You cannot use these modifiers anywhere else in your program.
 
-</div>
+:::
 
 ## Typing
 
@@ -48,11 +48,11 @@ where a type is *stable* if the type obtained by ignoring any `var` modifiers wi
 
 Thus the only difference between stable types and shared types is the former’s support for mutation. Like shared types, stable types are restricted to first-order data, excluding local functions and structures built from local functions (such as objects). This exclusion of functions is required because the meaning of a function value — consisting of both data and code — cannot easily be preserved across an upgrade, while the meaning of plain data — mutable or not — can be.
 
-<div class="note">
+:::note
 
 In general, object types are not stable because they can contain local functions. However, a plain record of stable data is a special case of object types that is stable. Moreover, references to actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve state recording a set of actors or shared function callbacks subscribing to a service.
 
-</div>
+:::
 
 ## How stable variables are upgraded
 
@@ -158,11 +158,11 @@ actor {
 
 It specifies the names, types and mutability of the actor’s stable fields, possibly preceded by relevant Motoko type declarations.
 
-<div class="tip">
+:::tip
 
 You can emit the stable signature of the main actor or actor class to a `.most` file using `moc` compiler option `--stable-types`. You should never need to author your own `.most` file.
 
-</div>
+:::
 
 A stable signature `<stab-sig1>` is *stable-compatible* with signature `<stab-sig2>`, if, and only,
 
@@ -174,17 +174,17 @@ Note that `<stab-sig2>` may contain additional fields. Typically, `<stab-sig1>` 
 
 The subtyping condition on stable fields ensures that the final value of some field can be consumed as the initial value of that field in the upgraded code.
 
-<div class="tip">
+:::tip
 
 You can check the stable-compatiblity of two `.most` files, `cur.most` and `nxt.most` (containing stable signatures), using `moc` compiler option `--stable-compatible cur.most nxt.most`.
 
-</div>
+:::
 
-<div class="note">
+:::note
 
 The *stable-compatible* relation is quite conservative. In the future, it may be relaxed to accommodate a change in field mutability and/or abandoning fields from `<stab-sig1>` (but with a warning).
 
-</div>
+:::
 
 ## Upgrade safety
 
@@ -202,11 +202,11 @@ A Motoko canister upgrade is safe provided:
 
 Upgrade safety does not guarantee that the upgrade process will succeed (it can still fail due to resource constraints). However, it should at least ensure that a successful upgrade will not break Candid type compatibility with existing clients or unexpectedly lose data that was marked `stable`.
 
-<div class="tip">
+:::tip
 
 You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using the `didc` tool with argument `check nxt.did cur.did`. The `didc` tool is available at <https://github.com/dfinity/candid>.
 
-</div>
+:::
 
 ## Metadata sections
 

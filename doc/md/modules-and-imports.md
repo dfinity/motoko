@@ -75,11 +75,7 @@ This module has two components, both named after the actor class:
 
 For example, a Motoko actor can import and instantiate the `Counter` class described in [Actors and async data](actors-async.md#actor_class) as follows:
 
-<div class="formalpara-title">
-
-**Counters.mo**
-
-</div>
+`Counters.mo`:
 
 ``` motoko name=Counters
 actor class Counter(init : Nat) {
@@ -96,11 +92,7 @@ actor class Counter(init : Nat) {
 };
 ```
 
-<div class="formalpara-title">
-
-**CountToTen.mo**
-
-</div>
+`CountToTen.mo`:
 
 ``` motoko include=Counters
 import Counters "Counters";
@@ -127,11 +119,11 @@ The type annotation `: Counters.Counter` is redundant here. It’s included only
 
 In addition to the examples above that import Motoko modules, you can also import actors (and their shared functions) from canister smart constracts by using the `canister:` prefix in place of the `mo:` prefix.
 
-<div class="note">
+:::note
 
 Unlike a Motoko library, an imported canister can be implemented in any other Internet Computer language that emits Candid interfaces for its canister smart contracts (for instance Rust). It could even be an older or newer version of Motoko.
 
-</div>
+:::
 
 For example, you might have a project that produces the following three canisters:
 

@@ -8,11 +8,11 @@ Callees can accept all, some or none of the available cycles up to limit determi
 
 In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../../../../references/motoko-ref/ExperimentalCycles.md) library in package `base`.
 
-<div class="note">
+:::note
 
 This library is subject to change and likely to be replaced by more high-level support for cycles in later versions of Motoko.
 
-</div>
+:::
 
 ## The `ExperimentalCycles` Library
 
@@ -34,11 +34,11 @@ func refunded() : (amount : Nat)
 
 Function `balance()` returns the actor’s current balance of cycles as `amount`. Function `balance()` is stateful and may return different values after calls to `accept(n)`, calling a function after `add`ing cycles, or resuming from await (reflecting a refund).
 
-<div class="warning">
+:::danger
 
 Since cycles measure computational resources spent, the value of `balance()` generally decreases from one shared function call to the next.
 
-</div>
+:::
 
 Function `available()`, returns the currently available `amount` of cycles. This is the amount received from the current caller, minus the cumulative amount `accept`ed so far by this call. On exit from the current shared function or `async` expression via `return` or `throw` any remaining available amount is automatically refunded to the caller.
 
@@ -46,11 +46,11 @@ Function `accept` transfers `amount` from `available()` to `balance()`. It retur
 
 Function `add(amount)` indicates the additional amount of cycles to be transferred in the next remote call, i.e. evaluation of a shared function call or `async` expression. Upon the call, but not before, the total amount of units `add`ed since the last call is deducted from `balance()`. If this total exceeds `balance()`, the caller traps, aborting the call.
 
-<div class="note">
+:::note
 
 the implicit register of added amounts, incremented on each `add`, is reset to zero on entry to a shared function, and after each shared function call or on resume from an await.
 
-</div>
+:::
 
 Function `refunded()` reports the `amount` of cycles refunded in the last `await` of the current context, or zero if no await has occurred yet. Calling `refunded()` is solely informational and does not affect `balance()`. Instead, refunds are automatically added to the current balance, whether or not `refunded` is used to observe them.
 
@@ -183,14 +183,14 @@ After creating `porky`, she first verifies that the `porky.getSavings()` is zero
 
 `Alice`'s `credit()` function simply accepts all available cycles by calling `Cycles.accept(available)`, checking the actually `accepted` amount with an assert.
 
-<div class="note">
+:::note
 
 For this example, Alice is using her (readily available) cycles, that she already owns.
 
-</div>
+:::
 
-<div class="warning">
+:::danger
 
 Because `porky` consumes cycles in its operation, it is possible for `porky` to spend some or even all of Alice’s cycle savings before she has a chance to retrieve them.
 
-</div>
+:::

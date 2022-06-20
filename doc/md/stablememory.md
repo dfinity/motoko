@@ -1,10 +1,10 @@
 # The `ExperimentalStableMemory` library
 
-<div class="warning">
+:::danger
 
 The `ExperimentalStableMemory` library is experimental, subject to change and may be replaced by safer alternatives in later versions of Motoko. Use at your own risk and discretion.
 
-</div>
+:::
 
 Motoko stable variables, while convenient to use, require serialization and deserialization of all stable variables on upgrade (see [Stable variables and upgrade methods](upgrades.md)). During an upgrade, the current values of stable variables are first saved to IC stable memory, then restored from stable memory after the new code is installed. Unfortunately, this mechanism does not scale to canisters that maintain *large* amounts of data in stable variables: there may not be enough cycle budget to store then restore all stable variables within an upgrade, resulting in failed upgrades.
 

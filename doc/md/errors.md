@@ -59,7 +59,7 @@ public shared func newTodo(txt : Text) : async TodoId {
 };
 ```
 
-</div>
+:::
 
 ## When things go wrong
 

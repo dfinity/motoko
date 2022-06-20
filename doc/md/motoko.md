@@ -1,10 +1,10 @@
 # Motoko Programming Language
 
-<div class="important">
+:::tip
 
 The Motoko programming language continues to evolve with each release of the DFINITY Canister SDK and with ongoing updates to the Motoko compiler. Check back regularly to try new features and see what’s changed.
 
-</div>
+:::
 
 The Motoko programming language is a new, modern and type safe language for developers who want to build the next generation of distributed applications to run on the Internet Computer blockchain network. Motoko is specifically designed to support the unique features of the Internet Computer and to provide a familiar yet robust programming environment. As a new language, Motoko is constantly evolving with support for new features and other improvements.
 

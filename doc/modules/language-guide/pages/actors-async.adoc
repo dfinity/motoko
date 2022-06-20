@@ -320,7 +320,7 @@ Because canister installation is asynchronous on the {IC}, the constructor funct
 For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
-.Counters.mo
+`+Counters.mo+`:
 [source#Counters, motoko]
 ----
 include::../examples/Counters.mo[]

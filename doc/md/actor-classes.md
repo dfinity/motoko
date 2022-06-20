@@ -6,11 +6,7 @@ To distribute the data for this example, the set of keys is partitioned into `n`
 
 The actor responsible for bucket `i` is obtained as an instance of the actor class `Bucket(i)`, defined in the sample `Buckets.mo` file, as follows:
 
-<div class="formalpara-title">
-
-**Buckets.mo**
-
-</div>
+`Buckets.mo`:
 
 ``` motoko name=Buckets
 import Nat "mo:base/Nat";

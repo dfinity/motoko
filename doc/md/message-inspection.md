@@ -12,7 +12,11 @@ On the Internet Computer, a canister can selectively *inspect* and *accept* or *
 
 Message inspection mitigates some denial of service attacks, designed to drain canisters of cycles by placing unsolicited free calls.
 
-REMARK: You can think of method inspection as providing the "Collect call from *name*. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
+:::note
+
+You can think of method inspection as providing the "Collect call from *name*. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
+
+:::
 
 In Motoko, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect`. Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked (by the system) on each ingress message. Similar to a query, any side-effects of an invocation are discarded and transient. A call that traps due to some fault has the same result as returning `false` (message declination).
 
@@ -30,23 +34,23 @@ The variant’s argument is a function so that one can avoid the expense of mess
 
 Exploiting subtyping, the formal argument can omit record fields it does not require, or selectively ignore the arguments of particular shared functions, for example, in order to simply dispatch on the name of a function without inspecting its actual argument.
 
-<div class="note">
+:::note
 
 Confusingly, a `shared query` function *can* be called using a regular HTTP call to obtain a certified response: this is why the variant type also includes `shared query` functions.
 
-</div>
+:::
 
-<div class="warning">
+:::danger
 
 An actor that fails to declare system field `inspect` will simply accept all ingress messages.
 
-</div>
+:::
 
-<div class="warning">
+:::danger
 
 System function `inspect` should **not** be used for definitive access control. This is because `inspect` is executed by a single replica, without full consensus, and its result could be spoofed by a malicious boundary node. Reliable access control checks can only be performed within the `shared` functions guarded by `inspect`.
 
-</div>
+:::
 
 ## Example
 

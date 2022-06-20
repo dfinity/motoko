@@ -86,14 +86,14 @@ This module has two components, both named after the actor class:
 
 For example, a {proglang} actor can import and instantiate the `Counter` class described in link:actors-async{outfilesuffix}#actor_class[Actors and async data] as follows:
 
+`+Counters.mo+`:
 [source#Counters, motoko]
-.Counters.mo
 ....
 include::../examples/Counters.mo[]
 ....
 
+`+CountToTen.mo+`:
 [source.include_Counters, motoko]
-.CountToTen.mo
 ....
 include::../examples/CountToTen.mo[]
 ....

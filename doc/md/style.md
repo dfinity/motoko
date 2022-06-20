@@ -640,11 +640,11 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let vec : [Int16] = [1, 3, -4, 0];
     ```
 
-    <div class="note">
+    :::note
 
     Use floating point constants to enforce type `Float` without an extra annotation. Similarly, use an explicit `+` sign to produce a positive value of type `Int` instead of `Nat`, if desired.
 
-    </div>
+    :::
 
     ``` motoko
     let zero = 1.0;    // type Float
@@ -657,11 +657,11 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     if (x & mask == (1 : Nat32)) { ... };
     ```
 
-    <div class="note">
+    :::note
 
     The need to annotate constants in cases like this is a short-coming of Motoko’s type system that we hope to address soon.
 
-    </div>
+    :::
 
     An annotation is not needed on function arguments, since their type is usually inferred from the function. The only exception is when that argument has generic type and the type arguments have been omitted.
 
@@ -873,11 +873,11 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   If values of a class are meant to be sendable (shared), the class needs to provide a pair of `share`/`unshare` methods that convert to/from a sharable representation, for example, as a record.
 
-    <div class="note">
+    :::note
 
     For immutable classes it may seem more natural to make `unshare` a kind of static function. However, even for immutable ones it may depend on constructor arguments (such as an ordering function), so that the a pattern like `Map(compareInt).unshare(x)` seems appropriate.
 
-    </div>
+    :::
 
 -   For the time being, avoid overloading classes with too many methods, since that is currently expensive.
 

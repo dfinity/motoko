@@ -1,4 +1,6 @@
-# About this guide
+# Motoko Programming Language Guide
+
+## About this guide
 
 The *Motoko Programming Language Guide* introduces key features of the general-purpose Motoko programming language and provides examples and reference information to help you learn the nuances of the language and the practical implications of how to apply it.
 

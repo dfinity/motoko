@@ -1,4 +1,4 @@
-= About this guide
+= Motoko Programming Language Guide
 ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 :proglang: Motoko
 :platform: Internet Computer blockchain network
@@ -7,6 +7,8 @@ ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 :!page-repl:
+
+== About this guide
 
 The _{proglang} Programming Language Guide_ introduces key features of the general-purpose {proglang} programming language and provides examples and reference information to help you learn the nuances of the language and the practical implications of how to apply it.
 
