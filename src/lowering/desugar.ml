@@ -653,7 +653,7 @@ and decs ds =
 
 and dec d = { (phrase' dec' d) with note = () }
 
-and dec' at n d = match d with
+and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
   | S.LetD (p, e) ->
     let p' = pat p in
@@ -734,7 +734,7 @@ and pat' = function
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
 
-and lit l = match l with
+and lit = function
   | S.NullLit -> I.NullLit
   | S.BoolLit x -> I.BoolLit x
   | S.NatLit x -> I.NatLit x

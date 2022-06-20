@@ -1,5 +1,33 @@
 # Motoko compiler changelog
 
+## 0.6.29 (2022-06-10)
+
+* motoko (`moc`)
+
+  * The language server now supports explicit symbol imports (thanks
+    to rvanasa) (#3282)
+  * The language server now has improved support for navigating to
+    definitions in external modules (thanks to rvanasa)  (#3263)
+  * Added a primitive `textCompare` allowing more efficient three-way
+    `Text` comparisons (#3298)
+  * Fixed a typing bug with annotated, recursive records (#3268)
+
+* motoko-base
+
+  * Add
+    ```motoko
+    ExperimentalInternetComputer.countInstruction : (comp : () -> ()) -> Nat64
+    ```
+    to count the Wasm instructions performed during execution of `comp()` (dfinity/motoko-base#381)
+
+  * Add
+    ```motoko
+    ExperimentalStableMemory.stableVarQuery : () -> (shared query () -> async {size : Nat64})
+    ```
+    for estimating stable variable storage requirements during upgrade
+    (dfinity/motoko-base#365)
+  * Performance improvement to `Text.compare` (dfinity/motoko-base#382)
+
 ## 0.6.28 (2022-05-19)
 
 * motoko (`moc`)
