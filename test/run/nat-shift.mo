@@ -1,14 +1,19 @@
-import { debugPrint; shiftLeft; shiftRight } = "mo:⛔"
+import { debugPrint; shiftLeft; shiftRight; nat32ToNat } = "mo:⛔"
 
-debugPrint (debug_show shiftLeft(42, 7));
-debugPrint (debug_show shiftLeft(42, 24));
-debugPrint (debug_show shiftLeft(42, 25));
-debugPrint (debug_show shiftLeft(42, 26));
-debugPrint (debug_show shiftLeft(42, 25 + 32)); // 57
-debugPrint (debug_show shiftLeft(42, 25 + 64)); // 89
-debugPrint (debug_show shiftLeft(42, 125));
-debugPrint (debug_show shiftLeft(0, 125));
-debugPrint (debug_show shiftLeft(10 ** 10, 25));
+func checkShiftLeft(base : Nat, amount : Nat32) {
+    assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
+    debugPrint (debug_show shiftLeft(base, amount))
+};
+
+checkShiftLeft(42, 7);
+checkShiftLeft(42, 24);
+checkShiftLeft(42, 25);
+checkShiftLeft(42, 26);
+checkShiftLeft(42, 25 + 32); // 57
+checkShiftLeft(42, 25 + 64); // 89
+checkShiftLeft(42, 125);
+checkShiftLeft(0, 125);
+checkShiftLeft(10 ** 10, 25);
 
 class range(x : Nat32, y : Nat32) {
     var i = x;
@@ -17,6 +22,11 @@ class range(x : Nat32, y : Nat32) {
 
 for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(1, i))) };
 for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(42, i))) };
+
+func checkShiftRight(base : Nat, amount : Nat32) {
+    assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
+    debugPrint (debug_show shiftRight(base, amount))
+};
 
 for (i in range(0, 40)) { debugPrint (debug_show (i, shiftRight(1, i))) };
 for (i in range(0, 40)) { debugPrint (debug_show (i, shiftRight(42, i))) };
