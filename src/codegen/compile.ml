@@ -2349,10 +2349,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
 
   let compile_lsh env =
-    let set_amount, get_amount = new_local env "amount" in
+    Func.share_code2 env "B_lsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
+    (fun env get_n get_amount ->
+    (*let set_amount, get_amount = new_local env "amount" in
     let set_n, get_n = new_local env "n" in
     set_amount ^^
-    set_n ^^ get_n ^^
+    set_n ^^ *)
+    get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
       ( (* non-ptr, shift amount <= 42: signed i32 -> i64; shift left, remember, trunc to i32, extend, compare with recalled, if same, done! *)
         get_n ^^
@@ -2374,13 +2377,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_res
           (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
       )
-      (get_n ^^ get_amount ^^ Num.compile_lsh env)
+      (get_n ^^ get_amount ^^ Num.compile_lsh env))
 
   let compile_rsh env =
-    let set_amount, get_amount = new_local env "amount" in
+    Func.share_code2 env "B_rsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
+    (fun env get_n get_amount ->
+    (*let set_amount, get_amount = new_local env "amount" in
     let set_n, get_n = new_local env "n" in
     set_amount ^^
-    set_n ^^ get_n ^^
+    set_n ^^ *)
+    get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
       begin
         get_n ^^
@@ -2398,7 +2404,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if1 I32Type
           (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
           get_res
-      end
+      end)
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
