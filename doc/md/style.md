@@ -8,13 +8,13 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 -   Put spaces around arithmetic operators, except to visually group sub-expressions of more tightly binding operators.
 
-    ``` motoko
+    ``` motoko no-repl
     let z = - 2*x + 3*y + 4*(x*x + y*y);
     ```
 
 -   Put spaces around comparison operators, Boolean operators, and assignment operators.
 
-    ``` motoko
+    ``` motoko no-repl
     4 + 5 <= 5 + 4;
     not (a or b and not c);
     v := 0;
@@ -23,14 +23,14 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 -   Put spaces around '='.
 
-    ``` motoko
+    ``` motoko no-repl
     var v = 0;
     let r = { a = 1; b = 2 };
     ```
 
 -   Analogously, put spaces around `:`.
 
-    ``` motoko
+    ``` motoko no-repl
     var v : Nat = 0;
     func foo(x : Nat, y : Nat) : Nat { x + y }
     func bar((x, y) : (Nat, Nat)) : Nat { x + y }
@@ -41,14 +41,14 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 -   Put a space after a comma or semicolon (but not before).
 
-    ``` motoko
+    ``` motoko no-repl
     let tuple = (1, 2, 3);
     let record = { a = 1; b = 2; c = 3 };
     ```
 
 -   Put spaces inside braces, unless they are a simple variant or record.
 
-    ``` motoko
+    ``` motoko no-repl
     func f() { 0 };
     f({ a = 1; b = 2; c = 3 });
     f({a = 1; b = 2});  // okay as well
@@ -62,7 +62,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 -   Put spaces inside brackets if they stretch multiple lines.
 
-    ``` motoko
+    ``` motoko no-repl
     foo(
       firstArgument,
       ( longTupleComponent, anotherLongExpression,
@@ -79,7 +79,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 -   Put a space between statement keywords and their operands.
 
-    ``` motoko
+    ``` motoko no-repl
     if (f()) A else B;
     for (x in xs.vals()) { ... };
     switch (compare(x, y)) {
@@ -93,7 +93,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 -   Do *not* put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
 
-    ``` motoko
+    ``` motoko no-repl
     type Pair<X> = (X, X);
     type Id = <X>(X) -> X;
 
@@ -105,7 +105,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 -   Put a space between a function and its argument if it is *not* a tuple or parenthesized expression (see [Parentheses](#parentheses)) or a record used as a named parameter list (see [Picking types](#picking-types)).
 
-    ``` motoko
+    ``` motoko no-repl
     sin 0.0;
     g [1, 2, 3];
     f{arg1 = 0; arg2 = 0};
@@ -115,7 +115,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Do *not* put a space around access operators like `.`, `?`, `!`, or index brackets.
 
-    ``` motoko
+    ``` motoko no-repl
     foo(bar).baz[5]().boo;
     foom(?(bam()! + 1));
     ```
@@ -124,7 +124,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Pick a fixed right margin for lines and break definitions or expressions that are longer than that (80 still is considered a good limit by many).
 
-    ``` motoko
+    ``` motoko no-repl
     let sum = a + b + 2*c + d +
       e + f + g + h + i + k +
       l + m + n + o + p;
@@ -146,7 +146,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Break lines *after* an operator.
 
-    ``` motoko
+    ``` motoko no-repl
     a + b + c +
       d + f;
 
@@ -158,7 +158,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Also, consider using records for long parameter lists, see [Picking types](#picking-types).
 
-    ``` motoko
+    ``` motoko no-repl
     func someFunction(
       arg1 : FirstType,
       arg2 : SecondType,
@@ -187,7 +187,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Each level of indentation should be 2 spaces.
 
-    ``` motoko
+    ``` motoko no-repl
     actor A {
       public func f() {
         return;
@@ -201,7 +201,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     In particular, do not vertically align indentation with inner characters from previous lines.
 
-    ``` motoko
+    ``` motoko no-repl
     let x = someFunction(
       arg1, arg2, arg3, arg4, arg5);               // Do this.
 
@@ -244,7 +244,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Separate complex multi-line definitions with empty lines. One-liners can be put on consecutive lines.
 
-    ``` motoko
+    ``` motoko no-repl
     func foo() {
       // This function does a lot of interesting stuff.
       // It's definition takes multiple lines.
@@ -261,7 +261,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Separate logic groups of definitions with two empty lines. Add a one-line comment as a "section header" for each group.
 
-    ``` motoko
+    ``` motoko no-repl
     // A very large class
     class MuffleMiff(n : Nat) {
 
@@ -311,7 +311,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use line comments (`//…​`). Use block comments (`/* …​ */`) only when commenting in the middle of a line or for commenting out pieces of code during development.
 
-    ``` motoko
+    ``` motoko no-repl
     // The following function runs the current
     // pallaboom on a given snibble. It returns
     // suitable plexus if it can.
@@ -329,13 +329,13 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Put short comments explaining a single line at the end of the line, separated by at least 2 spaces.
 
-    ``` motoko
+    ``` motoko no-repl
     paBoom(getSnibble()));  // create new snibble
     ```
 
 -   Put multi-line comments before a line of code, with the same indentation as the code it is describing.
 
-    ``` motoko
+    ``` motoko no-repl
     func f() {
       // Try to invoke the current pallaboom with
       // the previous snibble. If that succeeds,
@@ -358,7 +358,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Similarly for types.
 
-    ``` motoko
+    ``` motoko no-repl
     // No ; needed before closing } on same line
 
     type Vec3D = {x : Float; y : Float; z : Float};
@@ -399,7 +399,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Put braces around function bodies, `if` or `case` branches, and loop bodies, unless they appear nested as an expression and only contain a single expression.
 
-    ``` motoko
+    ``` motoko no-repl
     func f(x) { f1(x); f2(x) };
 
     let abs = if (v >= 0) v else -v;
@@ -409,7 +409,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use "C-style" layout for braced sub-expressions stretching multiple lines.
 
-    ``` motoko
+    ``` motoko no-repl
     func f() {
       return;
     };
@@ -432,7 +432,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Motoko supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already (for example, a tuple, object, or array) or is a simple constant or identifier.
 
-    ``` motoko
+    ``` motoko no-repl
     type Op = Nat -> Nat;
     let a2 = Array.map<Nat, Nat>(func x { x + 1 }, a);
 
@@ -450,7 +450,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     In particular, do not omit parentheses and braces on statements at the same time.
 
-    ``` motoko
+    ``` motoko no-repl
     // COUNTER EXAMPLES!
     let choice = if flag x + y else z;  // DO NOT DO THIS!
 
@@ -464,7 +464,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Similarly, do not omit parentheses around function parameters if the function also has type parameters.
 
-    ``` motoko
+    ``` motoko no-repl
     // COUNTER EXAMPLE!
     foo<Nat> 0;   // DO NOT DO THIS!
     ```
@@ -473,7 +473,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     But do not omit them around when functions or classes also have type parameters.
 
-    ``` motoko
+    ``` motoko no-repl
     type Inv = Nat -> Nat;
     type Id = <T>(T) -> T;
     type Get = <X>(C<X>) -> X;
@@ -488,7 +488,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Group by 3 digits in decimal numbers and by 4 in hexadecimal notation.
 
-    ``` motoko
+    ``` motoko no-repl
     let billion = 1_000_000_000;
     let pi = 3.141_592_653_589_793_12;
     let mask : Nat32 = 0xff00_ff0f;
@@ -502,7 +502,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use `lowerCamelCase` for all other names, including constants and variant fields.
 
-    ``` motoko
+    ``` motoko no-repl
     module MoreMuff {
       type FileSize = Nat;
       type Weekday = {#monday; #tuesday; #wednesday};
@@ -526,7 +526,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Spell acronyms as regular words.
 
-    ``` motoko
+    ``` motoko no-repl
     type HttpHeader = ...;
     func getUrl() { ... };
     let urlDigest = ...;
@@ -534,7 +534,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Do not use identifier names that start with an underscore `_`, except to document that a variable in a pattern is intentionally unused.
 
-    ``` motoko
+    ``` motoko no-repl
     let (width, _color, name) = rumpler();
     ...  // _color is not used here
 
@@ -552,7 +552,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Avoid redundant `get` prefixes.
 
-    ``` motoko
+    ``` motoko no-repl
     dict.size();
     list.first();
     sum(array);
@@ -560,7 +560,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   The name of functions performing side effects or complex operations should describe that operation (as a verb in imperative form).
 
-    ``` motoko
+    ``` motoko no-repl
     dict.clear();
     dict.set(key, value);
     let result = traverse(graph);
@@ -568,7 +568,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   The name of predicate functions returning `Bool` should use an `is` or `has` prefix or a similar description of the tested property (as a verb in indicative form).
 
-    ``` motoko
+    ``` motoko no-repl
     class Set<X>() {
       public func size() : Nat { ... };
 
@@ -584,7 +584,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   In classes or objects, use a name ending with `_` to distinguish private variables from getters.
 
-    ``` motoko
+    ``` motoko no-repl
     class Cart(length_ : Nat) {
       var width_ = 0;
 
@@ -601,7 +601,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     It is fine to use single character identifiers when there is nothing interesting to say, especially when using the same naming scheme consistently.
 
-    ``` motoko
+    ``` motoko no-repl
     func map(x : Nat, y : Nat) : Nat { x + y };
 
     func eval(e : Expr) : Nat {
@@ -622,7 +622,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     This also works for short names.
 
-    ``` motoko
+    ``` motoko no-repl
     func foreach<X>(xs : [X], f : X -> ()) {
       for (x in xs.vals()) { f(x) }
     }
@@ -634,7 +634,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Put type annotations on definitions that involve fixed-width numeric types, to disambiguate the type of overloaded arithmetic operators and constants.
 
-    ``` motoko
+    ``` motoko no-repl
     let mask : Nat32 = 0xfc03_ff00;
     let pivot : Nat32 = (size + 1)/2;
     let vec : [Int16] = [1, 3, -4, 0];
@@ -646,14 +646,14 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     :::
 
-    ``` motoko
+    ``` motoko no-repl
     let zero = 1.0;    // type Float
     let offset = +1;   // type Int
     ```
 
 -   Similarly, put inline type annotations on arithmetic expressions with types other than `Nat` or `Int`.
 
-    ``` motoko
+    ``` motoko no-repl
     if (x & mask == (1 : Nat32)) { ... };
     ```
 
@@ -665,7 +665,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     An annotation is not needed on function arguments, since their type is usually inferred from the function. The only exception is when that argument has generic type and the type arguments have been omitted.
 
-    ``` motoko
+    ``` motoko no-repl
     func foo(len : Nat32, vec : [Nat16]) { ... };
     func bar<X>(x : X) { ... };
 
@@ -676,7 +676,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Put type annotations on mutable variables, unless their type is obvious.
 
-    ``` motoko
+    ``` motoko no-repl
     var name = "Motoko";
     var balance = 0;
 
@@ -692,7 +692,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Put type annotations on all public fields in a class.
 
-    ``` motoko
+    ``` motoko no-repl
     class C(init_ : Nat) {
       public let init : Nat = init_;
       public var count : Nat = 0;
@@ -701,19 +701,19 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Omit return type annotations of functions when the type is `()`.
 
-    ``` motoko
+    ``` motoko no-repl
     func twiceF() { f(); f() };  // no need to write ": ()"
     ```
 
 -   Omit type annotations on functions when they are passed as arguments.
 
-    ``` motoko
+    ``` motoko no-repl
     Array.map<Nat, Nat>(func n {n + 1}, a);
     ```
 
 -   Put type annotations on definitions that involve numeric types other than `Nat` or `Int`, to resolve the overloading between arithmetic operators and constants.
 
-    ``` motoko
+    ``` motoko no-repl
     let mask : Nat32 = 0xfc03_ff00;
     let offset : Nat32 = size + 1;
     ```
@@ -732,7 +732,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Note that record types need not be declared but can be used in place.
 
-    ``` motoko
+    ``` motoko no-repl
       func nodeInfo(node : Node) : {parent : Node; left : Node; right : Node} { ... }
     ```
 
@@ -740,13 +740,13 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Note that variant types need not be declared but can be used in place.
 
-    ``` motoko
+    ``` motoko no-repl
     func capitalization(word : Text) : {#upper; #lower} { ... }
     ```
 
 -   Where possible, use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
 
-    ``` motoko
+    ``` motoko no-repl
     class Set<X>() {
       public func add(x : X) { ... };
       public func remove(x : X) { ... };
@@ -756,7 +756,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Consider using a record (an object with just data) as argument for long parameter lists.
 
-    ``` motoko
+    ``` motoko no-repl
     func process({seed : Float; delta : Float; data : [Record]; config : Config}) : Thing {
       ...
     };
@@ -774,7 +774,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Use the option type instead.
 
-    ``` motoko
+    ``` motoko no-repl
     func lookup(x : key) : ?Nat { ... }
     ```
 
@@ -790,7 +790,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use `for` loops instead of `while` loops for iterating over a numeric range or a container.
 
-    ``` motoko
+    ``` motoko no-repl
     for (i in Iter.range(1, 10)) { ... };
     for (x in array.vals()) { ... };
     ```
@@ -799,7 +799,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use `if` or `switch` as expressions where appropriate.
 
-    ``` motoko
+    ``` motoko no-repl
     func abs(i : Int) : Int { if (i < 0) -i else i };
 
     let delta = switch mode { case (#up) +1; case (#dn) -1 };
@@ -809,7 +809,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Use `ignore` to explicitly drop results. Do *not* use `ignore` when it’s not needed.
 
-    ``` motoko
+    ``` motoko no-repl
     ignore async f();  // fire of a computation
     ```
 
@@ -819,7 +819,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Use explicit `return` at the end when the function contains other `return` statements or imperative control flow.
 
-    ``` motoko
+    ``` motoko no-repl
     func add(i : Nat, j : Nat) : Nat { i + j };
 
     func foo(a : Float, b : Float) : Float {
