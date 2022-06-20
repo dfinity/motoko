@@ -18,8 +18,6 @@ func markDone(id : TodoId) : async Int
 
 The full definition of all types and helpers we’ll use in this document is included for reference:
 
-<div class="informalexample">
-
 ``` motoko
 import Int "mo:base/Int";
 import Hash "mo:base/Hash";
@@ -58,8 +56,6 @@ public shared func newTodo(txt : Text) : async TodoId {
   id
 };
 ```
-
-:::
 
 ## When things go wrong
 

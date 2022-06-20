@@ -23,8 +23,6 @@ func markDone(id : TodoId) : async Int
 
 The full definition of all types and helpers we'll use in this document is included for reference:
 
-
-====
 [source,motoko]
 ----
 include::../examples/todo-error.mo[tag=imports]
@@ -34,7 +32,6 @@ include::../examples/todo-error.mo[tag=imports]
 ----
 include::../examples/todo-error.mo[tag=intro]
 ----
-====
 
 
 == When things go wrong ==
