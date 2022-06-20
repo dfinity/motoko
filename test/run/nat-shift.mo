@@ -1,9 +1,7 @@
 import { debugPrint; shiftLeft; shiftRight; nat32ToNat } = "mo:⛔"
 
-func checkShiftLeft(base : Nat, amount : Nat32) {
-    assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
-    debugPrint (debug_show shiftLeft(base, amount))
-};
+func checkShiftLeft(base : Nat, amount : Nat32) =
+         assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
 
 checkShiftLeft(42, 7);
 checkShiftLeft(42, 24);
@@ -20,20 +18,18 @@ class range(x : Nat32, y : Nat32) {
     public func next() : ?Nat32 { if (i > y) null else {let j = i; i += 1; ?j} };
 };
 
-for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(1, i))) };
-for (i in range(0, 200)) { debugPrint (debug_show (i, shiftLeft(42, i))) };
+for (i in range(0, 200)) { checkShiftLeft(1, i) };
+for (i in range(0, 200)) { checkShiftLeft(42, i) };
 
-func checkShiftRight(base : Nat, amount : Nat32) {
-    assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
-    debugPrint (debug_show shiftRight(base, amount))
-};
+func checkShiftRight(base : Nat, amount : Nat32) =
+         assert base * 2 ** nat32ToNat amount == shiftLeft(base, amount);
 
-for (i in range(0, 40)) { debugPrint (debug_show (i, shiftRight(1, i))) };
-for (i in range(0, 40)) { debugPrint (debug_show (i, shiftRight(42, i))) };
+for (i in range(0, 40)) { checkShiftRight(1, i)) };
+for (i in range(0, 40)) { checkShiftRight(42, i)) };
 
 let huge = 2 ** 190;
-for (i in range(0, 200)) { debugPrint (debug_show (i, shiftRight(huge, i))) };
-for (i in range(0, 200)) { debugPrint (debug_show (i, shiftRight(huge - 1, i))) };
+for (i in range(0, 200)) { checkShiftRight(huge, i) };
+for (i in range(0, 200)) { checkShiftRight(huge - 1, i) };
 
 // iterated
 
