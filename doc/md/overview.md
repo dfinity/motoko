@@ -14,7 +14,7 @@ A simple, useful language for the Internet Computer (IC)
 
 -   Incorporating **actor** model for canister smart contracts
 
--   Seamless integration of IC features
+-   Seamless integration of Internet Computer features
 
 -   Making most of present and future WebAssembly
 

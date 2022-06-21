@@ -75,7 +75,7 @@ Naturally, labeled common expressions don’t allow `continue`. In terms of typi
 
 ## Option blocks and null breaks
 
-Like many other high-level languages, Motoko lets you opt in to `null` values, tracking possible occurences of `null` values using option types of the form `?T`. This is to both to encourage you to avoid using `null` values when possible, and to consider the possiblity of `null` values when necessary.
+Like many other high-level languages, Motoko lets you opt in to `null` values, tracking possible occurences of `null` values using option types of the form `?T`. This is to both to encourage you to avoid using `null` values when possible, and to consider the possibility of `null` values when necessary.
 
 The latter could be cumbersome, if the only way to test a value for `null` were with a verbose `switch` expression, but Motoko simplifies the handling of option types with some dedicated syntax: *option blocks* and *null breaks*.
 

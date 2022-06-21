@@ -46,7 +46,7 @@ The following conventions are used in this guide:
 
 The engineering effort behind the design and implementation of Motoko is driven by a core set of values and goals. The DFINITY engineering organization uses these values and goals to define and prioritize the language features and enhancements to add and improve as part of *ongoing* language development.
 
-For transparency into the principles that guide the engineering effort, the engineering organization has identified the following sets of core values and secondary values for driving the direction of theMotoko programming language.
+For transparency into the principles that guide the engineering effort, the engineering organization has identified the following sets of core values and secondary values for driving the direction of the Motoko programming language.
 
 ### Core values
 

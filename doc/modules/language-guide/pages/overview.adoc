@@ -6,12 +6,12 @@ This is terse, slide-like introduction to Motoko and its features.
 
 === Motivation and Goals
 
-A simple, useful language for the Internet Computer (IC)
+A simple, useful language for the {IC} (IC)
 
 * Familiar syntax
 * Safe by default
 * Incorporating *actor* model for canister smart contracts
-* Seamless integration of IC features
+* Seamless integration of {IC} features
 * Making most of present and future WebAssembly
 
 === Key Design Points
