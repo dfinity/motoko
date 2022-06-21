@@ -2401,7 +2401,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
           compile_bitand_const 0xFFFFFFFEl ^^
           get_amount ^^ compile_rel_const I32Op.LeU 31l ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Mul))
+          G.i (Binary (Wasm.Values.I32 I32Op.Mul)) (* branch-free `if` *)
         end
         begin
           get_n ^^ get_amount ^^ Num.compile_rsh env ^^
