@@ -179,14 +179,14 @@ let prim =
            | Int64 y -> Int64 Int_64.(and_ y (shl (of_int 1) (as_int64 a)))
            | _ -> failwith "btst")
 
-  | "lshd" -> fun _ v k ->
+  | "lsh_Nat" -> fun _ v k ->
     (match as_tup v with
      | [x; shift] -> k (Int Numerics.Int.(mul (as_int x) (pow (of_int 2) (of_big_int (Nat32.to_big_int (as_nat32 shift))))))
-     | _ -> failwith "lshd")
-  | "rshd" -> fun _ v k ->
+     | _ -> failwith "lsh_Nat")
+  | "rsh_Nat" -> fun _ v k ->
     (match as_tup v with
      | [x; shift] -> k (Int Numerics.Int.(div (as_int x) (pow (of_int 2) (of_big_int (Nat32.to_big_int (as_nat32 shift))))))
-     | _ -> failwith "rshd")
+     | _ -> failwith "rsh_Nat")
 
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)

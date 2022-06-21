@@ -8540,13 +8540,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "blob_iter_next", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
 
-  | OtherPrim "lshd", [e1; e2] ->
+  | OtherPrim "lsh_Nat", [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
     BigNum.compile_lsh env
 
-  | OtherPrim "rshd", [e1; e2] ->
+  | OtherPrim "rsh_Nat", [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
