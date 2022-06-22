@@ -151,7 +151,7 @@ pub(crate) unsafe fn mp_iszero(p: *const mp_int) -> bool {
     (*p).used == 0
 }
 
-// Allocates a mp_int on the stack
+// Allocates an mp_int on the stack
 unsafe fn tmp_bigint() -> mp_int {
     let mut i: mp_int = core::mem::zeroed();
     check(mp_init(&mut i));
@@ -397,6 +397,19 @@ unsafe extern "C" fn bigint_isneg(a: Value) -> bool {
 unsafe extern "C" fn bigint_lsh(a: Value, b: i32) -> Value {
     let mut i = tmp_bigint();
     check(mp_mul_2d(a.as_bigint().mp_int_ptr(), b, &mut i));
+    persist_bigint(i)
+}
+
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
+    let mut i = tmp_bigint();
+    check(mp_div_2d(
+        a.as_bigint().mp_int_ptr(),
+        b,
+        &mut i,
+        core::ptr::null_mut(),
+    ));
     persist_bigint(i)
 }
 
