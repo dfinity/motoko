@@ -97,6 +97,34 @@ Make a PR off of that branch and merge it using a _normal merge_ (not
 squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
 
+## Development without nix-shell
+
+You can get a development environment without having to use `nix-shell`
+(although installing all required tools without nix is out of scope).
+
+ * Use your system’s package manager to install `ocaml` (4.10) and
+   [`opam`](https://opam.ocaml.org/doc/Install.html)
+ * Install the packages:
+   ```
+   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test atdgen wasm obelisk uucp
+   ```
+ * Install into your `PATH` various command line tools used by, in particular,
+   the test suite:
+   ```
+   nix-env -i -f . -A wasmtime
+   nix-env -i -f . -A filecheck
+   nix-env -i -f . -A wabt
+   nix-env -i -f . -A drun
+   nix-env -i -f . -A ic-run
+   ```
+ * Building the Motoko runtime without nix is tricky. But you can run
+   ```
+   nix-shell --run 'make -C rts'
+   ```
+   to get `rts/mo-rts.wasm`.
+ * Add `./bin` to your `$PATH` so that the testsuite will find the build
+   products (see `./bin/wrapper.sh` for details).
+
 ## Coverage report
 
 To build with coverage enabled, compile the binaries in `src/` with
