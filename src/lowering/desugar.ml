@@ -92,8 +92,6 @@ and exp' at note = function
       (varP v) (varE v) ty).it
   | S.ObjBlockE (s, dfs) ->
     obj_block at s None dfs note.Note.typ
-  (*| S.ObjE (efs, []) ->
-    obj note.Note.typ efs*)
   | S.ObjE (efs, bs) ->
     obj_extend note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
@@ -570,11 +568,6 @@ and exp_field obj_typ ef =
     let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
 
-and obj obj_typ efs =
-  let (ds, fs) = List.map (exp_field obj_typ) efs |> List.split in
-  let obj_e = newObjE T.Object fs obj_typ in
-  I.BlockE(ds, obj_e)
-
 and obj_extend obj_typ efs bases =
   let base_info base =
     let base_exp, base_t = exp base, (typ_note base.note).Note.typ in
@@ -593,7 +586,7 @@ and obj_extend obj_typ efs bases =
       exp_field obj_typ ef
     | _ ->
       let id = fresh_var lab typ in
-      let [base_var] = List.(map (fun pred -> pred lab |> Option.to_list) preds |> flatten) in
+      let [@warning "-8"] [base_var] = List.(map (fun pred -> pred lab |> Option.to_list) preds |> flatten) in
       let d = letD id (dotE (varE base_var) lab typ) in
       let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
       d, f in
