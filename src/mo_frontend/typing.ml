@@ -1059,7 +1059,7 @@ and infer_exp'' env exp : T.typ =
     let strip (base_t, base) =
       let _s, tfs =
         try T.as_obj base_t with Invalid_argument _ ->
-          error env base.at "M0093" (*FIXME*)
+          error env base.at "M0093"
             "expected object type, but expression produces type%a"
             display_typ_expand base_t in
       T.(Obj (Object, filter (fun f -> not (mem f.lab fls)) tfs)) in
