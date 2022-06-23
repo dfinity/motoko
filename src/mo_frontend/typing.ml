@@ -1049,13 +1049,13 @@ and infer_exp'' env exp : T.typ =
       else env
     in
     infer_obj env' obj_sort.it dec_fields exp.at
-  | ObjE (exp_fields, bases) ->
+  | ObjE (exp_fields, exp_bases) ->
     let open List in
     check_ids env "object" "field"
       (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     let fts = map (infer_exp_field env) exp_fields in
     let fls = map (fun {T.lab; _} -> lab) fts in
-    let bases = map (fun b -> infer_exp env b, b) bases in
+    let bases = map (fun b -> infer_exp env b, b) exp_bases in
     (* removing explicit fields from the bases *)
     let strip (base_t, base) =
       let s, tfs =
@@ -1073,16 +1073,17 @@ and infer_exp'' env exp : T.typ =
     (*let disjoint (i, (ti, bi)) (j, (tj, bj)) = () in*)
     let rec disjoint = function
       | [] | [_] -> ()
-      | h :: t ->
+      | (h, _) :: t ->
         let avoid bs {T.lab; _} =
           let avoid_labels lab b bls =
             if mem lab bls then
-              error env exp.at(*FIXME*) "M0293"
+              error env b.at "M0293"
                 "ambiguous fields" in
-          iter (fun b -> avoid_labels lab b (map (fun {T.lab; _} -> lab) (T.as_obj b |> snd))) bs in
+          iter (fun (b_t, b) -> avoid_labels lab b (map (fun {T.lab; _} -> lab) (T.as_obj b_t |> snd))) bs in
         iter (avoid t) (T.as_obj h |> snd);
         disjoint t in
-    (let stripped_bases = List.append stripped_bases (List.append stripped_bases stripped_bases) in disjoint stripped_bases);
+    (let stripped_bases = map2 (fun b_t b -> b_t, b) stripped_bases exp_bases in
+      let stripped_bases = List.append stripped_bases (List.append stripped_bases stripped_bases) in disjoint stripped_bases);
     (* TODO: var in stripped_bases? *)
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
