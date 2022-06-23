@@ -550,6 +550,8 @@ ob : e=exp_obj { e }
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { ObjE (efs, []) @? at $sloc }
+  | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
+    { ObjE ([], base :: bases) @? at $sloc }
   | LCURLY efs=separated_nonempty_list(semicolon, exp_field) IN bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
     { ObjE (efs, bases) @? at $sloc }
 
