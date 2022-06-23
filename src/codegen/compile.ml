@@ -1223,6 +1223,9 @@ module BitTagged = struct
   let tag_i32 = compile_shl_const 1l
   let untag_i32 = compile_shrS_const 1l
 
+  let tag_u32 = tag_i32
+  let untag_u32 = compile_shrU_const 1l
+
 end (* BitTagged *)
 
 module Tagged = struct
@@ -1705,7 +1708,7 @@ module BoxedSmallWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 31)) ^^
+      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 30)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if1 I32Type
         (get_n ^^ BitTagged.tag_i32)
@@ -1715,11 +1718,43 @@ module BoxedSmallWord = struct
   let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
-        ( get_n ^^ BitTagged.untag_i32)
-        ( get_n ^^ Heap.load_field payload_field)
+        (get_n ^^ BitTagged.untag_i32)
+        (get_n ^^ Heap.load_field payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
+
+
+  module Unsigned = struct
+  (* When we know that a value has a top zero bit, then we can box it by a logical shift left.
+     Otherwise we move it to the heap.
+
+     The heap layout of a BoxedSmallWord.Unsigned is:
+
+       ┌─────┬─────┐
+       │ tag │ u32 │
+       └─────┴─────┘
+
+  *)
+
+    let box env = Func.share_code1 env "box_u32" ("n", I32Type) [I32Type] (fun env get_n ->
+        get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 31)) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+        G.if1 I32Type
+          (get_n ^^ BitTagged.tag_u32)
+          (compile_box env get_n)
+    )
+
+    let unbox env = Func.share_code1 env "unbox_u32" ("n", I32Type) [I32Type] (fun env get_n ->
+        get_n ^^
+        BitTagged.if_tagged_scalar env [I32Type]
+          (get_n ^^ BitTagged.untag_u32)
+          (get_n ^^ Heap.load_field payload_field)
+    )
+
+    let _lit env n = compile_unboxed_const n ^^ box env
+
+  end (* BoxedSmallWord.Unsigned *)
 
 end (* BoxedSmallWord *)
 
