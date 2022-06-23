@@ -1,0 +1,2 @@
+bad-obj-base.mo:1.12-1.16: type error [M0093], expected object type, but expression produces type
+  Bool
