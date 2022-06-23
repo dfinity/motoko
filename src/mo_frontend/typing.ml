@@ -1052,10 +1052,10 @@ and infer_exp'' env exp : T.typ =
   | ObjE (exp_fields, bases) ->
     let open List in
     check_ids env "object" "field"
-      (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
-    let fts = List.map (infer_exp_field env) exp_fields in
+      (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
+    let fts = map (infer_exp_field env) exp_fields in
     let fls = map (fun {T.lab; _} -> lab) fts in
-    let bases = List.map (fun b -> infer_exp env b, b) bases in
+    let bases = map (fun b -> infer_exp env b, b) bases in
     let strip (base_t, base) =
       let _s, tfs =
         try T.as_obj base_t with Invalid_argument _ ->
@@ -1067,8 +1067,8 @@ and infer_exp'' env exp : T.typ =
     (* TODO: disjointness of stripped bases! *)
     (* TODO: var in stripped_bases? *)
     (* TODO: Object (yes), Module (no), Actor (no)? *)
-    let t_base = T.(List.fold_left glb (Obj (Object, [])) stripped_bases) in
-    T.(glb t_base (Obj (Object, List.sort T.compare_field fts)))
+    let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
+    T.(glb t_base (Obj (Object, sort T.compare_field fts)))
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
