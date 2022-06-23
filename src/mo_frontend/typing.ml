@@ -78,6 +78,8 @@ let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
+let display_lab = Lib.Format.display T.pp_lab
+
 let display_typ = Lib.Format.display T.pp_typ
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
@@ -1078,7 +1080,8 @@ and infer_exp'' env exp : T.typ =
           let avoid_labels lab b bls =
             if mem lab bls then
               error env b.at "M0293"
-                "ambiguous fields" in
+                "ambiguous field%a"
+                display_lab lab in
           iter (fun (b_t, b) -> avoid_labels lab b (map (fun {T.lab; _} -> lab) (T.as_obj b_t |> snd))) bs in
         iter (avoid t) (T.as_obj h |> snd);
         disjoint t in
