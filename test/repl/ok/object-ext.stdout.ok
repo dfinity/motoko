@@ -1,1 +1,3 @@
-{x = -25} : {x : Int}
+Motoko compiler (source XXX)
+> {x = -25} : {x : Int}
+> 
