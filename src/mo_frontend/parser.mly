@@ -268,6 +268,7 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) separated_nonempty_list(semicolon, exp_field)
+%type<Mo_def.Syntax.exp list> separated_nonempty_list(AND, exp_post(ob))
 %type<Mo_def.Syntax.dec_field list> seplist(dec_field,semicolon) obj_body
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
@@ -549,8 +550,8 @@ ob : e=exp_obj { e }
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { ObjE (efs, []) @? at $sloc }
-  | LCURLY efs=separated_nonempty_list(semicolon, exp_field) IN base=exp(ob) RCURLY
-    { ObjE (efs, [base]) @? at $sloc }
+  | LCURLY efs=separated_nonempty_list(semicolon, exp_field) IN bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
+    { ObjE (efs, bases) @? at $sloc }
 
 exp_plain :
   | l=lit
