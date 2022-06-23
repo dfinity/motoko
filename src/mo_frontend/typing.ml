@@ -1056,17 +1056,33 @@ and infer_exp'' env exp : T.typ =
     let fts = map (infer_exp_field env) exp_fields in
     let fls = map (fun {T.lab; _} -> lab) fts in
     let bases = map (fun b -> infer_exp env b, b) bases in
+    (* removing explicit fields from the bases *)
     let strip (base_t, base) =
-      let _s, tfs =
+      let s, tfs =
         try T.as_obj base_t with Invalid_argument _ ->
           error env base.at "M0093"
             "expected object type, but expression produces type%a"
             display_typ_expand base_t in
+      (* TODO: Object (yes), Module (possibly), Actor (no)? *)
+      if s <> T.Object then
+        error env base.at "M0193"
+          "modules or actors cannot serve as bases";
       T.(Obj (Object, filter (fun f -> not (mem f.lab fls)) tfs)) in
     let stripped_bases = map strip bases in
     (* TODO: disjointness of stripped bases! *)
+    (*let disjoint (i, (ti, bi)) (j, (tj, bj)) = () in*)
+    let avoid_labels lab bls =
+      if mem lab bls then
+        error env exp.at(*FIXME*) "M0293"
+          "ambiguous fields" in
+    let avoid bs {T.lab; _} = iter (fun b -> avoid_labels lab (map (fun {T.lab; _} -> lab) (T.as_obj b |> snd))) bs in
+    let rec disjoint = function
+      | [] | [_] -> ()
+      | h :: t ->
+        iter (avoid t) (T.as_obj h |> snd);
+        disjoint t in
+    (let stripped_bases = List.append stripped_bases stripped_bases in disjoint stripped_bases);
     (* TODO: var in stripped_bases? *)
-    (* TODO: Object (yes), Module (no), Actor (no)? *)
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
   | DotE (exp1, id) ->
