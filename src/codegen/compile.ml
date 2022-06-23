@@ -1193,7 +1193,7 @@ module BitTagged = struct
     E.if_ env retty is1 is2
 
   let if_can_tag_u64 env retty is1 is2 =
-    compile_shrU64_const 30L ^^
+    compile_shrU64_const 31L ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     E.if_ env retty is1 is2
 
