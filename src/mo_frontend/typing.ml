@@ -1604,7 +1604,6 @@ and check_exp_field env (ef : exp_field) fts =
     ignore (infer_exp env exp)
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
-  (*  let t = Lib.Option.get t_expect_opt T.Any in *)
   let n = match inst.it with None -> 0 | Some typs -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
