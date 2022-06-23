@@ -96,7 +96,7 @@ let error_codes : (string * string option) list =
     "M0090", None; (* Actor reference must have an actor type *)
     "M0091", None; (* Mutable array expression cannot produce expected type *)
     "M0092", None; (* Async cannot produce scope *)
-    (* "M0093" Unallocated *)
+    "M0093", None; (* Bases of record extensions must be objects *)
     "M0094", None; (* Shared functions does not match shared function type *)
     "M0095", None; (* Function return type does not match expected return type *)
     "M0096", None; (* Expression can't produce expected type *)
