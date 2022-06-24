@@ -1081,7 +1081,7 @@ and infer_exp'' env exp : T.typ =
           let avoid_labels b bls =
             if mem lab bls then
               begin
-                local_error env b.at "M0176"
+                local_error env b.at "M0177"
                   "ambiguous field in base%a"
                   display_lab lab;
                 info env h_exp.at "field also present in base, here (consider overwriting)"
