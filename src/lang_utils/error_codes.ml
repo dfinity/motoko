@@ -180,4 +180,6 @@ let error_codes : (string * string option) list =
     "M0174", None; (* from_candid produces an optional shared, not -- *)
     "M0175", None; (* to_candid argument must have shared type, not -- *)
     "M0176", None; (* from_candid requires known type from context *)
+    "M0177", None; (* Bases of record extensions must not have common fields that are not overwritten *)
+    "M0178", None; (* Bases of record extensions must be either objects or modules *)
   ]

@@ -1066,10 +1066,10 @@ and infer_exp'' env exp : T.typ =
           error env base.at "M0093"
             "expected object type, but expression produces type%a"
             display_typ_expand base_t in
-      (* TODO: Object (yes), Module (possibly), Actor (no)? *)
-      if s <> T.Object then
-        error env base.at "M0193"
-          "modules or actors cannot serve as bases";
+      (* forbid actors as bases *)
+      if s = T.Actor then
+        error env base.at "M0178"
+          "actors cannot serve as bases in record extensions";
       T.(Obj (Object, filter (fun f -> not (mem f.lab fls)) tfs)) in
     let stripped_bases = map strip bases in
 
@@ -1081,10 +1081,10 @@ and infer_exp'' env exp : T.typ =
           let avoid_labels b bls =
             if mem lab bls then
               begin
-                local_error env b.at "M0293"
+                local_error env b.at "M0176"
                   "ambiguous field in base%a"
                   display_lab lab;
-                info env h_exp.at "field also present in base, here"
+                info env h_exp.at "field also present in base, here (consider overwriting)"
               end in
           iter (fun (b_t, b) -> avoid_labels b (map (fun {T.lab; _} -> lab) (T.as_obj b_t |> snd))) t in
         iter avoid (T.as_obj h |> snd);
