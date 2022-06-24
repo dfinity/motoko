@@ -14,8 +14,7 @@ let unop = abstract "<unop>"
 let unassign = abstract "<unassign>"
 
 
-let string_of_symbol symbol : string =
-  match symbol with
+let string_of_symbol = function
   | X (T T_error) -> "error"
   | X (T T_XOROP) -> unop "^"
   | X (T T_XORASSIGN) -> unassign "^="
@@ -191,6 +190,7 @@ let string_of_symbol symbol : string =
   | X (N N_seplist_exp_ob__COMMA_) -> "seplist(<exp(ob)>,,)"
   | X (N N_seplist_exp_field_semicolon_) -> "seplist(<exp_field>,<semicolon>)"
   | X (N N_separated_nonempty_list_semicolon_exp_field_) -> "seplist+(<exp_field>,<semicolon>)"
+  | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)"
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> "seplist(<exp_nonvar(ob)>,,)"
   | X (N N_seplist_imp_SEMICOLON_) -> "seplist(<imp>,;)"
   | X (N N_seplist_imp_semicolon_) -> "seplist(<imp>,<semicolon>)"
