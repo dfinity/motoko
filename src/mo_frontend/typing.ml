@@ -1077,9 +1077,12 @@ and infer_exp'' env exp : T.typ =
     let avoid bs {T.lab; _} =
       let avoid_labels lab b bls =
         if mem lab bls then
-          error env b.at "M0293"
-            "ambiguous field in base%a"
-            display_lab lab in
+          begin
+            local_error env b.at "M0293"
+              "ambiguous field in base%a"
+              display_lab lab;
+            info env b.at "blabala"
+          end in
       iter (fun (b_t, b) -> avoid_labels lab b (map (fun {T.lab; _} -> lab) (T.as_obj b_t |> snd))) bs in
     let rec disjoint = function
       | [] | [_] -> ()
