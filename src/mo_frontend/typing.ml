@@ -1074,22 +1074,23 @@ and infer_exp'' env exp : T.typ =
     let stripped_bases = map strip bases in
 
     (* label disjointness of stripped bases *)
-    let avoid bs {T.lab; _} =
-      let avoid_labels lab b bls =
-        if mem lab bls then
-          begin
-            local_error env b.at "M0293"
-              "ambiguous field in base%a"
-              display_lab lab;
-            info env b.at "blabala"
-          end in
-      iter (fun (b_t, b) -> avoid_labels lab b (map (fun {T.lab; _} -> lab) (T.as_obj b_t |> snd))) bs in
     let rec disjoint = function
       | [] | [_] -> ()
-      | (h, _) :: t ->
-        iter (avoid t) (T.as_obj h |> snd);
+      | (h, h_exp) :: t ->
+        let avoid {T.lab; _} =
+          let avoid_labels b bls =
+            if mem lab bls then
+              begin
+                local_error env b.at "M0293"
+                  "ambiguous field in base%a"
+                  display_lab lab;
+                info env h_exp.at "field also present in base, here"
+              end in
+          iter (fun (b_t, b) -> avoid_labels b (map (fun {T.lab; _} -> lab) (T.as_obj b_t |> snd))) t in
+        iter avoid (T.as_obj h |> snd);
         disjoint t in
     disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
+
     (* TODO: var in stripped_bases? *)
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
