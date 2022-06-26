@@ -4,7 +4,7 @@ open Source
 open Ir
 open Ir_effect
 open Mo_values
-module Con = Mo_types.Con
+module Cons = Mo_types.Cons
 module T = Mo_types.Type
 
 (* Field names *)
@@ -84,11 +84,15 @@ let varLE (id, typ) =
 let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
+    | ICArgDataPrim -> T.blob
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
+    | ICMethodNamePrim -> T.text
+    | ICPerformGC
     | ICStableWrite _ -> T.unit
+    | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | NextArrayOffset _ -> T.nat
@@ -101,7 +105,10 @@ let primE prim es =
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
-    | SystemCyclesAcceptPrim -> T.nat64
+    | SystemCyclesAcceptPrim -> T.nat
+    | DeserializePrim ts -> T.seq ts
+    | DeserializeOptPrim ts -> T.Opt (T.seq ts)
+    | OtherPrim "trap" -> T.Non
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -176,6 +183,14 @@ let ic_callE f e k r =
     note = Note.{ def with typ = T.unit; eff = eff }
   }
 
+let ic_call_rawE p m a k r =
+  let es = [p; m; a; k; r] in
+  let effs = List.map eff es in
+  let eff = List.fold_left max_eff T.Triv effs in
+  { it = PrimE (ICCallRawPrim, es);
+    at = no_region;
+    note = Note.{ def with typ = T.unit; eff = eff }
+  }
 
 (* tuples *)
 
@@ -261,7 +276,7 @@ let nullE () =
 let funcE name sort ctrl typ_binds args typs exp =
   let cs = List.map (function { it = {con;_ }; _ } -> con) typ_binds in
   let tbs = List.map (function { it = { sort; bound; con}; _ } ->
-    {T.var = Con.name con; T.sort; T.bound = T.close cs bound})
+    {T.var = Cons.name con; T.sort; T.bound = T.close cs bound})
     typ_binds
   in
   let ts1 = List.map (function arg -> T.close cs arg.note) args in
@@ -359,6 +374,31 @@ let switch_variantE exp1 cases typ1 =
       eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
     }
   }
+
+let switch_textE exp1 cases (pat, exp2) typ1 =
+  let cs =
+    (List.map (fun (t, e) ->
+      {it = {pat =
+        {it = LitP (TextLit t);
+         at = no_region;
+         note = typ exp1};
+         exp = e};
+         at = no_region;
+         note = ()})
+      cases) @
+    [{it = {pat = pat; exp = exp2};
+      at = no_region;
+      note = ()}]
+  in
+  { it = SwitchE (exp1, cs);
+    at = no_region;
+    note = Note.{
+      def with
+      typ = typ1;
+      eff = List.fold_left max_eff (eff exp1) (List.map (fun c -> eff c.it.exp) cs)
+    }
+  }
+
 
 let tupE exps =
   let effs = List.map eff exps in
@@ -552,7 +592,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Con.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =

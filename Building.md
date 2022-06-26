@@ -72,10 +72,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    merge it into master without additional approval, within 2 or 3 minutes.
  * `git switch master; git pull`. The release commit should be your `HEAD`
  * `git tag 0.6.$MOC_MINOR -m "Motoko 0.6.$MOC_MINOR"`
- * `git branch -f release 0.6.$MOC_MINOR`
- * `git push origin release 0.6.$MOC_MINOR`
-
-The `release` branch should thus always reference the latest release commit.
+ * `git push origin 0.6.$MOC_MINOR`
 
 Pushing the tag should cause GitHub Actions to create a “Release” on the github
 project. This will fail if the changelog is not in order (in this case, fix and
@@ -99,6 +96,21 @@ branch to the `next-moc` branch.
 Make a PR off of that branch and merge it using a _normal merge_ (not
 squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
+
+## Coverage report
+
+To build with coverage enabled, compile the binaries in `src/` with
+
+    make DUNE_OPTS="--instrument-with bisect_ppx"`
+
+and then use `bisect-ppx-report html` to produce a report.
+
+The full report can be built with
+
+    nix-build -A tests.coverage
+
+and the report for latest `master` can be viewed at
+<https://dfinity.github.io/motoko/coverage/>.
 
 ## Profile the compiler
 

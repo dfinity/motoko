@@ -230,6 +230,8 @@ rule token mode = parse
   | "try" { TRY }
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
+  | "to_candid" { TO_CANDID }
+  | "from_candid" { FROM_CANDID }
   | "query" { QUERY }
   | "switch" { SWITCH }
   | "true" { BOOL true }

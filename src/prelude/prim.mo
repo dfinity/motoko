@@ -39,6 +39,8 @@ module Types = {
 };
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
+func shiftLeft(x : Nat, shift : Nat32) : Nat { (prim "lsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
+func shiftRight(x : Nat, shift : Nat32) : Nat { (prim "rsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
 
 // for testing
 func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
@@ -130,6 +132,9 @@ func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bo
 // Text conversion
 func decodeUtf8(b : Blob) : ?Text = (prim "decodeUtf8" : Blob -> ?Text) b;
 func encodeUtf8(t : Text) : Blob = (prim "encodeUtf8" : Text -> Blob) t;
+
+// Text comparison
+func textCompare(t1 : Text, t2 : Text) : Int8 = (prim "text_compare" : (Text, Text) -> Int8) (t1, t2);
 
 // Exotic bitwise operations
 func popcntNat8(w : Nat8) : Nat8 = (prim "popcnt8" : Nat8 -> Nat8) w;
@@ -255,29 +260,34 @@ func time() : Nat64 = (prim "time" : () -> Nat64) ();
 // Principal
 
 func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id;
+func principalOfBlob(act : Blob) : Principal = (prim "cast" : Blob -> Principal) act;
 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
-func cyclesBalance() : Nat64 {
-  (prim "cyclesBalance" : () -> Nat64) ();
+func cyclesBalance() : Nat {
+  (prim "cyclesBalance" : () -> Nat) ();
 };
 
-func cyclesAvailable() : Nat64 {
-  (prim "cyclesAvailable" : () -> Nat64) ();
+func cyclesAvailable() : Nat {
+  (prim "cyclesAvailable" : () -> Nat) ();
 };
 
-func cyclesRefunded() : Nat64 {
+func cyclesRefunded() : Nat {
     @refund
 };
 
-func cyclesAccept(amount: Nat64) : Nat64 {
-  (prim "cyclesAccept" : Nat64 -> Nat64) (amount);
+func cyclesAccept(amount: Nat) : Nat {
+  (prim "cyclesAccept" : Nat -> Nat) (amount);
 };
 
-func cyclesAdd(amount: Nat64) : () {
+func cyclesAdd(amount: Nat) : () {
+  // trap if @cycles would exceed 2^128
+  if ((@cycles + amount) > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
+    trap("cannot add more than 2^128 cycles")
+  };
   @cycles += amount;
 };
 
@@ -352,3 +362,13 @@ func stableMemoryLoadBlob(offset : Nat64, size : Nat) : Blob =
 
 func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
   (prim "stableMemoryStoreBlob" : (Nat64, Blob) -> ()) (offset, val);
+
+// Returns a query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
+func stableVarQuery() : shared query () -> async {size : Nat64} =
+  (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
+
+
+let call_raw = @call_raw;
+
+func performanceCounter(counter : Nat32) : Nat64 =
+  (prim "performanceCounter" : (Nat32) -> Nat64) counter;

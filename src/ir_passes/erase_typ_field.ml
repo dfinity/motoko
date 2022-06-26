@@ -10,7 +10,7 @@ open T
 
 (* Erase type fields from object types *)
 
-module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
+module ConRenaming = E.Make(struct type t = T.con let compare = Cons.compare end)
 
 let transform prog =
 
@@ -71,16 +71,16 @@ let transform prog =
       T.Def (t_binds typ_binds, t_typ typ)
 
   and t_con c =
-    match Con.kind c with
+    match Cons.kind c with
     | T.Def ([], T.Prim _) -> c
     | _ ->
       match  ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
-        let clone = Con.clone c (Abs ([], Pre)) in
+        let clone = Cons.clone c (Abs ([], Pre)) in
         con_renaming := ConRenaming.add c clone (!con_renaming);
         (* Need to extend con_renaming before traversing the kind *)
-        Type.set_kind clone (t_kind (Con.kind c));
+        Type.set_kind clone (t_kind (Cons.kind c));
         clone
 
   and t_prim p = Ir.map_prim t_typ (fun id -> id) p
@@ -126,9 +126,14 @@ let transform prog =
       DefineE (id, mut, t_exp exp1)
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
       ActorE (t_decs ds, t_fields fs,
-        {meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade}, t_typ typ)
+       {meta;
+        preupgrade = t_exp preupgrade;
+        postupgrade = t_exp postupgrade;
+        heartbeat = t_exp heartbeat;
+        inspect = t_exp inspect;
+       }, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
@@ -200,9 +205,14 @@ let transform prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
-        { meta; preupgrade = t_exp preupgrade; postupgrade = t_exp postupgrade }, t_typ t)
+        { meta;
+          preupgrade = t_exp preupgrade;
+          postupgrade = t_exp postupgrade;
+          heartbeat = t_exp heartbeat;
+          inspect = t_exp inspect;
+        }, t_typ t)
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_typ_field = false } )
 in
   t_prog prog

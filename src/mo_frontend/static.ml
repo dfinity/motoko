@@ -62,6 +62,8 @@ let rec exp m e = match e.it with
   (* Clearly non-static *)
   | UnE _
   | ShowE _
+  | ToCandidE _
+  | FromCandidE _
   | NotE _
   | AssertE _
   | LabelE _
@@ -93,20 +95,21 @@ and exp_fields m efs = List.iter (fun (ef : exp_field) -> exp m ef.it.exp) efs
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
   | ExpD e -> exp m e
-  | LetD (p, e) -> triv m p; exp m e
+  | LetD (p, e) -> pat m p; exp m e
   | VarD _ -> err m d.at
 
-and triv m p = match p.it with
+and pat m p = match p.it with
   | (WildP | VarP _) -> ()
 
   (*
   If we allow projections above, then we should allow irrefutable
   patterns here.
   *)
-  | TupP ps -> List.iter (triv m) ps
+  | TupP ps -> List.iter (pat m) ps
+  | ObjP fs -> List.iter (fun (f : pat_field) -> pat m f.it.pat) fs
 
   (* TODO:
-    claudio: what about record patterns, singleton variant patterns? These are irrefutable too.
+    claudio: what about singleton variant patterns? These are irrefutable too.
     Andreas suggests simply allowing all patterns: "The worst that can happen is that the program
     is immediately terminated, but that doesn't break anything semantically."
   *)

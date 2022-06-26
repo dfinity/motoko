@@ -56,7 +56,7 @@ and bind = {var : var; sort: bind_sort; bound : typ}
 
 and field = {lab : lab; typ : typ; depr : string option}
 
-and con = kind Con.t
+and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
@@ -235,6 +235,17 @@ val scope_bind : bind
 
 val match_stab_sig : field list -> field list -> bool
 
+val string_of_stab_sig : field list -> string
+
+(* Well-known fields *)
+
+val motoko_async_helper_fld : field
+val motoko_stable_var_info_fld : field
+val get_candid_interface_fld : field
+
+val well_known_actor_fields : field list
+val decode_msg_typ : field list -> typ
+
 (* Pretty printing *)
 
 val string_of_prim : prim -> string
@@ -253,10 +264,20 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_stab_sig : field list -> string
 end
 
-module MakePretty(_ : sig val show_stamps : bool end) : Pretty
+module type PrettyConfig = sig
+  val show_stamps : bool
+  val con_sep : string
+  val par_sep : string
+end
+
+module ShowStamps : PrettyConfig
+
+module ElideStamps : PrettyConfig
+
+module ParseableStamps : PrettyConfig
+
+module MakePretty(_ : PrettyConfig) : Pretty
 
 include Pretty
-

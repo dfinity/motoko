@@ -1,6 +1,6 @@
 pkgs:
 { drun =
-    pkgs.rustPlatform.buildRustPackage {
+    pkgs.rustPlatform_moz_stable.buildRustPackage {
       name = "drun";
 
       src = pkgs.sources.ic + "/rs";
@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-n3ikG94tn4scRNJfKfeWyMiHhC5wHR/syPaHd4I8yLY=";
+      cargoSha256 = "sha256-EbYM5DxJILstvNjQS4Jr9RvCxsT71XfcZ4lWzBiJaTU=";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
@@ -27,6 +27,7 @@ pkgs:
         llvm_13
         llvmPackages_13.libclang
         lmdb
+        libunwind
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];

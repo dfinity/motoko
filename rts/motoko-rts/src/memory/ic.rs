@@ -72,15 +72,18 @@ impl Memory for IcMemory {
     unsafe fn alloc_words(&mut self, n: Words<u32>, init_word: u32) -> Value {
         let bytes = n.to_bytes();
         // Update ALLOCATED
-        ALLOCATED += Bytes(u64::from(bytes.as_u32()));
+        let delta = u64::from(bytes.as_u32());
+        ALLOCATED += Bytes(delta);
 
         // Update heap pointer
-        let old_hp = HP;
-        let new_hp = old_hp + bytes.as_u32();
-        HP = new_hp;
+        let old_hp = u64::from(HP);
+        let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        grow_memory(new_hp as usize);
+        grow_memory(new_hp);
+
+        debug_assert!(new_hp <= u64::from(core::u32::MAX));
+        HP = new_hp as u32;
 
         *(old_hp as *mut u32) = init_word;
         debug_assert_eq!(Value::from_ptr(old_hp as usize).as_obj().tag(), init_word);
@@ -91,8 +94,9 @@ impl Memory for IcMemory {
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
 #[inline(always)]
 unsafe fn grow_memory(ptr: usize) {
+    debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
     let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
-    let total_pages_needed = (((ptr as u64) + page_size - 1) / page_size) as usize;
+    let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {

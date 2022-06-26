@@ -24,9 +24,9 @@ let phase heading name =
 
 let print_ce =
   Type.ConSet.iter (fun c ->
-    let eq, params, typ = Type.pps_of_kind (Con.kind c) in
+    let eq, params, typ = Type.pps_of_kind (Cons.kind c) in
     Format.printf "@[<hv 2>type %s%a %s@ %a@]@."
-      (Con.to_string c)
+      (Type.string_of_con c)
       params ()
       eq
       typ ()
@@ -234,7 +234,7 @@ let internals, initial_stat_env =
 (* Stable compatibility *)
 
 
-let _parse_stab_sig s name  =
+let parse_stab_sig s name  =
   let open Diag.Syntax in
   let mode = {Lexer.privileged = false} in
   let lexer = Lexing.from_string s in
@@ -257,6 +257,15 @@ let stable_compatible pre post : unit Diag.result =
   let open Diag.Syntax in
   let* p1 = parse_stab_sig_from_file pre in
   let* p2 = parse_stab_sig_from_file post in
+  let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
+  let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
+  Stability.match_stab_sig s1 s2
+
+let validate_stab_sig s : unit Diag.result =
+  let open Diag.Syntax in
+  let name = "stable-types" in
+  let* p1 = parse_stab_sig s name in
+  let* p2 = parse_stab_sig s name in
   let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
   Stability.match_stab_sig s1 s2
@@ -678,7 +687,14 @@ let compile_files mode do_link files : compile_result =
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
   let* () = Typing.check_actors senv progs in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
-  Diag.return (idl, compile_progs mode do_link libs progs)
+  let ext_module = compile_progs mode do_link libs progs in
+  (* validate any stable type signature *)
+  let* () =
+    match Wasm_exts.CustomModule.(ext_module.motoko.stable_types) with
+    | Some (_, ss) -> validate_stab_sig ss
+    | _ -> Diag.return ()
+  in
+  Diag.return (idl, ext_module)
 
 
 (* Interpretation (IR) *)

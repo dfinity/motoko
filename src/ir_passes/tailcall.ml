@@ -71,7 +71,7 @@ let bind_arg env a info = bind env a.it info
 let are_generic_insts (tbs : typ_bind list) insts =
   List.for_all2 (fun (tb : typ_bind) inst ->
       match inst with
-      | Con(c2,[]) -> Con.eq tb.it.con c2 (* conservative, but safe *)
+      | Con(c2,[]) -> Cons.eq tb.it.con c2 (* conservative, but safe *)
       |  _ -> false
       ) tbs insts
 
@@ -147,7 +147,7 @@ and pat env p =
   let env = pat' env p.it in
   env
 
-and pat' env p = match p with
+and pat' env = function
   | WildP         ->  env
   | VarP i        ->
     let env1 = bind env i None in

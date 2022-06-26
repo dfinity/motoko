@@ -99,12 +99,10 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and assert assert await break case
-catch class continue debug debug_show else flexible
-false for func if ignore in import not null object or
-label let loop private public query return
-shared stable system switch true try
-type var while
+actor and assert async await break case catch class continue debug
+debug_show do else flexible false for from_candid func if ignore import
+in module not null object or label let loop private public query return
+shared stable switch system throw to_candid true try type var while
 ```
 
 [[syntax-ids]]
@@ -397,7 +395,7 @@ The syntax of an _import_ `<imp>`  is as follows:
 
 ```bnf
 <imp> ::= imports
-  import <id>? =? <url>
+  import <pat> =? <url>
 
 <url> ::=
   "<filepath>"                      import module from relative <filepath>.mo
@@ -406,7 +404,12 @@ The syntax of an _import_ `<imp>`  is as follows:
   "canister:<name>"                 import external actor by <name>
 ```
 
-An import introduces a resource named '<id>?' referring to a local source module, module from a package of modules, or canister (imported as an actor).
+An import introduces a resource referring to a local source module, module from a package of modules, or canister (imported as an actor).
+The contents of the resource are bound to `<pat>`.
+
+Though typically a simple identifier, `<id>`, `<pat>` can also be any composite pattern binding selective components of the resource.
+
+The pattern must be irrefutable.
 
 [[syntax-libraries]]
 === Libraries
@@ -553,6 +556,8 @@ The syntax of an _expression_ is as follows:
   <exp> !                                        null break
   debug <block-or-exp>                           debug expression
   actor <exp>                                    actor reference
+  to_candid ( <exp>,* )                          Candid serialization
+  from_candid <exp>                              Candid deserialization
   ( <exp> )                                      parentheses
 
 <block-or-exp> ::=
@@ -1198,24 +1203,24 @@ Installation is (necessarily) asynchronous.
 [[imports]]
 === Imports and Urls
 
-An import `import <id>? =? <url>` declares an optional identifier `<id>?` bound to the contents of the text literal `<url>`. (`<id>?`, when absent, defaults to some fresh identifier `<id>`.)
+An import `import <pat> =? <url>` declares a pattern `<pat>` bound to the contents of the text literal `<url>`.
 
 `<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package,
 or an external canister, referenced either by numeric canister id or by a named alias, and imported as a {proglang} actor.
 
 In detail, if `<url>` is of the form:
 
-* `"<filepath>"` then `<id>` is bound to the library module defined in file `<filepath>.mo`.
+* `"<filepath>"` then `<pat>` is bound to the library module defined in file `<filepath>.mo`.
   `<filepath>` is interpreted relative to the absolute location of the enclosing file.
   Note the `.mo` extension is implicit and should _not_ be included in `<url>`.
   For example, `import U "lib/Util"` defines `U` to reference the module in local file
   `./lib/Util`.
 
-* `"mo:<package-name>/<path>"` then `<id>` is bound to the library module defined in file `<package-path>/<path>.mo` in directory `<package-path>` referenced by package alias `<package-name>`.
+* `"mo:<package-name>/<path>"` then `<pat>` is bound to the library module defined in file `<package-path>/<path>.mo` in directory `<package-path>` referenced by package alias `<package-name>`.
   The mapping from `<package-name>` to `<package-path>` is determined by a compiler command-line argument `--package <package-name> <package-path>`. For example, `import L "mo:base/List"` defines `L` to reference the `List` library in
    package alias `base`.
 
-* `"ic:<canisterid>"` then `<id>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
+* `"ic:<canisterid>"` then `<pat>` is bound to a {proglang} actor whose {proglang} type is determined by the canister's IDL interface.
   The IDL interface of canister `<canisterid>` must be found in file `<actorpath>/<canisterid>.did`.
   The compiler assumes that  `<actorpath>` is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists.
   For example, `import C "ic:lg264-qjkae"` defines `C` to reference the actor with canister id `lg264-qjkae` and IDL file `lg264-qjkae.did`.
@@ -1229,8 +1234,9 @@ In detail, if `<url>` is of the form:
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
 (Remark: when building multi-canister projects with the {sdk-short-name}, {proglang} programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`).
-The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler).
+The SDK tooling takes care of supplying the appropriate command-line arguments to the {proglang} compiler.)
 
+(Remark: sensible choices for `<pat>` are identifiers, such as ``Array``, or object patterns like ``{ cons; nil = empty }``, which allow selective importing of individual fields, under original or other names.)
 
 [[decl-field]]
 === Declaration fields
@@ -1269,17 +1275,50 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 |===
 |  name | type | description
 
+| `heartbeat`  | `+() -> async ()+` | heartbeat action
+| `inspect` | `+{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool+` | message predicate
 | `preupgrade`  | `+() -> ()+` | pre upgrade action
 | `postupgrade` | `+() -> ()+` | post upgrade action
+
 |===
 
+* `heartbeat`, when declared, is called on every {IC} subnet *heartbeat*,
+scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including
+any trap or thrown error, is ignored. The implicit context switch means that
+the time the heartbeat body is executed may be later than the time the
+heartbeat was issued by the subnet.
+* `inspect`, when declared, is called as a predicate on every {IC} ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see <<inspect-message>>).
 * `preupgrade`, when declared, is called during an upgrade, immediately _before_ the (current) values of the (retired) actor's stable variables are transferred to the replacement actor.
 * `postupgrade`, when declared, is called during an upgrade, immediately _after_ the (replacement) actor body has initialized its fields
 (inheriting values of the retired actors' stable variables), and before its first message is processed.
 
-These system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
+These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
-During an upgrade, a trap occuring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
+During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `postupgrade()` causes the entire upgrade to trap, preserving the pre-upgrade actor.
+
+[#inspect]
+===== `inspect`
+
+Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
+The function is invoked (by the system) on each ingress message (excluding non-replicated queries).
+Similar to a query, any side-effects of an invocation are transient and discarded.
+A call that traps due to some fault has the same result as returning `false` (message denial).
+
+The argument type of `inspect` depends on the interface of the enclosing actor.
+In particular, the formal argument of `inspect` is a record of fields of the following types:
+
+* `caller : Principal`: the principal, possibly anonymous, of the caller of the message;
+* `arg : Blob`: the raw, binary content of the message argument;
+* `msg : <variant>`: a variant of _decoding_ functions,  where `<variant> == {...; #<id>: () -> T; ...}` contains one variant
+   per shared function, `<id>`, of the actor.
+   The variant's tag identifies the function to be called;
+   The variant's argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
+
+Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type (also `T`) of the shared function `<id>`.
+
+The variant's argument is a function so that one can avoid the expense of message decoding (when appropriate).
+
+WARNING: An actor that fails to declare system field `inspect` will simply accept all ingress messages.
 
 [[decl-seq]]
 === Sequence of declarations
@@ -2287,6 +2326,44 @@ Type annotation may be used to aid the type-checker when it cannot otherwise det
 The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
 NOTE: Type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
+
+[#candid-serialization]
+=== Candid Serialization
+
+The _Candid serialization_ expression `to_candid ( <exp>,*)` has type `Blob` provided:
+
+* `(<exp>,*)` has type `(T1,...,TN)`, and each `Ti` is _shared_.
+
+Expression `+to_candid ( <exp>,* )+` evaluates the expression sequence `+( <exp>,* )+` to a result `r`.
+If `r` is `trap`, evaluation returns `trap`.
+Otherwise, `r` is a sequence of Motoko values `vs`.
+The result of evaluating `to_candid ( <exp>,* )` is some Candid blob `+b = encode((T1,...,TN))(vs)+`, encoding `vs`.
+
+The Candid _deserialization_ expression `from_candid <exp>` has type `?(T1,...,Tn)` provided:
+
+* `?(T1,...,Tn)` is the expected type from the context;
+* `<exp>` has type `Blob`; and
+* `?(T1,...TN)` is _shared_.
+
+Expression `+from_candid <exp>+` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a binary blob `b`.
+If `b` Candid-decodes to Candid value sequence `Vs` of type `+ea((T1,...,TN))+` then the result of `from_candid` is `?v` where  `+v = decode((T1,...,TN))(Vs)+`.
+If `b` Candid-decodes to a Candid value sequence `Vs` that is not of  Candid type `+ea((T1,...,TN))+` (but well-formed at some other type) then the result is `null`.
+If `b` is not the encoding of any well-typed Candid value, but some arbitrary binary blob, then the result of `from_candid` is a trap.
+
+(Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `+encode/decode((T1,...,TN))(_)+` are type-directed Motoko-Candid value translations.)
+
+////
+ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `decode` are not explicitly defined anywhere except in the implementation.
+////
+
+
+NOTE: `from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
+
+NOTE: `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
+
+WARNING: the Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob.
+For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler
+versions or even just different programs.
 
 [[exp-decl]]
 === Declaration

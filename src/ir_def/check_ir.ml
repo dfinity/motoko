@@ -168,7 +168,7 @@ let rec check_typ env typ : unit =
   | T.Con (c, typs) ->
     List.iter (check_typ env) typs;
     begin
-      match Con.kind c with
+      match Cons.kind c with
       | T.Def (tbs,_) ->
         check_con env c;
         check_typ_bounds env tbs typs no_region
@@ -253,7 +253,7 @@ and check_con env c =
   else
   begin
     env.seen := T.ConSet.add c !(env.seen);
-    let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    let T.Abs (binds,typ) | T.Def (binds, typ) = Cons.kind c in
     check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
     check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
@@ -529,13 +529,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       T.text <: t
     | SerializePrim ots, [exp1] ->
-      check (T.shared (T.seq ots)) "debug_serialize is not defined for operand type";
+      check (T.shared (T.seq ots)) "Serialize is not defined for operand type";
       typ exp1 <: T.seq ots;
       T.blob <: t
     | DeserializePrim ots, [exp1] ->
-      check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
+      check (T.shared (T.seq ots)) "Deserialize is not defined for operand type";
       typ exp1 <: T.blob;
       T.seq ots <: t
+    | DeserializeOptPrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "DeserializeOpt is not defined for operand type";
+      typ exp1 <: T.blob;
+      T.Opt (T.seq ots) <: t
     | CPSAwait cont_typ, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
@@ -567,6 +571,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
          T.Async(t0, Type.open_ [t0] (T.seq ts1)) <: t
        | _ -> error env exp.at "CPSAsync unexpected typ")
       (* TODO: We can check more here, can we *)
+    | ICArgDataPrim, [] ->
+      T.blob <: t
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
@@ -593,6 +599,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+      (* TODO: T.unit <: t ? *)
+    | ICCallRawPrim, [exp1; exp2; exp3; k; r] ->
+      typ exp1 <: T.principal;
+      typ exp2 <: T.text;
+      typ exp3 <: T.blob;
+      typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
+      typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+      T.unit <: t
+    | ICMethodNamePrim, [] ->
+      T.text <: t
     | ICStableRead t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
@@ -639,15 +655,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
          the environment and see if this lines up. *)
       t1 <: t;
     | SystemTimePrim, [] ->
-      T.(Prim Nat64) <: t;
+      T.nat64 <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
-      T.nat64 <: t
+      T.nat <: t
     | SystemCyclesAcceptPrim, [e1] ->
-      typ e1 <: T.nat64;
-      T.nat64 <: t
+      typ e1 <: T.nat;
+      T.nat <: t
     | SystemCyclesAddPrim, [e1] ->
-      typ e1 <: T.nat64;
+      typ e1 <: T.nat;
       T.unit <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
@@ -655,6 +671,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | GetCertificate, [] ->
       T.Opt T.blob <: t
+    | ICPerformGC, [] ->
+      T.unit <: t
+    | ICStableSize t1, [e1] ->
+      typ e1 <: t1;
+      T.nat64 <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -772,7 +793,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, { preupgrade; postupgrade; meta }, t0) ->
+  | ActorE (ds, fs,
+      { preupgrade; postupgrade; meta; heartbeat; inspect }, t0) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -780,8 +802,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_decs env'' ds;
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
+    check_exp env'' heartbeat;
+    check_exp env'' inspect;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
+    typ heartbeat <: T.unit;
+    typ inspect <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -1046,7 +1072,7 @@ and check_open_typ_bind env typ_bind =
   | _ -> assert false
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; sort; bound} -> {Type.var = Con.name con; sort = sort; bound = Type.close cs bound}) tbs
+  List.map (fun {con; sort; bound} -> {Type.var = Cons.name con; sort = sort; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
@@ -1092,7 +1118,8 @@ let check_comp_unit env = function
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds
-  | ActorU (as_opt, ds, fs, { preupgrade; postupgrade; meta}, t0) ->
+  | ActorU (as_opt, ds, fs,
+      { preupgrade; postupgrade; meta; heartbeat; inspect }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1107,8 +1134,12 @@ let check_comp_unit env = function
     check_decs env'' ds;
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
+    check_exp env'' heartbeat;
+    check_exp env'' inspect;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
+    typ heartbeat <: T.unit;
+    typ inspect <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in

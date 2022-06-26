@@ -164,9 +164,16 @@ unsafe fn evac<M: Memory>(
 unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: usize, obj: usize) {
     let obj = obj as *mut Obj;
 
-    crate::visitor::visit_pointer_fields(obj, obj.tag(), begin_from_space, |field_addr| {
-        evac(mem, begin_from_space, begin_to_space, field_addr as usize);
-    });
+    crate::visitor::visit_pointer_fields(
+        mem,
+        obj,
+        obj.tag(),
+        begin_from_space,
+        |mem, field_addr| {
+            evac(mem, begin_from_space, begin_to_space, field_addr as usize);
+        },
+        |_, _, arr| arr.len(),
+    );
 }
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of

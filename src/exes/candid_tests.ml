@@ -40,6 +40,8 @@ let argspec = Arg.align
 
 (* IO *)
 
+module Pretty = Type.MakePretty(Type.ElideStamps)
+
 let load_file f =
   let ic = open_in_bin f in
   let n = in_channel_length ic in
@@ -54,8 +56,8 @@ let write_file f s =
   close_out oc_
 
 let print_type = function
-  | [t] -> "(" ^ Type.string_of_typ t ^ ")" (* add parens to make this unary *)
-  | ts -> Type.string_of_typ (Type.Tup ts)
+  | [t] -> "(" ^ Pretty.string_of_typ t ^ ")" (* add parens to make this unary *)
+  | ts -> Pretty.string_of_typ (Type.Tup ts)
 
 type expected_behaviour = ShouldPass | ShouldTrap
 
@@ -84,7 +86,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
       "import Prim \"mo:⛔\";" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
-        "type " ^ n ^ " = " ^ Type.string_of_typ mo_typ ^ ";\n"
+        "type " ^ n ^ " = " ^ Pretty.string_of_typ mo_typ ^ ";\n"
       ) (Typing.Env.bindings tenv)) ^ "\n" in
 
     let ts = Idl_to_mo.check_typs tenv (test.it.ttyp) in

@@ -2,7 +2,7 @@ open Url
 
 let parse_test input expected =
   let actual = parse input in
-  let show x = match x with
+  let show = function
     | Result.Ok parsed -> "Ok " ^ string_of_parsed parsed
     | Result.Error err -> "Err " ^ err in
   if actual = expected then

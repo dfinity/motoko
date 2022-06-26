@@ -1,14 +1,14 @@
 func go () {
-  let (foobar1, _) = (func foobar1() = (), 5);
+  let (foobar1, _) = (func foobar1() { assert true; }, 5);
   foobar1();
-  let tup = (func foobar1a() = (), 5);
+  let tup = (func foobar1a() { assert true; }, 5);
   tup.0();
 };
 go();
 
-let (foobar2, _) = (func foobar2() = (), 5);
+let (foobar2, _) = (func foobar2() { assert true; }, 5);
 foobar2();
-let tup = (func foobar2a() = (), 5);
+let tup = (func foobar2a() { assert true; }, 5);
 tup.0();
 
 // CHECK-LABEL: func $init

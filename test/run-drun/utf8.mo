@@ -17,4 +17,4 @@ public func show() : async Text {
 };
 
 
-ignore a.callshow();  //OR-CALL ingress callshow "DIDL\x00\x00"
+ignore a.callshow(); //OR-CALL ingress callshow "DIDL\x00\x00"

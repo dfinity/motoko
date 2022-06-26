@@ -151,6 +151,8 @@ and exp' =
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
   | ShowE of (op_typ * exp)                    (* debug show operator *)
+  | ToCandidE of exp list                      (* to_candid operator *)
+  | FromCandidE of exp                         (* from_candid operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
@@ -227,7 +229,7 @@ and stab_sig' = (dec list * typ_field list)      (* type declarations & stable a
 (* Compilation units *)
 
 type import = (import', Type.typ) Source.annotated_phrase
-and import' = id * string * resolved_import ref
+and import' = pat * string * resolved_import ref
 
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =

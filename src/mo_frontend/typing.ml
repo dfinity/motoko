@@ -204,9 +204,20 @@ let infer_mut mut : T.typ -> T.typ =
 
 (* System method types *)
 
-let system_funcs = [
+let system_funcs tfs =
+  [
+    ("heartbeat", T.Func (T.Local, T.Returns, [T.scope_bind], [], [T.Async (T.Var (T.default_scope_var, 0), T.unit)]));
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
-    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []))
+    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    ("inspect",
+     (let msg_typ = T.decode_msg_typ tfs in
+      let record_typ =
+        T.Obj (T.Object, List.sort T.compare_field
+          [{T.lab = "caller"; T.typ = T.principal; T.depr = None};
+           {T.lab = "arg"; T.typ = T.blob; T.depr = None};
+           {T.lab = "msg"; T.typ = msg_typ; T.depr = None}])
+      in
+        T.Func (T.Local, T.Returns, [],  [record_typ], [T.bool])))
   ]
 
 
@@ -412,7 +423,7 @@ and check_typ' env typ : T.typ =
   | PathT (path, typs) ->
     let c = check_typ_path env path in
     let ts = List.map (check_typ env) typs in
-    let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
+    let T.Def (tbs, _) | T.Abs (tbs, _) = Cons.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
@@ -555,7 +566,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
     List.map2 (fun x tb ->
       match tb.note with
       | Some c -> c
-      | None -> Con.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
+      | None -> Cons.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -573,7 +584,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
   check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
   List.iter2 (fun c k ->
-    match Con.kind c with
+    match Cons.kind c with
     | T.Abs (_, T.Pre) -> T.set_kind c k
     | k' -> assert (T.eq_kind k k')
   ) cs ks;
@@ -620,7 +631,7 @@ and check_con_env env at ce =
   if not (T.ConSet.is_empty cs) then
     error env at "M0157" "block contains non-productive definition%s %s"
       (if T.ConSet.cardinal cs = 1 then "" else "s")
-      (String.concat ", " (List.map Con.name (T.ConSet.elements cs)));
+      (String.concat ", " (List.map Cons.name (T.ConSet.elements cs)));
   begin match Mo_types.Expansive.is_expansive ce with
   | None -> ()
   | Some msg ->
@@ -696,7 +707,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -971,6 +982,16 @@ and infer_exp'' env exp : T.typ =
       ot := t
     end;
     T.text
+  | ToCandidE exps ->
+    if not env.pre then begin
+        let ts = List.map (infer_exp env) exps in
+        if not (T.shared (T.seq ts)) then
+          error env exp.at "M0175" "to_candid argument must have shared type, but instead has non-shared type %a"
+            display_typ_expand (T.seq ts);
+      end;
+    T.Prim T.Blob
+  | FromCandidE exp1 ->
+    error env exp.at "M0176" "from_candid requires but is missing a known type (from context)"
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -1378,6 +1399,23 @@ and check_exp' env0 t exp : T.typ =
       warn env exp.at "M0155" "operator may trap for inferred type%a"
         display_typ_expand t;
     t
+  | ToCandidE exps, _ ->
+    if not env.pre then begin
+      let ts = List.map (infer_exp env) exps in
+      if not (T.sub (T.Prim T.Blob) t) then
+        error env exp.at "M0172" "to_candid produces a Blob that is not a subtype of %a"
+          display_typ_expand t;
+      if not (T.shared (T.seq ts)) then
+          error env exp.at "M0173" "to_candid argument must have shared type, but instead has non-shared type %a"
+          display_typ_expand (T.seq ts);
+      end;
+    T.Prim T.Blob
+  | FromCandidE exp1, t when T.shared t && T.is_opt t ->
+    check_exp env (T.Prim T.Blob) exp1;
+    t
+  | FromCandidE _, t ->
+      error env exp.at "M0174" "from_candid produces an optional shared type, not type%a"
+        display_typ_expand t    
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
@@ -2028,19 +2066,19 @@ and infer_obj env s dec_fields at : T.typ =
       ) dec_fields;
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
-    check_system_fields env s scope dec_fields;
+    check_system_fields env s scope tfs dec_fields;
     check_stab env s scope dec_fields;
   end;
   t
 
-and check_system_fields env sort scope dec_fields =
+and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
     match sort, df.it.vis.it, df.it.dec.it with
     | T.Actor, vis,
       LetD({ it = VarP id; _ },
            { it = FuncE _; _ }) ->
       begin
-        match List.assoc_opt id.it system_funcs with
+        match List.assoc_opt id.it (system_funcs tfs) with
         | Some t ->
           (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
           if vis = System then
@@ -2055,7 +2093,7 @@ and check_system_fields env sort scope dec_fields =
         | None ->
           if vis = System then
             local_error env id.at "M0129" "unexpected system method named %s, expected %s"
-              id.it (String.concat " or " (List.map fst system_funcs))
+              id.it (String.concat " or " (List.map fst (system_funcs tfs)))
           else ()
       end
     | _, System, _ ->
@@ -2273,7 +2311,6 @@ and gather_dec env scope dec : Scope.t =
       {it = VarP id; _},
       ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
-       (* TODO include RecE? *)
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
@@ -2306,7 +2343,7 @@ and gather_dec env scope dec : Scope.t =
     in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
-      | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
+      | None -> let c = Cons.fresh id.it pre_k in id.note <- Some c; c
       | Some c -> c
     in
     let val_env = match dec.it with
@@ -2356,7 +2393,6 @@ and infer_dec_typdecs env dec : Scope.t =
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
         {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
-       (* TODO include RecE? *)
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
@@ -2413,7 +2449,7 @@ and infer_dec_typdecs env dec : Scope.t =
 
 and check_closed env id k at =
   let is_typ_param c =
-    match Con.kind c with
+    match Cons.kind c with
     | T.Def _ -> false
     | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
     | T.Abs( _, _) -> true in
@@ -2430,7 +2466,7 @@ and check_closed env id k at =
 
 and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
-  (match Con.kind c with
+  (match Cons.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
   | k' -> assert (T.eq_kind k' k) (* may diverge on expansive types *)
   );
@@ -2444,6 +2480,11 @@ and infer_block_valdecs env decs scope : Scope.t =
       adjoin env scope', Scope.adjoin scope scope'
     ) (env, scope) decs
   in scope'
+
+and is_import d =
+  match d.it with
+  | LetD (_, {it = ImportE _; _}) -> true
+  | _ -> false
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
@@ -2467,7 +2508,7 @@ and infer_dec_valdecs env dec : Scope.t =
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    let ve' = check_pat_exhaustive warn env t pat in
+    let ve' = check_pat_exhaustive (if is_import dec then local_error else warn) env t pat in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
@@ -2532,11 +2573,6 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
-let is_import d =
-  match d.it with
-  | LetD ({it = VarP n; _}, {it = ImportE _; _}) -> true
-  | _ -> false
-
 let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
@@ -2591,7 +2627,7 @@ let check_lib scope lib : Scope.t Diag.result =
                    | _ -> assert false)
                 | _ -> assert false
               in
-              let con = Con.fresh id.it (T.Def([], class_typ)) in
+              let con = Cons.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [
                 { T.lab = id.it; T.typ = T.Typ con; depr = None };
                 { T.lab = id.it; T.typ = fun_typ; depr = None }
@@ -2627,5 +2663,3 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           List.sort T.compare_field fs
         ) sig_.it
     )
-
-

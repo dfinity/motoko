@@ -6,4 +6,3 @@ let rec is_irrefutable p = match p.it with
   | AltP (pat1, _) -> is_irrefutable pat1
   | WildP | VarP _ -> true
   | TagP _ | LitP _ | OptP _ -> false
-
