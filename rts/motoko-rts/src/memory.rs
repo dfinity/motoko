@@ -33,7 +33,7 @@ pub trait Memory {
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words(), TAG_BLOB);
-    let blob = ptr.as_blob();
+    let blob = ptr.as_blob_mut();
     (*blob).len = size;
     ptr
 }

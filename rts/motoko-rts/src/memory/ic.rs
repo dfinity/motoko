@@ -93,7 +93,7 @@ impl Memory for IcMemory {
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
 #[inline(always)]
-unsafe fn grow_memory(ptr: usize) {
+unsafe fn grow_memory(ptr: u64) {
     debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
     let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
     let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
