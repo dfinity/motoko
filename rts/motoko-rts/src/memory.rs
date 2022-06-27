@@ -35,7 +35,6 @@ struct NWords<const N: usize> {}
 
 #[cfg(feature = "ic")]
 impl NWords<3> {
-    //#[export_name = "alloc_3words"]
     #[inline(always)]
     unsafe fn alloc<M: Memory>(mem: &mut M, init_word: u32) -> Value {
         mem.alloc_words(Words(3), init_word)
