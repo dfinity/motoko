@@ -119,7 +119,8 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
     let wrapper_args_syn: Vec<&syn::Ident> = wrapper_args.iter().map(|(ident, _)| ident).collect();
 
     let fun_attr = if ic_only {
-        quote!(#[cfg(feature = "ic")])
+        quote!(#[cfg(feature = "ic")]
+	       #[inline(always)])
     } else {
         quote!()
     };
