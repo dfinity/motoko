@@ -29,6 +29,26 @@ pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>, init_word: u32) -> Value;
 }
 
+/// Helper for fixed-size objects
+#[cfg(feature = "ic")]
+struct NWords<const N: usize> {}
+
+#[cfg(feature = "ic")]
+impl NWords<3> {
+    //#[export_name = "alloc_3words"]
+    #[inline(always)]
+    unsafe fn alloc<M: Memory>(mem: &mut M, init_word: u32) -> Value {
+        mem.alloc_words(Words(3), init_word)
+    }
+}
+
+// create the wrapper
+#[cfg(feature = "ic")]
+#[export_name = "alloc_3words"]
+unsafe extern "C" fn ic_nwords3_alloc(init_word: u32) -> Value {
+    NWords::<3>::alloc(&mut crate::memory::ic::IcMemory, init_word)
+}
+
 /// Helper for allocating blobs
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
