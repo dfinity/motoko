@@ -1205,14 +1205,14 @@ module BitTagged = struct
     compile_shrS_const 1l ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  (* 32 bit numbers, dynamic *)
+  (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
   let if_can_tag_i32 env retty is1 is2 =
     Func.share_code1 env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low 30 bits are either all 0 or all 1 *)
-      get_x ^^ compile_shl_const 1l ^^
-      get_x ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-      compile_shrU_const 31l
+      (* checks that all but the low 30 bits are both either 0 or 1 *)
+      get_x ^^ compile_shrU_const 30l ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
     ) ^^
     E.if_ env retty is2 is1 (* NB: swapped branches *)
 
