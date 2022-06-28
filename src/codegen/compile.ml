@@ -1214,7 +1214,7 @@ module BitTagged = struct
       G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
       G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
     ) ^^
-    E.if_ env retty is2 is1 (* NB: swapped branches *)
+    E.if_ env retty is1 is2
 
   let if_can_tag_u32 env retty is1 is2 =
     compile_shrU_const 30l ^^

@@ -136,15 +136,15 @@ func wrap_Int_Int32(n1 : Int, n2 : Int32) {
   if (n1_wrapped >= 2**31) n1_wrapped -= 2**32;
   assert(Prim.intToInt32 n1_wrapped == n2);
   assert(Prim.intToInt32Wrap n1 == n2);
-  //assert(n1_wrapped == Prim.int32ToInt n2);
+  assert(n1_wrapped == Prim.int32ToInt n2);
 };
 
 test_Int_Int32(0, 0);
 test_Int_Int32(1, 1);
 test_Int_Int32(-1, -1);
-//test_Int_Int32(0x7fffffff, 0x7fffffff);
-//test_Int_Int32(-0x7fffffff, -0x7fffffff);
-//test_Int_Int32(-0x80000000, -0x80000000);
+test_Int_Int32(0x7fffffff, 0x7fffffff);
+test_Int_Int32(-0x7fffffff, -0x7fffffff);
+test_Int_Int32(-0x80000000, -0x80000000);
 wrap_Int_Int32(0x80000000, -0x80000000);
 wrap_Int_Int32(0x80000001, -0x7fffffff);
 
