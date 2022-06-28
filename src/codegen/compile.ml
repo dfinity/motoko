@@ -1705,8 +1705,9 @@ module BoxedSmallWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 30)) ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      get_n ^^ compile_shrU_const 30l ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
       G.if1 I32Type
         (get_n ^^ BitTagged.tag_i32)
         (compile_box env get_n)
