@@ -12,11 +12,11 @@ actor Tagged {
             100_000,
             func (i : Nat) {
                 state := (state + 17) * 57 % cutoff;
-                let bits = Prim.shiftRight(state, 30) % 4;
+                let wrapped = Prim.intToNat32Wrap state;
+                let bits = (wrapped >> 30) & 3;
                 if (bits == 0 or bits == 3)
                    taggable += 1;
-                   //Prim.debugPrint(debug_show (Prim.intToNat32Wrap state, taggable));
-                   Prim.intToNat32Wrap state
+                   wrapped
             })
          , taggable)
     };
@@ -29,18 +29,18 @@ actor Tagged {
             100_000,
             func (i : Nat) {
                 state := (state + 17) * 57 % cutoff;
-                let bits = Prim.shiftRight(state, 30) % 4;
+                let wrapped = Prim.intToInt32Wrap state;
+                let bits = (wrapped >> 30) & 3;
                 if (bits == 0 or bits == 3)
                    taggable += 1;
-                   //Prim.debugPrint(debug_show (Prim.intToInt32Wrap state, taggable));
-                   Prim.intToInt32Wrap state
+                   wrapped
             }), taggable)
     };
 
     public func go() : async () {
         let (_, nt) = arrNat32(7);
         Prim.debugPrint(debug_show nt);
-        let (_, it) = arrInt32(7);
+        let (_, it) = arrInt32(13);
         Prim.debugPrint(debug_show it)
     }
 }
