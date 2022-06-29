@@ -10,7 +10,7 @@ actor Tagged {
         var taggable = 0;
         (Prim.Array_tabulate<Nat32>(
             100_000,
-            func (i : Nat) {
+            func _ {
                 state := (state + 17) * 57 % cutoff;
                 let wrapped = Prim.intToNat32Wrap state;
                 let bits = (wrapped >> 30) & 3;
@@ -27,7 +27,7 @@ actor Tagged {
         var taggable = 0;
         (Prim.Array_tabulate<Int32>(
             100_000,
-            func (i : Nat) {
+            func _ {
                 state := (state + 17) * 57 % cutoff;
                 let wrapped = Prim.intToInt32Wrap state;
                 let bits = (wrapped >> 30) & 3;
