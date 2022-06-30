@@ -38,10 +38,15 @@ actor Tagged {
     };
 
     public func go() : async () {
+        let n0 = Prim.rts_heap_size();
         let (_, nt) = arrNat32(7);
-        Prim.debugPrint(debug_show nt);
+        let n1 = Prim.rts_heap_size();
+        Prim.debugPrint(debug_show (nt, n1 - n0));
+
+        let i0 = Prim.rts_heap_size();
         let (_, it) = arrInt32(13);
-        Prim.debugPrint(debug_show it)
+        let i1 = Prim.rts_heap_size();
+        Prim.debugPrint(debug_show (it, i1 - i0))
     }
 }
 
