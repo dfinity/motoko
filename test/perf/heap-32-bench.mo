@@ -1,6 +1,6 @@
 // allocate 2 big arrays with a 10^5 entries each, and populate them
 // with Int32s and Nat32s (somewhat randomly)
-import Prim "mo:⛔";
+import { Array_tabulate; intToNat32Wrap; intToInt32Wrap; rts_heap_size; debugPrint } = "mo:⛔";
 
 actor Tagged {
 
@@ -8,11 +8,11 @@ actor Tagged {
         var state = seed;
         let cutoff = 2_147_483_629;
         var taggable = 0;
-        (Prim.Array_tabulate<Nat32>(
+        (Array_tabulate<Nat32>(
             100_000,
             func _ {
                 state := (state + 17) * 57 % cutoff;
-                let wrapped = Prim.intToNat32Wrap state;
+                let wrapped = intToNat32Wrap state;
                 let bits = (wrapped >> 30) & 3;
                 if (bits == 0 or bits == 3)
                    taggable += 1;
@@ -25,11 +25,11 @@ actor Tagged {
         var state = seed;
         let cutoff = 4294967311;
         var taggable = 0;
-        (Prim.Array_tabulate<Int32>(
+        (Array_tabulate<Int32>(
             100_000,
             func _ {
                 state := (state + 17) * 57 % cutoff;
-                let wrapped = Prim.intToInt32Wrap state;
+                let wrapped = intToInt32Wrap state;
                 let bits = (wrapped >> 30) & 3;
                 if (bits == 0 or bits == 3)
                    taggable += 1;
@@ -38,15 +38,15 @@ actor Tagged {
     };
 
     public func go() : async () {
-        let n0 = Prim.rts_heap_size();
+        let n0 = rts_heap_size();
         let (_, nt) = arrNat32(7);
-        let n1 : Int = Prim.rts_heap_size();
-        Prim.debugPrint(debug_show (nt, n1 - n0));
+        let n1 : Int = rts_heap_size();
+        debugPrint(debug_show (nt, n1 - n0));
 
-        let i0 = Prim.rts_heap_size();
+        let i0 = rts_heap_size();
         let (_, it) = arrInt32(13);
-        let i1 : Int = Prim.rts_heap_size();
-        Prim.debugPrint(debug_show (it, i1 - i0))
+        let i1 : Int = rts_heap_size();
+        debugPrint(debug_show (it, i1 - i0))
     }
 }
 
