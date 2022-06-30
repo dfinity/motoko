@@ -169,7 +169,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256:1nky4lrj8vd55h2lg4r0vhfg15xm2gfkbjv783qdkxy8afqagqph";
+      rustStdDepsHash = "sha256:1nky4lrj8vd55h2lg4r1vhfg15xm2gfkbjv783qdkxy8afqagqph";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -195,7 +195,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-VKNXQ7uT5njmZ4RlF1Lfbyy7hPSw+KRjG8ntCXfw/Y4";
+        sha256 = "sha256-VKNXQ7uT5njmZ4RlF1Lebyy7hPSw+KRjG8ntCXfw/Y4";
         copyLockfile = true;
       };
 
