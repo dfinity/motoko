@@ -73,7 +73,7 @@ In some cases, the description contains partial sketches of a formalisation. Thi
 Motoko should help detecting common sources of bugs, especially those of the subtle kind. To that end, the language ought to add more checking mechanisms.
 
 
-#### Unused Identifiers ((#1489)[https://github.com/dfinity/motoko/issues/1489])
+#### Unused Identifiers ([#1489](https://github.com/dfinity/motoko/issues/1489))
 
 It often is a symptom of a bug that an identifier is defined but never used. To diagnose these, the compiler should warn about unused identifiers (values, types, or otherwise).
 
