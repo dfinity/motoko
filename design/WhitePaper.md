@@ -12,7 +12,7 @@
 * Representation of canisters as *actors* with asynchronous and atomic methods.
 * Automatic integration with *Candid* for implicitly de/serialising message arguments and automatic derivation of Candid interfaces.
 * *Async/await* support for straight-line coding of asynchronous messaging patterns.
-* *Orthogonal peristence* keeping program state alive across messages automatically.
+* *Orthogonal persistence* keeping program state alive across messages automatically.
 * *Stable variables* for persisting selected program state even across program version upgrades.
 * Built-in support for other IC mechanisms, such as cycles, upgrades, heartbeat, etc (some of it still incomplete).
 
@@ -31,7 +31,7 @@ Motoko tries to follow a set of design principles:
 
 * *Simple.* The language should avoid complicated, hard-to-understand, or overly bleeding-edge features. It should minimise multiple redundant or overlapping ways to express the same thing (unless one can be expressed as syntactic sugar for another).
 
-* *Understandable.* Where possible, the language should pick syntax and terminiology that is intuitive and familiar from mainstream languages. It should avoid niche technical or theoretical jargon.
+* *Understandable.* Where possible, the language should pick syntax and terminology that is intuitive and familiar from mainstream languages. It should avoid niche technical or theoretical jargon.
 
 * *High-level.* The language should be productive and convenient to use, sufficiently expressive, and not bother the programmer with irrelevant details or error-prone routine.
 
