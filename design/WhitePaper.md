@@ -84,7 +84,7 @@ The `_` prefix convention is natural and common in languages that provide patter
 
 #### Atomicity Violations ([#792](https://github.com/dfinity/motoko/issues/792))
 
-Following the actor model, method execution is atomic in Motoko. However, this is only true up to uses of `await`. Semantically, every await splits execution of a method into separate actor-to-actor messages that can be interleaved by other calls. These calls may modify the state, opening up the possiblity of subtle reentrency bugs if computations after an await depend on state read before the await. For example:
+Following the actor model, method execution is atomic in Motoko. However, this is only true up to uses of `await`. Semantically, every await splits execution of a method into separate actor-to-actor messages that can be interleaved by other calls. These calls may modify the state, opening up the possiblity of subtle reentrancy bugs if computations after an await depend on state read before the await. For example:
 ```
 actor {
   var list : List<Nat> = null;
@@ -101,7 +101,7 @@ actor {
 ```
 Here, `size` is computed before calling out to `other.cap_value` and awaiting the result. Because of the await, another call to `put` may happen in the meantime, resulting in an incorrect average computation.
 
-The async/awaiy construct and the ability to suspend a method with it undermines one of the core properties of the actor model, namely the fact that methods are fully atomic. On the other hand, the practical convenience of async/await is so substantial that it still is a worthwhile trade-off.
+The async/await construct, and the ability to suspend a method with it, undermines one of the core properties of the actor model, namely the fact that methods are fully atomic. On the other hand, the practical convenience of async/await is so substantial that it still is a worthwhile trade-off.
 
 To eliminate the disadvantage, the Motoko compiler could detect that there is a dependency on the current state of `list` across an await and warn.
 
