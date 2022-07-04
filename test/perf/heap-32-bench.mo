@@ -1,6 +1,6 @@
 // allocate 2 big arrays with a 10^5 entries each, and populate them
 // with Int32s and Nat32s (somewhat randomly)
-import { Array_tabulate; intToNat32Wrap; intToInt32Wrap; rts_heap_size; debugPrint } = "mo:⛔";
+import { Array_tabulate; performanceCounter; intToNat32Wrap; intToInt32Wrap; rts_heap_size; debugPrint } = "mo:⛔";
 
 actor Tagged {
 
@@ -37,16 +37,18 @@ actor Tagged {
             }), taggable)
     };
 
-    public func go() : async () {
-        let n0 = rts_heap_size();
-        let (_, nt) = arrNat32(7);
-        let n1 : Int = rts_heap_size();
-        debugPrint(debug_show (nt, n1 - n0));
+    func counters() : (Int, Nat64) = (rts_heap_size(), performanceCounter(0));
 
-        let i0 = rts_heap_size();
+    public func go() : async () {
+        let (m0, n0) = counters();
+        let (_, nt) = arrNat32(7);
+        let (m1, n1) = counters();
+        debugPrint(debug_show (nt, m1 - m0, n1 - n0));
+
+        let (i0, j0) = counters();
         let (_, it) = arrInt32(13);
-        let i1 : Int = rts_heap_size();
-        debugPrint(debug_show (it, i1 - i0))
+        let (i1, j1) = counters();
+        debugPrint(debug_show (it, i1 - i0, j1 - j0))
     }
 }
 
