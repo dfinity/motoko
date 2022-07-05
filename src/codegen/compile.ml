@@ -1205,16 +1205,16 @@ module BitTagged = struct
     compile_shrS_const 1l ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  (* 32 bit numbers, dynamic, w.r.t `Int` *)
+  (* 32 bit numbers, dynamic *)
 
   let if_can_tag_i32 env retty is1 is2 =
-    Func.share_code1 env "cannot_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low 30 bits are both either 0 or 1 *)
-      get_x ^^ compile_shrU_const 30l ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
+    Func.share_code1 env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
+      (* checks that all but the low 30 bits are either all 0 or all 1 *)
+      get_x ^^ compile_shl_const 1l ^^
+      get_x ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+      compile_shrU_const 31l
     ) ^^
-    E.if_ env retty is1 is2
+    E.if_ env retty is2 is1 (* NB: swapped branches *)
 
   let if_can_tag_u32 env retty is1 is2 =
     compile_shrU_const 30l ^^
@@ -1705,9 +1705,8 @@ module BoxedSmallWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_shrU_const 30l ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
+      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 30)) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       G.if1 I32Type
         (get_n ^^ BitTagged.tag_i32)
         (compile_box env get_n)
