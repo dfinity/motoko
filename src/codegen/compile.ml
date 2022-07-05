@@ -1716,8 +1716,8 @@ module BoxedSmallWord = struct
   let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
-        ( get_n ^^ BitTagged.untag_i32)
-        ( get_n ^^ Heap.load_field payload_field)
+        (get_n ^^ BitTagged.untag_i32)
+        (get_n ^^ Heap.load_field payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2862,15 +2862,15 @@ module Prim = struct
      Both {Nat,Int}{8,16} fit into the vanilla stackrep, so no boxing is necessary.
      This MSB-stored schema is also essentially what the interpreter is using.
   *)
-  let prim_word32toNat env = BigNum.from_word32 env
+  let prim_word32toNat = BigNum.from_word32
   let prim_shiftWordNtoUnsigned env b =
     compile_shrU_const b ^^
     prim_word32toNat env
-  let prim_word32toInt env = BigNum.from_signed_word32 env
+  let prim_word32toInt = BigNum.from_signed_word32
   let prim_shiftWordNtoSigned env b =
     compile_shrS_const b ^^
     prim_word32toInt env
-  let prim_intToWord32 env = BigNum.truncate_to_word32 env
+  let prim_intToWord32 = BigNum.truncate_to_word32
   let prim_intToWordNShifted env b =
     prim_intToWord32 env ^^
     TaggedSmallWord.shift_leftWordNtoI32 b
