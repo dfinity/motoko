@@ -70,5 +70,6 @@ nixpkgs.runCommandNoCC "perf-delta" {
     echo "The produced WebAssembly code seems to be completely unchanged." >> $out
   else
     diff-stats ${baseJobs.tests.perf}/stats.csv ${prJobs.tests.perf}/stats.csv >> $out;
+    diff-stats ${baseJobs.tests.bench}/stats.csv ${prJobs.tests.bench}/stats.csv >> $out;
   fi
 ''
