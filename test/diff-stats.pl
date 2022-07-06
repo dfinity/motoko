@@ -80,7 +80,7 @@ for my $group (sort keys %stats) {
     push @clauses, sprintf "%d tests improved", $improved if $improved;
     push @clauses, sprintf "%d tests are new", $new if $new;
     push @clauses, sprintf "%d tests are removed", $missing if $missing;
-    push @clauses, sprintf "the mean change is %+.1f%%.\n", (($geometric_mean - 1) * 100);
+    push @clauses, sprintf "the mean change is %+.5f%%.\n", (($geometric_mean - 1) * 100);
     printf "In terms of %s, %s", $group, comma_and(@clauses);
   } else {
     printf "In terms of %s, no changes are observed in %d tests.\n", $group, $total;
