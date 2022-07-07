@@ -92,4 +92,6 @@ for my $group (sort keys %stats) {
   }
 }
 
-printf "\n\nFine resolution stats\n%s\n", @report;
+if (@report ne "") {
+  printf "\n\n### Fine resolution stats\n%s\n", @report;
+}
