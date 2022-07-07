@@ -59,7 +59,7 @@ for my $group (sort keys %stats) {
     my $stat2 = $gstats->{$test}[1];
     if ($stat1 and $stat2) {
       if ($stat1 != $stat2) {
-	push @report, sprintf "Test `%s` (%s), change %+.5f%% (%d vs. previous %d).\n", $test, $group, ($stat2/$stat1 - 1) * 100, $stat2, $stat1;
+	push @report, sprintf " - test `%s` (%s), change %+.5f%% (%d vs. previous %d).\n", $test, $group, ($stat2/$stat1 - 1) * 100, $stat2, $stat1;
       }
       $geometric_mean *= $stat2/$stat1;
       $geometric_mean_denom++;
