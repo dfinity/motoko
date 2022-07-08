@@ -10,4 +10,3 @@ actor {
    system func inspect({}) : Bool { false }
 
 };
-
