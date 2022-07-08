@@ -104,6 +104,7 @@ and pat' =
   | AltP of pat * pat                          (* disjunctive *)
   | AnnotP of pat * typ                        (* type annotation *)
   | ParP of pat                                (* parenthesis *)
+  | TypP                                       (* type reference *)
 (*
   | AsP of pat * pat                           (* conjunctive *)
 *)

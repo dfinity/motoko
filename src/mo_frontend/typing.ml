@@ -1917,12 +1917,13 @@ and check_pats env ts pats ve at : Scope.val_env =
 and check_pat_fields env s tfs pfs ve at : Scope.val_env =
   match tfs, pfs with
   | _, [] -> ve
+  | _, pf::pfs when pf.it.pat.it == TypP-> check_pat_fields env s tfs pfs ve at
   | [], pf::_ ->
     error env pf.at "M0119"
       "object field %s is not contained in expected type%a"
       pf.it.id.it
       display_typ (T.Obj (s, tfs))
-  | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
+  | T.{lab; typ = Typ _; _}::tfs', _ ->  (* ??? WUT??? TODO: remove the namespace hack *)
     check_pat_fields env s tfs' pfs ve at
   | T.{lab; typ; depr}::tfs', pf::pfs' ->
     match compare pf.it.id.it lab with
@@ -2362,7 +2363,7 @@ and gather_dec env scope dec : Scope.t =
 
 and gather_pat env ve pat : Scope.val_env =
   match pat.it with
-  | WildP | LitP _ | SignP _ -> ve
+  | WildP | LitP _ | SignP _ | TypP -> ve
   | VarP id -> gather_id env ve id
   | TupP pats -> List.fold_left (gather_pat env) ve pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs

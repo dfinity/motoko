@@ -90,6 +90,7 @@ let annot_pat p = function
   | None -> p
   | Some t -> AnnotP(p, t) @! span t.at p.at
 
+let type_field_pat _p = TypP @! no_region
 
 let rec normalize_let p e =
     match p.it with
@@ -798,8 +799,8 @@ pat_field :
     { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
   | x=id t=annot_opt EQ p=pat
     { {id = x; pat = annot_pat p t} @@ at $sloc }
-  | TYPE x=id EQ p=pat
-    { {id = x; pat = annot_pat p None} @@ at $sloc }
+  | TYPE x=id
+    { {id = x; pat = type_field_pat None} @@ at $sloc }
 
 pat_opt :
   | p=pat_plain

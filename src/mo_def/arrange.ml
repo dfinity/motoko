@@ -84,6 +84,7 @@ and pat p = match p.it with
   | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
   | ParP p          -> "ParP"       $$ [pat p]
+  | TypP            -> Atom "TypP"
 
 and lit = function
   | NullLit       -> Atom "NullLit"

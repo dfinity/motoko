@@ -272,6 +272,7 @@
 <pat_field> ::= 
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
+    'type' <id>
 
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>

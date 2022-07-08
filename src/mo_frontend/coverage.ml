@@ -266,6 +266,7 @@ let rec match_pat ctxt desc pat t sets =
   | AnnotP (pat1, _)
   | ParP pat1 ->
     match_pat ctxt desc pat1 t sets
+  | TypP -> skip_pat pat.at sets
 
 and match_lit ctxt desc at v t sets =
   match desc with
