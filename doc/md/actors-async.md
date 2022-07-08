@@ -14,7 +14,10 @@ To start, we consider the simplest stateful service: a `Counter` actor, the dist
 
 Consider the following actor declaration:
 
-``` motoko
+``` motoko file=./examples/counter-actor.mo
+```
+
+<!--
 actor Counter {
 
   var count = 0;
@@ -28,7 +31,7 @@ actor Counter {
     count;
   };
 };
-```
+-->
 
 The `Counter` actor declares one field and three public, *shared* functions:
 
@@ -48,20 +51,7 @@ A value of type `async T` is a future. The producer of the future completes the 
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, Motoko allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
-``` motoko name=counter
-actor Counter {
-
-  var count = 0;
-
-  public func inc() : async () { count += 1 };
-
-  public func read() : async Nat { count };
-
-  public func bump() : async Nat {
-    count += 1;
-    count;
-  };
-};
+``` motoko name=counter file=./examples/counter-actor-sugar.mo
 ```
 
 For now, the only place shared functions can be declared is in the body of an actor or actor class. Despite this restriction, shared functions are still first-class values in Motoko and can be passed as arguments or results, and stored in data structures.
@@ -160,35 +150,7 @@ A trap will only revoke changes made since the last commit point. In particular,
 
 For example, consider the following (contrived) stateful `Atomicity` actor:
 
-``` motoko no-repl
-actor Atomicity {
-
-  var s = 0;
-  var pinged = false;
-
-  public func ping() : async () {
-    pinged := true;
-  };
-
-  // an atomic method
-  public func atomic() : async () {
-    s := 1;
-    ignore ping();
-    ignore 0/0; // trap!
-  };
-
-  // a non-atomic method
-  public func nonAtomic() : async () {
-    s := 1;
-    let f = ping(); // this will not be rolled back!
-    s := 2;
-    await f;
-    s := 3; // this will not be rolled back!
-    await f;
-    ignore 0/0; // trap!
-  };
-
-};
+``` motoko no-repl file=./examples/atomicity.mo
 ```
 
 Calling (shared) function `atomic()` will fail with an error, since the last statement causes a trap. However, the trap leaves the mutable variable `s` with value `0`, not `1`, and variable `pinged` with value `false`, not `true`. This is because the trap happens *before* method `atomic` has executed an `await`, or exited with a result. Even though `atomic` calls `ping()`, `ping()` is tentative (queued) until the next commit point, so never delivered.
@@ -205,18 +167,7 @@ Motoko supports the implementation of Internet Computer queries using `query` fu
 
 For example, we can extend the `Counter` actor with a fast-and-loose variant of the trustworthy `read` function, called `peek`:
 
-``` motoko
-actor Counter {
-
-  var count = 0;
-
-  // ...
-
-  public shared query func peek() : async Nat {
-    count
-  };
-
-}
+``` motoko file=./examples/CounterWithQuery.mo
 ```
 
 The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy, display of the current counter value.
@@ -255,6 +206,10 @@ It is only possible to `throw` or `try/catch` errors in an asynchronous context.
 
 These rules also mean that local functions cannot, in general, directly call shared functions or `await` futures. This limitation can sometimes be awkward: we hope to extend the type system to be more permissive in future.
 
+<!--
+TODO: scoped awaits (if at all)
+-->
+
 ## Actor classes generalize actors
 
 An actor *class* generalizes a single actor declaration to the declaration of family of actors satisfying the same interface. An actor class declares a type, naming the interface of its actors, and a function that constructs a fresh actor of that type each time it is supplied with an argument. An actor class thus serves as a factory for manufacturing actors. Because canister installation is asynchronous on the Internet Computer, the constructor function is asynchronous too, and returns its actor in a future.
@@ -263,19 +218,7 @@ For example, we can generalize `Counter` given above to `Counter(init)` below, b
 
 `Counters.mo`:
 
-``` motoko name=Counters
-actor class Counter(init : Nat) {
-  var count = init;
-
-  public func inc() : async () { count += 1 };
-
-  public func read() : async Nat { count };
-
-  public func bump() : async Nat {
-    count += 1;
-    count;
-  };
-};
+``` motoko name=Counters file=./examples/Counters.mo
 ```
 
 If this class is stored in file `Counters.mo`, then we can import the file as a module and use it to create several actors with different initial values:

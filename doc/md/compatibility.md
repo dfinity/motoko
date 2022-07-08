@@ -14,17 +14,7 @@ Let’s deliver on that promise.
 
 The following is a simple example of how to declare a stateful counter.
 
-``` motoko no-repl
-actor Counter_v0 {
-
-  var state : Int = 0;
-
-  public func inc() : async Int {
-    state += 1;
-    return state;
-  };
-
-}
+``` motoko no-repl file=./examples/count-v0.mo
 ```
 
 Unfortunately, when we upgrade this counter (say with itself), its state is lost.
@@ -42,16 +32,7 @@ Unfortunately, when we upgrade this counter (say with itself), its state is lost
 
 In Motoko, we can declare variables to be stable (across upgrades).
 
-``` motoko no-repl
-actor Counter_v1 {
-
-  stable var state : Int = 0;
-
-  public func inc() : async Int {
-    state += 1;
-    return state;
-  };
-}
+``` motoko no-repl file=./examples/count-v1.mo
 ```
 
 Because it’s `stable`, this counter’s `state` is *retained* across upgrades.
@@ -71,18 +52,7 @@ Because it’s `stable`, this counter’s `state` is *retained* across upgrades.
 
 Let’s extend the API - old clients still satisfied, new ones get extra features (the `read` query).
 
-``` motoko no-repl
-actor Counter_v2 {
-
-  stable var state : Int = 0;
-
-  public func inc() : async Int {
-    state += 1;
-    return state;
-  };
-
-  public query func read() : async Int { return state; }
-}
+``` motoko no-repl file=./examples/count-v2.mo
 ```
 
 |         |       |         |             |
@@ -97,18 +67,7 @@ actor Counter_v2 {
 
 Observation: the counter is always positive - let’s refactor `Int` to `Nat`!
 
-``` motoko no-repl
-actor Counter_v3 {
-
-  stable var state : Nat = 0;
-
-  public func inc() : async Nat {
-    state += 1;
-    return state;
-  };
-
-  public query func read() : async Nat { return state; }
-}
+``` motoko no-repl file=./examples/count-v3.mo
 ```
 
 |         |       |         |             |
@@ -143,18 +102,12 @@ A stable type signature looks like the "insides" of a Motoko actor type.
 
 For example, `v2`'s stable types:
 
-``` motoko no-repl
-actor {
-  stable var state : Int
-};
+``` motoko no-repl file=./examples/count-v2.most
 ```
 
 An upgrade from `v2` to `v3`'s stable types:
 
-``` motoko no-repl
-actor {
-  stable var state : Nat
-};
+``` motoko no-repl file=./examples/count-v3.most
 ```
 
 requires consuming an `Int` as a `Nat`: a ***type error***.
@@ -169,60 +122,34 @@ An upgrade is safe provided:
 
 Given version `v0` with candid interface `v0.did` and stable type interface `v0.most`:
 
-``` candid
-service : {
-  inc: () -> (int);
-}
+``` candid file=./examples/count-v0.did
 ```
 
-``` motoko no-repl
-actor {
-
-};
+``` motoko no-repl file=./examples/count-v0.most
 ```
 
 And version `v1` with candid interface `v1.did` and stable type interface `v1.most`,
 
-``` candid
-service : {
-  inc: () -> (int);
-}
+``` candid file=./examples/count-v1.did
 ```
 
-``` motoko no-repl
-actor {
-  stable var state : Int
-};
+``` motoko no-repl file=./examples/count-v1.most
 ```
 
 And version `v2` with candid interface `v2.did` and stable type interface `v2.most`,
 
-``` candid
-service : {
-  inc: () -> (int);
-  read: () -> (int) query;
-}
+``` candid file=./examples/count-v2.did
 ```
 
-``` motoko no-repl
-actor {
-  stable var state : Int
-};
+``` motoko no-repl file=./examples/count-v2.most
 ```
 
 And, finally, version `v3` with candid interface `v3.did` and stable type interface `v3.most`:
 
-``` candid
-service : {
-  inc: () -> (nat);
-  read: () -> (nat) query;
-}
+``` candid file=./examples/count-v3.did
 ```
 
-``` motoko no-repl
-actor {
-  stable var state : Nat
-};
+``` motoko no-repl file=./examples/count-v3.most
 ```
 
 The following table summarizes the (in)compatibilities between them:
@@ -316,28 +243,10 @@ What if we really do want to change `state` to `Nat`.
 
 Solution: introduce a new stable variable, `newState`, initialized from the old one:
 
-``` motoko no-repl
-import Int "mo:base/Int";
-
-actor Counter_v4 {
-
-  stable var state : Int = 0;
-  stable var newState : Nat = Int.abs(state);
-
-  public func inc() : async Nat {
-    newState += 1;
-    return newState;
-  };
-
-  public query func read() : async Nat { return newState; }
-}
+``` motoko no-repl file=./examples/count-v4.mo
 ```
 
-``` motoko no-repl
-actor {
-  stable var newState : Nat;
-  stable var state : Int
-};
+``` motoko no-repl file=./examples/count-v4.most
 ```
 
 (Or use a variant from the start…​)

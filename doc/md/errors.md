@@ -18,43 +18,10 @@ func markDone(id : TodoId) : async Int
 
 The full definition of all types and helpers we’ll use in this document is included for reference:
 
-``` motoko
-import Int "mo:base/Int";
-import Hash "mo:base/Hash";
-import Map "mo:base/HashMap";
-import Time "mo:base/Time";
-import Result "mo:base/Result";
-import Error "mo:base/Error";
+``` motoko no-repl file=./examples/todo-error.mo#L1-L6
 ```
 
-``` motoko
-type Time = Int;
-type Seconds = Int;
-
-func secondsBetween(start : Time, end : Time) : Seconds =
-  (end - start) / 1_000_000_000;
-
-public type TodoId = Nat;
-
-type Todo = { #todo : { text : Text; opened : Time }; #done : Time };
-type TodoMap = Map.HashMap<TodoId, Todo>;
-
-var idGen : TodoId = 0;
-let todos : TodoMap = Map.HashMap(32, Int.equal, Hash.hash);
-
-private func nextId() : TodoId {
-  let id = idGen;
-  idGen += 1;
-  id
-};
-
-/// Creates a new todo and returns its id
-public shared func newTodo(txt : Text) : async TodoId {
-  let id = nextId();
-  let now = Time.now();
-  todos.put(id, #todo({ text = txt; opened = now }));
-  id
-};
+``` motoko no-repl file=./examples/todo-error.mo#L10-L37
 ```
 
 ## When things go wrong
@@ -75,30 +42,12 @@ One particularly easy and *bad* way of reporting errors is through the use of a 
 
 Definition:
 
-``` motoko
-public shared func markDoneBad(id : TodoId) : async Seconds {
-  switch (todos.get(id)) {
-    case (?(#todo(todo))) {
-      let now = Time.now();
-      todos.put(id, #done(now));
-      secondsBetween(todo.opened, now)
-    };
-    case _ { -1 };
-  }
-};
+``` motoko no-repl file=./examples/todo-error.mo#L38-L47
 ```
 
 Callsite:
 
-``` motoko
-public shared func doneTodo1(id : Todo.TodoId) : async Text {
-  let seconds = await Todo.markDoneBad(id);
-  if (seconds != -1) {
-    "Congrats! That took " # Int.toText(seconds) # " seconds.";
-  } else {
-    "Something went wrong.";
-  };
-};
+``` motoko no-repl file=./examples/todo-error.mo#L108-L115
 ```
 
 ### Prefer Option/Result over Exceptions where possible
@@ -113,32 +62,12 @@ Here’s what that looks like for our `markDone` function:
 
 Definition:
 
-``` motoko
-public shared func markDoneOption(id : TodoId) : async ?Seconds {
-  switch (todos.get(id)) {
-    case (?(#todo(todo))) {
-      let now = Time.now();
-      todos.put(id, #done(now));
-      ?(secondsBetween(todo.opened, now))
-    };
-    case _ { null };
-  }
-};
+``` motoko no-repl file=./examples/todo-error.mo#L49-L58
 ```
 
 Callsite:
 
-``` motoko
-public shared func doneTodo2(id : Todo.TodoId) : async Text {
-  switch (await Todo.markDoneOption(id)) {
-    case null {
-      "Something went wrong."
-    };
-    case (?seconds) {
-      "Congrats! That took " # Int.toText(seconds) # " seconds."
-    };
-  };
-};
+``` motoko no-repl file=./examples/todo-error.mo#L117-L126
 ```
 
 The main drawback of this approach is that it conflates all possible errors with a single, non-informative `null` value. Our callsite might be interested in why marking a `Todo` as done has failed, but that information is lost by then, which means we can only tell the user that `"Something went wrong."`. Returning option values to signal errors should only be used if there just one possible reason for the failure, and that reason can be easily determined at the callsite. One example of a good usecase for this is a HashMap lookup failing.
@@ -147,55 +76,25 @@ The main drawback of this approach is that it conflates all possible errors with
 
 To address the shortcomings of using option types to signal errors we’ll now look at the richer `Result` type. While options are a built-in type, the `Result` is defined as a variant type like so:
 
-``` motoko
+``` motoko no-repl
 type Result<Ok, Err> = { #ok : Ok; #err : Err }
 ```
 
 Because of the second type parameter, `Err`, the `Result` type lets us select the type we use to describe errors. So we’ll define a `TodoError` type our `markDone` function will use to signal errors.
 
-``` motoko
-public type TodoError = { #notFound; #alreadyDone : Time };
+``` motoko no-repl file=./examples/todo-error.mo#L60-L60
 ```
 
 This lets us now write the third version of `markDone`:
 
 Definition:
 
-``` motoko
-public shared func markDoneResult(id : TodoId) : async Result.Result<Seconds, TodoError> {
-  switch (todos.get(id)) {
-    case (?(#todo(todo))) {
-      let now = Time.now();
-      todos.put(id, #done(now));
-      #ok(secondsBetween(todo.opened, now))
-    };
-    case (?(#done(time))) {
-      #err(#alreadyDone(time))
-    };
-    case null {
-      #err(#notFound)
-    };
-  }
-};
+``` motoko no-repl file=./examples/todo-error.mo#L62-L76
 ```
 
 Callsite:
 
-``` motoko
-public shared func doneTodo3(id : Todo.TodoId) : async Text {
-  switch (await Todo.markDoneResult(id)) {
-    case (#err(#notFound)) {
-      "There is no Todo with that ID."
-    };
-    case (#err(#alreadyDone(at))) {
-      let doneAgo = secondsBetween(at, Time.now());
-      "You've already completed this todo " # Int.toText(doneAgo) # " seconds ago."
-    };
-    case (#ok(seconds)) {
-      "Congrats! That took " # Int.toText(seconds) # " seconds."
-    };
-  };
-};
+``` motoko no-repl file=./examples/todo-error.mo#L128-L141
 ```
 
 And as we can see we can now give the user a useful error message.
@@ -208,30 +107,14 @@ And as we can see we can now give the user a useful error message.
 
 The first and most common way of working with `Option` and `Result` is to use 'pattern matching'. If we have a value of type `?Text` we can use the `switch` keyword to access the potential `Text` contents:
 
-``` motoko
-func greetOptional(optionalName : ?Text) : Text {
-  switch (optionalName) {
-    case (null) { "No name to be found." };
-    case (?name) { "Hello, " # name # "!" };
-  }
-};
-assert(greetOptional(?"Dominic") == "Hello, Dominic!");
-assert(greetOptional(null) ==  "No name to be found");
+``` motoko no-repl file=./examples/error-examples.mo#L3-L10
 ```
 
 The important thing to understand here is that Motoko does not let you access the optional value without also considering the case that it is missing.
 
 In the case of a `Result` we can also use pattern matching, with the difference that we also get an informative value (not just `null`) in the `#err` case.
 
-``` motoko
-func greetResult(resultName : Result<Text, Text>) : Text {
-  switch (resultName) {
-    case (#err(error)) { "No name: " # error };
-    case (#ok(name)) { "Hello, " # name };
-  }
-};
-assert(greetResult(#ok("Dominic")) == "Hello, Dominic!");
-assert(greetResult(#err("404 Not Found")) == "No name: 404 Not Found");
+``` motoko no-repl file=./examples/error-examples.mo#L12-L19
 ```
 
 ### Higher-Order functions
@@ -250,33 +133,10 @@ Asynchronous `Error`s should generally only be used to signal unexpected failure
 
 Definition:
 
-``` motoko
-public shared func markDoneException(id : TodoId) : async Seconds {
-  switch (todos.get(id)) {
-    case (?(#todo(todo))) {
-      let now = Time.now();
-      todos.put(id, #done(now));
-      secondsBetween(todo.opened, now)
-    };
-    case (?(#done(time))) {
-      throw Error.reject("Already done")
-    };
-    case null {
-      throw Error.reject("Not Found")
-    };
-  }
-};
+``` motoko no-repl file=./examples/todo-error.mo#L78-L92
 ```
 
 Callsite:
 
-``` motoko
-public shared func doneTodo4(id : Todo.TodoId) : async Text {
-  try {
-    let seconds = await Todo.markDoneException(id);
-    "Congrats! That took " # Int.toText(seconds) # " seconds.";
-  } catch (e) {
-    "Something went wrong.";
-  }
-};
+``` motoko no-repl file=./examples/todo-error.mo#L143-L150
 ```

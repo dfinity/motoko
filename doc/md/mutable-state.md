@@ -1,4 +1,4 @@
-# Mutable states
+# Mutable state
 
 Each actor in Motoko may use, but may *never directly share*, internal mutable state.
 

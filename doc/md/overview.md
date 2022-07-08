@@ -887,3 +887,146 @@ let t = toText(employee); // also works, since Employee <: Person
     -   `vessel` (package manager)
 
     -   `mo_ide` (LSP language server for VSCode, emacs etc)
+
+<!--
+== Old slides
+
+=== Classes
+
+Classes as functions returning objects:
+
+....
+ class Counter(init : Int) {
+    private var state : Int = init;
+    public func inc() { state += 1; };
+    public func get() : Int { state; };
+  }
+....
+
+Class instantiation as function call (no `new`):
+
+....
+let c = Counter(666);
+c.inc();
+let 667 = c.get();
+....
+
+=== Generic Classes
+
+....
+class Dict< K, V > (cmp : (K,K)-> Int ) {
+  add(k: K, v: V) { ... };
+  find(k: K) : ? V { ... };
+};
+....
+
+....
+let d = Dict<Int,Text> (func (i:Int, j:Int) : Int = i - j);
+d.add(1,"Alice");
+let ? name = d.find(1);
+....
+
+=== Language prelude
+
+* connects internal primitives with surface syntax (types, operations)
+* conversions like `intToNat32`
+* side-effecting operations `debugPrintInt` (tie into execution
+environment)
+* utilities like `hashInt`, `clzNat32`
+
+== Sample App
+
+=== Implementing _Chat_
+
+* type example
+* one server actor
+* multiple clients, each an instance of (actor) class Client.
+
+=== Chat Server
+
+....
+actor Server {
+  private var clients : List<Client> = null;
+
+  private shared broadcast(message : Text) {
+    var next = clients;
+    loop {
+      switch next {
+        case null { return; }
+        case (?l) { l.head.send(message); next := l.tail; };
+      };
+    };
+  };
+....
+
+....
+  public func subscribe(client : Client) : async Post {
+    let cs = {head = client; var tail = clients};
+    clients := ?cs;
+    return broadcast;
+  };
+};
+....
+
+=== Example: The client class
+
+....
+type Server = actor {subscribe : Client -> async Post};
+
+actor class Client() = this {
+  private var name : Text = "";
+  public func start(n : Text , s : Server) {
+    name := n;
+    let _ = async {
+       let post = await s.subscribe(this);
+       post("hello from " # name);
+       post("goodbye from " # name);
+    }
+  };
+....
+
+....
+  public func send(msg : Text) {
+    debugPrint(name # " received " # msg # "\n");
+  };
+};
+....
+
+=== Example: test
+
+test
+
+....
+let bob = Client();
+let alice = Client();
+let charlie = Client();
+
+bob.start("Bob", Server);
+alice.start("Alice", Server);
+charlie.start("Charlie", Server);
+....
+
+output
+
+....
+[nix-shell:~/motoko/guide]$ ../src/moc -r chat.mo
+charlie received hello from bob
+alice received hello from bob
+bob received hello from bob
+charlie received goodbye from bob
+alice received goodbye from bob
+bob received goodbye from bob
+charlie received hello from alice
+alice received hello from alice
+bob received hello from alice
+charlie received goodbye from alice
+alice received goodbye from alice
+bob received goodbye from alice
+charlie received hello from charlie
+alice received hello from charlie
+bob received hello from charlie
+charlie received goodbye from charlie
+alice received goodbye from charlie
+bob received goodbye from charlie
+....
+-->

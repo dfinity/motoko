@@ -12,24 +12,28 @@ For applications written in Motoko, the language provides high-level support for
 
 Utilizing stable storage depends on you — as the application programmer — anticipating and indicating the data you want to retain after an upgrade. Depending on the application, the data you decide to persist might be some, all, or none of a given actor’s state.
 
+<!--
+To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
+-->
+
 ## Declaring stable variables
 
 In an actor, you can nominate a variable for stable storage (in Internet Computer stable memory) by using the `stable` keyword as a modifier in the variable’s declaration.
 
 More precisely, every `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `flexible`. If you don’t provide a modifier, the variable is declared as `flexible` by default.
 
+<!--
+Concretely, you use the following syntax to declare stable or flexible variables in an actor:
+
+....
+<dec-field> ::=
+  (public|private)? (stable|flexible)? dec
+....
+-->
+
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
-``` motoko
-actor Counter {
-
-  stable var value = 0;
-
-  public func inc() : async Nat {
-    value += 1;
-    return value;
-  };
-}
+``` motoko file=./examples/StableCounter.mo
 ```
 
 :::note
@@ -64,30 +68,7 @@ Declaring a variable to be `stable` requires its type to be stable too. Since no
 
 As a simple example, consider the `Registry` actor from the discussion of [orthogonal persistence](motoko.md#orthogonal-persistence).
 
-``` motoko
-import Text "mo:base/Text";
-import Map "mo:base/HashMap";
-
-actor Registry {
-
-  let map = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
-
-  public func register(name : Text) : async () {
-    switch (map.get(name)) {
-      case null {
-        map.put(name, map.size());
-      };
-      case (?id) { };
-    }
-  };
-
-  public func lookup(name : Text) : async ?Nat {
-    map.get(name);
-  };
-};
-
-await Registry.register("hello");
-(await Registry.lookup("hello"), await Registry.lookup("world"))
+``` motoko file=./examples/Registry.mo
 ```
 
 This actor assigns sequential identifiers to `Text` values, using the size of the underlying `map` object to determine the next identifier. Like other actors, it relies on *orthogonal persistence* to maintain the state of the hashmap between calls.
@@ -102,40 +83,7 @@ The `preupgrade` method lets you make a final update to stable variables, before
 
 Here, we introduce a new stable variable, `entries`, to save and restore the entries of the unstable hash table.
 
-``` motoko
-import Text "mo:base/Text";
-import Map "mo:base/HashMap";
-import Array "mo:base/Array";
-import Iter "mo:base/Iter";
-
-actor Registry {
-
-  stable var entries : [(Text, Nat)] = [];
-
-  let map = Map.fromIter<Text,Nat>(
-    entries.vals(), 10, Text.equal, Text.hash);
-
-  public func register(name : Text) : async () {
-    switch (map.get(name)) {
-      case null  {
-        map.put(name, map.size());
-      };
-      case (?id) { };
-    }
-  };
-
-  public func lookup(name : Text) : async ?Nat {
-    map.get(name);
-  };
-
-  system func preupgrade() {
-    entries := Iter.toArray(map.entries());
-  };
-
-  system func postupgrade() {
-    entries := [];
-  };
-}
+``` motoko file=./examples/StableRegistry.mo
 ```
 
 Note that the type of `entries`, being just an array of `Text` and `Nat` pairs, is indeed a stable type.

@@ -8,28 +8,7 @@ The actor responsible for bucket `i` is obtained as an instance of the actor cla
 
 `Buckets.mo`:
 
-``` motoko name=Buckets
-import Nat "mo:base/Nat";
-import Map "mo:base/RBTree";
-
-actor class Bucket(n : Nat, i : Nat) {
-
-  type Key = Nat;
-  type Value = Text;
-
-  let map = Map.RBTree<Key, Value>(Nat.compare);
-
-  public func get(k : Key) : async ?Value {
-    assert((k % n) == i);
-    map.get(k);
-  };
-
-  public func put(k : Key, v : Value) : async () {
-    assert((k % n) == i);
-    map.put(k,v);
-  };
-
-};
+``` motoko name=Buckets file=./examples/Buckets.mo
 ```
 
 A bucket stores the current mapping of keys to values in a mutable `map` variable containing an imperative RedBlack tree, `map`, that is initially empty.
@@ -42,42 +21,7 @@ Both functions use the class parameters `n` and `i` to verify that the key is ap
 
 Clients of the map can then communicate with a coordinating `Map` actor, implemented as follows:
 
-``` motoko include=Buckets
-import Array "mo:base/Array";
-import Buckets "Buckets";
-
-actor Map {
-
-  let n = 8; // number of buckets
-
-  type Key = Nat;
-  type Value = Text;
-
-  type Bucket = Buckets.Bucket;
-
-  let buckets : [var ?Bucket] = Array.init(n, null);
-
-  public func get(k : Key) : async ?Value {
-    switch (buckets[k % n]) {
-      case null null;
-      case (?bucket) await bucket.get(k);
-    };
-  };
-
-  public func put(k : Key, v : Value) : async () {
-    let i = k % n;
-    let bucket = switch (buckets[i]) {
-      case null {
-        let b = await Buckets.Bucket(n, i); // dynamically install a new Bucket
-        buckets[i] := ?b;
-        b;
-      };
-      case (?bucket) bucket;
-    };
-    await bucket.put(k, v);
-  };
-
-};
+``` motoko include=Buckets file=./examples/Map.mo
 ```
 
 As this example illustrates, the `Map` code imports the `Bucket` actor class as module `Buckets`.

@@ -37,7 +37,7 @@ Asynchronous programming is hard, so {proglang} enables you to author asynchrono
 
 [source.include_counter,motoko]
 ----
-include::../examples/factorial.mo[lines=9..-1]
+include::../examples/factorial.mo[lines=9..21]
 ----
 
 == Modern type system

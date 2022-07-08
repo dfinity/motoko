@@ -1,5 +1,9 @@
 # Local objects and classes
 
+<!--
+TODO: Move examples into doc/modules/language-guide/examples
+-->
+
 In Motoko, an `object` may encapsulate local state (`var`-bound variables) by packaging this state with `public` methods that access and update it.
 
 As in other typed languages, Motoko programs benefit from the ability to encapsulate state as objects with abstract types.
@@ -111,7 +115,7 @@ The object `bumpCounter` has the following object type, exposing exactly one ope
 ``` motoko no-repl
 {
   bump : () -> Nat ;
- }
+}
 ```
 
 This type exposes the most common operation, and one that only permits certain behavior. For instance, the counter can only ever increase, and can never decrease or be set to an arbitrary value.
@@ -316,9 +320,8 @@ class Bits(n : Nat) {
 
 The above class definition is equivalent to the simultaneous definition of a structural type synonym and a factory function, both named `Bits`:
 
-``` motoko
-type Bits = {next : () -> ?Bool}
-let Bits : Nat -> Bits =
+``` motoko no-repl
+type Bits = {next : () -> ?Bool};
 func Bits(n : Nat) : Bits = object {
   // class body
 };
