@@ -644,7 +644,10 @@ For example, the link:../../../../references/motoko-ref/text{outfilesuffix}[`Tex
 
 The type `Bool` of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `+_ and _+` and `+_ or _+` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
 
-// Comparison TODO.
+
+////
+TODO: Comparison.
+////
 
 === Type `Char`
 
@@ -662,7 +665,9 @@ The type `Text` of categories T and O (Text, Ordered) represents sequences of Un
 Function `t.size` returns the number of characters in `Text` value `t`.
 Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { ... c ... }`.
 
-// Comparison TODO.
+////
+TODO: Comparison.
+////
 
 === Type `Float`
 
@@ -1382,7 +1387,9 @@ The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically
 
 Note that if `<exp>` appears within a sequence of declarations, but not as the last declaration of that sequence, then `T` must be `()`.
 
-// TBR
+////
+TBR
+////
 
 === Let declaration
 
@@ -1580,6 +1587,7 @@ A pattern is _static_ if it is:
 * a wildcard, or
 * a tuple of static patterns, or
 * type annotation with a static pattern.
+
 ////
 why not record patterns?
 ////

@@ -6,6 +6,10 @@ You can use the **principal** associated with the caller of a function to implem
 
 In Motoko, the `shared` keyword is used to declare a shared function. The shared function can also declare an optional parameter of type `{caller : Principal}`.
 
+<!---
+(The type is a record to accommodate future extension.)
+--->
+
 To illustrate how to access the caller of a shared function, consider the following:
 
 ``` motoko

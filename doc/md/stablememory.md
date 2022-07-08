@@ -2,6 +2,10 @@
 
 The `ExperimentalStableMemory` library provides low-level access to Internet Computer stable memory.
 
+<!---
+TODO: extend example to illustrate stableVarQuery
+--->
+
 :::danger
 
 The `ExperimentalStableMemory` library is experimental, subject to change and may be replaced by safer alternatives in later versions of Motoko. Use at your own risk and discretion.
