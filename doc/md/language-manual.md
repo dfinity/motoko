@@ -249,7 +249,7 @@ Equality and inequality are structural and based on the observable content of th
 | `<binop>` | Category |                                                |
 |-----------|----------|------------------------------------------------|
 | `&`       | B        | bitwise and                                    |
-| `|`       | B        | bitwise or                                     |
+| `\|`      | B        | bitwise or                                     |
 | `^`       | B        | exclusive or                                   |
 | `<<`      | B        | shift left                                     |
 | `␣>>`     | B        | shift right *(must be preceded by whitespace)* |
@@ -278,7 +278,7 @@ Equality and inequality are structural and based on the observable content of th
 | `%=`                        | A        | in place modulo                            |
 | `**=`                       | A        | in place exponentiation                    |
 | `&=`                        | B        | in place logical and                       |
-| `|=`                        | B        | in place logical or                        |
+| `\|=`                       | B        | in place logical or                        |
 | `^=`                        | B        | in place exclusive or                      |
 | `<<=`                       | B        | in place shift left                        |
 | `>>=`                       | B        | in place shift right                       |
@@ -296,22 +296,22 @@ The category of a compound assignment `<unop>=`/`<binop>=` is given by the categ
 
 The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
 
-| Precedence | Associativity | Token                                                                                                                        |
-|------------|---------------|------------------------------------------------------------------------------------------------------------------------------|
-| LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                  |
-| (higher)   | none          | `else`, `while`                                                                                                              |
-| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
-| (higher)   | left          | `:`                                                                                                                          |
-| (higher)   | left          | `or`                                                                                                                         |
-| (higher)   | left          | `and`                                                                                                                        |
-| (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                        |
-| (higher)   | left          | `+`, `-`, `#`, `+%`, `-%`                                                                                                    |
-| (higher)   | left          | `*`, `/`, `%`, `*%`                                                                                                          |
-| (higher)   | left          | `|`                                                                                                                          |
-| (higher)   | left          | `&`                                                                                                                          |
-| (higher)   | left          | `^`                                                                                                                          |
-| (higher)   | none          | `<<`, `>>`, `<<>`, `<>>`                                                                                                     |
-| HIGHEST    | left          | `**`, `**%`                                                                                                                  |
+| Precedence | Associativity | Token                                                                                                                         |
+|------------|---------------|-------------------------------------------------------------------------------------------------------------------------------|
+| LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                   |
+| (higher)   | none          | `else`, `while`                                                                                                               |
+| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
+| (higher)   | left          | `:`                                                                                                                           |
+| (higher)   | left          | `or`                                                                                                                          |
+| (higher)   | left          | `and`                                                                                                                         |
+| (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
+| (higher)   | left          | `+`, `-`, `#`, `+%`, `-%`                                                                                                     |
+| (higher)   | left          | `*`, `/`, `%`, `*%`                                                                                                           |
+| (higher)   | left          | `\|`                                                                                                                          |
+| (higher)   | left          | `&`                                                                                                                           |
+| (higher)   | left          | `^`                                                                                                                           |
+| (higher)   | none          | `<<`, `>>`, `<<>`, `<>>`                                                                                                      |
+| HIGHEST    | left          | `**`, `**%`                                                                                                                   |
 
 ### Programs
 
@@ -1361,9 +1361,11 @@ A set of mutually recursive type or class declarations will be rejected if the s
 
 Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions, say
 
-      type C<...,Xi,...> = T;
-      ...
-      type D<...,Yj,...> = U,
+``` motoko no-repl
+  type C<...,Xi,...> = T;
+  ...
+  type D<...,Yj,...> = U;
+```
 
 is expansive, construct a directed graph whose vertices are the formal type parameters (identified by position), `C#i`, with the following `{0,1}`-labeled edges:
 
@@ -1376,13 +1378,13 @@ The graph is expansive if, and only if, it contains a cycle with at least one ex
 For example, the type definition:
 
 ``` motoko no-repl
-  type List<T> = ?(T, List<T>),
+  type List<T> = ?(T, List<T>);
 ```
 
 that recursively instantiates `List` at the same parameter `T`, is non-expansive and accepted, but the similar looking definition:
 
 ``` motoko no-repl
-  type Seq<T> = ?(T, Seq<[T]>),
+  type Seq<T> = ?(T, Seq<[T]>);
 ```
 
 that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, is *expansive* and rejected.
