@@ -1,8 +1,8 @@
 # Local objects and classes
 
-<!---
+<!--
 TODO: Move examples into doc/modules/language-guide/examples
---->
+-->
 
 In Motoko, an `object` may encapsulate local state (`var`-bound variables) by packaging this state with `public` methods that access and update it.
 

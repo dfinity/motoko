@@ -1,6 +1,6 @@
 # Language quick reference
 
-<!---
+<!--
 * targetting release 0.5.4
 * [X] Categorise primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
 * [ ] Various inline TBCs and TBRs and TODOs
@@ -25,7 +25,7 @@
 * [X] Update ErrorCode section
 * [Floats] Literals type and operations
 * [ ] Re-section so headings appear in content outline
---->
+-->
 
 This section serves as a technical reference for the previous chapters and has specific technical information for readers with specific interests. For example, this section provides technical details of interest to the following audiences:
 
@@ -601,9 +601,9 @@ Although many of these types have linguistic support for literals and operators,
 
 The type `Bool` of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`, `and` and `or` are short-circuiting.
 
-<!---
+<!--
 TODO: Comparison.
---->
+-->
 
 ### Type `Char`
 
@@ -615,9 +615,9 @@ Base library function `Char.toNat32(c)` converts a `Char` value, `c` to its `Nat
 
 The type `Text` of categories T and O (Text, Ordered) represents sequences of Unicode characters (i.e. strings). Function `t.size` returns the number of characters in `Text` value `t`. Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { …​ c …​ }`.
 
-<!---
+<!--
 TODO: Comparison.
---->
+-->
 
 ### Type `Float`
 
@@ -1270,9 +1270,9 @@ The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically
 
 Note that if `<exp>` appears within a sequence of declarations, but not as the last declaration of that sequence, then `T` must be `()`.
 
-<!---
+<!--
 TBR
---->
+-->
 
 ### Let declaration
 
@@ -1477,9 +1477,9 @@ A pattern is *static* if it is:
 
 -   type annotation with a static pattern.
 
-<!---
+<!--
 why not record patterns?
---->
+-->
 
 Static phrases are designed to be side-effect free, allowing the coalescing of duplicate library imports (a.k.a deduplication).
 
@@ -2132,9 +2132,9 @@ Expression `from_candid <exp>` evaluates `<exp>` to a result `r`. If `r` is `tra
 
 (Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `encode/decode((T1,...,Tn))(_)` are type-directed Motoko-Candid value translations.)
 
-<!---
+<!--
 ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `decode` are not explicitly defined anywhere except in the implementation.
---->
+-->
 
 :::note
 

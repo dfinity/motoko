@@ -893,6 +893,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Limit each module to a single main concept/type/class or closely entangled family of concepts/types/classes.
 
-<!---
+<!--
 === To be extended
---->
+-->

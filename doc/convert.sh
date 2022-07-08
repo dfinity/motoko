@@ -21,9 +21,8 @@ for f in $(find $1 -name '*.adoc'); do
   asciidoctor -a IC="Internet Computer" -a proglang=Motoko -a company-id=DFINITY -b docbook -a leveloffset=+1 -o $2/$(basename $f .adoc).xml $f
   pandoc -t gfm  --no-highlight --wrap=none -f docbook $2/$(basename $f .adoc).xml \
   > $2/$(basename $f .adoc).md || true
-  sed -i 's/``` COMMENT/<!---/g' $2/$(basename $f .adoc).md
-  sed -i -z 's/ENDCOMMENT\n```/--->/g' $2/$(basename $f .adoc).md
-  #sed -i -z 's/\nINCLUDE::\.\([a-zA-Z0-9\.\/\_\-]*\)\[\]/ file=\1/g' $2/$(basename $f .adoc).md
+  sed -i 's/``` COMMENT/<!--/g' $2/$(basename $f .adoc).md
+  sed -i -z 's/ENDCOMMENT\n```/-->/g' $2/$(basename $f .adoc).md
   sed -i -z 's/\nINCLUDE::\.\([^[]*\)\[\]/ file=\1/g' $2/$(basename $f .adoc).md
   sed -i -z 's/\nINCLUDE::\.\([^[]*\)\[lines=\([0-9]*\)\.\.\([0-9]*\)\]/ file=\1\#L\2-L\3/g' $2/$(basename $f .adoc).md
   sed -i 's/KOMMA/,/g' $2/$(basename $f .adoc).md #undo German HACK above

@@ -12,9 +12,9 @@ For applications written in Motoko, the language provides high-level support for
 
 Utilizing stable storage depends on you — as the application programmer — anticipating and indicating the data you want to retain after an upgrade. Depending on the application, the data you decide to persist might be some, all, or none of a given actor’s state.
 
-<!---
+<!--
 To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
---->
+-->
 
 ## Declaring stable variables
 
@@ -22,14 +22,14 @@ In an actor, you can nominate a variable for stable storage (in Internet Compute
 
 More precisely, every `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `flexible`. If you don’t provide a modifier, the variable is declared as `flexible` by default.
 
-<!---
+<!--
 Concretely, you use the following syntax to declare stable or flexible variables in an actor:
 
 ....
 <dec-field> ::=
   (public|private)? (stable|flexible)? dec
 ....
---->
+-->
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 

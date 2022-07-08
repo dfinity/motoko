@@ -17,7 +17,7 @@ Consider the following actor declaration:
 ``` motoko file=./examples/counter-actor.mo
 ```
 
-<!---
+<!--
 actor Counter {
 
   var count = 0;
@@ -31,7 +31,7 @@ actor Counter {
     count;
   };
 };
---->
+-->
 
 The `Counter` actor declares one field and three public, *shared* functions:
 
@@ -206,9 +206,9 @@ It is only possible to `throw` or `try/catch` errors in an asynchronous context.
 
 These rules also mean that local functions cannot, in general, directly call shared functions or `await` futures. This limitation can sometimes be awkward: we hope to extend the type system to be more permissive in future.
 
-<!---
+<!--
 TODO: scoped awaits (if at all)
---->
+-->
 
 ## Actor classes generalize actors
 

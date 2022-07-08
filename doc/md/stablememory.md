@@ -2,9 +2,9 @@
 
 The `ExperimentalStableMemory` library provides low-level access to Internet Computer stable memory.
 
-<!---
+<!--
 TODO: extend example to illustrate stableVarQuery
---->
+-->
 
 :::danger
 

@@ -197,9 +197,9 @@ Aside from mathematical clarity, the chief practical benefit of lexical scoping 
 
 ## Values and evaluation
 
-<!---
+<!--
 TODO: retitle and improve
---->
+-->
 
 Once a Motoko expression receives the program’s (single) thread of control, it evaluates eagerly until it reduces to a *result value*.
 
@@ -231,9 +231,9 @@ The [language quick reference](language-manual.md) contains a complete list of [
 
 ### Non-primitive values
 
-<!---
+<!--
 TODO: records and modules, improve
---->
+-->
 
 Building on the primitive values and types above, the language permits user-defined types, and each of the following non-primitive value forms and associated types:
 
@@ -345,9 +345,9 @@ These error messages will evolve over time, and for this reason, we will not inc
 
 ### The Motoko base library
 
-<!---
+<!--
 TODO: replace library by package
---->
+-->
 
 For various practical language engineering reasons, the design of Motoko strives to minimize builtin types and operations.
 
@@ -431,9 +431,9 @@ P.unreachable()
 
 As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
 
-<!---
+<!--
 TODO: add more general intro to traps, including section on prelude functions, reference that instead
---->
+-->
 
 ### Traps due to faults
 

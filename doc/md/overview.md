@@ -888,7 +888,7 @@ let t = toText(employee); // also works, since Employee <: Person
 
     -   `mo_ide` (LSP language server for VSCode, emacs etc)
 
-<!---
+<!--
 == Old slides
 
 === Classes
@@ -1029,4 +1029,4 @@ charlie received goodbye from charlie
 alice received goodbye from charlie
 bob received goodbye from charlie
 ....
---->
+-->
