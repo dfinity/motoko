@@ -1,5 +1,32 @@
 # Language quick reference
 
+<!--
+* targetting release 0.5.4
+* [X] Categorise primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
+* [ ] Various inline TBCs and TBRs and TODOs
+* [ ] Typing of patterns
+* [X] Variants
+* [X] Object patterns
+* [X] Import expressions
+* [X] Complete draft of Try/Throw expressions and primitive Error/ErrorCode type
+* [ ] Prelude
+* [ ] Modules and static restriction
+* [X] Type components and paths
+* [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
+* [X] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O. (Actually renamed R to O, and defined ==/!= on _shared_ types.
+* [X] Include actual grammar (extracted from menhir) in appendix?
+* [ ] Prose description of definedness checks
+* [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
+* [X] Queries
+* [X] Remove Shared type
+* [X] Explain dot keys, dot vals and iterators
+* [X] Debug expressions
+* [X] Document punning in type record patterns: https://github.com/dfinity/motoko/pull/964
+* [X] Update ErrorCode section
+* [Floats] Literals type and operations
+* [ ] Re-section so headings appear in content outline
+-->
+
 This section serves as a technical reference for the previous chapters and has specific technical information for readers with specific interests. For example, this section provides technical details of interest to the following audiences:
 
 -   Authors providing the higher-level documentation about the Motoko programming language.
@@ -222,7 +249,7 @@ Equality and inequality are structural and based on the observable content of th
 | `<binop>` | Category |                                                |
 |-----------|----------|------------------------------------------------|
 | `&`       | B        | bitwise and                                    |
-| `|`       | B        | bitwise or                                     |
+| `\|`      | B        | bitwise or                                     |
 | `^`       | B        | exclusive or                                   |
 | `<<`      | B        | shift left                                     |
 | `␣>>`     | B        | shift right *(must be preceded by whitespace)* |
@@ -251,7 +278,7 @@ Equality and inequality are structural and based on the observable content of th
 | `%=`                        | A        | in place modulo                            |
 | `**=`                       | A        | in place exponentiation                    |
 | `&=`                        | B        | in place logical and                       |
-| `|=`                        | B        | in place logical or                        |
+| `\|=`                       | B        | in place logical or                        |
 | `^=`                        | B        | in place exclusive or                      |
 | `<<=`                       | B        | in place shift left                        |
 | `>>=`                       | B        | in place shift right                       |
@@ -269,22 +296,22 @@ The category of a compound assignment `<unop>=`/`<binop>=` is given by the categ
 
 The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
 
-| Precedence | Associativity | Token                                                                                                                        |
-|------------|---------------|------------------------------------------------------------------------------------------------------------------------------|
-| LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                  |
-| (higher)   | none          | `else`, `while`                                                                                                              |
-| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
-| (higher)   | left          | `:`                                                                                                                          |
-| (higher)   | left          | `or`                                                                                                                         |
-| (higher)   | left          | `and`                                                                                                                        |
-| (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                        |
-| (higher)   | left          | `+`, `-`, `#`, `+%`, `-%`                                                                                                    |
-| (higher)   | left          | `*`, `/`, `%`, `*%`                                                                                                          |
-| (higher)   | left          | `|`                                                                                                                          |
-| (higher)   | left          | `&`                                                                                                                          |
-| (higher)   | left          | `^`                                                                                                                          |
-| (higher)   | none          | `<<`, `>>`, `<<>`, `<>>`                                                                                                     |
-| HIGHEST    | left          | `**`, `**%`                                                                                                                  |
+| Precedence | Associativity | Token                                                                                                                         |
+|------------|---------------|-------------------------------------------------------------------------------------------------------------------------------|
+| LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                   |
+| (higher)   | none          | `else`, `while`                                                                                                               |
+| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
+| (higher)   | left          | `:`                                                                                                                           |
+| (higher)   | left          | `or`                                                                                                                          |
+| (higher)   | left          | `and`                                                                                                                         |
+| (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
+| (higher)   | left          | `+`, `-`, `#`, `+%`, `-%`                                                                                                     |
+| (higher)   | left          | `*`, `/`, `%`, `*%`                                                                                                           |
+| (higher)   | left          | `\|`                                                                                                                          |
+| (higher)   | left          | `&`                                                                                                                           |
+| (higher)   | left          | `^`                                                                                                                           |
+| (higher)   | none          | `<<`, `>>`, `<<>`, `<>>`                                                                                                      |
+| HIGHEST    | left          | `**`, `**%`                                                                                                                   |
 
 ### Programs
 
@@ -574,6 +601,10 @@ Although many of these types have linguistic support for literals and operators,
 
 The type `Bool` of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`, `and` and `or` are short-circuiting.
 
+<!--
+TODO: Comparison.
+-->
+
 ### Type `Char`
 
 A `Char` of category O (Ordered) represents a character as a code point in the Unicode character set.
@@ -583,6 +614,10 @@ Base library function `Char.toNat32(c)` converts a `Char` value, `c` to its `Nat
 ### Type `Text`
 
 The type `Text` of categories T and O (Text, Ordered) represents sequences of Unicode characters (i.e. strings). Function `t.size` returns the number of characters in `Text` value `t`. Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { …​ c …​ }`.
+
+<!--
+TODO: Comparison.
+-->
 
 ### Type `Float`
 
@@ -1235,6 +1270,10 @@ The declaration `<exp>` evaluates to the result of evaluating `<exp>` (typically
 
 Note that if `<exp>` appears within a sequence of declarations, but not as the last declaration of that sequence, then `T` must be `()`.
 
+<!--
+TBR
+-->
+
 ### Let declaration
 
 The let declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
@@ -1322,9 +1361,11 @@ A set of mutually recursive type or class declarations will be rejected if the s
 
 Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions, say
 
-      type C<...,Xi,...> = T;
-      ...
-      type D<...,Yj,...> = U,
+``` motoko no-repl
+  type C<...,Xi,...> = T;
+  ...
+  type D<...,Yj,...> = U;
+```
 
 is expansive, construct a directed graph whose vertices are the formal type parameters (identified by position), `C#i`, with the following `{0,1}`-labeled edges:
 
@@ -1337,13 +1378,13 @@ The graph is expansive if, and only if, it contains a cycle with at least one ex
 For example, the type definition:
 
 ``` motoko no-repl
-  type List<T> = ?(T, List<T>),
+  type List<T> = ?(T, List<T>);
 ```
 
 that recursively instantiates `List` at the same parameter `T`, is non-expansive and accepted, but the similar looking definition:
 
 ``` motoko no-repl
-  type Seq<T> = ?(T, Seq<[T]>),
+  type Seq<T> = ?(T, Seq<[T]>);
 ```
 
 that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, is *expansive* and rejected.
@@ -1437,6 +1478,10 @@ A pattern is *static* if it is:
 -   a tuple of static patterns, or
 
 -   type annotation with a static pattern.
+
+<!--
+why not record patterns?
+-->
 
 Static phrases are designed to be side-effect free, allowing the coalescing of duplicate library imports (a.k.a deduplication).
 
@@ -2088,6 +2133,10 @@ The Candid *deserialization* expression `from_candid <exp>` has type `?(T1,…�
 Expression `from_candid <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a binary blob `b`. If `b` Candid-decodes to Candid value sequence `Vs` of type `ea((T1,...,Tn))` then the result of `from_candid` is `?v` where `v = decode((T1,...,Tn))(Vs)`. If `b` Candid-decodes to a Candid value sequence `Vs` that is not of Candid type `ea((T1,...,Tn))` (but well-formed at some other type) then the result is `null`. If `b` is not the encoding of any well-typed Candid value, but some arbitrary binary blob, then the result of `from_candid` is a trap.
 
 (Informally, here `ea(_)` is the Motoko-to-Candid type sequence translation and `encode/decode((T1,...,Tn))(_)` are type-directed Motoko-Candid value translations.)
+
+<!--
+ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `decode` are not explicitly defined anywhere except in the implementation.
+-->
 
 :::note
 

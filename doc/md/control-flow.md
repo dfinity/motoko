@@ -83,6 +83,10 @@ The option block, `do ? <block>`, produces a value of type `?T`, when block `<bl
 
 As realistic example, we give the definition of a simple function `eval`uating numeric `Exp`ressions built from natural numbers, division and a zero test, encoded as a variant type:
 
+<!--
+TODO: make interactive
+-->
+
 ``` motoko file=./examples/option-block.mo
 ```
 

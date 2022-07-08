@@ -1,9 +1,11 @@
-// TODO - Move examples into doc/modules/language-guide/examples
-// Use this syntax to include the files here:
-// include::example$file-name.mo[]
 = Local objects and classes
 :proglang: Motoko
 :company-id: DFINITY
+
+////
+TODO: Move examples into doc/modules/language-guide/examples
+////
+
 
 In {proglang}, an `object` may encapsulate local state (`var`-bound variables) by packaging this state with `public` methods that access and update it.
 
@@ -127,10 +129,10 @@ To illustrate the role and use of object subtyping in {proglang}, consider imple
 [source, motoko]
 ....
 object bumpCounter {
-  var c = 0; 
-  public func bump() : Nat { 
-    c += 1; 
-    c 
+  var c = 0;
+  public func bump() : Nat {
+    c += 1;
+    c
   };
 };
 ....
@@ -139,9 +141,9 @@ The object `bumpCounter` has the following object type, exposing exactly one ope
 
 [source.no-repl, motoko]
 ....
-{ 
+{
   bump : () -> Nat ;
- }
+}
 ....
 
 This type exposes the most common operation, and one that only permits certain behavior.

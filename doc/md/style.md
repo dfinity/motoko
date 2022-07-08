@@ -892,3 +892,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 -   Where applicable, name modules after the main type or class they implement or provide functions for.
 
 -   Limit each module to a single main concept/type/class or closely entangled family of concepts/types/classes.
+
+<!--
+=== To be extended
+-->

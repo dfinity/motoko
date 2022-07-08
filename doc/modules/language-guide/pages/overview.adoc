@@ -1012,6 +1012,5 @@ charlie received goodbye from charlie
 alice received goodbye from charlie
 bob received goodbye from charlie
 ....
-
 ////
 
