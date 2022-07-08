@@ -82,13 +82,11 @@ let assign_op lhs rhs_f at =
   | [] -> e
   | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
-let annot_exp e t_opt =
-  match t_opt with
+let annot_exp e = function
   | None -> e
   | Some t -> AnnotE(e, t) @? span t.at e.at
 
-let annot_pat p t_opt =
-  match t_opt with
+let annot_pat p = function
   | None -> p
   | Some t -> AnnotP(p, t) @! span t.at p.at
 
