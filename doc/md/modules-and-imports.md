@@ -77,38 +77,12 @@ For example, a Motoko actor can import and instantiate the `Counter` class descr
 
 `Counters.mo`:
 
-``` motoko name=Counters
-actor class Counter(init : Nat) {
-  var count = init;
-
-  public func inc() : async () { count += 1 };
-
-  public func read() : async Nat { count };
-
-  public func bump() : async Nat {
-    count += 1;
-    count;
-  };
-};
+``` motoko name=Counters file=./examples/Counters.mo
 ```
 
 `CountToTen.mo`:
 
-``` motoko include=Counters
-import Counters "Counters";
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
-
-actor CountToTen {
-  public func countToTen() : async () {
-    let C : Counters.Counter = await Counters.Counter(1);
-    while ((await C.read()) < 10) {
-      Debug.print(Nat.toText(await C.read()));
-      await C.inc();
-    };
-  }
-};
-await CountToTen.countToTen()
+``` motoko include=Counters file=./examples/CountToTen.mo
 ```
 
 The call to `Counters.Counter(1)` installs a fresh counter on the network. Installation is asynchronous, so the caller must `await` the result.

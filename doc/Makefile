@@ -20,6 +20,7 @@ overview-slides.html : overview-slides.md
 
 md:
 	rm -r -f $(TMP)
+	cp -r $(SRC)/../examples $(OUT)/examples
 	cp -r $(SRC) $(TMP)
 	./convert.sh $(TMP) $(OUT)
 

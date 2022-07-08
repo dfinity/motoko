@@ -28,46 +28,14 @@ shared(msg) actor class Counter(init : Nat) {
 
 To extend this example, assume you want to restrict the `Counter` actor so it can only be modified by the installer of the `Counter`. To do this, you can record the principal that installed the actor by binding it to an `owner` variable. You can then check that the caller of each method is equal to `owner` like this:
 
-``` motoko
-shared(msg) actor class Counter(init : Nat) {
-
-  let owner = msg.caller;
-
-  var count = init;
-
-  public shared(msg) func inc() : async () {
-    assert (owner == msg.caller);
-    count += 1;
-  };
-
-  public func read() : async Nat {
-    count
-  };
-
-  public shared(msg) func bump() : async Nat {
-    assert (owner == msg.caller);
-    count := 1;
-    count;
-  };
-}
+``` motoko file=./examples/Counters-caller.mo
 ```
 
 In this example, the `assert (owner == msg.caller)` expression causes the functions `inc()` and `bump()` to trap if the call is unauthorized, preventing any modification of the `count` variable while the `read()` function permits any caller.
 
 The argument to `shared` is just a pattern, so, if you prefer, you can also rewrite the above to use pattern matching:
 
-``` motoko
-shared({caller = owner}) actor class Counter(init : Nat) {
-
-  var count : Nat = init;
-
-  public shared({caller}) func inc() : async () {
-    assert (owner == caller);
-    count += 1;
-  };
-
-  // ...
-}
+``` motoko file=./examples/Counters-caller-pat.mo
 ```
 
 :::note

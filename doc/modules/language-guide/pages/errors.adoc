@@ -25,12 +25,12 @@ The full definition of all types and helpers we'll use in this document is inclu
 
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=imports]
+include::../examples/todo-error.mo[lines=1..6]
 ----
 
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=intro]
+include::../examples/todo-error.mo[lines=10..37]
 ----
 
 
@@ -54,12 +54,12 @@ This can lead to delayed or even missing error detection and is strongly discour
 Definition:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=sentinel-definition]
+include::../examples/todo-error.mo[lines=38..47]
 ----
 Callsite:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=sentinel-caller]
+include::../examples/todo-error.mo[lines=108..115]
 ----
 
 === Prefer Option/Result over Exceptions where possible ===
@@ -78,12 +78,12 @@ Here's what that looks like for our `markDone` function:
 Definition:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=option-definition]
+include::../examples/todo-error.mo[lines=49..58]
 ----
 Callsite:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=option-caller]
+include::../examples/todo-error.mo[lines=117..126]
 ----
 
 The main drawback of this approach is that it conflates all possible errors with a single, non-informative `null` value.
@@ -106,7 +106,7 @@ So we'll define a `TodoError` type our `markDone` function will use to signal er
 
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=todo-error]
+include::../examples/todo-error.mo[lines=60..60]
 ----
 
 This lets us now write the third version of `markDone`:
@@ -114,12 +114,12 @@ This lets us now write the third version of `markDone`:
 Definition:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=result-definition]
+include::../examples/todo-error.mo[lines=62..76]
 ----
 Callsite:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=result-caller]
+include::../examples/todo-error.mo[lines=128..141]
 ----
 
 And as we can see we can now give the user a useful error message.
@@ -136,7 +136,7 @@ If we have a value of type `?Text` we can use the `switch` keyword to access the
 
 [source,motoko]
 ----
-include::../examples/error-examples.mo[tag=greet-optional]
+include::../examples/error-examples.mo[lines=3..10]
 ----
 
 The important thing to understand here is that {proglang} does not let you access the optional value without also considering the case that it is missing.
@@ -145,7 +145,7 @@ In the case of a `Result` we can also use pattern matching, with the difference 
 
 [source,motoko]
 ----
-include::../examples/error-examples.mo[tag=greet-result]
+include::../examples/error-examples.mo[lines=12..19]
 ----
 
 === Higher-Order functions ===
@@ -170,11 +170,11 @@ Asynchronous ``Error``s should generally only be used to signal unexpected failu
 Definition:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=exception-definition]
+include::../examples/todo-error.mo[lines=78..92]
 ----
 
 Callsite:
 [source,motoko]
 ----
-include::../examples/todo-error.mo[tag=exception-caller]
+include::../examples/todo-error.mo[lines=143..150]
 ----

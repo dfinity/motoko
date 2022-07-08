@@ -56,106 +56,34 @@ System function `inspect` should **not** be used for definitive access control. 
 
 A simple, contrived example of method inspection is a counter actor, that inspects some of its messages in detail, and others only superficially:
 
-``` motoko
-import Principal = "mo:base/Principal";
-
-actor {
-
-   var c = 0;
-
-   public func inc() : async () { c += 1 };
-   public func set(n : Nat) : async () { c := n };
-   public query func read() : async Nat { c };
-   public func reset() : () { c := 0 }; // oneway
-
-   system func inspect(
-     {
-       caller : Principal;
-       arg : Blob;
-       msg : {
-         #inc : () -> ();
-         #set : () -> Nat;
-         #read : () -> ();
-         #reset : () -> ();
-       }
-     }) : Bool {
-    if (Principal.isAnonymous(caller)) return false;
-    if (arg.size() > 512) return false;
-    switch (msg) {
-      case (#inc _) { true };
-      case (#set n) { n() != 13 };
-      case (#read _) { true };
-      case (#reset _) { false };
-    }
-  }
-};
+``` motoko file=./examples/InspectFull.mo
 ```
 
 Note that, due to subtyping, all of the following variations, in order of increasing argument specificity, are legal definitions of `inspect`.
 
 Blanket denial of all ingress messages, ignoring further information:
 
-``` motoko no-repl
-   system func inspect({}) : Bool { false }
+``` motoko no-repl file=./examples/InspectNone.mo#L10-L10
 ```
 
 Declining anonymous calls:
 
-``` motoko no-repl
-   system func inspect({ caller : Principal }) : Bool {
-     not (Principal.isAnonymous(caller));
-   }
+``` motoko no-repl file=./examples/InspectCaller.mo#L12-L14
 ```
 
 Declining large messages, based on \`arg’s size (in bytes).
 
-``` motoko no-repl
-   system func inspect({ arg : Blob }) : Bool {
-     arg.size() <= 512;
-   }
+``` motoko no-repl file=./examples/InspectArg.mo#L12-L14
 ```
 
 Declining messages by name only, ignoring message arguments (note the use of type `Any` as message argument variants):
 
-``` motoko no-repl
-   system func inspect(
-     {
-       msg : {
-         #inc : Any;
-         #set : Any;
-         #read : Any;
-         #reset : Any;
-       }
-     }) : Bool {
-    switch (msg) {
-      case ((#set _) or (#reset _)) { false };
-      case _ { true }; // allow inc and read
-    }
-  }
+``` motoko no-repl file=./examples/InspectName.mo#L12-L25
 ```
 
 A combination of the previous three, specifying the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases.
 
-``` motoko no-repl
-   system func inspect(
-     {
-       caller : Principal;
-       arg : Blob;
-       msg : {
-         #inc : Any;
-         #set : () -> Nat;
-         #read : Any;
-         #reset : Any;
-       }
-     }) : Bool {
-    if (Principal.isAnonymous(caller)) return false;
-    if (arg.size() > 512) return false;
-    switch (msg) {
-      case (#set n) { n() != 13 };
-      case (#reset _) { false };
-      case _ { true }; // allow inc and read
-    }
-  }
+``` motoko no-repl file=./examples/InspectMixed.mo#L12-L30
 ```
 
 ## Tips on authoring `inspect`
@@ -164,16 +92,13 @@ Implementing `inspect` after the fact, once all shared functions of an actor hav
 
 For example, in the actor from the previous section, incorrectly declaring:
 
-``` motoko no-repl
-   system func inspect() : Bool {
-     false
-   }
+``` motoko no-repl file=./examples/InspectTrick.mo#L12-L14
 ```
 
 forces the compiler to report the expected type below:
 
 ``` motoko no-repl
-Inspect.mo:13.4-15.5: type error [M0127], system function inspect is declared with type
+Inspect.mo:12.4-14.5: type error [M0127], system function inspect is declared with type
   () -> Bool
 instead of expected type
   {

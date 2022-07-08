@@ -345,9 +345,7 @@ The [Motoko Base Library](../../../../references/motoko-ref/stdlib-intro.md) lis
 
 To import from the base library, use the `import` keyword. Give a local module name to introduce, in this example `D` for “**D**ebug”, and a URL where the `import` declaration may locate the imported module:
 
-``` motoko
-import D "mo:base/Debug";
-D.print("hello world");
+``` motoko file=./examples/print.mo
 ```
 
 In this case, we import Motoko code (not some other module form) with the `mo:` prefix. We specify the `base/` path, followed by the module’s file name `Debug.mo` minus its extension.
