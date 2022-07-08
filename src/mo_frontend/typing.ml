@@ -285,13 +285,13 @@ and check_typ_path' env path : T.con =
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
-    match T.lookup_typ_field id.it fs with
-      | c ->
+    match T.lookup_typ_field_opt id.it fs with
+      | Some c ->
         Option.iter
           (warn env path.at "M0154" "type field %s is deprecated:\n%s" id.it)
           (T.lookup_typ_deprecation id.it fs);
         c
-      | exception Invalid_argument _ ->
+      | None ->
         error env id.at "M0030" "type field %s does not exist in type%a"
           id.it display_typ_expand (T.Obj (s, fs))
 
