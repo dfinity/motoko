@@ -1,4 +1,4 @@
-= Mutable states
+= Mutable state
 :proglang: Motoko
 :company-id: DFINITY
 

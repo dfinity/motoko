@@ -71,7 +71,7 @@ Declining anonymous calls:
 ``` motoko no-repl file=./examples/InspectCaller.mo#L12-L14
 ```
 
-Declining large messages, based on \`arg’s size (in bytes).
+Declining large messages, based on the raw size (in bytes) of `arg` (prior to any decoding from Candid binary blob to Motoko value):
 
 ``` motoko no-repl file=./examples/InspectArg.mo#L12-L14
 ```

@@ -77,7 +77,8 @@ Declining anonymous calls:
 include::../examples/InspectCaller.mo[lines=12..14]
 ----
 
-Declining large messages, based on `+arg+`'s size (in bytes).
+Declining large messages, based on the raw size (in bytes) of `+arg+` (prior to
+any decoding from Candid binary blob to Motoko value):
 
 [source.no-repl,motoko]
 ----

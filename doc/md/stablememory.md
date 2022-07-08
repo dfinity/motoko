@@ -1,4 +1,6 @@
-# The `ExperimentalStableMemory` library
+# Stable Memory
+
+The `ExperimentalStableMemory` library provides low-level access to Internet Computer stable memory.
 
 :::danger
 

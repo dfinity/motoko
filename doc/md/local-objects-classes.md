@@ -316,9 +316,8 @@ class Bits(n : Nat) {
 
 The above class definition is equivalent to the simultaneous definition of a structural type synonym and a factory function, both named `Bits`:
 
-``` motoko
-type Bits = {next : () -> ?Bool}
-let Bits : Nat -> Bits =
+``` motoko no-repl
+type Bits = {next : () -> ?Bool};
 func Bits(n : Nat) : Bits = object {
   // class body
 };
