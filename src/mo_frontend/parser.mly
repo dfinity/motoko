@@ -800,6 +800,8 @@ pat_field :
     { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
   | x=id t=annot_opt EQ p=pat
     { {id = x; pat = annot_pat p t} @@ at $sloc }
+  | TYPE x=id EQ p=pat
+    { {id = x; pat = annot_pat p None} @@ at $sloc }
 
 pat_opt :
   | p=pat_plain
