@@ -2,7 +2,10 @@
 Error handling with the Result type.
 
 ## Type `Result`
-`type Result<Ok, Err> = {#ok : Ok; #err : Err}`
+
+``` motoko
+type Result<Ok, Err> = {#ok : Ok; #err : Err}
+```
 
 `Result<Ok, Err>` is the type used for returning and propagating errors. It
 is a type with the variants, `#ok(Ok)`, representing success and containing
@@ -20,15 +23,24 @@ switch(createUser(myUser)) {
 ```
 
 ## Function `equal`
-`func equal<Ok, Err>(eqOk : (Ok, Ok) -> Bool, eqErr : (Err, Err) -> Bool, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Bool`
+
+``` motoko
+func equal<Ok, Err>(eqOk : (Ok, Ok) -> Bool, eqErr : (Err, Err) -> Bool, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Bool
+```
 
 
 ## Function `compare`
-`func compare<Ok, Err>(compareOk : (Ok, Ok) -> Order.Order, compareErr : (Err, Err) -> Order.Order, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Order.Order`
+
+``` motoko
+func compare<Ok, Err>(compareOk : (Ok, Ok) -> Order.Order, compareErr : (Err, Err) -> Order.Order, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Order.Order
+```
 
 
 ## Function `chain`
-`func chain<R1, R2, Error>(x : Result<R1, Error>, y : R1 -> Result<R2, Error>) : Result<R2, Error>`
+
+``` motoko
+func chain<R1, R2, Error>(x : Result<R1, Error>, y : R1 -> Result<R2, Error>) : Result<R2, Error>
+```
 
 Allows sequencing of `Result` values and functions that return
 `Result`'s themselves.
@@ -50,7 +62,10 @@ assert(between10And20(21) == #err("Not smaller than 20."));
 ```
 
 ## Function `flatten`
-`func flatten<Ok, Error>(result : Result<Result<Ok, Error>, Error>) : Result<Ok, Error>`
+
+``` motoko
+func flatten<Ok, Error>(result : Result<Result<Ok, Error>, Error>) : Result<Ok, Error>
+```
 
 Flattens a nested Result.
 
@@ -62,17 +77,26 @@ assert(Result.flatten<Nat, Text>(#ok(#err("Wrong"))) == #err("Wrong"));
 ```
 
 ## Function `mapOk`
-`func mapOk<Ok1, Ok2, Error>(x : Result<Ok1, Error>, f : Ok1 -> Ok2) : Result<Ok2, Error>`
+
+``` motoko
+func mapOk<Ok1, Ok2, Error>(x : Result<Ok1, Error>, f : Ok1 -> Ok2) : Result<Ok2, Error>
+```
 
 Maps the `Ok` type/value, leaving any `Error` type/value unchanged.
 
 ## Function `mapErr`
-`func mapErr<Ok, Error1, Error2>(x : Result<Ok, Error1>, f : Error1 -> Error2) : Result<Ok, Error2>`
+
+``` motoko
+func mapErr<Ok, Error1, Error2>(x : Result<Ok, Error1>, f : Error1 -> Error2) : Result<Ok, Error2>
+```
 
 Maps the `Err` type/value, leaving any `Ok` type/value unchanged.
 
 ## Function `fromOption`
-`func fromOption<R, E>(x : ?R, err : E) : Result<R, E>`
+
+``` motoko
+func fromOption<R, E>(x : ?R, err : E) : Result<R, E>
+```
 
 Create a result from an option, including an error value to handle the `null` case.
 ```motoko
@@ -82,7 +106,10 @@ assert(Result.fromOption(null, "err") == #err("err"));
 ```
 
 ## Function `toOption`
-`func toOption<R, E>(r : Result<R, E>) : ?R`
+
+``` motoko
+func toOption<R, E>(r : Result<R, E>) : ?R
+```
 
 Create an option from a result, turning all #err into `null`.
 ```motoko
@@ -92,7 +119,10 @@ assert(Result.toOption(#err("err")) == null);
 ```
 
 ## Function `iterate`
-`func iterate<Ok, Err>(res : Result<Ok, Err>, f : Ok -> ())`
+
+``` motoko
+func iterate<Ok, Err>(res : Result<Ok, Err>, f : Ok -> ())
+```
 
 Applies a function to a successful value, but discards the result. Use
 `iterate` if you're only interested in the side effect `f` produces.
@@ -107,19 +137,31 @@ assert(counter == 5);
 ```
 
 ## Function `isOk`
-`func isOk(r : Result<Any, Any>) : Bool`
+
+``` motoko
+func isOk(r : Result<Any, Any>) : Bool
+```
 
 
 ## Function `isErr`
-`func isErr(r : Result<Any, Any>) : Bool`
+
+``` motoko
+func isErr(r : Result<Any, Any>) : Bool
+```
 
 
 ## Function `assertOk`
-`func assertOk(r : Result<Any, Any>)`
+
+``` motoko
+func assertOk(r : Result<Any, Any>)
+```
 
 Asserts that its argument is an `#ok` result, traps otherwise.
 
 ## Function `assertErr`
-`func assertErr(r : Result<Any, Any>)`
+
+``` motoko
+func assertErr(r : Result<Any, Any>)
+```
 
 Asserts that its argument is an `#err` result, traps otherwise.

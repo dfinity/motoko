@@ -13,97 +13,151 @@ Represented as ropes of UTF-8 character sequences with O(1) concatenation.
 This module defines additional operations on `Text` values.
 
 ## Type `Text`
-`type Text = Prim.Types.Text`
+
+``` motoko
+type Text = Prim.Types.Text
+```
 
 Text values.
 
 ## Value `fromChar`
-`let fromChar : (c : Char) -> Text`
+
+``` motoko
+let fromChar : (c : Char) -> Text
+```
 
 Conversion.
 Returns the text value of size 1 containing the single character `c`.
 
 ## Function `toIter`
-`func toIter(t : Text) : Iter.Iter<Char>`
+
+``` motoko
+func toIter(t : Text) : Iter.Iter<Char>
+```
 
 Conversion.
 Creates an iterator that traverses the characters of the text `t`.
 
 ## Function `fromIter`
-`func fromIter(cs : Iter.Iter<Char>) : Text`
+
+``` motoko
+func fromIter(cs : Iter.Iter<Char>) : Text
+```
 
 Conversion.
 Returns the text value containing the sequence of characters in `cs`.
 
 ## Function `size`
-`func size(t : Text) : Nat`
+
+``` motoko
+func size(t : Text) : Nat
+```
 
 Returns `t.size()`, the number of characters in `t` (and `t.chars()`).
 
 ## Function `hash`
-`func hash(t : Text) : Hash.Hash`
+
+``` motoko
+func hash(t : Text) : Hash.Hash
+```
 
 Returns a hash obtained by using the `djb2` algorithm from http://www.cse.yorku.ca/~oz/hash.html
 
 This function is _good enough_ for use in a hash-table but it's not a cryptographic hash function!
 
 ## Function `concat`
-`func concat(t1 : Text, t2 : Text) : Text`
+
+``` motoko
+func concat(t1 : Text, t2 : Text) : Text
+```
 
 Returns the concatenation of `t1` and `t2`, `t1 # t2`.
 
 ## Function `equal`
-`func equal(t1 : Text, t2 : Text) : Bool`
+
+``` motoko
+func equal(t1 : Text, t2 : Text) : Bool
+```
 
 Returns `t1 == t2`.
 
 ## Function `notEqual`
-`func notEqual(t1 : Text, t2 : Text) : Bool`
+
+``` motoko
+func notEqual(t1 : Text, t2 : Text) : Bool
+```
 
 Returns `t1 != t2`.
 
 ## Function `less`
-`func less(t1 : Text, t2 : Text) : Bool`
+
+``` motoko
+func less(t1 : Text, t2 : Text) : Bool
+```
 
 Returns `t1 < t2`.
 
 ## Function `lessOrEqual`
-`func lessOrEqual(t1 : Text, t2 : Text) : Bool`
+
+``` motoko
+func lessOrEqual(t1 : Text, t2 : Text) : Bool
+```
 
 Returns `t1 <= t2`.
 
 ## Function `greater`
-`func greater(t1 : Text, t2 : Text) : Bool`
+
+``` motoko
+func greater(t1 : Text, t2 : Text) : Bool
+```
 
 Returns `t1 > t2`.
 
 ## Function `greaterOrEqual`
-`func greaterOrEqual(t1 : Text, t2 : Text) : Bool`
+
+``` motoko
+func greaterOrEqual(t1 : Text, t2 : Text) : Bool
+```
 
 Returns `t1 >= t2`.
 
 ## Function `compare`
-`func compare(t1 : Text, t2 : Text) : {#less; #equal; #greater}`
+
+``` motoko
+func compare(t1 : Text, t2 : Text) : {#less; #equal; #greater}
+```
 
 Returns the order of `t1` and `t1`.
 
 ## Function `join`
-`func join(sep : Text, ts : Iter.Iter<Text>) : Text`
+
+``` motoko
+func join(sep : Text, ts : Iter.Iter<Text>) : Text
+```
 
 Returns the concatenation of text values in `ts`, separated by `sep`.
 
 ## Function `map`
-`func map(t : Text, f : Char -> Char) : Text`
+
+``` motoko
+func map(t : Text, f : Char -> Char) : Text
+```
 
 Returns the result of applying `f` to each character in `ts`, concatenating the intermediate single-character text values.
 
 ## Function `translate`
-`func translate(t : Text, f : Char -> Text) : Text`
+
+``` motoko
+func translate(t : Text, f : Char -> Text) : Text
+```
 
 Returns the result of applying `f` to each character in `ts`, concatenating the intermediate text values.
 
 ## Type `Pattern`
-`type Pattern = {#char : Char; #text : Text; #predicate : (Char -> Bool)}`
+
+``` motoko
+type Pattern = {#char : Char; #text : Text; #predicate : (Char -> Bool)}
+```
 
 A pattern `p` describes a sequence of characters. A pattern has one of the following forms:
 
@@ -114,76 +168,118 @@ A pattern `p` describes a sequence of characters. A pattern has one of the follo
 A _match_ for `p` is any sequence of characters matching the pattern `p`.
 
 ## Function `split`
-`func split(t : Text, p : Pattern) : Iter.Iter<Text>`
+
+``` motoko
+func split(t : Text, p : Pattern) : Iter.Iter<Text>
+```
 
 Returns the sequence of fields in `t`, derived from start to end,
 separated by text matching pattern `p`.
 Two fields are separated by exactly one match.
 
 ## Function `tokens`
-`func tokens(t : Text, p : Pattern) : Iter.Iter<Text>`
+
+``` motoko
+func tokens(t : Text, p : Pattern) : Iter.Iter<Text>
+```
 
 Returns the sequence of tokens in `t`, derived from start to end.
 A _token_ is a non-empty maximal subsequence of `t` not containing a match for pattern `p`.
 Two tokens may be separated by one or more matches of `p`.
 
 ## Function `contains`
-`func contains(t : Text, p : Pattern) : Bool`
+
+``` motoko
+func contains(t : Text, p : Pattern) : Bool
+```
 
 Returns true if `t` contains a match for pattern `p`.
 
 ## Function `startsWith`
-`func startsWith(t : Text, p : Pattern) : Bool`
+
+``` motoko
+func startsWith(t : Text, p : Pattern) : Bool
+```
 
 Returns `true` if `t` starts with a prefix matching pattern `p`, otherwise returns `false`.
 
 ## Function `endsWith`
-`func endsWith(t : Text, p : Pattern) : Bool`
+
+``` motoko
+func endsWith(t : Text, p : Pattern) : Bool
+```
 
 Returns `true` if `t` ends with a suffix matching pattern `p`, otherwise returns `false`.
 
 ## Function `replace`
-`func replace(t : Text, p : Pattern, r : Text) : Text`
+
+``` motoko
+func replace(t : Text, p : Pattern, r : Text) : Text
+```
 
 Returns `t` with all matches of pattern `p` replaced by text `r`.
 
 ## Function `stripStart`
-`func stripStart(t : Text, p : Pattern) : ?Text`
+
+``` motoko
+func stripStart(t : Text, p : Pattern) : ?Text
+```
 
 Returns the optioned suffix of `t` obtained by eliding exactly one leading match of pattern `p`, otherwise `null`.
 
 ## Function `stripEnd`
-`func stripEnd(t : Text, p : Pattern) : ?Text`
+
+``` motoko
+func stripEnd(t : Text, p : Pattern) : ?Text
+```
 
 Returns the optioned prefix of `t` obtained by eliding exactly one trailing match of pattern `p`, otherwise `null`.
 
 ## Function `trimStart`
-`func trimStart(t : Text, p : Pattern) : Text`
+
+``` motoko
+func trimStart(t : Text, p : Pattern) : Text
+```
 
 Returns the suffix of `t` obtained by eliding all leading matches of pattern `p`.
 
 ## Function `trimEnd`
-`func trimEnd(t : Text, p : Pattern) : Text`
+
+``` motoko
+func trimEnd(t : Text, p : Pattern) : Text
+```
 
 Returns the prefix of `t` obtained by eliding all trailing matches of pattern `p`.
 
 ## Function `trim`
-`func trim(t : Text, p : Pattern) : Text`
+
+``` motoko
+func trim(t : Text, p : Pattern) : Text
+```
 
 Returns the subtext of `t` obtained by eliding all leading and trailing matches of pattern `p`.
 
 ## Function `compareWith`
-`func compareWith(t1 : Text, t2 : Text, cmp : (Char, Char) -> {#less; #equal; #greater}) : {#less; #equal; #greater}`
+
+``` motoko
+func compareWith(t1 : Text, t2 : Text, cmp : (Char, Char) -> {#less; #equal; #greater}) : {#less; #equal; #greater}
+```
 
 Returns the lexicographic comparison of `t1` and `t2`, using the given character ordering `cmp`.
 
 ## Value `encodeUtf8`
-`let encodeUtf8 : Text -> Blob`
+
+``` motoko
+let encodeUtf8 : Text -> Blob
+```
 
 Returns the UTF-8 encoding of the given text
 
 ## Value `decodeUtf8`
-`let decodeUtf8 : Blob -> ?Text`
+
+``` motoko
+let decodeUtf8 : Blob -> ?Text
+```
 
 Tries to decode the given `Blob` as UTF-8.
 Returns `null` if the blob is _not_ valid UTF-8.

@@ -4,7 +4,10 @@ Low-level interface to the Internet Computer.
 **WARNING:** This low-level API is **experimental** and likely to change or even disappear.
 
 ## Value `call`
-`let call : (canister : Principal, name : Text, data : Blob) -> async (reply : Blob)`
+
+``` motoko
+let call : (canister : Principal, name : Text, data : Blob) -> async (reply : Blob)
+```
 
 Calls ``canister``'s update or query function, `name`, with the binary contents of `data` as IC argument.
 Returns the response to the call, an IC _reply_ or _reject_, as a Motoko future:
@@ -15,7 +18,10 @@ Returns the response to the call, an IC _reply_ or _reject_, as a Motoko future:
 Note: `call` is an asynchronous function and can only be applied in an asynchronous context.
 
 ## Function `countInstructions`
-`func countInstructions(comp : () -> ()) : Nat64`
+
+``` motoko
+func countInstructions(comp : () -> ()) : Nat64
+```
 
 Given computation, `comp`, counts the number of actual and (for IC system calls) notional WebAssembly
 instructions performed during the execution of `comp()`.

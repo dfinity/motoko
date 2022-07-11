@@ -6,7 +6,10 @@ belong in the _language_ (compiler-internal) prelude sometime, after
 some further experience and discussion.  Until then, they live here.
 
 ## Function `nyi`
-`func nyi() : None`
+
+``` motoko
+func nyi() : None
+```
 
 Not yet implemented
 
@@ -16,11 +19,17 @@ Each have calls are well-typed in all typing contexts, which
 trap in all execution contexts.
 
 ## Function `xxx`
-`func xxx() : None`
+
+``` motoko
+func xxx() : None
+```
 
 
 ## Function `unreachable`
-`func unreachable() : None`
+
+``` motoko
+func unreachable() : None
+```
 
 Mark unreachable code with the `unreachable` function.
 

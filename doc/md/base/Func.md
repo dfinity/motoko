@@ -5,7 +5,10 @@ Functions on functions
 functions.)
 
 ## Function `compose`
-`func compose<A, B, C>(f : B -> C, g : A -> B) : A -> C`
+
+``` motoko
+func compose<A, B, C>(f : B -> C, g : A -> B) : A -> C
+```
 
 The composition of two functions `f` and `g` is a function that applies `g` and then `f`.
 
@@ -14,7 +17,10 @@ compose(f, g)(x) = f(g(x))
 ```
 
 ## Function `identity`
-`func identity<A>(x : A) : A`
+
+``` motoko
+func identity<A>(x : A) : A
+```
 
 The `identity` function returns its argument.
 ```motoko
@@ -24,7 +30,10 @@ assert(Func.identity(true) == true);
 ```
 
 ## Function `const`
-`func const<A, B>(x : A) : B -> A`
+
+``` motoko
+func const<A, B>(x : A) : B -> A
+```
 
 The const function is a _curried_ function that accepts an argument `x`,
 and then returns a function that discards its argument and always returns

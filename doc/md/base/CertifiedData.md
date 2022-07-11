@@ -11,7 +11,10 @@ Specification and corresponding documentation for how to use this to make query
 calls to your canister tamperproof.
 
 ## Value `set`
-`let set : (data : Blob) -> ()`
+
+``` motoko
+let set : (data : Blob) -> ()
+```
 
 Set the certified data.
 
@@ -19,7 +22,10 @@ Must be called from an update method, else traps.
 Must be passed a blob of at most 32 bytes, else traps.
 
 ## Value `getCertificate`
-`let getCertificate : () -> ?Blob`
+
+``` motoko
+let getCertificate : () -> ?Blob
+```
 
 Gets a certificate
 

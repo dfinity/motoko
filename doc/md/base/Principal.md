@@ -2,74 +2,119 @@
 IC principals (user and canister smart contract IDs)
 
 ## Type `Principal`
-`type Principal = Prim.Types.Principal`
+
+``` motoko
+type Principal = Prim.Types.Principal
+```
 
 Internet Computer principal identifiers.
 Convert to `Blob` for access to bytes.
 
 ## Value `fromActor`
-`let fromActor : (a : actor {  }) -> Principal`
+
+``` motoko
+let fromActor : (a : actor {  }) -> Principal
+```
 
 Conversion.
 
 ## Value `toBlob`
-`let toBlob : (p : Principal) -> Blob`
+
+``` motoko
+let toBlob : (p : Principal) -> Blob
+```
 
 Conversion.
 
 ## Value `fromBlob`
-`let fromBlob : (b : Blob) -> Principal`
+
+``` motoko
+let fromBlob : (b : Blob) -> Principal
+```
 
 Conversion.
 
 ## Function `toText`
-`func toText(p : Principal) : Text`
+
+``` motoko
+func toText(p : Principal) : Text
+```
 
 Conversion.
 
 ## Function `isAnonymous`
-`func isAnonymous(p : Principal) : Bool`
+
+``` motoko
+func isAnonymous(p : Principal) : Bool
+```
 
 
 ## Function `hash`
-`func hash(principal : Principal) : Hash.Hash`
+
+``` motoko
+func hash(principal : Principal) : Hash.Hash
+```
 
 
 ## Function `fromText`
-`func fromText(t : Text) : Principal`
+
+``` motoko
+func fromText(t : Text) : Principal
+```
 
 
 ## Function `equal`
-`func equal(x : Principal, y : Principal) : Bool`
+
+``` motoko
+func equal(x : Principal, y : Principal) : Bool
+```
 
 Returns `x == y`.
 
 ## Function `notEqual`
-`func notEqual(x : Principal, y : Principal) : Bool`
+
+``` motoko
+func notEqual(x : Principal, y : Principal) : Bool
+```
 
 Returns `x != y`.
 
 ## Function `less`
-`func less(x : Principal, y : Principal) : Bool`
+
+``` motoko
+func less(x : Principal, y : Principal) : Bool
+```
 
 Returns `x < y`.
 
 ## Function `lessOrEqual`
-`func lessOrEqual(x : Principal, y : Principal) : Bool`
+
+``` motoko
+func lessOrEqual(x : Principal, y : Principal) : Bool
+```
 
 Returns `x <= y`.
 
 ## Function `greater`
-`func greater(x : Principal, y : Principal) : Bool`
+
+``` motoko
+func greater(x : Principal, y : Principal) : Bool
+```
 
 Returns `x > y`.
 
 ## Function `greaterOrEqual`
-`func greaterOrEqual(x : Principal, y : Principal) : Bool`
+
+``` motoko
+func greaterOrEqual(x : Principal, y : Principal) : Bool
+```
 
 Returns `x >= y`.
 
 ## Function `compare`
-`func compare(x : Principal, y : Principal) : {#less; #equal; #greater}`
+
+``` motoko
+func compare(x : Principal, y : Principal) : {#less; #equal; #greater}
+```
 
 Returns the order of `x` and `y`.

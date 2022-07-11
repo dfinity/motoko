@@ -34,7 +34,10 @@ increase `--max-stable-pages` as desired, approaching the IC maximum (currently 
 All applications should reserve at least one page for stable variable data, even when no stable variables are used.
 
 ## Value `size`
-`let size : () -> (pages : Nat64)`
+
+``` motoko
+let size : () -> (pages : Nat64)
+```
 
 Current size of the stable memory, in pages.
 Each page is 64KiB (65536 bytes).
@@ -43,7 +46,10 @@ Preserved across upgrades, together with contents of allocated
 stable memory.
 
 ## Value `grow`
-`let grow : (new_pages : Nat64) -> (oldpages : Nat64)`
+
+``` motoko
+let grow : (new_pages : Nat64) -> (oldpages : Nat64)
+```
 
 Grow current `size` of stable memory by `pagecount` pages.
 Each page is 64KiB (65536 bytes).
@@ -54,7 +60,10 @@ Function `grow` is capped by a soft limit on `size` controlled by compile-time f
  `--max-stable-pages <n>` (the default is 65536, or 4GiB).
 
 ## Value `stableVarQuery`
-`let stableVarQuery : () -> (shared query () -> async { size : Nat64 })`
+
+``` motoko
+let stableVarQuery : () -> (shared query () -> async { size : Nat64 })
+```
 
 Returns a query that, when called, returns the number of bytes of (real) IC stable memory that would be
 occupied by persisting its current stable variables before an upgrade.
@@ -64,85 +73,145 @@ Like any other query, its state changes are discarded so no actual upgrade (or o
 The query can only be called by the enclosing actor and will trap for other callers.
 
 ## Value `loadNat32`
-`let loadNat32 : (offset : Nat64) -> Nat32`
+
+``` motoko
+let loadNat32 : (offset : Nat64) -> Nat32
+```
 
 
 ## Value `storeNat32`
-`let storeNat32 : (offset : Nat64, value : Nat32) -> ()`
+
+``` motoko
+let storeNat32 : (offset : Nat64, value : Nat32) -> ()
+```
 
 
 ## Value `loadNat8`
-`let loadNat8 : (offset : Nat64) -> Nat8`
+
+``` motoko
+let loadNat8 : (offset : Nat64) -> Nat8
+```
 
 
 ## Value `storeNat8`
-`let storeNat8 : (offset : Nat64, value : Nat8) -> ()`
+
+``` motoko
+let storeNat8 : (offset : Nat64, value : Nat8) -> ()
+```
 
 
 ## Value `loadNat16`
-`let loadNat16 : (offset : Nat64) -> Nat16`
+
+``` motoko
+let loadNat16 : (offset : Nat64) -> Nat16
+```
 
 
 ## Value `storeNat16`
-`let storeNat16 : (offset : Nat64, value : Nat16) -> ()`
+
+``` motoko
+let storeNat16 : (offset : Nat64, value : Nat16) -> ()
+```
 
 
 ## Value `loadNat64`
-`let loadNat64 : (offset : Nat64) -> Nat64`
+
+``` motoko
+let loadNat64 : (offset : Nat64) -> Nat64
+```
 
 
 ## Value `storeNat64`
-`let storeNat64 : (offset : Nat64, value : Nat64) -> ()`
+
+``` motoko
+let storeNat64 : (offset : Nat64, value : Nat64) -> ()
+```
 
 
 ## Value `loadInt32`
-`let loadInt32 : (offset : Nat64) -> Int32`
+
+``` motoko
+let loadInt32 : (offset : Nat64) -> Int32
+```
 
 
 ## Value `storeInt32`
-`let storeInt32 : (offset : Nat64, value : Int32) -> ()`
+
+``` motoko
+let storeInt32 : (offset : Nat64, value : Int32) -> ()
+```
 
 
 ## Value `loadInt8`
-`let loadInt8 : (offset : Nat64) -> Int8`
+
+``` motoko
+let loadInt8 : (offset : Nat64) -> Int8
+```
 
 
 ## Value `storeInt8`
-`let storeInt8 : (offset : Nat64, value : Int8) -> ()`
+
+``` motoko
+let storeInt8 : (offset : Nat64, value : Int8) -> ()
+```
 
 
 ## Value `loadInt16`
-`let loadInt16 : (offset : Nat64) -> Int16`
+
+``` motoko
+let loadInt16 : (offset : Nat64) -> Int16
+```
 
 
 ## Value `storeInt16`
-`let storeInt16 : (offset : Nat64, value : Int16) -> ()`
+
+``` motoko
+let storeInt16 : (offset : Nat64, value : Int16) -> ()
+```
 
 
 ## Value `loadInt64`
-`let loadInt64 : (offset : Nat64) -> Int64`
+
+``` motoko
+let loadInt64 : (offset : Nat64) -> Int64
+```
 
 
 ## Value `storeInt64`
-`let storeInt64 : (offset : Nat64, value : Int64) -> ()`
+
+``` motoko
+let storeInt64 : (offset : Nat64, value : Int64) -> ()
+```
 
 
 ## Value `loadFloat`
-`let loadFloat : (offset : Nat64) -> Float`
+
+``` motoko
+let loadFloat : (offset : Nat64) -> Float
+```
 
 
 ## Value `storeFloat`
-`let storeFloat : (offset : Nat64, value : Float) -> ()`
+
+``` motoko
+let storeFloat : (offset : Nat64, value : Float) -> ()
+```
 
 
 ## Value `loadBlob`
-`let loadBlob : (offset : Nat64, size : Nat) -> Blob`
+
+``` motoko
+let loadBlob : (offset : Nat64, size : Nat) -> Blob
+```
 
 Load `size` bytes starting from `offset` as a `Blob`.
 Traps on out-of-bounds access.
 
 ## Value `storeBlob`
-`let storeBlob : (offset : Nat64, value : Blob) -> ()`
+
+``` motoko
+let storeBlob : (offset : Nat64, value : Blob) -> ()
+```
 
 Write bytes of `blob` beginning at `offset`.
 Traps on out-of-bounds access.

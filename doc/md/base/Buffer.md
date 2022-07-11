@@ -13,78 +13,115 @@ Buffers complement Motoko's non-extensible array types
 (arrays do not support efficient extension, because the size of an array is
 determined at construction and cannot be changed).
 
-## `class Buffer<X>`
+## `
+class Buffer<X>`
 
 
 ### Function `add`
-`func add(elem : X)`
+
+``` motoko
+func add(elem : X)
+```
 
 Adds a single element to the buffer.
 
 
 ### Function `removeLast`
-`func removeLast() : ?X`
+
+``` motoko
+func removeLast() : ?X
+```
 
 Removes the item that was inserted last and returns it or `null` if no
 elements had been added to the Buffer.
 
 
 ### Function `append`
-`func append(b : Buffer<X>)`
+
+``` motoko
+func append(b : Buffer<X>)
+```
 
 Adds all elements in buffer `b` to this buffer.
 
 
 ### Function `size`
-`func size() : Nat`
+
+``` motoko
+func size() : Nat
+```
 
 Returns the current number of elements.
 
 
 ### Function `clear`
-`func clear()`
+
+``` motoko
+func clear()
+```
 
 Resets the buffer.
 
 
 ### Function `clone`
-`func clone() : Buffer<X>`
+
+``` motoko
+func clone() : Buffer<X>
+```
 
 Returns a copy of this buffer.
 
 
 ### Function `vals`
-`func vals() : { next : () -> ?X }`
+
+``` motoko
+func vals() : { next : () -> ?X }
+```
 
 Returns an `Iter` over the elements of this buffer.
 
 
 ### Function `toArray`
-`func toArray() : [X]`
+
+``` motoko
+func toArray() : [X]
+```
 
 Creates a new array containing this buffer's elements.
 
 
 ### Function `toVarArray`
-`func toVarArray() : [var X]`
+
+``` motoko
+func toVarArray() : [var X]
+```
 
 Creates a mutable array containing this buffer's elements.
 
 
 ### Function `get`
-`func get(i : Nat) : X`
+
+``` motoko
+func get(i : Nat) : X
+```
 
 Gets the `i`-th element of this buffer. Traps if  `i >= count`. Indexing is zero-based.
 
 
 ### Function `getOpt`
-`func getOpt(i : Nat) : ?X`
+
+``` motoko
+func getOpt(i : Nat) : ?X
+```
 
 Gets the `i`-th element of the buffer as an option. Returns `null` when `i >= count`. Indexing is zero-based.
 
 
 ### Function `put`
-`func put(i : Nat, elem : X)`
+
+``` motoko
+func put(i : Nat, elem : X)
+```
 
 Overwrites the current value of the `i`-entry of  this buffer with `elem`. Traps if the
 index is out of bounds. Indexing is zero-based.

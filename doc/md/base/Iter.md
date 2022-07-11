@@ -2,7 +2,10 @@
 Iterators
 
 ## Type `Iter`
-`type Iter<T> = { next : () -> ?T }`
+
+``` motoko
+type Iter<T> = { next : () -> ?T }
+```
 
 An iterator that produces values of type `T`. Calling `next` returns
 `null` when iteration is finished.
@@ -18,11 +21,15 @@ for (x in i) {
 }
 ```
 
-## `class range`
+## `
+class range`
 
 
 ### Function `next`
-`func next() : ?Nat`
+
+``` motoko
+func next() : ?Nat
+```
 
 Creates an iterator that produces all `Nat`s from `x` to `y` including
 both of the bounds.
@@ -35,17 +42,24 @@ assert(?3 == iter.next());
 assert(null == iter.next());
 ```
 
-## `class revRange`
+## `
+class revRange`
 
 
 ### Function `next`
-`func next() : ?Int`
+
+``` motoko
+func next() : ?Int
+```
 
 Like `range` but produces the values in the opposite
 order.
 
 ## Function `iterate`
-`func iterate<A>(xs : Iter<A>, f : (A, Nat) -> ())`
+
+``` motoko
+func iterate<A>(xs : Iter<A>, f : (A, Nat) -> ())
+```
 
 Calls a function `f` on every value produced by an iterator and discards
 the results. If you're looking to keep these results use `map` instead.
@@ -60,13 +74,19 @@ assert(6 == sum)
 ```
 
 ## Function `size`
-`func size<A>(xs : Iter<A>) : Nat`
+
+``` motoko
+func size<A>(xs : Iter<A>) : Nat
+```
 
 Consumes an iterator and counts how many elements were produced
 (discarding them in the process).
 
 ## Function `map`
-`func map<A, B>(xs : Iter<A>, f : A -> B) : Iter<B>`
+
+``` motoko
+func map<A, B>(xs : Iter<A>, f : A -> B) : Iter<B>
+```
 
 Takes a function and an iterator and returns a new iterator that lazily applies
 the function to every element produced by the argument iterator.
@@ -81,7 +101,10 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `filter`
-`func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>`
+
+``` motoko
+func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>
+```
 
 Takes a function and an iterator and returns a new iterator that produces
 elements from the original iterator if and only if the predicate is true.
@@ -95,7 +118,10 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `make`
-`func make<A>(x : A) : Iter<A>`
+
+``` motoko
+func make<A>(x : A) : Iter<A>
+```
 
 Creates an iterator that produces an infinite sequence of `x`.
 ```motoko
@@ -108,7 +134,10 @@ assert(?10 == iter.next());
 ```
 
 ## Function `fromArray`
-`func fromArray<A>(xs : [A]) : Iter<A>`
+
+``` motoko
+func fromArray<A>(xs : [A]) : Iter<A>
+```
 
 Creates an iterator that produces the elements of an Array in ascending index order.
 ```motoko
@@ -121,19 +150,28 @@ assert(null == iter.next());
 ```
 
 ## Function `fromArrayMut`
-`func fromArrayMut<A>(xs : [var A]) : Iter<A>`
+
+``` motoko
+func fromArrayMut<A>(xs : [var A]) : Iter<A>
+```
 
 Like `fromArray` but for Arrays with mutable elements. Captures
 the elements of the Array at the time the iterator is created, so
 further modifications won't be reflected in the iterator.
 
 ## Value `fromList`
-`let fromList`
+
+``` motoko
+let fromList
+```
 
 Like `fromArray` but for Lists.
 
 ## Function `toArray`
-`func toArray<A>(xs : Iter<A>) : [A]`
+
+``` motoko
+func toArray<A>(xs : Iter<A>) : [A]
+```
 
 Consumes an iterator and collects its produced elements in an Array.
 ```motoko
@@ -143,11 +181,17 @@ assert([1, 2, 3] == Iter.toArray(iter));
 ```
 
 ## Function `toArrayMut`
-`func toArrayMut<A>(xs : Iter<A>) : [var A]`
+
+``` motoko
+func toArrayMut<A>(xs : Iter<A>) : [var A]
+```
 
 Like `toArray` but for Arrays with mutable elements.
 
 ## Function `toList`
-`func toList<A>(xs : Iter<A>) : List.List<A>`
+
+``` motoko
+func toList<A>(xs : Iter<A>) : List.List<A>
+```
 
 Like `toArray` but for Lists.

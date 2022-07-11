@@ -2,5 +2,8 @@
 The Iterator type
 
 ## Type `Iter`
-`type Iter<T> = { next : () -> ?T }`
+
+``` motoko
+type Iter<T> = { next : () -> ?T }
+```
 

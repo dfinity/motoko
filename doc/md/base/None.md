@@ -7,11 +7,17 @@ It is often used to type code that fails to return control (e.g. an infinite loo
 or to designate impossible values (e.g. the type `?None` only contains `null`).
 
 ## Type `None`
-`type None = Prim.Types.None`
+
+``` motoko
+type None = Prim.Types.None
+```
 
 The empty type. A subtype of all types.
 
 ## Value `impossible`
-`let impossible : <A>None -> A`
+
+``` motoko
+let impossible : <A>None -> A
+```
 
 Turns an absurd value into an arbitrary type.

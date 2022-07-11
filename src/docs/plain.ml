@@ -38,7 +38,7 @@ let sep_by' :
 
 (** Adds a title at `level` *)
 let title : Buffer.t -> level -> string -> unit =
- fun buf level txt -> bprintf buf "\n%s %s" (String.make level '#') txt
+ fun buf level txt -> bprintf buf "\n%s %s\n" (String.make level '#') txt
 
 let rec plain_of_path : Buffer.t -> Syntax.path -> unit =
  fun buf path ->
@@ -194,29 +194,36 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
   Buffer.add_string buf arg.name;
   opt_typ buf arg.typ
 
+let begin_block buf = bprintf buf "\n``` motoko\n"
+
+let end_block buf =  bprintf buf "\n```\n\n"
+
 let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
  fun buf lvl -> function
   | Function function_doc ->
       title buf lvl (Printf.sprintf "Function `%s`" function_doc.name);
-      bprintf buf "\n`func %s" function_doc.name;
+      begin_block buf;
+      bprintf buf "func %s" function_doc.name;
       plain_of_typ_binders buf plain_render_functions function_doc.type_args;
       bprintf buf "(";
       sep_by buf ", " (function_arg buf) function_doc.args;
       bprintf buf ")";
       opt_typ buf function_doc.typ;
-      bprintf buf "`\n\n"
+      end_block buf
   | Value value_doc ->
       title buf lvl (Printf.sprintf "Value `%s`" value_doc.name);
-      bprintf buf "\n`let %s" value_doc.name;
+      begin_block buf;
+      bprintf buf "let %s" value_doc.name;
       opt_typ buf value_doc.typ;
-      bprintf buf "`\n\n"
+      end_block buf
   | Type type_doc ->
       title buf lvl (Printf.sprintf "Type `%s`" type_doc.name);
-      bprintf buf "\n`type %s" type_doc.name;
+      begin_block buf;
+      bprintf buf "type %s" type_doc.name;
       plain_of_typ_binders buf plain_render_functions type_doc.type_args;
       bprintf buf " = ";
       plain_of_doc_typ buf type_doc.typ;
-      bprintf buf "`\n\n"
+      end_block buf
   | Class class_doc ->
       title buf lvl "`";
       plain_of_obj_sort buf class_doc.sort;

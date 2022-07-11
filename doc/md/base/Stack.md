@@ -5,28 +5,41 @@ Minimal LIFO (last in first out) implementation, as a class.
 See library `Deque` for mixed LIFO/FIFO behavior.
 
 
-## `class Stack<T>`
+## `
+class Stack<T>`
 
 
 ### Function `push`
-`func push(x : T)`
+
+``` motoko
+func push(x : T)
+```
 
 Push an element on the top of the stack.
 
 
 ### Function `isEmpty`
-`func isEmpty() : Bool`
+
+``` motoko
+func isEmpty() : Bool
+```
 
 True when the stack is empty.
 
 
 ### Function `peek`
-`func peek() : ?T`
+
+``` motoko
+func peek() : ?T
+```
 
 Return and retain the top element, or return null.
 
 
 ### Function `pop`
-`func pop() : ?T`
+
+``` motoko
+func pop() : ?T
+```
 
 Remove and return the top element, or return null.
