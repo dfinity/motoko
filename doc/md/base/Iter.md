@@ -2,7 +2,7 @@
 Iterators
 
 ## Type `Iter`
-``` motoko
+``` motoko norepl
 type Iter<T> = { next : () -> ?T }
 ```
 
@@ -24,7 +24,7 @@ for (x in i) {
 
 
 ### Function `next`
-``` motoko
+``` motoko norepl
 func next() : ?Nat
 ```
 
@@ -43,7 +43,7 @@ assert(null == iter.next());
 
 
 ### Function `next`
-``` motoko
+``` motoko norepl
 func next() : ?Int
 ```
 
@@ -51,7 +51,7 @@ Like `range` but produces the values in the opposite
 order.
 
 ## Function `iterate`
-``` motoko
+``` motoko norepl
 func iterate<A>(xs : Iter<A>, f : (A, Nat) -> ())
 ```
 
@@ -68,7 +68,7 @@ assert(6 == sum)
 ```
 
 ## Function `size`
-``` motoko
+``` motoko norepl
 func size<A>(xs : Iter<A>) : Nat
 ```
 
@@ -76,7 +76,7 @@ Consumes an iterator and counts how many elements were produced
 (discarding them in the process).
 
 ## Function `map`
-``` motoko
+``` motoko norepl
 func map<A, B>(xs : Iter<A>, f : A -> B) : Iter<B>
 ```
 
@@ -93,7 +93,7 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `filter`
-``` motoko
+``` motoko norepl
 func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>
 ```
 
@@ -109,7 +109,7 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `make`
-``` motoko
+``` motoko norepl
 func make<A>(x : A) : Iter<A>
 ```
 
@@ -124,7 +124,7 @@ assert(?10 == iter.next());
 ```
 
 ## Function `fromArray`
-``` motoko
+``` motoko norepl
 func fromArray<A>(xs : [A]) : Iter<A>
 ```
 
@@ -139,7 +139,7 @@ assert(null == iter.next());
 ```
 
 ## Function `fromArrayMut`
-``` motoko
+``` motoko norepl
 func fromArrayMut<A>(xs : [var A]) : Iter<A>
 ```
 
@@ -148,14 +148,14 @@ the elements of the Array at the time the iterator is created, so
 further modifications won't be reflected in the iterator.
 
 ## Value `fromList`
-``` motoko
+``` motoko norepl
 let fromList
 ```
 
 Like `fromArray` but for Lists.
 
 ## Function `toArray`
-``` motoko
+``` motoko norepl
 func toArray<A>(xs : Iter<A>) : [A]
 ```
 
@@ -167,14 +167,14 @@ assert([1, 2, 3] == Iter.toArray(iter));
 ```
 
 ## Function `toArrayMut`
-``` motoko
+``` motoko norepl
 func toArrayMut<A>(xs : Iter<A>) : [var A]
 ```
 
 Like `toArray` but for Arrays with mutable elements.
 
 ## Function `toList`
-``` motoko
+``` motoko norepl
 func toList<A>(xs : Iter<A>) : List.List<A>
 ```
 

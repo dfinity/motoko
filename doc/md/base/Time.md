@@ -2,14 +2,14 @@
 System time
 
 ## Type `Time`
-``` motoko
+``` motoko norepl
 type Time = Int
 ```
 
 System time is represent as nanoseconds since 1970-01-01.
 
 ## Value `now`
-``` motoko
+``` motoko norepl
 let now : () -> Time
 ```
 

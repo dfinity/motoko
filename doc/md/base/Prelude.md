@@ -6,7 +6,7 @@ belong in the _language_ (compiler-internal) prelude sometime, after
 some further experience and discussion.  Until then, they live here.
 
 ## Function `nyi`
-``` motoko
+``` motoko norepl
 func nyi() : None
 ```
 
@@ -18,13 +18,13 @@ Each have calls are well-typed in all typing contexts, which
 trap in all execution contexts.
 
 ## Function `xxx`
-``` motoko
+``` motoko norepl
 func xxx() : None
 ```
 
 
 ## Function `unreachable`
-``` motoko
+``` motoko norepl
 func unreachable() : None
 ```
 

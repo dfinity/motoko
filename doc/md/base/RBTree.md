@@ -2,14 +2,14 @@
 Red-Black Trees
 
 ## Type `Color`
-``` motoko
+``` motoko norepl
 type Color = {#R; #B}
 ```
 
 Node color: red or black.
 
 ## Type `Tree`
-``` motoko
+``` motoko norepl
 type Tree<X, Y> = {#node : (Color, Tree<X, Y>, (X, ?Y), Tree<X, Y>); #leaf}
 ```
 
@@ -19,7 +19,7 @@ Ordered, (red-black) tree of entries.
 
 
 ### Function `share`
-``` motoko
+``` motoko norepl
 func share() : Tree<X, Y>
 ```
 
@@ -31,7 +31,7 @@ for drawing, pretty-printing and non-OO contexts
 
 
 ### Function `get`
-``` motoko
+``` motoko norepl
 func get(x : X) : ?Y
 ```
 
@@ -39,7 +39,7 @@ Get the value associated with a given key.
 
 
 ### Function `replace`
-``` motoko
+``` motoko norepl
 func replace(x : X, y : Y) : ?Y
 ```
 
@@ -47,7 +47,7 @@ Replace the value associated with a given key.
 
 
 ### Function `put`
-``` motoko
+``` motoko norepl
 func put(x : X, y : Y)
 ```
 
@@ -55,7 +55,7 @@ Put an entry: A value associated with a given key.
 
 
 ### Function `delete`
-``` motoko
+``` motoko norepl
 func delete(x : X)
 ```
 
@@ -63,7 +63,7 @@ Delete the entry associated with a given key.
 
 
 ### Function `remove`
-``` motoko
+``` motoko norepl
 func remove(x : X) : ?Y
 ```
 
@@ -71,7 +71,7 @@ Remove the entry associated with a given key.
 
 
 ### Function `entries`
-``` motoko
+``` motoko norepl
 func entries() : I.Iter<(X, Y)>
 ```
 
@@ -81,7 +81,7 @@ iterator is persistent, like the tree itself
 
 
 ### Function `entriesRev`
-``` motoko
+``` motoko norepl
 func entriesRev() : I.Iter<(X, Y)>
 ```
 
@@ -91,14 +91,14 @@ iterator is persistent, like the tree itself
 Create an order map from an order function for its keys.
 
 ## Function `iter`
-``` motoko
+``` motoko norepl
 func iter<X, Y>(t : Tree<X, Y>, dir : {#fwd; #bwd}) : I.Iter<(X, Y)>
 ```
 
 An iterator for the entries of the map, in ascending (`#fwd`) or descending (`#bwd`) order.
 
 ## Function `size`
-``` motoko
+``` motoko norepl
 func size<X, Y>(t : Tree<X, Y>) : Nat
 ```
 

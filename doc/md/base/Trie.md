@@ -40,21 +40,21 @@ assert (n == ?42);
 
 
 ## Type `Trie`
-``` motoko
+``` motoko norepl
 type Trie<K, V> = {#empty; #leaf : Leaf<K, V>; #branch : Branch<K, V>}
 ```
 
 Binary hash tries: either empty, a leaf node, or a branch node
 
 ## Type `Leaf`
-``` motoko
+``` motoko norepl
 type Leaf<K, V> = { size : Nat; keyvals : AssocList<Key<K>, V> }
 ```
 
 Leaf nodes of trie consist of key-value pairs as a list.
 
 ## Type `Branch`
-``` motoko
+``` motoko norepl
 type Branch<K, V> = { size : Nat; left : Trie<K, V>; right : Trie<K, V> }
 ```
 
@@ -63,33 +63,33 @@ we never store this bitpos; rather,
 we enforce a style where this position is always known from context.
 
 ## Type `AssocList`
-``` motoko
+``` motoko norepl
 type AssocList<K, V> = AssocList.AssocList<K, V>
 ```
 
 
 ## Type `Key`
-``` motoko
+``` motoko norepl
 type Key<K> = { hash : Hash.Hash; key : K }
 ```
 
 
 ## Function `equalKey`
-``` motoko
+``` motoko norepl
 func equalKey<K>(keq : (K, K) -> Bool) : ((Key<K>, Key<K>) -> Bool)
 ```
 
 Equality function for two `Key<K>`s, in terms of equality of `K`'s.
 
 ## Function `isValid`
-``` motoko
+``` motoko norepl
 func isValid<K, V>(t : Trie<K, V>, enforceNormal : Bool) : Bool
 ```
 
 Checks the invariants of the trie structure, including the placement of keys at trie paths
 
 ## Type `Trie2D`
-``` motoko
+``` motoko norepl
 type Trie2D<K1, K2, V> = Trie<K1, Trie<K2, V>>
 ```
 
@@ -97,7 +97,7 @@ A 2D trie maps dimension-1 keys to another
 layer of tries, each keyed on the dimension-2 keys.
 
 ## Type `Trie3D`
-``` motoko
+``` motoko norepl
 type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V>>
 ```
 
@@ -105,14 +105,14 @@ A 3D trie maps dimension-1 keys to another
 layer of 2D tries, each keyed on the dimension-2 and dimension-3 keys.
 
 ## Function `empty`
-``` motoko
+``` motoko norepl
 func empty<K, V>() : Trie<K, V>
 ```
 
 An empty trie.
 
 ## Function `size`
-``` motoko
+``` motoko norepl
 func size<K, V>(t : Trie<K, V>) : Nat
 ```
 
@@ -120,14 +120,14 @@ func size<K, V>(t : Trie<K, V>) : Nat
 Get size in O(1) time.
 
 ## Function `branch`
-``` motoko
+``` motoko norepl
 func branch<K, V>(l : Trie<K, V>, r : Trie<K, V>) : Trie<K, V>
 ```
 
 Construct a branch node, computing the size stored there.
 
 ## Function `leaf`
-``` motoko
+``` motoko norepl
 func leaf<K, V>(kvs : AssocList<Key<K>, V>, bitpos : Nat) : Trie<K, V>
 ```
 
@@ -138,14 +138,14 @@ by constructing branches as necessary; to do so, it also needs the bitpos
 of the leaf.
 
 ## Function `fromList`
-``` motoko
+``` motoko norepl
 func fromList<K, V>(kvc : ?Nat, kvs : AssocList<Key<K>, V>, bitpos : Nat) : Trie<K, V>
 ```
 
 Transform a list into a trie, splitting input list into small (leaf) lists, if necessary.
 
 ## Function `clone`
-``` motoko
+``` motoko norepl
 func clone<K, V>(t : Trie<K, V>) : Trie<K, V>
 ```
 
@@ -154,35 +154,35 @@ Clone the trie efficiently, via sharing.
 Purely-functional representation permits _O(1)_ copy, via persistent sharing.
 
 ## Function `replace`
-``` motoko
+``` motoko norepl
 func replace<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v : ?V) : (Trie<K, V>, ?V)
 ```
 
 Replace the given key's value option with the given one, returning the previous one
 
 ## Function `put`
-``` motoko
+``` motoko norepl
 func put<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v : V) : (Trie<K, V>, ?V)
 ```
 
 Put the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
 
 ## Function `get`
-``` motoko
+``` motoko norepl
 func get<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool) : ?V
 ```
 
 Get the value of the given key in the trie, or return null if nonexistent
 
 ## Function `find`
-``` motoko
+``` motoko norepl
 func find<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool) : ?V
 ```
 
 Find the given key's value in the trie, or return null if nonexistent
 
 ## Function `merge`
-``` motoko
+``` motoko norepl
 func merge<K, V>(tl : Trie<K, V>, tr : Trie<K, V>, k_eq : (K, K) -> Bool) : Trie<K, V>
 ```
 
@@ -194,7 +194,7 @@ operation in various ways, and does not (in general) lose
 information; this operation is a simpler, special case.
 
 ## Function `mergeDisjoint`
-``` motoko
+``` motoko norepl
 func mergeDisjoint<K, V>(tl : Trie<K, V>, tr : Trie<K, V>, k_eq : (K, K) -> Bool) : Trie<K, V>
 ```
 
@@ -203,7 +203,7 @@ dynamic error if there are collisions in common keys between the
 left and right inputs.
 
 ## Function `diff`
-``` motoko
+``` motoko norepl
 func diff<K, V, W>(tl : Trie<K, V>, tr : Trie<K, W>, k_eq : (K, K) -> Bool) : Trie<K, V>
 ```
 
@@ -212,7 +212,7 @@ the left trie whose keys are not present in the right trie; the
 values of the right trie are irrelevant.
 
 ## Function `disj`
-``` motoko
+``` motoko norepl
 func disj<K, V, W, X>(tl : Trie<K, V>, tr : Trie<K, W>, k_eq : (K, K) -> Bool, vbin : (?V, ?W) -> X) : Trie<K, X>
 ```
 
@@ -232,7 +232,7 @@ Implements the database idea of an ["outer join"](https://stackoverflow.com/ques
 
 
 ## Function `join`
-``` motoko
+``` motoko norepl
 func join<K, V, W, X>(tl : Trie<K, V>, tr : Trie<K, W>, k_eq : (K, K) -> Bool, vbin : (V, W) -> X) : Trie<K, X>
 ```
 
@@ -246,7 +246,7 @@ operator, and unmatched key-value pairs are not present in the output.
 
 
 ## Function `foldUp`
-``` motoko
+``` motoko norepl
 func foldUp<K, V, X>(t : Trie<K, V>, bin : (X, X) -> X, leaf : (K, V) -> X, empty : X) : X
 ```
 
@@ -256,7 +256,7 @@ either as clients, or as hand-specialized versions (e.g., see , map,
 mapFilter, some and all below).
 
 ## Function `prod`
-``` motoko
+``` motoko norepl
 func prod<K1, V1, K2, V2, K3, V3>(tl : Trie<K1, V1>, tr : Trie<K2, V2>, op : (K1, V1, K2, V2) -> ?(Key<K3>, V3), k3_eq : (K3, K3) -> Bool) : Trie<K3, V3>
 ```
 
@@ -273,7 +273,7 @@ these input keys.
 
 
 ## Function `iter`
-``` motoko
+``` motoko norepl
 func iter<K, V>(t : Trie<K, V>) : I.Iter<(K, V)>
 ```
 
@@ -282,7 +282,7 @@ Returns an `Iter` over the key-value entries of the trie.
 Each iterator gets a _persistent view_ of the mapping, independent of concurrent updates to the iterated map.
 
 ## Value `Build`
-``` motoko
+``` motoko norepl
 let Build
 ```
 
@@ -305,7 +305,7 @@ own.
 
 
 ## Function `fold`
-``` motoko
+``` motoko norepl
 func fold<K, V, X>(t : Trie<K, V>, f : (K, V, X) -> X, x : X) : X
 ```
 
@@ -313,21 +313,21 @@ Fold over the key-value pairs of the trie, using an accumulator.
 The key-value pairs have no reliable or meaningful ordering.
 
 ## Function `some`
-``` motoko
+``` motoko norepl
 func some<K, V>(t : Trie<K, V>, f : (K, V) -> Bool) : Bool
 ```
 
 Test whether a given key-value pair is present, or not.
 
 ## Function `all`
-``` motoko
+``` motoko norepl
 func all<K, V>(t : Trie<K, V>, f : (K, V) -> Bool) : Bool
 ```
 
 Test whether all key-value pairs have a given property.
 
 ## Function `nth`
-``` motoko
+``` motoko norepl
 func nth<K, V>(t : Trie<K, V>, i : Nat) : ?(Key<K>, V)
 ```
 
@@ -337,14 +337,14 @@ Note: This position is not meaningful; it's only here so that we
 can inject tries into arrays using functions like `Array.tabulate`.
 
 ## Function `toArray`
-``` motoko
+``` motoko norepl
 func toArray<K, V, W>(t : Trie<K, V>, f : (K, V) -> W) : [W]
 ```
 
 Gather the collection of key-value pairs into an array of a (possibly-distinct) type.
 
 ## Function `isEmpty`
-``` motoko
+``` motoko norepl
 func isEmpty<K, V>(t : Trie<K, V>) : Bool
 ```
 
@@ -353,21 +353,21 @@ but no leaves.  These can result from naive filtering operations;
 filter uses this function to avoid creating such subtrees.
 
 ## Function `filter`
-``` motoko
+``` motoko norepl
 func filter<K, V>(t : Trie<K, V>, f : (K, V) -> Bool) : Trie<K, V>
 ```
 
 Filter the key-value pairs by a given predicate.
 
 ## Function `mapFilter`
-``` motoko
+``` motoko norepl
 func mapFilter<K, V, W>(t : Trie<K, V>, f : (K, V) -> ?W) : Trie<K, W>
 ```
 
 Map and filter the key-value pairs by a given predicate.
 
 ## Function `equalStructure`
-``` motoko
+``` motoko norepl
 func equalStructure<K, V>(tl : Trie<K, V>, tr : Trie<K, V>, keq : (K, K) -> Bool, veq : (V, V) -> Bool) : Bool
 ```
 
@@ -380,7 +380,7 @@ with
 We do not observe that equality here.
 
 ## Function `replaceThen`
-``` motoko
+``` motoko norepl
 func replaceThen<K, V, X>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v2 : V, success : (Trie<K, V>, V) -> X, fail : () -> X) : X
 ```
 
@@ -389,35 +389,35 @@ and only if successful, do the success continuation,
 otherwise, return the failure value
 
 ## Function `putFresh`
-``` motoko
+``` motoko norepl
 func putFresh<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v : V) : Trie<K, V>
 ```
 
 Put the given key's value in the trie; return the new trie; assert that no prior value is associated with the key
 
 ## Function `put2D`
-``` motoko
+``` motoko norepl
 func put2D<K1, K2, V>(t : Trie2D<K1, K2, V>, k1 : Key<K1>, k1_eq : (K1, K1) -> Bool, k2 : Key<K2>, k2_eq : (K2, K2) -> Bool, v : V) : Trie2D<K1, K2, V>
 ```
 
 Put the given key's value in the 2D trie; return the new 2D trie.
 
 ## Function `put3D`
-``` motoko
+``` motoko norepl
 func put3D<K1, K2, K3, V>(t : Trie3D<K1, K2, K3, V>, k1 : Key<K1>, k1_eq : (K1, K1) -> Bool, k2 : Key<K2>, k2_eq : (K2, K2) -> Bool, k3 : Key<K3>, k3_eq : (K3, K3) -> Bool, v : V) : Trie3D<K1, K2, K3, V>
 ```
 
 Put the given key's value in the trie; return the new trie;
 
 ## Function `remove`
-``` motoko
+``` motoko norepl
 func remove<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool) : (Trie<K, V>, ?V)
 ```
 
 Remove the given key's value in the trie; return the new trie
 
 ## Function `removeThen`
-``` motoko
+``` motoko norepl
 func removeThen<K, V, X>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, success : (Trie<K, V>, V) -> X, fail : () -> X) : X
 ```
 
@@ -426,7 +426,7 @@ and only if successful, do the success continuation,
 otherwise, return the failure value
 
 ## Function `remove2D`
-``` motoko
+``` motoko norepl
 func remove2D<K1, K2, V>(t : Trie2D<K1, K2, V>, k1 : Key<K1>, k1_eq : (K1, K1) -> Bool, k2 : Key<K2>, k2_eq : (K2, K2) -> Bool) : (Trie2D<K1, K2, V>, ?V)
 ```
 
@@ -434,7 +434,7 @@ remove the given key-key pair's value in the 2D trie; return the
 new trie, and the prior value, if any.
 
 ## Function `remove3D`
-``` motoko
+``` motoko norepl
 func remove3D<K1, K2, K3, V>(t : Trie3D<K1, K2, K3, V>, k1 : Key<K1>, k1_eq : (K1, K1) -> Bool, k2 : Key<K2>, k2_eq : (K2, K2) -> Bool, k3 : Key<K3>, k3_eq : (K3, K3) -> Bool) : (Trie3D<K1, K2, K3, V>, ?V)
 ```
 
@@ -442,7 +442,7 @@ Remove the given key-key pair's value in the 3D trie; return the
 new trie, and the prior value, if any.
 
 ## Function `mergeDisjoint2D`
-``` motoko
+``` motoko norepl
 func mergeDisjoint2D<K1, K2, V>(t : Trie2D<K1, K2, V>, k1_eq : (K1, K1) -> Bool, k2_eq : (K2, K2) -> Bool) : Trie<K2, V>
 ```
 

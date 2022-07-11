@@ -17,7 +17,7 @@ determined at construction and cannot be changed).
 
 
 ### Function `add`
-``` motoko
+``` motoko norepl
 func add(elem : X)
 ```
 
@@ -25,7 +25,7 @@ Adds a single element to the buffer.
 
 
 ### Function `removeLast`
-``` motoko
+``` motoko norepl
 func removeLast() : ?X
 ```
 
@@ -34,7 +34,7 @@ elements had been added to the Buffer.
 
 
 ### Function `append`
-``` motoko
+``` motoko norepl
 func append(b : Buffer<X>)
 ```
 
@@ -42,7 +42,7 @@ Adds all elements in buffer `b` to this buffer.
 
 
 ### Function `size`
-``` motoko
+``` motoko norepl
 func size() : Nat
 ```
 
@@ -50,7 +50,7 @@ Returns the current number of elements.
 
 
 ### Function `clear`
-``` motoko
+``` motoko norepl
 func clear()
 ```
 
@@ -58,7 +58,7 @@ Resets the buffer.
 
 
 ### Function `clone`
-``` motoko
+``` motoko norepl
 func clone() : Buffer<X>
 ```
 
@@ -66,7 +66,7 @@ Returns a copy of this buffer.
 
 
 ### Function `vals`
-``` motoko
+``` motoko norepl
 func vals() : { next : () -> ?X }
 ```
 
@@ -74,7 +74,7 @@ Returns an `Iter` over the elements of this buffer.
 
 
 ### Function `toArray`
-``` motoko
+``` motoko norepl
 func toArray() : [X]
 ```
 
@@ -82,7 +82,7 @@ Creates a new array containing this buffer's elements.
 
 
 ### Function `toVarArray`
-``` motoko
+``` motoko norepl
 func toVarArray() : [var X]
 ```
 
@@ -90,7 +90,7 @@ Creates a mutable array containing this buffer's elements.
 
 
 ### Function `get`
-``` motoko
+``` motoko norepl
 func get(i : Nat) : X
 ```
 
@@ -98,7 +98,7 @@ Gets the `i`-th element of this buffer. Traps if  `i >= count`. Indexing is zero
 
 
 ### Function `getOpt`
-``` motoko
+``` motoko norepl
 func getOpt(i : Nat) : ?X
 ```
 
@@ -106,7 +106,7 @@ Gets the `i`-th element of the buffer as an option. Returns `null` when `i >= co
 
 
 ### Function `put`
-``` motoko
+``` motoko norepl
 func put(i : Nat, elem : X)
 ```
 

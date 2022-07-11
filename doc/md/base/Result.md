@@ -2,7 +2,7 @@
 Error handling with the Result type.
 
 ## Type `Result`
-``` motoko
+``` motoko norepl
 type Result<Ok, Err> = {#ok : Ok; #err : Err}
 ```
 
@@ -22,19 +22,19 @@ switch(createUser(myUser)) {
 ```
 
 ## Function `equal`
-``` motoko
+``` motoko norepl
 func equal<Ok, Err>(eqOk : (Ok, Ok) -> Bool, eqErr : (Err, Err) -> Bool, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Bool
 ```
 
 
 ## Function `compare`
-``` motoko
+``` motoko norepl
 func compare<Ok, Err>(compareOk : (Ok, Ok) -> Order.Order, compareErr : (Err, Err) -> Order.Order, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Order.Order
 ```
 
 
 ## Function `chain`
-``` motoko
+``` motoko norepl
 func chain<R1, R2, Error>(x : Result<R1, Error>, y : R1 -> Result<R2, Error>) : Result<R2, Error>
 ```
 
@@ -58,7 +58,7 @@ assert(between10And20(21) == #err("Not smaller than 20."));
 ```
 
 ## Function `flatten`
-``` motoko
+``` motoko norepl
 func flatten<Ok, Error>(result : Result<Result<Ok, Error>, Error>) : Result<Ok, Error>
 ```
 
@@ -72,21 +72,21 @@ assert(Result.flatten<Nat, Text>(#ok(#err("Wrong"))) == #err("Wrong"));
 ```
 
 ## Function `mapOk`
-``` motoko
+``` motoko norepl
 func mapOk<Ok1, Ok2, Error>(x : Result<Ok1, Error>, f : Ok1 -> Ok2) : Result<Ok2, Error>
 ```
 
 Maps the `Ok` type/value, leaving any `Error` type/value unchanged.
 
 ## Function `mapErr`
-``` motoko
+``` motoko norepl
 func mapErr<Ok, Error1, Error2>(x : Result<Ok, Error1>, f : Error1 -> Error2) : Result<Ok, Error2>
 ```
 
 Maps the `Err` type/value, leaving any `Ok` type/value unchanged.
 
 ## Function `fromOption`
-``` motoko
+``` motoko norepl
 func fromOption<R, E>(x : ?R, err : E) : Result<R, E>
 ```
 
@@ -98,7 +98,7 @@ assert(Result.fromOption(null, "err") == #err("err"));
 ```
 
 ## Function `toOption`
-``` motoko
+``` motoko norepl
 func toOption<R, E>(r : Result<R, E>) : ?R
 ```
 
@@ -110,7 +110,7 @@ assert(Result.toOption(#err("err")) == null);
 ```
 
 ## Function `iterate`
-``` motoko
+``` motoko norepl
 func iterate<Ok, Err>(res : Result<Ok, Err>, f : Ok -> ())
 ```
 
@@ -127,26 +127,26 @@ assert(counter == 5);
 ```
 
 ## Function `isOk`
-``` motoko
+``` motoko norepl
 func isOk(r : Result<Any, Any>) : Bool
 ```
 
 
 ## Function `isErr`
-``` motoko
+``` motoko norepl
 func isErr(r : Result<Any, Any>) : Bool
 ```
 
 
 ## Function `assertOk`
-``` motoko
+``` motoko norepl
 func assertOk(r : Result<Any, Any>)
 ```
 
 Asserts that its argument is an `#ok` result, traps otherwise.
 
 ## Function `assertErr`
-``` motoko
+``` motoko norepl
 func assertErr(r : Result<Any, Any>)
 ```
 

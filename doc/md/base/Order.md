@@ -2,35 +2,35 @@
 Order
 
 ## Type `Order`
-``` motoko
+``` motoko norepl
 type Order = {#less; #equal; #greater}
 ```
 
 A type to represent an order.
 
 ## Function `isLess`
-``` motoko
+``` motoko norepl
 func isLess(order : Order) : Bool
 ```
 
 Check if an order is #less.
 
 ## Function `isEqual`
-``` motoko
+``` motoko norepl
 func isEqual(order : Order) : Bool
 ```
 
 Check if an order is #equal.
 
 ## Function `isGreater`
-``` motoko
+``` motoko norepl
 func isGreater(order : Order) : Bool
 ```
 
 Check if an order is #greater.
 
 ## Function `equal`
-``` motoko
+``` motoko norepl
 func equal(o1 : Order, o2 : Order) : Bool
 ```
 

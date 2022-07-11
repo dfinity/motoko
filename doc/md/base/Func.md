@@ -5,7 +5,7 @@ Functions on functions
 functions.)
 
 ## Function `compose`
-``` motoko
+``` motoko norepl
 func compose<A, B, C>(f : B -> C, g : A -> B) : A -> C
 ```
 
@@ -16,7 +16,7 @@ compose(f, g)(x) = f(g(x))
 ```
 
 ## Function `identity`
-``` motoko
+``` motoko norepl
 func identity<A>(x : A) : A
 ```
 
@@ -28,7 +28,7 @@ assert(Func.identity(true) == true);
 ```
 
 ## Function `const`
-``` motoko
+``` motoko norepl
 func const<A, B>(x : A) : B -> A
 ```
 

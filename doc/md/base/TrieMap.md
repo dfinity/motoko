@@ -13,7 +13,7 @@ An imperative hash map, with a general key and value type.
 
 
 ### Function `size`
-``` motoko
+``` motoko norepl
 func size() : Nat
 ```
 
@@ -21,7 +21,7 @@ Returns the number of entries in the map.
 
 
 ### Function `put`
-``` motoko
+``` motoko norepl
 func put(k : K, v : V)
 ```
 
@@ -29,7 +29,7 @@ Associate a key and value, overwriting any prior association for the key.
 
 
 ### Function `replace`
-``` motoko
+``` motoko norepl
 func replace(k : K, v : V) : ?V
 ```
 
@@ -37,7 +37,7 @@ Put the key and value, _and_ return the (optional) prior value for the key.
 
 
 ### Function `get`
-``` motoko
+``` motoko norepl
 func get(k : K) : ?V
 ```
 
@@ -45,7 +45,7 @@ Get the (optional) value associated with the given key.
 
 
 ### Function `delete`
-``` motoko
+``` motoko norepl
 func delete(k : K)
 ```
 
@@ -53,7 +53,7 @@ Delete the (optional) value associated with the given key.
 
 
 ### Function `remove`
-``` motoko
+``` motoko norepl
 func remove(k : K) : ?V
 ```
 
@@ -61,7 +61,7 @@ Delete and return the (optional) value associated with the given key.
 
 
 ### Function `keys`
-``` motoko
+``` motoko norepl
 func keys() : I.Iter<K>
 ```
 
@@ -71,7 +71,7 @@ Each iterator gets a _persistent view_ of the mapping, independent of concurrent
 
 
 ### Function `vals`
-``` motoko
+``` motoko norepl
 func vals() : I.Iter<V>
 ```
 
@@ -81,7 +81,7 @@ Each iterator gets a _persistent view_ of the mapping, independent of concurrent
 
 
 ### Function `entries`
-``` motoko
+``` motoko norepl
 func entries() : I.Iter<(K, V)>
 ```
 
@@ -90,28 +90,28 @@ Returns an `Iter` over the entries.
 Each iterator gets a _persistent view_ of the mapping, independent of concurrent updates to the iterated map.
 
 ## Function `clone`
-``` motoko
+``` motoko norepl
 func clone<K, V>(h : TrieMap<K, V>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : TrieMap<K, V>
 ```
 
 Clone the map, given its key operations.
 
 ## Function `fromEntries`
-``` motoko
+``` motoko norepl
 func fromEntries<K, V>(entries : I.Iter<(K, V)>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : TrieMap<K, V>
 ```
 
 Clone an iterator of key-value pairs.
 
 ## Function `map`
-``` motoko
+``` motoko norepl
 func map<K, V1, V2>(h : TrieMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash, mapFn : (K, V1) -> V2) : TrieMap<K, V2>
 ```
 
 Transform (map) the values of a map, retaining its keys.
 
 ## Function `mapFilter`
-``` motoko
+``` motoko norepl
 func mapFilter<K, V1, V2>(h : TrieMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash, mapFn : (K, V1) -> ?V2) : TrieMap<K, V2>
 ```
 

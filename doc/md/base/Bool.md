@@ -7,63 +7,63 @@ avoiding computation of the right argument when possible, the functions
 of their arguments.
 
 ## Type `Bool`
-``` motoko
+``` motoko norepl
 type Bool = Prim.Types.Bool
 ```
 
 Booleans with constants `true` and `false`.
 
 ## Function `toText`
-``` motoko
+``` motoko norepl
 func toText(x : Bool) : Text
 ```
 
 Conversion.
 
 ## Function `logand`
-``` motoko
+``` motoko norepl
 func logand(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x and y`.
 
 ## Function `logor`
-``` motoko
+``` motoko norepl
 func logor(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x or y`.
 
 ## Function `logxor`
-``` motoko
+``` motoko norepl
 func logxor(x : Bool, y : Bool) : Bool
 ```
 
 Returns exclusive or of `x` and `y`, `x != y`.
 
 ## Function `lognot`
-``` motoko
+``` motoko norepl
 func lognot(x : Bool) : Bool
 ```
 
 Returns `not x`.
 
 ## Function `equal`
-``` motoko
+``` motoko norepl
 func equal(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x == y`.
 
 ## Function `notEqual`
-``` motoko
+``` motoko norepl
 func notEqual(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x != y`.
 
 ## Function `compare`
-``` motoko
+``` motoko norepl
 func compare(x : Bool, y : Bool) : {#less; #equal; #greater}
 ```
 

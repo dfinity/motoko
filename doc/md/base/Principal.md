@@ -2,7 +2,7 @@
 IC principals (user and canister smart contract IDs)
 
 ## Type `Principal`
-``` motoko
+``` motoko norepl
 type Principal = Prim.Types.Principal
 ```
 
@@ -10,95 +10,95 @@ Internet Computer principal identifiers.
 Convert to `Blob` for access to bytes.
 
 ## Value `fromActor`
-``` motoko
+``` motoko norepl
 let fromActor : (a : actor {  }) -> Principal
 ```
 
 Conversion.
 
 ## Value `toBlob`
-``` motoko
+``` motoko norepl
 let toBlob : (p : Principal) -> Blob
 ```
 
 Conversion.
 
 ## Value `fromBlob`
-``` motoko
+``` motoko norepl
 let fromBlob : (b : Blob) -> Principal
 ```
 
 Conversion.
 
 ## Function `toText`
-``` motoko
+``` motoko norepl
 func toText(p : Principal) : Text
 ```
 
 Conversion.
 
 ## Function `isAnonymous`
-``` motoko
+``` motoko norepl
 func isAnonymous(p : Principal) : Bool
 ```
 
 
 ## Function `hash`
-``` motoko
+``` motoko norepl
 func hash(principal : Principal) : Hash.Hash
 ```
 
 
 ## Function `fromText`
-``` motoko
+``` motoko norepl
 func fromText(t : Text) : Principal
 ```
 
 
 ## Function `equal`
-``` motoko
+``` motoko norepl
 func equal(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x == y`.
 
 ## Function `notEqual`
-``` motoko
+``` motoko norepl
 func notEqual(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x != y`.
 
 ## Function `less`
-``` motoko
+``` motoko norepl
 func less(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x < y`.
 
 ## Function `lessOrEqual`
-``` motoko
+``` motoko norepl
 func lessOrEqual(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x <= y`.
 
 ## Function `greater`
-``` motoko
+``` motoko norepl
 func greater(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x > y`.
 
 ## Function `greaterOrEqual`
-``` motoko
+``` motoko norepl
 func greaterOrEqual(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x >= y`.
 
 ## Function `compare`
-``` motoko
+``` motoko norepl
 func compare(x : Principal, y : Principal) : {#less; #equal; #greater}
 ```
 

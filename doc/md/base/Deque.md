@@ -2,63 +2,63 @@
 Functions for persistent, double-ended queues.
 
 ## Type `Deque`
-``` motoko
+``` motoko norepl
 type Deque<T> = (List<T>, List<T>)
 ```
 
 Double-ended queue
 
 ## Function `empty`
-``` motoko
+``` motoko norepl
 func empty<T>() : Deque<T>
 ```
 
 Empty queue
 
 ## Function `isEmpty`
-``` motoko
+``` motoko norepl
 func isEmpty<T>(q : Deque<T>) : Bool
 ```
 
 True when the queue is empty
 
 ## Function `pushFront`
-``` motoko
+``` motoko norepl
 func pushFront<T>(q : Deque<T>, x : T) : Deque<T>
 ```
 
 Insert a new element on the front end of the queue
 
 ## Function `peekFront`
-``` motoko
+``` motoko norepl
 func peekFront<T>(q : Deque<T>) : ?T
 ```
 
 Inspect the (optional) first element on the front end of the queue
 
 ## Function `popFront`
-``` motoko
+``` motoko norepl
 func popFront<T>(q : Deque<T>) : ?(T, Deque<T>)
 ```
 
 Remove the first element on the front end of the queue; Returns null when empty.
 
 ## Function `pushBack`
-``` motoko
+``` motoko norepl
 func pushBack<T>(q : Deque<T>, x : T) : Deque<T>
 ```
 
 Insert a new element on the back end of the queue
 
 ## Function `peekBack`
-``` motoko
+``` motoko norepl
 func peekBack<T>(q : Deque<T>) : ?T
 ```
 
 Inspect the (optional) first element on the back end of the queue
 
 ## Function `popBack`
-``` motoko
+``` motoko norepl
 func popBack<T>(q : Deque<T>) : ?(Deque<T>, T)
 ```
 

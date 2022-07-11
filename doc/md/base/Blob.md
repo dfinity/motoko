@@ -2,7 +2,7 @@
 Binary blobs
 
 ## Type `Blob`
-``` motoko
+``` motoko norepl
 type Blob = Prim.Types.Blob
 ```
 
@@ -15,84 +15,84 @@ Given `b : Blob`:
 (Direct indexing of Blobs is not yet supported.)
 
 ## Value `hash`
-``` motoko
+``` motoko norepl
 let hash : (b : Blob) -> Nat32
 ```
 
 Returns a (non-cryptographic) hash of 'b'
 
 ## Function `equal`
-``` motoko
+``` motoko norepl
 func equal(x : Blob, y : Blob) : Bool
 ```
 
 Returns `x == y`.
 
 ## Function `notEqual`
-``` motoko
+``` motoko norepl
 func notEqual(x : Blob, y : Blob) : Bool
 ```
 
 Returns `x != y`.
 
 ## Function `less`
-``` motoko
+``` motoko norepl
 func less(x : Blob, y : Blob) : Bool
 ```
 
 Returns `x < y`.
 
 ## Function `lessOrEqual`
-``` motoko
+``` motoko norepl
 func lessOrEqual(x : Blob, y : Blob) : Bool
 ```
 
 Returns `x <= y`.
 
 ## Function `greater`
-``` motoko
+``` motoko norepl
 func greater(x : Blob, y : Blob) : Bool
 ```
 
 Returns `x > y`.
 
 ## Function `greaterOrEqual`
-``` motoko
+``` motoko norepl
 func greaterOrEqual(x : Blob, y : Blob) : Bool
 ```
 
 Returns `x >= y`.
 
 ## Function `compare`
-``` motoko
+``` motoko norepl
 func compare(x : Blob, y : Blob) : {#less; #equal; #greater}
 ```
 
 Returns the order of `x` and `y`.
 
 ## Value `fromArray`
-``` motoko
+``` motoko norepl
 let fromArray : [Nat8] -> Blob
 ```
 
 Creates a blob from an array of bytes, by copying each element.
 
 ## Value `fromArrayMut`
-``` motoko
+``` motoko norepl
 let fromArrayMut : [var Nat8] -> Blob
 ```
 
 Creates a blob from a mutable array of bytes, by copying each element.
 
 ## Value `toArray`
-``` motoko
+``` motoko norepl
 let toArray : Blob -> [Nat8]
 ```
 
 Creates an array of bytes from a blob, by copying each element.
 
 ## Value `toArrayMut`
-``` motoko
+``` motoko norepl
 let toArrayMut : Blob -> [var Nat8]
 ```
 
