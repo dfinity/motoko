@@ -39,6 +39,8 @@ module Types = {
 };
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
+func shiftLeft(x : Nat, shift : Nat32) : Nat { (prim "lsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
+func shiftRight(x : Nat, shift : Nat32) : Nat { (prim "rsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
 
 // for testing
 func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
@@ -130,6 +132,9 @@ func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bo
 // Text conversion
 func decodeUtf8(b : Blob) : ?Text = (prim "decodeUtf8" : Blob -> ?Text) b;
 func encodeUtf8(t : Text) : Blob = (prim "encodeUtf8" : Text -> Blob) t;
+
+// Text comparison
+func textCompare(t1 : Text, t2 : Text) : Int8 = (prim "text_compare" : (Text, Text) -> Int8) (t1, t2);
 
 // Exotic bitwise operations
 func popcntNat8(w : Nat8) : Nat8 = (prim "popcnt8" : Nat8 -> Nat8) w;

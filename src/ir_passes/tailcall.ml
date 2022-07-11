@@ -147,7 +147,7 @@ and pat env p =
   let env = pat' env p.it in
   env
 
-and pat' env p = match p with
+and pat' env = function
   | WildP         ->  env
   | VarP i        ->
     let env1 = bind env i None in
