@@ -195,7 +195,7 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
   Buffer.add_string buf arg.name;
   opt_typ buf arg.typ
 
-let begin_block buf = bprintf buf "\n``` motoko norepl\n"
+let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
 
 let end_block buf = bprintf buf "\n```\n\n"
 

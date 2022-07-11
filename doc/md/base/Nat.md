@@ -5,91 +5,91 @@ Most operations on natural numbers (e.g. addition) are available as built-in ope
 This module provides equivalent functions and `Text` conversion.
 
 ## Type `Nat`
-``` motoko norepl
+``` motoko no-repl
 type Nat = Prim.Types.Nat
 ```
 
 Infinite precision natural numbers.
 
 ## Value `toText`
-``` motoko norepl
+``` motoko no-repl
 let toText : Nat -> Text
 ```
 
 Conversion.
 
 ## Function `min`
-``` motoko norepl
+``` motoko no-repl
 func min(x : Nat, y : Nat) : Nat
 ```
 
 Returns the minimum of `x` and `y`.
 
 ## Function `max`
-``` motoko norepl
+``` motoko no-repl
 func max(x : Nat, y : Nat) : Nat
 ```
 
 Returns the maximum of `x` and `y`.
 
 ## Function `equal`
-``` motoko norepl
+``` motoko no-repl
 func equal(x : Nat, y : Nat) : Bool
 ```
 
 Returns `x == y`.
 
 ## Function `notEqual`
-``` motoko norepl
+``` motoko no-repl
 func notEqual(x : Nat, y : Nat) : Bool
 ```
 
 Returns `x != y`.
 
 ## Function `less`
-``` motoko norepl
+``` motoko no-repl
 func less(x : Nat, y : Nat) : Bool
 ```
 
 Returns `x < y`.
 
 ## Function `lessOrEqual`
-``` motoko norepl
+``` motoko no-repl
 func lessOrEqual(x : Nat, y : Nat) : Bool
 ```
 
 Returns `x <= y`.
 
 ## Function `greater`
-``` motoko norepl
+``` motoko no-repl
 func greater(x : Nat, y : Nat) : Bool
 ```
 
 Returns `x > y`.
 
 ## Function `greaterOrEqual`
-``` motoko norepl
+``` motoko no-repl
 func greaterOrEqual(x : Nat, y : Nat) : Bool
 ```
 
 Returns `x >= y`.
 
 ## Function `compare`
-``` motoko norepl
+``` motoko no-repl
 func compare(x : Nat, y : Nat) : {#less; #equal; #greater}
 ```
 
 Returns the order of `x` and `y`.
 
 ## Function `add`
-``` motoko norepl
+``` motoko no-repl
 func add(x : Nat, y : Nat) : Nat
 ```
 
 Returns the sum of `x` and `y`, `x + y`.
 
 ## Function `sub`
-``` motoko norepl
+``` motoko no-repl
 func sub(x : Nat, y : Nat) : Nat
 ```
 
@@ -97,14 +97,14 @@ Returns the difference of `x` and `y`, `x - y`.
 Traps on underflow.
 
 ## Function `mul`
-``` motoko norepl
+``` motoko no-repl
 func mul(x : Nat, y : Nat) : Nat
 ```
 
 Returns the product of `x` and `y`, `x * y`.
 
 ## Function `div`
-``` motoko norepl
+``` motoko no-repl
 func div(x : Nat, y : Nat) : Nat
 ```
 
@@ -112,7 +112,7 @@ Returns the division of `x` by `y`, `x / y`.
 Traps when `y` is zero.
 
 ## Function `rem`
-``` motoko norepl
+``` motoko no-repl
 func rem(x : Nat, y : Nat) : Nat
 ```
 
@@ -120,7 +120,7 @@ Returns the remainder of `x` divided by `y`, `x % y`.
 Traps when `y` is zero.
 
 ## Function `pow`
-``` motoko norepl
+``` motoko no-repl
 func pow(x : Nat, y : Nat) : Nat
 ```
 

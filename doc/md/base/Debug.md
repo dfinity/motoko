@@ -2,7 +2,7 @@
 Debugging aids
 
 ## Value `print`
-``` motoko norepl
+``` motoko no-repl
 let print : Text -> ()
 ```
 
@@ -11,7 +11,7 @@ How this stream is stored or displayed depends on the
 execution environment.
 
 ## Value `trap`
-``` motoko norepl
+``` motoko no-repl
 let trap : Text -> None
 ```
 

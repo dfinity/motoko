@@ -34,7 +34,7 @@ increase `--max-stable-pages` as desired, approaching the IC maximum (currently 
 All applications should reserve at least one page for stable variable data, even when no stable variables are used.
 
 ## Value `size`
-``` motoko norepl
+``` motoko no-repl
 let size : () -> (pages : Nat64)
 ```
 
@@ -45,7 +45,7 @@ Preserved across upgrades, together with contents of allocated
 stable memory.
 
 ## Value `grow`
-``` motoko norepl
+``` motoko no-repl
 let grow : (new_pages : Nat64) -> (oldpages : Nat64)
 ```
 
@@ -58,7 +58,7 @@ Function `grow` is capped by a soft limit on `size` controlled by compile-time f
  `--max-stable-pages <n>` (the default is 65536, or 4GiB).
 
 ## Value `stableVarQuery`
-``` motoko norepl
+``` motoko no-repl
 let stableVarQuery : () -> (shared query () -> async { size : Nat64 })
 ```
 
@@ -70,115 +70,115 @@ Like any other query, its state changes are discarded so no actual upgrade (or o
 The query can only be called by the enclosing actor and will trap for other callers.
 
 ## Value `loadNat32`
-``` motoko norepl
+``` motoko no-repl
 let loadNat32 : (offset : Nat64) -> Nat32
 ```
 
 
 ## Value `storeNat32`
-``` motoko norepl
+``` motoko no-repl
 let storeNat32 : (offset : Nat64, value : Nat32) -> ()
 ```
 
 
 ## Value `loadNat8`
-``` motoko norepl
+``` motoko no-repl
 let loadNat8 : (offset : Nat64) -> Nat8
 ```
 
 
 ## Value `storeNat8`
-``` motoko norepl
+``` motoko no-repl
 let storeNat8 : (offset : Nat64, value : Nat8) -> ()
 ```
 
 
 ## Value `loadNat16`
-``` motoko norepl
+``` motoko no-repl
 let loadNat16 : (offset : Nat64) -> Nat16
 ```
 
 
 ## Value `storeNat16`
-``` motoko norepl
+``` motoko no-repl
 let storeNat16 : (offset : Nat64, value : Nat16) -> ()
 ```
 
 
 ## Value `loadNat64`
-``` motoko norepl
+``` motoko no-repl
 let loadNat64 : (offset : Nat64) -> Nat64
 ```
 
 
 ## Value `storeNat64`
-``` motoko norepl
+``` motoko no-repl
 let storeNat64 : (offset : Nat64, value : Nat64) -> ()
 ```
 
 
 ## Value `loadInt32`
-``` motoko norepl
+``` motoko no-repl
 let loadInt32 : (offset : Nat64) -> Int32
 ```
 
 
 ## Value `storeInt32`
-``` motoko norepl
+``` motoko no-repl
 let storeInt32 : (offset : Nat64, value : Int32) -> ()
 ```
 
 
 ## Value `loadInt8`
-``` motoko norepl
+``` motoko no-repl
 let loadInt8 : (offset : Nat64) -> Int8
 ```
 
 
 ## Value `storeInt8`
-``` motoko norepl
+``` motoko no-repl
 let storeInt8 : (offset : Nat64, value : Int8) -> ()
 ```
 
 
 ## Value `loadInt16`
-``` motoko norepl
+``` motoko no-repl
 let loadInt16 : (offset : Nat64) -> Int16
 ```
 
 
 ## Value `storeInt16`
-``` motoko norepl
+``` motoko no-repl
 let storeInt16 : (offset : Nat64, value : Int16) -> ()
 ```
 
 
 ## Value `loadInt64`
-``` motoko norepl
+``` motoko no-repl
 let loadInt64 : (offset : Nat64) -> Int64
 ```
 
 
 ## Value `storeInt64`
-``` motoko norepl
+``` motoko no-repl
 let storeInt64 : (offset : Nat64, value : Int64) -> ()
 ```
 
 
 ## Value `loadFloat`
-``` motoko norepl
+``` motoko no-repl
 let loadFloat : (offset : Nat64) -> Float
 ```
 
 
 ## Value `storeFloat`
-``` motoko norepl
+``` motoko no-repl
 let storeFloat : (offset : Nat64, value : Float) -> ()
 ```
 
 
 ## Value `loadBlob`
-``` motoko norepl
+``` motoko no-repl
 let loadBlob : (offset : Nat64, size : Nat) -> Blob
 ```
 
@@ -186,7 +186,7 @@ Load `size` bytes starting from `offset` as a `Blob`.
 Traps on out-of-bounds access.
 
 ## Value `storeBlob`
-``` motoko norepl
+``` motoko no-repl
 let storeBlob : (offset : Nat64, value : Blob) -> ()
 ```
 

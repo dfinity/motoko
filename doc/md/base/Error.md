@@ -5,14 +5,14 @@ The `Error` type is the argument to `throw`, parameter of `catch`.
 The `Error` type is opaque.
 
 ## Type `Error`
-``` motoko norepl
+``` motoko no-repl
 type Error = Prim.Types.Error
 ```
 
 Error values resulting from  `async` computations
 
 ## Type `ErrorCode`
-``` motoko norepl
+``` motoko no-repl
 type ErrorCode = Prim.ErrorCode
 ```
 
@@ -35,21 +35,21 @@ type ErrorCode = {
 ```
 
 ## Value `reject`
-``` motoko norepl
+``` motoko no-repl
 let reject : (m : Text) -> Error
 ```
 
 Create an error from message `m` with code #canister_reject.
 
 ## Value `code`
-``` motoko norepl
+``` motoko no-repl
 let code : (e : Error) -> ErrorCode
 ```
 
 Returns the code of an error `e`.
 
 ## Value `message`
-``` motoko norepl
+``` motoko no-repl
 let message : (e : Error) -> Text
 ```
 

@@ -11,7 +11,7 @@ Specification and corresponding documentation for how to use this to make query
 calls to your canister tamperproof.
 
 ## Value `set`
-``` motoko norepl
+``` motoko no-repl
 let set : (data : Blob) -> ()
 ```
 
@@ -21,7 +21,7 @@ Must be called from an update method, else traps.
 Must be passed a blob of at most 32 bytes, else traps.
 
 ## Value `getCertificate`
-``` motoko norepl
+``` motoko no-repl
 let getCertificate : () -> ?Blob
 ```
 

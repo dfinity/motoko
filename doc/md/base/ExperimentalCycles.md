@@ -12,14 +12,14 @@ Dedicated syntactic support for manipulating cycles may be added to the language
 `balance()` can change from one call to the next.
 
 ## Value `balance`
-``` motoko norepl
+``` motoko no-repl
 let balance : () -> (amount : Nat)
 ```
 
 Returns the actor's current balance of cycles as `amount`.
 
 ## Value `available`
-``` motoko norepl
+``` motoko no-repl
 let available : () -> (amount : Nat)
 ```
 
@@ -31,7 +31,7 @@ any remaining available amount is automatically
 refunded to the caller/context.
 
 ## Value `accept`
-``` motoko norepl
+``` motoko no-repl
 let accept : (amount : Nat) -> (accepted : Nat)
 ```
 
@@ -40,7 +40,7 @@ Returns the amount actually transferred, which may be less than
 requested, for example, if less is available, or if canister balance limits are reached.
 
 ## Value `add`
-``` motoko norepl
+``` motoko no-repl
 let add : (amount : Nat) -> ()
 ```
 
@@ -56,7 +56,7 @@ If this total exceeds `balance()`, the caller traps, aborting the call.
 a shared function and after each shared function call or resume from an await.
 
 ## Value `refunded`
-``` motoko norepl
+``` motoko no-repl
 let refunded : () -> (amount : Nat)
 ```
 

@@ -9,7 +9,7 @@ See library `Deque` for mixed LIFO/FIFO behavior.
 
 
 ### Function `push`
-``` motoko norepl
+``` motoko no-repl
 func push(x : T)
 ```
 
@@ -17,7 +17,7 @@ Push an element on the top of the stack.
 
 
 ### Function `isEmpty`
-``` motoko norepl
+``` motoko no-repl
 func isEmpty() : Bool
 ```
 
@@ -25,7 +25,7 @@ True when the stack is empty.
 
 
 ### Function `peek`
-``` motoko norepl
+``` motoko no-repl
 func peek() : ?T
 ```
 
@@ -33,7 +33,7 @@ Return and retain the top element, or return null.
 
 
 ### Function `pop`
-``` motoko norepl
+``` motoko no-repl
 func pop() : ?T
 ```
 

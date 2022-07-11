@@ -2,7 +2,7 @@
 IC principals (user and canister smart contract IDs)
 
 ## Type `Principal`
-``` motoko norepl
+``` motoko no-repl
 type Principal = Prim.Types.Principal
 ```
 
@@ -10,95 +10,95 @@ Internet Computer principal identifiers.
 Convert to `Blob` for access to bytes.
 
 ## Value `fromActor`
-``` motoko norepl
+``` motoko no-repl
 let fromActor : (a : actor {  }) -> Principal
 ```
 
 Conversion.
 
 ## Value `toBlob`
-``` motoko norepl
+``` motoko no-repl
 let toBlob : (p : Principal) -> Blob
 ```
 
 Conversion.
 
 ## Value `fromBlob`
-``` motoko norepl
+``` motoko no-repl
 let fromBlob : (b : Blob) -> Principal
 ```
 
 Conversion.
 
 ## Function `toText`
-``` motoko norepl
+``` motoko no-repl
 func toText(p : Principal) : Text
 ```
 
 Conversion.
 
 ## Function `isAnonymous`
-``` motoko norepl
+``` motoko no-repl
 func isAnonymous(p : Principal) : Bool
 ```
 
 
 ## Function `hash`
-``` motoko norepl
+``` motoko no-repl
 func hash(principal : Principal) : Hash.Hash
 ```
 
 
 ## Function `fromText`
-``` motoko norepl
+``` motoko no-repl
 func fromText(t : Text) : Principal
 ```
 
 
 ## Function `equal`
-``` motoko norepl
+``` motoko no-repl
 func equal(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x == y`.
 
 ## Function `notEqual`
-``` motoko norepl
+``` motoko no-repl
 func notEqual(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x != y`.
 
 ## Function `less`
-``` motoko norepl
+``` motoko no-repl
 func less(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x < y`.
 
 ## Function `lessOrEqual`
-``` motoko norepl
+``` motoko no-repl
 func lessOrEqual(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x <= y`.
 
 ## Function `greater`
-``` motoko norepl
+``` motoko no-repl
 func greater(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x > y`.
 
 ## Function `greaterOrEqual`
-``` motoko norepl
+``` motoko no-repl
 func greaterOrEqual(x : Principal, y : Principal) : Bool
 ```
 
 Returns `x >= y`.
 
 ## Function `compare`
-``` motoko norepl
+``` motoko no-repl
 func compare(x : Principal, y : Principal) : {#less; #equal; #greater}
 ```
 

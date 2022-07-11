@@ -26,7 +26,7 @@ The functions in this module capture some common operations when working
 with optionals that can be more succinct than using pattern matching.
 
 ## Function `get`
-``` motoko norepl
+``` motoko no-repl
 func get<T>(x : ?T, default : T) : T
 ```
 
@@ -34,7 +34,7 @@ Unwraps an optional value, with a default value, i.e. `get(?x, d) = x` and
 `get(null, d) = d`.
 
 ## Function `getMapped`
-``` motoko norepl
+``` motoko no-repl
 func getMapped<A, B>(x : ?A, f : A -> B, default : B) : B
 ```
 
@@ -42,7 +42,7 @@ Unwraps an optional value using a function, or returns the default, i.e.
 `option(?x, f, d) = f x` and `option(null, f, d) = d`.
 
 ## Function `map`
-``` motoko norepl
+``` motoko no-repl
 func map<A, B>(x : ?A, f : A -> B) : ?B
 ```
 
@@ -54,7 +54,7 @@ assert Option.map<Nat, Nat>(null, func x = x + 1) == null;
 ```
 
 ## Function `iterate`
-``` motoko norepl
+``` motoko no-repl
 func iterate<A>(x : ?A, f : A -> ())
 ```
 
@@ -71,7 +71,7 @@ assert counter == 5;
 ```
 
 ## Function `apply`
-``` motoko norepl
+``` motoko no-repl
 func apply<A, B>(x : ?A, f : ?(A -> B)) : ?B
 ```
 
@@ -79,7 +79,7 @@ Applies an optional function to an optional value. Returns `null` if at
 least one of the arguments is `null`.
 
 ## Function `chain`
-``` motoko norepl
+``` motoko no-repl
 func chain<A, B>(x : ?A, f : A -> ?B) : ?B
 ```
 
@@ -87,7 +87,7 @@ Applies a function to an optional value. Returns `null` if the argument is
 `null`, or the function returns `null`.
 
 ## Function `flatten`
-``` motoko norepl
+``` motoko no-repl
 func flatten<A>(x : ??A) : ?A
 ```
 
@@ -100,7 +100,7 @@ assert Option.flatten(null) == null;
 ```
 
 ## Function `make`
-``` motoko norepl
+``` motoko no-repl
 func make<A>(x : A) : ?A
 ```
 
@@ -111,21 +111,21 @@ assert Option.make(42) == ?42;
 ```
 
 ## Function `isSome`
-``` motoko norepl
+``` motoko no-repl
 func isSome(x : ?Any) : Bool
 ```
 
 Returns true if the argument is not `null`, otherwise returns false.
 
 ## Function `isNull`
-``` motoko norepl
+``` motoko no-repl
 func isNull(x : ?Any) : Bool
 ```
 
 Returns true if the argument is `null`, otherwise returns false.
 
 ## Function `assertSome`
-``` motoko norepl
+``` motoko no-repl
 func assertSome(x : ?Any)
 ```
 
@@ -133,7 +133,7 @@ Asserts that the value is not `null`; fails otherwise.
 @deprecated Option.assertSome will be removed soon; use an assert expression instead
 
 ## Function `assertNull`
-``` motoko norepl
+``` motoko no-repl
 func assertNull(x : ?Any)
 ```
 
@@ -141,7 +141,7 @@ Asserts that the value _is_ `null`; fails otherwise.
 @deprecated Option.assertNull will be removed soon; use an assert expression instead
 
 ## Function `unwrap`
-``` motoko norepl
+``` motoko no-repl
 func unwrap<T>(x : ?T) : T
 ```
 

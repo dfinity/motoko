@@ -2,7 +2,7 @@
 The Iterator type
 
 ## Type `Iter`
-``` motoko norepl
+``` motoko no-repl
 type Iter<T> = { next : () -> ?T }
 ```
 

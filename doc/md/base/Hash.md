@@ -2,35 +2,35 @@
 Hash values
 
 ## Type `Hash`
-``` motoko norepl
+``` motoko no-repl
 type Hash = Nat32
 ```
 
 Hash values represent a string of _hash bits_, packed into a `Nat32`.
 
 ## Value `length`
-``` motoko norepl
+``` motoko no-repl
 let length : Nat
 ```
 
 The hash length, always 31.
 
 ## Function `bit`
-``` motoko norepl
+``` motoko no-repl
 func bit(h : Hash, pos : Nat) : Bool
 ```
 
 Project a given bit from the bit vector.
 
 ## Function `equal`
-``` motoko norepl
+``` motoko no-repl
 func equal(ha : Hash, hb : Hash) : Bool
 ```
 
 Test if two hashes are equal
 
 ## Function `hash`
-``` motoko norepl
+``` motoko no-repl
 func hash(n : Nat) : Hash
 ```
 
@@ -38,21 +38,21 @@ Computes a hash from the least significant 32-bits of `n`, ignoring other bits.
 @deprecated For large `Nat` values consider using a bespoke hash function that considers all of the argument's bits.
 
 ## Function `debugPrintBits`
-``` motoko norepl
+``` motoko no-repl
 func debugPrintBits(bits : Hash)
 ```
 
 @deprecated This function will be removed in future.
 
 ## Function `debugPrintBitsRev`
-``` motoko norepl
+``` motoko no-repl
 func debugPrintBitsRev(bits : Hash)
 ```
 
 @deprecated This function will be removed in future.
 
 ## Function `hashNat8`
-``` motoko norepl
+``` motoko no-repl
 func hashNat8(key : [Hash]) : Hash
 ```
 
