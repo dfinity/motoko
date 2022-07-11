@@ -575,27 +575,27 @@ Motoko provides the following primitive type identifiers, including support for 
 
 The category of a type determines the operators (unary, binary, relational and in-place update via assignment) applicable to values of that type.
 
-| Identifier                                                     | Category | Description                                                            |
-|----------------------------------------------------------------|----------|------------------------------------------------------------------------|
-| [`Bool`](../../../../references/motoko-ref/bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
-| [`Char`](../../../../references/motoko-ref/char.md)           | O        | Unicode characters                                                     |
-| [`Text`](../../../../references/motoko-ref/text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
-| [`Float`](../../../../references/motoko-ref/float.md)         | A, O     | 64-bit floating point values                                           |
-| [`Int`](../../../../references/motoko-ref/int.md)             | A, O     | signed integer values with arithmetic (unbounded)                      |
-| [`Int8`](../../../../references/motoko-ref/int8.md)           | A, O     | signed 8-bit integer values with checked arithmetic                    |
-| [`Int16`](../../../../references/motoko-ref/int16.md)         | A, O     | signed 16-bit integer values with checked arithmetic                   |
-| [`Int32`](../../../../references/motoko-ref/int32.md)         | A, O     | signed 32-bit integer values with checked arithmetic                   |
-| [`Int64`](../../../../references/motoko-ref/int64.md)         | A, O     | signed 64-bit integer values with checked arithmetic                   |
-| [`Nat`](../../../../references/motoko-ref/nat.md)             | A, O     | non-negative integer values with arithmetic (unbounded)                |
-| [`Nat8`](../../../../references/motoko-ref/nat8.md)           | A, O     | non-negative 8-bit integer values with checked arithmetic              |
-| [`Nat16`](../../../../references/motoko-ref/nat16.md)         | A, O     | non-negative 16-bit integer values with checked arithmetic             |
-| [`Nat32`](../../../../references/motoko-ref/nat32.md)         | A, O     | non-negative 32-bit integer values with checked arithmetic             |
-| [`Nat64`](../../../../references/motoko-ref/nat64.md)         | A, O     | non-negative 64-bit integer values with checked arithmetic             |
-| [`Blob`](../../../../references/motoko-ref/blob.md)           | O        | binary blobs with iterators                                            |
-| [`Principal`](../../../../references/motoko-ref/principal.md) | O        | principals                                                             |
-| [`Error`](../../../../references/motoko-ref/error.md)         |          | (opaque) error values                                                  |
+| Identifier                          | Category | Description                                                            |
+|-------------------------------------|----------|------------------------------------------------------------------------|
+| [`Bool`](./base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
+| [`Char`](./base/Char.md)           | O        | Unicode characters                                                     |
+| [`Text`](./base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
+| [`Float`](./base/Float.md)         | A, O     | 64-bit floating point values                                           |
+| [`Int`](./base/Int.md)             | A, O     | signed integer values with arithmetic (unbounded)                      |
+| [`Int8`](./base/Int8.md)           | A, O     | signed 8-bit integer values with checked arithmetic                    |
+| [`Int16`](./base/Int16.md)         | A, O     | signed 16-bit integer values with checked arithmetic                   |
+| [`Int32`](./base/Int32.md)         | A, O     | signed 32-bit integer values with checked arithmetic                   |
+| [`Int64`](./base/Int64.md)         | A, O     | signed 64-bit integer values with checked arithmetic                   |
+| [`Nat`](./base/Nat.md)             | A, O     | non-negative integer values with arithmetic (unbounded)                |
+| [`Nat8`](./base/Nat8.md)           | A, O     | non-negative 8-bit integer values with checked arithmetic              |
+| [`Nat16`](./base/Nat16.md)         | A, O     | non-negative 16-bit integer values with checked arithmetic             |
+| [`Nat32`](./base/Nat32.md)         | A, O     | non-negative 32-bit integer values with checked arithmetic             |
+| [`Nat64`](./base/Nat64.md)         | A, O     | non-negative 64-bit integer values with checked arithmetic             |
+| [`Blob`](./base/Blob.md)           | O        | binary blobs with iterators                                            |
+| [`Principal`](./base/Principal.md) | O        | principals                                                             |
+| [`Error`](./base/Error.md)         |          | (opaque) error values                                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related functions and values (see [Motoko Base Library](../../../../references/motoko-ref/stdlib-intro.md)). For example, the [`Text`](../../../../references/motoko-ref/text.md) library provides common functions on `Text` values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related functions and values (see [Motoko Base Library](./base-intro.md)). For example, the [`Text`](./base/Text.md) library provides common functions on `Text` values.
 
 ### Type `Bool`
 

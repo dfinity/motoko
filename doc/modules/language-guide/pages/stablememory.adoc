@@ -36,7 +36,7 @@ application.
 ## The Library
 
 
-Support for stable memory is provided by the link:../../../../references/motoko-ref/experimentalstablememory{outfilesuffix}[ExperimentalStableMemory]
+Support for stable memory is provided by the link:./base/ExperimentalStableMemory{outfilesuffix}[ExperimentalStableMemory]
 library in package `+base+`.
 
 

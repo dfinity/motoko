@@ -208,7 +208,7 @@ import Array "mo:base/Array";
 ....
 
 In this section, we discuss some of the most frequently used array operations.
-For more information about using arrays, see the link:../../../../references/motoko-ref/array{outfilesuffix}[Array] library descriptions.
+For more information about using arrays, see the link:./base/Array{outfilesuffix}[Array] library descriptions.
 
 === Allocate an immutable array with varying content
 
