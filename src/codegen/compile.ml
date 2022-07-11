@@ -1205,16 +1205,16 @@ module BitTagged = struct
     compile_shrS_const 1l ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  (* 32 bit numbers, dynamic *)
+  (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
   let if_can_tag_i32 env retty is1 is2 =
-    Func.share_code1 env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low 30 bits are either all 0 or all 1 *)
-      get_x ^^ compile_shl_const 1l ^^
-      get_x ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-      compile_shrU_const 31l
+    Func.share_code1 env "cannot_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
+      (* checks that all but the low 30 bits are both either 0 or 1 *)
+      get_x ^^ compile_shrU_const 30l ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
     ) ^^
-    E.if_ env retty is2 is1 (* NB: swapped branches *)
+    E.if_ env retty is1 is2
 
   let if_can_tag_u32 env retty is1 is2 =
     compile_shrU_const 30l ^^
@@ -1705,8 +1705,9 @@ module BoxedSmallWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 30)) ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      get_n ^^ compile_shrU_const 30l ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
       G.if1 I32Type
         (get_n ^^ BitTagged.tag_i32)
         (compile_box env get_n)
@@ -1715,8 +1716,8 @@ module BoxedSmallWord = struct
   let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
-        ( get_n ^^ BitTagged.untag_i32)
-        ( get_n ^^ Heap.load_field payload_field)
+        (get_n ^^ BitTagged.untag_i32)
+        (get_n ^^ Heap.load_field payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2861,15 +2862,15 @@ module Prim = struct
      Both {Nat,Int}{8,16} fit into the vanilla stackrep, so no boxing is necessary.
      This MSB-stored schema is also essentially what the interpreter is using.
   *)
-  let prim_word32toNat env = BigNum.from_word32 env
+  let prim_word32toNat = BigNum.from_word32
   let prim_shiftWordNtoUnsigned env b =
     compile_shrU_const b ^^
     prim_word32toNat env
-  let prim_word32toInt env = BigNum.from_signed_word32 env
+  let prim_word32toInt = BigNum.from_signed_word32
   let prim_shiftWordNtoSigned env b =
     compile_shrS_const b ^^
     prim_word32toInt env
-  let prim_intToWord32 env = BigNum.truncate_to_word32 env
+  let prim_intToWord32 = BigNum.truncate_to_word32
   let prim_intToWordNShifted env b =
     prim_intToWord32 env ^^
     TaggedSmallWord.shift_leftWordNtoI32 b
