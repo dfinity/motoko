@@ -12,12 +12,10 @@ happens until the first `set`.
 Internally, table growth policy is very simple, for now:
  Double the current capacity when the expected bucket list size grows beyond a certain constant.
 
-## `
-class HashMap<K, V>`
+## `class HashMap<K, V>`
 
 
 ### Function `size`
-
 ``` motoko
 func size() : Nat
 ```
@@ -26,7 +24,6 @@ Returns the number of entries in this HashMap.
 
 
 ### Function `delete`
-
 ``` motoko
 func delete(k : K)
 ```
@@ -36,7 +33,6 @@ exist.
 
 
 ### Function `remove`
-
 ``` motoko
 func remove(k : K) : ?V
 ```
@@ -46,7 +42,6 @@ existed or `null` otherwise.
 
 
 ### Function `get`
-
 ``` motoko
 func get(k : K) : ?V
 ```
@@ -56,7 +51,6 @@ existed or `null` otherwise.
 
 
 ### Function `put`
-
 ``` motoko
 func put(k : K, v : V)
 ```
@@ -65,7 +59,6 @@ Insert the value `v` at key `k`. Overwrites an existing entry with key `k`
 
 
 ### Function `replace`
-
 ``` motoko
 func replace(k : K, v : V) : ?V
 ```
@@ -75,7 +68,6 @@ Insert the value `v` at key `k` and returns the previous value stored at
 
 
 ### Function `keys`
-
 ``` motoko
 func keys() : Iter.Iter<K>
 ```
@@ -84,7 +76,6 @@ An `Iter` over the keys.
 
 
 ### Function `vals`
-
 ``` motoko
 func vals() : Iter.Iter<V>
 ```
@@ -93,7 +84,6 @@ An `Iter` over the values.
 
 
 ### Function `entries`
-
 ``` motoko
 func entries() : Iter.Iter<(K, V)>
 ```
@@ -104,7 +94,6 @@ An imperative HashMap with a minimal object-oriented interface.
 Maps keys of type `K` to values of type `V`.
 
 ## Function `clone`
-
 ``` motoko
 func clone<K, V>(h : HashMap<K, V>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : HashMap<K, V>
 ```
@@ -113,7 +102,6 @@ clone cannot be an efficient object method,
 ...but is still useful in tests, and beyond.
 
 ## Function `fromIter`
-
 ``` motoko
 func fromIter<K, V>(iter : Iter.Iter<(K, V)>, initCapacity : Nat, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : HashMap<K, V>
 ```
@@ -121,14 +109,12 @@ func fromIter<K, V>(iter : Iter.Iter<(K, V)>, initCapacity : Nat, keyEq : (K, K)
 Clone from any iterator of key-value pairs
 
 ## Function `map`
-
 ``` motoko
 func map<K, V1, V2>(h : HashMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash, mapFn : (K, V1) -> V2) : HashMap<K, V2>
 ```
 
 
 ## Function `mapFilter`
-
 ``` motoko
 func mapFilter<K, V1, V2>(h : HashMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash, mapFn : (K, V1) -> ?V2) : HashMap<K, V2>
 ```

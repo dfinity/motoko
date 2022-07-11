@@ -2,7 +2,6 @@
 Debugging aids
 
 ## Value `print`
-
 ``` motoko
 let print : Text -> ()
 ```
@@ -12,7 +11,6 @@ How this stream is stored or displayed depends on the
 execution environment.
 
 ## Value `trap`
-
 ``` motoko
 let trap : Text -> None
 ```

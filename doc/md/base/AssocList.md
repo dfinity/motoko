@@ -5,7 +5,6 @@ Implements the same operations as library `Trie`, but uses a
 linked-list of entries and no hashing.
 
 ## Type `AssocList`
-
 ``` motoko
 type AssocList<K, V> = List.List<(K, V)>
 ```
@@ -13,7 +12,6 @@ type AssocList<K, V> = List.List<(K, V)>
 polymorphic association linked lists between keys and values
 
 ## Function `find`
-
 ``` motoko
 func find<K, V>(al : AssocList<K, V>, k : K, k_eq : (K, K) -> Bool) : ?V
 ```
@@ -21,7 +19,6 @@ func find<K, V>(al : AssocList<K, V>, k : K, k_eq : (K, K) -> Bool) : ?V
 Find the value associated with a given key, or null if absent.
 
 ## Function `replace`
-
 ``` motoko
 func replace<K, V>(al : AssocList<K, V>, k : K, k_eq : (K, K) -> Bool, ov : ?V) : (AssocList<K, V>, ?V)
 ```
@@ -30,7 +27,6 @@ replace the value associated with a given key, or add it, if missing.
 returns old value, or null, if no prior value existed.
 
 ## Function `diff`
-
 ``` motoko
 func diff<K, V, W>(al1 : AssocList<K, V>, al2 : AssocList<K, W>, keq : (K, K) -> Bool) : AssocList<K, V>
 ```
@@ -40,7 +36,6 @@ the left list whose keys are not present in the right list; the
 "extra" values of the right list are irrelevant.
 
 ## Function `mapAppend`
-
 ``` motoko
 func mapAppend<K, V, W, X>(al1 : AssocList<K, V>, al2 : AssocList<K, W>, vbin : (?V, ?W) -> X) : AssocList<K, X>
 ```
@@ -48,7 +43,6 @@ func mapAppend<K, V, W, X>(al1 : AssocList<K, V>, al2 : AssocList<K, W>, vbin : 
 Transform and combine the entries of two association lists.
 
 ## Function `disjDisjoint`
-
 ``` motoko
 func disjDisjoint<K, V, W, X>(al1 : AssocList<K, V>, al2 : AssocList<K, W>, vbin : (?V, ?W) -> X) : AssocList<K, X>
 ```
@@ -56,7 +50,6 @@ func disjDisjoint<K, V, W, X>(al1 : AssocList<K, V>, al2 : AssocList<K, W>, vbin
 Specialized version of `disj`, optimized for disjoint sub-spaces of keyspace (no matching keys).
 
 ## Function `disj`
-
 ``` motoko
 func disj<K, V, W, X>(al1 : AssocList<K, V>, al2 : AssocList<K, W>, keq : (K, K) -> Bool, vbin : (?V, ?W) -> X) : AssocList<K, X>
 ```
@@ -71,7 +64,6 @@ situations, the operator accepts optional values, but is never
 applied to (null, null).
 
 ## Function `join`
-
 ``` motoko
 func join<K, V, W, X>(al1 : AssocList<K, V>, al2 : AssocList<K, W>, keq : (K, K) -> Bool, vbin : (V, W) -> X) : AssocList<K, X>
 ```
@@ -82,7 +74,6 @@ the values of matching keys are combined with the given binary
 operator, and unmatched entries are not present in the output.
 
 ## Function `fold`
-
 ``` motoko
 func fold<K, V, X>(al : AssocList<K, V>, nil : X, cons : (K, V, X) -> X) : X
 ```

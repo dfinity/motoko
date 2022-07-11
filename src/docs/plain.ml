@@ -38,7 +38,7 @@ let sep_by' :
 
 (** Adds a title at `level` *)
 let title : Buffer.t -> level -> string -> unit =
- fun buf level txt -> bprintf buf "\n%s %s\n" (String.make level '#') txt
+ fun buf level txt -> bprintf buf "\n%s %s" (String.make level '#') txt
 
 let rec plain_of_path : Buffer.t -> Syntax.path -> unit =
  fun buf path ->

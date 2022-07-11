@@ -2,7 +2,6 @@
 System time
 
 ## Type `Time`
-
 ``` motoko
 type Time = Int
 ```
@@ -10,7 +9,6 @@ type Time = Int
 System time is represent as nanoseconds since 1970-01-01.
 
 ## Value `now`
-
 ``` motoko
 let now : () -> Time
 ```

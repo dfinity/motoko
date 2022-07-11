@@ -2,7 +2,6 @@
 Iterators
 
 ## Type `Iter`
-
 ``` motoko
 type Iter<T> = { next : () -> ?T }
 ```
@@ -21,12 +20,10 @@ for (x in i) {
 }
 ```
 
-## `
-class range`
+## `class range`
 
 
 ### Function `next`
-
 ``` motoko
 func next() : ?Nat
 ```
@@ -42,12 +39,10 @@ assert(?3 == iter.next());
 assert(null == iter.next());
 ```
 
-## `
-class revRange`
+## `class revRange`
 
 
 ### Function `next`
-
 ``` motoko
 func next() : ?Int
 ```
@@ -56,7 +51,6 @@ Like `range` but produces the values in the opposite
 order.
 
 ## Function `iterate`
-
 ``` motoko
 func iterate<A>(xs : Iter<A>, f : (A, Nat) -> ())
 ```
@@ -74,7 +68,6 @@ assert(6 == sum)
 ```
 
 ## Function `size`
-
 ``` motoko
 func size<A>(xs : Iter<A>) : Nat
 ```
@@ -83,7 +76,6 @@ Consumes an iterator and counts how many elements were produced
 (discarding them in the process).
 
 ## Function `map`
-
 ``` motoko
 func map<A, B>(xs : Iter<A>, f : A -> B) : Iter<B>
 ```
@@ -101,7 +93,6 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `filter`
-
 ``` motoko
 func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>
 ```
@@ -118,7 +109,6 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `make`
-
 ``` motoko
 func make<A>(x : A) : Iter<A>
 ```
@@ -134,7 +124,6 @@ assert(?10 == iter.next());
 ```
 
 ## Function `fromArray`
-
 ``` motoko
 func fromArray<A>(xs : [A]) : Iter<A>
 ```
@@ -150,7 +139,6 @@ assert(null == iter.next());
 ```
 
 ## Function `fromArrayMut`
-
 ``` motoko
 func fromArrayMut<A>(xs : [var A]) : Iter<A>
 ```
@@ -160,7 +148,6 @@ the elements of the Array at the time the iterator is created, so
 further modifications won't be reflected in the iterator.
 
 ## Value `fromList`
-
 ``` motoko
 let fromList
 ```
@@ -168,7 +155,6 @@ let fromList
 Like `fromArray` but for Lists.
 
 ## Function `toArray`
-
 ``` motoko
 func toArray<A>(xs : Iter<A>) : [A]
 ```
@@ -181,7 +167,6 @@ assert([1, 2, 3] == Iter.toArray(iter));
 ```
 
 ## Function `toArrayMut`
-
 ``` motoko
 func toArrayMut<A>(xs : Iter<A>) : [var A]
 ```
@@ -189,7 +174,6 @@ func toArrayMut<A>(xs : Iter<A>) : [var A]
 Like `toArray` but for Arrays with mutable elements.
 
 ## Function `toList`
-
 ``` motoko
 func toList<A>(xs : Iter<A>) : List.List<A>
 ```

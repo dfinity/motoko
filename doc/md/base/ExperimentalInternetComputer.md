@@ -4,7 +4,6 @@ Low-level interface to the Internet Computer.
 **WARNING:** This low-level API is **experimental** and likely to change or even disappear.
 
 ## Value `call`
-
 ``` motoko
 let call : (canister : Principal, name : Text, data : Blob) -> async (reply : Blob)
 ```
@@ -18,7 +17,6 @@ Returns the response to the call, an IC _reply_ or _reject_, as a Motoko future:
 Note: `call` is an asynchronous function and can only be applied in an asynchronous context.
 
 ## Function `countInstructions`
-
 ``` motoko
 func countInstructions(comp : () -> ()) : Nat64
 ```

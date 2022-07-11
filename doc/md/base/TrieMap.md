@@ -9,12 +9,10 @@ An imperative hash map, with a general key and value type.
 
 - This class does not permit a direct `clone` operation (neither does `HashMap`), but it does permit creating iterators via `iter()`.  Each iterator costs `O(1)` to create, but represents a fixed view of the mapping that does not interfere with mutations (it will _not_ reflect subsequent insertions or mutations, if any).
 
-## `
-class TrieMap<K, V>`
+## `class TrieMap<K, V>`
 
 
 ### Function `size`
-
 ``` motoko
 func size() : Nat
 ```
@@ -23,7 +21,6 @@ Returns the number of entries in the map.
 
 
 ### Function `put`
-
 ``` motoko
 func put(k : K, v : V)
 ```
@@ -32,7 +29,6 @@ Associate a key and value, overwriting any prior association for the key.
 
 
 ### Function `replace`
-
 ``` motoko
 func replace(k : K, v : V) : ?V
 ```
@@ -41,7 +37,6 @@ Put the key and value, _and_ return the (optional) prior value for the key.
 
 
 ### Function `get`
-
 ``` motoko
 func get(k : K) : ?V
 ```
@@ -50,7 +45,6 @@ Get the (optional) value associated with the given key.
 
 
 ### Function `delete`
-
 ``` motoko
 func delete(k : K)
 ```
@@ -59,7 +53,6 @@ Delete the (optional) value associated with the given key.
 
 
 ### Function `remove`
-
 ``` motoko
 func remove(k : K) : ?V
 ```
@@ -68,7 +61,6 @@ Delete and return the (optional) value associated with the given key.
 
 
 ### Function `keys`
-
 ``` motoko
 func keys() : I.Iter<K>
 ```
@@ -79,7 +71,6 @@ Each iterator gets a _persistent view_ of the mapping, independent of concurrent
 
 
 ### Function `vals`
-
 ``` motoko
 func vals() : I.Iter<V>
 ```
@@ -90,7 +81,6 @@ Each iterator gets a _persistent view_ of the mapping, independent of concurrent
 
 
 ### Function `entries`
-
 ``` motoko
 func entries() : I.Iter<(K, V)>
 ```
@@ -100,7 +90,6 @@ Returns an `Iter` over the entries.
 Each iterator gets a _persistent view_ of the mapping, independent of concurrent updates to the iterated map.
 
 ## Function `clone`
-
 ``` motoko
 func clone<K, V>(h : TrieMap<K, V>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : TrieMap<K, V>
 ```
@@ -108,7 +97,6 @@ func clone<K, V>(h : TrieMap<K, V>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.
 Clone the map, given its key operations.
 
 ## Function `fromEntries`
-
 ``` motoko
 func fromEntries<K, V>(entries : I.Iter<(K, V)>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : TrieMap<K, V>
 ```
@@ -116,7 +104,6 @@ func fromEntries<K, V>(entries : I.Iter<(K, V)>, keyEq : (K, K) -> Bool, keyHash
 Clone an iterator of key-value pairs.
 
 ## Function `map`
-
 ``` motoko
 func map<K, V1, V2>(h : TrieMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash, mapFn : (K, V1) -> V2) : TrieMap<K, V2>
 ```
@@ -124,7 +111,6 @@ func map<K, V1, V2>(h : TrieMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> H
 Transform (map) the values of a map, retaining its keys.
 
 ## Function `mapFilter`
-
 ``` motoko
 func mapFilter<K, V1, V2>(h : TrieMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash, mapFn : (K, V1) -> ?V2) : TrieMap<K, V2>
 ```

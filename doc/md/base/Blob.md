@@ -2,7 +2,6 @@
 Binary blobs
 
 ## Type `Blob`
-
 ``` motoko
 type Blob = Prim.Types.Blob
 ```
@@ -16,7 +15,6 @@ Given `b : Blob`:
 (Direct indexing of Blobs is not yet supported.)
 
 ## Value `hash`
-
 ``` motoko
 let hash : (b : Blob) -> Nat32
 ```
@@ -24,7 +22,6 @@ let hash : (b : Blob) -> Nat32
 Returns a (non-cryptographic) hash of 'b'
 
 ## Function `equal`
-
 ``` motoko
 func equal(x : Blob, y : Blob) : Bool
 ```
@@ -32,7 +29,6 @@ func equal(x : Blob, y : Blob) : Bool
 Returns `x == y`.
 
 ## Function `notEqual`
-
 ``` motoko
 func notEqual(x : Blob, y : Blob) : Bool
 ```
@@ -40,7 +36,6 @@ func notEqual(x : Blob, y : Blob) : Bool
 Returns `x != y`.
 
 ## Function `less`
-
 ``` motoko
 func less(x : Blob, y : Blob) : Bool
 ```
@@ -48,7 +43,6 @@ func less(x : Blob, y : Blob) : Bool
 Returns `x < y`.
 
 ## Function `lessOrEqual`
-
 ``` motoko
 func lessOrEqual(x : Blob, y : Blob) : Bool
 ```
@@ -56,7 +50,6 @@ func lessOrEqual(x : Blob, y : Blob) : Bool
 Returns `x <= y`.
 
 ## Function `greater`
-
 ``` motoko
 func greater(x : Blob, y : Blob) : Bool
 ```
@@ -64,7 +57,6 @@ func greater(x : Blob, y : Blob) : Bool
 Returns `x > y`.
 
 ## Function `greaterOrEqual`
-
 ``` motoko
 func greaterOrEqual(x : Blob, y : Blob) : Bool
 ```
@@ -72,7 +64,6 @@ func greaterOrEqual(x : Blob, y : Blob) : Bool
 Returns `x >= y`.
 
 ## Function `compare`
-
 ``` motoko
 func compare(x : Blob, y : Blob) : {#less; #equal; #greater}
 ```
@@ -80,7 +71,6 @@ func compare(x : Blob, y : Blob) : {#less; #equal; #greater}
 Returns the order of `x` and `y`.
 
 ## Value `fromArray`
-
 ``` motoko
 let fromArray : [Nat8] -> Blob
 ```
@@ -88,7 +78,6 @@ let fromArray : [Nat8] -> Blob
 Creates a blob from an array of bytes, by copying each element.
 
 ## Value `fromArrayMut`
-
 ``` motoko
 let fromArrayMut : [var Nat8] -> Blob
 ```
@@ -96,7 +85,6 @@ let fromArrayMut : [var Nat8] -> Blob
 Creates a blob from a mutable array of bytes, by copying each element.
 
 ## Value `toArray`
-
 ``` motoko
 let toArray : Blob -> [Nat8]
 ```
@@ -104,7 +92,6 @@ let toArray : Blob -> [Nat8]
 Creates an array of bytes from a blob, by copying each element.
 
 ## Value `toArrayMut`
-
 ``` motoko
 let toArrayMut : Blob -> [var Nat8]
 ```
