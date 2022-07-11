@@ -61,6 +61,16 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    with today’s date.
 
+ * Make sure the markdown doc for base is up-to-date:
+   For now, in a nix-shell:
+
+   ```bash
+      make -C docs base
+      git diff
+   ```
+
+   If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
+
  * Define a shell variable `export MOC_MINOR=17`
 
  * Look at `git log --first-parent 0.6.$(expr $MOC_MINOR - 1)..HEAD` and check
