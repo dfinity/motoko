@@ -23,6 +23,7 @@ md:
 	cp -r $(SRC)/../examples $(OUT)/examples
 	cp -r $(SRC) $(TMP)
 	./convert.sh $(TMP) $(OUT)
+	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
 
 antora:
 	rm -rf build

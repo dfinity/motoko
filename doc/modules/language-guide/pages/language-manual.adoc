@@ -615,29 +615,29 @@ The category of a type determines the operators (unary, binary, relational and i
 |===
 | Identifier | Category | Description
 
-| link:../../../../references/motoko-ref/bool{outfilesuffix}[`Bool`] | L | Boolean values `true` and `false` and logical operators
-| link:../../../../references/motoko-ref/char{outfilesuffix}[`Char`] | O | Unicode characters
-| link:../../../../references/motoko-ref/text{outfilesuffix}[`Text`] | T, O | Unicode strings of characters with concatenation `_ # _` and iteration
-| link:../../../../references/motoko-ref/float{outfilesuffix}[`Float`] | A, O | 64-bit floating point values
-| link:../../../../references/motoko-ref/int{outfilesuffix}[`Int`]  | A, O | signed integer values with arithmetic (unbounded)
-| link:../../../../references/motoko-ref/int8{outfilesuffix}[`Int8`]  | A, O | signed 8-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/int16{outfilesuffix}[`Int16`]  | A, O | signed 16-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/int32{outfilesuffix}[`Int32`]  | A, O | signed 32-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/int64{outfilesuffix}[`Int64`] | A, O | signed 64-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/nat{outfilesuffix}[`Nat`]  | A, O | non-negative integer values with arithmetic (unbounded)
-| link:../../../../references/motoko-ref/nat8{outfilesuffix}[`Nat8`]  | A, O | non-negative 8-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/nat16{outfilesuffix}[`Nat16`]  | A, O | non-negative 16-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/nat32{outfilesuffix}[`Nat32`]  | A, O | non-negative 32-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/nat64{outfilesuffix}[`Nat64`] | A, O | non-negative 64-bit integer values with checked arithmetic
-| link:../../../../references/motoko-ref/blob{outfilesuffix}[`Blob`] | O | binary blobs with iterators
-| link:../../../../references/motoko-ref/principal{outfilesuffix}[`Principal`] | O | principals
-| link:../../../../references/motoko-ref/error{outfilesuffix}[`Error`] | | (opaque) error values
+| link:./base/Bool{outfilesuffix}[`Bool`] | L | Boolean values `true` and `false` and logical operators
+| link:./base/Char{outfilesuffix}[`Char`] | O | Unicode characters
+| link:./base/Text{outfilesuffix}[`Text`] | T, O | Unicode strings of characters with concatenation `_ # _` and iteration
+| link:./base/Float{outfilesuffix}[`Float`] | A, O | 64-bit floating point values
+| link:./base/Int{outfilesuffix}[`Int`]  | A, O | signed integer values with arithmetic (unbounded)
+| link:./base/Int8{outfilesuffix}[`Int8`]  | A, O | signed 8-bit integer values with checked arithmetic
+| link:./base/Int16{outfilesuffix}[`Int16`]  | A, O | signed 16-bit integer values with checked arithmetic
+| link:./base/Int32{outfilesuffix}[`Int32`]  | A, O | signed 32-bit integer values with checked arithmetic
+| link:./base/Int64{outfilesuffix}[`Int64`] | A, O | signed 64-bit integer values with checked arithmetic
+| link:./base/Nat{outfilesuffix}[`Nat`]  | A, O | non-negative integer values with arithmetic (unbounded)
+| link:./base/Nat8{outfilesuffix}[`Nat8`]  | A, O | non-negative 8-bit integer values with checked arithmetic
+| link:./base/Nat16{outfilesuffix}[`Nat16`]  | A, O | non-negative 16-bit integer values with checked arithmetic
+| link:./base/Nat32{outfilesuffix}[`Nat32`]  | A, O | non-negative 32-bit integer values with checked arithmetic
+| link:./base/Nat64{outfilesuffix}[`Nat64`] | A, O | non-negative 64-bit integer values with checked arithmetic
+| link:./base/Blob{outfilesuffix}[`Blob`] | O | binary blobs with iterators
+| link:./base/Principal{outfilesuffix}[`Principal`] | O | principals
+| link:./base/Error{outfilesuffix}[`Error`] | | (opaque) error values
 |===
 
 
 Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous
-base library providing related functions and values (see link:../../../../references/motoko-ref/stdlib-intro{outfilesuffix}[Motoko Base Library]).
-For example, the link:../../../../references/motoko-ref/text{outfilesuffix}[`Text`] library provides common functions on `Text` values.
+base library providing related functions and values (see link:./base-intro{outfilesuffix}[Motoko Base Library]).
+For example, the link:./base/Text{outfilesuffix}[`Text`] library provides common functions on `Text` values.
 
 
 === Type `Bool`
