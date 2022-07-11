@@ -2,7 +2,7 @@ open Extract
 open Mo_def
 open Source
 open Printf
-
+open Common
 type level = int
 
 type render_functions = {
@@ -237,4 +237,21 @@ let render_docs : Common.render_input -> string =
   bprintf buf "# %s\n" current_path;
   Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
+  Buffer.contents buf
+
+let make_index : Common.render_input list -> string =
+  fun (inputs : Common.render_input list ) ->
+  let buf = Buffer.create 1024 in
+  bprintf buf "# Index\n\n";
+  List.iter (fun (input : Common.render_input) ->
+    bprintf buf "* [%s](%s) %s\n"
+    input.current_path
+    (input.current_path ^ ".md")
+    (match input.module_comment with
+     | None -> ""
+     | Some s ->
+        match String.split_on_char '\n' s with
+        | [] -> ""
+        | l::_ -> l))
+  inputs;
   Buffer.contents buf
