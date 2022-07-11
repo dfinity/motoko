@@ -555,7 +555,7 @@ and exp_field obj_typ ef =
     assert (T.is_mut typ);
     let id' = fresh_var id.it typ in
     let d = varD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+    let f = { it = { I.name = id.it; I.var = id_of_var id' }; at = no_region; note = typ } in
     (d, f)
   | S.Const ->
     let typ = match T.lookup_val_field_opt id.it fts with
@@ -565,7 +565,7 @@ and exp_field obj_typ ef =
     assert (not (T.is_mut typ));
     let id' = fresh_var id.it typ in
     let d = letD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+    let f = { it = { I.name = id.it; I.var = id_of_var id' }; at = no_region; note = typ } in
     (d, f)
 
 and obj_extend obj_typ efs bases =
