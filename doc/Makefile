@@ -18,12 +18,14 @@ overview-slides.html : overview-slides.md
 	  # # -V minScale=2 \
 	  # # -V maxScale=2
 
-md:
+base:
+	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
+
+md: base
 	rm -r -f $(TMP)
 	cp -r $(SRC)/../examples $(OUT)/examples
 	cp -r $(SRC) $(TMP)
 	./convert.sh $(TMP) $(OUT)
-	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
 
 antora:
 	rm -rf build
@@ -31,4 +33,5 @@ antora:
 	./patch-antora-js.sh
 
 .PHONY: antora
+.PHONY: base
 .PHONY: md
