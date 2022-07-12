@@ -1,4 +1,4 @@
-= About this guide
+= Motoko Programming Language Guide
 ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 :proglang: Motoko
 :platform: Internet Computer blockchain network
@@ -7,6 +7,8 @@ ifdef::env-github,env-browser[:outfilesuffix:.adoc]
 :sdk-short-name: DFINITY Canister SDK
 :sdk-long-name: DFINITY Canister Software Development Kit (SDK)
 :!page-repl:
+
+== About this guide
 
 The _{proglang} Programming Language Guide_ introduces key features of the general-purpose {proglang} programming language and provides examples and reference information to help you learn the nuances of the language and the practical implications of how to apply it.
 
@@ -26,8 +28,8 @@ Although this guide is intended to help readers from different backgrounds under
 
 == Using this guide
 
-To provide a framework for learning {proglang}, you might want to start by reviewing <<Engineering values and goals>>.
-The <<Engineering values and goals>> describe the core design considerations for the development and evolution of the {proglang} programming language.
+To provide a framework for learning {proglang}, you might want to start by reviewing <<engineering-values-and-goals>>.
+The <<engineering-values-and-goals>> describe the core design considerations for the development and evolution of the {proglang} programming language.
 
 With those considerations in mind, you can start to explore fundamental concepts, including the role of types and type annotations, in simple code examples and small programs.
 
@@ -48,18 +50,19 @@ The following conventions are used in this guide:
 - The WARNING style is used to indicate where content is outdated or potentially inaccurate.
 - The NOTE style is used to indicate content that describes a feature that is not yet supported but is planned for a future release.
 
+[#engineering-values-and-goals]
 == Engineering values and goals
 
 The engineering effort behind the design and implementation of {proglang} is driven by a core set of values and goals.
 The {company-id} engineering organization uses these values and goals to define and prioritize the language features and enhancements to add and improve as part of _ongoing_ language development.
 
-For transparency into the principles that guide the engineering effort, the engineering organization  has identified the following sets of core values and secondary values for driving the direction of the{proglang} programming language.
+For transparency into the principles that guide the engineering effort, the engineering organization  has identified the following sets of core values and secondary values for driving the direction of the {proglang} programming language.
 
 === Core values
 
 The following guiding principles represent the core values of the engineering organization in prioritized order:
 
-. Seamless integration with the link:../developers-guide/concepts/what-is-ic{outfilesuffix}#ic-overview[{IC} blockchain network] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
+. Seamless integration with the link:../../../../concepts/what-is-IC{outfilesuffix}#what-is-the-internet-computer[{IC} blockchain network] to ensure that {proglang} provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
 . Ergonomics to ensure that {proglang} embraces familiarity, simplicity, clarity, explicitness, and other human factors.
 . Formal correctness to ensure that {proglang} maintains state isolation, a sound type system and type safety, precision, pattern matching, appropriate defaults, and coding best-practices.
 
@@ -81,17 +84,19 @@ As a counterpoint to the core values and goals, the engineering organization als
 
 == Finding more information
 
-For information about using {proglang} with the {sdk-short-name}, see the link:../developers-guide/sdk-guide{outfilesuffix}[SDK Developer Tools].
+For information about using {proglang} with the {sdk-short-name}, see the link:../../index{outfilesuffix}[SDK Developer Tools].
 
 For background information on various topics relevant to the design, use, or deployment of {proglang} services, or the language's design itself, consider the following resources as a starting point:
 
-[[wasm]]
+[#webassembly]
 === WebAssembly
+
 - https://webassembly.org/[WebAssembly home page].
 - https://www.youtube.com/watch?v=fvkIQfRZ-Y0[WebAssembly overview video (youtube)].
 
-[[modern-types]]
+[#modern-type-systems]
 === Modern type systems
+
  - link:++http://www.cs.cmu.edu/~rwh/pfpl/++[Practical Foundations for Programming Languages]
    by Robert Harper. Cambridge University Press, 2016.
  - link:++https://www.cis.upenn.edu/~bcpierce/tapl/++[Types and Programming Languages]

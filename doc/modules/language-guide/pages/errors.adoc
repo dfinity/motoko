@@ -10,6 +10,7 @@ There are three primary ways to represent and handle errors values in {proglang}
 - `Error` values (that, in an asynchronous context, can be thrown and caught - similar to exceptions - and contain a numeric code and message).
 
 == Our Example API ==
+
 Let's assume we're building an API for a Todo application and want to expose a function that lets a user mark one of their Todo's as *Done*.
 To keep it simple we'll accept a `TodoId` and return an `Int` that represents how many seconds the Todo has been open.
 We're also assuming we're running in our own actor so we return an async value.
@@ -22,21 +23,19 @@ func markDone(id : TodoId) : async Int
 
 The full definition of all types and helpers we'll use in this document is included for reference:
 
-[%collapsible]
-====
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=imports]
+include::../examples/todo-error.mo[lines=1..6]
 ----
-[%collapsible]
-[source,motoko]
+
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=intro]
+include::../examples/todo-error.mo[lines=10..37]
 ----
-====
 
 
 == When things go wrong ==
+
 We now realize that there are conditions under which marking a Todo as done fails.
 
 * The `id` could reference a non-existing Todo
@@ -53,14 +52,14 @@ One particularly easy and _bad_ way of reporting errors is through the use of a 
 This can lead to delayed or even missing error detection and is strongly discouraged.
 
 Definition:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=sentinel-definition]
+include::../examples/todo-error.mo[lines=38..47]
 ----
 Callsite:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=sentinel-caller]
+include::../examples/todo-error.mo[lines=108..115]
 ----
 
 === Prefer Option/Result over Exceptions where possible ===
@@ -77,14 +76,14 @@ In our example this means having our `markDone` function return an `async ?Secon
 Here's what that looks like for our `markDone` function:
 
 Definition:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=option-definition]
+include::../examples/todo-error.mo[lines=49..58]
 ----
 Callsite:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=option-caller]
+include::../examples/todo-error.mo[lines=117..126]
 ----
 
 The main drawback of this approach is that it conflates all possible errors with a single, non-informative `null` value.
@@ -97,7 +96,7 @@ One example of a good usecase for this is a HashMap lookup failing.
 To address the shortcomings of using option types to signal errors we'll now look at the richer `Result` type.
 While options are a built-in type, the `Result` is defined as a variant type like so:
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
 type Result<Ok, Err> = { #ok : Ok; #err : Err }
 ----
@@ -105,22 +104,22 @@ type Result<Ok, Err> = { #ok : Ok; #err : Err }
 Because of the second type parameter, `+Err+`, the `+Result+` type lets us select the type we use to describe errors.
 So we'll define a `TodoError` type our `markDone` function will use to signal errors.
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=todo-error]
+include::../examples/todo-error.mo[lines=60..60]
 ----
 
 This lets us now write the third version of `markDone`:
 
 Definition:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=result-definition]
+include::../examples/todo-error.mo[lines=62..76]
 ----
 Callsite:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=result-caller]
+include::../examples/todo-error.mo[lines=128..141]
 ----
 
 And as we can see we can now give the user a useful error message.
@@ -133,20 +132,20 @@ In this chapter we'll look at the different ways to create, destructure, convert
 === Pattern matching ===
 
 The first and most common way of working with `Option` and `Result` is to use 'pattern matching'.
-If we have a value of type `?Text` we can use the 'switch' keyword to access the potential `Text` contents:
+If we have a value of type `?Text` we can use the `switch` keyword to access the potential `Text` contents:
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/error-examples.mo[tag=greet-optional]
+include::../examples/error-examples.mo[lines=3..10]
 ----
 
 The important thing to understand here is that {proglang} does not let you access the optional value without also considering the case that it is missing.
 
 In the case of a `Result` we can also use pattern matching, with the difference that we also get an informative value (not just `null`) in the `#err` case.
 
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/error-examples.mo[tag=greet-result]
+include::../examples/error-examples.mo[lines=12..19]
 ----
 
 === Higher-Order functions ===
@@ -169,12 +168,13 @@ This means you can exit a shared function by ``throw``ing an `Error` value and `
 Asynchronous ``Error``s should generally only be used to signal unexpected failures that you cannot recover from, and that you don't expect many consumers of your API to handle. If a failure should be handled by your caller you should make it explicit in your signature by returning a `Result` instead. For completeness here is the `markDone` example with exceptions:
 
 Definition:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=exception-definition]
+include::../examples/todo-error.mo[lines=78..92]
 ----
+
 Callsite:
-[source,motoko]
+[source.no-repl,motoko]
 ----
-include::../examples/todo-error.mo[tag=exception-caller]
+include::../examples/todo-error.mo[lines=143..150]
 ----

@@ -22,7 +22,7 @@ _inspect_ and _accept_ or _decline_ ingress messages submitted through the HTTP 
 Message inspection mitigates some denial of service attacks,
 designed to drain canisters of cycles by placing unsolicited free calls.
 
-REMARK: You can think of method inspection as providing the "Collect call from _name_. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
+NOTE: You can think of method inspection as providing the "Collect call from _name_. Do you accept charges?" prologue of an old-fashioned, operator-assisted, collect phone call.
 
 In {proglang}, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect`.
 Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
@@ -67,21 +67,22 @@ Blanket denial of all ingress messages, ignoring further information:
 
 [source.no-repl,motoko]
 ----
-include::../examples/InspectNone.mo[tag=inspect-none]
+include::../examples/InspectNone.mo[lines=10..10]
 ----
 
 Declining anonymous calls:
 
 [source.no-repl,motoko]
 ----
-include::../examples/InspectCaller.mo[tag=inspect-caller]
+include::../examples/InspectCaller.mo[lines=12..14]
 ----
 
-Declining large messages, based on `+arg+`'s size (in bytes).
+Declining large messages, based on the raw size (in bytes) of `+arg+` (prior to
+any decoding from Candid binary blob to Motoko value):
 
 [source.no-repl,motoko]
 ----
-include::../examples/InspectArg.mo[tag=inspect-arg]
+include::../examples/InspectArg.mo[lines=12..14]
 ----
 
 Declining messages by name only, ignoring message arguments (note the use
@@ -89,14 +90,14 @@ of type `Any` as message argument variants):
 
 [source.no-repl,motoko]
 ----
-include::../examples/InspectName.mo[tag=inspect-name]
+include::../examples/InspectName.mo[lines=12..25]
 ----
 
 A combination of the previous three, specifying the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases.
 
 [source.no-repl,motoko]
 ----
-include::../examples/InspectMixed.mo[tag=inspect-mixed]
+include::../examples/InspectMixed.mo[lines=12..30]
 ----
 
 == Tips on authoring `inspect`
@@ -110,14 +111,14 @@ For example, in the actor from the previous section, incorrectly declaring:
 
 [source.no-repl,motoko]
 ----
-include::../examples/InspectTrick.mo[tag=inspect-trick]
+include::../examples/InspectTrick.mo[lines=12..14]
 ----
 
 forces the compiler to report the expected type below:
 
 [source.no-repl,motoko]
 ----
-Inspect.mo:13.4-15.5: type error [M0127], system function inspect is declared with type
+Inspect.mo:12.4-14.5: type error [M0127], system function inspect is declared with type
   () -> Bool
 instead of expected type
   {

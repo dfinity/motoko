@@ -1,5 +1,8 @@
 all: overview-slides.html antora
 
+SRC=modules/language-guide/pages
+TMP=modules/language-guide/tmp
+OUT=md
 SHELL=bash
 
 overview-slides.html : overview-slides.md
@@ -15,6 +18,14 @@ overview-slides.html : overview-slides.md
 	  # # -V minScale=2 \
 	  # # -V maxScale=2
 
+base:
+	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
+
+md: base
+	rm -r -f $(TMP)
+	cp -r $(SRC)/../examples $(OUT)/examples
+	cp -r $(SRC) $(TMP)
+	./convert.sh $(TMP) $(OUT)
 
 antora:
 	rm -rf build
@@ -22,3 +33,5 @@ antora:
 	./patch-antora-js.sh
 
 .PHONY: antora
+.PHONY: base
+.PHONY: md
