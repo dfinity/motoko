@@ -441,7 +441,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
     let merges = let open V.Env in
       List.fold_left
-        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> assert false))
+        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> None))
         empty in
     let strip = List.map (fun env -> V.as_obj env) in
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
