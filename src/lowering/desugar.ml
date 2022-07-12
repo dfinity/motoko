@@ -93,7 +93,7 @@ and exp' at note = function
   | S.ObjBlockE (s, dfs) ->
     obj_block at s None dfs note.Note.typ
   | S.ObjE (efs, bs) ->
-    obj_extend note.Note.typ efs bs
+    obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -568,34 +568,32 @@ and exp_field obj_typ ef =
     let f = { it = { I.name = id.it; I.var = id_of_var id' }; at = no_region; note = typ } in
     (d, f)
 
-and obj_extend obj_typ efs bases =
+and obj obj_typ efs bases =
+  let open List in
   let base_info base =
     let base_exp, base_t = exp base, (typ_note base.note).Note.typ in
     let base_var = fresh_var "base" base_t in
     let base_dec = letD base_var base_exp in
     let pred l =
       let open Lib.Option.Syntax in
-      let* base_field = List.find_opt (fun { T.lab; _ } -> lab = l) (snd (T.as_obj base_t)) in
+      let* base_field = find_opt (fun { T.lab; _ } -> lab = l) (snd (T.as_obj base_t)) in
       Some base_var in
     base_dec, pred in
 
-  let base_decs, preds = List.(map base_info bases |> split) in
+  let base_decs, preds = map base_info bases |> split in
   let gap T.{ lab; typ; _ } =
-    match List.find_opt (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs with
-    | Some ef ->
-      []
-    | _ ->
+    if exists (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs then []
+    else
       let id = fresh_var lab typ in
-      let [@warning "-8"] [base_var] = List.(map (fun pred -> pred lab |> Option.to_list) preds |> flatten) in
+      let [@warning "-8"] [base_var] = map (fun pred -> pred lab |> Option.to_list) preds |> flatten in
       let d = letD id (dotE (varE base_var) lab typ) in
       let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
       [d, f] in
 
-  let open List in
   let ds, fs = map (exp_field obj_typ) efs |> split in
   let ds', fs' = map gap (snd (T.as_obj obj_typ)) |> flatten |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
-  I.BlockE(append base_decs (append ds ds'), obj_e)
+  I.BlockE(append ds (append base_decs ds'), obj_e)
 
 and typ_binds tbs = List.map typ_bind tbs
 
