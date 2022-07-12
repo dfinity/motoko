@@ -11,4 +11,4 @@ Prim.debugPrint (debug_show { a = 8; b = 6 in { c = 'C'; d = "D" } });
 // analysis
 ignore ({ a = 8 in b } : { a : Nat });
 ignore ({ a = 8 in b } : { b : Nat });
-ignore ({ a = 8 in b and m } : { a : Nat; b : Nat })
+ignore ({ a = 8 : Int in b and m } : { a : Int; b : Nat })
