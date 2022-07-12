@@ -10,3 +10,6 @@ assert (x == 4);
 let result = {b = x := 5; a = x := 6 in base};
 assert (x == 6);
 assert (result == {a = (); b = (); c = 42});
+
+let _ = {b = x := 8 in (do { x := 7; base })};
+assert (x == 8);
