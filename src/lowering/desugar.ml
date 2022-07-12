@@ -585,13 +585,13 @@ and obj obj_typ efs bases =
     if exists (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs then []
     else
       let id = fresh_var lab typ in
-      let [@warning "-8"] [base_var] = map (fun pred -> pred lab |> Option.to_list) preds |> flatten in
+      let [@warning "-8"] [base_var] = concat_map (fun pred -> pred lab |> Option.to_list) preds in
       let d = letD id (dotE (varE base_var) lab typ) in
       let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
       [d, f] in
 
   let ds, fs = map (exp_field obj_typ) efs |> split in
-  let ds', fs' = map gap (snd (T.as_obj obj_typ)) |> flatten |> split in
+  let ds', fs' = concat_map gap (snd (T.as_obj obj_typ)) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
   I.BlockE(append ds (append base_decs ds'), obj_e)
 
