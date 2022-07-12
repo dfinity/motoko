@@ -73,7 +73,7 @@ After the stable variables are initialized with their previous values, the remai
 Declaring a variable to be `+stable+` requires its type to be stable too.
 Since not all types are stable, some variables cannot be declared `+stable+`.
 
-As a simple example, consider the +Registry+` actor from the discussion of link:motoko{outfilesuffix}#orthogonal_persistence[orthogonal persistence].
+As a simple example, consider the `+Registry+` actor from the discussion of link:motoko{outfilesuffix}#orthogonal-persistence[orthogonal persistence].
 
 [source,motoko]
 ----
@@ -169,7 +169,7 @@ by tools such as `dfx` to verify upgrade compatibility.
 
 == Upgrading a deployed actor or canister smart contract
 
-After you have deployed a {proglang} actor with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade an already deployed version. For information about upgrading a deployed canister, see link:../developers-guide/working-with-canisters{outfilesuffix}#upgrade-canister[Upgrade a canister smart contract].
+After you have deployed a {proglang} actor with the appropriate `+stable+` variables or `+preupgrade+` and `+postupgrade+` system methods, you can use the `+dfx canister install+` command with the `+--mode=upgrade+` option to upgrade an already deployed version. For information about upgrading a deployed canister, see link:../../project-setup/manage-canisters{outfilesuffix}#upgrade-a-canister[Upgrade a canister smart contract].
 
 
 An upcoming version of `+dfx+` will, if appropriate, check the safety of an upgrade by comparing the Candid and (for Motoko canisters only) the stable signatures embedded in the deployed binary and upgrade binary, and abort the upgrade request when unsafe.

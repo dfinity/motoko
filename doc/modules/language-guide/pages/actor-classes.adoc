@@ -13,7 +13,7 @@ The ``i``th bucket (`+i+` in ``[0..n)``)  receives a dedicated actor to store te
 
 The actor responsible for bucket `+i+` is obtained as an instance of the actor class `+Bucket(i)+`, defined in the sample `+Buckets.mo+` file, as follows:
 
-.Buckets.mo
+`+Buckets.mo+`:
 [source#Buckets, motoko]
 ....
 include::../examples/Buckets.mo[]

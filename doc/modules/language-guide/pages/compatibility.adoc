@@ -23,10 +23,10 @@ Unfortunately, when we upgrade this counter (say with itself), its state is lost
 
 |===
 | version | state | success | call
-| v0 | 0 | &check; | inc()
-| v0 | 1 | &check; | inc()
-| v0 | 2 | &check; | upgrade(v0)
-| v0 | #0# | #&cross;#  | inc()
+| v0 | 0 | &#10003; | inc()
+| v0 | 1 | &#10003; | inc()
+| v0 | 2 | &#10003; | upgrade(v0)
+| v0 | #0# | #&#10007;#  | inc()
 | v0 | 1 |  |
 |===
 
@@ -45,10 +45,10 @@ Because it's `stable`, this counter's `state` is _retained_ across upgrades.
 
 |===
 | version | state | success | call
-| v1 | 0 | &check; | inc()
-| v1 | 1 | &check; | inc()
-| v1 | 2 | &check; | upgrade(v1)
-| v1 | 2 | #&check;# | inc()
+| v1 | 0 | &#10003; | inc()
+| v1 | 1 | &#10003; | inc()
+| v1 | 2 | &#10003; | upgrade(v1)
+| v1 | 2 | #&#10003;# | inc()
 | v1 | 3 | |
 |===
 
@@ -66,10 +66,10 @@ include::../examples/count-v2.mo[]
 
 |===
 | version | state | success | call
-| v1 | 3 | &check; | inc()
-| v1 | 4 | &check; | upgrade(v2)
-| v2 | 4 | #&check;# | inc()
-| v2 | 5 | &check; | read()
+| v1 | 3 | &#10003; | inc()
+| v1 | 4 | &#10003; | upgrade(v2)
+| v2 | 4 | #&#10003;# | inc()
+| v2 | 5 | &#10003; | read()
 |===
 
 === Changing the stable interface
@@ -83,10 +83,10 @@ include::../examples/count-v3.mo[]
 
 |===
 | version | state | success | call
-| v2| 5 | &check; |  inc()
-| v2 | 6  | &check; | upgrade(v3)
-| v3 | #0# | #&cross;# | inc()
-| v3 | 1 | &check; | read()
+| v2| 5 | &#10003; |  inc()
+| v2 | 6  | &#10003; | upgrade(v3)
+| v3 | #0# | #&#10007;# | inc()
+| v3 | 1 | &#10003; | read()
 |===
 
 BOOM: code upgraded, but counter is back to `0`.
@@ -132,71 +132,65 @@ An upgrade is safe provided:
 * the candid interface evolves to a subtype; and
 * the stable interface evolves to a compatible one (variable to supertype or new)
 
-[cols="1,5,5"]
-|===
-| version
-| candid interface
-| stable type interface
+Given version `v0` with candid interface `v0.did` and stable type interface `v0.most`:
 
-| v0
-a|
 [source.no-repl, candid]
 ....
 include::../examples/count-v0.did[]
 ....
-a|
+
 [source.no-repl, motoko]
 ....
 include::../examples/count-v0.most[]
 ....
 
-|
-| +:>+ &check;
-| +<<:+ &check;
+And version `v1` with candid interface `v1.did` and stable type interface `v1.most`,
 
-| v1
-a|
 [source.no-repl, candid]
 ....
 include::../examples/count-v1.did[]
 ....
-a|
+
 [source.no-repl, motoko]
 ....
 include::../examples/count-v1.most[]
 ....
 
-|
-| +:>+ &check;
-| +<<:+ &check;
+And version `v2` with candid interface `v2.did` and stable type interface `v2.most`,
 
-| v2
-a|
 [source.no-repl, candid]
 ....
 include::../examples/count-v2.did[]
 ....
-a|
+
 [source.no-repl, motoko]
 ....
 include::../examples/count-v2.most[]
 ....
 
-|
-| +:>+ &check;
-| +<<:+ #&cross;#
+And, finally, version `v3` with candid interface `v3.did` and stable type interface `v3.most`:
 
-| v3
-a|
 [source.no-repl, candid]
 ....
 include::../examples/count-v3.did[]
 ....
-a|
+
 [source.no-repl, motoko]
 ....
 include::../examples/count-v3.most[]
 ....
+
+The following table summarizes the (in)compatibilities between them:
+
+|===
+| version | candid interface | stable type interface
+| `v0` | `v0.did` | `v0.most`
+| | +:>+ &#10003; | +<<:+ &#10003;
+| `v1` | `v1.did` | `v1.most`
+| | +:>+ &#10003; | +<<:+ &#10003;
+| `v2` | `v2.did` | `v2.most`
+| | +:>+ &#10003; | +<<:+ #&#10007;#
+| `v3` | `v3.did` | `v3.most`
 |===
 
 === Tooling
@@ -227,11 +221,13 @@ cannot be consumed at new type
 
 === Examples in the wild
 
-
+A common, real-world example of an incompatible upgrade can be found on the forum:
 https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio
 
-|===
-a|[source.no-repl, motoko]
+In that example, a user was attempting to add a field to the record payload of an array,
+by upgrading from stable type interface:
+
+[source.no-repl, motoko]
 ....
 type Card = {
   title : Text
@@ -240,8 +236,10 @@ actor {
   stable var map: [(Nat32, Card)]
 }
 ....
-| <<: #&cross;#
-a|[source.no-repl, motoko]
+
+to _incompatible_ stable type interface:
+
+[source.no-repl, motoko]
 ....
 type Card = {
   title : Text;
@@ -251,10 +249,8 @@ actor {
   stable var map : [(Nat32, Card)]
 }
 ....
-|===
 
-
-Adding a new record field (to magic from nothing) is bad.
+Adding a new record field (to magic from nothing) does not work.
 
 === Metadata Sections
 

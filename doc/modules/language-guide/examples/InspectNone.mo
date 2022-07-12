@@ -7,9 +7,6 @@ actor {
    public query func read() : async Nat { c };
    public func reset() : () { c := 0 }; // oneway
 
-// tag::inspect-none[]
    system func inspect({}) : Bool { false }
-// end::inspect-none[]
 
 };
-

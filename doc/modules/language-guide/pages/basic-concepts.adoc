@@ -24,23 +24,24 @@ More advanced features are illustrated with correspondingly more complex example
 
 The following topics are covered in the section:
 
- - <<intro-progs,{proglang} program syntax>>
- - <<intro-printing,Printing numbers and text>>, and <<intro-stdlib, using the base library>>
- - <<intro-decls-vs-exps,Declarations versus expressions>>
- - <<intro-lexical-scoping,Lexical scoping of variables>>
- - <<intro-values,Values and evaluation>>
- - <<intro-type-anno,Type annotations variables>>
- - <<intro-type-soundness,Type soundness and type-safe evaluation>>
+ - <<motoko-program-syntax,{proglang} program syntax>>
+ - <<printing-values, Printing values>>
+ - <<the-motoko-base-library, Using the base library>>
+ - <<declarations-versus-expressions, Declarations versus expressions>>
+ - <<declarations-follow-lexical-scoping,Lexical scoping of variables>>
+ - <<values-and-evaluation,Values and evaluation>>
+ - <<type-annotations-and-variables,Type annotations and variables>>
+ - <<type-soundness,Type soundness and type-safe evaluation>>
 
-[[intro-progs]]
+[#motoko-program-syntax]
 == {proglang} program syntax
 
-Each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see the link:language-manual{outfilesuffix}[language quick reference guide] for precise program syntax).
+Each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related (see the link:language-manual{outfilesuffix}[language quick reference] for precise program syntax).
 
 For programs that we deploy on the Internet Computer, a valid program consists of an __actor expression__, introduced with specific syntax (keyword `actor`) that we discuss in
 link:actors-async{outfilesuffix}[Actors and async data].
 
-In preparing for that discussion, we discuss programs in this chapter and in link:mutable-state{outfilesuffix}[Mutable state] that are not meant to be Internet Computer services.
+In preparing for that discussion, this section and Section link:mutable-state{outfilesuffix}[Mutable state] begin by discussing programs that are not meant to be Internet Computer services.
 Rather, these tiny programs illustrate snippets of {proglang} for writing those services, and each can (usually) be run on its own as a (non-service) {proglang} program, possibly with some printed terminal output.
 
 The examples in this section illustrate basic principles using simple expressions, such as arithmetic.
@@ -70,7 +71,7 @@ let z = do {
 };
 ....
 
-[[intro-decls-exps-def]]
+[#declarations-and-expressions]
 == Declarations and expressions
 
 Declarations introduce immutable variables, mutable state, actors, objects, classes and other types.
@@ -78,10 +79,10 @@ Expressions describe computations that involve these notions.
 
 For now, we use example programs that declare immutable variables, and compute simple arithmetic.
 
-[[intro-decls-vs-exps]]
+[#declarations-versions-expresssions]
 === Declarations versus expressions
 
-<<intro-progs,Recall>> that each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related.
+<<motoko-program-syntax,Recall>> that each {proglang} _program_ is a free mix of declarations and expressions, whose syntactic classes are distinct, but related.
 In this section, we use examples to illustrate their distinctions and accommodate their intermixing.
 
 Recall our example program, first introduced above:
@@ -161,7 +162,7 @@ x * y + x
 
 A declaration list is not itself (immediately) an _expression_, so we cannot (immediately) declare another variable with its final value (`3`).
 
-[[intro-exp-block]]
+[#block-expressions]
 **Block expressions.** We can form a _block expression_ from this list of declarations by enclosing it with matching _curly braces_. Blocks are only allowed as sub-expressions of control flow expressions like `if`, `loop`, `case`, etc. In all other places,
 we use `do { ... }` to represent block expression, to distinguish blocks from object literals. For example, `do {}` is the empty block of type `()`, while `{}` is an empty record of record type `{}`.
 
@@ -178,7 +179,21 @@ This is also program, but one where the declared variables `x` and `y` are priva
 
 This block form preserves the autonomy of the declaration list and its _choice of variable names_.
 
-[[intro-lexical-scoping]]
+A block expression produces a value and, when enclosed in parentheses,
+can occur within some larger, compound expression. For example:
+
+[source, motoko]
+....
+100 +
+  (do {
+     let x = 1;
+     let y = x + 1;
+     x * y + x
+   })
+....
+
+
+[#declarations-follow-lexical-scoping]
 === Declarations follow *lexical scoping*
 
 Above, we saw that nesting blocks preserves the autonomy of each separate declaration list and its _choice of variable names_.
@@ -204,14 +219,18 @@ However, modern languages universally favor lexical scoping, the meaning given h
 Aside from mathematical clarity, the chief practical benefit of lexical scoping is _security_, and its use in building compositionally-secure systems.
 Specifically, {proglang} gives very strong composition properties. For example, nesting your program within a program you do not trust cannot arbitrarily redefine your variables with different meanings.
 
-[[intro-values]]
+[#values-and-evaluation]
 == Values and evaluation
+
+////
+TODO: retitle and improve
+////
 
 Once a {proglang} expression receives the program's (single) thread of control, it evaluates eagerly until it reduces to a _result value_.
 
 In so doing, it will generally pass control to sub-expressions, and to sub-routines before it gives up control from the _ambient control stack_.
 
-If this expression never reaches a value form, the expression evaluates indefinitely.  
+If this expression never reaches a value form, the expression evaluates indefinitely.
 Later we introduce recursive functions and imperative control flow, which each permit non-termination.
 For now, we only consider terminating programs that result in values.
 
@@ -231,30 +250,36 @@ By default, **integers** and **natural numbers** are _unbounded_ and do not over
 Instead, they use representations that grow to accommodate any finite number.
 
 For practical reasons, {proglang} also includes _bounded_ types for integers and natural numbers, distinct from the default versions.
-Each bounded variant has a fixed width (one of `8`, `16`, `32`, `64`) and each carries the potential for "`overflow`". If and when this event occurs, it is an error and causes the
-<<overview-traps,program to trap>>.
-There are no unchecked, uncaught overflows in {proglang}, except in well-defined situations, for explicitly _wrapping_ operations (indicated by a `%`  character in the operator).
+Each bounded variant has a fixed bit-width (one of `8`, `16`, `32`, `64`) that determines the range of representable values and each carries the potential for _overflow_.
+Exceeding a bound is a run-time fault that causes the program to <<traps-due-to-faults, trap>>.
+
+There are no unchecked, uncaught overflows in {proglang}, except in well-defined situations, for explicitly _wrapping_ operations (indicated by a conventional `%` character in the operator).
 The language provides primitive built-ins to convert between these various number representations.
 
 The link:language-manual{outfilesuffix}[language quick reference] contains a complete list of link:language-manual{outfilesuffix}#primitive-types[primitive types].
 
 === Non-primitive values
 
+////
+TODO: records and modules, improve
+////
+
 Building on the primitive values and types above, the language permits user-defined types, and each of the following non-primitive value forms and associated types:
 
- - link:language-manual{outfilesuffix}#exp-tuple[Tuples], including the unit value (the "empty tuple")
- - link:language-manual{outfilesuffix}#exp-arrays[Arrays], with both _immutable_ and _mutable_ variants.
- - link:language-manual{outfilesuffix}#exp-object[Objects], with named, unordered fields and methods
- - link:language-manual{outfilesuffix}#variant-types[Variants], with named constructors and optional payload values
- - link:language-manual{outfilesuffix}#exp-func[Function values], including link:sharing{outfilesuffix}[shareable functions].
- - link:language-manual{outfilesuffix}#exp-async[Async values], also known as _promises_ or _futures_.
- - link:language-manual{outfilesuffix}#type-Error[Error values] carry the payload of exceptions and system failures
+ - link:language-manual{outfilesuffix}#tuples[Tuples], including the unit value (the "empty tuple");
+ - link:language-manual{outfilesuffix}#arrays[Arrays], with both _immutable_ and _mutable_ variants;
+ - link:language-manual{outfilesuffix}#objects[Objects], with named, unordered fields and methods;
+ - link:language-manual{outfilesuffix}#variant-types[Variants], with named constructors and optional payload values;
+ - link:language-manual{outfilesuffix}#functions[Function values], including link:sharing{outfilesuffix}[shareable functions];
+ - link:language-manual{outfilesuffix}#async[Async values], also known as _promises_ or _futures_;
+ - link:language-manual{outfilesuffix}#error-type[Error values] carry the payload of exceptions and system failures.
 
-We discuss the use of these forms in the succeeding chapters.
-For precise language definitions of primitive and non-primitive values, see the link:language-manual{outfilesuffix}#exp-error[language quick reference].
+We discuss the use of these forms in the next sections.
 
-[[intro-unit-type]]
-=== The *unit type* versus the `void` type
+For precise language definitions of primitive and non-primitive values, see the link:language-manual{outfilesuffix}[language quick reference].
+
+[#the-unit-type]]
+=== The _unit_ type `()`
 
 {proglang} has no type named `void`.
 In many cases where readers may think of return types being "`void`" from using languages like Java or C++, we encourage them to think instead of the _unit type_, written `()`.
@@ -281,7 +306,7 @@ let x = 42 + (1 * 37) / 12: Nat
 
 This program evaluates to the value `45`, also of type `Nat`.
 
-[[intro-type-soundness]]
+[#type-soundness]
 == Type soundness
 
 Each {proglang} expression that type-checks we call _well-typed_.  The _type_ of a {proglang} expression serves as a promise from the language to the developer about the future behavior of the program, if executed.
@@ -299,7 +324,7 @@ This agreement is the central principle of a static type system, and is delivere
 The same type system also enforces that asynchronous interactions agree between static and dynamic views of the program, and that the resulting messages generated "under the hood" never mismatch at runtime.
 This agreement is similar in spirit to the caller/callee argument type and return type agreements that one ordinarily expects in a typed language.
 
-[[intro-type-anno]]
+[#type-annotations-and-variables]
 == Type annotations and variables
 
 Variables relate (static) names and (static) types with (dynamic) values that are present only at runtime.
@@ -361,8 +386,12 @@ The error messages of the _type checker_ attempt to help the developer when they
 These error messages will evolve over time, and for this reason, we will not include particular error messages in this text.
 Instead, we will attempt to explain each code example in its surrounding prose.
 
-[[intro-stdlib]]
-=== Using the {proglang} base library
+[#the-motoko-base-library]
+=== The {proglang} base library
+
+////
+TODO: replace library by package
+////
 
 For various practical language engineering reasons, the design of {proglang} strives to minimize builtin types and operations.
 
@@ -370,7 +399,7 @@ Instead, whenever possible, the {proglang} base library provides the types and o
 __**However**, this base library is still under development,
 and is still incomplete__.
 
-The link:base-libraries/stdlib-intro{outfilesuffix}[Motoko Base Library] lists a _selection_ of modules from the {proglang} base library, focusing on core features used in the examples that are unlikely to change radically.
+The link:./base-intro{outfilesuffix}[Motoko Base Library] lists a _selection_ of modules from the {proglang} base library, focusing on core features used in the examples that are unlikely to change radically.
 However, all of these base library APIs will certainly change over time (to varying degrees), and in particular, they will grow in size and number.
 
 To import from the base library, use the `import` keyword.
@@ -384,8 +413,8 @@ include::../examples/print.mo[]
 In this case, we import {proglang} code (not some other module form) with the `mo:` prefix.
 We specify the `base/` path, followed by the module's file name `Debug.mo` minus its extension.
 
-[[intro-printing]]
-=== Printing using `Debug.print` and `debug_show`
+[#printing-values]
+=== Printing values
 
 Above, we print the text string using the function `print` in library `Debug.mo`:
 
@@ -398,7 +427,7 @@ The function `print` accepts a text string (of type `Text`) as input, and produc
 
 Because unit values carry no information, all values of type unit are identical,  so the `print` function doesn't actually produce an interesting result. Instead of a result, it has a _side effect_.
 The function `print` has the effect of emitting the text string in a human-readable form to the output terminal. Functions that have side effects, such as emitting output, or modifying state, are often called _impure_. Functions that just return values, without further side-effects, are called _pure_.
-We discuss the return value (the unit value) <<intro-unit-type, in detail below>>, and relate it to the `void` type for readers more familiar with that concept.
+We discuss the return value (the unit value) <<the-unit-type, in detail below>>, and relate it to the `void` type for readers more familiar with that concept.
 
 Finally, we can transform most {proglang} values into human-readable text strings for debugging purposes, _without_ having to write those transformations by hand.
 
@@ -419,7 +448,7 @@ Using these text transformations, we can print most {proglang} data as we experi
 Sometimes, in the midst of writing a program, we want to run an incomplete version, or a version where one or more execution paths are either missing or simply invalid.
 
 To accommodate these situations, we use the `xxx`, `nyi` and `unreachable` functions from the base `Prelude` library, explained below.
-Each wraps a <<overview-traps,general trap mechanism>>, explained further below.
+Each is a simple wrapper around a more general trap mechanism <<explicit-traps,general trap mechanism>>, explained further below.
 
 === Use short-term holes
 
@@ -463,10 +492,15 @@ P.unreachable()
 
 As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
 
-[[overview-traps]]
-=== Traps due to execution failure
+////
+TODO: add more general intro to traps, including section on prelude functions, reference that instead
+////
 
-Some errors, such as division by zero, out-of-bounds array indexing, and pattern match failure are not prevented by the type system, but can cause dynamic failures called _traps_.
+[#traps-due-to-faults]
+=== Traps due to faults
+
+Some errors, such as division by zero, out-of-bounds array indexing, and pattern match failure are (by design) not prevented by the type system, but instead cause dynamic faults
+called _traps_.
 
 [source, motoko]
 ....
@@ -486,11 +520,13 @@ let true = false; // pattern match failure
 
 We say that code _traps_ when its exection causes a _trap_.
 
-Execution of code is aborted at the first trap and makes no further progress.
+Because the meaning of execution is ill-defined after a faulting trap,
+execution of the code ends by aborting at the trap.
 
-NOTE: Traps that occur within actor messages are more subtle: they don't abort the entire actor, but prevent that particular message from proceeding, rolling back any yet uncommitted state changes. Other messages on the actor will continue execution.
+NOTE: Traps that occur within actor messages are more subtle: they don't abort the entire actor, but prevent that particular message from proceeding, rolling back any yet uncommitted state changes.
+Other messages on the actor will continue execution.
 
-[[overview-debug-trap]]
+[#explicit-traps]
 === Explicit traps
 
 Occasionally it can be useful to force an unconditional trap, with a user-defined message.
@@ -515,7 +551,7 @@ let swear : Text = Debug.trap("oh my!");
 
 (The `Prelude` functions `nyi()`, `unreachable()` and `xxx()` discussed above are simple wrappers around `Debug.trap`.)
 
-[[overview-assertions]]
+[#assertions]
 === Assertions
 
 Assertions allow you to conditionally trap when some Boolean test fails to hold,

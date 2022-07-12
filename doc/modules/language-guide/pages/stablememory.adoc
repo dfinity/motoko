@@ -1,4 +1,6 @@
-# The `ExperimentalStableMemory` library
+# Stable Memory
+
+The `ExperimentalStableMemory` library provides low-level access to {IC} stable memory.
 
 ////
 TODO: extend example to illustrate stableVarQuery
@@ -34,7 +36,7 @@ application.
 ## The Library
 
 
-Support for stable memory is provided by the link:../base-libraries/ExperimentalStableMemory{outfilesuffix}[ExperimentalStableMemory]
+Support for stable memory is provided by the link:./base/ExperimentalStableMemory{outfilesuffix}[ExperimentalStableMemory]
 library in package `+base+`.
 
 
