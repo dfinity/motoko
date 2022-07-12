@@ -13,3 +13,6 @@ assert (result == {a = (); b = (); c = 42});
 
 let _ = {b = x := 8 in (do { x := 7; base })};
 assert (x == 8);
+
+let _ = { (do { x := 9; base }) and (do { x := 10; object { let a = 5 } })};
+assert (x == 10);
