@@ -628,7 +628,7 @@ rec {
 
   guide-examples-tc =  stdenv.mkDerivation {
     name = "guid-examples-tc";
-    src = subpath ./doc/modules/language-guide/examples;
+    src = subpath ./doc/md/examples;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     MOTOKO_BASE = base-src;
@@ -687,7 +687,7 @@ rec {
       touch $out
     '';
 
-  # Checks that doc/modules/language-guide/examples/grammar.txt is up-to-date
+  # Checks that doc/modules/md/examples/grammar.txt is up-to-date
   check-grammar = stdenv.mkDerivation {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
@@ -698,7 +698,7 @@ rec {
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
         echo "If the following fails, please run:"
         echo "nix-shell --command 'make -C src grammar'"
-        diff -r -U 3 ${./doc/modules/language-guide/examples/grammar.txt} expected
+        diff -r -U 3 ${./doc/md/examples/grammar.txt} expected
         echo "ok, all good"
       '';
       installPhase = ''
