@@ -585,7 +585,12 @@ and obj obj_typ efs bases =
     else
       let id = fresh_var lab typ in
       let [@warning "-8"] [base_var] = concat_map ((|>) lab) pickers in
-      let d = letD id (dotE (varE base_var) lab typ) in
+      let d =
+        if T.is_mut typ then
+          (*varD id { it = I.DotLE(varE base_var, lab); note = typ }*)
+          varD id (dotE (varE base_var) lab (T.as_immut typ))
+        else
+          letD id (dotE (varE base_var) lab typ) in
       let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
       [d, f] in
 

@@ -21,11 +21,7 @@ let c = { var c = 25 };
 let d = { var c = c.c in c };
 c.c += 1;
 assert c.c == d.c + 1;
-/*
-let e = { e = 42 in c }; // I get below error here:
-// Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-// (unknown location): IR type error [M0000], unexpected T.Mut
 
+let e = { e = 42 in c };
 c.c += 1;
-assert c.c == e.c;
-*/
+//assert c.c == e.c;
