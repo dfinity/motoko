@@ -78,6 +78,7 @@ and effect_cases cases =
 
 and effect_dec dec = match dec.it with
   | LetD (_, e) | VarD (_, _, e) -> effect_exp e
+  | RefD (_, _, e) -> T.Triv
 
 let infer_effect_dec = effect_dec
 

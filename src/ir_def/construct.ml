@@ -477,6 +477,11 @@ let varD x exp =
   assert (T.is_mut t);
   VarD (id_of_var x, T.as_immut t, exp) @@ no_region
 
+let refD x lexp =
+  let t = typ_of_var x in
+  assert (T.is_mut t);
+  RefD (id_of_var x, t, lexp) @@ no_region
+
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.Note.typ } in
   LetD (pat, exp) @@ exp.at

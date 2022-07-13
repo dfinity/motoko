@@ -8092,21 +8092,24 @@ let compile_load_field env typ name =
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
-  (fun (code, sr, fill_code) -> (G.with_region lexp.at code, sr, G.with_region lexp.at fill_code)) @@
+  (fun (code, ref_code, sr, fill_code) -> G.(with_region lexp.at code, with_region lexp.at ref_code, sr, with_region lexp.at fill_code)) @@
   match lexp.it with
   | VarLE var ->
      let sr, code = Var.set_val env ae var in
-     G.nop, sr, code
+     G.nop, G.nop, sr, code
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      Arr.idx_bigint env,
+     G.nop, (* FIXME *)
      SR.Vanilla,
      store_ptr
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n,
+     compile_exp_vanilla env ae e ^^
+     Object.load_idx_raw env n,
      SR.Vanilla,
      store_ptr
 
@@ -9045,7 +9048,7 @@ and compile_exp (env : E.t) ae exp =
     Var.get_val env ae var
   | AssignE (e1,e2) ->
     SR.unit,
-    let (prepare_code, sr, store_code) = compile_lexp env ae e1 in
+    let (prepare_code, _, sr, store_code) = compile_lexp env ae e1 in
     prepare_code ^^
     compile_exp_as env ae sr e2 ^^
     store_code
@@ -9154,7 +9157,7 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
-        if Type.is_mut f.note
+        if Type.is_mut f.note && not f.it.byref
         then Var.get_aliased_box env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
@@ -9428,8 +9431,8 @@ and compile_unboxed_pat env ae how pat =
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
-       (pre_ae, G.with_region dec.at alloc_code, fun ae body_code ->
-         G.with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
+       G.(pre_ae, with_region dec.at alloc_code, fun ae body_code ->
+          with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -9462,6 +9465,19 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       ( pre_ae1,
         alloc_code,
         (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
+        unmodified
+      )
+  | RefD (name, _, e) ->
+    (*assert AllocHow.(match M.find_opt name how with
+                     | Some (StoreHeap) -> true
+                     | _ -> false);*)
+      let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+
+      ( pre_ae1,
+        alloc_code,
+        (fun ae ->
+          let _, prepare_raw, _sr, _ = compile_lexp env ae e in
+          prepare_raw ^^ Var.set_val_vanilla env ae name),
         unmodified
       )
 

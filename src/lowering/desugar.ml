@@ -296,9 +296,10 @@ and obj_block at s self_id dfs obj_typ =
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ;_} =
-  { it = { I.name = lab
-         ; I.var = lab
-         }
+  { it = I.{ name = lab
+           ; var = lab
+           ; byref = false
+           }
   ; at = no_region
   ; note = typ
   }
@@ -368,9 +369,9 @@ and call_system_func_opt name es obj_typ =
                     letD msg msg_variant
                   ]
                   (newObjE T.Object [
-                    {it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
-                    {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
-                    {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
+                    {it = I.{name = "caller"; var = id_of_var caller; byref = false}; at = no_region; note = typ_of_var caller };
+                    {it = I.{name = "arg"; var = id_of_var arg; byref = false}; at = no_region; note = typ_of_var arg };
+                    {it = I.{name = "msg"; var = id_of_var msg; byref = false}; at = no_region; note = typ_of_var msg }]
                     record_typ));
                 letD accept (callE (varE (var id.it p.note)) [] (varE record))]
               (ifE (varE accept)
@@ -402,7 +403,7 @@ and export_interface txt =
       asyncE bind2 (textE txt) (Con (scope_con1, []))
     )
   )],
-  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
+  [{ it = I.{ name = lab; var = v; byref = false }; at = no_region; note = typ }])
 
 and export_footprint self_id expr =
   let open T in
@@ -422,13 +423,13 @@ and export_footprint self_id expr =
                        letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
                  ]
                  (newObjE T.Object
-                   [{ it = {Ir.name = "size"; var = id_of_var size};
+                   [{ it = Ir.{name = "size"; var = id_of_var size; byref = false};
                       at = no_region;
                       note = T.nat64 }]
                    ret_typ))
               (Con (scope_con1, []))))
   )],
-  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
+  [{ it = I.{ name = lab; var = v; byref = false }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -480,7 +481,7 @@ and build_actor at ts self_id es obj_typ =
       (wrap
          (newObjE T.Memory
             (List.map2 (fun f v ->
-                 { it = {I.name = f.T.lab; I.var = id_of_var v};
+                 { it = I.{name = f.T.lab; var = id_of_var v; byref = false};
                    at = no_region;
                    note = f.T.typ }
                ) fields vs)
@@ -555,7 +556,7 @@ and exp_field obj_typ ef =
     assert (T.is_mut typ);
     let id' = fresh_var id.it typ in
     let d = varD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id' }; at = no_region; note = typ } in
+    let f = { it = I.{ name = id.it; var = id_of_var id'; byref = false }; at = no_region; note = typ } in
     (d, f)
   | S.Const ->
     let typ = match T.lookup_val_field_opt id.it fts with
@@ -565,7 +566,7 @@ and exp_field obj_typ ef =
     assert (not (T.is_mut typ));
     let id' = fresh_var id.it typ in
     let d = letD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id' }; at = no_region; note = typ } in
+    let f = { it = I.{ name = id.it; var = id_of_var id'; byref = false }; at = no_region; note = typ } in
     (d, f)
 
 and obj obj_typ efs bases =
@@ -585,13 +586,12 @@ and obj obj_typ efs bases =
     else
       let id = fresh_var lab typ in
       let [@warning "-8"] [base_var] = concat_map ((|>) lab) pickers in
-      let d =
+      let d, r =
         if T.is_mut typ then
-          (*varD id { it = I.DotLE(varE base_var, lab); note = typ }*)
-          varD id (dotE (varE base_var) lab (T.as_immut typ))
+          refD id { it = I.DotLE(varE base_var, lab); note = typ; at =  no_region }, true
         else
-          letD id (dotE (varE base_var) lab typ) in
-      let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
+          letD id (dotE (varE base_var) lab typ), false in
+      let f = { it = I.{ name = lab; var = id_of_var id; byref = r }; at = no_region; note = typ } in
       [d, f] in
 
   let ds, fs = map (exp_field obj_typ) efs |> split in
@@ -867,7 +867,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
-              [{ it = {Ir.name = "caller"; var = id_of_var v};
+              [{ it = Ir.{name = "caller"; var = id_of_var v; byref = false};
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]
@@ -898,7 +898,7 @@ let actor_class_mod_exp id class_typ func =
   blockE
     [letD v func]
     (newObjE T.Module
-       [{ it = {I.name = id; I.var = id_of_var v};
+       [{ it = I.{name = id; var = id_of_var v; byref = false};
           at = no_region;
           note = fun_typ }]
        (T.Obj(T.Module, List.sort T.compare_field [

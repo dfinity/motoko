@@ -147,6 +147,7 @@ and t_dec' context dec' =
   match dec' with
   | LetD (pat, exp) -> LetD (pat, t_exp context exp)
   | VarD (id, t, exp) -> VarD (id, t, t_exp context exp)
+  | RefD (id, t, lexp) -> RefD (id, t, t_lexp context lexp)
 
 and t_decs context decs = List.map (t_dec context) decs
 
