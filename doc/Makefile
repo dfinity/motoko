@@ -21,12 +21,6 @@ overview-slides.html : overview-slides.md
 base:
 	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
 
-md: base
-	rm -r -f $(TMP)
-	cp -r $(SRC)/../examples $(OUT)/examples
-	cp -r $(SRC) $(TMP)
-	./convert.sh $(TMP) $(OUT)
-
 html:
 	#TBC - perhaps use node and remark-cli to compile out remark plugins firtst
 	rm -rf html
