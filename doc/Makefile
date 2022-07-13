@@ -30,7 +30,7 @@ md: base
 html:
 	#TBC - perhaps use node and remark-cli to compile out remark plugins firtst
 	rm -rf html
-	mkdir -P html
+	mkdir -p html
 	for f in md/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
 .PHONY: base
