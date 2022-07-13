@@ -555,16 +555,10 @@ rec {
   docs = stdenv.mkDerivation {
     name = "docs";
     src = subpath ./doc;
-    buildInputs = with nixpkgs; [ pandoc bash antora gitMinimal ];
+    buildInputs = with nixpkgs; [ pandoc bash gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
-      # Make this a git repo, to please antora
-      git -C .. init
-      git add .
-      git config user.name "Nobody"
-      git config user.email "nobody@example.com"
-      git commit -m 'Dummy commit for antora'
       export HOME=$PWD
       export MOC_JS=${js.moc}/bin/moc.js
       export MOTOKO_BASE=${base-src}
@@ -574,9 +568,9 @@ rec {
     installPhase = ''
       mkdir -p $out
       mv overview-slides.html $out/
-      mv build/site/* $out/
+      mv html $out/
       mkdir -p $out/nix-support
-      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out html/motoko.html" >> $out/nix-support/hydra-build-products
       echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
@@ -671,13 +665,13 @@ rec {
   } ''
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
-    ln -s ${docs} $out/docs
+    ln -s ${docs} $out/html
     ln -s ${tests.profiling-graphs} $out/flamegraphs
     ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
-      echo docs/docs/language-guide/motoko.html;
+      echo docs/docs/motoko.html;
       echo base-doc/
       echo coverage/
       echo flamegraphs/ ) | \

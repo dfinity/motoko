@@ -1,4 +1,4 @@
-all: overview-slides.html antora
+all: overview-slides.html html
 
 SRC=modules/language-guide/pages
 TMP=modules/language-guide/tmp
@@ -27,11 +27,12 @@ md: base
 	cp -r $(SRC) $(TMP)
 	./convert.sh $(TMP) $(OUT)
 
-antora:
-	rm -rf build
-	antora antora-test-playbook.yml
-	./patch-antora-js.sh
+html:
+	#TBC - perhaps use node and remark-cli to compile out remark plugins firtst
+	rm -rf html
+	mkdir -P html
+	for f in md/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
-.PHONY: antora
 .PHONY: base
 .PHONY: md
+.PHONY: html
