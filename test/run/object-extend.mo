@@ -25,6 +25,3 @@ assert c.c == d.c + 1;
 let e = { e = 42 in c };
 c.c += 1;
 assert c.c == e.c;
-
-//SKIP run-ir
-//SKIP run-low
