@@ -18,6 +18,10 @@ const config = {
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'facebook', // Usually your GitHub org/user name.
   projectName: 'docusaurus', // Usually your repo name.
+ 
+  plugins: [
+//    keepSymlinks,
+  ],
 
   // Even if you don't use internalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
@@ -32,8 +36,10 @@ const config = {
       'classic',
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
-        docs: {
+          docs: {
+          path: "../md",
           sidebarPath: require.resolve('./sidebars.js'),
+          remarkPlugins: [require("remark-code-import")],
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
@@ -65,7 +71,7 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'intro',
+            docId: 'motoko',
             position: 'left',
             label: 'Tutorial',
           },
