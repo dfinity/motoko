@@ -7363,10 +7363,13 @@ module AllocHow = struct
   let how_mut_fields how seen for_mut_fields =
     (* What to do so that we can put something in a mutable object field, which aliases?
        This is similar to how_captured, but we need to do this at the top-level too! *)
-    map_of_set StoreHeap (S.union
-        (S.inter (set_of_map (M.filter is_local_mut how)) for_mut_fields)
-        (S.inter (set_of_map (M.filter is_local how)) (S.diff for_mut_fields seen))
-      )
+    map_of_set StoreHeap for_mut_fields
+
+    (* Code smell: What if something is both captured on the top level (so we want StoreStatic) and
+    used in an object (so we want StoreHeap). AllocHow.join refuses to join them, for good reasons.
+    Right now we'd throw in the backend.
+    We believe that the desugarer never produces top-level code that triggers this.
+    *)
 
   (* A bit like StackRep.of_type, but only for those types and stackreps that
      we support in local variables *)
