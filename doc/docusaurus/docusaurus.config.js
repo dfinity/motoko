@@ -133,6 +133,8 @@ const config = {
         darkTheme: darkCodeTheme,
       },
     }),
+  themes: ["@docusaurus/theme-live-codeblock"],    
+  clientModules: [require.resolve("./static/load_moc.ts")],
 };
 
 module.exports = config;
