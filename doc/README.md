@@ -12,10 +12,11 @@ CI pushes these docs for latest master to
 <https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/overview-slides.html>.
 
 The local documentation is suboptimal and compiled with pandoc, not
-docusaurus so it doesn't understand or process remark file includes,
-admonitions nor enable the motoko interpreter.
+docusaurus so it doesn't understand or process remark-code-import file includes,
+docusaurus admonitions (`:: Tip` etc) nor enable the motoko interpreter.
 
-For a richer preview, try
+For a richer preview that supports these features,
+and auto-updates as you edit doc source, try:
 
 ```
 make preview
@@ -24,12 +25,12 @@ make preview
 This uses a small ./docusaurus project to build a reduced web site locally, opening it your browser. It should be a subset of the full portal documentation,
 complete with live code blocks.
 
-In order to preview the real documentation, open a PR
+In order to preview the real portal documentation, open a PR
 https://github.com/dfinity/portal, edit the git "submodule"for
 Motoko to point at the PR branch and wait for CI to produce a build or
 follow the instructions to produce one locally.
 
-# Support interpreter in documentation
+# Support the moc interpreter in documentation
 
 We wrap Docusaurus's module `CodeBlock/Content/String` to process Motoko code blocks with interpreter.
 To enable this feature, add the following flags for code blocks:
