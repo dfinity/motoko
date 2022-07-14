@@ -1,6 +1,6 @@
 # Building the documentation locally
 
-You can build the documentation locally as follows:
+You can build the basic documentation locally as follows:
 
 ```
 make
@@ -14,6 +14,15 @@ CI pushes these docs for latest master to
 The local documentation is suboptimal and compiled with pandoc, not
 docusaurus so it doesn't understand or process remark file includes,
 admonitions nor enable the motoko interpreter.
+
+For a richer preview, try
+
+```
+make preview
+```
+
+This uses a small ./docusaurus project to build a reduced web site locally, opening it your browser. It should be a subset of the full portal documentation,
+complete with live code blocks.
 
 In order to preview the real documentation, open a PR
 https://github.com/dfinity/portal, edit the git "submodule"for
