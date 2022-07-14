@@ -6791,6 +6791,12 @@ module Var = struct
     | Some (HeapStatic i) -> compile_unboxed_const i
     | _ -> assert false
 
+  let capture_aliased_box env ae sr var = match VarEnv.lookup_var ae var with
+    | Some (HeapInd i) ->
+      StackRep.adjust env sr SR.Vanilla ^^
+      G.i (LocalSet (nr i))
+    | _ -> assert false
+
 end (* Var *)
 
 (* Calling well-known prelude functions *)
@@ -9481,10 +9487,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       G.nop,
       (fun ae ->
         let _, prepare_raw, sr, _ = compile_lexp env ae e in
-        assert (sr = Vanilla);
-        match VarEnv.lookup_var ae name with
-        | Some (HeapInd i) -> prepare_raw ^^ G.i (LocalSet (nr i))
-        | _ -> assert false),
+        prepare_raw ^^
+        Var.capture_aliased_box env ae sr name),
       unmodified
     )
 
