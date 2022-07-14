@@ -5,17 +5,15 @@ open Mo_types
 (* We collect a few things along the way *)
 
 (* We want to know:
-   Is this variable (potentially) captured?
-   Is this variable (potentially) used to initialize a mutable record field?
+   Is this variable used (potentially) captured?
    Is this variable used eagerly.
 
    capture = true; eager = false means it is _only_ used under lambdas
 *)
-type usage_info = { captured : bool; mut_field : bool; eager : bool }
+type usage_info = { captured : bool; eager : bool }
 
 let join u1 u2 = {
   captured = u1.captured || u2.captured;
-  mut_field = u1.mut_field || u2.mut_field;
   eager = u1.eager || u2.eager
 }
 
@@ -68,13 +66,11 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
    Initially, variables are not captured.
    All variables under a lambda become captured.
 *)
-let under_lambda : f -> f = M.map (fun _ -> { captured = true; mut_field = false; eager = false })
+let under_lambda : f -> f = M.map (fun _ -> { captured = true; eager = false })
 
 (* Projections *)
 let captured_vars : f -> S.t =
   fun f -> set_of_map (M.filter (fun _ u -> u.captured) f)
-let mut_field_vars : f -> S.t =
-  fun f -> set_of_map (M.filter (fun _ u -> u.mut_field) f)
 let eager_vars : f -> S.t =
   fun f -> set_of_map (M.filter (fun _ u -> u.eager) f)
 
@@ -98,14 +94,13 @@ let arg a : fd = (M.empty, M.singleton a.it a.note)
 
 let args as_ : fd = union_binders arg as_
 
-let id i = M.singleton i {captured = false; mut_field = false; eager = true}
+let id i = M.singleton i {captured = false; eager = true}
 
-(* The fields of an IR object behave a bit like a lambda, in that they capture mutable
+(* The mutable fields of an IR object behave a bit like a lambda, in that they capture mutable
 boxes by reference. So set captured = true for them. *)
 let fields fs = unions (fun f ->
-  if Type.is_mut f.note
-  then M.singleton f.it.var {captured = false; mut_field = true;  eager = false}
-  else M.singleton f.it.var {captured = false; mut_field = false; eager = true}) fs
+  M.singleton f.it.var {captured = Type.is_mut f.note; eager = true}
+) fs
 
 let rec exp e : f = match e.it with
   | VarE i              -> id i

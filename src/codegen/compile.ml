@@ -6783,10 +6783,12 @@ module Var = struct
      In the IR, mutable fields of objects are pre-allocated as MutBox objects,
      to allow the async/await.
      So we expect the variable to be in a HeapInd (pointer to MutBox on the heap),
-     and we use the pointer.
+     or HeapStatic (statically known MutBox in the static memory) and we use
+     the pointer.
   *)
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
+    | Some (HeapStatic i) -> compile_unboxed_const i
     | _ -> assert false
 
 end (* Var *)
@@ -7292,8 +7294,6 @@ module AllocHow = struct
   to avoid turning function references into closures.
 
   The rules are:
-  - everything that used to initialize a mutable record field must be heap
-    allocated (as that happens by aliasing)
   - functions are const, unless they capture something that is not a const
     function or a static heap allocation.
     in particular, top-level functions are always const
@@ -7360,17 +7360,6 @@ module AllocHow = struct
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
-  let how_mut_fields how seen for_mut_fields =
-    (* What to do so that we can put something in a mutable object field, which aliases?
-       This is similar to how_captured, but we need to do this at the top-level too! *)
-    map_of_set StoreHeap for_mut_fields
-
-    (* Code smell: What if something is both captured on the top level (so we want StoreStatic) and
-    used in an object (so we want StoreHeap). AllocHow.join refuses to join them, for good reasons.
-    Right now we'd throw in the backend.
-    We believe that the desugarer never produces top-level code that triggers this.
-    *)
-
   (* A bit like StackRep.of_type, but only for those types and stackreps that
      we support in local variables *)
   let stackrep_of_type t =
@@ -7386,7 +7375,6 @@ module AllocHow = struct
 
     let (f,d) = Freevars.dec dec in
     let captured = S.inter (set_of_map how0) (Freevars.captured_vars f) in
-    let for_mut_fields = S.inter (set_of_map how0) (Freevars.mut_field_vars f) in
 
     (* Which allocation is required for the things defined here? *)
     let how1 = match dec.it with
@@ -7405,10 +7393,7 @@ module AllocHow = struct
     (* Which allocation does this require for its captured things? *)
     let how2 = how_captured lvl how_all seen captured in
 
-    (* Which allocation does this require for mutable boxes used in objects? *)
-    let how3 = how_mut_fields how_all seen for_mut_fields in
-
-    let how = joins [how0; how1; how2; how3] in
+    let how = joins [how0; how1; how2] in
     let seen' = S.union seen (set_of_map d)
     in (seen', how)
 
@@ -7422,20 +7407,18 @@ module AllocHow = struct
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
     ) ae.VarEnv.vars
 
-  let decs (ae : VarEnv.t) decs body_usage : allocHow =
+  let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
     let lvl = ae.VarEnv.lvl in
     let how_outer = how_of_ae ae in
     let defined_here = snd (Freevars.decs decs) in (* TODO: implement gather_decs more directly *)
     let how_outer = Freevars.diff how_outer defined_here in (* shadowing *)
     let how0 = M.map (fun _t -> (Const : how)) defined_here in
-    let captured = S.inter (set_of_map defined_here) (Freevars.captured_vars body_usage) in
-    let for_mut_fields = S.inter (set_of_map defined_here) (Freevars.mut_field_vars body_usage) in
+    let captured = S.inter (set_of_map defined_here) captured_in_body in
     let rec go how =
       let seen, how1 = List.fold_left (dec lvl how_outer) (S.empty, how) decs in
       assert (S.equal seen (set_of_map defined_here));
       let how2 = how_captured lvl how1 seen captured in
-      let how3 = how_mut_fields how1 seen for_mut_fields in
-      let how' = joins [how1;how2;how3] in
+      let how' = join how1 how2 in
       if M.equal (=) how how' then how' else go how' in
     go how0
 
@@ -9082,8 +9065,8 @@ and compile_exp (env : E.t) ae exp =
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
-    let body_usage = Freevars.exp exp in
-    let ae', codeW1 = compile_decs env ae decs body_usage in
+    let captured = Freevars.captured_vars (Freevars.exp exp) in
+    let ae', codeW1 = compile_decs env ae decs captured in
     let (sr, code2) = compile_exp env ae' exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
@@ -9184,8 +9167,8 @@ and compile_exp_as env ae sr_out e =
     match sr_out, e.it with
     (* Some optimizations for certain sr_out and expressions *)
     | _ , BlockE (decs, exp) ->
-      let body_usage = Freevars.exp exp in
-      let ae', codeW1 = compile_decs env ae decs body_usage in
+      let captured = Freevars.captured_vars (Freevars.exp exp) in
+      let ae', codeW1 = compile_decs env ae decs captured in
       let code2 = compile_exp_as env ae' sr_out exp in
       codeW1 code2
     (* Fallback to whatever stackrep compile_exp chooses *)
@@ -9484,8 +9467,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
         unmodified
       )
 
-and compile_decs_public env pre_ae decs v2en body_usage : VarEnv.t * scope_wrap =
-  let how = AllocHow.decs pre_ae decs body_usage in
+and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
+  let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
     | []          -> (pre_ae, G.nop, fun _ -> unmodified)
     | [dec]       -> compile_dec env pre_ae how v2en dec
@@ -9501,8 +9484,8 @@ and compile_decs_public env pre_ae decs v2en body_usage : VarEnv.t * scope_wrap 
   let (ae1, alloc_code, mk_codeW) = go pre_ae decs in
   (ae1, fun body_code -> alloc_code ^^ mk_codeW ae1 body_code)
 
-and compile_decs env ae decs body_usage : VarEnv.t * scope_wrap =
-  compile_decs_public env ae decs E.NameEnv.empty body_usage
+and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
+  compile_decs_public env ae decs E.NameEnv.empty captured_in_body
 
 (* This compiles expressions determined to be const as per the analysis in
    ir_passes/const.ml. See there for more details.
@@ -9640,7 +9623,7 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
-      let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.M.empty in
+      let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
     )
   | ActorU (as_opt, ds, fs, up, _t) ->
@@ -9685,7 +9668,8 @@ and main_actor as_opt mod_env ds fs up =
     let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
     (* Compile the declarations *)
-    let ae2, decls_codeW = compile_decs_public env ae1 ds v2en (Freevars.system up)
+    let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
+      Freevars.(captured_vars (system up))
     in
 
     (* Export the public functions *)
