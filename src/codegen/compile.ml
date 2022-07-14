@@ -7384,19 +7384,19 @@ module AllocHow = struct
     let how1 = match dec.it with
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
-      M.map (fun t -> LocalMut (stackrep_of_type t)) d
+        M.map (fun t -> LocalMut (stackrep_of_type t)) d
 
       (* Constant expressions (trusting static_vals.ml) *)
       | LetD (_, e) when e.note.Note.const ->
-      M.map (fun _t -> Const) d
+        M.map (fun _t -> Const) d
 
-      (* Mutbox references always live on the heap
+      (* References to mutboxes *)
       | RefD _ ->
-      M.map (fun _t -> StoreHeap) d !!! BUT NOT *IN* A MUTBOX *)
+        M.map (fun _ -> StoreHeap) d
 
       (* Everything else needs at least a local *)
       | _ ->
-      M.map (fun t -> LocalImmut (stackrep_of_type t)) d in
+        M.map (fun t -> LocalImmut (stackrep_of_type t)) d in
 
     (* Which allocation does this require for its captured things? *)
     let how2 = how_captured lvl how_all seen captured in
@@ -9478,7 +9478,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
   | RefD (name, _, e) ->
-    assert AllocHow.(M.find_opt name how = Some (LocalImmut Vanilla));
+    assert AllocHow.(M.find_opt name how = Some (StoreHeap));
     let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
     ( pre_ae1,
