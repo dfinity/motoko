@@ -782,6 +782,7 @@ rec {
           nixpkgs.niv
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
+          nixpkgs.difftastic
         ]
       ));
 

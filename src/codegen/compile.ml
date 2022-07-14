@@ -6787,6 +6787,10 @@ module Var = struct
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
     | Some (HeapStatic _) -> assert false (* we never do this on the toplevel *)
+    | Some (Local _) ->
+      let sr, code = get_val env ae var in
+      assert (sr = Vanilla);
+      code
     | _  -> Tagged.obj env Tagged.ObjInd [ get_val_vanilla env ae var ]
 
 end (* Var *)
@@ -7382,7 +7386,11 @@ module AllocHow = struct
 
       (* Constant expressions (trusting static_vals.ml) *)
       | LetD (_, e) when e.note.Note.const ->
-      M.map (fun _t -> (Const : how)) d
+      M.map (fun _t -> Const) d
+
+      (* Mutbox references always live on the heap
+      | RefD _ ->
+      M.map (fun _t -> StoreHeap) d !!! BUT NOT *IN* A MUTBOX *)
 
       (* Everything else needs at least a local *)
       | _ ->
@@ -9157,8 +9165,8 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
-        if Type.is_mut f.note && not f.it.byref
-        then Var.get_aliased_box env ae f.it.var
+        if Type.is_mut f.note
+        then (assert (not f.it.byref || match VarEnv.lookup_var ae f.it.var with Some (Local _) -> true | _ -> false); Var.get_aliased_box env ae f.it.var)
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
@@ -9460,33 +9468,32 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-      let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
-      ( pre_ae1,
-        alloc_code,
-        (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
-        unmodified
-      )
+    ( pre_ae1,
+      alloc_code,
+      (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
+      unmodified
+    )
   | RefD (name, _, e) ->
-    (*assert AllocHow.(match M.find_opt name how with
-                     | Some (StoreHeap) -> true
-                     | _ -> false);*)
-      let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    assert AllocHow.(M.find_opt name how = Some (LocalImmut Vanilla));
+    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
-      ( pre_ae1,
-        alloc_code,
-        (fun ae ->
-          let _, prepare_raw, _sr, _ = compile_lexp env ae e in
-          prepare_raw ^^ Var.set_val_vanilla env ae name),
-        unmodified
-      )
+    ( pre_ae1,
+      alloc_code,
+      (fun ae ->
+        let _, prepare_raw, sr, _ = compile_lexp env ae e in
+        assert (sr = Vanilla);
+        prepare_raw ^^ Var.set_val_vanilla env ae name),
+      unmodified
+    )
 
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
-    | []          -> (pre_ae, G.nop, fun _ -> unmodified)
-    | [dec]       -> compile_dec env pre_ae how v2en dec
-    | (dec::decs) ->
+    | []        -> (pre_ae, G.nop, fun _ -> unmodified)
+    | [dec]     -> compile_dec env pre_ae how v2en dec
+    | dec::decs ->
         let (pre_ae1, alloc_code1, mk_codeW1) = compile_dec env pre_ae how v2en dec in
         let (pre_ae2, alloc_code2, mk_codeW2) = go              pre_ae1 decs in
         ( pre_ae2,
