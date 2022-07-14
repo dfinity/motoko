@@ -1109,7 +1109,7 @@ and gather_dec env scope dec : scope =
     let ve = T.Env.add id val_info scope.val_env in
     { val_env = ve }
   | RefD (id, t, lexp) ->
-    (*check_typ env t;*)
+    check_mut_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
