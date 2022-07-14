@@ -6789,10 +6789,6 @@ module Var = struct
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
     | Some (HeapStatic i) -> compile_unboxed_const i
-    | Some (Local _) ->
-      let sr, code = get_val env ae var in
-      assert (sr = Vanilla);
-      code
     | _ -> assert false
 
 end (* Var *)
@@ -9479,14 +9475,16 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     )
   | RefD (name, _, e) ->
     assert AllocHow.(M.find_opt name how = Some (StoreHeap));
-    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    let pre_ae1, _ = AllocHow.add_local env pre_ae how name in
 
     ( pre_ae1,
-      alloc_code,
+      G.nop,
       (fun ae ->
         let _, prepare_raw, sr, _ = compile_lexp env ae e in
         assert (sr = Vanilla);
-        prepare_raw ^^ Var.set_val_vanilla env ae name),
+        match VarEnv.lookup_var ae name with
+        | Some (HeapInd i) -> prepare_raw ^^ G.i (LocalSet (nr i))
+        | _ -> assert false),
       unmodified
     )
 
