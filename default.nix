@@ -313,7 +313,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++ # TODO: sources.esm
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
       [ filecheck wasmtime ];
 
 
