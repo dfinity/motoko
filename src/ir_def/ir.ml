@@ -95,7 +95,7 @@ and meta = {
   }
 
 and field = (field', Type.typ) Source.annotated_phrase
-and field' = {name : Type.lab; var : id; byref : bool} (* the var is by reference, not by value *)
+and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}

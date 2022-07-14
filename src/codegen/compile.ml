@@ -9166,7 +9166,7 @@ and compile_exp (env : E.t) ae exp =
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
         if Type.is_mut f.note
-        then (assert (not f.it.byref || match VarEnv.lookup_var ae f.it.var with Some (Local _) -> true | _ -> false); Var.get_aliased_box env ae f.it.var)
+        then Var.get_aliased_box env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
