@@ -9480,7 +9480,6 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
   | RefD (name, _, e) ->
-    assert AllocHow.(M.find_opt name how = Some (StoreHeap));
     let pre_ae1, _ = AllocHow.add_local env pre_ae how name in
 
     ( pre_ae1,
