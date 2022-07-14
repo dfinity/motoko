@@ -1,9 +1,7 @@
-all: overview-slides.html antora
+all: overview-slides.html html
 
-SRC=modules/language-guide/pages
-TMP=modules/language-guide/tmp
-OUT=md
 SHELL=bash
+OUT=md
 
 overview-slides.html : overview-slides.md
 	pandoc \
@@ -21,18 +19,12 @@ overview-slides.html : overview-slides.md
 base:
 	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
 
-md: base
-	rm -r -f $(TMP)
-	cp -r $(SRC)/../examples $(OUT)/examples
-	cp -r $(SRC) $(TMP)
-	./convert.sh $(TMP) $(OUT)
+html:
+        # TODO: perhaps use node and remark-cli to compile out remark plugins first or use docusaurus to build site properly
+	rm -rf html
+	mkdir -p html
+	for f in md/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
-antora:
-	rm -rf build
-	echo "disabled (nixpkgs 22.05)"
-	# antora antora-test-playbook.yml
-	# ./patch-antora-js.sh
-
-.PHONY: antora
 .PHONY: base
 .PHONY: md
+.PHONY: html
