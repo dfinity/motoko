@@ -216,7 +216,11 @@ let tagE i e =
  }
 
 let dec_eff dec = match dec.it with
-  | LetD (_,e) | VarD (_, _, e) -> eff e
+  | LetD (_, e) | VarD (_, _, e) -> eff e
+  | RefD (_, _, le) ->
+    match le.it with
+    | DotLE (e, _) -> eff e
+    | _ -> assert false (*FIXME*)
 
 let rec simpl_decs decs = List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
