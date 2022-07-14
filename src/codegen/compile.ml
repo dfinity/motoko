@@ -7390,7 +7390,7 @@ module AllocHow = struct
 
       (* Constant expressions (trusting static_vals.ml) *)
       | LetD (_, e) when e.note.Note.const ->
-        M.map (fun _t -> Const) d
+        M.map (fun _ -> (Const : how)) d
 
       (* References to mutboxes *)
       | RefD _ ->
@@ -9635,7 +9635,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
     let (const, fill) = compile_const_exp env pre_ae e in
     (fun ae -> destruct_const_pat ae p const),
     (fun env ae -> fill env ae)
-  | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
+  | VarD _ | RefD _ -> fatal "compile_const_dec: Unexpected VarD/RefD"
 
 and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   assert (not flavor.has_typ_field);
