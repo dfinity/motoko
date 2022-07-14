@@ -85,6 +85,7 @@ function normalize () {
     sed -e 's/^  \(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations (later version)
     sed -e 's/wasm `unreachable` instruction executed/unreachable/g' | # cross-version normalisation
     sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
     # Normalize canister id prefixes in debug prints
