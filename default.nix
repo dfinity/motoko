@@ -313,7 +313,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x sources.esm ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
       [ filecheck wasmtime ];
 
 
@@ -577,7 +577,7 @@ rec {
 
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
-    buildInputs = with nixpkgs; [ ocamlformat ];
+    buildInputs = [ nixpkgs.ocamlformat ];
     src = subpath ./src;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";

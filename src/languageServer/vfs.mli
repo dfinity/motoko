@@ -1,17 +1,13 @@
 module Lsp_t = Lsp.Lsp_t
 
 type t
-
 type uri = string
 
 (* NOTE(Christoph): Track file version *)
 
 val uri_from_file : string -> uri
-
 val file_from_uri : uri -> string
-
 val abs_file_from_uri : uri -> string
-
 val parse_file : t -> Pipeline.no_region_parse_fn
 
 (** Creates a new virtual file system *)
