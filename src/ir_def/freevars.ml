@@ -1,5 +1,6 @@
 open Source
 open Ir
+open Mo_types
 
 (* We collect a few things along the way *)
 
@@ -95,7 +96,11 @@ let args as_ : fd = union_binders arg as_
 
 let id i = M.singleton i {captured = false; eager = true}
 
-let fields fs = unions (fun f -> id f.it.var) fs
+(* The mutable fields of an IR object behave a bit like a lambda, in that they capture mutable
+boxes by reference. So set captured = true for them. *)
+let fields fs = unions (fun f ->
+  M.singleton f.it.var {captured = Type.is_mut f.note; eager = true}
+) fs
 
 let rec exp e : f = match e.it with
   | VarE i              -> id i

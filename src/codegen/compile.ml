@@ -6780,18 +6780,20 @@ module Var = struct
     | _ -> assert false
 
   (* This is used when putting a mutable field into an object.
-     In the IR, mutable fields of objects can alias pre-allocated
-     MutBox objects, to allow the async/await. So if we already have
-     this variable in a MutBox, then use that, else create a new one.
+     In the IR, mutable fields of objects are pre-allocated as MutBox objects,
+     to allow the async/await.
+     So we expect the variable to be in a HeapInd (pointer to MutBox on the heap),
+     or HeapStatic (statically known MutBox in the static memory) and we use
+     the pointer.
   *)
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
-    | Some (HeapStatic _) -> assert false (* we never do this on the toplevel *)
+    | Some (HeapStatic i) -> compile_unboxed_const i
     | Some (Local _) ->
       let sr, code = get_val env ae var in
       assert (sr = Vanilla);
       code
-    | _  -> Tagged.obj env Tagged.ObjInd [ get_val_vanilla env ae var ]
+    | _ -> assert false
 
 end (* Var *)
 
