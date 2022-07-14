@@ -42,7 +42,7 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/dfinity/motoko/docs/md/',
+            'https://github.com/dfinity/motoko/tree/master/doc/md/',
         },
         blog: false,
         theme: {
