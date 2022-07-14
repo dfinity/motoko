@@ -406,18 +406,27 @@ and export_interface txt =
 
 and export_footprint self_id expr =
   let open T in
-  let {lab;typ;_} = motoko_stable_var_size_fld in
+  let {lab;typ;_} = motoko_stable_var_info_fld in
   let v = "$"^lab in
+  let size = fresh_var "size" T.nat64 in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; depr = None}]) in
   ([ letD (var v typ) (
-       funcE v (Shared Query) Promises [bind1] [] [nat64] (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
            (asyncE bind2
               (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
-                                        [primE I.ICCallerPrim []; selfRefE caller]))]
-                 (primE (I.ICStableSize expr.note.Note.typ) [expr])) (Con (scope_con1, []))))
+                                        [primE I.ICCallerPrim []; selfRefE caller]));
+                       letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
+                 ]
+                 (newObjE T.Object
+                   [{ it = {Ir.name = "size"; var = id_of_var size};
+                      at = no_region;
+                      note = T.nat64 }]
+                   ret_typ))
+              (Con (scope_con1, []))))
   )],
   [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
 
@@ -534,23 +543,33 @@ and build_obj at s self_id dfs obj_typ =
       let self = var self_id.it obj_typ in
       (letE self e (varE self)).it
 
-and exp_field ef =
+and exp_field obj_typ ef =
+  let _, fts = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
-  let typ = e.note.S.note_typ in
   match mut.it with
   | S.Var ->
-    let id' = fresh_var id.it (T.Mut typ) in
+    let typ = match T.lookup_val_field_opt id.it fts with
+      | Some typ -> typ
+      | None -> T.Mut e.note.S.note_typ
+    in
+    assert (T.is_mut typ);
+    let id' = fresh_var id.it typ in
     let d = varD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = T.Mut typ } in
+    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
   | S.Const ->
+    let typ = match T.lookup_val_field_opt id.it fts with
+      | Some typ -> typ
+      | None -> e.note.S.note_typ
+    in
+    assert (not (T.is_mut typ));
     let id' = fresh_var id.it typ in
     let d = letD id' (exp e) in
     let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
     (d, f)
 
 and obj obj_typ efs =
-  let (ds, fs) = List.map exp_field efs |> List.split in
+  let (ds, fs) = List.map (exp_field obj_typ) efs |> List.split in
   let obj_e = newObjE T.Object fs obj_typ in
   I.BlockE(ds, obj_e)
 
@@ -634,7 +653,7 @@ and decs ds =
 
 and dec d = { (phrase' dec' d) with note = () }
 
-and dec' at n d = match d with
+and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
   | S.LetD (p, e) ->
     let p' = pat p in
@@ -715,7 +734,7 @@ and pat' = function
   | S.AnnotP (p, _)
   | S.ParP p -> pat' p.it
 
-and lit l = match l with
+and lit = function
   | S.NullLit -> I.NullLit
   | S.BoolLit x -> I.BoolLit x
   | S.NatLit x -> I.NatLit x

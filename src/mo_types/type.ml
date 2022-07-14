@@ -1090,9 +1090,11 @@ let motoko_async_helper_fld =
     depr = None;
   }
 
-let motoko_stable_var_size_fld =
-  { lab = "__motoko_stable_var_size";
-    typ = Func(Shared Query, Promises, [scope_bind], [], [nat64]);
+let motoko_stable_var_info_fld =
+  { lab = "__motoko_stable_var_info";
+    typ =
+      Func(Shared Query, Promises, [scope_bind], [],
+        [ Obj(Object, [{lab = "size"; typ = nat64; depr = None}]) ]);
     depr = None;
   }
 
@@ -1104,7 +1106,7 @@ let get_candid_interface_fld =
 
 let well_known_actor_fields = [
     motoko_async_helper_fld;
-    motoko_stable_var_size_fld;
+    motoko_stable_var_info_fld;
     get_candid_interface_fld
   ]
 
@@ -1201,7 +1203,7 @@ let string_of_var (x, i) =
 
 let string_of_con c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
 
-let rec can_sugar t = match t with
+let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)
   | Func((Shared _ as s), Returns, tbs, ts1, ([] as ts2))
   | Func(s, Returns, tbs, ts1, ([Async (Var(_, 0),_)] as ts2)) ->
@@ -1211,8 +1213,7 @@ let rec can_sugar t = match t with
   | _ -> false
 
 and can_omit n t =
-  let rec go i t =
-    match t with
+  let rec go i = function
     | Var (_, j) -> i <> j
     | Pre -> assert false
     | Prim _ | Any | Non -> true
@@ -1298,6 +1299,13 @@ and pp_typ_pre vs ppf t =
   | t ->
     pp_typ_un vs ppf t
 
+and sequence pp ppf ts =
+  match ts with
+  | [Tup _] ->
+    fprintf ppf "@[<1>(%a)@]" pp (seq ts)
+  | ts ->
+    pp ppf (seq ts)
+
 and pp_typ_nobin vs ppf t =
   match t with
   | Func (s, c, tbs, ts1, ts2) ->
@@ -1313,7 +1321,7 @@ and pp_typ_nobin vs ppf t =
     fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
       (pp_binds (vs'vs) vs'') tbs'
-      (pp_typ_un (vs'vs)) (seq ts1)
+      (sequence (pp_typ_un (vs'vs))) ts1
       (pp_control_cod sugar c (vs'vs)) ts2
   | t ->
      pp_typ_pre vs ppf t
@@ -1324,11 +1332,11 @@ and pp_control_cod sugar c vs ppf ts =
   | Returns, [Async (_,t)] when sugar ->
     fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) t
   | Promises, ts ->
-    fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) (seq ts)
+    fprintf ppf "@[<2>async@ %a@]" (sequence (pp_typ_pre vs)) ts
   | Returns, _ ->
-    pp_typ_nobin vs ppf (seq ts)
+    sequence (pp_typ_nobin vs) ppf ts
   | Replies, _ ->
-    fprintf ppf "@[<2>replies@ %a@]" (pp_typ_nobin vs) (seq ts)
+    fprintf ppf "@[<2>replies@ %a@]" (sequence (pp_typ_nobin vs)) ts
 
 and pp_typ' vs ppf t =
   match t with

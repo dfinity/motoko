@@ -1,5 +1,5 @@
 QUICK_DIRS = fail idl ld mo-idl repl run
-OTHER_DIRS = perf run-deser run-drun trap
+OTHER_DIRS = bench perf run-deser run-drun trap
 TEST_DIRS = $(QUICK_DIRS) $(OTHER_DIRS)
 SOURCE_PATHS ?= ../src # will be overridden when building coverage report with nix
 

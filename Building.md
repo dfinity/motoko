@@ -61,6 +61,16 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    with today’s date.
 
+ * Make sure the markdown doc for base is up-to-date:
+   For now, in a nix-shell:
+
+   ```bash
+      make -C docs base
+      git diff
+   ```
+
+   If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
+
  * Define a shell variable `export MOC_MINOR=17`
 
  * Look at `git log --first-parent 0.6.$(expr $MOC_MINOR - 1)..HEAD` and check
@@ -72,10 +82,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    merge it into master without additional approval, within 2 or 3 minutes.
  * `git switch master; git pull`. The release commit should be your `HEAD`
  * `git tag 0.6.$MOC_MINOR -m "Motoko 0.6.$MOC_MINOR"`
- * `git branch -f release 0.6.$MOC_MINOR`
- * `git push origin release 0.6.$MOC_MINOR`
-
-The `release` branch should thus always reference the latest release commit.
+ * `git push origin 0.6.$MOC_MINOR`
 
 Pushing the tag should cause GitHub Actions to create a “Release” on the github
 project. This will fail if the changelog is not in order (in this case, fix and

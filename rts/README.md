@@ -83,6 +83,7 @@ do step 3.
 
 1. Update Rust version in `nix/default.nix`, in the line with
    `moz_overlay.rustChannelOf { ... }`.
+   CAVEAT: there is a second `rustChannelOf` for the stable `rustc` too.
 2. Invalidate `rustStdDepsHash` in `default.nix`.
 3. Run `nix-build -A rts`. You should get an error message about the expected
    value of `rustStdDepsHash`.
@@ -90,6 +91,8 @@ do step 3.
 
 --------
 **The above doesn't always work**
+
+Sometimes you want to also bump the  `.toml` dependencies...
 
 E.g. when you get `perhaps a crate was updated and forgotten to be
 re-vendored?`, proceed as follows:

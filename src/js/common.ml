@@ -121,7 +121,10 @@ let set_actor_aliases entries =
                     let kv = Js.to_array kv in
                     Js.to_string (Array.get kv 0), Js.to_string (Array.get kv 1)) (Js.to_array entries) in
   let aliases = Flags.actor_aliases in
-  aliases := Flags.M.of_seq (Array.to_seq entries)  
+  aliases := Flags.M.of_seq (Array.to_seq entries)
+let set_public_metadata entries =
+  let entries = Array.map Js.to_string (Js.to_array entries) in
+  Flags.public_metadata_names := Array.to_list entries
 
 let gc_flags option =
   match Js.to_string option with

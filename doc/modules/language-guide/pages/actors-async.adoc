@@ -308,7 +308,7 @@ TODO: scoped awaits (if at all)
 ////
 
 
-[#actor_classes]
+[#actor-classes-generalize-actors]
 == Actor classes generalize actors
 
 An actor _class_ generalizes a single actor declaration to the declaration of family of actors satisfying the same interface.
@@ -320,7 +320,7 @@ Because canister installation is asynchronous on the {IC}, the constructor funct
 For example, we can generalize `Counter` given above to `Counter(init)`
 below, by introducing a constructor parameter, variable `init` of type `Nat`:
 
-.Counters.mo
+`+Counters.mo+`:
 [source#Counters, motoko]
 ----
 include::../examples/Counters.mo[]
@@ -344,8 +344,7 @@ The first invocation uses the initial value `1`, where the second uses initial v
 Because actor class instantiation is asynchronous, each call to `Counter(init)` returns a future that can be ``await``ed for the resulting actor value.
 Both `C1` and `C2` have the same type, `Counters.Counter` and can be used interchangeably.
 
-
 NOTE: For now, the {proglang} compiler gives an error when compiling
 programs that do not consist of a single actor or actor class.
 Compiled programs may still, however, reference imported actor classes.
-For more information, see link:modules-and-imports{outfilesuffix}#importing_actor_classes[Importing actor classes] and link:actor-classes{outfilesuffix}#actor_classes[Actor classes].
+For more information, see link:modules-and-imports{outfilesuffix}#importing-actor-classes[Importing actor classes] and link:actor-classes{outfilesuffix}#actor-classes[Actor classes].

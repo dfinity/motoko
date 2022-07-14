@@ -106,7 +106,7 @@ struct
           (extract_args p)
     | Source.{ it = Syntax.WildP; _ } -> None
     | pat ->
-        Wasm.Sexpr.print 80 (Arrange.pat pat);
+        (* Wasm.Sexpr.print 80 (Arrange.pat pat); *)
         None
 
   let extract_func_args = function

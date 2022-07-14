@@ -10,14 +10,14 @@ To increase readability and uniformity of {proglang} source code, the style guid
 
 * Put spaces around arithmetic operators, except to visually group sub-expressions of more tightly binding operators.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let z = - 2*x + 3*y + 4*(x*x + y*y);
 ....
 
 * Put spaces around comparison operators, Boolean operators, and assignment operators.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 4 + 5 <= 5 + 4;
 not (a or b and not c);
@@ -27,7 +27,7 @@ v += 1;
 
 * Put spaces around '='.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 var v = 0;
 let r = { a = 1; b = 2 };
@@ -35,7 +35,7 @@ let r = { a = 1; b = 2 };
 
 * Analogously, put spaces around `:`.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 var v : Nat = 0;
 func foo(x : Nat, y : Nat) : Nat { x + y }
@@ -48,7 +48,7 @@ Moreover, the left-hand of a type annotation may generally be an arbitrary compl
 
 * Put a space after a comma or semicolon (but not before).
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let tuple = (1, 2, 3);
 let record = { a = 1; b = 2; c = 3 };
@@ -56,7 +56,7 @@ let record = { a = 1; b = 2; c = 3 };
 
 * Put spaces inside braces, unless they are a simple variant or record.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func f() { 0 };
 f({ a = 1; b = 2; c = 3 });
@@ -71,7 +71,7 @@ type Proc = {h : Nat; w : Nat} -> {#ok; #fail};
 
 * Put spaces inside brackets if they stretch multiple lines.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 foo(
   firstArgument,
@@ -89,7 +89,7 @@ foo(
 
 * Put a space between statement keywords and their operands.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 if (f()) A else B;
 for (x in xs.vals()) { ... };
@@ -104,7 +104,7 @@ await (async (0));
 
 * Do _not_ put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 type Pair<X> = (X, X);
 type Id = <X>(X) -> X;
@@ -115,9 +115,9 @@ func id<X>(x : X) : X { x };
 id<Nat>(5);
 ....
 
-* Put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see <<Parentheses>>) or a record used as a named parameter list (see <<Picking types>>).
+* Put a space between a function and its argument if it is _not_ a tuple or parenthesized expression (see <<parentheses>>) or a record used as a named parameter list (see <<picking-types>>).
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 sin 0.0;
 g [1, 2, 3];
@@ -128,7 +128,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 * Do _not_ put a space around access operators like `.`, `?`, `!`, or index brackets.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 foo(bar).baz[5]().boo;
 foom(?(bam()! + 1));
@@ -138,7 +138,7 @@ foom(?(bam()! + 1));
 
 * Pick a fixed right margin for lines and break definitions or expressions that are longer than that (80 still is considered a good limit by many).
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let sum = a + b + 2*c + d +
   e + f + g + h + i + k +
@@ -162,7 +162,7 @@ Rationale: Among other reasons, this style of formatting:
 
 * Break lines _after_ an operator.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 a + b + c +
   d + f;
@@ -175,7 +175,7 @@ foo(bar, baz).
 +
 Also, consider using records for long parameter lists, see <<picking-types>>.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func someFunction(
   arg1 : FirstType,
@@ -205,7 +205,7 @@ Rationale: This prevents overlooking an argument when reading code and avoids re
 
 * Each level of indentation should be 2 spaces.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 actor A {
   public func f() {
@@ -220,7 +220,7 @@ Rationale: There may be a lot of nesting. Using only 2 spaces avoids wasting scr
 +
 In particular, do not vertically align indentation with inner characters from previous lines.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let x = someFunction(
   arg1, arg2, arg3, arg4, arg5);               // Do this.
@@ -265,7 +265,7 @@ Rationale: The interpretation of tabs varies wildly across tools and they get lo
 * Separate complex multi-line definitions with empty lines.
   One-liners can be put on consecutive lines.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func foo() {
   // This function does a lot of interesting stuff.
@@ -284,7 +284,7 @@ func mul(x : Nat, y : Nat) { return x * y };
 * Separate logic groups of definitions with two empty lines.
   Add a one-line comment as a "section header" for each group.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 // A very large class
 class MuffleMiff(n : Nat) {
@@ -336,7 +336,7 @@ class MuffleMiff(n : Nat) {
 * Use line comments (`//...`).
   Use block comments (`/* ... */`) only when commenting in the middle of a line or for commenting out pieces of code during development.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 // The following function runs the current
 // pallaboom on a given snibble. It returns
@@ -355,14 +355,14 @@ Rationale: Line comments make it easier to insert, remove or swap individual lin
 
 * Put short comments explaining a single line at the end of the line, separated by at least 2 spaces.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 paBoom(getSnibble()));  // create new snibble
 ....
 
 * Put multi-line comments before a line of code, with the same indentation as the code it is describing.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func f() {
   // Try to invoke the current pallaboom with
@@ -387,7 +387,7 @@ Rationale: This is unlike other C-style languages, which tend to have rather ad-
 +
 Similarly for types.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 // No ; needed before closing } on same line
 
@@ -429,7 +429,7 @@ Rationale: Consistently ending lines with semicolon simplifies adding, removing,
 
 * Put braces around function bodies, `if` or `case` branches, and loop bodies, unless they appear nested as an expression and only contain a single expression.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func f(x) { f1(x); f2(x) };
 
@@ -440,7 +440,7 @@ func succ(x : Nat) : Nat = x + 1;
 
 * Use "C-style" layout for braced sub-expressions stretching multiple lines.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func f() {
   return;
@@ -460,12 +460,12 @@ switch (opt) {
 };
 ....
 
-[[parens]]
+[#parentheses]
 === Parentheses
 
 * {proglang} supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already (for example, a tuple, object, or array) or is a simple constant or identifier.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 type Op = Nat -> Nat;
 let a2 = Array.map<Nat, Nat>(func x { x + 1 }, a);
@@ -484,7 +484,7 @@ switch opt {
 +
 In particular, do not omit parentheses and braces on statements at the same time.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 // COUNTER EXAMPLES!
 let choice = if flag x + y else z;  // DO NOT DO THIS!
@@ -499,7 +499,7 @@ Rationale: Omitting both at the same time makes the code harder to read, since t
 
 * Similarly, do not omit parentheses around function parameters if the function also has type parameters.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 // COUNTER EXAMPLE!
 foo<Nat> 0;   // DO NOT DO THIS!
@@ -509,7 +509,7 @@ foo<Nat> 0;   // DO NOT DO THIS!
 +
 But do not omit them around when functions or classes also have type parameters.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 type Inv = Nat -> Nat;
 type Id = <T>(T) -> T;
@@ -525,7 +525,7 @@ type Get = <X>C<X> -> X;   // DO NOT DO THIS!
 +
 Group by 3 digits in decimal numbers and by 4 in hexadecimal notation.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let billion = 1_000_000_000;
 let pi = 3.141_592_653_589_793_12;
@@ -534,13 +534,14 @@ let mask : Nat32 = 0xff00_ff0f;
 
 == Naming
 
+[#style]
 === Style
 
 * Use `UpperCamelCase` for type names (including classes or type parameters), module names, and actor names.
 
 * Use `lowerCamelCase` for all other names, including constants and variant fields.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 module MoreMuff {
   type FileSize = Nat;
@@ -565,7 +566,7 @@ Rationale: The general convention is upper case for "static" entities like types
 
 * Spell acronyms as regular words.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 type HttpHeader = ...;
 func getUrl() { ... };
@@ -574,7 +575,7 @@ let urlDigest = ...;
 
 * Do not use identifier names that start with an underscore `_`, except to document that a variable in a pattern is intentionally unused.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let (width, _color, name) = rumpler();
 ...  // _color is not used here
@@ -593,7 +594,7 @@ This aligns with the use of the keyword `_` for pattern wildcards.
 +
 Avoid redundant `get` prefixes.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 dict.size();
 list.first();
@@ -602,7 +603,7 @@ sum(array);
 
 * The name of functions performing side effects or complex operations should describe that operation (as a verb in imperative form).
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 dict.clear();
 dict.set(key, value);
@@ -611,7 +612,7 @@ let result = traverse(graph);
 
 * The name of predicate functions returning `Bool` should use an `is` or `has` prefix or a similar description of the tested property (as a verb in indicative form).
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 class Set<X>() {
   public func size() : Nat { ... };
@@ -628,7 +629,7 @@ class Set<X>() {
 
 * In classes or objects, use a name ending with `_` to distinguish private variables from getters.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 class Cart(length_ : Nat) {
   var width_ = 0;
@@ -640,13 +641,13 @@ class Cart(length_ : Nat) {
 +
 Rationale: In {proglang}, functions are first-class values, so functions and other value identifiers share the same name space.
 +
-Identifiers with a leading `_` should _not_ be used for private state, since that indicates an unused name (see <<style>>).
+Identifiers with a leading `+_+` should _not_ be used for private state, since that indicates an unused name (see <<style>>).
 
 * Use longer, more descriptive names for global or public identifier or ones with large scope, and short names for local ones with small scope.
 +
 It is fine to use single character identifiers when there is nothing interesting to say, especially when using the same naming scheme consistently.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func map(x : Nat, y : Nat) : Nat { x + y };
 
@@ -668,7 +669,7 @@ Rationale: Contrary to popular belief, overly chatty local names can decrease re
 +
 This also works for short names.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func foreach<X>(xs : [X], f : X -> ()) {
   for (x in xs.vals()) { f(x) }
@@ -681,7 +682,7 @@ func foreach<X>(xs : [X], f : X -> ()) {
 
 * Put type annotations on definitions that involve fixed-width numeric types, to disambiguate the type of overloaded arithmetic operators and constants.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let mask : Nat32 = 0xfc03_ff00;
 let pivot : Nat32 = (size + 1)/2;
@@ -691,7 +692,7 @@ let vec : [Int16] = [1, 3, -4, 0];
 NOTE: Use floating point constants to enforce type `Float` without an extra annotation.
 Similarly, use an explicit `+` sign to produce a positive value of type `Int` instead of `Nat`, if desired.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let zero = 1.0;    // type Float
 let offset = +1;   // type Int
@@ -699,7 +700,7 @@ let offset = +1;   // type Int
 
 * Similarly, put inline type annotations on arithmetic expressions with types other than `Nat` or `Int`.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 if (x & mask == (1 : Nat32)) { ... };
 ....
@@ -709,7 +710,7 @@ NOTE: The need to annotate constants in cases like this is a short-coming of {pr
 An annotation is not needed on function arguments, since their type is usually inferred from the function.
 The only exception is when that argument has generic type and the type arguments have been omitted.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func foo(len : Nat32, vec : [Nat16]) { ... };
 func bar<X>(x : X) { ... };
@@ -721,7 +722,7 @@ bar(0 : Nat16);
 
 * Put type annotations on mutable variables, unless their type is obvious.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 var name = "Motoko";
 var balance = 0;
@@ -738,7 +739,7 @@ Rationale: Due to subtyping, inferring the type from the initialisation would no
 
 * Put type annotations on all public fields in a class.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 class C(init_ : Nat) {
   public let init : Nat = init_;
@@ -748,27 +749,27 @@ class C(init_ : Nat) {
 
 * Omit return type annotations of functions when the type is `()`.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func twiceF() { f(); f() };  // no need to write ": ()"
 ....
 
 * Omit type annotations on functions when they are passed as arguments.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 Array.map<Nat, Nat>(func n {n + 1}, a);
 ....
 
 * Put type annotations on definitions that involve numeric types other than `Nat` or `Int`, to resolve the overloading between arithmetic operators and constants.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 let mask : Nat32 = 0xfc03_ff00;
 let offset : Nat32 = size + 1;
 ....
 
-[[picking-types]]
+[#picking-types]
 === Picking types
 
 * Use `Nat` for any integral value that cannot be negative.
@@ -783,7 +784,7 @@ Limit their use to as small a scope as possible. Rule out the `null` case and us
 +
 Note that record types need not be declared but can be used in place.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
   func nodeInfo(node : Node) : {parent : Node; left : Node; right : Node} { ... }
 ....
@@ -792,14 +793,14 @@ Note that record types need not be declared but can be used in place.
 +
 Note that variant types need not be declared but can be used in place.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func capitalization(word : Text) : {#upper; #lower} { ... }
 ....
 
 * Where possible, use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 class Set<X>() {
   public func add(x : X) { ... };
@@ -810,7 +811,7 @@ class Set<X>() {
 
 * Consider using a record (an object with just data) as argument for long parameter lists.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func process({seed : Float; delta : Float; data : [Record]; config : Config}) : Thing {
   ...
@@ -829,7 +830,7 @@ Rationale: Makes call sites more readable, and in the absence of currying, there
 +
 Use the option type instead.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func lookup(x : key) : ?Nat { ... }
 ....
@@ -847,7 +848,7 @@ It is more error-prone and much more difficult to formally reason about, especia
 
 * Use `for` loops instead of `while` loops for iterating over a numeric range or a container.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 for (i in Iter.range(1, 10)) { ... };
 for (x in array.vals()) { ... };
@@ -857,7 +858,7 @@ Rationale: For loops are less error-prone and easier to read.
 
 * Use `if` or `switch` as expressions where appropriate.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func abs(i : Int) : Int { if (i < 0) -i else i };
 
@@ -868,7 +869,7 @@ let delta = switch mode { case (#up) +1; case (#dn) -1 };
 +
 Use `ignore` to explicitly drop results. Do _not_ use `ignore` when it's not needed.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 ignore async f();  // fire of a computation
 ....
@@ -879,7 +880,7 @@ Use this when a function is short and in "functional" style, that is, the functi
 +
 Use explicit `return` at the end when the function contains other `return` statements or imperative control flow.
 +
-[source, motoko]
+[source.no-repl, motoko]
 ....
 func add(i : Nat, j : Nat) : Nat { i + j };
 
