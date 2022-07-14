@@ -1,4 +1,0 @@
-service : {
-  inc: () -> (int);
-  read: () -> (int) query;
-}
