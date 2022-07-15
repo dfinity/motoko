@@ -10,7 +10,7 @@ A simple language for writing Internet Computer (IC) actors.
 * [Language manual](doc/md/language-manual.md)
 * [Concrete syntax](doc/md/examples/grammar.txt)
 * [Documentation sources](doc/md/)
-* [Base library documentation](doc/md/basis/index.md)
+* [Base library documentation](doc/md/base/index.md)
 
 ## Introduction
 
