@@ -24,7 +24,7 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-WASMTIME_OPTIONS="--disable-cache --cranelift"
+WASMTIME_OPTIONS="--disable-cache"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -66,6 +66,7 @@ function normalize () {
   if [ -e "$1" ]
   then
     grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
+    grep -a -E -v 'note: using the' |
     sed -e 's/\x00//g' \
         -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
         -e 's/^.*[IW], hypervisor:/hypervisor:/g' \
@@ -81,7 +82,10 @@ function normalize () {
     sed -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
         -e 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' \
         -e 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
+    sed -e 's/^  \(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations (later version)
+    sed -e 's/wasm `unreachable` instruction executed/unreachable/g' | # cross-version normalisation
     sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
     # Normalize canister id prefixes in debug prints

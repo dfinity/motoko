@@ -313,7 +313,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x sources.esm ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
       [ filecheck wasmtime ];
 
 
@@ -577,7 +577,7 @@ rec {
 
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
-    buildInputs = with nixpkgs; [ ocamlformat ];
+    buildInputs = [ nixpkgs.ocamlformat ];
     src = subpath ./src;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
@@ -665,13 +665,13 @@ rec {
   } ''
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
-    ln -s ${docs} $out/html
+    ln -s ${docs} $out/docs
     ln -s ${tests.profiling-graphs} $out/flamegraphs
     ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
-      echo docs/docs/motoko.html;
+      echo docs/html/motoko.html;
       echo base-doc/
       echo coverage/
       echo flamegraphs/ ) | \

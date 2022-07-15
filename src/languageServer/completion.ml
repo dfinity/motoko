@@ -104,7 +104,6 @@ let has_prefix (prefix : string) (ide_decl : DI.ide_decl) : bool =
   |> Option.is_some
 
 let opt_bind f = function None -> None | Some x -> f x
-
 let is_capital : string -> bool = fun s -> String.capitalize_ascii s = s
 
 let completions index project_root file_path file_contents line column =
