@@ -519,6 +519,15 @@ and stabilize stab_opt d =
          e
          (varP v) (varE v)
          t))
+  | (S.Stable, I.RefD(i, t, e)) -> assert false
+    (*[(i, t)], //// FIXME
+     fun get_state ->
+     let v = fresh_var i t in
+     varD (var i t)
+       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+         e
+         (varP v) (varE v)
+         t)*)
   | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
     let t = p.note in
     ([(i, t)],
