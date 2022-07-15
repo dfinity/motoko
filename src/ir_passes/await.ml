@@ -414,6 +414,18 @@ and c_dec context dec (k:kont) =
           (meta (typ exp)
             (fun v -> k -@- define_idE id Var (varE v)))
     end
+  | RefD (id, _typ, lexp) ->
+    begin
+      match infer_effect_dec dec, lexp.it with
+      | T.Triv, DotLE (exp, _) ->
+        k -@- define_idE id Var (t_exp context exp)
+      | T.Await, _ -> assert false
+      (*  c_lexp context lexp // FIXME!
+          (meta (typ e)
+            (fun v -> k -@- define_idE id Var (varE v)))
+       *)
+      | _ -> assert false
+    end
 
 
 and c_decs context decs k =
@@ -429,6 +441,7 @@ and declare_dec dec exp : exp =
   match dec.it with
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, typ, exp1) -> declare_id id (T.Mut typ) exp
+  | RefD (id, typ, exp1) -> declare_id id typ exp (* FIXME *)
 
 and declare_decs decs exp : exp =
   match decs with
