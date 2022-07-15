@@ -5,10 +5,12 @@ A simple language for writing Internet Computer (IC) actors.
 ## User Documentation & Samples
 
 * [Building, installing, developing on Motoko](Building.md).
-* [Overview slides](doc/overview-slides.md).
+* [Overview](doc/md/overview.md)
 * [Small samples](samples).
-* [Language manual and general documentation](doc/modules/language-guide/pages/language-manual.adoc)
-* [Concrete syntax](doc/modules/language-guide/examples/grammar.txt)
+* [Language manual](doc/md/language-manual.md)
+* [Concrete syntax](doc/md/examples/grammar.txt)
+* [Documentation sources](doc/md/)
+* [Base library documentation](doc/md/basis/index.md)
 
 ## Introduction
 

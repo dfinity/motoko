@@ -687,7 +687,7 @@ rec {
       touch $out
     '';
 
-  # Checks that doc/modules/md/examples/grammar.txt is up-to-date
+  # Checks that doc/md/examples/grammar.txt is up-to-date
   check-grammar = stdenv.mkDerivation {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
