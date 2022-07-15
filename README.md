@@ -1,16 +1,16 @@
 # Motoko
 
-A simple language for writing Internet Computer (IC) actors.
+A safe and simple, actor-based programming language for authoring [Internet Computer](https://internetcomputer.org/) (IC) canister smart contracts.
 
 ## User Documentation & Samples
 
-* [Building, installing, developing on Motoko](Building.md).
-* [Overview](doc/md/overview.md)
+* [Building, installing, and developing on Motoko](Building.md).
+* [Overview](doc/md/overview.md).
 * [Small samples](samples).
-* [Language manual](doc/md/language-manual.md)
-* [Concrete syntax](doc/md/examples/grammar.txt)
-* [Documentation sources](doc/md/)
-* [Base library documentation](doc/md/base/index.md)
+* [Language manual](doc/md/language-manual.md).
+* [Concrete syntax](doc/md/examples/grammar.txt).
+* [Documentation sources](doc/md/).
+* [Base library documentation](doc/md/base/index.md).
 
 ## Introduction
 
@@ -42,3 +42,8 @@ A simple language for writing Internet Computer (IC) actors.
 * JavaScript/TypeScript-style syntax but without the JavaScript madness
 
 * Inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell
+
+## Related repositories
+
+* [Base library](https://github.com/dfinity/motoko-base).
+* [Vessel package manager](https://github.com/dfinity/vessel).
