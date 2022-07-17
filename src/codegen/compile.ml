@@ -6791,9 +6791,8 @@ module Var = struct
     | Some (HeapStatic i) -> compile_unboxed_const i
     | _ -> assert false
 
-  let capture_aliased_box env ae sr var = match VarEnv.lookup_var ae var with
+  let capture_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) ->
-      StackRep.adjust env sr SR.Vanilla ^^
       G.i (LocalSet (nr i))
     | _ -> assert false
 
@@ -7452,9 +7451,8 @@ module AllocHow = struct
   let add_local_for_alias env ae how name : VarEnv.t * G.t =
     match M.find name how with
     | StoreHeap ->
-      let ae1, i = VarEnv.add_local_with_heap_ind env ae name in
-      let alloc_code = G.nop in
-      ae1, alloc_code
+      let ae1, _ = VarEnv.add_local_with_heap_ind env ae name in
+      ae1, G.nop
     | _ -> assert false
 
 end (* AllocHow *)
@@ -8112,24 +8110,21 @@ let compile_load_field env typ name =
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
-  (fun (code, ref_code, sr, fill_code) -> G.(with_region lexp.at code, with_region lexp.at ref_code, sr, with_region lexp.at fill_code)) @@
+  (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it with
   | VarLE var ->
      let sr, code = Var.set_val env ae var in
-     G.nop, G.nop, sr, code
+     G.nop, sr, code
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      Arr.idx_bigint env,
-     G.nop, (* FIXME *)
      SR.Vanilla,
      store_ptr
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n,
-     compile_exp_vanilla env ae e ^^
-     Object.load_idx_raw env n,
      SR.Vanilla,
      store_ptr
 
@@ -9068,7 +9063,7 @@ and compile_exp (env : E.t) ae exp =
     Var.get_val env ae var
   | AssignE (e1,e2) ->
     SR.unit,
-    let (prepare_code, _, sr, store_code) = compile_lexp env ae e1 in
+    let (prepare_code, sr, store_code) = compile_lexp env ae e1 in
     prepare_code ^^
     compile_exp_as env ae sr e2 ^^
     store_code
@@ -9487,17 +9482,18 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
       unmodified
     )
-  | RefD (name, _, e) ->
+  | RefD (name, _, { it = DotLE (e, n); _ }) ->
     let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name in
 
     ( pre_ae1,
       alloc_code,
       (fun ae ->
-        let _, prepare_raw, sr, _ = compile_lexp env ae e in
-        prepare_raw ^^
-        Var.capture_aliased_box env ae sr name),
+        compile_exp_vanilla env ae e ^^
+        Object.load_idx_raw env n ^^
+        Var.capture_aliased_box env ae name),
       unmodified
     )
+  | RefD _ -> assert false
 
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
