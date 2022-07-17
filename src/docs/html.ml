@@ -12,17 +12,11 @@ let rec join_with : t -> t list -> t =
   | x :: xs -> x ++ sep ++ join_with sep xs
 
 let space : t = string "\u{00A0}"
-
 let cls_span : string -> string -> t = fun cls s -> span ~cls (string s)
-
 let fn_name : string -> t = cls_span "fnname"
-
 let class_name : string -> t = cls_span "classname"
-
 let keyword : string -> t = cls_span "keyword"
-
 let parameter : string -> t = cls_span "parameter"
-
 let html_type : string -> t = cls_span "type"
 
 let rec string_of_path : Syntax.path -> string =
@@ -286,7 +280,8 @@ let html_of_docs : render_input -> Cow.Html.t =
     |> String.concat ""
   in
   let header =
-    head ~attrs:[ ("title", "Doc") ]
+    head
+      ~attrs:[ ("title", "Doc") ]
       (meta ~charset:"UTF-8" []
       ++ link ~rel:"stylesheet" (Uri.of_string (path_to_root ^ "styles.css")))
   in

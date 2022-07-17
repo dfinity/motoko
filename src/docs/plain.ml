@@ -196,7 +196,6 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
   opt_typ buf arg.typ
 
 let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
-
 let end_block buf = bprintf buf "\n```\n\n"
 
 let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =

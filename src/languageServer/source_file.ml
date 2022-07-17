@@ -148,7 +148,6 @@ let parse_module_header project_root current_file_path file =
   List.rev !header_parts
 
 type unresolved_target = { qualifier : string; ident : string }
-
 type resolved_target = { qualifier : string; ident : string; path : string }
 
 type identifier_target =
