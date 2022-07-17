@@ -7449,6 +7449,14 @@ module AllocHow = struct
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
 
+  let add_local_for_alias env ae how name : VarEnv.t * G.t =
+    match M.find name how with
+    | StoreHeap ->
+      let ae1, i = VarEnv.add_local_with_heap_ind env ae name in
+      let alloc_code = G.nop in
+      ae1, alloc_code
+    | _ -> assert false
+
 end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
@@ -9480,10 +9488,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
   | RefD (name, _, e) ->
-    let pre_ae1, _ = AllocHow.add_local env pre_ae how name in
+    let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name in
 
     ( pre_ae1,
-      G.nop,
+      alloc_code,
       (fun ae ->
         let _, prepare_raw, sr, _ = compile_lexp env ae e in
         prepare_raw ^^
