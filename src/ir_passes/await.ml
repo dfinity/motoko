@@ -414,19 +414,8 @@ and c_dec context dec (k:kont) =
           (meta (typ exp)
             (fun v -> k -@- define_idE id Var (varE v)))
     end
-  | RefD (id, _typ, lexp) ->
-    begin
-      match infer_effect_dec dec, lexp.it with
-      | T.Triv, DotLE (exp, _) ->
-        k -@- define_idE id Var (t_exp context exp)
-      | T.Await, _ -> assert false
-      (*  c_lexp context lexp // FIXME!
-          (meta (typ e)
-            (fun v -> k -@- define_idE id Var (varE v)))
-       *)
-      | _ -> assert false
-    end
-
+  | RefD (id, _typ, _lexp) -> assert false
+    (* TODO: unclear if this can arise at all, and if so, how to translate it with existing tools *)
 
 and c_decs context decs k =
   match decs with
