@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "918326366260eed8d4673382277501df977741fc",
-        "sha256": "1nvzspi8g52cw9hpymsqw3yjk4qd7rdpq0bcfkdagd17hycfi2hb",
+        "rev": "67054640d4db5c805a81394ce0c56e7a13a9b7b1",
+        "sha256": "0vvambyiw6gk1f2j6dqm2jvfl9rn8gyah00pwhz4a79lwa4630cq",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/918326366260eed8d4673382277501df977741fc.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/67054640d4db5c805a81394ce0c56e7a13a9b7b1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "03513d76580b9e674519d0b1fc58b161d3c3f16d",
-        "sha256": "11jm45myzmjbz4nvv3ms7nasr3r0fk43pjbka40yykjz76ngd7x9",
+        "rev": "a9ad26732c4da50079d503a91d9c68d6305e2501",
+        "sha256": "02c9p516qr0vlnd30n8djsd8psp0jk9vzcic8yb2sylbky6a9w7l",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/03513d76580b9e674519d0b1fc58b161d3c3f16d.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/a9ad26732c4da50079d503a91d9c68d6305e2501.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -90,23 +90,23 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "30094b6ed05f19cee102115215863d185f2db4f0",
-        "sha256": "1p1ga601ir8prfbmy0b33hp8gyxlvr2d4dps7rzzn9sw450415mh",
+        "rev": "7a21011e98dd9268a33f90fd282db92cbdd1b9d1",
+        "sha256": "136c3s1xzq5ykm0zn376v8rpsc470ml42vfbgc82jrl6qphs89ry",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/30094b6ed05f19cee102115215863d185f2db4f0.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/7a21011e98dd9268a33f90fd282db92cbdd1b9d1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-21.11",
+        "branch": "release-22.05",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "ac4d124eeed195db518712120fbf2b384a254ca2",
-        "sha256": "04qvzk9cmdd858hb7f2za989dsllmg0s91zxwdnm570b8z3hqjnx",
+        "rev": "7ec4e5339010283440132e8dc010f49ae1f2e6c4",
+        "sha256": "0ybc271kkz6ilhqajjr3dq0g19x4j0z8k209hds6d6rqhq3wsrxm",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/ac4d124eeed195db518712120fbf2b384a254ca2.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/7ec4e5339010283440132e8dc010f49ae1f2e6c4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
@@ -116,10 +116,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "e1f7540fc0a8b989fb8cf701dc4fd7fc76bcf168",
-        "sha256": "1b6p0rly0rywq60ks84ghc0n5zrqiafc2r64nlbnlkh9whmh5fmj",
+        "rev": "0508a66e28a5792fdfb126bbf4dec1029c2509e0",
+        "sha256": "1nswjmya72g0qriidc2pkl54zn5sg0xp36vdq0ylspca56izivxc",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/e1f7540fc0a8b989fb8cf701dc4fd7fc76bcf168.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/0508a66e28a5792fdfb126bbf4dec1029c2509e0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

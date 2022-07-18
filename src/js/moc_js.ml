@@ -19,6 +19,7 @@ let () =
       method addPackage package dir = add_package package dir
       method clearPackage () = clear_package ()
       method setActorAliases entries = set_actor_aliases entries
+      method setPublicMetadata entries = set_public_metadata entries
       method gcFlags option = gc_flags option
       method run list s = Flags.compiled := false; wrap_output (fun _ -> js_run list s)
       method check s = Flags.compiled := false; js_check s

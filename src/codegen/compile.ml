@@ -896,6 +896,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_pow" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lsh" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_rsh" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
@@ -1278,16 +1279,16 @@ module BitTagged = struct
     compile_shrS_const 1l ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  (* 32 bit numbers, dynamic *)
+  (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
   let if_can_tag_i32 env retty is1 is2 =
-    Func.share_code1 env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low 30 bits are either all 0 or all 1 *)
-      get_x ^^ compile_shl_const 1l ^^
-      get_x ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-      compile_shrU_const 31l
+    Func.share_code1 env "cannot_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
+      (* checks that all but the low 30 bits are both either 0 or 1 *)
+      get_x ^^ compile_shrU_const 30l ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
     ) ^^
-    E.if_ env retty is2 is1 (* NB: swapped branches *)
+    E.if_ env retty is1 is2
 
   let if_can_tag_u32 env retty is1 is2 =
     compile_shrU_const 30l ^^
@@ -1778,8 +1779,9 @@ module BoxedSmallWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 30)) ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      get_n ^^ compile_shrU_const 30l ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
       G.if1 I32Type
         (get_n ^^ BitTagged.tag_i32)
         (compile_box env get_n)
@@ -1788,8 +1790,8 @@ module BoxedSmallWord = struct
   let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
-        ( get_n ^^ BitTagged.untag_i32)
-        ( get_n ^^ Heap.load_field payload_field)
+        (get_n ^^ BitTagged.untag_i32)
+        (get_n ^^ Heap.load_field payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2197,6 +2199,8 @@ sig
   val compile_unsigned_div : E.t -> G.t
   val compile_unsigned_rem : E.t -> G.t
   val compile_unsigned_pow : E.t -> G.t
+  val compile_lsh : E.t -> G.t
+  val compile_rsh : E.t -> G.t
 
   (* comparisons *)
   val compile_eq : E.t -> G.t
@@ -2417,6 +2421,72 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
           get_res
       end)
+
+  (*
+    Note [left shifting compact Nat]
+    For compact Nats (i.e. non-heap allocated ones) we first try to perform the shift in the i64 domain.
+    for this we extend (signed, but that doesn't really matter) to 64 bits and then perform the left shift.
+    Then we check whether the result will fit back into the compact representation by either
+     - comparing: truncate to i32, then sign-extend back to i64, with the shift result
+     - count leading zeros >= 33 (currently we don't use this idea).
+    If the test works out, we have to ensure that the shift amount was smaller than 64, due to Wasm semantics.
+    If this is the case then the truncated i32 is the result (lowest bit is guaranteed to be clear),
+    otherwise we have to fall back to bignum arithmetic. We have two choices:
+     - reuse the 64-bit shift result going to heap (not currently, amount must be less than 33 for this to work)
+     - convert the original base to bigum and do the shift there.
+
+    N.B. we currently choose the shift cutoff as 42, just because (it must be <64).
+   *)
+
+  let compile_lsh env =
+    Func.share_code2 env "B_lsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
+    (fun env get_n get_amount ->
+      get_n ^^
+      BitTagged.if_tagged_scalar env [I32Type]
+        ( (* see Note [left shifting compact Nat] *)
+          get_n ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
+          get_amount ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+          let set_remember, get_remember = new_local64 env "remember" in
+          set_remember ^^ get_remember ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          let set_res, get_res = new_local env "res" in
+          set_res ^^ get_res ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^ (* exclude sign flip *)
+          get_remember ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
+          get_amount ^^ compile_rel_const I32Op.LeU 42l ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+          G.if1 I32Type
+            get_res
+            (get_n ^^ compile_shrS_const 1l ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
+        )
+        (get_n ^^ get_amount ^^ Num.compile_lsh env))
+
+  let compile_rsh env =
+    Func.share_code2 env "B_rsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
+    (fun env get_n get_amount ->
+      get_n ^^
+      BitTagged.if_tagged_scalar env [I32Type]
+        begin
+          get_n ^^
+          get_amount ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+          compile_bitand_const 0xFFFFFFFEl ^^
+          get_amount ^^ compile_rel_const I32Op.LeU 31l ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Mul)) (* branch-free `if` *)
+        end
+        begin
+          get_n ^^ get_amount ^^ Num.compile_rsh env ^^
+          let set_res, get_res = new_local env "res" in
+          set_res ^^ get_res ^^
+          fits_in_vanilla env ^^
+          G.if1 I32Type
+            (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32)
+            get_res
+        end)
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
@@ -2830,6 +2900,8 @@ module BigNumLibtommath : BigNumType = struct
   let compile_unsigned_rem env = E.call_import env "rts" "bigint_rem"
   let compile_unsigned_div env = E.call_import env "rts" "bigint_div"
   let compile_unsigned_pow env = E.call_import env "rts" "bigint_pow"
+  let compile_lsh env = E.call_import env "rts" "bigint_lsh"
+  let compile_rsh env = E.call_import env "rts" "bigint_rsh"
 
   let compile_eq env = E.call_import env "rts" "bigint_eq"
   let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
@@ -2864,15 +2936,15 @@ module Prim = struct
      Both {Nat,Int}{8,16} fit into the vanilla stackrep, so no boxing is necessary.
      This MSB-stored schema is also essentially what the interpreter is using.
   *)
-  let prim_word32toNat env = BigNum.from_word32 env
+  let prim_word32toNat = BigNum.from_word32
   let prim_shiftWordNtoUnsigned env b =
     compile_shrU_const b ^^
     prim_word32toNat env
-  let prim_word32toInt env = BigNum.from_signed_word32 env
+  let prim_word32toInt = BigNum.from_signed_word32
   let prim_shiftWordNtoSigned env b =
     compile_shrS_const b ^^
     prim_word32toInt env
-  let prim_intToWord32 env = BigNum.truncate_to_word32 env
+  let prim_intToWord32 = BigNum.truncate_to_word32
   let prim_intToWordNShifted env b =
     prim_intToWord32 env ^^
     TaggedSmallWord.shift_leftWordNtoI32 b
@@ -4102,9 +4174,9 @@ module Cycles = struct
       compile_add_const 8l ^^
       (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
       BigNum.from_word64 env ^^
-      (* shift left 64 *)
-      compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 64)) ^^
-      BigNum.compile_mul env ^^ (* TODO: use shift left instead *)
+      (* shift left 64 bits *)
+      compile_unboxed_const 64l ^^
+      BigNum.compile_lsh env ^^
       BigNum.compile_add env)
 
   (* takes a bignum from the stack, traps if ≥2^128, and leaves two 64bit words on the stack *)
@@ -4119,8 +4191,8 @@ module Cycles = struct
 
     get_val ^^
     (* shift right 64 bits *)
-    compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 64)) ^^
-    BigNum.compile_unsigned_div env ^^ (* TODO: use shift right instead *)
+    compile_unboxed_const 64l ^^
+    BigNum.compile_rsh env ^^
     BigNum.truncate_to_word64 env ^^
 
     get_val ^^
@@ -6979,14 +7051,16 @@ module Var = struct
     | _ -> assert false
 
   (* This is used when putting a mutable field into an object.
-     In the IR, mutable fields of objects can alias pre-allocated
-     MutBox objects, to allow the async/await. So if we already have
-     this variable in a MutBox, then use that, else create a new one.
+     In the IR, mutable fields of objects are pre-allocated as MutBox objects,
+     to allow the async/await.
+     So we expect the variable to be in a HeapInd (pointer to MutBox on the heap),
+     or HeapStatic (statically known MutBox in the static memory) and we use
+     the pointer.
   *)
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
-    | Some (HeapStatic _) -> assert false (* we never do this on the toplevel *)
-    | _  -> Tagged.obj env Tagged.ObjInd [ get_val_vanilla env ae var ]
+    | Some (HeapStatic i) -> compile_unboxed_const i
+    | _ -> assert false
 
 end (* Var *)
 
@@ -8739,6 +8813,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env
   | OtherPrim "blob_iter_next", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
+
+  | OtherPrim "lsh_Nat", [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^
+    compile_exp_as env ae SR.UnboxedWord32 e2 ^^
+    BigNum.compile_lsh env
+
+  | OtherPrim "rsh_Nat", [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^
+    compile_exp_as env ae SR.UnboxedWord32 e2 ^^
+    BigNum.compile_rsh env
 
   | OtherPrim "abs", [e] ->
     SR.Vanilla,

@@ -4,7 +4,6 @@ open Mo_types
 type t
 
 val empty : string -> t
-
 val string_of_index : t -> string
 
 type value_decl = {
@@ -24,7 +23,6 @@ type type_decl = {
 type ide_decl = ValueDecl of value_decl | TypeDecl of type_decl
 
 val string_of_ide_decl : ide_decl -> string
-
 val name_of_ide_decl : ide_decl -> string
 
 val shorten_import_path :

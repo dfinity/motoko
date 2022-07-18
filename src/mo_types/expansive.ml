@@ -84,7 +84,7 @@ let string_of_edges es =
 let edges_typ cs c (es : EdgeSet.t) t : EdgeSet.t =
   let rec go_typs i exp non es ts =
     List.fold_left (go_typ i exp non) es ts
-  and go_typ i exp non es t = match t with
+  and go_typ i exp non es = function
     | Var (s, j) when j >= i  ->
       let ci = (c, j - i) in
       let es1 = VertexSet.fold (fun dj es -> EdgeSet.add (ci, 1, dj) es) exp es in

@@ -23,9 +23,9 @@ let rec prim rho p =
   Ir.map_prim (fun t -> t) (id rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
-and exp' rho e  = match e with
+and exp' rho = function
   | VarE i              -> VarE (id rho i)
-  | LitE l              -> e
+  | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
   | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; inspect }, t) ->
     let ds', rho' = decs rho ds in
@@ -83,8 +83,8 @@ and pat rho p =
     let p',rho = pat' rho p.it in
     {p with it = p'}, rho
 
-and pat' rho p = match p with
-  | WildP         -> (p, rho)
+and pat' rho = function
+  | WildP as p    -> (p, rho)
   | VarP i        ->
     let i, rho' = id_bind rho i in
      (VarP i, rho')
@@ -93,7 +93,7 @@ and pat' rho p = match p with
   | ObjP pfs      ->
     let (pats, rho') = pats rho (pats_of_obj_pat pfs) in
     (ObjP (replace_obj_pat pfs pats), rho')
-  | LitP l        -> (p, rho)
+  | LitP _ as p   -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')
   | TagP (i, p)   -> let (p', rho') = pat rho p in
@@ -125,7 +125,7 @@ and dec rho d =
   let (mk_d, rho') = dec' rho d.it in
   ({d with it = mk_d}, rho')
 
-and dec' rho d = match d with
+and dec' rho = function
   | LetD (p, e) ->
      let p', rho = pat rho p in
      (fun rho' -> LetD (p',exp rho' e)),
