@@ -439,11 +439,20 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_obj env obj_sort.it dec_fields k
   | ObjE (exp_fields, exp_bases) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
-    let merges = let open V.Env in
+    let open V.Env in
+    let merges =
       List.fold_left
-        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> None))
+        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> assert false))
         empty in
-    let strip = List.map (fun env -> V.as_obj env) in
+    (* remove dynamic fields not present in the type as well as overwritten fields *)
+    let labs = List.map (fun (f : Syntax.exp_field) -> f.it.id.it) exp_fields in
+    let tys = List.(map (fun b ->
+                         T.as_obj b.note.note_typ |>
+                         snd |>
+                         filter (fun f -> not (mem f.T.lab labs)))) exp_bases in
+    let strip vs =
+      let known fs k _ = List.exists (fun { T.lab; _ } -> k = lab) fs in
+      List.map2 (fun fs v -> filter (known fs) (V.as_obj v)) tys vs in
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
