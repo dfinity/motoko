@@ -25,3 +25,11 @@ assert c.c == d.c + 1;
 let e = { e = 42 in c };
 c.c += 1;
 assert c.c == e.c;
+
+// this is checking that the interpreter doesn't consider
+// dynamic fields not present in the static type
+
+let r : {} = { l = 0 };
+let s = { l = true };
+let t = { r and s };
+assert t.l;
