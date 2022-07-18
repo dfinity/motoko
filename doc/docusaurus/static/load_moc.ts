@@ -29,7 +29,7 @@ function attachOnRunButton() {
   if (document.getElementsByClassName("run-button").length > 0) {
     const script = document.createElement("script");
     script.async = true;
-    script.src = `/moc-interpreter-${MOC_VERSION}.js`;
+    script.src = `/moc_interpreter.js`;
 
     script.addEventListener("load", () => {
       addPackage("base", "dfinity/motoko-base", `moc-${MOC_VERSION}`, "src");
