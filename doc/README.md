@@ -35,11 +35,11 @@ follow the instructions to produce one locally.
 We wrap Docusaurus's module `CodeBlock/Content/String` to process Motoko code blocks with interpreter.
 To enable this feature, add the following flags for code blocks:
 
-"```motoko" adds a Run button
-"```motoko run" adds a Run button and display the result
-"```motoko no-repl" syntax-highlighting only.
-"```motoko name=filename" saves the code as filename.mo so that it can be imported or referenced from another code block. An absent filename defaults to stdin.
-"```motoko include=f1,f2" run `f1.mo`, `f2.mo` before running the current code, equivalent to `moc -i f1.mo f2.mo current_code.mo`. It will fetch the updated code each time we click run. Note that if the code import "f1" but doesn't use include_f1, the code won't be updated until we click the run button for f1.mo.
+* "```motoko" adds a Run button
+* "```motoko run" adds a Run button and display the result
+* "```motoko no-repl" syntax-highlighting only.
+* "```motoko name=filename" saves the code as filename.mo so that it can be imported or referenced from another code block. An absent filename defaults to stdin.
+* "```motoko include=f1,f2" run `f1.mo`, `f2.mo` before running the current code, equivalent to `moc -i f1.mo f2.mo current_code.mo`. It will fetch the updated code each time we click run. Note that if the code import "f1" but doesn't use include_f1, the code won't be updated until we click the run button for f1.mo.
 
 The config flags can be used in any order with any combinations, e.g.
 "```motoko run name=main include=f1,f2"
