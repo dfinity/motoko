@@ -11,7 +11,7 @@ let
   };
 
   # dump nixpkgs patches here
-  nixpkgs-patches = [ ];
+  nixpkgs-patches = [ ./wasmtime.diff ];
 
   nixpkgs-patched =
     if nixpkgs-patches == []
@@ -37,8 +37,8 @@ let
         })
 
         # Selecting the ocaml version
-        # Also update ocmal-version in src/*/.ocamlformat!
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
+        # Also update ocaml-version in src/*/.ocamlformat!
+        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_13; })
 
         (
           self: super: {
