@@ -7,22 +7,16 @@ async function addPackage(name, repo, version, dir) {
   const base_url = `https://cdn.jsdelivr.net/gh/${repo}@${version}`;
   const response = await fetch(meta_url);
   const json = await response.json();
-  const promises = [];
   const fetchedFiles = [];
-  for (const f of json.files) {
+  await Promise.all(json.files.map(async f => {
     if (f.name.startsWith(`/${dir}/`) && /\.mo$/.test(f.name)) {
-      const promise = (async () => {
-        const content = await (await fetch(base_url + f.name)).text();
-        const stripped = name + f.name.slice(dir.length + 1);
-        fetchedFiles.push(stripped);
-        Motoko.saveFile(stripped, content);
-      })();
-      promises.push(promise);
+      const content = await (await fetch(base_url + f.name)).text();
+      const stripped = name + f.name.slice(dir.length + 1);
+      fetchedFiles.push(stripped);
+      await Motoko.saveFile(stripped, content);
     }
-  }
-  Promise.all(promises).then(() => {
-    Motoko.addPackage(name, name + "/");
-  });
+  }));
+  await Motoko.addPackage(name, name + "/");
 }
 
 function attachOnRunButton() {
@@ -32,13 +26,15 @@ function attachOnRunButton() {
     script.src = `/moc_interpreter.js`;
 
     script.addEventListener("load", () => {
-      addPackage("base", "dfinity/motoko-base", `moc-${MOC_VERSION}`, "src");
-      console.log(`moc ${MOC_VERSION} loaded`);
-      // Run code
-      const btns = document.getElementsByClassName("run-button run");
-      for (var i = 0; i < btns.length; i++) {
-        btns[i].click();
-      }
+      addPackage("base", "dfinity/motoko-base", `moc-${MOC_VERSION}`, "src")
+        .then(() => {
+          console.log(`moc ${MOC_VERSION} loaded`);
+          // Run code
+          const btns = document.getElementsByClassName("run-button run");
+          for (var i = 0; i < btns.length; i++) {
+            btns[i].click();
+          }
+        });
     });
     document.head.appendChild(script);
   } else {
