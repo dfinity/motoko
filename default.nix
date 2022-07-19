@@ -83,8 +83,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.ocaml-migrate-parsetree
-    pkgs.ocamlPackages.ppx_tools_versioned
+    # pkgs.ocamlPackages.ocaml-migrate-parsetree-2
+    # pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
