@@ -1,4 +1,4 @@
-version=0.20.1
+version=0.21.0
 ocaml-version=4.13
 break-infix=fit-or-vertical
 doc-comments=before
