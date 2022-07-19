@@ -34,7 +34,7 @@ function ImmutableCodeBlock({ id, code, language, defaultCopy }) {
   }, []);
   return (
     <Container as="div" className={styles.immutableCodeBlock}>
-      <pre id={id} class={language} ref={ref}>
+      <pre id={id} className={language} ref={ref}>
         <code>{code}</code>
       </pre>
       {/* defaultCopy is a flag for code (candid) with only copy button */}
@@ -80,7 +80,7 @@ export default function StringWrapper(props) {
             <pre
               id={props.name}
               ref={editorRef}
-              class="language-motoko"
+              className="language-motoko"
               style={{ backgroundColor: "var(--prism-background-color)" }}
             >
               <code>{code}</code>
@@ -100,7 +100,7 @@ export default function StringWrapper(props) {
           <Container as="div">
             {error ? <pre style={{ color: "red" }}>{error}</pre> : null}
             {output ? (
-              <pre style={{ color: "green" }} class="language-motoko">
+              <pre style={{ color: "green" }} className="language-motoko">
                 <code>{output}</code>
               </pre>
             ) : null}
