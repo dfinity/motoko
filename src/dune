@@ -1,7 +1,7 @@
 ; -w arguments below are documented in https://ocaml.org/manual/comp.html
 ; (search for "-w warning-list" in that page)
 (env
- (dev (flags "-w" "+a-4-23-27-30-42-44-45-58"))
- (release (flags "-w" "+a-4-23-27-30-42-44-45-58" "-warn-error" "+a"))
- (release-static (flags "-w" "+a-4-23-27-30-42-44-45-58" "-warn-error" "+a" "-cclib" "-static"))
+ (dev (flags "-w" "+a-4-23-27-30-42-44-45-58-70"))
+ (release (flags "-w" "+a-4-23-27-30-42-44-45-58-70" "-warn-error" "+a"))
+ (release-static (flags "-w" "+a-4-23-27-30-42-44-45-58-70" "-warn-error" "+a" "-cclib" "-static"))
 )
