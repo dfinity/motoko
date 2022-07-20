@@ -1,4 +1,4 @@
-Motoko (source XXX)
+Motoko compiler (source XXX)
 > {x = -25} : {x : Int}
 >   let X : module {...}
 > {a = 7; y = -25; z = "H"} : {a : Nat; y : Int; z : Text}

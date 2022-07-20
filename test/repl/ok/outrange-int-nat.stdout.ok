@@ -1,4 +1,4 @@
-Motoko (source XXX)
+Motoko compiler (source XXX)
 > let Prim : module {...}
 > +127 : Int8
 > > -128 : Int8
