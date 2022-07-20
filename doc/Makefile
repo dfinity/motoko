@@ -28,7 +28,7 @@ html:
 
 preview:
 	make -C ../src moc_interpreter.js
-	cp ../src/moc_interpreter.js docusaurus/static
+	cp -f ../src/moc_interpreter.js docusaurus/static
 	cd docusaurus; npm install; npm start
 
 
