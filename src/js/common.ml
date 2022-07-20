@@ -87,6 +87,21 @@ let js_compile_wasm mode source =
       end)
     )
 
+let js_parse_syntax_tree filename =
+  let parse_result = Pipeline.parse_file Source.no_region filename in
+  match parse_result with
+  | Error err ->
+      Printf.eprintf "Error parsing Motoko file %s:\n" filename;
+      Diag.print_messages err;
+      object%js
+        val filename = "ERROR"
+      end
+  | Ok ((prog, _), _) -> (
+    object%js
+      val filename = "abc"
+    end
+  )
+
 let js_save_file filename content =
   let filename = Js.to_string filename in
   let content = Js.to_string content in
@@ -96,7 +111,6 @@ let js_save_file filename content =
 let js_remove_file filename = Sys.remove (Js.to_string filename)
 let js_rename_file oldpath newpath = Sys.rename (Js.to_string oldpath) (Js.to_string newpath)
 let js_read_dir path = Sys.readdir (Js.to_string path)
-
 let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
 
