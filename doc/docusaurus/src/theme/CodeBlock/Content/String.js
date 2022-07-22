@@ -4,11 +4,9 @@ import String from "@theme-original/CodeBlock/Content/String";
 import Container from "@theme/CodeBlock/Container";
 import styles from "./styles.module.css";
 import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
 import { extractConfig, handleRun } from "../hljs_run.js";
 import CopyButton from "@theme/CodeBlock/CopyButton";
 import runIcon from "@site/static/img/runIcon.png";
-import { useCodeJar } from "react-codejar";
 
 // NOTE: String component of CodeBlock is being swizzled as a wrapped component.
 
@@ -59,6 +57,7 @@ export default function StringWrapper(props) {
         />
       );
     }
+    const { useCodeJar } = require('react-codejar');
     const [code, setCode] = useState(props.children || "");
     const [output, setOutput] = useState("");
     const [error, setError] = useState("");
