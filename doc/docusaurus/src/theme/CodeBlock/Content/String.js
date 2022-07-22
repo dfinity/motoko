@@ -98,9 +98,9 @@ export default function StringWrapper(props) {
         </Container>
         {output || error ? (
           <Container as="div">
-            {error ? <pre style={{ color: "red" }}>{error}</pre> : null}
+            {error ? <pre className="motoko-code-error">{error}</pre> : null}
             {output ? (
-              <pre style={{ color: "green" }} className="language-motoko">
+              <pre className="motoko-code-output">
                 <code>{output}</code>
               </pre>
             ) : null}

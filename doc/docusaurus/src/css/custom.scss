@@ -47,3 +47,19 @@
     }
   }
 }
+
+.motoko-code-output {
+  color: darkgreen;
+
+  [data-theme="dark"] & {
+    color: lightgreen;
+  }
+}
+
+.motoko-code-error {
+  color: darkred;
+
+  [data-theme="dark"] & {
+    color: pink;
+  }
+}
