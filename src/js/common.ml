@@ -1,9 +1,11 @@
 open Wasm_exts
 open Source
 open Mo_config
+open Mo_def
 
 module Js = Js_of_ocaml.Js
 module Sys_js = Js_of_ocaml.Sys_js
+module Sexpr = Wasm.Sexpr
 
 let position_of_pos pos =
   object%js
@@ -28,6 +30,12 @@ let diagnostics_of_msg (msg : Diag.message) =
 
 let diagnostics_of_msgs (msgs : Diag.message list) =
   Array.of_list (List.map diagnostics_of_msg msgs)
+
+let rec json_of_sexpr (Sexpr.Node (head, inner)) =
+  object%js
+    val type' = Js.string head
+    val args = List.map json_of_sexpr inner
+  end
 
 let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
   match result with
@@ -87,18 +95,22 @@ let js_compile_wasm mode source =
       end)
     )
 
-let js_parse_syntax_tree filename =
-  let parse_result = Pipeline.parse_file Source.no_region filename in
+let js_parse_syntax_tree s =
+  let s = Js.to_string s in
+  let parse_result = Pipeline.parse_string "main" s in
   match parse_result with
   | Error err ->
-      Printf.eprintf "Error parsing Motoko file %s:\n" filename;
+      Printf.eprintf "Error parsing Motoko: %s\n" s;
       Diag.print_messages err;
       object%js
-        val filename = "ERROR"
+        val filename = Js.string "ERROR"
       end
+      (* Js.raise_js_error (Js.error_constr "Error parsing Motoko") *)
   | Ok ((prog, _), _) -> (
+    let ast = Arrange.prog prog in
+    (* json_of_sexpr ast *)
     object%js
-      val filename = "abc"
+      val filename = Js.string "done"
     end
   )
 

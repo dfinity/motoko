@@ -26,5 +26,5 @@ let () =
       method candid s = Flags.compiled := true; js_candid s
       method stableCompatible pre post = js_stable_compatible pre post
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
-      method parseSyntaxTree filename = js_parse_syntax_tree filename
+      method parseSyntaxTree s = js_parse_syntax_tree s
      end);
