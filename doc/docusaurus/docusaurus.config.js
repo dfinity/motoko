@@ -20,6 +20,7 @@ const config = {
   projectName: 'motoko', // Usually your repo name.
 
   plugins: [
+    'docusaurus-plugin-sass'
   ],
 
   // Even if you don't use internalization, you can use this field to set useful
@@ -46,7 +47,7 @@ const config = {
         },
         blog: false,
         theme: {
-          customCss: require.resolve('./src/css/custom.css'),
+          customCss: require.resolve('./src/css/custom.scss'),
         },
       }),
     ],

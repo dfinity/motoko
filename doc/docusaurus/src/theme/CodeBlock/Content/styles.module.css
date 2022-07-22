@@ -60,6 +60,11 @@
   position: absolute;
 }
 
+.copyButton {
+  /* patch style conflict */
+  color: black !important;
+}
+
 .copyButton:focus,
 .codeBlockContent:hover > .copyButton,
 .codeBlockTitle:hover + .codeBlockContent .copyButton {
