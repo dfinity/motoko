@@ -8,6 +8,7 @@ import "highlight.js/styles/github.css";
 import { extractConfig, handleRun } from "../hljs_run.js";
 import CopyButton from "@theme/CodeBlock/CopyButton";
 import runIcon from "@site/static/img/runIcon.png";
+import { useCodeJar } from "react-codejar";
 
 // NOTE: String component of CodeBlock is being swizzled as a wrapped component.
 
@@ -58,20 +59,19 @@ export default function StringWrapper(props) {
         />
       );
     }
-    const [code, setCode] = useState(props.children);
+    const [code, setCode] = useState(props.children || "");
     const [output, setOutput] = useState("");
     const [error, setError] = useState("");
-    const codejar = require("react-codejar");
     const lineNumbers = props.children.split("\n").length > 3;
 
     // syntax highlighting is done by CodeJar, creating new React components
-    const editorRef = codejar.useCodeJar({
-      code,
+    const editorRef = useCodeJar({
+      code: code.replace(/^\s+|\s+$/g, ''), // trim newlines
       onUpdate: (e) => {
         setCode(e);
       },
       highlight: hljs.highlightElement,
-      // lineNumbers,
+      lineNumbers,
     });
     return (
       <>

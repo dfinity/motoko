@@ -4,7 +4,7 @@
  * work well for content-centric websites.
  */
 
- @use "sass:meta";
+@use "sass:meta";
 
 /* You can override the default Infima variables here. */
 :root {
@@ -31,4 +31,19 @@
   --ifm-color-primary-lighter: #32d8b4;
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* fix `react-codejar` line numbers */
+.codejar-linenumbers {
+  background: none !important;
+  color: var(--ifm-secondary) !important;
+
+  &>div {
+    text-align: right;
+    transform: translateX(-5px);
+
+    [data-theme='dark'] & {
+      opacity: .5;
+    }
+  }
 }
