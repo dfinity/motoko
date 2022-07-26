@@ -1654,6 +1654,24 @@ Such an object literal, sometimes called a *record*, is equivalent to the object
 
 Object expressions support *punning* for concision. A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both associate the field named `<id>` with the value of the identifier `<id>`.
 
+#### Object reuse
+
+Objects can be combined and/or extended using the `and` and `in` keywords. 
+A record expression `{ <exp-field>;* in <exp_post> (and <exp_post>)* }`
+merges the objects (or modules) specified as *bases* which can be
+postfixed expressions, and augments the result to also contain the
+specified fields. The field list can be omitted when at least two
+bases appear and none have common field labels. Thus the field list
+serves as
+- disambiguation for field labels occurring more than once in the
+  bases
+- supplying fresh fields
+- changing field types.
+The resulting type is determined by the bases' (and explicit fields') static type.
+`var` fields from the bases (when not disambiguated) will show up in the result as `var` fields that *share* the original coontents,
+i.e. an assignment to such a field of either the base or the result
+will change the shared content.
+
 ### Object projection (member access)
 
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type `sort { var1? <id1> : T1, …​, var? <id> : T, …​, var? <idn> : Tn }` for some sort `sort`.
