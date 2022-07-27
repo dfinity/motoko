@@ -5,7 +5,6 @@ open Mo_def
 
 module Js = Js_of_ocaml.Js
 module Sys_js = Js_of_ocaml.Sys_js
-module Sexpr = Wasm.Sexpr
 
 let position_of_pos pos =
   object%js
@@ -31,11 +30,16 @@ let diagnostics_of_msg (msg : Diag.message) =
 let diagnostics_of_msgs (msgs : Diag.message list) =
   Array.of_list (List.map diagnostics_of_msg msgs)
 
-let rec json_of_sexpr (Sexpr.Node (head, inner)) =
-  object%js
-    val type' = Js.string head
-    val args = List.map json_of_sexpr inner
-  end
+let rec js_of_sexpr (sexpr : Wasm.Sexpr.sexpr) : Js.Unsafe.any =
+  (* Wasm.Sexpr.to_string 80 sexpr |> Js.string *)
+  match sexpr with
+| Wasm.Sexpr.Node (head, inner) ->
+  Js.Unsafe.coerce (object%js
+    val name = Js.string head
+    val args = inner |> List.map js_of_sexpr |> Array.of_list |> Js.array |> Js.some
+  end)
+| Wasm.Sexpr.Atom s ->
+  Js.Unsafe.coerce (Js.string s)
 
 let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
   match result with
@@ -95,24 +99,19 @@ let js_compile_wasm mode source =
       end)
     )
 
-let js_parse_syntax_tree s =
-  let s = Js.to_string s in
-  let parse_result = Pipeline.parse_string "main" s in
-  match parse_result with
-  | Error err ->
-      Printf.eprintf "Error parsing Motoko: %s\n" s;
-      Diag.print_messages err;
-      object%js
-        val filename = Js.string "ERROR"
-      end
-      (* Js.raise_js_error (Js.error_constr "Error parsing Motoko") *)
-  | Ok ((prog, _), _) -> (
-    let ast = Arrange.prog prog in
-    (* json_of_sexpr ast *)
-    object%js
-      val filename = Js.string "done"
-    end
-  )
+    let js_parse s=
+      let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
+      js_result parse_result (fun (prog, _) -> 
+        let ast = Arrange.prog prog in
+        Js.some (js_of_sexpr ast)
+      )
+
+      let js_parse_candid s=
+        let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
+        js_result parse_result (fun (prog, _) -> 
+          let ast = Idllib.Arrange_idl.prog prog in
+          Js.some (js_of_sexpr ast)
+        )
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
@@ -122,7 +121,7 @@ let js_save_file filename content =
 
 let js_remove_file filename = Sys.remove (Js.to_string filename)
 let js_rename_file oldpath newpath = Sys.rename (Js.to_string oldpath) (Js.to_string newpath)
-let js_read_dir path = Sys.readdir (Js.to_string path)
+let js_read_dir path = Sys.readdir (Js.to_string path) |> Array.map Js.string |> Js.array
 let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
 

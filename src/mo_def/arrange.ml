@@ -191,7 +191,7 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
+    | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
     "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
