@@ -2,10 +2,10 @@
 This module originated as a copy of interpreter/syntax/ast.ml in the
 reference implementation.
 
-Base revision: WebAssembly/spec@a7a1856.
+Base revision: WebAssembly/spec@082ae4d (opam-2.0.0).
 
 The changes are:
- * None for now
+ * left out vector types
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -54,7 +54,7 @@ module FloatOp =
 struct
   type unop = Neg | Abs | Ceil | Floor | Trunc | Nearest | Sqrt
   type binop = Add | Sub | Mul | Div | Min | Max | CopySign
-  type testop
+  type testop = |
   type relop = Eq | Ne | Lt | Gt | Le | Ge
   type cvtop = ConvertSI32 | ConvertUI32 | ConvertSI64 | ConvertUI64
              | PromoteF32 | DemoteF64
@@ -66,23 +66,24 @@ module I64Op = IntOp
 module F32Op = FloatOp
 module F64Op = FloatOp
 
+
+type testop = (I32Op.testop, I64Op.testop, F32Op.testop, F64Op.testop) Values.op
 type unop = (I32Op.unop, I64Op.unop, F32Op.unop, F64Op.unop) Values.op
 type binop = (I32Op.binop, I64Op.binop, F32Op.binop, F64Op.binop) Values.op
-type testop = (I32Op.testop, I64Op.testop, F32Op.testop, F64Op.testop) Values.op
 type relop = (I32Op.relop, I64Op.relop, F32Op.relop, F64Op.relop) Values.op
 type cvtop = (I32Op.cvtop, I64Op.cvtop, F32Op.cvtop, F64Op.cvtop) Values.op
 
-type 'a memop =
-  {ty : value_type; align : int; offset : Memory.offset; sz : 'a option}
-type loadop = (pack_size * extension) memop
-type storeop = pack_size memop
+type ('t, 'p) memop = {ty : 't; align : int; offset : int32; pack : 'p}
+type loadop = (num_type, (pack_size * extension) option) memop
+type storeop = (num_type, pack_size option) memop
 
 
 (* Expressions *)
 
 type var = int32 phrase
-type literal = Values.value phrase
-type name = int list
+type num = Values.num phrase
+type vec = Values.vec phrase
+type name = Utf8.unicode
 
 type block_type = VarBlockType of var | ValBlockType of value_type option
 
@@ -91,7 +92,7 @@ and instr' =
   | Unreachable                       (* trap unconditionally *)
   | Nop                               (* do nothing *)
   | Drop                              (* forget a value *)
-  | Select                            (* branchless conditional *)
+  | Select of value_type list option  (* branchless conditional *)
   | Block of block_type * instr list  (* execute in sequence *)
   | Loop of block_type * instr list   (* loop header *)
   | If of block_type * instr list * instr list  (* conditional *)
@@ -100,23 +101,39 @@ and instr' =
   | BrTable of var list * var         (* indexed break *)
   | Return                            (* break from function body *)
   | Call of var                       (* call function *)
-  | CallIndirect of var               (* call function through table *)
+  | CallIndirect of var * var         (* call function through table *)
   | LocalGet of var                   (* read local variable *)
   | LocalSet of var                   (* write local variable *)
   | LocalTee of var                   (* write local variable and keep value *)
   | GlobalGet of var                  (* read global variable *)
   | GlobalSet of var                  (* write global variable *)
+  | TableGet of var                   (* read table element *)
+  | TableSet of var                   (* write table element *)
+  | TableSize of var                  (* size of table *)
+  | TableGrow of var                  (* grow table *)
+  | TableFill of var                  (* fill table range with value *)
+  | TableCopy of var * var            (* copy table range *)
+  | TableInit of var * var            (* initialize table range from segment *)
+  | ElemDrop of var                   (* drop passive element segment *)
   | Load of loadop                    (* read memory at address *)
   | Store of storeop                  (* write memory at address *)
-  | MemorySize                        (* size of linear memory *)
-  | MemoryGrow                        (* grow linear memory *)
-  | Const of literal                  (* constant *)
+  | MemorySize                        (* size of memory *)
+  | MemoryGrow                        (* grow memory *)
+  | MemoryFill                        (* fill memory range with value *)
+  | MemoryCopy                        (* copy memory ranges *)
+  | MemoryInit of var                 (* initialize memory range from segment *)
+  | DataDrop of var                   (* drop passive data segment *)
+  | RefNull of ref_type               (* null reference *)
+  | RefFunc of var                    (* function reference *)
+  | RefIsNull                         (* null test *)
+  | Const of num                      (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)
   | Unary of unop                     (* unary numeric operator *)
   | Binary of binop                   (* binary numeric operator *)
   | Convert of cvtop                  (* conversion *)
   | Meta of Dwarf5.Meta.die           (* debugging metadata *)
+
 
 (* Globals & Functions *)
 
@@ -126,7 +143,7 @@ type global = global' phrase
 and global' =
 {
   gtype : global_type;
-  value : const;
+  ginit : const;
 }
 
 type func = func' phrase
@@ -152,16 +169,26 @@ and memory' =
   mtype : memory_type;
 }
 
-type 'data segment = 'data segment' phrase
-and 'data segment' =
+type segment_mode = segment_mode' phrase
+and segment_mode' =
+  | Passive
+  | Active of {index : var; offset : const}
+  | Declarative
+
+type elem_segment = elem_segment' phrase
+and elem_segment' =
 {
-  index : var;
-  offset : const;
-  init : 'data;
+  etype : ref_type;
+  einit : const list;
+  emode : segment_mode;
 }
 
-type table_segment = var list segment
-type memory_segment = string segment
+type data_segment = data_segment' phrase
+and data_segment' =
+{
+  dinit : string;
+  dmode : segment_mode;
+}
 
 
 (* Modules *)
@@ -197,6 +224,12 @@ and import' =
   idesc : import_desc;
 }
 
+type start = start' phrase
+and start' =
+{
+  sfunc : var;
+}
+
 type module_ = module_' phrase
 and module_' =
 {
@@ -205,9 +238,9 @@ and module_' =
   tables : table list;
   memories : memory list;
   funcs : func list;
-  start : var option;
-  elems : var list segment list;
-  data : string segment list;
+  start : start option;
+  elems : elem_segment list;
+  datas : data_segment list;
   imports : import list;
   exports : export list;
 }
@@ -224,7 +257,7 @@ let empty_module =
   funcs = [];
   start = None;
   elems  = [];
-  data = [];
+  datas = [];
   imports = [];
   exports = [];
 }

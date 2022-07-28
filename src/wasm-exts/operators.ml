@@ -4,10 +4,10 @@ reference implementation. It is pulled in by the strong cohesion between
 the operators and the AST. Not having this source file locally would mean
 that it got basically replicated into the customModuleDecode.ml file.
 
-Base revision: WebAssembly/spec@a7a1856.
+Base revision: WebAssembly/spec@f5a260a (opam-2.0.0).
 
 The changes are:
- * None for now
+ * left out vector types
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -23,11 +23,13 @@ let i32_const n = Const (I32 n.it @@ n.at)
 let i64_const n = Const (I64 n.it @@ n.at)
 let f32_const n = Const (F32 n.it @@ n.at)
 let f64_const n = Const (F64 n.it @@ n.at)
+let ref_null t = RefNull t
+let ref_func x = RefFunc x
 
 let unreachable = Unreachable
 let nop = Nop
 let drop = Drop
-let select = Select
+let select t = Select t
 let block bt es = Block (bt, es)
 let loop bt es = Loop (bt, es)
 let if_ bt es1 es2 = If (bt, es1, es2)
@@ -37,7 +39,7 @@ let br_table xs x = BrTable (xs, x)
 
 let return = Return
 let call x = Call x
-let call_indirect x = CallIndirect x
+let call_indirect x y = CallIndirect (x, y)
 
 let local_get x = LocalGet x
 let local_set x = LocalSet x
@@ -45,45 +47,63 @@ let local_tee x = LocalTee x
 let global_get x = GlobalGet x
 let global_set x = GlobalSet x
 
-let i32_load align offset = Load {ty = I32Type; align; offset; sz = None}
-let i64_load align offset = Load {ty = I64Type; align; offset; sz = None}
-let f32_load align offset = Load {ty = F32Type; align; offset; sz = None}
-let f64_load align offset = Load {ty = F64Type; align; offset; sz = None}
-let i32_load8_s align offset =
-  Load {ty = I32Type; align; offset; sz = Some (Pack8, SX)}
-let i32_load8_u align offset =
-  Load {ty = I32Type; align; offset; sz = Some (Pack8, ZX)}
-let i32_load16_s align offset =
-  Load {ty = I32Type; align; offset; sz = Some (Pack16, SX)}
-let i32_load16_u align offset =
-  Load {ty = I32Type; align; offset; sz = Some (Pack16, ZX)}
-let i64_load8_s align offset =
-  Load {ty = I64Type; align; offset; sz = Some (Pack8, SX)}
-let i64_load8_u align offset =
-  Load {ty = I64Type; align; offset; sz = Some (Pack8, ZX)}
-let i64_load16_s align offset =
-  Load {ty = I64Type; align; offset; sz = Some (Pack16, SX)}
-let i64_load16_u align offset =
-  Load {ty = I64Type; align; offset; sz = Some (Pack16, ZX)}
-let i64_load32_s align offset =
-  Load {ty = I64Type; align; offset; sz = Some (Pack32, SX)}
-let i64_load32_u align offset =
-  Load {ty = I64Type; align; offset; sz = Some (Pack32, ZX)}
+let table_get x = TableGet x
+let table_set x = TableSet x
+let table_size x = TableSize x
+let table_grow x = TableGrow x
+let table_fill x = TableFill x
+let table_copy x y = TableCopy (x, y)
+let table_init x y = TableInit (x, y)
+let elem_drop x = ElemDrop x
 
-let i32_store align offset = Store {ty = I32Type; align; offset; sz = None}
-let i64_store align offset = Store {ty = I64Type; align; offset; sz = None}
-let f32_store align offset = Store {ty = F32Type; align; offset; sz = None}
-let f64_store align offset = Store {ty = F64Type; align; offset; sz = None}
+let i32_load align offset = Load {ty = I32Type; align; offset; pack = None}
+let i64_load align offset = Load {ty = I64Type; align; offset; pack = None}
+let f32_load align offset = Load {ty = F32Type; align; offset; pack = None}
+let f64_load align offset = Load {ty = F64Type; align; offset; pack = None}
+let i32_load8_s align offset =
+  Load {ty = I32Type; align; offset; pack = Some (Pack8, SX)}
+let i32_load8_u align offset =
+  Load {ty = I32Type; align; offset; pack = Some (Pack8, ZX)}
+let i32_load16_s align offset =
+  Load {ty = I32Type; align; offset; pack = Some (Pack16, SX)}
+let i32_load16_u align offset =
+  Load {ty = I32Type; align; offset; pack = Some (Pack16, ZX)}
+let i64_load8_s align offset =
+  Load {ty = I64Type; align; offset; pack = Some (Pack8, SX)}
+let i64_load8_u align offset =
+  Load {ty = I64Type; align; offset; pack = Some (Pack8, ZX)}
+let i64_load16_s align offset =
+  Load {ty = I64Type; align; offset; pack = Some (Pack16, SX)}
+let i64_load16_u align offset =
+  Load {ty = I64Type; align; offset; pack = Some (Pack16, ZX)}
+let i64_load32_s align offset =
+  Load {ty = I64Type; align; offset; pack = Some (Pack32, SX)}
+let i64_load32_u align offset =
+  Load {ty = I64Type; align; offset; pack = Some (Pack32, ZX)}
+
+let i32_store align offset = Store {ty = I32Type; align; offset; pack = None}
+let i64_store align offset = Store {ty = I64Type; align; offset; pack = None}
+let f32_store align offset = Store {ty = F32Type; align; offset; pack = None}
+let f64_store align offset = Store {ty = F64Type; align; offset; pack = None}
 let i32_store8 align offset =
-  Store {ty = I32Type; align; offset; sz = Some Pack8}
+  Store {ty = I32Type; align; offset; pack = Some Pack8}
 let i32_store16 align offset =
-  Store {ty = I32Type; align; offset; sz = Some Pack16}
+  Store {ty = I32Type; align; offset; pack = Some Pack16}
 let i64_store8 align offset =
-  Store {ty = I64Type; align; offset; sz = Some Pack8}
+  Store {ty = I64Type; align; offset; pack = Some Pack8}
 let i64_store16 align offset =
-  Store {ty = I64Type; align; offset; sz = Some Pack16}
+  Store {ty = I64Type; align; offset; pack = Some Pack16}
 let i64_store32 align offset =
-  Store {ty = I64Type; align; offset; sz = Some Pack32}
+  Store {ty = I64Type; align; offset; pack = Some Pack32}
+
+let memory_size = MemorySize
+let memory_grow = MemoryGrow
+let memory_fill = MemoryFill
+let memory_copy = MemoryCopy
+let memory_init x = MemoryInit x
+let data_drop x = DataDrop x
+
+let ref_is_null = RefIsNull
 
 let i32_clz = Unary (I32 I32Op.Clz)
 let i32_ctz = Unary (I32 I32Op.Ctz)
@@ -227,6 +247,4 @@ let i64_reinterpret_f64 = Convert (I64 I64Op.ReinterpretFloat)
 let f32_reinterpret_i32 = Convert (F32 F32Op.ReinterpretInt)
 let f64_reinterpret_i64 = Convert (F64 F64Op.ReinterpretInt)
 
-let memory_size = MemorySize
-let memory_grow = MemoryGrow
 
