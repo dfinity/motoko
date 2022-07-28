@@ -343,6 +343,7 @@ let encode (em : extended_module) =
 
     let elem_type = function
       | FuncRefType -> vs7 (-0x10)
+      | ExternRefType -> assert false
 
     let stack_type = vec value_type
     let func_type = function
