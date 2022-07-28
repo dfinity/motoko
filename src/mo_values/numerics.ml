@@ -69,10 +69,12 @@ let bigint_of_double (f : Wasm.F64.t) : Big_int.big_int =
   else
     a
 
-(* a mild extension over Was.Int.RepType *)
+(* a mild extension over Wasm.Ixx.RepType *)
 module type WordRepType =
 sig
-  include Wasm.Int.RepType
+  include Wasm.Ixx.RepType
+  val of_int64 : int64 -> t
+  val to_int64 : t -> int64
   val of_big_int : Big_int.big_int -> t (* wrapping *)
   val to_big_int : t -> Big_int.big_int
 end
