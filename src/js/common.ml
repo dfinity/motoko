@@ -58,8 +58,7 @@ let js_check source =
   js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
 
 let js_run list source =
-  let list = Array.to_list (Js.to_array list) in
-  let list = List.map Js.to_string list in
+  let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
   ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
 let js_candid source =
@@ -99,19 +98,20 @@ let js_compile_wasm mode source =
       end)
     )
 
-    let js_parse s=
-      let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
-      js_result parse_result (fun (prog, _) -> 
-        let ast = Arrange.prog prog in
-        Js.some (js_of_sexpr ast)
-      )
+let js_parse s =
+  let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
+  js_result parse_result (fun (prog, _) ->
+    (* let _ = Pipeline.infer_prog *)
+    let ast = Arrange.prog prog in
+    Js.some (js_of_sexpr ast)
+  )
 
-      let js_parse_candid s=
-        let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
-        js_result parse_result (fun (prog, _) -> 
-          let ast = Idllib.Arrange_idl.prog prog in
-          Js.some (js_of_sexpr ast)
-        )
+let js_parse_candid s =
+  let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
+  js_result parse_result (fun (prog, _) ->
+    let ast = Idllib.Arrange_idl.prog prog in
+    Js.some (js_of_sexpr ast)
+  )
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
