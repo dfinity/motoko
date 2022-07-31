@@ -21,10 +21,10 @@ actor Palindrome {
             case (_, null) xs1; // even length
             case (?(_, xs1), ?(_, nil)) xs1; // odd length
             case (?(x, xs1), ?(_, ?(_, xs2))) {
-                if x == y (
+                if (x == y) {
                     let ?(y, ys) = walk (xs1, xs2);
                     ys
-                } else { throw Error.reject("Nope") };
+                } else { throw Error.reject("Nope") }
             }
         }
         try {
