@@ -1,7 +1,7 @@
 // The 2 palindrome implementations from
 // "There and Back Again", by Olivier Danvy and Mayer Goldberg
 //
-import { performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
+import { error; performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
 
 actor Palindrome {
     type List<A> = ?(A, List<A>);
@@ -24,7 +24,7 @@ actor Palindrome {
                 if (x == y) {
                     let ?(y, ys) = walk (xs1, xs2);
                     ys
-                } else { throw Error.reject("Nope") }
+                } else { throw error("Nope") }
             }
         };
         try {
