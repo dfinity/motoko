@@ -17,17 +17,21 @@ actor Palindrome {
     };
 
     func direct(xs : List<Char>) : Bool {
-        fun walk (xs1, xs2) = switch (xs1, xs2) {
+        func walk (xs1, xs2) = switch (xs1, xs2) {
             case (_, null) xs1; (* even length *)
             case (_ :: xs1, _ :: nil) xs1 (*  odd length *)
             case (x :: xs1, _ :: _ :: xs2) {
-                if x = y
-                val (y :: ys) = walk (xs1, xs2)
-                then ys
-                else throw Error.reject("Not Found")
-                
-                in let val nil = walk (xs0, xs0) in true
-                end handle FALSE => false end
+                if x == y (
+                    let ?(y, ys) = walk (xs1, xs2);
+                    ys
+                } else { throw Error.reject("Nope") };
+                try {
+                    let null = walk (xs0, xs0);
+                    true
+                } catch _ false
+            }
+        }
+    }
 
     func as_list(cs : Text) : List<Char> {
         var l : List<Char> = null;
