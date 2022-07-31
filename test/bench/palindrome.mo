@@ -25,12 +25,12 @@ actor Palindrome {
                     let ?(y, ys) = walk (xs1, xs2);
                     ys
                 } else { throw Error.reject("Nope") };
-                try {
-                    let null = walk (xs0, xs0);
-                    true
-                } catch _ false
             }
         }
+        try {
+            let null = walk (xs0, xs0);
+            true
+        } catch _ false
     }
 
     func as_list(cs : Text) : List<Char> {
@@ -48,11 +48,11 @@ actor Palindrome {
         let b = cps(as_list "go hang a salami imalas a gnah og"); // Go hang a salami, I'm a lasagna hog.
         let (m1, n1) = counters();
         debugPrint(debug_show (b, m1 - m0, n1 - n0));
-/*
+
         let (i0, j0) = counters();
-        let (_, it) = arrInt32(13);
+        let c = direct(as_list "go hang a salami imalas a gnah og");
         let (i1, j1) = counters();
-        debugPrint(debug_show (it, i1 - i0, j1 - j0))*/
+        debugPrint(debug_show (c, i1 - i0, j1 - j0))
     }
 }
 
