@@ -31,7 +31,7 @@ actor Palindrome {
             let null = walk (xs0, xs0);
             true
         } catch _ false
-    }
+    };
 
     func as_list(cs : Text) : List<Char> {
         var l : List<Char> = null;
