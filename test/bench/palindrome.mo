@@ -16,8 +16,8 @@ actor Palindrome {
         walk (xs, xs, func null = true)
     };
 
-    func direct(seed : Nat) : ([Int32], Nat) {
-        fun walk (xs1, nil) = switch (xs1, xs2) {
+    func direct(xs : List<Char>) : Bool {
+        fun walk (xs1, xs2) = switch (xs1, xs2) {
             case (_, null) xs1; (* even length *)
             case (_ :: xs1, _ :: nil) xs1 (*  odd length *)
             case (x :: xs1, _ :: _ :: xs2) {
