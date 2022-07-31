@@ -26,7 +26,7 @@ actor Palindrome {
                     ys
                 } else { throw Error.reject("Nope") }
             }
-        }
+        };
         try {
             let null = walk (xs0, xs0);
             true
