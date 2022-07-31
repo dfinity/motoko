@@ -17,6 +17,27 @@ actor Palindrome {
     };
 
     //func direct(seed : Nat) : ([Int32], Nat) {};
+    fun pal_d xs0
+    = let fun
+ = let
+exception FALSE
+fun walk (xs1, nil)
+= xs1
+| walk
+= xs1
+| walk
+  (* even length *)
+(_ :: xs1, _ :: nil)
+  (*  odd length *)
+(x :: xs1, _ :: _ :: xs2)
+= let
+in if x = y
+val (y :: ys) = walk (xs1, xs2)
+then ys
+   else raise FALSE
+end
+in let val nil = walk (xs0, xs0) in true
+end handle FALSE => false end
 
     func as_list(cs : Text) : List<Char> {
         var l : List<Char> = null;
