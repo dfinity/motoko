@@ -11,24 +11,27 @@ actor Palindrome {
             switch (xs1, xs2) {
                  case (_, null) { k xs1 };
                  case (?(_, xs1), ?(_, null)) { k xs1 };
-                 case (?(x, xs1), ?(_, ?(_, xs2))) { walk (xs1, xs2, func (?(y, ys)) = x == y and k ys) }
+                 case (?(x, xs1), ?(_, ?(_, xs2))) {
+                     walk (xs1, xs2, func (?(y, ys)) = x == y and k ys)
+                 }
              };
         walk (xs, xs, func null = true)
     };
 
     func direct(xs : List<Char>) : Bool {
-        func walk (xs1 : List<Char>, xs2 : List<Char>) = switch (xs1, xs2) {
-            case (_, null) xs1; // even length
-            case (?(_, xs1), ?(_, nil)) xs1; // odd length
-            case (?(x, xs1), ?(_, ?(_, xs2))) {
-                if (x == y) {
+        func walk (xs1 : List<Char>, xs2 : List<Char>) : List<Char> =
+            switch (xs1, xs2) {
+                case (_, null) xs1; // even length
+                case (?(_, xs1), ?(_, null)) xs1; // odd length
+                case (?(x, xs1), ?(_, ?(_, xs2))) {
                     let ?(y, ys) = walk (xs1, xs2);
-                    ys
-                } else { throw error("Nope") }
-            }
-        };
+                    if (x == y) {
+                        ys
+                    } else { throw error("Nope") }
+                }
+            };
         try {
-            let null = walk (xs0, xs0);
+            let null = walk (xs, xs);
             true
         } catch _ false
     };
