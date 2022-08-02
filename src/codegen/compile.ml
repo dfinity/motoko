@@ -8752,7 +8752,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "rts_mutator_instructions", [] ->
     SR.Vanilla,
-    GC.get_collector_instructions env ^^ BigNum.from_word64 env
+    GC.get_mutator_instructions env ^^ BigNum.from_word64 env
 
   | OtherPrim "rts_collector_instructions", [] ->
     SR.Vanilla,
