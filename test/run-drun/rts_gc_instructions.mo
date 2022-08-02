@@ -10,20 +10,29 @@ actor {
    };
 
    public func go() : async () {
-     var i = 0;
+     var i = 1;
      var pre = Prim.rts_memory_size();
-     Prim.debugPrint(debug_show((pre,Prim.natToNat32(pre))));
+     var preMutatorInstructions = 0;
+     var preCollectorInstructions = 0;
      while(i < 16) {
        assert(Prim.rts_memory_size() >=
          Prim.rts_heap_size());
        let size = await grow(i);
+       let mutatorInstructions = Prim.rts_mutator_instructions();
+       let collectorInstructions = Prim.rts_collector_instructions();
+/* too noisy for comparison across gc flavours
        Prim.debugPrint(debug_show({
          memory_size = size;
-         mutator_instructions = Prim.rts_mutator_instructions();
-         collector_instructions = Prim.rts_collector_instructions()
+         mutator_instructions  = mutatorInstructions;
+         collector_instructions = collectorInstructions
        }));
+*/
        assert (pre <= size);
+       assert (preMutatorInstructions < mutatorInstructions);
+       assert (preCollectorInstructions < collectorInstructions);
        pre := size;
+       preMutatorInstructions := mutatorInstructions;
+       preCollectorInstructions := collectorInstructions;
        i += 1;
      };
    }
@@ -35,4 +44,5 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
+// too slow in ic-ref
 //SKIP ic-ref-run
