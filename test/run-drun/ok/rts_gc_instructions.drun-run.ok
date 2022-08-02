@@ -1,0 +1,20 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: (196_608, 196_608)
+debug.print: {collector_instructions = 18_092; memory_size = 196_608; mutator_instructions = 1_788}
+debug.print: {collector_instructions = 8_800_801; memory_size = 1_245_184; mutator_instructions = 6_817_539}
+debug.print: {collector_instructions = 26_365_337; memory_size = 3_342_336; mutator_instructions = 13_633_304}
+debug.print: {collector_instructions = 52_711_694; memory_size = 6_488_064; mutator_instructions = 20_449_041}
+debug.print: {collector_instructions = 87_839_878; memory_size = 12_779_520; mutator_instructions = 27_264_785}
+debug.print: {collector_instructions = 131_749_876; memory_size = 21_168_128; mutator_instructions = 34_080_529}
+debug.print: {collector_instructions = 184_441_708; memory_size = 31_653_888; mutator_instructions = 40_896_273}
+debug.print: {collector_instructions = 245_915_354; memory_size = 44_236_800; mutator_instructions = 47_712_017}
+debug.print: {collector_instructions = 316_170_834; memory_size = 58_916_864; mutator_instructions = 54_527_761}
+debug.print: {collector_instructions = 395_208_128; memory_size = 75_694_080; mutator_instructions = 61_343_505}
+debug.print: {collector_instructions = 483_027_249; memory_size = 94_568_448; mutator_instructions = 68_159_249}
+debug.print: {collector_instructions = 579_628_198; memory_size = 115_539_968; mutator_instructions = 74_974_993}
+debug.print: {collector_instructions = 685_010_967; memory_size = 138_608_640; mutator_instructions = 81_790_737}
+debug.print: {collector_instructions = 799_175_557; memory_size = 163_774_464; mutator_instructions = 88_606_481}
+debug.print: {collector_instructions = 922_121_974; memory_size = 191_037_440; mutator_instructions = 95_422_225}
+debug.print: {collector_instructions = 1_053_850_219; memory_size = 220_397_568; mutator_instructions = 102_237_969}
+ingress Completed: Reply: 0x4449444c0000
