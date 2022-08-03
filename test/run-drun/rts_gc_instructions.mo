@@ -1,6 +1,6 @@
 import Prim "mo:⛔";
 
-actor {
+actor a {
    type List = ?([var Int], List);
    var list : List = null;
 
@@ -28,8 +28,8 @@ actor {
        }));
 */
        assert (pre <= size);
-       assert (preMutatorInstructions < mutatorInstructions);
-       assert (preCollectorInstructions < collectorInstructions);
+       assert (preMutatorInstructions <= mutatorInstructions);
+       assert (preCollectorInstructions <= collectorInstructions);
        pre := size;
        preMutatorInstructions := mutatorInstructions;
        preCollectorInstructions := collectorInstructions;
@@ -38,12 +38,7 @@ actor {
    }
 };
 
-//CALL ingress go "DIDL\x00\x00"
-
-// no point running these in the interpreter
-//SKIP run
-//SKIP run-low
-//SKIP run-ir
+await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
 // too slow in ic-ref
 //SKIP ic-ref-run
