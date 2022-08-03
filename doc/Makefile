@@ -25,6 +25,15 @@ html:
 	mkdir -p html
 	for f in md/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
+
+preview:
+	make -C ../src moc_interpreter.js
+	cp -f ../src/moc_interpreter.js docusaurus/static
+	cd docusaurus; npm install; npm start
+
+
 .PHONY: base
 .PHONY: md
 .PHONY: html
+.PHONY: preview
+

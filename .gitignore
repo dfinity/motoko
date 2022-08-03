@@ -5,6 +5,8 @@ _out-dbg
 _output
 _build
 target
+node_modules
+.docusaurus
 
 **/*~
 result*
