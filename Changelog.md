@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * add primitives
+    ```motoko
+      Prim.rts_mutator_instructions : () -> Nat
+      Prim.rts_collector_instructions : () -> Nat
+    ```
+    to report appoximate IC instruction costs of last message
+    due to mutation (computation) and collection (GC), respectively (#3381).
+
 ## 0.6.29 (2022-06-10)
 
 * motoko (`moc`)
