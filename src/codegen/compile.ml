@@ -960,18 +960,18 @@ module GC = struct
 
   let record_mutator_instructions env =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode  ->
+    | Flags.(ICMode | RefMode)  ->
       instruction_counter env ^^
       set_mutator_instructions env
     | _ -> G.nop
 
   let record_collector_instructions env =
     match E.mode env with
-    | (Flags.ICMode | Flags.RefMode)  ->
-        instruction_counter env ^^
-        get_mutator_instructions env ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-        set_collector_instructions env
+    | Flags.(ICMode | RefMode)  ->
+      instruction_counter env ^^
+      get_mutator_instructions env ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+      set_collector_instructions env
     | _ -> G.nop
 
   let collect_garbage env =
