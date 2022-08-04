@@ -969,10 +969,10 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     in
     let ic00_install_code = var "@ic00_install_code"
       T.(Func (Local, Returns, [],
-        [],
-        [Func (Shared Write, Promises, [scope_bind],
-          [record_typ],
-          [Async(Var (default_scope_var, 0), T.principal)])]))
+          [],
+          [Func (Shared Write, Promises, [scope_bind],
+            [record_typ],
+            [])]))
     in
     let mode =
       fresh_var "mode" mode_typ
@@ -1000,7 +1000,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
                    {it = {I.name = "wasm_module"; I.var = id_of_var wasm_module}; at = no_region; note = typ_of_var wasm_module };
                    {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
                  ]
-                 record_typ))
+                 record_typ));
             expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record))) 
         ]
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
@@ -1140,7 +1140,35 @@ let import_unit (u : S.comp_unit) : import_declaration =
         [T.Async (List.hd cs, actor_t)]
         body
       in
-      actor_class_mod_exp id class_typ func func (* FIX ME *)
+      let install_arg =
+        fresh_var "install_arg" T.(Obj(Object, List.sort T.compare_field [
+            { lab = "mode"; depr = None; typ =
+              Variant (List.sort T.compare_field [
+                { lab = "install"; typ = unit; depr = None };
+                { lab = "reinstall"; typ = unit; depr = None };
+                { lab = "upgrade"; typ = unit; depr = None } ]) };
+             { lab = "principal"; depr = None; typ = principal } ]))
+      in
+      let installBody =
+        let vs = fresh_vars "param" ts1 in
+        funcE id T.Local T.Returns
+        [typ_arg c T.Scope T.scope_bound]
+        (List.map arg_of_var vs)
+        [T.Async (List.hd cs, actor_t)]
+        (asyncE
+          (typ_arg c' T.Scope T.scope_bound)
+          ((primE (Ir.OtherPrim "trap")
+                  [textE "actor class installation not supported in interpreter"]))
+          (List.hd cs))
+      in
+      let install =
+        funcE id T.Local T.Returns
+          []
+          ([arg_of_var install_arg])
+          [installBody.note.Note.typ]
+        installBody
+      in
+      actor_class_mod_exp id class_typ func install
     | I.ProgU ds ->
       raise (Invalid_argument "Desugar: Cannot import program")
   in

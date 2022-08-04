@@ -289,8 +289,8 @@ let funcE name sort ctrl typ_binds args typs exp =
 
 let callE exp1 typs exp2 =
   let typ =  match T.promote (typ exp1) with
-    | T.Func (_sort, _control, _, _, ret_tys) ->
-      T.open_ typs (T.seq ret_tys)
+    | T.Func (_sort, control, _, _, ret_tys) ->
+      T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
     | T.Non -> T.Non
     | _ -> raise (Invalid_argument "callE expect a function")
   in
