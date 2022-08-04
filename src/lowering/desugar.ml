@@ -865,19 +865,27 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
-let actor_class_mod_exp id class_typ func =
+let actor_class_mod_exp id class_typ func install =
   let fun_typ = func.note.Note.typ in
+  let install_typ = install.note.Note.typ in
   let class_con = Cons.fresh id (T.Def([], class_typ)) in
   let v = fresh_var id fun_typ in
+  let w = fresh_var id install_typ in
   blockE
-    [letD v func]
+    [letD v func;
+     letD w install]
     (newObjE T.Module
        [{ it = {I.name = id; I.var = id_of_var v};
           at = no_region;
-          note = fun_typ }]
+          note = fun_typ };
+        { it = {I.name = "install" ^ id; I.var = id_of_var w};
+          at = no_region;
+          note = install_typ }
+       ]
        (T.Obj(T.Module, List.sort T.compare_field [
           { T.lab = id; T.typ = T.Typ class_con; depr = None };
-          { T.lab = id; T.typ = fun_typ; depr = None }])))
+          { T.lab = id; T.typ = fun_typ; depr = None };
+          { T.lab = "install" ^ id; T.typ = install_typ; depr = None }])))
 
 let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   let f = lib.note.filename in
@@ -933,7 +941,79 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     ts2'
     body
   in
-  let mod_exp = actor_class_mod_exp id class_typ func in
+  let install_arg =
+    fresh_var "install_arg" T.(Obj(Object, List.sort T.compare_field [
+        { lab = "mode"; depr = None; typ =
+          Variant (List.sort T.compare_field [
+            { lab = "install"; typ = unit; depr = None };
+            { lab = "reinstall"; typ = unit; depr = None };
+            { lab = "upgrade"; typ = unit; depr = None } ]) };
+         { lab = "principal"; depr = None; typ = principal } ]))
+  in
+  let installBody =
+    let vs = fresh_vars "param" ts1' in
+    let arg = fresh_var "arg" T.blob in
+    let principal = fresh_var "principal" T.principal in
+    let canister_id = fresh_var "canister_id" T.principal in
+    let wasm_module = fresh_var "wasm_module" T.blob in
+    let mode_typ = T.(Variant (List.sort T.compare_field [
+        { lab = "install"; typ = unit; depr = None };
+        { lab = "reinstall"; typ = unit; depr = None };
+        { lab = "upgrade"; typ = unit; depr = None }]))
+    in
+    let record_typ = T.(Obj (Object, List.sort T.compare_field [
+        { lab = "mode"; typ = mode_typ; depr = None };
+        { lab = "canister_id"; typ = principal; depr = None };
+        { lab = "wasm_module"; typ = blob; depr = None };
+        { lab = "arg"; typ = blob; depr = None }]))
+    in
+    let ic00_install_code = var "@ic00_install_code"
+      T.(Func (Local, Returns, [],
+        [],
+        [Func (Shared Write, Promises, [scope_bind],
+          [record_typ],
+          [Async(Var (default_scope_var, 0), T.principal)])]))
+    in
+    let mode =
+      fresh_var "mode" mode_typ
+    in
+    let record =
+      fresh_var "mode" record_typ in
+    funcE id T.Local T.Returns
+    [typ_arg c T.Scope T.scope_bound]
+    (List.map arg_of_var vs)
+    ts2'
+    (asyncE
+      (typ_arg c' T.Scope T.scope_bound)
+      (blockE [
+          letD principal (dotE (varE install_arg) "principal" (typ_of_var principal));
+          letD record (
+            blockE [
+               letD mode (dotE (varE install_arg) "mode" (typ_of_var mode));
+               letD canister_id (varE principal);
+               letD wasm_module (blobE wasm); (* should be shared in backend *)
+               letD arg (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
+              ]
+              (newObjE T.Object [
+                   {it = {I.name = "mode"; I.var = id_of_var mode}; at = no_region; note = typ_of_var mode };
+                   {it = {I.name = "canister_id"; I.var = id_of_var principal}; at = no_region; note = typ_of_var principal };
+                   {it = {I.name = "wasm_module"; I.var = id_of_var wasm_module}; at = no_region; note = typ_of_var wasm_module };
+                   {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
+                 ]
+                 record_typ))
+            expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record))) 
+        ]
+        (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
+      (List.hd cs))
+  in
+  let install =
+    funcE id T.Local T.Returns
+      []
+      ([arg_of_var install_arg])
+      [installBody.note.Note.typ]
+    installBody
+  in
+  let mod_exp = actor_class_mod_exp id class_typ func install in
   let mod_typ = mod_exp.note.Note.typ in
   [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
@@ -1060,7 +1140,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
         [T.Async (List.hd cs, actor_t)]
         body
       in
-      actor_class_mod_exp id class_typ func
+      actor_class_mod_exp id class_typ func func (* FIX ME *)
     | I.ProgU ds ->
       raise (Invalid_argument "Desugar: Cannot import program")
   in

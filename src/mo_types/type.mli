@@ -245,6 +245,7 @@ val get_candid_interface_fld : field
 
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ
+val install_typ : typ list -> typ -> typ
 
 (* Pretty printing *)
 

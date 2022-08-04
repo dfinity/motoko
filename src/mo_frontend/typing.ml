@@ -2616,21 +2616,23 @@ let check_lib scope lib : Scope.t Diag.result =
             | ActorClassU  (sp, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
-              let cs = List.map (fun tbs -> T.Con(Option.get tbs.note, [])) tbs in
+              let cs = List.map (fun tb -> Option.get tb.note) tbs in
+              let ts = List.map (fun c -> T.Con(c, [])) cs in
               let fun_typ = typ in
-              let class_typ =
+              let ts1, class_typ =
                 match T.normalize fun_typ with
                 | T.Func (sort, control, _, ts1, [t2]) ->
-                  let t2 = T.normalize (T.open_ cs t2) in
+                  let t2 = T.normalize (T.open_ ts t2) in
                   (match t2 with
-                   | T.Async (_ , class_typ) -> class_typ
+                   | T.Async (_ , class_typ) -> List.map (T.open_ ts) ts1, class_typ
                    | _ -> assert false)
                 | _ -> assert false
               in
               let con = Cons.fresh id.it (T.Def([], class_typ)) in
               T.Obj(T.Module, List.sort T.compare_field [
                 { T.lab = id.it; T.typ = T.Typ con; depr = None };
-                { T.lab = id.it; T.typ = fun_typ; depr = None }
+                { T.lab = id.it; T.typ = fun_typ; depr = None };
+                { T.lab = "install"^id.it; T.typ = T.install_typ (List.map (T.close cs) ts1) class_typ; depr = None }
               ])
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"

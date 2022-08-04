@@ -370,7 +370,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 module @ManagementCanister = {
   public type wasm_module = Blob;
   public type canister_settings = {
-    controller : ?Principal;
+    controllers : ?[Principal];
     compute_allocation: ?Nat;
     memory_allocation: ?Nat;
     freezing_threshold: ?Nat;
@@ -389,6 +389,15 @@ let @ic00 = actor "aaaaa-aa" :
       arg : Blob;
     } -> async ()
  };
+
+func @ic00_install_code() : shared {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : @ManagementCanister.wasm_module;
+    arg : Blob;
+  } -> async () {
+  @ic00.install_code
+};
 
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost

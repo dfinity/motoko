@@ -1123,6 +1123,18 @@ let decode_msg_typ tfs =
        | _ -> None)
      tfs))
 
+let install_typ ts actor_typ =
+  Func(Local, Returns, [],
+    [ Obj(Object, [
+        { lab = "mode"; depr = None; typ =
+          Variant [
+            { lab = "install"; typ = unit; depr = None };
+            { lab = "reinstall"; typ = unit; depr = None };
+            { lab = "upgrade"; typ = unit; depr = None } ] };
+        { lab = "principal"; depr = None; typ = principal } ]) ],
+   [ Func(Local, Returns, [scope_bind], ts, [Async (Var (default_scope_var, 0), actor_typ)]) ])
+
+
 (* Pretty printing *)
 
 let string_of_prim = function
