@@ -937,6 +937,50 @@ module RTS = struct
 
 end (* RTS *)
 
+module GC = struct
+  (* Record mutator/gc instructions counts *)
+
+  let instruction_counter env =
+    compile_unboxed_zero ^^
+    E.call_import env "ic0" "performance_counter"
+
+  let register_globals env =
+    (E.add_global64 env "__mutator_instructions" Mutable 0L;
+     E.add_global64 env "__collector_instructions" Mutable 0L)
+
+  let get_mutator_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
+  let set_mutator_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__mutator_instructions")))
+
+  let get_collector_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
+  let set_collector_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let record_mutator_instructions env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode)  ->
+      instruction_counter env ^^
+      set_mutator_instructions env
+    | _ -> G.nop
+
+  let record_collector_instructions env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode)  ->
+      instruction_counter env ^^
+      get_mutator_instructions env ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+      set_collector_instructions env
+    | _ -> G.nop
+
+  let collect_garbage env =
+    record_mutator_instructions env ^^
+    E.collect_garbage env ^^
+    record_collector_instructions env
+
+end (* GC *)
+
 module Heap = struct
   (* General heap object functionality (allocation, setting fields, reading fields) *)
 
@@ -3796,7 +3840,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InInit ^^
 
       G.i (Call (nr (E.built_in env "init"))) ^^
-      E.collect_garbage env ^^
+      GC.collect_garbage env ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3811,7 +3855,7 @@ module IC = struct
     let fi = E.add_fun env "canister_heartbeat"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
-        E.collect_garbage env))
+        GC.collect_garbage env))
     in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_heartbeat";
@@ -3865,7 +3909,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      E.collect_garbage env
+      GC.collect_garbage env
     )) in
 
     E.add_export env (nr {
@@ -4174,6 +4218,7 @@ module Cycles = struct
     )
 
 end (* Cycles *)
+
 
 module StableMem = struct
 
@@ -6401,8 +6446,7 @@ module Stabilization = struct
     | _ -> assert false
 end
 
-module GC = struct
-
+module GCRoots = struct
   let register env static_roots =
 
     let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
@@ -6417,7 +6461,7 @@ module GC = struct
   let store_static_roots env =
     Arr.vanilla_lit env (E.get_static_roots env)
 
-end (* GC *)
+end (* GCRoots *)
 
 module StackRep = struct
   open SR
@@ -6851,7 +6895,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        E.collect_garbage env ^^
+        GC.collect_garbage env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
@@ -8499,7 +8543,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICPerformGC, [] ->
     SR.unit,
-    E.collect_garbage env
+    GC.collect_garbage env
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,
@@ -8705,6 +8749,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_callback_table_size", [] ->
     SR.Vanilla,
     ContinuationTable.size env ^^ Prim.prim_word32toNat env
+
+  | OtherPrim "rts_mutator_instructions", [] ->
+    SR.Vanilla,
+    GC.get_mutator_instructions env ^^ BigNum.from_word64 env
+
+  | OtherPrim "rts_collector_instructions", [] ->
+    SR.Vanilla,
+    GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
@@ -9731,7 +9783,7 @@ and conclude_module env start_fi_o =
 
   FuncDec.export_async_method env;
 
-  let static_roots = GC.store_static_roots env in
+  let static_roots = GCRoots.store_static_roots env in
   (* declare before building GC *)
 
   (* add beginning-of-heap pointer, may be changed by linker *)
@@ -9740,7 +9792,7 @@ and conclude_module env start_fi_o =
   E.export_global env "__heap_base";
 
   Heap.register env;
-  GC.register env static_roots;
+  GCRoots.register env static_roots;
   IC.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
@@ -9823,6 +9875,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
   Stack.register_globals env;
+  GC.register_globals env;
   StableMem.register_globals env;
 
   IC.system_imports env;
