@@ -1,0 +1,60 @@
+→ update create_canister(record {settings = null})
+← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update go()
+debug.print: {node = 1; state = null; upgrades = 0}
+debug.print: 1: insert (1, "1")
+debug.print: 1: lookup 1
+debug.print: {node = 2; state = null; upgrades = 0}
+debug.print: 2: insert (2, "2")
+debug.print: 2: lookup 2
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update upgradeNodes()
+debug.print: {node = 1; state = ?(1, "1", null); upgrades = 1}
+debug.print: {node = 2; state = ?(2, "2", null); upgrades = 1}
+← replied: ()
+→ update go()
+debug.print: {node = 3; state = null; upgrades = 0}
+debug.print: 3: insert (3, "3")
+debug.print: 3: lookup 3
+debug.print: {node = 4; state = null; upgrades = 0}
+debug.print: 4: insert (4, "4")
+debug.print: 4: lookup 4
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update upgradeNodes()
+debug.print: {node = 1; state = ?(1, "1", null); upgrades = 2}
+debug.print: {node = 2; state = ?(2, "2", null); upgrades = 2}
+debug.print: {node = 3; state = ?(3, "3", null); upgrades = 1}
+debug.print: {node = 4; state = ?(4, "4", null); upgrades = 1}
+← replied: ()
+→ update go()
+debug.print: {node = 5; state = null; upgrades = 0}
+debug.print: 5: insert (5, "5")
+debug.print: 5: lookup 5
+debug.print: {node = 6; state = null; upgrades = 0}
+debug.print: 6: insert (6, "6")
+debug.print: 6: lookup 6
+← replied: ()
+→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+← replied: ()
+→ update upgradeNodes()
+debug.print: {node = 1; state = ?(1, "1", null); upgrades = 3}
+debug.print: {node = 2; state = ?(2, "2", null); upgrades = 3}
+debug.print: {node = 3; state = ?(3, "3", null); upgrades = 2}
+debug.print: {node = 4; state = ?(4, "4", null); upgrades = 2}
+debug.print: {node = 5; state = ?(5, "5", null); upgrades = 1}
+debug.print: {node = 6; state = ?(6, "6", null); upgrades = 1}
+← replied: ()
+→ update go()
+debug.print: {node = 7; state = null; upgrades = 0}
+debug.print: 7: insert (7, "7")
+debug.print: 7: lookup 7
+debug.print: {node = 0; state = null; upgrades = 0}
+debug.print: 0: insert (8, "8")
+debug.print: 0: lookup 8
+← replied: ()
