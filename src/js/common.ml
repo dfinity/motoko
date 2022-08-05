@@ -1,7 +1,6 @@
 open Wasm_exts
 open Source
 open Mo_config
-open Mo_def
 
 module Js = Js_of_ocaml.Js
 module Sys_js = Js_of_ocaml.Sys_js
@@ -102,7 +101,7 @@ let js_parse_motoko s =
   let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     (* let _ = Pipeline.infer_prog *)
-    let ast = Arrange.prog prog in
+    let ast = Mo_def.Arrange.prog prog in
     Js.some (js_of_sexpr ast)
   )
 
