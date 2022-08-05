@@ -1018,7 +1018,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
                 tupE [tagE "reinstall" (unitE());
                       primE (Ir.CastPrim (T.(obj Actor []), T.principal)) [varE actor1]]);
                ("upgrade", varP actor2,
-                tupE [tagE "reinstall" (unitE());
+                tupE [tagE "upgrade" (unitE());
                       primE (Ir.CastPrim (T.(obj Actor []), T.principal)) [varE actor2]])]
                (T.(Tup [mode_typ; principal])));
           letD principal (projE (varE modeprincipal) 1);
