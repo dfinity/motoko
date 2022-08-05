@@ -64,8 +64,7 @@ actor a {
        switch (savedNodes[i]) {
          case null {};
          case (?n) {
-           nodes[i] :=
-             ? (await Lib.installNode({ mode = #upgrade; principal = Prim.principalOfActor(n)})(i));
+             ? (await Lib.installNode(#upgrade n)(i)); // upgrade!
          }
        }
     }

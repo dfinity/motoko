@@ -942,18 +942,24 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     body
   in
   let install_arg =
-    fresh_var "install_arg" T.(Obj(Object, List.sort T.compare_field [
+    fresh_var "install_arg" T.install_arg_typ
+      (*
+      T.(Obj(Object, List.sort T.compare_field [
         { lab = "mode"; depr = None; typ =
           Variant (List.sort T.compare_field [
             { lab = "install"; typ = unit; depr = None };
             { lab = "reinstall"; typ = unit; depr = None };
             { lab = "upgrade"; typ = unit; depr = None } ]) };
          { lab = "principal"; depr = None; typ = principal } ]))
+       *)
   in
   let installBody =
     let vs = fresh_vars "param" ts1' in
     let arg = fresh_var "arg" T.blob in
     let principal = fresh_var "principal" T.principal in
+    let principal1 = fresh_var "principal1" T.principal in
+    let actor1 = fresh_var "actor1" T.(obj Actor []) in
+    let actor2 = fresh_var "actor2" T.(obj T.Actor []) in
     let canister_id = fresh_var "canister_id" T.principal in
     let wasm_module = fresh_var "wasm_module" T.blob in
     let mode_typ = T.(Variant (List.sort T.compare_field [
@@ -974,11 +980,24 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
             [record_typ],
             [])]))
     in
+    let ic00_create_canister = var "@ic00_create_canister"
+      T.(Func (Local, Returns, [],
+          [],
+          [Func (Shared Write, Promises, [scope_bind],
+            [canister_settings_typ],
+            [obj Object ["canister_id", principal]])]))
+    in
+    let modeprincipal =
+      fresh_var "modeprincipal" T.(Tup [mode_typ; principal])
+    in
     let mode =
       fresh_var "mode" mode_typ
     in
     let record =
-      fresh_var "mode" record_typ in
+      fresh_var "record" record_typ in
+    let settings =
+      fresh_var "settings" T.canister_settings_typ
+    in
     funcE id T.Local T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
@@ -986,10 +1005,27 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     (asyncE
       (typ_arg c' T.Scope T.scope_bound)
       (blockE [
-          letD principal (dotE (varE install_arg) "principal" (typ_of_var principal));
+          letD modeprincipal
+            (switch_variantE (varE install_arg) [
+               ("new", varP settings,
+                tupE [tagE "install" (unitE());
+                      dotE (awaitE (callE (callE (varE ic00_create_canister) [] (unitE())) cs' (varE settings)))
+                        "canister_id" T.principal]);
+               ("install", varP principal1,
+                tupE [tagE "install" (unitE());
+                      varE principal1]);
+               ("reinstall", varP actor1,
+                tupE [tagE "reinstall" (unitE());
+                      primE (Ir.CastPrim (T.(obj Actor []), T.principal)) [varE actor1]]);
+               ("upgrade", varP actor2,
+                tupE [tagE "reinstall" (unitE());
+                      primE (Ir.CastPrim (T.(obj Actor []), T.principal)) [varE actor2]])]
+               (T.(Tup [mode_typ; principal])));
+          letD principal (projE (varE modeprincipal) 1);
+          (* TODO use recordE *)
           letD record (
             blockE [
-               letD mode (dotE (varE install_arg) "mode" (typ_of_var mode));
+               letD mode (projE (varE modeprincipal) 0);
                letD canister_id (varE principal);
                letD wasm_module (blobE wasm); (* should be shared in backend *)
                letD arg (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
@@ -1001,7 +1037,7 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
                    {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
                  ]
                  record_typ));
-            expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record))) 
+            expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record)))
         ]
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs))

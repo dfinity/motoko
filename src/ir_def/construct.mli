@@ -133,3 +133,7 @@ val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
 val (-*-) : exp -> exp -> exp       (* application *)
+
+
+(* Records *)
+val recordE : (lab * exp) list -> exp

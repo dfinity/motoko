@@ -78,6 +78,9 @@ val error : typ
 val char : typ
 val principal : typ
 
+val sum : (lab * typ) list -> typ
+val obj : obj_sort -> (lab * typ) list -> typ
+
 val throwErrorCodes : field list
 val catchErrorCodes : field list
 val throw : typ
@@ -245,6 +248,9 @@ val get_candid_interface_fld : field
 
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ
+
+val canister_settings_typ : typ
+val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
 
 (* Pretty printing *)

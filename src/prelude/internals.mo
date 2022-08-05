@@ -390,6 +390,12 @@ let @ic00 = actor "aaaaa-aa" :
     } -> async ()
  };
 
+func @ic00_create_canister() : shared {
+      settings : ?@ManagementCanister.canister_settings
+    } -> async { canister_id : Principal } {
+  @ic00.create_canister
+};
+
 func @ic00_install_code() : shared {
     mode : { #install; #reinstall; #upgrade };
     canister_id : Principal;

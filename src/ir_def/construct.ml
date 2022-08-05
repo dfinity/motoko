@@ -408,6 +408,7 @@ let tupE exps =
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
   }
 
+
 let unitE () = tupE []
 
 let breakE l exp =
@@ -681,3 +682,21 @@ let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
 
+let recordE flds =
+  let rec go ds fields fld_tys flds =
+    match flds with
+    | [] ->
+      blockE
+        (List.rev ds)
+        (newObjE T.Object fields
+          (T.obj T.Object fld_tys))
+    | (lab, exp)::flds ->
+      let v = fresh_var lab (typ exp) in
+      let field = {
+        it = {name = lab; var = id_of_var v};
+        at = no_region;
+        note = typ exp
+      } in
+      go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+  in
+  go [] [] [] flds
