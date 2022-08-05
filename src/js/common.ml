@@ -30,7 +30,7 @@ let diagnostics_of_msgs (msgs : Diag.message list) =
   Array.of_list (List.map diagnostics_of_msg msgs)
 
 let rec js_of_sexpr (sexpr : Wasm.Sexpr.sexpr) : Js.Unsafe.any =
-  (* Wasm.Sexpr.to_string 80 sexpr |> Js.string *)
+  (* generate a tree of JS objects and strings from an s-expression *)
   match sexpr with
 | Wasm.Sexpr.Node (head, inner) ->
   Js.Unsafe.coerce (object%js
