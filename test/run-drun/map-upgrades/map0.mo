@@ -49,7 +49,7 @@ actor a {
      }
   };
 
-  public func upgradeNodes() {
+  public func upgradeNodes() : async () {
     for(i in savedNodes.keys()) {
        switch (savedNodes[i]) {
          case null {};
