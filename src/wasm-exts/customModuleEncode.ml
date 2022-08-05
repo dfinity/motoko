@@ -913,7 +913,7 @@ struct
   (* Data count section *)
 
   let data_count_section datas m =
-    section 12 len (List.length datas) Wasm.Free.((module_ m).datas <> Set.empty)
+    section 12 len (List.length datas) Free.((module_ m).datas <> Set.empty)
 
 
   (* Custom section *)
@@ -1332,7 +1332,7 @@ struct
   (* Module *)
 
   let module_ (em : extended_module) =
-    let m = { it = em.module_; at = em.module_.at } in
+    let m = { it = em.module_; at = no_region } in
 
     word32 0x6d736100l;
     word32 version;
@@ -1361,7 +1361,7 @@ struct
         debug_addr_section !sequence_bounds;
         debug_rnglists_section !sequence_bounds;
         debug_line_str_section ();
-        debug_line_section m.funcs;
+        debug_line_section m.it.funcs;
         debug_info_section ();
         debug_strings_section !dwarf_strings
       end
