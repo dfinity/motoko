@@ -98,7 +98,7 @@ let js_compile_wasm mode source =
       end)
     )
 
-let js_parse s =
+let js_parse_motoko s =
   let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     (* let _ = Pipeline.infer_prog *)
@@ -121,6 +121,7 @@ let js_save_file filename content =
 
 let js_remove_file filename = Sys.remove (Js.to_string filename)
 let js_rename_file oldpath newpath = Sys.rename (Js.to_string oldpath) (Js.to_string newpath)
+let js_read_file path = Sys_js.read_file ~name:(Js.to_string path) |> Js.string
 let js_read_dir path = Sys.readdir (Js.to_string path) |> Array.map Js.string |> Js.array
 let stdout_buffer = Buffer.create(100)
 let stderr_buffer = Buffer.create(100)
