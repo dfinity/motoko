@@ -1332,7 +1332,7 @@ struct
   (* Module *)
 
   let module_ (em : extended_module) =
-    let m = em.module_ in
+    let m = { it = em.module_; at = em.module_.at } in
 
     word32 0x6d736100l;
     word32 version;
