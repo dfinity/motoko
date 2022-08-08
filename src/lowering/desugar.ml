@@ -946,13 +946,10 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   in
   let installBody =
     let vs = fresh_vars "param" ts1' in
-    let arg = fresh_var "arg" T.blob in
     let principal = fresh_var "principal" T.principal in
     let principal1 = fresh_var "principal1" T.principal in
     let actor1 = fresh_var "actor1" T.(obj Actor []) in
     let actor2 = fresh_var "actor2" T.(obj T.Actor []) in
-    let canister_id = fresh_var "canister_id" T.principal in
-    let wasm_module = fresh_var "wasm_module" T.blob in
     let mode_typ = T.(Variant (List.sort T.compare_field [
         { lab = "install"; typ = unit; depr = None };
         { lab = "reinstall"; typ = unit; depr = None };
@@ -981,9 +978,6 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     let modeprincipal =
       fresh_var "modeprincipal" T.(Tup [mode_typ; principal])
     in
-    let mode =
-      fresh_var "mode" mode_typ
-    in
     let record =
       fresh_var "record" record_typ in
     let settings =
@@ -995,8 +989,8 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
     ts2'
     (asyncE
       (typ_arg c' T.Scope T.scope_bound)
-      (blockE [
-          letD modeprincipal
+      (blockE
+        [ letD modeprincipal
             (switch_variantE (varE install_arg) [
                ("new", varP settings,
                 tupE [tagE "install" (unitE());
@@ -1013,22 +1007,13 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
                       primE (Ir.CastPrim (T.(obj Actor []), T.principal)) [varE actor2]])]
                (T.(Tup [mode_typ; principal])));
           letD principal (projE (varE modeprincipal) 1);
-          (* TODO use recordE *)
-          letD record (
-            blockE [
-               letD mode (projE (varE modeprincipal) 0);
-               letD canister_id (varE principal);
-               letD wasm_module (blobE wasm); (* should be shared in backend *)
-               letD arg (primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]);
-              ]
-              (newObjE T.Object [
-                   {it = {I.name = "mode"; I.var = id_of_var mode}; at = no_region; note = typ_of_var mode };
-                   {it = {I.name = "canister_id"; I.var = id_of_var principal}; at = no_region; note = typ_of_var principal };
-                   {it = {I.name = "wasm_module"; I.var = id_of_var wasm_module}; at = no_region; note = typ_of_var wasm_module };
-                   {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
-                 ]
-                 record_typ));
-            expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record)))
+          letD record (recordE [
+            ("mode", projE (varE modeprincipal) 0);
+            ("canister_id", varE principal);
+            ("wasm_module", blobE wasm); (* should be shared in backend *)
+            ("arg", primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)])
+          ]);
+          expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record)))
         ]
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs))
