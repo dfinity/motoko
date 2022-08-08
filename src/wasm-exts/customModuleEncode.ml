@@ -382,7 +382,6 @@ struct
   open Wasm.Values
 
   let op n = byte n
-  let vecop n = op 0xfd; u32 n
   let end_ () = op 0x0b
 
   let memop {align; offset; _} = u32 (Int32.of_int align); u32 offset
@@ -917,13 +916,13 @@ struct
 
 
   (* Custom section *)
-
+(* new code, can we use it? FIXME
   let custom (n, bs) =
     name n;
     put_string s bs
 
   let custom_section n bs =
-    section 0 custom (n, bs) true
+    section 0 custom (n, bs) true*)
 
     let custom_section name f x needed =
       section 0 (fun x ->
@@ -1371,11 +1370,11 @@ end
 let encode m =
   let module E = E (struct let stream = stream () end) in
   E.module_ m; to_string E.s
-
+(*
 let encode_custom name content =
   let module E = E (struct let stream = stream () end) in
   E.custom_section name content; to_string E.s
-
+ *)
 (*
   let mappings = Buffer.contents map in
   let n = max 0 ((String.length mappings) - 1) in

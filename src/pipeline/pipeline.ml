@@ -673,8 +673,7 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
 
 and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   let wasm_mod = compile_unit mode true imports u in
-  let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
-  wasm
+  Wasm_exts.CustomModuleEncode.encode wasm_mod
 
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let imports = compile_libs mode libs in
