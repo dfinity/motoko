@@ -943,15 +943,6 @@ let import_compiled_class (lib : S.comp_unit)  wasm : import_declaration =
   in
   let install_arg =
     fresh_var "install_arg" T.install_arg_typ
-      (*
-      T.(Obj(Object, List.sort T.compare_field [
-        { lab = "mode"; depr = None; typ =
-          Variant (List.sort T.compare_field [
-            { lab = "install"; typ = unit; depr = None };
-            { lab = "reinstall"; typ = unit; depr = None };
-            { lab = "upgrade"; typ = unit; depr = None } ]) };
-         { lab = "principal"; depr = None; typ = principal } ]))
-       *)
   in
   let installBody =
     let vs = fresh_vars "param" ts1' in
@@ -1177,13 +1168,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
         body
       in
       let install_arg =
-        fresh_var "install_arg" T.(Obj(Object, List.sort T.compare_field [
-            { lab = "mode"; depr = None; typ =
-              Variant (List.sort T.compare_field [
-                { lab = "install"; typ = unit; depr = None };
-                { lab = "reinstall"; typ = unit; depr = None };
-                { lab = "upgrade"; typ = unit; depr = None } ]) };
-             { lab = "principal"; depr = None; typ = principal } ]))
+        fresh_var "install_arg" T.install_arg_typ
       in
       let installBody =
         let vs = fresh_vars "param" ts1 in
