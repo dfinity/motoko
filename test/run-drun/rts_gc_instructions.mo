@@ -12,31 +12,31 @@ actor a {
    // Disabling for Ubuntu tests
    public func go() : async () {
 
-//      var i = 1;
-//      var pre = Prim.rts_memory_size();
-//      var preMutatorInstructions = 0;
-//      var preCollectorInstructions = 0;
-//      while(i < 16) {
-//        assert(Prim.rts_memory_size() >=
-//          Prim.rts_heap_size());
-//        let size = await grow(i);
-//        let mutatorInstructions = Prim.rts_mutator_instructions();
-//        let collectorInstructions = Prim.rts_collector_instructions();
-// /* too noisy for comparison across gc flavours
-//        Prim.debugPrint(debug_show({
-//          memory_size = size;
-//          mutator_instructions  = mutatorInstructions;
-//          collector_instructions = collectorInstructions
-//        }));
-// */
-//        assert (pre <= size);
-//        assert (preMutatorInstructions <= mutatorInstructions);
-//        assert (preCollectorInstructions <= collectorInstructions);
-//        pre := size;
-//        preMutatorInstructions := mutatorInstructions;
-//        preCollectorInstructions := collectorInstructions;
-//        i += 1;
-//      };
+     var i = 1;
+     var pre = Prim.rts_memory_size();
+     var preMutatorInstructions = 0;
+     var preCollectorInstructions = 0;
+     while(i < 4) {
+       assert(Prim.rts_memory_size() >=
+         Prim.rts_heap_size());
+       let size = await grow(i);
+       let mutatorInstructions = Prim.rts_mutator_instructions();
+       let collectorInstructions = Prim.rts_collector_instructions();
+/* too noisy for comparison across gc flavours
+       Prim.debugPrint(debug_show({
+         memory_size = size;
+         mutator_instructions  = mutatorInstructions;
+         collector_instructions = collectorInstructions
+       }));
+*/
+       assert (pre <= size);
+       assert (preMutatorInstructions <= mutatorInstructions);
+       assert (preCollectorInstructions <= collectorInstructions);
+       pre := size;
+       preMutatorInstructions := mutatorInstructions;
+       preCollectorInstructions := collectorInstructions;
+       i += 1;
+     };
    }
 };
 
