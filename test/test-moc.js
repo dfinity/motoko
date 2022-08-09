@@ -10,6 +10,9 @@ moc.Motoko.saveFile('empty.mo', '');
 moc.Motoko.saveFile('ok.mo', '1');
 moc.Motoko.saveFile('bad.mo', '1+');
 
+assert.equal(moc.Motoko.readFile('empty.mo'), '');
+assert.equal(moc.Motoko.readFile('ok.mo'), '1');
+
 // Compile the empty module in wasi and ic mode
 const empty_wasm_plain = moc.Motoko.compileWasm('wasi', 'empty.mo');
 const empty_wasm_ic = moc.Motoko.compileWasm('ic', 'empty.mo');
@@ -40,7 +43,7 @@ assert.notEqual(empty_wasm_plain.code.wasm, empty_wasm_ic.code.wasm);
 moc.Motoko.removeFile('empty.mo');
 assert.throws(
   () => { moc.Motoko.compileWasm('ic', 'empty.mo') },
-  /no such file or directory/
+  /No such file or directory/
 );
 
 // Check if error messages are correctly returned

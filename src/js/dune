@@ -10,7 +10,7 @@
  (modes js)
  (modules moc_js)
  (libraries common mo_config idllib)
- (js_of_ocaml (flags --no-extern-fs --no-source-map))
+ (js_of_ocaml (flags --no-extern-fs --no-source-map --target-env browser))
  (preprocess (pps js_of_ocaml-ppx))
 )
 
@@ -19,7 +19,7 @@
  (modes js)
  (modules moc_interpreter)
  (libraries common mo_config)
- (js_of_ocaml (flags --no-extern-fs --no-source-map))
+ (js_of_ocaml (flags --no-extern-fs --no-source-map --target-env browser))
  (preprocess (pps js_of_ocaml-ppx))
 )
 
