@@ -42,6 +42,7 @@ let stream name bs = {name; bytes = bs; pos = ref 0}
 let len s = String.length s.bytes
 let pos s = !(s.pos)
 let eos s = (pos s = len s)
+let reset s pos = s.pos := pos
 
 let check n s = if pos s + n > len s then raise EOS
 let skip n s = if n < 0 then raise EOS else check n s; s.pos := !(s.pos) + n
@@ -807,7 +808,7 @@ let custom_section (name_pred : int list -> bool) (f : int -> stream -> 'a) (def
   let rewind = checkpoint s in
   match id s with
   | Some `CustomSection ->
-    ignore (u8 s);
+    ignore (byte s);
     let sec_size = len32 s in
     let sec_start = pos s in
     let sec_end = sec_start + sec_size in
@@ -838,7 +839,7 @@ let icp_custom_section n (f : int -> stream -> 'a) (default : (bool * 'a) option
   let rewind = checkpoint s in
   match id s with
   | Some `CustomSection ->
-    ignore (u8 s);
+    ignore (byte s);
     let sec_size = len32 s in
     let sec_start = pos s in
     let sec_end = sec_start + sec_size in
@@ -862,10 +863,10 @@ let icp_custom_section n (f : int -> stream -> 'a) (default : (bool * 'a) option
 (* Dylink section *)
 
 let dylink _ s =
-  let memory_size = vu32 s in
-  let memory_alignment = vu32 s in
-  let table_size = vu32 s in
-  let table_alignment = vu32 s in
+  let memory_size = u32 s in
+  let memory_alignment = u32 s in
+  let table_size = u32 s in
+  let table_alignment = u32 s in
   let needed_dynlibs = vec string s in
   Some { memory_size; memory_alignment; table_size; table_alignment; needed_dynlibs }
 
@@ -891,7 +892,7 @@ let name_map = assoc_list string
 let indirect_name_map = assoc_list name_map
 
 let name_section_subsection (ns : name_section) (s : stream) : name_section =
-  match u8 s with
+  match byte s with
   | 0 -> (* module name *)
     let mod_name = sized (fun _ -> string) s in
     { ns with module_ = Some mod_name }
@@ -938,7 +939,7 @@ let name_section s =
 (* Motoko sections *)
 
 let motoko_section_subsection (ms : motoko_sections) s =
-  match u8 s with
+  match byte s with
   | 0 ->
     let labels = sized (fun _ -> vec string) s in
     { ms with labels = ms.labels @ labels }
@@ -1010,7 +1011,7 @@ let module_ s =
   let header = word32 s in
   require (header = magic) s 0 "magic header not detected";
   let version = word32 s in
-  require (version = Encode.version) s 4 "unknown binary version";
+  require (version = Wasm.Encode.version) s 4 "unknown binary version";
   iterate custom_section s;
   let dylink = dylink_section s in
   iterate custom_section s;
@@ -1038,12 +1039,13 @@ let module_ s =
   iterate custom_section s;
   let datas = data_section s in
   iterate custom_section s;
-  (*
--  (* TODO: allow candid/motoko sections anywhere, not just here, in this order *)
--  let candid = candid_sections s in
--  iterate skip_custom_section s;
--  let motoko = motoko_sections s in
-   *)
+  let name = name_section s in
+  iterate custom_section s;
+  (* TODO: allow candid/motoko sections anywhere, not just here, in this order *)
+  let candid = candid_sections s in
+  iterate custom_section s;
+  let motoko = motoko_sections s in
+  iterate custom_section s;
 
   require (pos s = len s) s (len s) "unexpected content after last section";
   require (List.length func_types = List.length func_bodies)
