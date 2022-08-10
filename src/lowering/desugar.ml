@@ -923,17 +923,17 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     let principal = fresh_var "principal" T.principal in
     let principal1 = fresh_var "principal1" T.principal in
     let actor1 = fresh_var "actor1" T.(obj Actor []) in
-    let actor2 = fresh_var "actor2" T.(obj T.Actor []) in
-    let mode_typ = T.(Variant (List.sort T.compare_field [
-        { lab = "install"; typ = unit; depr = None };
-        { lab = "reinstall"; typ = unit; depr = None };
-        { lab = "upgrade"; typ = unit; depr = None }]))
+    let actor2 = fresh_var "actor2" T.(obj Actor []) in
+    let mode_typ = T.(sum [
+      ("install", unit);
+      ("reinstall", unit);
+      ("upgrade",  unit) ])
     in
-    let record_typ = T.(Obj (Object, List.sort T.compare_field [
-        { lab = "mode"; typ = mode_typ; depr = None };
-        { lab = "canister_id"; typ = principal; depr = None };
-        { lab = "wasm_module"; typ = blob; depr = None };
-        { lab = "arg"; typ = blob; depr = None }]))
+    let record_typ = T.(obj Object [
+      ("mode", mode_typ);
+      ("canister_id", principal);
+      ("wasm_module", blob);
+      ("arg", blob)])
     in
     let ic00_install_code = var "@ic00_install_code"
       T.(Func (Local, Returns, [],
