@@ -1067,7 +1067,7 @@ let module_ s =
     source_mapping_url = None;
   }
 
-let decode name bs = at module_ (stream name bs)
+let decode name bs = module_ (stream name bs)
 (*
 let all_custom tag s =
   let header = word32 s in
