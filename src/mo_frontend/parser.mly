@@ -582,9 +582,8 @@ exp_post(B) :
     { CallE(e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
-  | LPAR SYSTEM RPAR lib = id DOT c=id
-    { DotE((VarE(lib.it @@ lib.at)) @? lib.at,
-       { c with it = "install" ^ c.it}) @? at $sloc }
+  | LPAR SYSTEM RPAR e1=exp_nullary(B) DOT c=id
+    { DotE(e1, { c with it = "install" ^ c.it}) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
