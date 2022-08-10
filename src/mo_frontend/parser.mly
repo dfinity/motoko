@@ -556,6 +556,7 @@ exp_plain :
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
+
 exp_nullary(B) :
   | e=B
     { e }
@@ -581,6 +582,9 @@ exp_post(B) :
     { CallE(e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
+  | LPAR SYSTEM RPAR lib = id DOT c=id
+    { DotE((VarE(lib.it @@ lib.at)) @? lib.at,
+       { c with it = "install" ^ c.it}) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -689,7 +693,6 @@ exp_nondec(B) :
     { e }
   | DO QUEST e=block
     { DoOptE(e) @? at $sloc }
-
 
 exp_nonvar(B) :
   | e=exp_nondec(B)
