@@ -967,17 +967,18 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
         [ letD modeprincipal
             (switch_variantE (varE install_arg) [
                ("new", varP settings,
-                tupE [tagE "install" (unitE());
-                      blockE
-                        [ (* pass on cycles *)
-                          letD available (primE Ir.SystemCyclesAvailablePrim []);
-                          letD accepted (primE Ir.SystemCyclesAcceptPrim [varE available]);
-                          expD (assignE cycles (varE accepted)) ]
-                        (dotE
-                           (awaitE
-                              (callE (callE (varE ic00_create_canister) [] (unitE()))
-                                cs' (varE settings)))
-                           "canister_id" T.principal)]);
+                tupE [
+                  tagE "install" (unitE());
+                  blockE
+                    [ (* pass on cycles *)
+                      letD available (primE Ir.SystemCyclesAvailablePrim []);
+                      letD accepted (primE Ir.SystemCyclesAcceptPrim [varE available]);
+                      expD (assignE cycles (varE accepted)) ]
+                      (dotE
+                         (awaitE
+                           (callE (callE (varE ic00_create_canister) [] (unitE()))
+                              cs' (varE settings)))
+                         "canister_id" T.principal)]);
                ("install", varP principal1,
                 tupE [tagE "install" (unitE());
                       varE principal1]);
@@ -992,7 +993,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
           letD record (recordE [
             ("mode", projE (varE modeprincipal) 0);
             ("canister_id", varE principal);
-            ("wasm_module", blobE wasm); (* should be shared in backend *)
+            ("wasm_module", blobE wasm);
             ("arg", primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)])
           ]);
           expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record)))
@@ -1143,12 +1144,13 @@ let import_unit (u : S.comp_unit) : import_declaration =
           []
           ([arg_of_var install_arg])
           [installBody.note.Note.typ]
-          (ifE (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
-                  [varE install_arg;
-                   tagE "new" (recordE ["settings", nullE()])])
+          (ifE
+             (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
+               [ varE install_arg;
+                 tagE "new" (recordE ["settings", nullE()]) ])
              installBody
              (primE (Ir.OtherPrim "trap")
-                [textE "actor class configuration not supported in interpreter"])
+               [textE "actor class configuration not supported in interpreter"])
              installBody.note.Note.typ)
       in
       actor_class_mod_exp id class_typ install

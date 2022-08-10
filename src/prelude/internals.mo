@@ -407,8 +407,8 @@ func @ic00_install_code() : shared {
 
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
-// TODO: This helper is now only used by Prim.createActor and could be removed? Unfortunately
-// Prim.createActor was mention on the forum...
+// TODO: This helper is now only used by Prim.createActor and could be removed, except
+// that Prim.createActor was mentioned on the forum and might be in use.
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat) ();
   let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
