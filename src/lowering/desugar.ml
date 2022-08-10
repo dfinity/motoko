@@ -1132,10 +1132,9 @@ let import_unit (u : S.comp_unit) : import_declaration =
         fresh_var "install_arg" T.install_arg_typ
       in
       let installBody =
-        let vs = fresh_vars "param" ts1 in
         funcE id T.Local T.Returns
           [typ_arg c T.Scope T.scope_bound]
-          (List.map arg_of_var vs)
+          as_
           [T.Async (List.hd cs, actor_t)]
           body
       in

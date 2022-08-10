@@ -405,23 +405,6 @@ func @ic00_install_code() : shared {
   @ic00.install_code
 };
 
-// It would be desirable if create_actor_helper can be defined
-// without paying the extra self-remote-call-cost
-func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
-  let available = (prim "cyclesAvailable" : () -> Nat) ();
-  let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
-  @cycles += accepted;
-  let { canister_id = canister_id_ } =
-    await @ic00.create_canister({settings = null});
-  await @ic00.install_code({
-    mode = #install;
-    canister_id = canister_id_;
-    wasm_module = wasm_module_;
-    arg = arg_;
-  });
-  return canister_id_;
-};
-
 // raw calls
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
