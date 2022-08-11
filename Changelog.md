@@ -4,10 +4,18 @@
 
 * motoko (`moc`)
 
+ * add primitives
+    ```motoko
+    shiftLeft : (Nat, Nat32) -> Nat
+    shiftRight : (Nat, Nat32) -> Nat
+    ```
+    for efficiently multiplying/dividing a `Nat` by a power of 2
+     (#3112)
+
   * add primitives
     ```motoko
-      Prim.rts_mutator_instructions : () -> Nat
-      Prim.rts_collector_instructions : () -> Nat
+    Prim.rts_mutator_instructions : () -> Nat
+    Prim.rts_collector_instructions : () -> Nat
     ```
     to report approximate IC instruction costs of last message
     due to mutation (computation) and collection (GC), respectively (#3381).
@@ -22,7 +30,7 @@
     for efficiently adding an array to a `Buffer`
     (dfinity/motoko-base#389)
 
-* Add
+ * Add
     ```motoko
     Iter.sort : (xs : Iter<A>, compare : (A, A) -> Order) : Iter<A>
     ```
