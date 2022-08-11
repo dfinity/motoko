@@ -17,6 +17,7 @@
  * Add
     ```motoko
     Buffer.fromArray
+	Buffer.fromVarArray
     ```
     for efficiently adding an array to a `Buffer`
     (dfinity/motoko-base#389)
