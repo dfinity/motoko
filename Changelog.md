@@ -17,7 +17,7 @@
     Prim.rts_mutator_instructions : () -> Nat
     Prim.rts_collector_instructions : () -> Nat
     ```
-    to report approximate IC instruction costs of last message
+    to report approximate IC instruction costs of the last message
     due to mutation (computation) and collection (GC), respectively (#3381).
 
 * motoko-base
