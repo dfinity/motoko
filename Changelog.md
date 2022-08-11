@@ -4,13 +4,13 @@
 
 * motoko (`moc`)
 
- * add primitives
+  * add primitives
     ```motoko
     shiftLeft : (Nat, Nat32) -> Nat
     shiftRight : (Nat, Nat32) -> Nat
     ```
     for efficiently multiplying/dividing a `Nat` by a power of 2
-     (#3112)
+    (#3112)
 
   * add primitives
     ```motoko
@@ -22,7 +22,7 @@
 
 * motoko-base
 
- * Add
+  * Add
     ```motoko
     Buffer.fromArray
 	Buffer.fromVarArray
@@ -30,7 +30,7 @@
     for efficiently adding an array to a `Buffer`
     (dfinity/motoko-base#389)
 
- * Add
+  * Add
     ```motoko
     Iter.sort : (xs : Iter<A>, compare : (A, A) -> Order) : Iter<A>
     ```
