@@ -973,9 +973,11 @@ let candid_sections s =
 
 (* Other custom sections *)
 
-let candid_service_name = icp_name "candid:service"
+(* NEEDED! FIXME let candid_service_name = icp_name "candid:service"
 let candid_args_name = icp_name "candid:args"
 let motoko_stable_types_name = icp_name "motoko:stable-types"
+ *)
+
 (* Custom sections *)
 
 (*let is_icp icp_name n = icp_name n <> None*)
