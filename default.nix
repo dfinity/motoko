@@ -522,14 +522,13 @@ rec {
           '' + nixpkgs.lib.optionalString (rts != null)''
           ./rts/gen.sh ${rts}/rts/
           '' + ''
-          make DUNE_OPTS="--profile=release" ${n}.js
-          uglifyjs ${n}.js -o ${n}.min.js -c -m
+          make DUNE_OPTS="--profile=release" ${n}.original.js
+          uglifyjs ${n}.original.js -o ${n}.js -c -m
         '';
         installPhase = ''
           mkdir -p $out
           mkdir -p $out/bin
           cp --verbose --dereference ${n}.js $out/bin
-          cp --verbose --dereference ${n}.min.js $out/bin
         '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
