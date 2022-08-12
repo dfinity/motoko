@@ -229,7 +229,7 @@ rule token mode = parse
   | "system" { SYSTEM }
   | "try" { TRY }
   | "throw" { THROW }
-  | "with" { with }
+  | "with" { WITH }
   | "debug_show" { DEBUG_SHOW }
   | "to_candid" { TO_CANDID }
   | "from_candid" { FROM_CANDID }
