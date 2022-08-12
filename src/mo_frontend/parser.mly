@@ -203,7 +203,7 @@ and objblock s dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
+%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -552,7 +552,7 @@ exp_obj :
     { ObjE (efs, []) @? at $sloc }
   | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
     { ObjE ([], base :: bases) @? at $sloc }
-  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) OROP efs=seplist(exp_field, semicolon)  RCURLY
+  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist(exp_field, semicolon) RCURLY
     { ObjE (efs, bases) @? at $sloc }
 
 exp_plain :
