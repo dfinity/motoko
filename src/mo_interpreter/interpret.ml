@@ -967,7 +967,7 @@ let import_lib env lib =
   | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);
-        ("install" ^ aid.it,
+        ("install" ^ id.it,
           V.local_func 1 1 (fun c w k ->
             let tag, w1 = V.as_variant w in
             let o = V.as_obj w1 in
