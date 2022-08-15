@@ -141,7 +141,7 @@
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
     '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
-    '{' <exp_post> ('and' <exp_post>)* WITH <list(<exp_field>, ';')> '}'
+    '{' <exp_post> ('and' <exp_post>)* WITH <list1(<exp_field>, ';')> '}'
 
 <exp_plain> ::= 
     <lit>
