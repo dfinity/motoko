@@ -26,6 +26,19 @@ let e = { c with e = 42 };
 c.c += 1;
 assert c.c == e.c;
 
+// methods closing over var fields
+let c0 = object {
+    public var c : Int = 0;
+    public func incr() = c += 1
+};
+
+let c1 = { c0 with d = 2; };
+
+assert c1.c == 0;
+c1.incr();
+assert c1.c == 1;
+assert c0.c == 1;
+
 // this is checking that the interpreter doesn't consider
 // dynamic fields not present in the static type
 
