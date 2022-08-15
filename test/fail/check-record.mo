@@ -21,4 +21,4 @@ do {
   { a = a; b = a; c = 1; d = c}; // reject (c not bound)
 };
 
-ignore ({ a = 1 in {} } : { b : Nat }); // reject
+ignore ({ {} with a = 1  } : { b : Nat }); // reject

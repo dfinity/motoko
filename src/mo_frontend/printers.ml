@@ -37,6 +37,7 @@ let string_of_symbol = function
   | X (T T_SEMICOLON_EOL) -> ";" (* suppress the \n *)
   | X (T T_SEMICOLON) -> ";"
   | X (T T_SYSTEM) -> "system"
+  | X (T T_WITH) -> "with"
   | X (T T_RPAR) -> ")"
   | X (T T_ROTROP) -> binop "<>>"
   | X (T T_ROTRASSIGN) -> binassign "<>>="
@@ -189,7 +190,7 @@ let string_of_symbol = function
   | X (N N_seplist_dec_field_semicolon_) -> "seplist(<dec_field>,<semicolon>)"
   | X (N N_seplist_exp_ob__COMMA_) -> "seplist(<exp(ob)>,,)"
   | X (N N_seplist_exp_field_semicolon_) -> "seplist(<exp_field>,<semicolon>)"
-  | X (N N_separated_nonempty_list_semicolon_exp_field_) -> "seplist+(<exp_field>,<semicolon>)"
+  | X (N N_seplist1_exp_field_semicolon_) -> "seplist1(<exp_field>,<semicolon>)"
   | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)"
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> "seplist(<exp_nonvar(ob)>,,)"
   | X (N N_seplist_imp_SEMICOLON_) -> "seplist(<imp>,;)"
