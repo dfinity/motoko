@@ -1654,16 +1654,17 @@ Such an object literal, sometimes called a *record*, is equivalent to the object
 
 Object expressions support *punning* for concision. A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both associate the field named `<id>` with the value of the identifier `<id>`.
 
-#### Object reuse
+#### Object reuse and extension
 
-Objects can be combined and/or extended using the `and` and `in` keywords. 
+Objects can be combined and/or extended using the `and` and `with` keywords.
 
-A record expression `{ <exp-field>;* in <exp_post> (and <exp_post>)* }` merges the objects (or modules) specified as *bases* which can be
+A record expression `{ <exp_post> (and <exp_post>)* with <exp-field>;* }` merges the objects (or modules) specified as *bases* which can be
 postfixed expressions, and augments the result to also contain the specified fields. The field list can be omitted when at least two bases appear and none have common field labels.
 Thus the field list serves as
-- disambiguation for field labels occurring more than once in the bases
-- supplying fresh fields
-- changing field types.
+- disambiguation for field labels occurring more than once in the bases,
+- supplying fresh fields,
+- changing field types, and
+- breaking up entanglement of `var` fields.
 
 The resulting type is determined by the bases' (and explicitly given fields') static type.
 
