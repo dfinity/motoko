@@ -55,7 +55,7 @@ actor a {
          case null {};
          case (?n) {
            nodes[i] :=
-             ? (await Lib.installNode(#upgrade n)(i)); // upgrade!
+             ? (await Lib.system.Node(#upgrade n)(i)); // upgrade!
          }
        }
     }

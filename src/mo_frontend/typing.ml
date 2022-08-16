@@ -2629,10 +2629,10 @@ let check_lib scope lib : Scope.t Diag.result =
                 | _ -> assert false
               in
               let con = Cons.fresh id.it (T.Def([], class_typ)) in
-              T.Obj(T.Module, List.sort T.compare_field [
-                { T.lab = id.it; T.typ = T.Typ con; depr = None };
-                { T.lab = id.it; T.typ = fun_typ; depr = None };
-                { T.lab = "install"^id.it; T.typ = T.install_typ (List.map (T.close cs) ts1) class_typ; depr = None }
+              T.(obj Module [
+                (id.it, Typ con);
+                (id.it, fun_typ);
+                ("system", obj Module [id.it, install_typ (List.map (close cs) ts1) class_typ])
               ])
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
