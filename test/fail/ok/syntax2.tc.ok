@@ -8,6 +8,7 @@ syntax2.mo:2.1-2.4: syntax error [M0001], unexpected token 'let', expected one o
   or <exp_bin(ob)>
   <unassign> <exp(ob)>
   <relop> <exp_bin(ob)>
+  . system
   . <id>
   : <typ_nobin>
   <binop> <exp_bin(ob)>
