@@ -104,7 +104,7 @@ let rec exp msgs e : f = match e.it with
   | ObjBlockE (s, dfs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     group msgs (dec_fields msgs dfs)
-  | ObjE (efs, bases)   -> exps msgs bases ++ exp_fields msgs efs
+  | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es

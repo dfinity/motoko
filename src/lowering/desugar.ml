@@ -92,7 +92,7 @@ and exp' at note = function
       (varP v) (varE v) ty).it
   | S.ObjBlockE (s, dfs) ->
     obj_block at s None dfs note.Note.typ
-  | S.ObjE (efs, bs) ->
+  | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->

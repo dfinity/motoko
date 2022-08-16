@@ -23,8 +23,8 @@ let rec exp e = match e.it with
   | TupE es             -> "TupE"      $$ exps es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
   | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
-  | ObjE (efs, [])      -> "ObjE"      $$ List.map exp_field efs
-  | ObjE (efs, bases)   -> "ObjE"      $$ List.map exp_field efs @ [Atom "|"] @ exps bases
+  | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
+  | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
@@ -60,7 +60,7 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
-  | DoOptE e            -> "DoOptE"    $$ [exp e]
+  | DoOptE e            -> "DoOptE"  $$ [exp e]
   | BangE e             -> "BangE"   $$ [exp e]
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
