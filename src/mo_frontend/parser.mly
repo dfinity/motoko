@@ -575,6 +575,8 @@ exp_post(B) :
     { IdxE(e1, e2) @? at $sloc }
   | e=exp_post(B) s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
+  | e=exp_post(B) DOT SYSTEM
+    { DotE(e, "system" @@ at ($startpos($3),$endpos($3))) @? at $sloc }
   | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
