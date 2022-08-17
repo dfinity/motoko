@@ -9455,6 +9455,7 @@ and compile_unboxed_pat env ae how pat =
   (* It returns:
      - the extended environment
      - the code to allocate memory
+     - the code to prepare the stack (e.g. push destination addresses)
      - the desired stack rep
      - the code to do the pattern matching.
        This expects the undestructed value is on top of the stack,
@@ -9462,13 +9463,12 @@ and compile_unboxed_pat env ae how pat =
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
-  let arity, fill_code =
-    (fun (sr, code) -> sr, G.with_region pat.at code) @@
-    match pat.it with
+  let pre_code, sr, fill_code = match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
-    | WildP -> None, G.nop
+    | WildP -> G.nop, None, G.nop
     (* Tuple patterns *)
     | TupP ps when List.length ps <> 1 ->
+      G.nop,
       Some (SR.UnboxedTuple (List.length ps)),
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
@@ -9477,18 +9477,15 @@ and compile_unboxed_pat env ae how pat =
     (* Variable patterns *)
     | VarP name ->
       let pre_code, sr, code = Var.set_val env ae1 name in
-      Some sr,
-      let (set_x, get_x) = new_local env "var_scrut" in
-      set_x ^^
-      pre_code ^^
-      get_x ^^
-      code
-
+      pre_code, Some sr, code
     (* The general case: Create a single value, match that. *)
     | _ ->
+      G.nop,
       Some SR.Vanilla,
-      orTrap env (fill_pat env ae1 pat)
-  in (ae1, alloc_code, arity, fill_code)
+      orTrap env (fill_pat env ae1 pat) in
+  let pre_code = G.with_region pat.at pre_code in
+  let fill_code = G.with_region pat.at fill_code in
+  (ae1, alloc_code, pre_code, sr, fill_code)
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
@@ -9511,9 +9508,9 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
-    let (pre_ae1, alloc_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
+    let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
-      (fun ae -> compile_exp_as_opt env ae sr e ^^ fill_code),
+      (fun ae -> pre_code ^^ compile_exp_as_opt env ae sr e ^^ fill_code),
       unmodified
     )
 
