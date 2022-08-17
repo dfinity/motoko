@@ -1091,7 +1091,6 @@ and infer_exp'' env exp : T.typ =
         disjoint t in
     disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
 
-    (* TODO: var in stripped_bases? *)
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
   | DotE (exp1, id) ->
