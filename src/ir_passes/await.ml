@@ -429,8 +429,8 @@ and c_decs context decs k =
 and declare_dec dec exp : exp =
   match dec.it with
   | LetD (pat, _) -> declare_pat pat exp
-  | VarD (id, typ, exp1) -> declare_id id (T.Mut typ) exp
-  | RefD (id, typ, exp1) -> declare_id id typ exp (* FIXME *)
+  | VarD (id, typ, _exp1) -> declare_id id (T.Mut typ) exp
+  | RefD (id, typ, _exp1) -> declare_id id typ exp
 
 and declare_decs decs exp : exp =
   match decs with
