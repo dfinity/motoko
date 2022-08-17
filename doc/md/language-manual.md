@@ -1858,7 +1858,7 @@ The `do` expression evaluates by evaluating `<block>` and returning its result.
 
 The option block `do ? <block>` introduces scoped handling of null values.
 
-The expression `do ? <bock>` has type `?T` provided `<block>` has type `T`.
+The expression `do ? <block>` has type `?T` provided `<block>` has type `T`.
 
 The `do ? <block>` expression evaluates `<block>` and returns its result as an optional value.
 
