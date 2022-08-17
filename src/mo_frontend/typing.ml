@@ -1057,7 +1057,7 @@ and infer_exp'' env exp : T.typ =
       (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     let fts = map (infer_exp_field env) exp_fields in
     let fls = map (fun {T.lab; _} -> lab) fts in
-    let bases = map (fun b -> infer_exp env b, b) exp_bases in
+    let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
 
     (* removing explicit fields from the bases *)
     let strip (base_t, base) =
