@@ -9388,11 +9388,14 @@ and fill_pat env ae pat : patternCode =
   | VarP name ->
       CannotFail (
         let pre_code, code = Var.set_val_vanilla env ae name in
-        let (set_x, get_x) = new_local env "var_scrut" in
-        set_x ^^
-        pre_code ^^
-        get_x ^^
-        code
+        if G.is_nop pre_code
+        then code
+        else
+          let (set_x, get_x) = new_local env "var_scrut" in
+          set_x ^^
+          pre_code ^^
+          get_x ^^
+          code
       )
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
