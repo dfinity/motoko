@@ -1,2 +1,4 @@
-object-ext-poly.mo:2.7-2.8: type error [M0093], expected object type, but expression produces type
+object-ext-poly.mo:2.5-2.32: type error [M0096], expression of type
+  {a : Int; b : Char; c : Text}
+cannot produce expected type
   A__9
