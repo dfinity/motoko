@@ -1658,8 +1658,7 @@ Object expressions support *punning* for concision. A punned field `<id>` is sho
 
 Objects can be combined and/or extended using the `and` and `with` keywords.
 
-A record expression `{ <exp_post> (and <exp_post>)* with <exp-field>;* }` merges the objects (or modules) specified as *bases* which can be
-postfixed expressions, and augments the result to also contain the specified fields. The field list can be omitted when at least two bases appear and none have common field labels.
+A record expression `{ <exp> (and <exp>)* (with <exp-field>;+)? }` merges the objects (or modules) specified as *base* expressions, and augments the result to also contain the specified fields. The `with <exp-field>;+` clause can be omitted when at least two bases appear and none have common field labels.
 Thus the field list serves as
 - disambiguation for field labels occurring more than once in the bases,
 - supplying fresh fields,
