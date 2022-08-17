@@ -467,6 +467,7 @@ The syntax of an *expression* is as follows:
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
   { <exp-field>;* }                              object
+  { <exp> (and <exp>)* (with <exp-field>;+)? }   object combination/extension
   # id <exp>?                                    variant injection
   <exp> . <id>                                   object projection/member access
   <exp> := <exp>                                 assignment
@@ -1654,7 +1655,7 @@ Such an object literal, sometimes called a *record*, is equivalent to the object
 
 Object expressions support *punning* for concision. A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both associate the field named `<id>` with the value of the identifier `<id>`.
 
-#### Object reuse and extension
+### Object combination/extension
 
 Objects can be combined and/or extended using the `and` and `with` keywords.
 
@@ -1669,17 +1670,32 @@ The resulting type is determined by the bases' (and explicitly given fields') st
 
 Any `var` field from some base must be overwritten in the explicit field list. This avoids introducing aliasing of `var` fields.
 
+The record expression `{ <exp1> and ... <expn> with <exp-field1>; ... <exp_fieldn>; }` has type `T` provided
+
+* The record `{ <exp-field1>; ... <exp_fieldm>; }` has record type `{ fields_tys } == { var? <id1> : U1; ... var? <idm> : Um }`.
+  Let `newfields == { <id1> .. ,<idm> }` be the set of new field names.
+* Base expression `<expi>` has record type `sorti { field_tysi } == sorti { var? <idi1> : Ti1, …​, var? <idik> : Tik }` where `sorti <> Actor`.
+  Let `fields(i) == { <idi1>, ..., <idik> }` be the set of static field names of base `i`.
+  * `fields(i)` is disjoint from `newfields` (possibly by applying subtyping to the type of `<expi>`).
+  * `fields(i)` is disjoint from `fields(j)` for `j < i`.
+* `T` is `{ fields_tys1 ... fields_tysM fields_tys }`.
+
+The record expression `{ <exp1> and ... <expn> with <exp-field1>; ... <exp_fieldm>; }` evaluates records `<exp1>` through `<expn>` and `{ exp-field1; ... <exp_fieldm }` to results `r1` through `rn` and `r`, trapping on the first result that is a trap. If none of the expressions produces a trap, the results are objects `sort1 { f1 }`, `sortn { fn }` and `object { f }`, where `f1` ... `fn` and `f` are maps from identifiers to values or mutable locations.
+
+The result of the entire expression is the value `object { g }` where `g` is the partial map with domain `fields(1) union fields(n) union newfields` mapping identifiers to unique
+values or locations such that `g(<id>) = fi(<id>)` if `<id>` is in `fields(i)`, for some `i`, or `f(<id>)` if `<id>` is in `newfields`.
+
 ### Object projection (member access)
 
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type `sort { var1? <id1> : T1, …​, var? <id> : T, …​, var? <idn> : Tn }` for some sort `sort`.
 
-The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an object value `{ <id1> = v1,…​, id = v, …​, <idn> = vn }` and the result of the projection is the value `v` of field `id`.
+The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an object value `{ <id1> = v1,…​, id = v, …​, <idm> = vm }` and the result of the projection is the value `w` obtained from value or location `v` in field `id`.
 
-If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
+If `var` is absent from `var? T` then the value `w` is just the value `v` of immutable field `<id>`, otherwise:
 
--   if the projection occurs as the target of an assignment expression then `v` is the mutable location of the field `<id>`.
+-   if the projection occurs as the target of an assignment expression then `w` is just `v`, the mutable location in field `<id>`.
 
--   otherwise, `v` (of type `T`) is the value currently stored in mutable field `<id>`.
+-   otherwise, `w` (of type `T`) is the value currently stored at the mutable location `v` in field `<id>`.
 
 ### Special member access
 
