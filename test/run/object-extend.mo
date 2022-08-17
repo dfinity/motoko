@@ -64,3 +64,7 @@ func mox<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int } and { 
 func mux<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int; b : Char; c : Text } =
     { a and b with c = "Yeah" }
 */
+
+// extending iterators
+let tb_ok : { next : () -> ?Char; bar : Nat } = { "Text base".chars() with bar = 42 };
+let ab_ok : { next : () -> ?Text; bar : Nat } = { ["Array base"].vals() with bar = 42 };
