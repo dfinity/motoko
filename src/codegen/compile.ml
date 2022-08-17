@@ -6751,33 +6751,29 @@ module Var = struct
 
   open VarEnv
 
-  (* Desired stack rep, and code to store payload on the stack *)
-  let set_val env ae var = match VarEnv.lookup_var ae var with
+  (* Returns desired stack representation, preparation code and code to consume
+     the value onto the stack *)
+  let set_val env ae var : G.t * SR.t * G.t = match VarEnv.lookup_var ae var with
     | Some (Local (sr, i)) ->
+      G.nop,
       sr,
       G.i (LocalSet (nr i))
     | Some (HeapInd i) ->
+      G.i (LocalGet (nr i)),
       SR.Vanilla,
-      let (set_new_val, get_new_val) = new_local env "new_val" in
-      set_new_val ^^
-      G.i (LocalGet (nr i)) ^^
-      get_new_val ^^
       Heap.store_field MutBox.field
     | Some (HeapStatic ptr) ->
+      compile_unboxed_const ptr,
       SR.Vanilla,
-      let (set_new_val, get_new_val) = new_local env "new_val" in
-      set_new_val ^^
-      compile_unboxed_const ptr ^^
-      get_new_val ^^
       Heap.store_field MutBox.field
     | Some (Const _) -> fatal "set_val: %s is const" var
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
 
   (* Stores the payload (which is found on the stack, in Vanilla stackrep) *)
-  let set_val_vanilla env ae var =
-    let (sr, code) = set_val env ae var in
-    StackRep.adjust env SR.Vanilla sr ^^ code
+  let set_val_vanilla env ae var : G.t * G.t =
+    let (pre_code, sr, code) = set_val env ae var in
+    pre_code, StackRep.adjust env SR.Vanilla sr ^^ code
 
   (* Returns the payload (optimized representation) *)
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
@@ -6919,8 +6915,10 @@ module FuncDec = struct
       let arg_names = List.map (fun a -> a.it) args in
       let arg_tys = List.map (fun a -> a.note) args in
       let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
+      let pre_setters, setters = List.split (List.map (Var.set_val_vanilla env ae1) arg_names) in
+      G.concat pre_setters ^^
       Serialization.deserialize env arg_tys ^^
-      G.concat_map (Var.set_val_vanilla env ae1) (List.rev arg_names) ^^
+      G.concat (List.rev setters) ^^
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
@@ -8140,9 +8138,7 @@ let compile_load_field env typ name =
 let rec compile_lexp (env : E.t) ae lexp =
   (fun (code, sr, fill_code) -> (G.with_region lexp.at code, sr, G.with_region lexp.at fill_code)) @@
   match lexp.it with
-  | VarLE var ->
-     let sr, code = Var.set_val env ae var in
-     G.nop, sr, code
+  | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -9165,8 +9161,10 @@ and compile_exp (env : E.t) ae exp =
     code
   | DefineE (name, _, e) ->
     SR.unit,
-    compile_exp_vanilla env ae e ^^
-    Var.set_val_vanilla env ae name
+    let pre_code, sr, code = Var.set_val env ae name in
+    pre_code ^^
+    compile_exp_as env ae sr e ^^
+    code
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
@@ -9388,7 +9386,14 @@ and fill_pat env ae pat : patternCode =
         compile_lit_pat env l ^^
         G.if0 G.nop fail_code)
   | VarP name ->
-      CannotFail (Var.set_val_vanilla env ae name)
+      CannotFail (
+        let pre_code, code = Var.set_val_vanilla env ae name in
+        let (set_x, get_x) = new_local env "var_scrut" in
+        set_x ^^
+        pre_code ^^
+        get_x ^^
+        code
+      )
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
       let rec go i = function
@@ -9471,9 +9476,14 @@ and compile_unboxed_pat env ae how pat =
       G.concat_mapi (fun i p -> orTrap env (fill_pat env ae1 p)) (List.rev ps)
     (* Variable patterns *)
     | VarP name ->
-      let sr, code = Var.set_val env ae1 name in
+      let pre_code, sr, code = Var.set_val env ae1 name in
       Some sr,
+      let (set_x, get_x) = new_local env "var_scrut" in
+      set_x ^^
+      pre_code ^^
+      get_x ^^
       code
+
     (* The general case: Create a single value, match that. *)
     | _ ->
       Some SR.Vanilla,
@@ -9515,7 +9525,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
 
       ( pre_ae1,
         alloc_code,
-        (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
+        (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
+            pre_code ^^ compile_exp_as env ae sr e ^^ code),
         unmodified
       )
 
@@ -9766,8 +9777,10 @@ and main_actor as_opt mod_env ds fs up =
         IC.system_call env "msg_arg_data_size" ^^
         G.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
+        let pre_setters, setters = List.split (List.map (Var.set_val_vanilla env ae1) arg_names) in
+        G.concat pre_setters ^^
         Serialization.deserialize env arg_tys ^^
-        G.concat_map (Var.set_val_vanilla env ae1) (List.rev arg_names)
+        G.concat (List.rev setters)
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop
