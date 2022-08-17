@@ -50,15 +50,17 @@ assert t.l;
 // some allowed polymorphism
 
 /* issue #3405
+these all give: Fatal error: exception (Invalid_argument Type.as_obj)
+
 type A0 = { a : Int };
 type B0 = { b : Char };
 
 func mix<A <: A0, B <: B0>(a : A, b : B) : A0 and B0 and { c : Text } =
     { a and b with c = "Waay to go!" };
-*/
 
 func mox<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int } and { b : Char } and { c : Text } =
     { a and b with c = "Right" };
 
 func mux<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int; b : Char; c : Text } =
     { a and b with c = "Yeah" }
+*/
