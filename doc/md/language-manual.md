@@ -1663,7 +1663,7 @@ Thus the field list serves as
 - disambiguation for field labels occurring more than once in the bases,
 - supplying fresh fields,
 - changing field types, and
-- breaking up entanglement of `var` fields.
+- adding new `var` field or to avoid aliasing with an existing `var` field from some base.
 
 The resulting type is determined by the bases' (and explicitly given fields') static type.
 
