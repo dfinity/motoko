@@ -23,7 +23,7 @@ let bM = { b and M };
 
 // poor man's type definition to declare object type with type fields
 class C() {
- public type T = Int;
+ public type t = Nat;
  public let t : Bool = true;
 };
 
