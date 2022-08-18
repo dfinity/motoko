@@ -581,18 +581,20 @@ and obj obj_typ efs bases =
     base_dec, pick in
 
   let base_decs, pickers = map base_info bases |> split in
-  let gap T.{ lab; typ; _ } =
-    if exists (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs then []
-    else
-      let id = fresh_var lab typ in
-      let [@warning "-8"] [base_var] = concat_map ((|>) lab) pickers in
-      let d =
-        if T.is_mut typ then
-          refD id { it = I.DotLE(varE base_var, lab); note = typ; at =  no_region }
-        else
-          letD id (dotE (varE base_var) lab typ) in
-      let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
-      [d, f] in
+  let gap T.{ lab; typ; _ } = match typ with
+    | T.Typ _ -> []
+    | _ ->
+      if exists (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs then []
+      else
+        let id = fresh_var lab typ in
+        let [@warning "-8"] [base_var] = concat_map ((|>) lab) pickers in
+        let d =
+          if T.is_mut typ then
+            refD id { it = I.DotLE(varE base_var, lab); note = typ; at =  no_region }
+          else
+            letD id (dotE (varE base_var) lab typ) in
+        let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
+        [d, f] in
 
   let ds, fs = map (exp_field obj_typ) efs |> split in
   let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in

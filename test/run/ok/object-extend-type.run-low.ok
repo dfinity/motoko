@@ -1,2 +1,0 @@
-Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-(unknown location): IR type error [M0000], unexpected T.Typ
