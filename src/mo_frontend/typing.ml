@@ -1057,11 +1057,11 @@ and infer_exp'' env exp : T.typ =
       (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     let fts = map (infer_exp_field env) exp_fields in
     let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
-    let field_eq f1 f2 = T.compare_field f1 f2 = 0 in
+    let eq_field ft1 ft2 = T.compare_field ft1 ft2 = 0 in
 
     (* removing explicit fields from the bases *)
     let strip (base_t, base) =
-      let s, base_tfs =
+      let s, base_fts =
         try T.as_obj base_t with Invalid_argument _ ->
           error env base.at "M0093"
             "expected object type, but expression produces type%a"
@@ -1070,24 +1070,24 @@ and infer_exp'' env exp : T.typ =
       if s = T.Actor then
         error env base.at "M0178"
           "actors cannot serve as bases in record extensions";
-       T.(Obj (Object, filter (fun f -> not (List.exists (field_eq f) fts)) base_tfs)) in
+       T.(Obj (Object, filter (fun ft -> not (List.exists (eq_field ft) fts)) base_fts)) in
     let stripped_bases = map strip bases in
 
     (* label disjointness of stripped bases *)
     let rec disjoint = function
       | [] | [_] -> ()
       | (h, h_exp) :: t ->
-        let avoid field =
-          let avoid_labels b bls =
-            if List.exists (field_eq field) bls then
+        let avoid ft =
+          let avoid_fields b b_fts =
+            if List.exists (eq_field ft) fts then
               begin
                 local_error env b.at "M0177"
                   "ambiguous %sfield in base%a"
-                  (match field.T.typ with T.Typ c -> "type " | _ -> "")
-                  display_lab field.T.lab;
+                  (match ft.T.typ with T.Typ c -> "type " | _ -> "")
+                  display_lab ft.T.lab;
                 info env h_exp.at "field also present in base, here (consider overwriting)"
               end in
-          iter (fun (b_t, b) -> avoid_labels b (T.as_obj b_t |> snd)) t in
+          iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
         iter avoid (T.as_obj h |> snd);
         disjoint t in
     disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
