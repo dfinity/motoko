@@ -1078,7 +1078,7 @@ and infer_exp'' env exp : T.typ =
         T.(match (ft1.typ, ft2.typ) with
          (* eponymous type fields are ambiguous when unequal *)
          | Typ c1, Typ c2 ->  not (T.eq ft1.typ ft2.typ)
-         (* eponumous value fields are always ambiguous *)
+         (* eponymous value fields are always ambiguous *)
          | _ -> true)
     in
 
@@ -1088,7 +1088,7 @@ and infer_exp'' env exp : T.typ =
       | (h, h_exp) :: t ->
         let avoid ft =
           let avoid_fields b b_fts =
-            if List.exists (ambiguous_fields ft) fts then
+            if List.exists (ambiguous_fields ft) b_fts then
               begin
                 local_error env b.at "M0177"
                   "ambiguous %sfield in base%a"
