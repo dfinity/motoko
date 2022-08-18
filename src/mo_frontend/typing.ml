@@ -1070,12 +1070,14 @@ and infer_exp'' env exp : T.typ =
       if s = T.Actor then
         error env base.at "M0178"
           "actors cannot serve as bases in record extensions";
-       T.(Obj (Object, filter (fun ft -> not (List.exists (eponymous_fields ft) fts)) base_fts)) in
+      T.(Obj (Object, filter (fun ft -> not (List.exists (eponymous_fields ft) fts)) base_fts))
+    in
     let stripped_bases = map strip bases in
 
     let ambiguous_fields ft1 ft2 =
       eponymous_fields ft1 ft2 &&
-        T.(match (ft1.typ, ft2.typ) with
+      (* allow equivalent type fields *)
+      T.(match (ft1.typ, ft2.typ) with
          (* eponymous type fields are ambiguous when unequal *)
          | Typ c1, Typ c2 ->  not (T.eq ft1.typ ft2.typ)
          (* eponymous value fields are always ambiguous *)
