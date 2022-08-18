@@ -1057,7 +1057,7 @@ and infer_exp'' env exp : T.typ =
       (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     let fts = map (infer_exp_field env) exp_fields in
     let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
-    let eq_field ft1 ft2 = T.compare_field ft1 ft2 = 0 in
+    let eponymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
 
     (* removing explicit fields from the bases *)
     let strip (base_t, base) =
@@ -1070,8 +1070,17 @@ and infer_exp'' env exp : T.typ =
       if s = T.Actor then
         error env base.at "M0178"
           "actors cannot serve as bases in record extensions";
-       T.(Obj (Object, filter (fun ft -> not (List.exists (eq_field ft) fts)) base_fts)) in
+       T.(Obj (Object, filter (fun ft -> not (List.exists (eponymous_fields ft) fts)) base_fts)) in
     let stripped_bases = map strip bases in
+
+    let ambiguous_fields ft1 ft2 =
+      eponymous_fields ft1 ft2 &&
+        T.(match (ft1.typ, ft2.typ) with
+         (* eponymous type fields are ambiguous when unequal *)
+         | Typ c1, Typ c2 ->  not (T.eq ft1.typ ft2.typ)
+         (* eponumous value fields are always ambiguous *)
+         | _ -> true)
+    in
 
     (* label disjointness of stripped bases *)
     let rec disjoint = function
@@ -1079,7 +1088,7 @@ and infer_exp'' env exp : T.typ =
       | (h, h_exp) :: t ->
         let avoid ft =
           let avoid_fields b b_fts =
-            if List.exists (eq_field ft) fts then
+            if List.exists (ambiguous_fields ft) fts then
               begin
                 local_error env b.at "M0177"
                   "ambiguous %sfield in base%a"

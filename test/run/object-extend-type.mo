@@ -29,3 +29,5 @@ class C() {
 
 let r1 = module { public type t = Nat; };
 ignore ({ r1 with t = true } : C); // check field t doesn't hide type field t;
+
+let r2 = { r1 and r1 }; // equivalent types can merge;
