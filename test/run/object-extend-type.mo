@@ -13,3 +13,10 @@ let ac = { a and c };
 
 // T = Int and T = Int are reconcilable
 //let ab = { a and b }; // FIXME: gives 'type error [M0177], ambiguous field in base'
+
+module M { public type U = Nat; public let u : U = 25  };
+let am = { a with M };
+let bm = { b with M };
+
+let aM = { a and M };
+let bM = { b and M };
