@@ -20,3 +20,12 @@ let bm = { b with M };
 
 let aM = { a and M };
 let bM = { b and M };
+
+// poor man's type definition to declare object type with type fields
+class C() {
+ public type T = Int;
+ public let t : Bool = true;
+};
+
+let r1 = module { public type t = Nat; };
+ignore ({ r1 with t = true } : C); // check field t doesn't hide type field t;
