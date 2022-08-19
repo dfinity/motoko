@@ -36,6 +36,12 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
+        # wasmtime not broken
+        # (was marked broken on darwin in https://github.com/NixOS/nixpkgs/pull/173671)
+        (self: super: {
+           wasmtime = super.wasmtime.overrideAttrs (o: { meta = o.meta // { broken = false; };});
+        })
+
         # Selecting the ocaml version
         # Also update ocmal-version in src/*/.ocamlformat!
         (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
