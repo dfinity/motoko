@@ -6770,10 +6770,23 @@ module Var = struct
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
 
-  (* Stores the payload (which is found on the stack, in Vanilla stackrep) *)
+  (* Stores the payload (using preparation code and consumptiong code) *)
   let set_val_vanilla env ae var : G.t * G.t =
-    let (pre_code, sr, code) = set_val env ae var in
+    let pre_code, sr, code = set_val env ae var in
     pre_code, StackRep.adjust env SR.Vanilla sr ^^ code
+
+  (* Stores the payload (which is found on the stack, in Vanilla stackrep) *)
+  let set_val_vanilla_from_stack env ae var : G.t =
+    let pre_code, code = set_val_vanilla env ae var in
+    if G.is_nop pre_code
+    then code
+    else
+      (* Need to shuffle the stack entries *)
+      let (set_x, get_x) = new_local env "var_scrut" in
+      set_x ^^
+      pre_code ^^
+      get_x ^^
+      code
 
   (* Returns the payload (optimized representation) *)
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
@@ -6915,10 +6928,8 @@ module FuncDec = struct
       let arg_names = List.map (fun a -> a.it) args in
       let arg_tys = List.map (fun a -> a.note) args in
       let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
-      let pre_setters, setters = List.split (List.map (Var.set_val_vanilla env ae1) arg_names) in
-      G.concat pre_setters ^^
       Serialization.deserialize env arg_tys ^^
-      G.concat (List.rev setters) ^^
+      G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names) ^^
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
@@ -9386,17 +9397,7 @@ and fill_pat env ae pat : patternCode =
         compile_lit_pat env l ^^
         G.if0 G.nop fail_code)
   | VarP name ->
-      CannotFail (
-        let pre_code, code = Var.set_val_vanilla env ae name in
-        if G.is_nop pre_code
-        then code
-        else
-          let (set_x, get_x) = new_local env "var_scrut" in
-          set_x ^^
-          pre_code ^^
-          get_x ^^
-          code
-      )
+      CannotFail (Var.set_val_vanilla_from_stack env ae name)
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
       let rec go i = function
@@ -9777,10 +9778,8 @@ and main_actor as_opt mod_env ds fs up =
         IC.system_call env "msg_arg_data_size" ^^
         G.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
-        let pre_setters, setters = List.split (List.map (Var.set_val_vanilla env ae1) arg_names) in
-        G.concat pre_setters ^^
         Serialization.deserialize env arg_tys ^^
-        G.concat (List.rev setters)
+        G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop
