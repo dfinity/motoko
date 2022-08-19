@@ -51,6 +51,7 @@ let
               };
 
               # downgrade wasm until we have support for 2.0.0
+              # (https://github.com/dfinity/motoko/pull/3364)
               wasm = super.ocamlPackages.wasm.overrideAttrs (_: rec {
                 version = "1.1.1";
                 src = self.fetchFromGitHub {
