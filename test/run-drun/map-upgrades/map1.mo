@@ -65,7 +65,7 @@ actor a {
          case null {};
          case (?n) {
            nodes[i] :=
-             ? (await Lib.system.Node(#upgrade n)(i)); // upgrade!
+             ? (await (system (#upgrade n) Lib.Node(i))); // upgrade!
          }
        }
     }

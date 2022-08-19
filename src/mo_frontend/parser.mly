@@ -196,6 +196,8 @@ and objblock s dec_fields =
     | _ -> ()) dec_fields;
   ObjBlockE(s, dec_fields)
 
+let no_inst () = { it = None; at = no_region; note = [] }
+
 %}
 
 %token EOF DISALLOWED
@@ -442,7 +444,7 @@ typ_args :
 
 inst :
   | (* empty *)
-    { { it = None; at = no_region; note = [] } }
+    { no_inst() }
   | LT ts=seplist(typ, COMMA) GT
     { { it = Some ts; at = at $sloc; note = [] } }
 
@@ -583,6 +585,21 @@ exp_post(B) :
     { CallE(e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
+  | LPAR SYSTEM e1=exp_nullary(ob) e2=exp_nullary(ob) DOT c=id e3=exp_nullary(B) RPAR
+    { let x = anon_id "val" e1.at @@ e1.at in
+      BlockE
+        [ LetD (VarP x @! x.at, e1) @? e1.at;
+          ExpD(CallE(
+          CallE(
+            DotE(
+              DotE(
+                e2,
+                "system" @@ at ($startpos(e1),$endpos(e1))) @? at $sloc,
+              c) @? no_region,
+            no_inst(),
+            VarE x @? at $sloc) @? at $sloc,
+          no_inst(),
+          e3) @? at $sloc) @? at $sloc] @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)

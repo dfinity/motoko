@@ -1,6 +1,6 @@
 import Prim "mo:⛔";
 import Cycles = "cycles/cycles";
-import C "actor-class-mgmt/C";
+import Cs "actor-class-mgmt/C";
 
 actor a {
 
@@ -34,18 +34,18 @@ actor a {
     do {
       Cycles.add(2_000_000_000_000);
       let c0 = await
-         C.C 0;
+         Cs.C 0;
       assert ({args = 0; upgrades = 0} == (await c0.observe()));
 
       Cycles.add(2_000_000_000_000);
       let c1 = await
-         C.system.C (#new default_settings) 1;
+         (system (#new default_settings) Cs.C(1));
       assert ({args = 1; upgrades = 0} == (await c1.observe()));
       assert (c1 != c0);
 
       Cycles.add(2_000_000_000_000);
       let c2 = await
-         (C.system.C (#new settings) 2);
+         (system (#new settings) Cs.C(2));
       assert ({args = 2; upgrades = 0} == (await c2.observe()));
       assert (c2 != c1);
 
@@ -54,20 +54,20 @@ actor a {
          ic00.create_canister default_settings;
       // no need to add cycles
       let c3 = await
-         C.system.C (#install p) 3;
+         (system (#install p) Cs.C(3));
       assert ({args = 3; upgrades = 0} == (await c3.observe()));
       assert (Prim.principalOfActor c3 == p);
       assert (c3 != c2);
 
       // no need to add cycles
       let c4 = await
-         C.system.C (#upgrade c3) 4;
+         (system (#upgrade c3) Cs.C(4));
       assert ({args = 4; upgrades = 1} == (await c4.observe()));
       assert (c4 == c3);
 
       // no need to add cycles
       let c5 = await
-         C.system.C (#reinstall c4) 5;
+         (system (#reinstall c4) Cs.C(5));
       assert ({args = 5; upgrades = 0} == (await c5.observe()));
       assert (c5 == c4);
     };

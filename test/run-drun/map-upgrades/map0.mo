@@ -4,7 +4,7 @@ import Lib "node0";
 
 // A naive, distributed map from Nat to Text.
 // Illustrates dynamic installation of imported actor classes.
-// Uses a fixed number of nodes, dynamically installed on demand 
+// Uses a fixed number of nodes, dynamically installed on demand
 // .. and upgraded with a call to upgradeNodes() (without data loss)
 
 actor a {
@@ -55,7 +55,7 @@ actor a {
          case null {};
          case (?n) {
            nodes[i] :=
-             ? (await Lib.system.Node(#upgrade n)(i)); // upgrade!
+             ? (await (system (#upgrade n) Lib.Node(i))); // upgrade!
          }
        }
     }

@@ -159,6 +159,7 @@
     <exp_post> '.' <id>
     <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
     <exp_post> BANG
+    '(' 'system' <exp_nullary> <exp_nullary> '.' <id> <exp_nullary> ')'
 
 <exp_un> ::= 
     <exp_post>
