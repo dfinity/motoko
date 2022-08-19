@@ -113,9 +113,6 @@ let
             sha256 = "0gjahsqqq99dc4bjcx9p3z8adpwy51w3mzrf57nib856jlvlfmv5";
           };
         })
-
-        # get nix-build-uncached 1.1.1 (can be removed once that’s in our nixpkgs)
-        (self: super: { nix-build-uncached = self.callPackage ./nix-build-uncached.nix {}; })
       ];
     };
 in
