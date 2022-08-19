@@ -594,7 +594,7 @@ exp_post(B) :
             DotE(
               DotE(
                 e2,
-                "system" @@ at ($startpos(e1),$endpos(e1))) @? at $sloc,
+                "system" @@ at ($startpos(e1), $endpos(e1))) @? at $sloc,
               c) @? no_region,
             no_inst(),
             VarE x @? at $sloc) @? at $sloc,
