@@ -1092,11 +1092,14 @@ and infer_exp'' env exp : T.typ =
           let avoid_fields b b_fts =
             if List.exists (ambiguous_fields ft) b_fts then
               begin
+                let frag_typ, frag_sug = match ft.T.typ with
+                  | T.Typ c -> "type ", ""
+                  | _ -> "", " (consider overwriting)" in
                 local_error env b.at "M0177"
                   "ambiguous %sfield in base%a"
-                  (match ft.T.typ with T.Typ c -> "type " | _ -> "")
+                  frag_typ
                   display_lab ft.T.lab;
-                info env h_exp.at "field also present in base, here (consider overwriting)"
+                info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug
               end in
           iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
         iter avoid (T.as_obj h |> snd);
