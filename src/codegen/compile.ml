@@ -6770,7 +6770,7 @@ module Var = struct
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
 
-  (* Stores the payload (using preparation code and consumptiong code) *)
+  (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
   let set_val_vanilla env ae var : G.t * G.t =
     let pre_code, sr, code = set_val env ae var in
     pre_code, StackRep.adjust env SR.Vanilla sr ^^ code
