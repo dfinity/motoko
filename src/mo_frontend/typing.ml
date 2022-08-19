@@ -1077,7 +1077,7 @@ and infer_exp'' env exp : T.typ =
     let ambiguous_fields ft1 ft2 =
       eponymous_fields ft1 ft2 &&
       (* allow equivalent type fields *)
-      T.(match (ft1.typ, ft2.typ) with
+      T.(match ft1.typ, ft2.typ with
          (* eponymous type fields are ambiguous when unequal *)
          | Typ c1, Typ c2 ->  not (T.eq ft1.typ ft2.typ)
          (* eponymous value fields are always ambiguous *)
