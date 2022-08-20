@@ -1084,7 +1084,7 @@ and infer_exp'' env exp : T.typ =
          | _ -> true)
     in
 
-    (* label disjointness of stripped bases *)
+    (* field disjointness of stripped bases *)
     let rec disjoint = function
       | [] | [_] -> ()
       | (h, h_exp) :: t ->
