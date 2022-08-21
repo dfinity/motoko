@@ -1070,7 +1070,7 @@ and infer_exp'' env exp : T.typ =
       if s = T.Actor then
         error env base.at "M0178"
           "actors cannot serve as bases in record extensions";
-      T.(Obj (Object, filter (fun ft -> not (List.exists (homonymous_fields ft) fts)) base_fts))
+      T.(Obj (Object, filter (fun ft -> not (exists (homonymous_fields ft) fts)) base_fts))
     in
     let stripped_bases = map strip bases in
 
@@ -1090,7 +1090,7 @@ and infer_exp'' env exp : T.typ =
       | (h, h_exp) :: t ->
         let avoid ft =
           let avoid_fields b b_fts =
-            if List.exists (ambiguous_fields ft) b_fts then
+            if exists (ambiguous_fields ft) b_fts then
               begin
                 let frag_typ, frag_sug = match ft.T.typ with
                   | T.Typ c -> "type ", ""
@@ -1117,8 +1117,8 @@ and infer_exp'' env exp : T.typ =
                    display_lab ft.lab;
                  info env b_exp.at "overwrite field to resolve error"
                end in
-           List.iter constant_field (as_obj b_typ |> snd) in
-         List.iter2 immutable_base stripped_bases exp_bases);
+           iter constant_field (as_obj b_typ |> snd) in
+         iter2 immutable_base stripped_bases exp_bases);
 
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
