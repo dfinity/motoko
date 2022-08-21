@@ -1,0 +1,6 @@
+object-ext-var-base.mo:9.11-9.18: type error [M0179], base has var field 
+  v
+object-ext-var-base.mo:9.11-9.18: info, overwrite field to resolve error
+object-ext-var-base.mo:9.11-9.18: type error [M0179], base has var field 
+  v
+object-ext-var-base.mo:9.11-9.18: info, overwrite field to resolve error
