@@ -1,3 +1,4 @@
+//MOC-FLAG --experimental-references
 import Prim "mo:⛔";
 
 // synthesis

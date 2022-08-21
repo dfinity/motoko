@@ -1107,17 +1107,20 @@ and infer_exp'' env exp : T.typ =
     disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
 
     (* do not allow var fields for now (to avoid aliasing) *)
-    let no_alias b b_exp =
-      let var_field (ft : T.field) =
-        if T.(is_mut ft.typ) then
-          begin
-            local_error env b_exp.at "M0177" (*FIXME*)
-              "base has var field %a"
-              display_lab ft.T.lab;
-            info env b_exp.at "overwrite field to resolve error"
-          end in
-      List.iter var_field (T.as_obj b |> snd) in
-    List.iter2 no_alias stripped_bases exp_bases;
+    if not !Flags.experimental_references then
+      begin
+        let no_alias b b_exp =
+          let var_field (ft : T.field) =
+            if T.(is_mut ft.typ) then
+              begin
+                local_error env b_exp.at "M0177" (*FIXME*)
+                  "base has var field %a"
+                  display_lab ft.T.lab;
+                info env b_exp.at "overwrite field to resolve error"
+              end in
+          List.iter var_field (T.as_obj b |> snd) in
+        List.iter2 no_alias stripped_bases exp_bases
+      end;
 
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
