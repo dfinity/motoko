@@ -1113,7 +1113,7 @@ and infer_exp'' env exp : T.typ =
           let var_field (ft : T.field) =
             if T.(is_mut ft.typ) then
               begin
-                local_error env b_exp.at "M0177" (*FIXME*)
+                local_error env b_exp.at "M0179"
                   "base has var field %a"
                   display_lab ft.T.lab;
                 info env b_exp.at "overwrite field to resolve error"
