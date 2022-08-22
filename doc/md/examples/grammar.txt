@@ -155,10 +155,10 @@
     '[' 'var'? <list(<exp_nonvar>, ',')> ']'
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
-    <exp_post> '.' 'system'
     <exp_post> '.' <id>
     <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
     <exp_post> BANG
+    '(' 'system' ')' <exp_nullary>
 
 <exp_un> ::= 
     <exp_post>
