@@ -989,7 +989,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
         let ts = List.map (infer_exp env) exps in
         if not (T.shared (T.seq ts)) then
-          error env exp.at "M0175" "to_candid argument must have shared type, but instead has non-shared type %a"
+          error env exp.at "M0175" "to_candid argument must have shared type, but instead has non-shared type%a"
             display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob
@@ -1070,7 +1070,7 @@ and infer_exp'' env exp : T.typ =
       if s = T.Actor then
         error env base.at "M0178"
           "actors cannot serve as bases in record extensions";
-      T.(Obj (Object, filter (fun ft -> not (List.exists (homonymous_fields ft) fts)) base_fts))
+      T.(Obj (Object, filter (fun ft -> not (exists (homonymous_fields ft) fts)) base_fts))
     in
     let stripped_bases = map strip bases in
 
@@ -1084,13 +1084,13 @@ and infer_exp'' env exp : T.typ =
          | _ -> true)
     in
 
-    (* label disjointness of stripped bases *)
+    (* field disjointness of stripped bases *)
     let rec disjoint = function
       | [] | [_] -> ()
       | (h, h_exp) :: t ->
         let avoid ft =
           let avoid_fields b b_fts =
-            if List.exists (ambiguous_fields ft) b_fts then
+            if exists (ambiguous_fields ft) b_fts then
               begin
                 let frag_typ, frag_sug = match ft.T.typ with
                   | T.Typ c -> "type ", ""
@@ -1105,6 +1105,20 @@ and infer_exp'' env exp : T.typ =
         iter avoid (T.as_obj h |> snd);
         disjoint t in
     disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
+
+    (* do not allow var fields for now (to avoid aliasing) *)
+    if not (env.pre || !Flags.experimental_field_aliasing) then
+      T.(let immutable_base b_typ b_exp =
+           let constant_field (ft : field) =
+             if (is_mut ft.typ) then
+               begin
+                 local_error env b_exp.at "M0179"
+                   "base has non-aliasable var field%a"
+                   display_lab ft.lab;
+                 info env b_exp.at "overwrite field to resolve error"
+               end in
+           iter constant_field (as_obj b_typ |> snd) in
+         iter2 immutable_base stripped_bases exp_bases);
 
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
@@ -1458,10 +1472,10 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre then begin
       let ts = List.map (infer_exp env) exps in
       if not (T.sub (T.Prim T.Blob) t) then
-        error env exp.at "M0172" "to_candid produces a Blob that is not a subtype of %a"
+        error env exp.at "M0172" "to_candid produces a Blob that is not a subtype of%a"
           display_typ_expand t;
       if not (T.shared (T.seq ts)) then
-          error env exp.at "M0173" "to_candid argument must have shared type, but instead has non-shared type %a"
+          error env exp.at "M0173" "to_candid argument must have shared type, but instead has non-shared type%a"
           display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob

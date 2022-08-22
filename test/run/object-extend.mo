@@ -1,3 +1,4 @@
+//MOC-FLAG --experimental-field-aliasing
 import Prim "mo:⛔";
 
 // synthesis
