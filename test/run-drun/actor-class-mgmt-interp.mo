@@ -49,7 +49,7 @@ actor a {
       try {
         await async {
           let c4 = await
-            (system) Cs.C (#upgrade c1)(4);
+            (system) Cs.C(#upgrade c1)(4);
           assert false;
         }
       } catch e { };
@@ -57,7 +57,7 @@ actor a {
       try {
         await async {
           let c5 = await
-            (system) Cs.C (#reinstall c1)(5);
+            (system) Cs.C(#reinstall c1)(5);
           assert false;
         }
       }
