@@ -989,7 +989,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
         let ts = List.map (infer_exp env) exps in
         if not (T.shared (T.seq ts)) then
-          error env exp.at "M0175" "to_candid argument must have shared type, but instead has non-shared type %a"
+          error env exp.at "M0175" "to_candid argument must have shared type, but instead has non-shared type%a"
             display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob
@@ -1472,10 +1472,10 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre then begin
       let ts = List.map (infer_exp env) exps in
       if not (T.sub (T.Prim T.Blob) t) then
-        error env exp.at "M0172" "to_candid produces a Blob that is not a subtype of %a"
+        error env exp.at "M0172" "to_candid produces a Blob that is not a subtype of%a"
           display_typ_expand t;
       if not (T.shared (T.seq ts)) then
-          error env exp.at "M0173" "to_candid argument must have shared type, but instead has non-shared type %a"
+          error env exp.at "M0173" "to_candid argument must have shared type, but instead has non-shared type%a"
           display_typ_expand (T.seq ts);
       end;
     T.Prim T.Blob
