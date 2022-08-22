@@ -1,5 +1,14 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Adds new syntax for merging records (objects) and
+    adding/overwriting fields. The expression
+	`{ baseA and baseB with field1 = val1; field2 = val2 }`
+    creates a new record by joining all (statically known) fields from
+    `baseA/B` and the explicitly specified `field1/2`.
+    Restrictions for ambiguous and `var` fields from bases apply (#3084)
+
 ## 0.6.30 (2022-08-11)
 
 * motoko (`moc`)
