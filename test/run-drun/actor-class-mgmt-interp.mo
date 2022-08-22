@@ -24,14 +24,14 @@ actor a {
       assert ({args = 0; upgrades = 0} == (await c0.observe()));
 
       let c1 = await
-         (system) Cs.C(#new default_settings)(1);
+         (system Cs.C)(#new default_settings)(1);
       assert ({args = 1; upgrades = 0} == (await c1.observe()));
       assert (c1 != c0);
 
       try {
         await async {
           let c2 = await
-          (system) Cs.C(#new settings)(2);
+          (system Cs.C)(#new settings)(2);
           assert ({args = 2; upgrades = 0} == (await c2.observe()));
           assert (c2 != c1);
         }
@@ -41,7 +41,7 @@ actor a {
         await async {
           let p = Prim.principalOfBlob("");
           let c3 = await
-            (system) Cs.C(#install p)(3);
+            (system Cs.C)(#install p)(3);
           assert false;
         };
       } catch e { };
@@ -49,7 +49,7 @@ actor a {
       try {
         await async {
           let c4 = await
-            (system) Cs.C(#upgrade c1)(4);
+            (system Cs.C)(#upgrade c1)(4);
           assert false;
         }
       } catch e { };
@@ -57,7 +57,7 @@ actor a {
       try {
         await async {
           let c5 = await
-            (system) Cs.C(#reinstall c1)(5);
+            (system Cs.C)(#reinstall c1)(5);
           assert false;
         }
       }
