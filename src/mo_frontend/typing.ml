@@ -1113,7 +1113,7 @@ and infer_exp'' env exp : T.typ =
              if (is_mut ft.typ) then
                begin
                  local_error env b_exp.at "M0179"
-                   "base has var field%a"
+                   "base has non-aliasable var field%a"
                    display_lab ft.lab;
                  info env b_exp.at "overwrite field to resolve error"
                end in

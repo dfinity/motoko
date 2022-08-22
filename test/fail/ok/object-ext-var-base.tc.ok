@@ -1,6 +1,6 @@
-object-ext-var-base.mo:10.37-10.44: type error [M0179], base has var field
+object-ext-var-base.mo:10.37-10.44: type error [M0179], base has non-aliasable var field
   v
 object-ext-var-base.mo:10.37-10.44: info, overwrite field to resolve error
-object-ext-var-base.mo:13.11-13.18: type error [M0179], base has var field
+object-ext-var-base.mo:13.11-13.18: type error [M0179], base has non-aliasable var field
   v
 object-ext-var-base.mo:13.11-13.18: info, overwrite field to resolve error
