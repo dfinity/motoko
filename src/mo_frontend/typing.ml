@@ -1107,7 +1107,7 @@ and infer_exp'' env exp : T.typ =
     disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
 
     (* do not allow var fields for now (to avoid aliasing) *)
-    if not (env.pre || !Flags.experimental_references) then
+    if not (env.pre || !Flags.experimental_field_aliasing) then
       T.(let immutable_base b_typ b_exp =
            let constant_field (ft : field) =
              if (is_mut ft.typ) then

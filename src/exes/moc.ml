@@ -154,9 +154,9 @@ let argspec = [
   Arg.Set_int Flags.max_stable_pages,
   "<n>  set maximum number of pages available for library `ExperimentalStableMemory.mo` (default " ^ (Int.to_string Flags.max_stable_pages_default) ^ ")";
 
-  "--experimental-references",
-  Arg.Unit (fun () -> Flags.experimental_references := true),
-  " enable (experimental, limited) support for var references"
+  "--experimental-field-aliasing",
+  Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
+  " enable experimental support for aliasing of var fields"
   ]
 
   @  Args.inclusion_args

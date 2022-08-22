@@ -40,4 +40,4 @@ let error_detail = ref 2
 let sanity = ref false
 let gc_strategy = ref Copying
 let force_gc = ref false
-let experimental_references = ref false
+let experimental_field_aliasing = ref false
