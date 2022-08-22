@@ -152,7 +152,7 @@ let argspec = [
 
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,
-  "<n>  set maximum number of pages available for library `ExperimentStableMemory.mo` (default " ^ (Int.to_string Flags.max_stable_pages_default) ^ ")";
+  "<n>  set maximum number of pages available for library `ExperimentalStableMemory.mo` (default " ^ (Int.to_string Flags.max_stable_pages_default) ^ ")";
 
   "--experimental-references",
   Arg.Unit (fun () -> Flags.experimental_references := true),
