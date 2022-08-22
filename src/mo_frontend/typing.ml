@@ -1107,13 +1107,13 @@ and infer_exp'' env exp : T.typ =
     disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
 
     (* do not allow var fields for now (to avoid aliasing) *)
-    if not !Flags.experimental_references then
+    if not (env.pre || !Flags.experimental_references) then
       T.(let immutable_base b_typ b_exp =
            let constant_field (ft : field) =
              if (is_mut ft.typ) then
                begin
                  local_error env b_exp.at "M0179"
-                   "base has var field %a"
+                   "base has var field%a"
                    display_lab ft.lab;
                  info env b_exp.at "overwrite field to resolve error"
                end in
