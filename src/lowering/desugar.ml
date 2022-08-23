@@ -576,7 +576,7 @@ and obj obj_typ efs bases =
     let base_var = fresh_var "base" base_t in
     let base_dec = letD base_var base_exp in
     let pick l =
-      if exists (fun { T.lab; _ } -> lab = l) (T.as_obj (T.promote base_t) |> snd)
+      if exists (fun { T.lab; _ } -> lab = l) T.(promote base_t |> as_obj |> snd)
       then [base_var] else [] in
     base_dec, pick in
 
