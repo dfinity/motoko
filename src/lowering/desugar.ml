@@ -92,8 +92,8 @@ and exp' at note = function
       (varP v) (varE v) ty).it
   | S.ObjBlockE (s, dfs) ->
     obj_block at s None dfs note.Note.typ
-  | S.ObjE efs ->
-    obj note.Note.typ efs
+  | S.ObjE (bs, efs) ->
+    obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -296,9 +296,9 @@ and obj_block at s self_id dfs obj_typ =
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ;_} =
-  { it = { I.name = lab
-         ; I.var = lab
-         }
+  { it = I.{ name = lab
+           ; var = lab
+           }
   ; at = no_region
   ; note = typ
   }
@@ -368,9 +368,9 @@ and call_system_func_opt name es obj_typ =
                     letD msg msg_variant
                   ]
                   (newObjE T.Object [
-                    {it = {I.name = "caller"; I.var = id_of_var caller}; at = no_region; note = typ_of_var caller };
-                    {it = {I.name = "arg"; I.var = id_of_var arg}; at = no_region; note = typ_of_var arg };
-                    {it = {I.name = "msg"; I.var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
+                    {it = I.{name = "caller"; var = id_of_var caller}; at = no_region; note = typ_of_var caller };
+                    {it = I.{name = "arg"; var = id_of_var arg}; at = no_region; note = typ_of_var arg };
+                    {it = I.{name = "msg"; var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
                     record_typ));
                 letD accept (callE (varE (var id.it p.note)) [] (varE record))]
               (ifE (varE accept)
@@ -402,7 +402,7 @@ and export_interface txt =
       asyncE bind2 (textE txt) (Con (scope_con1, []))
     )
   )],
-  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
+  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and export_footprint self_id expr =
   let open T in
@@ -422,13 +422,13 @@ and export_footprint self_id expr =
                        letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
                  ]
                  (newObjE T.Object
-                   [{ it = {Ir.name = "size"; var = id_of_var size};
+                   [{ it = Ir.{name = "size"; var = id_of_var size};
                       at = no_region;
                       note = T.nat64 }]
                    ret_typ))
               (Con (scope_con1, []))))
   )],
-  [{ it = { I.name = lab; var = v }; at = no_region; note = typ }])
+  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -480,7 +480,7 @@ and build_actor at ts self_id es obj_typ =
       (wrap
          (newObjE T.Memory
             (List.map2 (fun f v ->
-                 { it = {I.name = f.T.lab; I.var = id_of_var v};
+                 { it = I.{name = f.T.lab; var = id_of_var v};
                    at = no_region;
                    note = f.T.typ }
                ) fields vs)
@@ -519,6 +519,7 @@ and stabilize stab_opt d =
          e
          (varP v) (varE v)
          t))
+  | (S.Stable, I.RefD _) -> assert false (* RefD cannot come from user code *)
   | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
     let t = p.note in
     ([(i, t)],
@@ -555,7 +556,7 @@ and exp_field obj_typ ef =
     assert (T.is_mut typ);
     let id' = fresh_var id.it typ in
     let d = varD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+    let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
     (d, f)
   | S.Const ->
     let typ = match T.lookup_val_field_opt id.it fts with
@@ -565,13 +566,40 @@ and exp_field obj_typ ef =
     assert (not (T.is_mut typ));
     let id' = fresh_var id.it typ in
     let d = letD id' (exp e) in
-    let f = { it = { I.name = id.it; I.var = id_of_var id'}; at = no_region; note = typ } in
+    let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
     (d, f)
 
-and obj obj_typ efs =
-  let (ds, fs) = List.map (exp_field obj_typ) efs |> List.split in
-  let obj_e = newObjE T.Object fs obj_typ in
-  I.BlockE(ds, obj_e)
+and obj obj_typ efs bases =
+  let open List in
+  let base_info base =
+    let base_exp, base_t = exp base, (typ_note base.note).Note.typ in
+    let base_var = fresh_var "base" base_t in
+    let base_dec = letD base_var base_exp in
+    let pick l =
+      if exists (fun { T.lab; _ } -> lab = l) T.(promote base_t |> as_obj |> snd)
+      then [base_var] else [] in
+    base_dec, pick in
+
+  let base_decs, pickers = map base_info bases |> split in
+  let gap T.{ lab; typ; _ } = match typ with
+    | T.Typ _ -> []
+    | _ ->
+      if exists (fun (ef : S.exp_field) -> ef.it.id.it = lab) efs then []
+      else
+        let id = fresh_var lab typ in
+        let [@warning "-8"] [base_var] = concat_map ((|>) lab) pickers in
+        let d =
+          if T.is_mut typ then
+            refD id { it = I.DotLE(varE base_var, lab); note = typ; at = no_region }
+          else
+            letD id (dotE (varE base_var) lab typ) in
+        let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
+        [d, f] in
+
+  let ds, fs = map (exp_field obj_typ) efs |> split in
+  let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
+  let obj_e = newObjE T.Object (append fs fs') obj_typ in
+  I.BlockE(append base_decs (append ds ds'), obj_e)
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -841,7 +869,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
-              [{ it = {Ir.name = "caller"; var = id_of_var v};
+              [{ it = Ir.{name = "caller"; var = id_of_var v};
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]
@@ -872,7 +900,7 @@ let actor_class_mod_exp id class_typ func =
   blockE
     [letD v func]
     (newObjE T.Module
-       [{ it = {I.name = id; I.var = id_of_var v};
+       [{ it = I.{name = id; var = id_of_var v};
           at = no_region;
           note = fun_typ }]
        (T.Obj(T.Module, List.sort T.compare_field [

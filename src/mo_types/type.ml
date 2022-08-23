@@ -1463,6 +1463,8 @@ let rec pp_typ_expand' vs ppf t =
     )
   | _ -> pp_typ' vs ppf t
 
+let pp_lab = pr
+
 let pp_typ ppf t =
   let vs = vs_of_cs (cons t) in
   pp_typ' vs ppf t
@@ -1490,6 +1492,7 @@ let string_of_typ_expand typ : string =
 end
 
 module type Pretty = sig
+  val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->
