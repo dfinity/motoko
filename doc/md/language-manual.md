@@ -1113,7 +1113,7 @@ If `<arg>` is
 * `#new s`, where `s` has type `CanisterSettings`:
   creates an Internet Computer principal `p`, with settings `s`, and installs the instance to `p`.
 * `#install p`, where `p` has type `Principal`, installs the actor to an already created, but empty, Internet Computer principal `p`.
-* `#update a`, where `a` has type (or supertype) `actor {}`, installs the instance as an _upgrade_ of actor `a`, using its current stable storage to initialize stable variables and stable memory
+* `#upgrade a`, where `a` has type (or supertype) `actor {}`, installs the instance as an _upgrade_ of actor `a`, using its current stable storage to initialize stable variables and stable memory
    of the new instance.
 * `#reinstall a`, where `a` has type (or supertype) `actor {}`, installs the instance over the existing actor `a`, discarding its stable variables and stable memory.
 
@@ -1125,9 +1125,9 @@ On the Internet Computer, calling the primary constructor `Lib.<id>` is equivale
 
 :::danger
 
-The use of `#update a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)
+The use of `#upgrade a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)
 
-The use of `#reinsall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed at `a` (even with a dynamic check).
+The use of `#reinstall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed at `a` (even with a dynamic check).
 This can break existing clients of `a`. The current state of `a` will be lost.
 
 :::
