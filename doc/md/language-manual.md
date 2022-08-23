@@ -1123,6 +1123,12 @@ On the Internet Computer, calling the primary constructor `Lib.<id>` is equivale
 
 :::
 
+:::note
+
+On the Internet Computer, calls to `Lib.<id>` and  `(system Lib.<id>)(#new ...)` must be provisioned with enough cycles for the creation of a new principal. Other call variants will use the cycles of the already allocated principal or actor.
+
+:::
+
 :::danger
 
 The use of `#upgrade a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)

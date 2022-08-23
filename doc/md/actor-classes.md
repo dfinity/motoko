@@ -55,3 +55,24 @@ actor class Map(n : Nat) {
 ```
 
 Clients of actor *class* `Map` are now free to determine the (maximum) number of buckets in the network by passing an argument on construction.
+
+:::note
+
+On the Internet Computer, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See (ExperimentalCycles)[ExperimentalCycles.md] for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add(cycles)` function.
+
+:::
+
+### Managing instances
+
+
+On the Internet Computer, the primary constructor of an imported actor class always creates a new principal and installs a fresh instance of the class as the code for that principal.
+
+To provide further control over actor class installation, Motoko endows each imported actor class with an extra, secondary constructor.
+This constructor takes an additional first argument that specifies the desired installation mode. The constructor is only available via special syntax that stresses its
+`system` functionality.
+
+Using this syntax, its possible to specify initial canister settings (such as an array of controllers), manually install, upgrade and reinstall canisters, exposing all of the
+lower-level facilities of the Internet Computer.
+
+See (Actor class management)(language-manual.md#actor_class_management) for more details.
+
