@@ -1055,7 +1055,7 @@ module {
 
 provided that:
 
--   the actor class declaration `<dec>` has function type `(U1, …​, Un) → async T` under the static environment induced by the imports in `<import>;*`.
+-   the actor class declaration `<dec>` has function type `(U1, ...​,Un) -> async T` under the static environment induced by the imports in `<import>;*`.
 
 Notice that the imported type of the function `<id>` must be asynchronous.
 
@@ -1067,7 +1067,70 @@ module {
 }
 ```
 
-On the Internet Computer, if this library is imported as identifier `Lib`, then calling `await Lib.<id>(<exp1>, …​, <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, …​, `<expn>` as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`. Installation is (necessarily) asynchronous.
+On the Internet Computer, if this library is imported as identifier `Lib`, then calling `await Lib.<id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ...​, `<expn>` as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`. Installation is (necessarily) asynchronous.
+
+
+#### Actor class management
+
+On the Internet Computer, the default constructor of an imported actor class always creates a new principal and installs a fresh instance of the class as the code for that principal.
+
+To provide further control over actor class installation, Motoko endows each imported actor class with an extra, secondary constructor.
+This constructor takes an additional first argument that specifies the desired installation mode. The constructor is only available via special syntax that stresses its
+`system` functionality.
+
+Given actor class constructor:
+```
+Lib.<id> : (U1, ...​, Un) -> async T
+```
+
+Its secondary constructor is `(system Lib.<Id>)` where:
+
+```
+(system Lib.<id>):
+  { #new CanisterSettings;
+    #install : Principal;
+    #reinstall : actor {} ;
+    #upgrade : actor {} }  ->
+    (U1, ...​, Un) -> async T
+```
+
+where
+
+```
+  type CanisterSettings = {
+     settings : ? {
+        controllers : ? [Principal];
+        compute_allocation : ?Nat;
+        memory_allocation : ?Nat;
+        freezing_threshod : ?Nat;
+     }
+  }
+```
+
+Calling `(system Lib.<id>)(<arg>)(<exp1>, ...​, <expn>)` uses the additional argument `<arg>`, a variant value, to control the installation of the canister further.
+
+If `<arg>` is
+* `#new s`, where `s` has type `CanisterSettings`:
+  creates an Internet Computer principal `p`, with settings `s`, and installs the instance to `p`.
+* `#install p`, where `p` has type `Principal`, installs the actor to an already created, but empty, Internet Computer principal `p`.
+* `#update a`, where `a` has type (or supertype) `actor {}`, installs the instance as an _upgrade_ of actor `a`, using its current stable storage to initialize stable variables and stable memory
+   of the new instance.
+* `#reinstall a`, where `a` has type (or supertype) `actor {}`, installs the instance over the existing actor `a`, discarding its stable variables and stable memory.
+
+:::note
+
+On the Internet Computer, calling the primary constructor `Lib.<id>` is equivalent to calling the secondary constructor `(system Lib.<id>)` with argument `(#new {settings = null})` (i.e. using default settings).
+
+:::
+
+:::danger
+
+The use of `#update a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)
+
+The use of `#reinsall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed at `a` (even with a dynamic check).
+This can break existing clients of `a`. The current state of `a` will be lost.
+
+:::
 
 ### Imports and Urls
 
