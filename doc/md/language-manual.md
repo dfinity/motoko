@@ -1667,9 +1667,7 @@ Thus the field list serves as
 
 The resulting type is determined by the bases' (and explicitly given fields') static type.
 
-`var` fields from the bases (when not disambiguated) will show up in the result as `var` fields that *share* the original contents,
-i.e. an assignment to such a field of either the base or the result will change the shared content. If such a behaviour is not desired,
-then the field must be explicitly overwritten in the explicit field list.
+Any `var` field from some base must be overwritten in the explicit field list. This avoids introducing aliasing of `var` fields.
 
 ### Object projection (member access)
 
