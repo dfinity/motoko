@@ -60,7 +60,7 @@ func mox<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int } and { 
     { a and b with c = "Right" };
 
 func mux<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int; b : Char; c : Text } =
-    { a and b  with c = "Yeah"  };
+    { a and b with c = "Yeah" };
 
 
 // extending iterators
