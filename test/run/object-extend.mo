@@ -50,9 +50,6 @@ assert t.l;
 
 // some allowed polymorphism
 
-/* issue #3405
-these all give: Fatal error: exception (Invalid_argument Type.as_obj)
-
 type A0 = { a : Int };
 type B0 = { b : Char };
 
@@ -63,8 +60,8 @@ func mox<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int } and { 
     { a and b with c = "Right" };
 
 func mux<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int; b : Char; c : Text } =
-    { a and b with c = "Yeah" }
-*/
+    { a and b with c = "Yeah" };
+
 
 // extending iterators
 let tb_ok : { next : () -> ?Char; bar : Nat } = { "Text base".chars() with bar = 42 };
