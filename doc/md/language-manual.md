@@ -1087,7 +1087,7 @@ Its secondary constructor is `(system Lib.<Id>)` where:
 
 ```
 (system Lib.<id>):
-  { #new CanisterSettings;
+  { #new : CanisterSettings;
     #install : Principal;
     #reinstall : actor {} ;
     #upgrade : actor {} }  ->
@@ -1107,9 +1107,9 @@ where
   }
 ```
 
-Calling `(system Lib.<id>)(<arg>)(<exp1>, ...​, <expn>)` uses the additional argument `<arg>`, a variant value, to control the installation of the canister further.
+Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the additional argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>,..., <expn>)` are the user-declared constructor arguments.
 
-If `<arg>` is
+If `<exp>` is
 * `#new s`, where `s` has type `CanisterSettings`:
   creates an Internet Computer principal `p`, with settings `s`, and installs the instance to `p`.
 * `#install p`, where `p` has type `Principal`, installs the actor to an already created, but empty, Internet Computer principal `p`.
@@ -1127,8 +1127,8 @@ On the Internet Computer, calling the primary constructor `Lib.<id>` is equivale
 
 The use of `#upgrade a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)
 
-The use of `#reinstall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed at `a` (even with a dynamic check).
-This can break existing clients of `a`. The current state of `a` will be lost.
+The use of `#reinstall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed in actor `a` (even with a dynamic check).
+This can break any existing clients of `a`. The current state of `a` will be lost.
 
 :::
 
@@ -1197,7 +1197,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
 
--   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [???](#inspect-message)).
+-   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 
 -   `preupgrade`, when declared, is called during an upgrade, immediately *before* the (current) values of the (retired) actor’s stable variables are transferred to the replacement actor.
 
@@ -1367,7 +1367,7 @@ Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a 
 
 The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
 
-The declaration `type C < X0 <: T0>, …​, Xn <: Tn > = U` is well-formed provided:
+The declaration `type C< X0 <: T0, …​, Xn <: Tn > = U` is well-formed provided:
 
 -   type parameters `X0`, …​, `Xn` are distinct, and
 
@@ -1381,7 +1381,7 @@ The declaration `type C < X0 <: T0>, …​, Xn <: Tn > = U` is well-formed prov
 
 -   it is non-expansive (see [Expansiveness](#expansiveness)).
 
-In scope of the declaration `type C < X0<:T0>, …​, Xn <: Tn > = U`, any well-formed type `C < U0, …​, Un>` is equivalent to its expansion `U [ U0/X0, …​, Un/Xn ]`. Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
+In scope of the declaration `type C< X0<:T0, …​, Xn <: Tn > = U`, any well-formed type `C< U0, …​, Un >` is equivalent to its expansion `U [ U0/X0, …​, Un/Xn ]`. Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
 
 #### Productivity
 
