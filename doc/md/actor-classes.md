@@ -62,8 +62,7 @@ On the Internet Computer, calls to a class constructor must be provisioned with 
 
 :::
 
-### Managing instances
-
+## Configuring and managing actor class instances
 
 On the Internet Computer, the primary constructor of an imported actor class always creates a new principal and installs a fresh instance of the class as the code for that principal.
 
