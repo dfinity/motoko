@@ -9,6 +9,26 @@
     `baseA/B` and the explicitly specified `field1/2`.
     Restrictions for ambiguous and `var` fields from bases apply (#3084)
 
+  * Add new support for installing actor class instances on the IC,
+    supporting specification of canister settings, install, upgrade and
+    reinstall. (#3386)
+
+    A new expression
+
+    ```bnf
+      (system <exp> . <id>)
+    ```
+    where `<exp>` is an imported library and `<id>` is the name of
+    an actor class, accesses a secondary constructor of the class
+    that takes an additional argument controlling the installation.
+
+    For example,
+    ```motoko
+      await (system Lib.Node)(#upgrade a)(i);
+    ```
+    upgrades actor `a` with the code for a new instance of class `Lib.Node`,
+    passing constructor argument `(i)`.
+
 ## 0.6.30 (2022-08-11)
 
 * motoko (`moc`)
