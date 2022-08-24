@@ -467,6 +467,7 @@ The syntax of an *expression* is as follows:
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
   { <exp-field>;* }                              object
+  { <exp> (and <exp>)* (with <exp-field>;+)? }   object combination/extension
   # id <exp>?                                    variant injection
   <exp> . <id>                                   object projection/member access
   <exp> := <exp>                                 assignment
@@ -503,6 +504,7 @@ The syntax of an *expression* is as follows:
   actor <exp>                                    actor reference
   to_candid ( <exp>,* )                          Candid serialization
   from_candid <exp>                              Candid deserialization
+  (system <exp> . <id>)                          System actor class constructor
   ( <exp> )                                      parentheses
 
 <block-or-exp> ::=
@@ -1055,7 +1057,7 @@ module {
 
 provided that:
 
--   the actor class declaration `<dec>` has function type `(U1, …​, Un) → async T` under the static environment induced by the imports in `<import>;*`.
+-   the actor class declaration `<dec>` has function type `(U1, ...​, Un) -> async T` under the static environment induced by the imports in `<import>;*`.
 
 Notice that the imported type of the function `<id>` must be asynchronous.
 
@@ -1067,7 +1069,79 @@ module {
 }
 ```
 
-On the Internet Computer, if this library is imported as identifier `Lib`, then calling `await Lib.<id>(<exp1>, …​, <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, …​, `<expn>` as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`. Installation is (necessarily) asynchronous.
+On the Internet Computer, if this library is imported as identifier `Lib`, then calling `await Lib.<id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ...​, `<expn>` as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`. Installation is (necessarily) asynchronous.
+
+
+#### Actor class management
+
+On the Internet Computer, the primary constructor of an imported actor class always creates a new principal and installs a fresh instance of the class as the code for that principal.
+While that is one way to install a canister on the IC, it is not the only way.
+
+To provide further control over the installation of actor classes, Motoko endows each imported actor class with an extra, secondary constructor, for use on the Internet Computer.
+This constructor takes an additional first argument that tailors the installation. The constructor is only available via special syntax that stresses its
+`system` functionality.
+
+Given some actor class constructor:
+
+``` motoko no-repl
+Lib.<id> : (U1, ...​, Un) -> async T
+```
+
+Its secondary constructor is accessed as `(system Lib.<id>)` with typing:
+
+``` motoko no-repl
+(system Lib.<id>) :
+  { #new : CanisterSettings;
+    #install : Principal;
+    #reinstall : actor {} ;
+    #upgrade : actor {} }  ->
+    (U1, ...​, Un) -> async T
+```
+
+where
+
+``` motoko no-repl
+  type CanisterSettings = {
+     settings : ?{
+        controllers : ?[Principal];
+        compute_allocation : ?Nat;
+        memory_allocation : ?Nat;
+        freezing_threshold : ?Nat;
+     }
+  }
+```
+
+
+Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the first argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>, ..., <expn>)` are just the user-declared constructor arguments of types `U1, ..., Un` that would also be passed to the primary constructor.
+
+If `<exp>` is
+* `#new s`, where `s` has type `CanisterSettings`:
+  the call creates a fresh Internet Computer principal `p`, with settings `s`, and installs the instance to principal `p`.
+* `#install p`, where `p` has type `Principal`, the call installs the actor to an already created Internet Computer principal `p`. The principal must be empty (have no previously installed code) or the call will return an error.
+* `#upgrade a`, where `a` has type (or supertype) `actor {}`, the call installs the instance as an _upgrade_ of actor `a`, using its current stable storage to initialize stable variables and stable memory
+   of the new instance.
+* `#reinstall a`, where `a` has type (or supertype) `actor {}`, reinstalls the instance over the existing actor `a`, discarding its stable variables and stable memory.
+
+:::note
+
+On the Internet Computer, calling the primary constructor `Lib.<id>` is equivalent to calling the secondary constructor `(system Lib.<id>)` with argument `(#new {settings = null})` (i.e. using default settings).
+
+:::
+
+:::note
+
+On the Internet Computer, calls to `Lib.<id>` and  `(system Lib.<id>)(#new ...)` must be provisioned with enough cycles for the creation of a new principal. Other call variants will use the cycles of the already allocated principal or actor.
+
+:::
+
+:::danger
+
+The use of `#upgrade a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)
+
+The use of `#reinstall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed in actor `a` (even with a dynamic check).
+A change in interface may break any existing clients of `a`. The current state of `a` will be lost.
+
+:::
 
 ### Imports and Urls
 
@@ -1134,7 +1208,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
 
--   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [???](#inspect-message)).
+-   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 
 -   `preupgrade`, when declared, is called during an upgrade, immediately *before* the (current) values of the (retired) actor’s stable variables are transferred to the replacement actor.
 
@@ -1304,7 +1378,7 @@ Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a 
 
 The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
 
-The declaration `type C < X0 <: T0>, …​, Xn <: Tn > = U` is well-formed provided:
+The declaration `type C< X0 <: T0, …​, Xn <: Tn > = U` is well-formed provided:
 
 -   type parameters `X0`, …​, `Xn` are distinct, and
 
@@ -1318,7 +1392,7 @@ The declaration `type C < X0 <: T0>, …​, Xn <: Tn > = U` is well-formed prov
 
 -   it is non-expansive (see [Expansiveness](#expansiveness)).
 
-In scope of the declaration `type C < X0<:T0>, …​, Xn <: Tn > = U`, any well-formed type `C < U0, …​, Un>` is equivalent to its expansion `U [ U0/X0, …​, Un/Xn ]`. Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
+In scope of the declaration `type C< X0<:T0, …​, Xn <: Tn > = U`, any well-formed type `C< U0, …​, Un >` is equivalent to its expansion `U [ U0/X0, …​, Un/Xn ]`. Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
 
 #### Productivity
 
@@ -1654,32 +1728,68 @@ Such an object literal, sometimes called a *record*, is equivalent to the object
 
 Object expressions support *punning* for concision. A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both associate the field named `<id>` with the value of the identifier `<id>`.
 
-#### Object reuse and extension
+### Object combination/extension
 
 Objects can be combined and/or extended using the `and` and `with` keywords.
 
 A record expression `{ <exp> (and <exp>)* (with <exp-field>;+)? }` merges the objects (or modules) specified as *base* expressions, and augments the result to also contain the specified fields. The `with <exp-field>;+` clause can be omitted when at least two bases appear and none have common field labels.
-Thus the field list serves as
-- disambiguation for field labels occurring more than once in the bases,
-- supplying fresh fields,
-- changing field types, and
-- adding new `var` field or to avoid aliasing with an existing `var` field from some base.
+Thus the field list serves to:
+
+-   disambiguate field labels occurring more than once in the bases,
+-   define new fields,
+-   override existing fields and their types, and
+-   add new `var` fields
+-   redefine existing `var` fields from some base to prevent aliasing.
 
 The resulting type is determined by the bases' (and explicitly given fields') static type.
 
-Any `var` field from some base must be overwritten in the explicit field list. This avoids introducing aliasing of `var` fields.
+Any `var` field from some base must be overwritten in the explicit field list. This prevents introducing aliases of `var` fields.
+
+The record expression `{ <exp1> and ... <expn> with <exp-field1>; ... <exp_fieldn>; }` has type `T` provided:
+
+-  The record `{ <exp-field1>; ... <exp_fieldm>; }` has record type `{ field_tys } == { var? <id1> : U1; ... var? <idm> : Um }`.
+
+-  Let `newfields == { <id1> , ..., <idm> }` be the set of new field names.
+
+-   Considering value fields:
+
+    -   Base expression `<expi>` has object or module type `sorti { field_tysi } == sorti { var? <idi1> : Ti1, …​, var? <idik> : Tik }` where `sorti <> Actor`.
+
+    Let `fields(i) == { <idi1>, ..., <idik> }` be the set of static field names of base `i`. Then
+
+    -   `fields(i)` is disjoint from `newfields` (possibly by applying subtyping to the type of `<expi>`);
+    -   no field in `field_tysi` is a `var` field;
+    -  `fields(i)` is disjoint from `fields(j)` for `j < i`.
+
+-   Considering type fields:
+
+    -   Base expression `<expi>` has object or module type `sorti { typ_fieldsi } == sorti { type <idj1> = … , …, type <idik> = … }` where `sorti <> Actor`.
+    -   `typ_fieldsi` _agrees_ with `typ_fieldsj` for `j < i`.
+
+-   `T` is `{ typ_fieldsi fields_tys1 ... typ_fieldsm fields_tysm field_tys }`.
+
+Here, two sequences of type fields _agree_ only when any two type fields of the same name in each sequence have equivalent definitions.
+
+<!--
+Note that the case for type fields is simpler than the value fields case only because the clause `with <exp-field1>; ... <exp_fieldn>` cannot contain type fields.
+-->
+
+The record expression `{ <exp1> and ... <expn> with <exp-field1>; ... <exp_fieldm>; }` evaluates records `<exp1>` through `<expn>` and `{ exp-field1; ... <exp_fieldm }` to results `r1` through `rn` and `r`, trapping on the first result that is a trap. If none of the expressions produces a trap, the results are objects `sort1 { f1 }`, `sortn { fn }` and `object { f }`, where `f1` ... `fn` and `f` are maps from identifiers to values or mutable locations.
+
+The result of the entire expression is the value `object { g }` where `g` is the partial map with domain `fields(1) union fields(n) union newfields` mapping identifiers to unique
+values or locations such that `g(<id>) = fi(<id>)` if `<id>` is in `fields(i)`, for some `i`, or `f(<id>)` if `<id>` is in `newfields`.
 
 ### Object projection (member access)
 
 The object projection `<exp> . <id>` has type `var? T` provided `<exp>` has object type `sort { var1? <id1> : T1, …​, var? <id> : T, …​, var? <idn> : Tn }` for some sort `sort`.
 
-The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an object value `{ <id1> = v1,…​, id = v, …​, <idn> = vn }` and the result of the projection is the value `v` of field `id`.
+The object projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be an object value `{ <id1> = v1,…​, id = v, …​, <idm> = vm }` and the result of the projection is the value `w` obtained from value or location `v` in field `id`.
 
-If `var` is absent from `var? T` then the value `v` is the constant value of immutable field `<id>`, otherwise:
+If `var` is absent from `var? T` then the value `w` is just the value `v` of immutable field `<id>`, otherwise:
 
--   if the projection occurs as the target of an assignment expression then `v` is the mutable location of the field `<id>`.
+-   if the projection occurs as the target of an assignment expression then `w` is just `v`, the mutable location in field `<id>`.
 
--   otherwise, `v` (of type `T`) is the value currently stored in mutable field `<id>`.
+-   otherwise, `w` (of type `T`) is the value currently stored at the mutable location `v` in field `<id>`.
 
 ### Special member access
 
@@ -2155,19 +2265,19 @@ ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `de
 
 :::note
 
-`from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
+Operation `from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
 
 :::
 
 :::note
 
-`to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
+Operations `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
 
 :::
 
 :::danger
 
-the Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
+The Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
 
 :::
 

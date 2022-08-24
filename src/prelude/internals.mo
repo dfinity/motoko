@@ -370,7 +370,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 module @ManagementCanister = {
   public type wasm_module = Blob;
   public type canister_settings = {
-    controller : ?Principal;
+    controllers : ?[Principal];
     compute_allocation: ?Nat;
     memory_allocation: ?Nat;
     freezing_threshold: ?Nat;
@@ -390,8 +390,25 @@ let @ic00 = actor "aaaaa-aa" :
     } -> async ()
  };
 
+func @ic00_create_canister() : shared {
+      settings : ?@ManagementCanister.canister_settings
+    } -> async { canister_id : Principal } {
+  @ic00.create_canister
+};
+
+func @ic00_install_code() : shared {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : @ManagementCanister.wasm_module;
+    arg : Blob;
+  } -> async () {
+  @ic00.install_code
+};
+
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
+// TODO: This helper is now only used by Prim.createActor and could be removed, except
+// that Prim.createActor was mentioned on the forum and might be in use. (#3420)
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat) ();
   let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
