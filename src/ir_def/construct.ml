@@ -412,7 +412,6 @@ let tupE exps =
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
   }
 
-
 let unitE () = tupE []
 
 let breakE l exp =
