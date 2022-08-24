@@ -967,13 +967,14 @@ let import_lib env lib =
   | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);
-        ("install" ^ id.it,
+        ("system",
+         V.Obj (V.Env.singleton id.it (
           V.local_func 1 1 (fun c w k ->
             let tag, w1 = V.as_variant w in
             let o = V.as_obj w1 in
             if tag = "new" && V.Env.find "settings" o = V.Null
             then k v
-            else trap cub.at "actor class configuration unsupported in interpreter"))])
+            else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | _ -> assert false
 
 

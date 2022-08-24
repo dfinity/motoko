@@ -503,6 +503,7 @@ The syntax of an *expression* is as follows:
   actor <exp>                                    actor reference
   to_candid ( <exp>,* )                          Candid serialization
   from_candid <exp>                              Candid deserialization
+  (system <exp> . <id>)                          System actor class constructor
   ( <exp> )                                      parentheses
 
 <block-or-exp> ::=
@@ -1055,7 +1056,7 @@ module {
 
 provided that:
 
--   the actor class declaration `<dec>` has function type `(U1, …​, Un) → async T` under the static environment induced by the imports in `<import>;*`.
+-   the actor class declaration `<dec>` has function type `(U1, ...​, Un) -> async T` under the static environment induced by the imports in `<import>;*`.
 
 Notice that the imported type of the function `<id>` must be asynchronous.
 
@@ -1067,7 +1068,79 @@ module {
 }
 ```
 
-On the Internet Computer, if this library is imported as identifier `Lib`, then calling `await Lib.<id>(<exp1>, …​, <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, …​, `<expn>` as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`. Installation is (necessarily) asynchronous.
+On the Internet Computer, if this library is imported as identifier `Lib`, then calling `await Lib.<id>(<exp1>, ..., <expn>)`, installs a fresh instance of the actor class as an isolated IC canister, passing the values of `<exp1>`, ...​, `<expn>` as installation arguments, and returns a reference to a (remote) actor of *type* `Lib.<id>`, that is, `T`. Installation is (necessarily) asynchronous.
+
+
+#### Actor class management
+
+On the Internet Computer, the primary constructor of an imported actor class always creates a new principal and installs a fresh instance of the class as the code for that principal.
+While that is one way to install a canister on the IC, it is not the only way.
+
+To provide further control over the installation of actor classes, Motoko endows each imported actor class with an extra, secondary constructor, for use on the Internet Computer.
+This constructor takes an additional first argument that tailors the installation. The constructor is only available via special syntax that stresses its
+`system` functionality.
+
+Given some actor class constructor:
+
+``` motoko no-repl
+Lib.<id> : (U1, ...​, Un) -> async T
+```
+
+Its secondary constructor is accessed as `(system Lib.<id>)` with typing:
+
+``` motoko no-repl
+(system Lib.<id>) :
+  { #new : CanisterSettings;
+    #install : Principal;
+    #reinstall : actor {} ;
+    #upgrade : actor {} }  ->
+    (U1, ...​, Un) -> async T
+```
+
+where
+
+``` motoko no-repl
+  type CanisterSettings = {
+     settings : ?{
+        controllers : ?[Principal];
+        compute_allocation : ?Nat;
+        memory_allocation : ?Nat;
+        freezing_threshold : ?Nat;
+     }
+  }
+```
+
+
+Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the first argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>, ..., <expn>)` are just the user-declared constructor arguments of types `U1, ..., Un` that would also be passed to the primary constructor.
+
+If `<exp>` is
+* `#new s`, where `s` has type `CanisterSettings`:
+  the call creates a fresh Internet Computer principal `p`, with settings `s`, and installs the instance to principal `p`.
+* `#install p`, where `p` has type `Principal`, the call installs the actor to an already created Internet Computer principal `p`. The principal must be empty (have no previously installed code) or the call will return an error.
+* `#upgrade a`, where `a` has type (or supertype) `actor {}`, the call installs the instance as an _upgrade_ of actor `a`, using its current stable storage to initialize stable variables and stable memory
+   of the new instance.
+* `#reinstall a`, where `a` has type (or supertype) `actor {}`, reinstalls the instance over the existing actor `a`, discarding its stable variables and stable memory.
+
+:::note
+
+On the Internet Computer, calling the primary constructor `Lib.<id>` is equivalent to calling the secondary constructor `(system Lib.<id>)` with argument `(#new {settings = null})` (i.e. using default settings).
+
+:::
+
+:::note
+
+On the Internet Computer, calls to `Lib.<id>` and  `(system Lib.<id>)(#new ...)` must be provisioned with enough cycles for the creation of a new principal. Other call variants will use the cycles of the already allocated principal or actor.
+
+:::
+
+:::danger
+
+The use of `#upgrade a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)
+
+The use of `#reinstall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed in actor `a` (even with a dynamic check).
+A change in interface may break any existing clients of `a`. The current state of `a` will be lost.
+
+:::
 
 ### Imports and Urls
 
@@ -1134,7 +1207,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
 
--   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [???](#inspect-message)).
+-   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 
 -   `preupgrade`, when declared, is called during an upgrade, immediately *before* the (current) values of the (retired) actor’s stable variables are transferred to the replacement actor.
 
@@ -1304,7 +1377,7 @@ Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a 
 
 The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
 
-The declaration `type C < X0 <: T0>, …​, Xn <: Tn > = U` is well-formed provided:
+The declaration `type C< X0 <: T0, …​, Xn <: Tn > = U` is well-formed provided:
 
 -   type parameters `X0`, …​, `Xn` are distinct, and
 
@@ -1318,7 +1391,7 @@ The declaration `type C < X0 <: T0>, …​, Xn <: Tn > = U` is well-formed prov
 
 -   it is non-expansive (see [Expansiveness](#expansiveness)).
 
-In scope of the declaration `type C < X0<:T0>, …​, Xn <: Tn > = U`, any well-formed type `C < U0, …​, Un>` is equivalent to its expansion `U [ U0/X0, …​, Un/Xn ]`. Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
+In scope of the declaration `type C< X0<:T0, …​, Xn <: Tn > = U`, any well-formed type `C< U0, …​, Un >` is equivalent to its expansion `U [ U0/X0, …​, Un/Xn ]`. Distinct type expressions that expand to identical types are inter-changeable, regardless of any distinction between type constructor names. In short, the equivalence between types is structural, not nominal.
 
 #### Productivity
 
@@ -2140,19 +2213,19 @@ ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `de
 
 :::note
 
-`from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
+Operation `from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
 
 :::
 
 :::note
 
-`to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
+Operations `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
 
 :::
 
 :::danger
 
-the Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
+The Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
 
 :::
 

@@ -872,24 +872,12 @@ let actor_class_mod_exp id class_typ install =
   let install_new =
     (varE install_var) -*- (tagE "new" (recordE ["settings", nullE()]))
   in
-  let fun_typ = install_new.note.Note.typ in
-  let func_var = fresh_var id fun_typ in
   blockE
-    [ letD install_var install;
-      letD func_var install_new ]
-    (newObjE T.Module
-       [ { it = {I.name = "install" ^ id; I.var = id_of_var install_var};
-           at = no_region;
-           note = install_typ };
-         { it = {I.name = id; I.var = id_of_var func_var};
-           at = no_region;
-           note = fun_typ };
-       ]
-       (T.Obj(T.Module, List.sort T.compare_field [
-          { T.lab = id; T.typ = T.Typ class_con; depr = None };
-          { T.lab = "install" ^ id; T.typ = install_typ; depr = None };
-          { T.lab = id; T.typ = fun_typ; depr = None };
-    ])))
+    [ letD install_var install ]
+    (objE T.Module
+      [(id, class_con)]
+      [(id, install_new);
+       ("system", objE T.Module [] [(id, varE install_var)])])
 
 let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in

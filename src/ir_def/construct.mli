@@ -135,5 +135,8 @@ val forall : typ_bind list -> exp -> exp (* generalization *)
 val (-*-) : exp -> exp -> exp       (* application *)
 
 
+(* Objects *)
+val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
+
 (* Records *)
 val recordE : (lab * exp) list -> exp

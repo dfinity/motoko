@@ -682,14 +682,17 @@ let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
 
-let recordE flds =
+
+let objE sort typ_flds flds =
   let rec go ds fields fld_tys flds =
     match flds with
     | [] ->
       blockE
         (List.rev ds)
-        (newObjE T.Object fields
-          (T.obj T.Object fld_tys))
+        (newObjE sort fields
+           (T.obj sort
+              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+               @ fld_tys)))
     | (lab, exp)::flds ->
       let v = fresh_var lab (typ exp) in
       let field = {
@@ -700,3 +703,5 @@ let recordE flds =
       go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
   in
   go [] [] [] flds
+
+let recordE flds = objE T.Object [] flds
