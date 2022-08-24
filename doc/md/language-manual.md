@@ -503,6 +503,7 @@ The syntax of an *expression* is as follows:
   actor <exp>                                    actor reference
   to_candid ( <exp>,* )                          Candid serialization
   from_candid <exp>                              Candid deserialization
+  (system <exp> . <id>)                          System actor class constructor
   ( <exp> )                                      parentheses
 
 <block-or-exp> ::=
@@ -1100,7 +1101,7 @@ where
 
 ``` motoko no-repl
   type CanisterSettings = {
-     settings : ? {
+     settings : ?{
         controllers : ?[Principal];
         compute_allocation : ?Nat;
         memory_allocation : ?Nat;
@@ -2212,19 +2213,19 @@ ea(_) is defined in design doc motoko/design/IDL-Motoko.md, but `encode` and `de
 
 :::note
 
-`from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
+Operation `from_candid` returns `null` when the argument is a valid Candid encoding of the wrong type. It traps if the blob is not a valid Candid encoding at all.
 
 :::
 
 :::note
 
-`to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
+Operations `to_candid` and `from_candid` are syntactic operators, not first-class functions, and must be fully applied in the syntax.
 
 :::
 
 :::danger
 
-the Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
+The Candid encoding of a value as a blob is not unique and the same value may have many different Candid representations as a blob. For this reason, blobs should never be used to, for instance, compute hashes of values or determine equality, whether across compiler versions or even just different programs.
 
 :::
 
