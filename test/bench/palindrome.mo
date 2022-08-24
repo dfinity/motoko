@@ -19,21 +19,24 @@ actor Palindrome {
     };
 
     func direct(xs : List<Char>) : Bool {
-        func walk (xs1 : List<Char>, xs2 : List<Char>) : List<Char> =
+        func walk (xs1 : List<Char>, xs2 : List<Char>) : ?List<Char> =
+          do ? {
             switch (xs1, xs2) {
-                case (_, null) xs1; // even length
-                case (?(_, xs1), ?(_, null)) xs1; // odd length
-                case (?(x, xs1), ?(_, ?(_, xs2))) {
-                    let ?(y, ys) = walk (xs1, xs2);
-                    if (x == y) {
-                        ys
-                    } else { throw error("Nope") }
-                }
-            };
-        try {
-            let null = walk (xs, xs);
-            true
-        } catch _ false
+            case (_, null) xs1; // even length
+            case (?(_, xs1), ?(_, null)) xs1; // odd length
+            case (?(x, xs1), ?(_, ?(_, xs2))) {
+                     let ?(y, ys) = walk (xs1, xs2)!;
+                     if (x == y) {
+                         ys
+                     } else { return null }
+                 }
+            }
+          };
+        let _ = do ? {
+            let _ = walk (xs, xs)!;
+            return true
+        };
+        return false
     };
 
     func as_list(cs : Text) : List<Char> {
@@ -52,10 +55,20 @@ actor Palindrome {
         let (m1, n1) = counters();
         debugPrint(debug_show (b, m1 - m0, n1 - n0));
 
+        let (m2, n2) = counters();
+        let bn = cps(as_list "go hang a salami imalas a gnah op"); // Go hang a salami, I'm a lasagna hop.
+        let (m3, n3) = counters();
+        debugPrint(debug_show (bn, m3 - m2, n3 - n2));
+
         let (i0, j0) = counters();
         let c = direct(as_list "go hang a salami imalas a gnah og");
         let (i1, j1) = counters();
-        debugPrint(debug_show (c, i1 - i0, j1 - j0))
+        debugPrint(debug_show (c, i1 - i0, j1 - j0));
+
+        let (i2, j2) = counters();
+        let cn = direct(as_list "go hang a salami imalas a gnah op");
+        let (i3, j3) = counters();
+        debugPrint(debug_show (cn, i3 - i2, j3 - j2))
     }
 }
 
