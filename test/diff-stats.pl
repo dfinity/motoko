@@ -40,6 +40,19 @@ sub comma_and {
   }
 }
 
+sub bulleted {
+  if (scalar @_ == 0) {
+    return ""
+  } elsif (scalar @_ == 1) {
+    return (sprintf " - %s\n", $_[0]);
+  } else {
+    my $head = shift;
+    return (sprintf " - %s\n%s", $head, bulleted(@_));
+  }
+}
+
+my @report;
+
 for my $group (sort keys %stats) {
   my $gstats = $stats{$group};
   my $total = 0;
@@ -56,6 +69,9 @@ for my $group (sort keys %stats) {
     my $stat1 = $gstats->{$test}[0];
     my $stat2 = $gstats->{$test}[1];
     if ($stat1 and $stat2) {
+      if ($stat1 != $stat2) {
+	push @report, sprintf "test `%s` (%s), change %+.5f%% (%d vs. previous %d)", $test, $group, ($stat2/$stat1 - 1) * 100, $stat2, $stat1;
+      }
       $geometric_mean *= $stat2/$stat1;
       $geometric_mean_denom++;
       if ($stat1 < $stat2) {
@@ -80,9 +96,13 @@ for my $group (sort keys %stats) {
     push @clauses, sprintf "%d tests improved", $improved if $improved;
     push @clauses, sprintf "%d tests are new", $new if $new;
     push @clauses, sprintf "%d tests are removed", $missing if $missing;
-    push @clauses, sprintf "the mean change is %+.1f%%.\n", (($geometric_mean - 1) * 100);
+    push @clauses, sprintf "the mean change is %+.5f%%.\n", ($geometric_mean - 1) * 100;
     printf "In terms of %s, %s", $group, comma_and(@clauses);
   } else {
     printf "In terms of %s, no changes are observed in %d tests.\n", $group, $total;
   }
+}
+
+if (@report ne "") {
+  printf "\n\n### Fine resolution stats\n%s\n", bulleted(@report);
 }
