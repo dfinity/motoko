@@ -1055,7 +1055,7 @@ module {
 
 provided that:
 
--   the actor class declaration `<dec>` has function type `(U1, ...​,Un) -> async T` under the static environment induced by the imports in `<import>;*`.
+-   the actor class declaration `<dec>` has function type `(U1, ...​, Un) -> async T` under the static environment induced by the imports in `<import>;*`.
 
 Notice that the imported type of the function `<id>` must be asynchronous.
 
@@ -1101,15 +1101,16 @@ where
 ``` motoko no-repl
   type CanisterSettings = {
      settings : ? {
-        controllers : ? [Principal];
+        controllers : ?[Principal];
         compute_allocation : ?Nat;
         memory_allocation : ?Nat;
-        freezing_threshod : ?Nat;
+        freezing_threshold : ?Nat;
      }
   }
 ```
 
-Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the first argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>,..., <expn>)` are just the user-declared constructor arguments of types `U1, ..., Un` that would also be passed to the primary constructor.
+
+Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the first argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>, ..., <expn>)` are just the user-declared constructor arguments of types `U1, ..., Un` that would also be passed to the primary constructor.
 
 If `<exp>` is
 * `#new s`, where `s` has type `CanisterSettings`:
