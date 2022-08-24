@@ -1072,21 +1072,23 @@ On the Internet Computer, if this library is imported as identifier `Lib`, then 
 
 #### Actor class management
 
-On the Internet Computer, the default constructor of an imported actor class always creates a new principal and installs a fresh instance of the class as the code for that principal.
+On the Internet Computer, the primary constructor of an imported actor class always creates a new principal and installs a fresh instance of the class as the code for that principal.
+While that is one way to install a canister on the IC, it is not the only way.
 
-To provide further control over actor class installation, Motoko endows each imported actor class with an extra, secondary constructor.
-This constructor takes an additional first argument that specifies the desired installation mode. The constructor is only available via special syntax that stresses its
+To provide further control over the installation of actor classes, Motoko endows each imported actor class with an extra, secondary constructor, for use on the Internet Computer.
+This constructor takes an additional first argument that tailors the installation. The constructor is only available via special syntax that stresses its
 `system` functionality.
 
-Given actor class constructor:
-```
+Given some actor class constructor:
+
+``` motoko no-repl
 Lib.<id> : (U1, ...​, Un) -> async T
 ```
 
-Its secondary constructor is `(system Lib.<Id>)` where:
+Its secondary constructor is accessed as `(system Lib.<id>)` with typing:
 
-```
-(system Lib.<id>):
+``` motoko no-repl
+(system Lib.<id>) :
   { #new : CanisterSettings;
     #install : Principal;
     #reinstall : actor {} ;
@@ -1096,7 +1098,7 @@ Its secondary constructor is `(system Lib.<Id>)` where:
 
 where
 
-```
+``` motoko no-repl
   type CanisterSettings = {
      settings : ? {
         controllers : ? [Principal];
@@ -1107,15 +1109,15 @@ where
   }
 ```
 
-Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the additional argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>,..., <expn>)` are the user-declared constructor arguments.
+Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the first argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>,..., <expn>)` are just the user-declared constructor arguments of types `U1, ..., Un` that would also be passed to the primary constructor.
 
 If `<exp>` is
 * `#new s`, where `s` has type `CanisterSettings`:
-  creates an Internet Computer principal `p`, with settings `s`, and installs the instance to `p`.
-* `#install p`, where `p` has type `Principal`, installs the actor to an already created, but empty, Internet Computer principal `p`.
-* `#upgrade a`, where `a` has type (or supertype) `actor {}`, installs the instance as an _upgrade_ of actor `a`, using its current stable storage to initialize stable variables and stable memory
+  the call creates a fresh Internet Computer principal `p`, with settings `s`, and installs the instance to principal `p`.
+* `#install p`, where `p` has type `Principal`, the call installs the actor to an already created Internet Computer principal `p`. The principal must be empty (have no previously installed code) or the call will return an error.
+* `#upgrade a`, where `a` has type (or supertype) `actor {}`, the call installs the instance as an _upgrade_ of actor `a`, using its current stable storage to initialize stable variables and stable memory
    of the new instance.
-* `#reinstall a`, where `a` has type (or supertype) `actor {}`, installs the instance over the existing actor `a`, discarding its stable variables and stable memory.
+* `#reinstall a`, where `a` has type (or supertype) `actor {}`, reinstalls the instance over the existing actor `a`, discarding its stable variables and stable memory.
 
 :::note
 
@@ -1134,7 +1136,7 @@ On the Internet Computer, calls to `Lib.<id>` and  `(system Lib.<id>)(#new ...)`
 The use of `#upgrade a` may be unsafe. Motoko will currently not verify that the upgrade is compatible with the code currently installed at `a`. (A future extension may verify compatibilty with a dynamic check.)
 
 The use of `#reinstall a` may be unsafe. Motoko cannot verify that the reinstall is compatible with the code currently installed in actor `a` (even with a dynamic check).
-This can break any existing clients of `a`. The current state of `a` will be lost.
+A change in interface may break any existing clients of `a`. The current state of `a` will be lost.
 
 :::
 
