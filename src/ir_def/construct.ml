@@ -690,7 +690,6 @@ let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
 
-
 let objE sort typ_flds flds =
   let rec go ds fields fld_tys flds =
     match flds with
