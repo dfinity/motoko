@@ -9539,11 +9539,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
     let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
-
     ( pre_ae1,
       alloc_code,
       (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
-          pre_code ^^ compile_exp_as env ae sr e ^^ code),
+                 pre_code ^^ compile_exp_as env ae sr e ^^ code),
       unmodified
     )
 
