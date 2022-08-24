@@ -96,7 +96,7 @@ let error_codes : (string * string option) list =
     "M0090", None; (* Actor reference must have an actor type *)
     "M0091", None; (* Mutable array expression cannot produce expected type *)
     "M0092", None; (* Async cannot produce scope *)
-    (* "M0093" Unallocated *)
+    "M0093", None; (* Bases of record extensions must be objects or modules *)
     "M0094", None; (* Shared functions does not match shared function type *)
     "M0095", None; (* Function return type does not match expected return type *)
     "M0096", None; (* Expression can't produce expected type *)
@@ -180,4 +180,7 @@ let error_codes : (string * string option) list =
     "M0174", None; (* from_candid produces an optional shared, not -- *)
     "M0175", None; (* to_candid argument must have shared type, not -- *)
     "M0176", None; (* from_candid requires known type from context *)
+    "M0177", None; (* Bases of record extensions must not have common fields that are not overwritten *)
+    "M0178", None; (* Bases of record extensions must be either objects or modules *)
+    "M0179", None; (* Mutable (var) fields from bases must be overwritten explicitly *)
   ]

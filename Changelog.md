@@ -2,13 +2,52 @@
 
 * motoko (`moc`)
 
+  * Adds new syntax for merging records (objects) and
+    adding/overwriting fields. The expression
+	`{ baseA and baseB with field1 = val1; field2 = val2 }`
+    creates a new record by joining all (statically known) fields from
+    `baseA/B` and the explicitly specified `field1/2`.
+    Restrictions for ambiguous and `var` fields from bases apply (#3084)
+
+## 0.6.30 (2022-08-11)
+
+* motoko (`moc`)
+
   * add primitives
     ```motoko
-      Prim.rts_mutator_instructions : () -> Nat
-      Prim.rts_collector_instructions : () -> Nat
+    shiftLeft : (Nat, Nat32) -> Nat
+    shiftRight : (Nat, Nat32) -> Nat
     ```
-    to report approximate IC instruction costs of last message
-    due to mutation (computation) and collection (GC), respectively (#3381).
+    for efficiently multiplying/dividing a `Nat` by a power of 2
+    (#3112)
+
+  * add primitives
+    ```motoko
+    rts_mutator_instructions : () -> Nat
+    rts_collector_instructions : () -> Nat
+    ```
+    to report approximate IC instruction costs of the last message
+    due to mutation (computation) and collection (GC), respectively (#3381)
+
+* motoko-base
+
+  * Add
+    ```motoko
+    Buffer.fromArray
+    Buffer.fromVarArray
+    ```
+    for efficiently adding an array to a `Buffer`
+    (dfinity/motoko-base#389)
+
+  * Add
+    ```motoko
+    Iter.sort : (xs : Iter<A>, compare : (A, A) -> Order) : Iter<A>
+    ```
+    for sorting an `Iter` given a comparison function
+    (dfinity/motoko-base#406)
+
+  * Performance: `HashMap` now avoids re-computing hashes on `resize`
+    (dfinity/motoko-base#394)
 
 ## 0.6.29 (2022-06-10)
 

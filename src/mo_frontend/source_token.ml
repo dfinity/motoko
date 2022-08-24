@@ -34,6 +34,7 @@ type token =
   | STABLE
   | TRY
   | THROW
+  | WITH
   | ARROW
   | ASSIGN
   | FUNC
@@ -153,6 +154,7 @@ let to_parser_token :
   | RETURN -> Ok Parser.RETURN
   | TRY -> Ok Parser.TRY
   | THROW -> Ok Parser.THROW
+  | WITH -> Ok Parser.WITH
   | ARROW -> Ok Parser.ARROW
   | ASSIGN -> Ok Parser.ASSIGN
   | FUNC -> Ok Parser.FUNC
@@ -273,6 +275,7 @@ let string_of_parser_token = function
   | Parser.RETURN -> "RETURN"
   | Parser.TRY -> "TRY"
   | Parser.THROW -> "THROW"
+  | Parser.WITH -> "WITH"
   | Parser.ARROW -> "ARROW"
   | Parser.ASSIGN -> "ASSIGN"
   | Parser.FUNC -> "FUNC"

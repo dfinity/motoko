@@ -9,7 +9,9 @@ actor a {
      return  Prim.rts_memory_size();
    };
 
+   // Disabling for Ubuntu tests
    public func go() : async () {
+
      var i = 1;
      var pre = Prim.rts_memory_size();
      var preMutatorInstructions = 0;

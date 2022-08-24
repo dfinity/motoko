@@ -7,6 +7,6 @@
 (menhir
   (modules parser)
   (flags -v --strict)
-  (infer false)
+  (infer true)
 )
 (ocamllex lexer)

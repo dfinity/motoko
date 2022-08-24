@@ -65,7 +65,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    For now, in a nix-shell:
 
    ```bash
-      make -C docs base
+      make -C doc base
       git diff
    ```
 
