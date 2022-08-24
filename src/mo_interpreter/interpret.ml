@@ -437,8 +437,23 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjBlockE (obj_sort, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
-  | ObjE exp_fields ->
-    interpret_exp_fields env exp_fields V.Env.empty (fun env -> k (V.Obj env))
+  | ObjE (exp_bases, exp_fields) ->
+    let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
+    let open V.Env in
+    let merges =
+      List.fold_left
+        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> assert false))
+        empty in
+    (* remove dynamic fields not present in the type as well as overwritten fields *)
+    let labs = List.map (fun (f : Syntax.exp_field) -> f.it.id.it) exp_fields in
+    let tys = List.(map (fun b ->
+                         T.as_obj b.note.note_typ |>
+                         snd |>
+                         filter (fun f -> not (mem f.T.lab labs)))) exp_bases in
+    let strip vs =
+      let known fs k _ = List.exists (fun { T.lab; _ } -> k = lab) fs in
+      List.map2 (fun fs v -> filter (known fs) (V.as_obj v)) tys vs in
+    interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -620,6 +635,8 @@ and interpret_exps env exps vs (k : V.value list V.cont) =
   | [] -> k (List.rev vs)
   | exp::exps' ->
     interpret_exp env exp (fun v -> interpret_exps env exps' (v::vs) k)
+
+(* Objects *)
 
 and interpret_exp_fields env exp_fields fld_env (k : V.value V.Env.t V.cont) =
   match exp_fields with
@@ -965,7 +982,16 @@ let import_lib env lib =
   | Syntax.ModuleU _ ->
     fun v -> v
   | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
-    fun v -> V.Obj (V.Env.singleton id.it v)
+    fun v -> V.Obj (V.Env.from_list
+      [ (id.it, v);
+        ("system",
+         V.Obj (V.Env.singleton id.it (
+          V.local_func 1 1 (fun c w k ->
+            let tag, w1 = V.as_variant w in
+            let o = V.as_obj w1 in
+            if tag = "new" && V.Env.find "settings" o = V.Null
+            then k v
+            else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | _ -> assert false
 
 

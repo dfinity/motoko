@@ -6844,6 +6844,11 @@ module Var = struct
     | Some (HeapStatic i) -> compile_unboxed_const i
     | _ -> assert false
 
+  let capture_aliased_box env ae var = match VarEnv.lookup_var ae var with
+    | Some (HeapInd i) ->
+      G.i (LocalSet (nr i))
+    | _ -> assert false
+
 end (* Var *)
 
 (* Calling well-known prelude functions *)
@@ -7433,15 +7438,19 @@ module AllocHow = struct
     let how1 = match dec.it with
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
-      M.map (fun t -> LocalMut (stackrep_of_type t)) d
+        M.map (fun t -> LocalMut (stackrep_of_type t)) d
 
       (* Constant expressions (trusting static_vals.ml) *)
       | LetD (_, e) when e.note.Note.const ->
-      M.map (fun _t -> (Const : how)) d
+        M.map (fun _ -> (Const : how)) d
+
+      (* References to mutboxes *)
+      | RefD _ ->
+        M.map (fun _ -> StoreHeap) d
 
       (* Everything else needs at least a local *)
       | _ ->
-      M.map (fun t -> LocalImmut (stackrep_of_type t)) d in
+        M.map (fun t -> LocalImmut (stackrep_of_type t)) d in
 
     (* Which allocation does this require for its captured things? *)
     let how2 = how_captured lvl how_all seen captured in
@@ -7491,6 +7500,13 @@ module AllocHow = struct
       let ptr = MutBox.static env in
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
+
+  let add_local_for_alias env ae how name : VarEnv.t * G.t =
+    match M.find name how with
+    | StoreHeap ->
+      let ae1, _ = VarEnv.add_local_with_heap_ind env ae name in
+      ae1, G.nop
+    | _ -> assert false
 
 end (* AllocHow *)
 
@@ -8147,7 +8163,7 @@ let compile_load_field env typ name =
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
-  (fun (code, sr, fill_code) -> (G.with_region lexp.at code, sr, G.with_region lexp.at fill_code)) @@
+  (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it with
   | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
@@ -9493,8 +9509,8 @@ and compile_unboxed_pat env ae how pat =
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
-       (pre_ae, G.with_region dec.at alloc_code, fun ae body_code ->
-         G.with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
+       G.(pre_ae, with_region dec.at alloc_code, fun ae body_code ->
+          with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -9522,21 +9538,34 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-      let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
 
-      ( pre_ae1,
-        alloc_code,
-        (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
-            pre_code ^^ compile_exp_as env ae sr e ^^ code),
-        unmodified
-      )
+    ( pre_ae1,
+      alloc_code,
+      (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
+          pre_code ^^ compile_exp_as env ae sr e ^^ code),
+      unmodified
+    )
+
+  | RefD (name, _, { it = DotLE (e, n); _ }) ->
+    let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name in
+
+    ( pre_ae1,
+      alloc_code,
+      (fun ae ->
+        compile_exp_vanilla env ae e ^^
+        Object.load_idx_raw env n ^^
+        Var.capture_aliased_box env ae name),
+      unmodified
+    )
+  | RefD _ -> assert false
 
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
-    | []          -> (pre_ae, G.nop, fun _ -> unmodified)
-    | [dec]       -> compile_dec env pre_ae how v2en dec
-    | (dec::decs) ->
+    | []        -> (pre_ae, G.nop, fun _ -> unmodified)
+    | [dec]     -> compile_dec env pre_ae how v2en dec
+    | dec::decs ->
         let (pre_ae1, alloc_code1, mk_codeW1) = compile_dec env pre_ae how v2en dec in
         let (pre_ae2, alloc_code2, mk_codeW2) = go              pre_ae1 decs in
         ( pre_ae2,
@@ -9675,7 +9704,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
     let (const, fill) = compile_const_exp env pre_ae e in
     (fun ae -> destruct_const_pat ae p const),
     (fun env ae -> fill env ae)
-  | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
+  | VarD _ | RefD _ -> fatal "compile_const_dec: Unexpected VarD/RefD"
 
 and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   assert (not flavor.has_typ_field);
