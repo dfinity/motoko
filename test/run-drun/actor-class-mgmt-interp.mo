@@ -2,7 +2,7 @@ import Prim "mo:⛔";
 import Cycles = "cycles/cycles";
 import Cs "actor-class-mgmt/C";
 
-// test gracefull failure of actor class system calls in intrepreters
+// test graceful failure of actor class system calls in interpreters
 actor a {
 
   let default_settings = { settings = null };
