@@ -33,7 +33,7 @@ actor Palindrome {
             }
           };
         let _ = do ? {
-            let _ = walk (xs, xs)!;
+            let null = walk (xs, xs)!;
             return true
         };
         return false
