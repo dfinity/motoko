@@ -1055,7 +1055,7 @@ module {
 
 provided that:
 
--   the actor class declaration `<dec>` has function type `(U1, ...​,Un) -> async T` under the static environment induced by the imports in `<import>;*`.
+-   the actor class declaration `<dec>` has function type `(U1, ...​, Un) -> async T` under the static environment induced by the imports in `<import>;*`.
 
 Notice that the imported type of the function `<id>` must be asynchronous.
 
@@ -1099,15 +1099,15 @@ where
 ```
   type CanisterSettings = {
      settings : ? {
-        controllers : ? [Principal];
+        controllers : ?[Principal];
         compute_allocation : ?Nat;
         memory_allocation : ?Nat;
-        freezing_threshod : ?Nat;
+        freezing_threshold : ?Nat;
      }
   }
 ```
 
-Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the additional argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>,..., <expn>)` are the user-declared constructor arguments.
+Calling `(system Lib.<id>)(<exp>)(<exp1>, ...​, <expn>)` uses the additional argument `<exp>`, a variant value, to control the installation of the canister further. Arguments `(<exp1>, ..., <expn>)` are the user-declared constructor arguments.
 
 If `<exp>` is
 * `#new s`, where `s` has type `CanisterSettings`:
