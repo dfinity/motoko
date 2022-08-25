@@ -1104,7 +1104,7 @@ and infer_exp'' env exp : T.typ =
           iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
         iter avoid (T.as_obj h |> snd);
         disjoint t in
-    disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
+    if not env.pre then disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
 
     (* do not allow var fields for now (to avoid aliasing) *)
     if not (env.pre || !Flags.experimental_field_aliasing) then
