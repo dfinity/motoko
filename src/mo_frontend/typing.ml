@@ -1095,31 +1095,34 @@ and infer_exp'' env exp : T.typ =
                 let frag_typ, frag_sug = match ft.T.typ with
                   | T.Typ c -> "type ", ""
                   | _ -> "", " (consider overwriting)" in
-                local_error env b.at "M0177"
+                info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug;
+
+                error env b.at "M0177"
                   "ambiguous %sfield in base%a"
                   frag_typ
-                  display_lab ft.T.lab;
-                info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug
+                  display_lab ft.T.lab
               end in
           iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
         iter avoid (T.as_obj h |> snd);
         disjoint t in
-    if not env.pre then disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
+    disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
 
     (* do not allow var fields for now (to avoid aliasing) *)
-    if not (env.pre || !Flags.experimental_field_aliasing) then
-      T.(let immutable_base b_typ b_exp =
-           let constant_field (ft : field) =
-             if (is_mut ft.typ) then
-               begin
-                 local_error env b_exp.at "M0179"
-                   "base has non-aliasable var field%a"
-                   display_lab ft.lab;
-                 info env b_exp.at "overwrite field to resolve error"
-               end in
-           iter constant_field (as_obj b_typ |> snd) in
-         iter2 immutable_base stripped_bases exp_bases);
-
+    begin if (!Flags.experimental_field_aliasing) then
+      let immutable_base b_typ b_exp =
+        let constant_field (ft : T.field) =
+          if T.(is_mut ft.typ) then
+            begin
+              info env b_exp.at "overwrite field to resolve error";
+              error env b_exp.at "M0179"
+                "base has non-aliasable var field%a"
+                display_lab ft.T.lab
+            end
+        in
+        iter constant_field (T.as_obj b_typ |> snd)
+      in
+      iter2 immutable_base stripped_bases exp_bases
+    end;
     let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
   | DotE (exp1, id) ->
