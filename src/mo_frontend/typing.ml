@@ -1096,7 +1096,6 @@ and infer_exp'' env exp : T.typ =
                   | T.Typ c -> "type ", ""
                   | _ -> "", " (consider overwriting)" in
                 info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug;
-
                 error env b.at "M0177"
                   "ambiguous %sfield in base%a"
                   frag_typ
