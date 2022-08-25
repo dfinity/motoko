@@ -98,8 +98,8 @@ branch to the `next-moc` branch.
 * `git switch next-moc; git pull`
 * `git switch -c $USER/update-moc-0.7.$MOC_MINOR`
 * Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
-  to the new released version: (FIXME: 0.6 below --> 0.7)
-  `perl -pi -e "s/moc_version: \"0\.6\.\\d+\"/moc_version: \"0.7.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
+  to the new released version:
+  `perl -pi -e "s/moc_version: \"0\.7\.\\d+\"/moc_version: \"0.7.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
 * `git add .github/ && git commit -m "Motoko 0.7.$MOC_MINOR"`
 * You can `git push` now
 
