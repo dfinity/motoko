@@ -110,6 +110,7 @@ val unreachableE : unit -> exp
 val letP : pat -> exp -> dec
 val letD : var -> exp -> dec
 val varD : var -> exp -> dec
+val refD : var -> lexp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var -> var list -> exp -> dec
@@ -133,3 +134,11 @@ val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
 val (-*-) : exp -> exp -> exp       (* application *)
+
+(* Objects *)
+
+val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
+
+(* Records *)
+
+val recordE : (lab * exp) list -> exp

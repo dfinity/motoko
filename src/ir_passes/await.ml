@@ -147,6 +147,7 @@ and t_dec' context dec' =
   match dec' with
   | LetD (pat, exp) -> LetD (pat, t_exp context exp)
   | VarD (id, t, exp) -> VarD (id, t, t_exp context exp)
+  | RefD (id, t, lexp) -> RefD (id, t, t_lexp context lexp)
 
 and t_decs context decs = List.map (t_dec context) decs
 
@@ -413,7 +414,8 @@ and c_dec context dec (k:kont) =
           (meta (typ exp)
             (fun v -> k -@- define_idE id Var (varE v)))
     end
-
+  | RefD (id, _typ, _lexp) -> assert false
+    (* TODO: unclear if this can arise at all, and if so, how to translate it with existing tools *)
 
 and c_decs context decs k =
   match decs with
@@ -427,7 +429,8 @@ and c_decs context decs k =
 and declare_dec dec exp : exp =
   match dec.it with
   | LetD (pat, _) -> declare_pat pat exp
-  | VarD (id, typ, exp1) -> declare_id id (T.Mut typ) exp
+  | VarD (id, typ, _exp1) -> declare_id id (T.Mut typ) exp
+  | RefD (id, typ, _exp1) -> declare_id id typ exp
 
 and declare_decs decs exp : exp =
   match decs with

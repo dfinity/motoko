@@ -78,6 +78,9 @@ val error : typ
 val char : typ
 val principal : typ
 
+val sum : (lab * typ) list -> typ
+val obj : obj_sort -> (lab * typ) list -> typ
+
 val throwErrorCodes : field list
 val catchErrorCodes : field list
 val throw : typ
@@ -246,6 +249,10 @@ val get_candid_interface_fld : field
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ
 
+val canister_settings_typ : typ
+val install_arg_typ : typ
+val install_typ : typ list -> typ -> typ
+
 (* Pretty printing *)
 
 val string_of_prim : prim -> string
@@ -253,6 +260,7 @@ val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
 
 module type Pretty = sig
+  val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->
