@@ -81,7 +81,7 @@ export function registerMotoko() {
           " continue debug do else for func if in import" +
           " module not object or label let loop private" +
           " public return shared try throw query switch" +
-          " type var with while stable flexible system debug_show assert ignore from_candid to_candid",
+          " type var while with stable flexible system debug_show assert ignore from_candid to_candid",
         literal: "true false null",
         built_in:
           "Any None Null Bool Int Int8 Int16 Int32 Int64" +
