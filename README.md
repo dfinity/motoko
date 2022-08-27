@@ -46,5 +46,6 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 
 ## Related repositories
 
-* [Base library](https://github.com/dfinity/motoko-base).
-* [Vessel package manager](https://github.com/dfinity/vessel).
+* [Base library](https://github.com/dfinity/motoko-base)
+* [Vessel package manager](https://github.com/dfinity/vessel)
+* [Motoko Playground](https://github.com/dfinity/motoko-playground)
