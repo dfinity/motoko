@@ -86,7 +86,7 @@ The following keywords are reserved and may not be used as identifiers:
 actor and assert async await break case catch class continue debug
 debug_show do else flexible false for from_candid func if ignore import
 in module not null object or label let loop private public query return
-shared stable switch system throw to_candid true try type var while
+shared stable switch system throw to_candid true try type var while with
 ```
 
 ### Identifiers
