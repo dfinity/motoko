@@ -48,5 +48,13 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 
 * [Base library](https://github.com/dfinity/motoko-base)
 * [Vessel package manager](https://github.com/dfinity/vessel)
-* [Motoko Playground](https://github.com/dfinity/motoko-playground)
-  * [Live IDE](https://m7sm4-2iaaa-aaaab-qabra-cai.ic0.app)
+* [Example projects](https://github.com/dfinity/examples/tree/master/motoko)
+* [Motoko Playground](https://github.com/dfinity/motoko-playground) &middot; ([online IDE](https://m7sm4-2iaaa-aaaab-qabra-cai.ic0.app))
+* [Embed Motoko code snippets](https://github.com/dfinity/embed-motoko) &middot; ([online interpreter](https://embed.smartcontracts.org/))
+* [VS Code extension](https://github.com/dfinity/vscode-motoko) &middot; ([install](https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko))
+* [Browser and Node.js bindings](https://github.com/dfinity/node-motoko) &middot; ([npm package](https://www.npmjs.com/package/motoko))
+
+## Community resources
+
+* [Awesome Motoko](https://github.com/motoko-unofficial/awesome-motoko#readme)
+* [Motoko Bootcamp](https://github.com/motoko-bootcamp/bootcamp#readme) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
