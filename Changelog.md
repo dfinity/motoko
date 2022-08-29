@@ -1,10 +1,11 @@
 # Motoko compiler changelog
 
-## 0.6.31 (FUTURE, 2022-08-25)
+## 0.7.0 (2022-08-25)
 
 * motoko (`moc`)
 
-  * Adds new syntax for merging records (objects) and
+  * BREAKING CHANGE (Minor):
+    Adds new syntax for merging records (objects) and
     adding/overwriting fields. The expression
     ``` motoko
     { baseA and baseB with field1 = val1; field2 = val2 }

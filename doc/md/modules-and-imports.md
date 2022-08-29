@@ -20,7 +20,7 @@ Notice that the import declaration includes the `mo:` prefix to identify the mod
 Above example uses an identifier pattern to import modules wholesale, but you can also selectively import a subset of symbols from a module by resorting to the object pattern syntax:
 
 ``` motoko
-import { map, find, foldLeft = fold } = "mo:base/Array";
+import { map; find; foldLeft = fold } = "mo:base/Array";
 ```
 
 In this example, the functions `map` and `find` are imported unaltered, while the `foldLeft` function is renamed to `fold`.
