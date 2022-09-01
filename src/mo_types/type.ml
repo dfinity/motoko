@@ -105,6 +105,16 @@ let error = Prim Error
 let char = Prim Char
 let principal = Prim Principal
 
+let fields flds =
+  List.sort compare_field
+    (List.map (fun (lab, typ) -> {lab; typ; depr = None}) flds)
+
+let obj sort flds =
+  Obj (sort, fields flds)
+
+let sum flds =
+  Variant (fields flds)
+
 let throwErrorCodes = List.sort compare_field [
   { lab = "canister_reject"; typ = unit; depr = None}
 ]
@@ -1123,6 +1133,30 @@ let decode_msg_typ tfs =
        | _ -> None)
      tfs))
 
+let canister_settings_typ =
+  obj Object [
+    "settings",
+    Opt (
+      obj Object [
+      ("controllers", Opt (Array principal));
+      ("compute_allocation", Opt nat);
+      ("memory_allocation", Opt nat);
+      ("freezing_threshold", Opt nat)])]
+
+let install_arg_typ =
+  sum [
+    ("new", canister_settings_typ);
+    ("install", principal);
+    ("reinstall", obj Actor []);
+    ("upgrade", obj Actor [])
+  ]
+
+let install_typ ts actor_typ =
+  Func(Local, Returns, [],
+    [ install_arg_typ ],
+    [ Func(Local, Returns, [scope_bind], ts, [Async (Var (default_scope_var, 0), actor_typ)]) ])
+
+
 (* Pretty printing *)
 
 let string_of_prim = function
@@ -1463,6 +1497,8 @@ let rec pp_typ_expand' vs ppf t =
     )
   | _ -> pp_typ' vs ppf t
 
+let pp_lab = pr
+
 let pp_typ ppf t =
   let vs = vs_of_cs (cons t) in
   pp_typ' vs ppf t
@@ -1490,6 +1526,7 @@ let string_of_typ_expand typ : string =
 end
 
 module type Pretty = sig
+  val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->

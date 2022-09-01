@@ -53,11 +53,11 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.6.17) are:
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.7.1) are:
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        ## 0.6.17 (2021-12-03)
+        ## 0.7.1 (2022-08-25)
 
    with today’s date.
 
@@ -65,24 +65,24 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    For now, in a nix-shell:
 
    ```bash
-      make -C docs base
+      make -C doc base
       git diff
    ```
 
    If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
 
- * Define a shell variable `export MOC_MINOR=17`
+ * Define a shell variable `export MOC_MINOR=1`
 
- * Look at `git log --first-parent 0.6.$(expr $MOC_MINOR - 1)..HEAD` and check
+ * Look at `git log --first-parent 0.7.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
- * `git commit -am "Releasing 0.6.$MOC_MINOR"`
+ * `git commit -am "Releasing 0.7.$MOC_MINOR"`
  * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
    merge it into master without additional approval, within 2 or 3 minutes.
  * `git switch master; git pull`. The release commit should be your `HEAD`
- * `git tag 0.6.$MOC_MINOR -m "Motoko 0.6.$MOC_MINOR"`
- * `git push origin 0.6.$MOC_MINOR`
+ * `git tag 0.7.$MOC_MINOR -m "Motoko 0.7.$MOC_MINOR"`
+ * `git push origin 0.7.$MOC_MINOR`
 
 Pushing the tag should cause GitHub Actions to create a “Release” on the github
 project. This will fail if the changelog is not in order (in this case, fix and
@@ -96,11 +96,11 @@ branch to the `next-moc` branch.
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
-* `git switch -c $USER/update-moc-0.6.$MOC_MINOR`
+* `git switch -c $USER/update-moc-0.7.$MOC_MINOR`
 * Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
   to the new released version:
-  `perl -pi -e "s/moc_version: \"0\.6\.\\d+\"/moc_version: \"0.6.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
-* `git add .github/ && git commit -m "Motoko 0.6.$MOC_MINOR"`
+  `perl -pi -e "s/moc_version: \"0\.7\.\\d+\"/moc_version: \"0.7.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
+* `git add .github/ && git commit -m "Motoko 0.7.$MOC_MINOR"`
 * You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not

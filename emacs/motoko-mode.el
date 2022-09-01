@@ -1,3 +1,4 @@
+
 ;; Motoko major mode for Emacs
 ;; initially based on Swift Mode.
 
@@ -40,6 +41,7 @@
                  "catch"
                  "class"
                  "continue"
+                 "do"
                  "debug"
                  "else"
                  "flexible"
@@ -64,6 +66,7 @@
                  "system"
                  "try"
                  "throw"
+                 "with"
                  "query"
                  "type"
                  "var"

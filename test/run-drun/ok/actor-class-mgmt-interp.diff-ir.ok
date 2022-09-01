@@ -1,0 +1,5 @@
+--- actor-class-mgmt-interp.run
++++ actor-class-mgmt-interp.run-ir
+@@ -1 +1 @@
+-actor-class-mgmt/C.mo:2.1-12.2: execution error, actor class configuration unsupported in interpreter
++(unknown location): execution error, explicit trap: actor class configuration not supported in interpreter
