@@ -8,6 +8,7 @@ curl -L https://nixos.org/nix/install | sh
 ```
 
 You should also enable a nix cache to get all dependencies pre-built.
+The `cachix` command also requires `sudo` permissions.
 ```
 nix-env -iA cachix -f https://cachix.org/api/v1/install
 cachix use ic-hs-test
@@ -15,6 +16,9 @@ cachix use ic-hs-test
 Technically, this is optional, but without this you will build lots of build
 dependencies manually, which takes several hours.
 
+_Note for M1 MacBook_: A Rosetta terminal is necessary to install and run Nix for Motoko. 
+If Nix or Rust have already been installed via a normal terminal (on ARM64), uninstall them first, 
+and then reinstall Nix under Rosetta (emulating x64).
 
 ## Installation using Nix
 
@@ -30,6 +34,7 @@ To enter a shell with the necessary dependencies available, use
 ```
 $ nix-shell
 ```
+(The first shell start may take several minutes, afterwards being much faster.)
 
 Within this shell you can run
  * `make` in `src/` to build all binaries,
