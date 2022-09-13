@@ -10194,7 +10194,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   StableMem.register_globals env;
 
   (* See Note [Candid subtype checks] *)
-  let set_serialization_globals =  Serialization.register_delayed_globals env in
+  let set_serialization_globals = Serialization.register_delayed_globals env in
 
   IC.system_imports env;
   RTS.system_imports env;
