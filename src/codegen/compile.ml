@@ -10094,7 +10094,6 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
 
-
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;
 
