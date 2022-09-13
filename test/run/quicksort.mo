@@ -20,19 +20,17 @@ class QS<T>(cmp : (T, T) -> Int) {
     let pivot = a[lo];
     var i = lo;
     var j = hi;
-
     loop {
       while (cmp(a[i], pivot) < 0) {
         i += 1;
       };
-
       while (cmp(a[j], pivot) > 0) {
         j -= 1;
       };
-
       if (i >= j) return j;
-
       swap(a, i, j);
+      i += 1;
+      j -= 1;
     };
   };
 };
@@ -41,12 +39,13 @@ func cmpi(i : Int, j : Int) : Int = i - j;
 
 let qs = QS<Int>(cmpi);
 
-let a : [var Int] = [var 8, 3, 9, 5, 2];
+let a : [var Int] = [var 8, 8, 3, 9, 5, 2];
 
-qs.quicksort(a, 0, 4);
+qs.quicksort(a, 0, a.size() - 1);
 
 assert(a[0] == 2);
 assert(a[1] == 3);
 assert(a[2] == 5);
 assert(a[3] == 8);
-assert(a[4] == 9);
+assert(a[4] == 8);
+assert(a[5] == 9);
