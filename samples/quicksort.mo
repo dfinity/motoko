@@ -30,19 +30,18 @@ class QS<T>(cmp : (T, T) -> Int) {
       while (cmp(a[i], pivot) < 0) {
         i += 1;
       };
-
       while (cmp(a[j], pivot) > 0) {
         j -= 1;
       };
-
       if (i >= j) return j;
-
       swap(a, i, j);
+      i += 1;
+      j -= 1;
     };
   };
 };
 
 func cmpi(i : Int, j : Int) : Int = i - j;
 let qs = QS<Int>(cmpi);
-let a : Array<Int> = [var 8, 3, 9, 5, 2];
-qs.quicksort(a, 0, 4);
+let a : Array<Int> = [var 8, 8, 3, 9, 5, 2];
+qs.quicksort(a, 0, a.size() - 1);
