@@ -126,8 +126,9 @@ let js_parse_motoko s =
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    let ast = Idllib.Arrange_idl.prog prog in
-    Js.some (js_of_sexpr ast)
+    Js.some (object%js
+      val ast = js_of_sexpr (Idllib.Arrange_idl.prog prog)
+    end)
   )
 
 let js_save_file filename content =
