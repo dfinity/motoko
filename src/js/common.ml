@@ -101,7 +101,7 @@ let js_parse_motoko s =
   let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     (* let _ = Pipeline.infer_prog *)
-    let ast = Mo_def.Arrange.prog prog in
+    let ast = Mo_def.ArrangeSource.prog prog in
     Js.some (js_of_sexpr ast)
   )
 
