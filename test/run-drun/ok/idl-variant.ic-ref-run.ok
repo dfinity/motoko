@@ -1,6 +1,6 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ query numify(variant {fix = variant {right = (32 : nat32)}})
-← replied: (variant {fix = variant {left = (32 : nat32)}})
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> query numify(variant {fix = variant {right = (32 : nat32)}})
+<= replied: (variant {fix = variant {left = (32 : nat32)}})
