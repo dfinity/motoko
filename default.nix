@@ -771,17 +771,18 @@ rec {
         docs.buildInputs ++
         check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
-        [ nixpkgs.ncurses
-          nixpkgs.ocamlPackages.merlin
-          nixpkgs.ocamlformat
-          nixpkgs.ocamlPackages.utop
-          nixpkgs.fswatch
-          nixpkgs.niv
-          nixpkgs.nix-update
-          nixpkgs.rlwrap # for `rlwrap moc`
-          nixpkgs.difftastic
-          nixpkgs.bat
-        ]
+        (with nixpkgs; [
+          ncurses
+          ocamlPackages.merlin
+          ocamlformat
+          ocamlPackages.utop
+          fswatch
+          niv
+          nix-update
+          rlwrap # for `rlwrap moc`
+          difftastic
+          bat
+        ])
       ));
 
     shellHook = llvmEnv + ''
