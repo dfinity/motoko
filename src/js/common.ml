@@ -98,27 +98,30 @@ let js_compile_wasm mode source =
     )
 
 let js_parse_motoko s =
+  let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
+  js_result parse_result (fun (prog, _) ->
+    Js.some (js_of_sexpr (Mo_def.Arrange_source.prog prog))
+  )
+
+let js_parse_motoko_types s =
   let
     result = match Pipeline.parse_string "main" (Js.to_string s) with
     | Ok ((prog, _rel), prog_ms) ->
       match Mo_frontend.Typing.infer_prog Pipeline.initial_stat_env prog with
       | Ok ((typ, _scope), typ_ms) ->
-        let ast = Mo_def.Arrange_source.prog prog in
         Ok (object%js
-          val ast = js_of_sexpr ast
+          val ast = js_of_sexpr (Mo_def.Arrange_source.prog prog)
           val outputType = js_of_sexpr (Mo_types.Arrange_type.typ typ)
         end, List.concat [prog_ms; typ_ms])
       | Error e -> Error e
     | Error e -> Error e
   in
-  js_result result (fun value -> Js.some value)
+  js_result result Js.some
 
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    Js.some (object%js
-      val ast = js_of_sexpr (Idllib.Arrange_idl.prog prog)
-    end)
+    Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog))
   )
 
 let js_save_file filename content =
