@@ -591,8 +591,8 @@ let serializable allow_mut t =
       match t with
       | Var _ | Pre -> assert false
       | Prim Error -> false
-      | Any | Non | Prim _ | Typ _ -> true
-      | Async _ -> false
+      | Any | Non | Prim _ -> true
+      | Typ _ | Async _ -> false
       | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Cons.kind c with
@@ -621,8 +621,8 @@ let find_unshared t =
       match t with
       | Var _ | Pre -> assert false
       | Prim Error -> Some t
-      | Any | Non | Prim _ | Typ _ -> None
-      | Async _ | Mut _ -> Some t
+      | Any | Non | Prim _ -> None
+      | Typ _ | Async _ | Mut _ -> Some t
       | Con (c, ts) ->
         (match Cons.kind c with
         | Abs _ -> None

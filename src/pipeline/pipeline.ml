@@ -264,6 +264,7 @@ let stable_compatible pre post : unit Diag.result =
 let validate_stab_sig s : unit Diag.result =
   let open Diag.Syntax in
   let name = "stable-types" in
+  Printf.eprintf "%s" s;
   let* p1 = parse_stab_sig s name in
   let* p2 = parse_stab_sig s name in
   let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
