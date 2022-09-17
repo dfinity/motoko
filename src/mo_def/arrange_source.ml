@@ -112,7 +112,7 @@ and lit = function
   | BlobLit b     -> "BlobLit"   $$ [ Atom b ]
   | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
-and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
+and case c = source c.at ("case" $$ [pat c.it.pat; exp c.it.exp])
 
 and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
@@ -152,7 +152,7 @@ and stab s_opt = match s_opt with
     | Stable -> Atom "Stable")
 
 and typ_field (tf : typ_field)
-  = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
+  = source tf.at (tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut])
 
 and typ_item ((id, ty) : typ_item) =
   match id with
@@ -160,16 +160,16 @@ and typ_item ((id, ty) : typ_item) =
   | Some { it;_ } -> [Atom it; typ ty]
 
 and typ_tag (tt : typ_tag)
-  = tt.it.tag.it $$ [typ tt.it.typ]
+  = source tt.at (tt.it.tag.it $$ [typ tt.it.typ])
 
 and typ_bind (tb : typ_bind)
-  = tb.it.var.it $$ [typ tb.it.bound]
+  = source tb.at (tb.it.var.it $$ [typ tb.it.bound])
 
 and dec_field (df : dec_field)
-  = "DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab]
+  = source df.at ("DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab])
 
 and exp_field (ef : exp_field)
-  = "ExpField" $$ [mut ef.it.mut; id ef.it.id; exp ef.it.exp]
+  = source ef.at ("ExpField" $$ [mut ef.it.mut; id ef.it.id; exp ef.it.exp])
 
 and operator_type t = Atom (Type.string_of_typ t)
 
