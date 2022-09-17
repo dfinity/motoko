@@ -116,7 +116,7 @@ and case c = source c.at ("case" $$ [pat c.it.pat; exp c.it.exp])
 
 and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
-and pat_field pf = pf.it.id.it $$ [pat pf.it.pat]
+and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
 
 and obj_sort s = match s.it with
   | Type.Object -> Atom "Object"
