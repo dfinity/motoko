@@ -1,6 +1,6 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: true
 debug.print: false
 debug.print: -42_000_000_000_000
@@ -35,4 +35,4 @@ debug.print: #foo(+42)
 debug.print: 42
 debug.print: +42
 debug.print: -42
-← replied: ()
+<= replied: ()

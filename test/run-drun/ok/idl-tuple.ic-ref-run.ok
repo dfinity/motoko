@@ -1,18 +1,18 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ query len2("Hi", "World")
-← replied: (+2, +5)
-→ query len3(record {"Hello"; (67305985 : int32)}, "World")
-← replied: (+5, +5, +67305985)
-→ query len3a(record {"Hello"; (67305985 : int32); null}, "World")
-← replied: (+5, +5, +67305985)
-→ query len3(record {"Hello"; (67305985 : int32); (-21026 : int16)}, "Wo…
-← replied: (+5, +5, +67305985)
-→ query len3a(record {"Hello"; (67305985 : int32); null}, "World")
-← replied: (+5, +5, +67305985)
-→ query len3a(record {0 = "Hello"; 2 = null}, "World")
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: did not find tuple field in record"
-→ query len3a(record {"Hello"; (67305985 : int32)}, "World")
-← replied: (+5, +5, +67305985)
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> query len2("Hi", "World")
+<= replied: (+2, +5)
+=> query len3(record {"Hello"; (67305985 : int32)}, "World")
+<= replied: (+5, +5, +67305985)
+=> query len3a(record {"Hello"; (67305985 : int32); null}, "World")
+<= replied: (+5, +5, +67305985)
+=> query len3(record {"Hello"; (67305985 : int32); (-21026 : int16)}, "Wo...
+<= replied: (+5, +5, +67305985)
+=> query len3a(record {"Hello"; (67305985 : int32); null}, "World")
+<= replied: (+5, +5, +67305985)
+=> query len3a(record {0 = "Hello"; 2 = null}, "World")
+<= rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: did not find tuple field in record"
+=> query len3a(record {"Hello"; (67305985 : int32)}, "World")
+<= replied: (+5, +5, +67305985)

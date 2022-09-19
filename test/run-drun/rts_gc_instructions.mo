@@ -9,12 +9,14 @@ actor a {
      return  Prim.rts_memory_size();
    };
 
+   // Disabling for Ubuntu tests
    public func go() : async () {
+
      var i = 1;
      var pre = Prim.rts_memory_size();
      var preMutatorInstructions = 0;
      var preCollectorInstructions = 0;
-     while(i < 16) {
+     while(i < 4) {
        assert(Prim.rts_memory_size() >=
          Prim.rts_heap_size());
        let size = await grow(i);

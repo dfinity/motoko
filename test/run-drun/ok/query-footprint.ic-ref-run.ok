@@ -1,14 +1,14 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ update __motoko_stable_var_info()
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at .:0.1"
-→ query __motoko_stable_var_info()
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at .:0.1"
-→ update delegate()
-← replied: ((6225 : nat64))
-→ update delegate()
-← replied: ((6225 : nat64))
-→ query __get_candid_interface_tmp_hack()
-← replied: ("service : {\n  delegate: () -> (nat64);\n}\n")
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> update __motoko_stable_var_info()
+<= rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at .:0.1"
+=> query __motoko_stable_var_info()
+<= rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: assertion failed at .:0.1"
+=> update delegate()
+<= replied: ((6225 : nat64))
+=> update delegate()
+<= replied: ((6225 : nat64))
+=> query __get_candid_interface_tmp_hack()
+<= replied: ("service : {\n  delegate: () -> (nat64);\n}\n")

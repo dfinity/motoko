@@ -30,6 +30,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SEMICOLON -> SEMICOLON
       | T_STABLE -> STABLE
       | T_SYSTEM -> SYSTEM
+      | T_WITH -> WITH
       | T_RPAR -> RPAR
       | T_ROTROP -> ROTROP
       | T_ROTRASSIGN -> ROTRASSIGN

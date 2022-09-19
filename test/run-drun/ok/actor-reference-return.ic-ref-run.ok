@@ -1,8 +1,8 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ query foo()
-← replied: (service "bfozs-kwa73-7nadi")
-→ query bar()
-← replied: (service "lsoqw-g6a73-7nado-k725l-5xvnx-3xq")
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> query foo()
+<= replied: (service "bfozs-kwa73-7nadi")
+=> query bar()
+<= replied: (service "lsoqw-g6a73-7nado-k725l-5xvnx-3xq")

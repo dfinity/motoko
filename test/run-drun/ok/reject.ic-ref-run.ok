@@ -1,15 +1,15 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ update reject1()
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> update reject1()
 debug.print: 1
-← rejected (RC_CANISTER_REJECT): Error
-→ update reject2()
-debug.print: 1
-debug.print: ok
-← replied: ()
-→ update reject3()
+<= rejected (RC_CANISTER_REJECT): Error
+=> update reject2()
 debug.print: 1
 debug.print: ok
-← rejected (RC_CANISTER_REJECT): Error
+<= replied: ()
+=> update reject3()
+debug.print: 1
+debug.print: ok
+<= rejected (RC_CANISTER_REJECT): Error
