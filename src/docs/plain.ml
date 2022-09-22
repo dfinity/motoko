@@ -175,7 +175,7 @@ and plain_of_typ_field :
       bprintf buf "%s : " id.it;
       plain_of_typ buf rf typ
   | Syntax.TypField (id, tbs, typ) ->
-      bprintf buf "type %s"id.it;
+      bprintf buf "type %s" id.it;
       plain_of_typ_binders buf rf tbs;
       bprintf buf " = ";
       plain_of_typ buf rf typ

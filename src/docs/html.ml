@@ -168,7 +168,11 @@ and html_of_typ_field : env -> Syntax.typ_field -> t =
       html_of_mut mut ++ string (id.Source.it ^ " : ") ++ html_of_type env typ
   | Syntax.TypField (id, tbs, typ) ->
       let ty_args = html_of_typ_binders env tbs in
-      string "type " ++ (string id.Source.it) ++ ty_args ++ (string " = ") ++ html_of_type env typ
+      string "type "
+      ++ string id.Source.it
+      ++ ty_args
+      ++ string " = "
+      ++ html_of_type env typ
 
 and html_of_typ_item : env -> Syntax.typ_item -> t =
  fun env (oid, t) ->
