@@ -57,7 +57,7 @@ and scope = typ
 and typ_field = typ_field' Source.phrase
 and typ_field' =
   | ValField of id * typ * mut
-  | TypField of id * typ
+  | TypField of id * typ_bind list * typ
 
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}

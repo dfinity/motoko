@@ -146,7 +146,7 @@ let share_typ t =
   | _ -> t
 
 let share_typfield' = function
-  | TypField (x, t) -> TypField (x, t)
+  | TypField (x, tps, t) -> TypField (x, tps, t)
   | ValField (x, t, m) -> ValField (x, share_typ t, m)
 
 let share_typfield (tf : typ_field) = { tf with it = share_typfield' tf.it }
@@ -456,8 +456,8 @@ inst :
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
 typ_field :
-  | TYPE x=id EQ t=typ
-    { TypField (x, t) @@ at $sloc }
+  | TYPE x=id  tps=typ_params_opt EQ t=typ
+    { TypField (x, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
     { ValField (x, t, mut) @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ

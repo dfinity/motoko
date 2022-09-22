@@ -174,8 +174,10 @@ and plain_of_typ_field :
       plain_of_mut buf mut;
       bprintf buf "%s : " id.it;
       plain_of_typ buf rf typ
-  | Syntax.TypField (id, typ) ->
-      bprintf buf "type %s = " id.it;
+  | Syntax.TypField (id, tbs, typ) ->
+      bprintf buf "type %s"id.it;
+      plain_of_typ_binders buf rf tbs;
+      bprintf buf " = ";
       plain_of_typ buf rf typ
 
 and plain_of_typ_item : Buffer.t -> render_functions -> Syntax.typ_item -> unit

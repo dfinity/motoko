@@ -223,6 +223,23 @@ let system_funcs tfs =
   ]
 
 
+let check_closed env id k at =
+  let is_typ_param c =
+    match Cons.kind c with
+    | T.Def _ -> false
+    | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
+    | T.Abs( _, _) -> true in
+  let typ_params = T.ConSet.filter is_typ_param env.cons in
+  let cs_k = T.cons_kind k in
+  let free_params = T.ConSet.inter typ_params cs_k in
+  if not (T.ConSet.is_empty free_params) then
+    let op, sbs, st = T.strings_of_kind k in
+    error env at "M0137"
+      "type %s%s %s %s references type parameter%s %s from an outer scope"
+      id.it sbs op st
+      (if T.ConSet.cardinal free_params = 1 then "" else "s")
+      (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
+
 (* Imports *)
 
 let check_import env at f ri =
@@ -491,7 +508,7 @@ and check_typ' env typ : T.typ =
       ) fields);
     check_ids env "object type" "type field"
       (List.filter_map (fun (field : typ_field) ->
-        match field.it with TypField (x, _) -> Some x | _ -> None
+        match field.it with TypField (x, _, _) -> Some x | _ -> None
       ) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
@@ -537,9 +554,13 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
           id.it (T.string_of_typ_expand t)
     end;
     T.{lab = id.it; typ = t; depr = None}
-  | TypField (id,  typ) ->
-    let t = check_typ env typ in
-    let c = Cons.fresh id.it (T.Def ([], t)) in
+  | TypField (id, tbs, typ) ->
+    let cs, tbs, te, ce = check_typ_binds {env with pre = true} tbs in
+    let env' = adjoin_typs env te ce in
+    let t = check_typ env' typ in
+    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
+    check_closed env id k typ_field.at;
+    let c = Cons.fresh id.it k in
     T.{lab = id.it; typ = Typ c; depr = None}
 
 and check_typ_tag env typ_tag =
@@ -2526,23 +2547,6 @@ and infer_dec_typdecs env dec : Scope.t =
       con_env = infer_id_typdecs id c k;
     }
 
-and check_closed env id k at =
-  let is_typ_param c =
-    match Cons.kind c with
-    | T.Def _ -> false
-    | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
-    | T.Abs( _, _) -> true in
-  let typ_params = T.ConSet.filter is_typ_param env.cons in
-  let cs_k = T.cons_kind k in
-  let free_params = T.ConSet.inter typ_params cs_k in
-  if not (T.ConSet.is_empty free_params) then
-    let op, sbs, st = T.strings_of_kind k in
-    error env at "M0137"
-      "type %s%s %s %s references type parameter%s %s from an outer scope"
-      id.it sbs op st
-      (if T.ConSet.cardinal free_params = 1 then "" else "s")
-      (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
-
 and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Cons.kind c with
@@ -2737,7 +2741,7 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
                sfs);
           check_ids env "object type" "type field"
             (List.filter_map (fun (field : typ_field) ->
-                 match field.it with TypField (id, _) -> Some id | _ -> None)
+                 match field.it with TypField (id, _, _) -> Some id | _ -> None)
                sfs); (*TODO: reject/assert instead *)
           let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
           let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
