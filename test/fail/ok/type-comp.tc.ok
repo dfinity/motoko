@@ -1,0 +1,10 @@
+type-comp.mo:3.42-3.43: type error [M0018], duplicate type field name T in object type
+type-comp.mo:15.49-15.51: type error [M0046], type argument
+  P2
+does not match parameter bound
+  {}
+type-comp.mo:16.41-16.43: type error [M0046], type argument
+  P3
+does not match parameter bound
+  {}
+type-comp.mo:23.38-23.43: type error [M0029], unbound type Bogus
