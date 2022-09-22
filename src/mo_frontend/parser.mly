@@ -925,7 +925,7 @@ typ_dec :
 
 stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
-    { {id = x; typ = t; mut} @@ at $sloc }
+    { ValField (x,t,mut) @@ at $sloc }
 
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY

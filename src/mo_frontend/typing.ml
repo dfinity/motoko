@@ -536,10 +536,10 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
         error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
           id.it (T.string_of_typ_expand t)
     end;
-    T.{lab = id.it; typ = t}
+    T.{lab = id.it; typ = t; depr = None}
   | TypField (id,  typ) ->
     let t = check_typ env typ in
-    let c = Con.fresh id.it (T.Def ([], t)) in
+    let c = Cons.fresh id.it (T.Def ([], t)) in
     T.{lab = id.it; typ = Typ c; depr = None}
 
 and check_typ_tag env typ_tag =
@@ -2732,15 +2732,24 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
           check_ids env "object type" "field"
-            (List.map (fun (field : typ_field) -> field.it.id) sfs);
+            (List.filter_map (fun (field : typ_field) ->
+                 match field.it with ValField (id, _, _) -> Some id | _ -> None)
+               sfs);
+          check_ids env "object type" "type field"
+            (List.filter_map (fun (field : typ_field) ->
+                 match field.it with TypField (id, _) -> Some id | _ -> None)
+               sfs); (*TODO: reject/assert instead *)
           let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
           let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
-          List.iter (fun (typ_field : Syntax.typ_field) ->
-            let t = typ_field.it.typ.note in
-            if not (T.stable t) then
-              error env typ_field.it.id.at "M0131" "variable %s is declared stable but has non-stable type%a"
-                typ_field.it.id.it
-                display_typ t) sfs;
+          List.iter (fun (field : Syntax.typ_field) ->
+              match field.it with
+              | TypField _ -> ()
+              | ValField (id, typ, _) ->
+                if not (T.stable typ.note) then
+                   error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
+                   id.it
+                   display_typ typ.note)
+            sfs;
           List.sort T.compare_field fs
         ) sig_.it
     )
