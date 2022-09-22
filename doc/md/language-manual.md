@@ -818,16 +818,23 @@ In all other positions, `( <typ> )` has the same meaning as `<typ>`.
 
 ``` bnf
 <typ-field> ::=                               object type fields
-  <id> : <typ>                                  immutable
-  var <id> : <typ>                              mutable
-  <id> <typ-params>? <typ1> : <typ2>            function (short-hand)
+  <id> : <typ>                                  immutable value
+  var <id> : <typ>                              mutable value
+  <id> <typ-params>? <typ1> : <typ2>            function value (short-hand)
+  type <id> <typ-params> = <typ>                type component
 ```
 
-A type field specifies the name and type of a field of an object. The field names within a single object type must be distinct and have non-colliding hashes.
+A type field specifies the name and type of a value field of an object, or the name and definition of a type component of an object. The value field names within a single object type must be distinct and have non-colliding hashes. The type component names within a single object type must also be distinct and have non-colliding hashes. Value fields and type components reside in separate name spaces and thus may have names in common.
 
 `<id> : <typ>` specifies an *immutable* field, named `<id>` of type `<typ>`.
 
 `var <id> : <typ>` specifies a *mutable* field, named `<id>` of type `<typ>`.
+
+`type <id> <typ-params> = <typ>` specifies a *type* component, with field name `<id>`, abbreviating (parameterized) type `<typ>`.
+
+Unlike type declarations, a type component is not, in itself, recursive (though it may abbreviate an existing recursive type).
+In particular, the name `<id>` is not bound in `<typ>` nor in any other fields of the enclosing object type. The name `<id>` only determiness the label to use when accessing the definition through a record of this type (using the dot notation).
+
 
 ### Variant type fields
 
