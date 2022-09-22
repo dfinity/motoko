@@ -821,7 +821,7 @@ In all other positions, `( <typ> )` has the same meaning as `<typ>`.
   <id> : <typ>                                  immutable value
   var <id> : <typ>                              mutable value
   <id> <typ-params>? <typ1> : <typ2>            function value (short-hand)
-  type <id> <typ-params>? = <typ>                type component
+  type <id> <typ-params>? = <typ>               type component
 ```
 
 A type field specifies the name and type of a value field of an object, or the name and definition of a type component of an object. The value field names within a single object type must be distinct and have non-colliding hashes. The type component names within a single object type must also be distinct and have non-colliding hashes. Value fields and type components reside in separate name spaces and thus may have names in common.
