@@ -523,7 +523,10 @@ let rec cons' t cs =
     List.fold_right cons' ts2 cs
   | (Obj (_, fs) | Variant fs) ->
     List.fold_right cons_field fs cs
-  | Typ c -> cons_con c cs
+  | Typ c ->
+     (* cons_con c cs *)
+     cons_kind' (Cons.kind c) cs (* don't add c unless mentioned in Cons.kind c *)
+
 
 and cons_con c cs =
   if ConSet.mem c cs
