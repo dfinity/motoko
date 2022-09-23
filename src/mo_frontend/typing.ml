@@ -545,8 +545,8 @@ and check_typ' env typ : T.typ =
   | NamedT (_, typ) ->
     check_typ env typ
 
-and check_typ_def env at (id, tbs, typ) : T.kind =
-  let cs, tbs, te, ce = check_typ_binds {env with pre = true} tbs in
+and check_typ_def env at (id, typ_binds, typ) : T.kind =
+  let cs, tbs, te, ce = check_typ_binds {env with pre = true} typ_binds in
   let env' = adjoin_typs env te ce in
   let t = check_typ env' typ in
   let k = T.Def (T.close_binds cs tbs, T.close cs t) in
@@ -562,8 +562,8 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
           id.it (T.string_of_typ_expand t)
     end;
     T.{lab = id.it; typ = t; depr = None}
-  | TypF (id, binds, typ) ->
-    let k = check_typ_def env typ_field.at ({ id with note = None }, binds, typ) in
+  | TypF (id, typ_binds, typ) ->
+    let k = check_typ_def env typ_field.at ({ id with note = None }, typ_binds, typ) in
     let c = Cons.fresh id.it k in
     T.{lab = id.it; typ = Typ c; depr = None}
 
@@ -2520,8 +2520,8 @@ and infer_dec_typdecs env dec : Scope.t =
     )
   | LetD _ | ExpD _ | VarD _ ->
     Scope.empty
-  | TypD (id, binds, typ) ->
-    let k = check_typ_def env dec.at (id, binds, typ) in
+  | TypD (id, typ_binds, typ) ->
+    let k = check_typ_def env dec.at (id, typ_binds, typ) in
     let c = T.Env.find id.it env.typs in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
