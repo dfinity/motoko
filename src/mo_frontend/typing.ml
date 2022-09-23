@@ -504,11 +504,11 @@ and check_typ' env typ : T.typ =
   | ObjT (sort, fields) ->
     check_ids env "object type" "field"
       (List.filter_map (fun (field : typ_field) ->
-        match field.it with ValField (x, _, _) -> Some x | _ -> None
+        match field.it with ValF (x, _, _) -> Some x | _ -> None
       ) fields);
     check_ids env "object type" "type field"
       (List.filter_map (fun (field : typ_field) ->
-        match field.it with TypField (x, _, _) -> Some x | _ -> None
+        match field.it with TypF (x, _, _) -> Some x | _ -> None
       ) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
@@ -545,8 +545,16 @@ and check_typ' env typ : T.typ =
   | NamedT (_, typ) ->
     check_typ env typ
 
+and check_typ_def env at (id, tbs, typ) : T.kind =
+  let cs, tbs, te, ce = check_typ_binds {env with pre = true} tbs in
+  let env' = adjoin_typs env te ce in
+  let t = check_typ env' typ in
+  let k = T.Def (T.close_binds cs tbs, T.close cs t) in
+  check_closed env id k at;
+  k
+
 and check_typ_field env s typ_field : T.field = match typ_field.it with
-  | ValField (id, typ, mut) ->
+  | ValF (id, typ, mut) ->
     let t = infer_mut mut (check_typ env typ) in
     if not env.pre && s = T.Actor then begin
       if not (T.is_shared_func t) then
@@ -554,12 +562,8 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
           id.it (T.string_of_typ_expand t)
     end;
     T.{lab = id.it; typ = t; depr = None}
-  | TypField (id, tbs, typ) ->
-    let cs, tbs, te, ce = check_typ_binds {env with pre = true} tbs in
-    let env' = adjoin_typs env te ce in
-    let t = check_typ env' typ in
-    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
-    check_closed env id k typ_field.at;
+  | TypF (id, binds, typ) ->
+    let k = check_typ_def env typ_field.at ({ id with note = None }, binds, typ) in
     let c = Cons.fresh id.it k in
     T.{lab = id.it; typ = Typ c; depr = None}
 
@@ -2517,12 +2521,8 @@ and infer_dec_typdecs env dec : Scope.t =
   | LetD _ | ExpD _ | VarD _ ->
     Scope.empty
   | TypD (id, binds, typ) ->
+    let k = check_typ_def env dec.at (id, binds, typ) in
     let c = T.Env.find id.it env.typs in
-    let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
-    let env' = adjoin_typs env te ce in
-    let t = check_typ env' typ in
-    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
-    check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
@@ -2737,18 +2737,18 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           let env1 = adjoin env scope in
           check_ids env "object type" "field"
             (List.filter_map (fun (field : typ_field) ->
-                 match field.it with ValField (id, _, _) -> Some id | _ -> None)
+                 match field.it with ValF (id, _, _) -> Some id | _ -> None)
                sfs);
           check_ids env "object type" "type field"
             (List.filter_map (fun (field : typ_field) ->
-                 match field.it with TypField (id, _, _) -> Some id | _ -> None)
+                 match field.it with TypF (id, _, _) -> Some id | _ -> None)
                sfs); (*TODO: reject/assert instead *)
           let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
           let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
           List.iter (fun (field : Syntax.typ_field) ->
               match field.it with
-              | TypField _ -> ()
-              | ValField (id, typ, _) ->
+              | TypF _ -> ()
+              | ValF (id, typ, _) ->
                 if not (T.stable typ.note) then
                    error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
                    id.it

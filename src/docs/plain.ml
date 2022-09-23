@@ -170,11 +170,11 @@ and plain_of_typ_field :
     Buffer.t -> render_functions -> Syntax.typ_field -> unit =
  fun buf rf field ->
   match field.Source.it with
-  | Syntax.ValField (id, typ, mut) ->
+  | Syntax.ValF (id, typ, mut) ->
       plain_of_mut buf mut;
       bprintf buf "%s : " id.it;
       plain_of_typ buf rf typ
-  | Syntax.TypField (id, tbs, typ) ->
+  | Syntax.TypF (id, tbs, typ) ->
       bprintf buf "type %s" id.it;
       plain_of_typ_binders buf rf tbs;
       bprintf buf " = ";

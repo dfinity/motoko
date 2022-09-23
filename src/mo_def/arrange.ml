@@ -148,8 +148,8 @@ and stab s_opt = match s_opt with
     | Stable -> Atom "Stable")
 
 and typ_field (tf : typ_field) = match tf.it with
-  | ValField (id, t, m) -> id.it $$ [typ t; mut m]
-  | TypField (id', tbs, t) ->
+  | ValF (id, t, m) -> id.it $$ [typ t; mut m]
+  | TypF (id', tbs, t) ->
       "TypF" $$ [id id'] @ List.map typ_bind tbs @ [typ t]
 and typ_item ((id, ty) : typ_item) =
   match id with
