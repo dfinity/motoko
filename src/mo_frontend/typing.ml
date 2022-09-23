@@ -563,7 +563,7 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
     end;
     T.{lab = id.it; typ = t; depr = None}
   | TypF (id, typ_binds, typ) ->
-    let k = check_typ_def env typ_field.at ({ id with note = None }, typ_binds, typ) in
+    let k = check_typ_def env typ_field.at (id, typ_binds, typ) in
     let c = Cons.fresh id.it k in
     T.{lab = id.it; typ = Typ c; depr = None}
 
