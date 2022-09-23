@@ -11,7 +11,7 @@ actor {
     actor {
       type T = Int;
       type U<A> = (A, A);
-      type List<A> = List<A>; // references previous List type, not this List component (type components arent recursive, let alone mutually recursive)
+      type List<A> = List<A>; // references previous List type, not this List component (type components aren't recursive, let alone mutually recursive)
       type Pair<A,B> = (A,B);
       type Bound<A<:{}> = Bound<A>; // ditto
     }
