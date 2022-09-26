@@ -12,23 +12,22 @@ type config = {
 
 let default_config : config = {sources = false; types = false}
 
-let with_config (config: config) =
-  let ($$) head inner = Node (head, inner) in
+module Make (Config : sig val sources: bool val types: bool end) = struct
+  let ($$) head inner = Node (head, inner)
 
-  let pos p = "Pos" $$ [Atom p.file; Atom (string_of_int p.line); Atom (string_of_int p.column)] in
+  let pos p = "Pos" $$ [Atom p.file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
 
-  let source at it = if config.sources then "@" $$ [pos at.left; pos at.right; it] else it in
+  let source at it = if Config.sources then "@" $$ [pos at.left; pos at.right; it] else it
 
-  let note_typ = Mo_types.Arrange_type.typ in
+  let note_typ = Mo_types.Arrange_type.typ
   let note_eff (eff : Mo_types.Type.eff) = match eff with
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
-  in
 
-  let annot note it = if config.sources then ":" $$ [note_typ note.note_typ ; note_eff note.note_eff; it] else it in
+  let annot note it = if Config.types then ":" $$ [note_typ note.note_typ ; note_eff note.note_eff; it] else it
 
-  let id i = Atom i.it in
-  let tag i = Atom ("#" ^ i.it) in
+  let id i = Atom i.it
+  let tag i = Atom ("#" ^ i.it)
 
   let rec exp e = source e.at (annot e.note (match e.it with
     | VarE x              -> "VarE"      $$ [id x]
@@ -222,8 +221,13 @@ let with_config (config: config) =
       ] @ List.map dec_field dfs)
 
   and prog prog = "Prog" $$ List.map dec prog.it
+end
 
-  in prog
+module Default = Make (struct
+  let sources = false
+  let types = false
+end)
 
-let prog prog = with_config default_config prog
-let exp exp = with_config default_config exp
+(* Commonly used *)
+let prog = Default.prog
+let exp = Default.exp

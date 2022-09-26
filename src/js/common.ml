@@ -5,7 +5,15 @@ open Mo_config
 module Js = Js_of_ocaml.Js
 module Sys_js = Js_of_ocaml.Sys_js
 
-type arrange_config = Mo_def.Arrange.config
+module Arrange_sources = Mo_def.Arrange.Make (struct
+  let sources = true
+  let types = false
+end)
+
+module Arrange_types = Mo_def.Arrange.Make (struct
+  let sources = true
+  let types = true
+end)
 
 let position_of_pos pos =
   object%js
@@ -102,7 +110,7 @@ let js_compile_wasm mode source =
 let js_parse_motoko s =
   let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    Js.some (js_of_sexpr (Mo_def.Arrange.with_config { sources = true; types = false } prog))
+    Js.some (js_of_sexpr (Arrange_sources.prog prog))
   )
 
 let js_parse_motoko_types s =
@@ -112,7 +120,7 @@ let js_parse_motoko_types s =
       (match Mo_frontend.Typing.infer_prog Pipeline.initial_stat_env prog with
       | Ok ((typ, _scope), typ_ms) ->
         Ok (object%js
-          val ast = js_of_sexpr (Mo_def.Arrange.with_config { sources = true; types = true } prog)
+          val ast = js_of_sexpr (Arrange_types.prog prog)
           val outputType = js_of_sexpr (Mo_types.Arrange_type.typ typ)
         end, List.concat [prog_ms; typ_ms])
       | Error e -> Error e)
