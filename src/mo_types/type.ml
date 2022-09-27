@@ -67,6 +67,112 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Efficient comparison *)
+let tag t =
+  match t with
+  | Prim _ -> 0
+  | Var _ -> 1
+  | Con _ -> 2
+  | Array _ -> 3
+  | Tup _ -> 4
+  | Func _ -> 5
+  | Opt _ -> 6
+  | Async _ -> 7
+  | Obj _ -> 8
+  | Variant _ -> 9
+  | Mut _ -> 10
+  | Any -> 11
+  | Non -> 12
+  | Pre -> 13
+  | Typ _ -> 14
+
+let rec compare_typ (t1 : typ) (t2 : typ) =
+  if t1 == t2 then 0 else
+  let c = Int.compare (tag t1) (tag t2) in
+  if c <> 0
+  then c
+  else match (t1, t2) with
+  | Prim p1, Prim p2 -> compare p1 p2
+  | Var (s1, i1), Var (s2, i2) ->
+   (match Int.compare i1 i2 with
+    | 0 -> String.compare s1 s2
+    | other -> other)
+  | Con (c1, ts1), Con (c2, ts2) ->
+   (match Cons.compare c1 c2 with
+    | 0 -> compare_typs ts1 ts2
+    | other -> other)
+  | Array t1, Array t2 ->
+    compare_typ t1 t2
+  | Tup ts1, Tup ts2 ->
+    compare_typs ts1 ts2
+  | Func (s1, c1, tbs1, ts11, ts12),
+    Func (s2, c2, tbs2, ts21, ts22) ->
+    (match compare s1 s2 with
+     | 0 ->
+       (match compare c1 c2 with
+        | 0 ->
+          (match compare tbs1 tbs2 with
+           | 0 ->
+             (match compare_typs ts11 ts21 with
+             | 0 -> compare_typs ts12 ts22
+             | o -> o)
+           | o -> o)
+        | o -> o)
+     | o -> o)
+  | Opt t1, Opt t2 -> compare_typ t1 t2
+  | Async (t11,t12) , Async (t21, t22) ->
+    (match compare_typ t11 t21 with
+     | 0 -> compare_typ t12 t22
+     | other -> other)
+  | Obj (s1, fs1), Obj (s2, fs2) ->
+    (match compare s1 s2 with
+     | 0 -> compare_flds fs1 fs2
+     | o -> o)
+  | Variant fs1, Variant fs2 ->
+    compare_flds fs1 fs2
+  | Mut t1, Mut t2 ->
+    compare_typ t1 t2
+  | Any, Any -> 0
+  | Non, Non -> 0
+  | Pre, Pre -> 0
+  | Typ c1, Typ c2 -> Cons.compare c1 c2
+  | _ -> assert false
+
+and compare_fld fld1 fld2 =
+  match String.compare fld1.lab fld2.lab with
+  | 0 ->
+   (match compare_typ fld1.typ fld2.typ with
+    | 0 -> compare fld1.depr fld2.depr
+    | other -> other)
+  | other ->  other
+
+and compare_flds flds1 flds2 =
+  match (flds1, flds2) with
+  | [], [] -> 0
+  | [], (_::_) -> -1
+  | (_::_, []) -> 1
+  | (fld1::flds1, fld2 :: flds2) ->
+    (match compare_fld fld1 fld2 with
+     | 0 -> compare_flds flds1 flds2
+     | other -> other)
+
+and compare_typs ts1 ts2 =
+  match (ts1, ts2) with
+  | [], [] -> 0
+  | [], (_::_) -> -1
+  | (_::_, []) -> 1
+  | (t1::ts1, t2 :: ts2) ->
+    (match compare_typ t1 t2 with
+     | 0 -> compare_typs ts1 ts2
+     | other -> other)
+
+let compare_rel p1 p2 =
+  let (t1 : typ), (t2 : typ) = p1 in
+  let (u1 : typ), (u2 : typ) = p2 in
+  match compare_typ (t1 : typ) (u1 : typ) with
+  | 0 -> compare_typ (t2 : typ) (u2 : typ)
+  | other -> other
+
 (* Function sorts *)
 
 let is_shared_sort sort = sort <> Local
@@ -663,7 +769,11 @@ let str = ref (fun _ -> failwith "")
 
 exception PreEncountered
 
-module SS = Set.Make (struct type t = typ * typ let compare = compare end)
+
+module SS = Set.Make (struct
+  type t = typ * typ
+  let compare = compare_rel
+end)
 
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
