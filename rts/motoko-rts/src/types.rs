@@ -427,7 +427,7 @@ impl Object {
         self.add(1) as *mut Value // skip object header
     }
 
-    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+    pub(crate) unsafe fn size(self: *const Self) -> u32 {
         (*self).size
     }
 
@@ -456,7 +456,7 @@ impl Closure {
         self.offset(1) as *mut Value // skip closure header
     }
 
-    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+    pub(crate) unsafe fn size(self: *const Self) -> u32 {
         (*self).size
     }
 }
@@ -542,7 +542,7 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
 
@@ -647,7 +647,7 @@ pub struct FreeSpace {
 
 impl FreeSpace {
     /// Size of the free space (includes object header)
-    pub unsafe fn size(self: *mut Self) -> Words<u32> {
+    pub unsafe fn size(self: *const Self) -> Words<u32> {
         (*self).words + size_of::<Obj>()
     }
 }

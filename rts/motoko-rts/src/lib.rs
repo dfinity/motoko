@@ -44,8 +44,12 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
-    mem.alloc_words(n)
+unsafe fn alloc_words<M: memory::Memory>(
+    mem: &mut M,
+    n: types::Words<u32>,
+    init_word: u32,
+) -> types::Value {
+    mem.alloc_words(n, init_word)
 }
 
 extern "C" {

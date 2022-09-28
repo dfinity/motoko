@@ -26,16 +26,33 @@ use motoko_rts_macros::ic_mem_fn;
 ///
 /// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+    unsafe fn alloc_words(&mut self, n: Words<u32>, init_word: u32) -> Value;
+}
+
+/// Helper for fixed-size objects
+#[cfg(feature = "ic")]
+struct NWords<const N: usize> {}
+
+#[cfg(feature = "ic")]
+impl NWords<3> {
+    #[inline(always)]
+    unsafe fn alloc<M: Memory>(mem: &mut M, init_word: u32) -> Value {
+        mem.alloc_words(Words(3), init_word)
+    }
+}
+
+// create the wrapper
+#[cfg(feature = "ic")]
+#[export_name = "alloc_3words"]
+unsafe extern "C" fn ic_nwords3_alloc(init_word: u32) -> Value {
+    NWords::<3>::alloc(&mut crate::memory::ic::IcMemory, init_word)
 }
 
 /// Helper for allocating blobs
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
-    // NB. Cannot use `as_blob` here as we didn't write the header yet
-    let blob = ptr.get_ptr() as *mut Blob;
-    (*blob).header.tag = TAG_BLOB;
+    let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words(), TAG_BLOB);
+    let blob = ptr.as_blob_mut();
     (*blob).len = size;
     ptr
 }
@@ -48,11 +65,9 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
         rts_trap_with("Array allocation too large");
     }
 
-    let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
-
-    let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
-    (*ptr).header.tag = TAG_ARRAY;
-    (*ptr).len = len;
+    let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len), TAG_ARRAY);
+    let arr = skewed_ptr.as_array();
+    (*arr).len = len;
 
     skewed_ptr
 }

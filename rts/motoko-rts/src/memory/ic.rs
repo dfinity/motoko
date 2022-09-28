@@ -68,8 +68,8 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 pub struct IcMemory;
 
 impl Memory for IcMemory {
-    #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    #[inline(never)]
+    unsafe fn alloc_words(&mut self, n: Words<u32>, init_word: u32) -> Value {
         let bytes = n.to_bytes();
         // Update ALLOCATED
         let delta = u64::from(bytes.as_u32());
@@ -85,12 +85,14 @@ impl Memory for IcMemory {
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
         HP = new_hp as u32;
 
+        *(old_hp as *mut u32) = init_word;
+        debug_assert_eq!(Value::from_ptr(old_hp as usize).as_obj().tag(), init_word);
         Value::from_ptr(old_hp as usize)
     }
 }
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
-#[inline(never)]
+#[inline(always)]
 unsafe fn grow_memory(ptr: u64) {
     debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
     let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
