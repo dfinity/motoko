@@ -16,6 +16,9 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
+static mut MARKED_OLD_SPACE: usize = 0;
+static mut MARKED_YOUNG_SPACE: usize = 0;
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
@@ -36,6 +39,8 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
+    println!(100, "INFO: Experimental GC starts ...");
+
     compacting_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
@@ -50,6 +55,8 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
+
+    println!(100, "INFO: Experimental GC stops ...");
 
     ic::LAST_HP = ic::HP;
 }
@@ -99,6 +106,8 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     continuation_table_ptr_loc: *mut Value,
 ) {
     let mem_size = Bytes(heap_end - heap_base);
+    MARKED_OLD_SPACE = 0;
+    MARKED_YOUNG_SPACE = 0;
 
     alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
     alloc_mark_stack(mem);
@@ -114,10 +123,44 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     mark_stack(mem, heap_base);
 
+    let total_space = old_generation_size();
+    let ratio = old_survival_rate();
+    println!(1000, "MARKED OLD {MARKED_OLD_SPACE} OF {total_space} RATIO {ratio:.3}");
+
+    let total_space = young_generation_size();
+    let ratio = young_survival_rate();
+    println!(1000, "MARKED YOUNG {MARKED_YOUNG_SPACE} OF {total_space} RATIO {ratio:.3}");
+
     update_refs(set_hp, heap_base);
 
     free_mark_stack();
     free_bitmap();
+}
+
+unsafe fn old_generation_size() -> u32 {
+    use crate::memory::ic;
+    ic::LAST_HP - ic::get_aligned_heap_base()
+}
+
+unsafe fn old_generation_free_space() -> u32 {
+    old_generation_size() - MARKED_OLD_SPACE as u32
+}
+
+unsafe fn old_survival_rate() -> f64 {
+    MARKED_OLD_SPACE as f64 / old_generation_size() as f64
+}
+
+unsafe fn young_generation_size() -> u32 {
+    use crate::memory::ic;
+    ic::HP - ic::LAST_HP
+}
+
+unsafe fn young_generation_free_space() -> u32 {
+    young_generation_size() - MARKED_YOUNG_SPACE as u32
+}
+
+unsafe fn young_survival_rate() -> f64 {
+    MARKED_YOUNG_SPACE as f64 / young_generation_size() as f64
 }
 
 unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_base: u32) {
@@ -149,6 +192,15 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
     set_bit(obj_idx);
     push_mark_stack(mem, obj as usize, obj_tag);
+
+    let obj_size = object_size(obj as usize).to_bytes().as_usize();
+    
+    use crate::memory::ic;
+    if obj >= ic::LAST_HP {
+        MARKED_YOUNG_SPACE += obj_size;
+    } else {
+        MARKED_OLD_SPACE += obj_size;
+    }
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -198,6 +250,29 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
     }
 }
 
+#[derive(PartialEq)]
+#[derive(Debug)]
+enum Strategy {
+    Young, 
+    Full,
+    None
+}
+
+unsafe fn decide_strategy() -> Strategy {
+    // TODO: Also determine whether free space is urgently needed (allocation on full heap), then go for full collection
+    const SUBSTANTIAL_FREE_SPACE: u32 = 1024 * 1024 * 1024;
+    const CRITICAL_MEMORY_LIMIT: u32 = (4096 - 256) * 1024 * 1024; 
+    if young_survival_rate() < 0.8  {
+        Strategy::Young
+    } else if old_survival_rate() < 0.5 || 
+              old_generation_size() + young_generation_size() >= CRITICAL_MEMORY_LIMIT && old_survival_rate() < 0.95||
+              old_generation_free_space() + young_generation_free_space() >= SUBSTANTIAL_FREE_SPACE {
+        Strategy::Full
+    } else {
+        Strategy::None
+    }
+}
+
 /// Linearly scan the heap, for each live object:
 ///
 /// - Mark step threads all backwards pointers and pointers from roots, so unthread to update those
@@ -208,12 +283,20 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
 /// - Thread forward pointers of the object
 ///
 unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
+    let strategy = decide_strategy();
+    println!(100, "STRATEGY: {strategy:?}");
+    
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
         let p = (bit * WORD_SIZE) as *mut Obj;
+        use crate::memory::ic;
+        let should_move = strategy == Strategy::Full || p as u32 >= ic::LAST_HP && strategy == Strategy::Young;
+        if !should_move {
+            free = p as u32;
+        }
         let p_new = free;
 
         // Update backwards references to the object's new location and restore object header

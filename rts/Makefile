@@ -274,11 +274,13 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 		--whole-archive \
 		$+
 
-
 format:
 	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
 	cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml
 
+clippy:
+	cargo clippy --manifest-path motoko-rts/Cargo.toml
+	
 clean:
 	rm -rf \
 	  _build \
@@ -287,3 +289,7 @@ clean:
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts/cargo-home
+
+use-debug: all
+	mv mo-rts.wasm mo-rts-release.wasm
+	mv mo-rts-debug.wasm mo-rts.wasm
