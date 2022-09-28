@@ -81,6 +81,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   in
 
   let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =
+    (if SS.cardinal (!rel) > 1000 then assert false);
     if t1 == t2 || SS.mem (t1, t2) !rel
     then Some inst
     else begin
