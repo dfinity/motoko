@@ -506,44 +506,54 @@ let rec span = function
 
 (* Collecting type constructors *)
 
-let rec cons' t cs =
+(* Parameter `inTyp` controls whether to count a constructor, `c`,  that only occurs as an argument of
+   `Typ` field, `Typ c`, but not in its own unfolding.
+   Set to false to avoid emitting redundant bindings in stable signature.
+*)
+
+let rec cons' inTyp t cs =
   match t with
   | Var _ ->  cs
   | (Prim _ | Any | Non | Pre ) -> cs
   | Con (c, ts) ->
-    List.fold_right cons' ts (cons_con c cs)
+    List.fold_right (cons' inTyp) ts (cons_con inTyp c cs)
   | (Opt t | Mut t | Array t) ->
-    cons' t cs
+    cons' inTyp t cs
   | Async (t1, t2) ->
-    cons' t2 (cons' t1 cs)
-  | Tup ts -> List.fold_right cons' ts cs
+    cons' inTyp t2 (cons' inTyp t1 cs)
+  | Tup ts -> List.fold_right (cons' inTyp) ts cs
   | Func (s, c, tbs, ts1, ts2) ->
-    let cs = List.fold_right cons_bind tbs  cs in
-    let cs = List.fold_right cons' ts1 cs in
-    List.fold_right cons' ts2 cs
+    let cs = List.fold_right (cons_bind inTyp) tbs  cs in
+    let cs = List.fold_right (cons' inTyp) ts1 cs in
+    List.fold_right (cons' inTyp) ts2 cs
   | (Obj (_, fs) | Variant fs) ->
-    List.fold_right cons_field fs cs
-  | Typ c -> cons_con c cs
+    List.fold_right (cons_field inTyp) fs cs
+  | Typ c ->
+    if inTyp then
+      cons_con inTyp c cs
+    else
+      (* don't add c unless mentioned in Cons.kind c *)
+      cons_kind' inTyp (Cons.kind c) cs
 
-and cons_con c cs =
+and cons_con inTyp c cs =
   if ConSet.mem c cs
   then cs
-  else cons_kind' (Cons.kind c) (ConSet.add c cs)
+  else cons_kind' inTyp (Cons.kind c) (ConSet.add c cs)
 
-and cons_bind tb cs =
-  cons' tb.bound cs
+and cons_bind inTyp tb cs =
+  cons' inTyp tb.bound cs
 
-and cons_field {lab; typ; depr} cs =
-  cons' typ cs
+and cons_field inTyp {lab; typ; depr} cs =
+  cons' inTyp typ cs
 
-and cons_kind' k cs =
+and cons_kind' inTyp k cs =
   match k with
   | Def (tbs, t)
   | Abs (tbs, t) ->
-    cons' t (List.fold_right cons_bind tbs cs)
+    cons' inTyp t (List.fold_right (cons_bind inTyp) tbs cs)
 
-let cons t = cons' t ConSet.empty
-let cons_kind k = cons_kind' k ConSet.empty
+let cons t = cons' true t ConSet.empty
+let cons_kind k = cons_kind' true k ConSet.empty
 
 (* Checking for concrete types *)
 
@@ -1455,7 +1465,11 @@ and pp_kind ppf k =
   pp_kind' vs ppf k
 
 and pp_stab_sig ppf sig_ =
-  let cs = List.fold_right cons_field sig_ ConSet.empty in
+  let cs = List.fold_right
+    (cons_field false)
+    (* false here ^ means ignore unreferenced Typ c components
+       that would produce unreferenced bindings when unfolded *)
+    sig_ ConSet.empty in
   let vs = vs_of_cs cs in
   let ds =
     let cs' = ConSet.filter (fun c ->
