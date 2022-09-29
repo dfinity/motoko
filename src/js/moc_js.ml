@@ -28,6 +28,6 @@ let () =
       method stableCompatible pre post = js_stable_compatible pre post
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
       method parseMotoko s = js_parse_motoko s
-      method parseMotokoTypes s = js_parse_motoko_types s
+      method parseMotokoTyped s = js_parse_motoko_typed s
       method parseCandid s = js_parse_candid s
      end);

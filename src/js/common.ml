@@ -113,7 +113,7 @@ let js_parse_motoko s =
     Js.some (js_of_sexpr (Arrange_sources.prog prog))
   )
 
-let js_parse_motoko_types s =
+let js_parse_motoko_typed s =
   let
     result = match Pipeline.parse_string "main" (Js.to_string s) with
     | Ok ((prog, _rel), prog_ms) ->
@@ -121,7 +121,8 @@ let js_parse_motoko_types s =
       | Ok ((typ, _scope), typ_ms) ->
         Ok (object%js
           val ast = js_of_sexpr (Arrange_types.prog prog)
-          val outputType = js_of_sexpr (Mo_types.Arrange_type.typ typ)
+          val typ = js_of_sexpr (Mo_types.Arrange_type.typ typ)
+          (* val typ = js_of_sexpr (Arrange_types.typ typ) *)
         end, List.concat [prog_ms; typ_ms])
       | Error e -> Error e)
     | Error e -> Error e

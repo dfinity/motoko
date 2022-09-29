@@ -12,19 +12,24 @@ type config = {
 
 let default_config : config = {sources = false; types = false}
 
-module Make (Config : sig val sources: bool val types: bool end) = struct
+module Pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
+
+module Make (Config : sig val sources : bool val types : bool end) = struct
   let ($$) head inner = Node (head, inner)
 
   let pos p = "Pos" $$ [Atom p.file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
 
-  let source at it = if Config.sources then "@" $$ [pos at.left; pos at.right; it] else it
+  let source at it = if Config.sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
-  let note_typ = Mo_types.Arrange_type.typ
-  let note_eff (eff : Mo_types.Type.eff) = match eff with
+  (* let typ typ = Atom (Pretty.string_of_typ typ) *)
+  (* let typ typ = Atom (Type.string_of_typ typ) *)
+  let typ = Mo_types.Arrange_type.typ
+  
+  let eff (eff : Mo_types.Type.eff) = match eff with
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot note it = if Config.types then ":" $$ [note_typ note.note_typ ; note_eff note.note_eff; it] else it
+  let annot note it = if Config.types then ":" $$ [typ note.note_typ; it] else it
 
   let id i = Atom i.it
   let tag i = Atom ("#" ^ i.it)
@@ -220,14 +225,11 @@ module Make (Config : sig val sources: bool val types: bool end) = struct
         obj_sort s; id i'
       ] @ List.map dec_field dfs)
 
-  and prog prog = "Prog" $$ List.map dec prog.it
+  and prog p = "Prog" $$ List.map dec p.it
 end
 
-module Default = Make (struct
+(* Defaults *)
+include Make (struct
   let sources = false
   let types = false
 end)
-
-(* Commonly used *)
-let prog = Default.prog
-let exp = Default.exp
