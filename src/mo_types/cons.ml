@@ -35,9 +35,9 @@ let to_string show_stamps sep c =
 
 let eq c1 c2 = c1.stamp = c2.stamp && c1.name = c2.name
 
-let compare c1 c2 =  (* Int.compare c1.stamp c2.stamp *)
-  match Int.compare c1.stamp c2.stamp with
-  | 0 -> String.compare c1.name c2.name
-  | other -> other
+let compare c1 c2 =
+  match String.compare c1.name c2.name with
+  | 0 -> Int.compare c1.stamp c2.stamp
+  | o -> o
 
 
