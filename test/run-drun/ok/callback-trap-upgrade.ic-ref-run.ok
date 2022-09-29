@@ -1,22 +1,22 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: init'ed
-← replied: ()
-→ update stats()
+<= replied: ()
+=> update stats()
 debug.print: In stats(), outstanding callbacks: 0
-← replied: ()
-→ update go()
+<= replied: ()
+=> update go()
 debug.print: In go(), outstanding callbacks: 0
 debug.print: In ping(), outstanding callbacks: 1
 debug.print: In go() again, outstanding callbacks: 0
-← rejected (RC_CANISTER_ERROR): canister did not respond
-→ update stats()
+<= rejected (RC_CANISTER_ERROR): canister did not respond
+=> update stats()
 debug.print: In stats(), outstanding callbacks: 0
-← replied: ()
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+<= replied: ()
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: init'ed
-← replied: ()
-→ update stats()
+<= replied: ()
+=> update stats()
 debug.print: In stats(), outstanding callbacks: 0
-← replied: ()
+<= replied: ()

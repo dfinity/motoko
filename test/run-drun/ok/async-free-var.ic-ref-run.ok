@@ -1,8 +1,8 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ update go()
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> update go()
 debug.print: A
 debug.print: A
 debug.print: C
@@ -10,4 +10,4 @@ debug.print: Now in async
 debug.print: C
 debug.print: B
 debug.print: B
-← replied: ()
+<= replied: ()

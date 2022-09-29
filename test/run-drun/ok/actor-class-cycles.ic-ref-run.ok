@@ -1,8 +1,8 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ update go()
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> update go()
 debug.print: {Principal = cvccv-qqaaq-aaaaa-aaaaa-c}
 debug.print: {balance = "0T"}
 debug.print: {balance = "100T"}
@@ -21,4 +21,4 @@ debug.print: {balance = "50T"}
 debug.print: {initial_C = 40_000_000_000_000}
 debug.print: {Principal = fterm-bydaq-aaaaa-aaaaa-c}
 debug.print: {current = "40T"; initial = 40_000_000_000_000}
-← replied: ()
+<= replied: ()
