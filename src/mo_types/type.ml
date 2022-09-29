@@ -68,6 +68,27 @@ and kind =
   | Abs of bind list * typ
 
 (* Efficient comparison *)
+let tag_prim p =
+  match p with
+  | Null -> 0
+  | Bool -> 1
+  | Nat -> 2
+  | Nat8 -> 3
+  | Nat16 -> 4
+  | Nat32 -> 5
+  | Nat64 -> 6
+  | Int -> 7
+  | Int8 -> 8
+  | Int16 -> 9
+  | Int32 -> 10
+  | Int64 -> 11
+  | Float -> 12
+  | Char -> 13
+  | Text -> 14
+  | Blob (* IR use: Packed representation, vec u8 IDL type *)
+  | Error -> 15
+  | Principal -> 16
+
 let tag t =
   match t with
   | Prim _ -> 0
@@ -87,12 +108,11 @@ let tag t =
   | Typ _ -> 14
 
 let rec compare_typ (t1 : typ) (t2 : typ) =
-  if t1 == t2 then 0 else
-  let c = Int.compare (tag t1) (tag t2) in
-  if c <> 0
-  then c
+  if t1 == t2 then 0
   else match (t1, t2) with
-  | Prim p1, Prim p2 -> compare p1 p2
+  | Prim p1, Prim p2 ->
+    let d = (tag_prim p1) - (tag_prim p2) in
+    if d > 0 then 1 else if d < 0 then -1 else 0
   | Var (s1, i1), Var (s2, i2) ->
    (match Int.compare i1 i2 with
     | 0 -> String.compare s1 s2
@@ -111,7 +131,7 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
      | 0 ->
        (match compare c1 c2 with
         | 0 ->
-          (match compare tbs1 tbs2 with
+          (match compare_tbs tbs1 tbs2 with
            | 0 ->
              (match compare_typs ts11 ts21 with
              | 0 -> compare_typs ts12 ts22
@@ -120,7 +140,7 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
         | o -> o)
      | o -> o)
   | Opt t1, Opt t2 -> compare_typ t1 t2
-  | Async (t11,t12) , Async (t21, t22) ->
+  | Async (t11, t12) , Async (t21, t22) ->
     (match compare_typ t11 t21 with
      | 0 -> compare_typ t12 t22
      | other -> other)
@@ -136,7 +156,25 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
   | Non, Non -> 0
   | Pre, Pre -> 0
   | Typ c1, Typ c2 -> Cons.compare c1 c2
-  | _ -> assert false
+  | _ -> Int.compare (tag t1) (tag t2)
+
+and compare_tb tb1 tb2 =
+  match String.compare tb1.var tb2.var with
+  | 0 ->
+   (match compare_typ tb1.bound tb2.bound with
+    | 0 -> compare tb1.sort tb2.sort
+    | other -> other)
+  | other ->  other
+
+and compare_tbs tbs1 tbs2 =
+  match (tbs1, tbs2) with
+  | [], [] -> 0
+  | [], (_::_) -> -1
+  | (_::_, []) -> 1
+  | (tb1::tbs1, tb2 :: tbs2) ->
+    (match compare_tb tb1 tb2 with
+     | 0 -> compare_tbs tbs1 tbs2
+     | other -> other)
 
 and compare_fld fld1 fld2 =
   match String.compare fld1.lab fld2.lab with
