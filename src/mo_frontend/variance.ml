@@ -34,7 +34,11 @@ let flip p =
 module PS = Set.Make
  (struct
     type pol = t (* rename to avoid capture below *)
-    type t = pol * typ let compare = compare
+    type t = pol * typ
+    let compare (p1,t1) (p2, t2) =
+      match compare p1 p2 with
+      | 0 -> Ord.compare t1 t2
+      | o -> o
   end)
 
 let variances cons t =

@@ -173,6 +173,18 @@ let compare_rel p1 p2 =
   | 0 -> compare_typ (t2 : typ) (u2 : typ)
   | other -> other
 
+(* Syntactic orderings *)
+
+module Ord = struct
+  type t = typ
+  let compare t1 t2 = compare_typ t1 t2
+end
+
+module OrdPair = struct
+  type t = typ * typ
+  let compare p1 p2 = compare_rel p1 p2
+end
+
 (* Function sorts *)
 
 let is_shared_sort sort = sort <> Local
@@ -653,7 +665,7 @@ let cons_kind k = cons_kind' k ConSet.empty
 
 (* Checking for concrete types *)
 
-module S = Set.Make (struct type t = typ let compare = compare end)
+module S = Set.Make (Ord)
 
 (*
 This check is a stop-gap measure until we have an IDL strategy that
@@ -770,10 +782,7 @@ let str = ref (fun _ -> failwith "")
 exception PreEncountered
 
 
-module SS = Set.Make (struct
-  type t = typ * typ
-  let compare = compare_rel
-end)
+module SS = Set.Make (OrdPair)
 
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
@@ -1069,7 +1078,7 @@ and singleton t : bool = singleton_typ (ref S.empty) t
 
 (* Least upper bound and greatest lower bound *)
 
-module M = Map.Make (struct type t = typ * typ let compare = compare end)
+module M = Map.Make (OrdPair)
 
 exception Mismatch
 
