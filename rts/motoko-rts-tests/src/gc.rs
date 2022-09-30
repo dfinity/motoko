@@ -363,6 +363,8 @@ impl GC {
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
+                        // get_last_hp
+                        || heap_base as usize,
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
