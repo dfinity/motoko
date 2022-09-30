@@ -1,7 +1,7 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
-use crate::types::*;
+use crate::{types::*, print};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -154,11 +154,15 @@ unsafe fn evac<M: Memory>(
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
-    (*fwd).header.tag = TAG_FWD_PTR;
+    (*fwd).tag = TAG_FWD_PTR;
     (*fwd).fwd = Value::from_ptr(obj_loc);
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_loc);
+
+    // Update forward address
+    let to_space_obj = obj_addr as *mut Obj;
+    (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
 unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: usize, obj: usize) {

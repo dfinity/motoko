@@ -23,7 +23,7 @@ use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 use crate::constants::WORD_SIZE;
-use crate::rts_trap_with;
+use crate::{rts_trap_with, print};
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
@@ -364,6 +364,9 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
+    // LUC TODO: Only use for compacting GC
+    // Forward address for moving without pointer threading
+    pub forward: Value
 }
 
 impl Obj {
@@ -501,11 +504,11 @@ impl Blob {
         if slop == Words(1) {
             let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
                 as *mut OneWordFiller;
-            (*filler).header.tag = TAG_ONE_WORD_FILLER;
+            (*filler).tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
-            (*filler).header.tag = TAG_FREE_SPACE;
+            (*filler).tag = TAG_FREE_SPACE;
             (*filler).words = slop - Words(1);
         }
 
@@ -526,7 +529,7 @@ pub struct Stream {
 /// A forwarding pointer placed by the GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
-    pub header: Obj,
+    pub tag: Tag,
     pub fwd: Value,
 }
 
@@ -635,13 +638,13 @@ pub struct Bits32 {
 /// Marks one word empty space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct OneWordFiller {
-    pub header: Obj,
+    pub tag: Tag,
 }
 
 /// Marks arbitrary sized emtpy space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
-    pub header: Obj,
+    pub tag: Tag,
     pub words: Words<u32>,
 }
 

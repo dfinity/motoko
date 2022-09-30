@@ -223,6 +223,9 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         let p_size_words = object_size(p as usize);
         if p_new as usize != p as usize {
             memcpy_words(p_new as usize, p as usize, p_size_words);
+            // Update forward address
+            let new_obj = p_new as *mut Obj;
+            (*new_obj).forward = Value::from_ptr(p_new as usize);
         }
 
         free += p_size_words.to_bytes().as_u32();
