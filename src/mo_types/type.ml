@@ -89,6 +89,22 @@ let tag_prim p =
   | Error -> 16
   | Principal -> 17
 
+let tag_func_sort = function
+  | Local -> 0
+  | Shared Write -> 1
+  | Shared Query -> 2
+
+let tag_obj_sort = function
+  | Object -> 0
+  | Module -> 1
+  | Actor -> 2
+  | Memory -> 3
+
+let tag_control = function
+  | Returns -> 0
+  | Promises -> 1
+  | Replies -> 2
+
 let tag t =
   match t with
   | Prim _ -> 0
@@ -107,47 +123,62 @@ let tag t =
   | Pre -> 13
   | Typ _ -> 14
 
+let compare_prim p1 p2 =
+  let d = (tag_prim p1) - (tag_prim p2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
+let compare_control c1 c2 =
+  let d = (tag_control c1) - (tag_control c2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
+let compare_obj_sort s1 s2 =
+  let d = (tag_obj_sort s1) - (tag_obj_sort s2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
+let compare_func_sort s1 s2 =
+  let d = (tag_func_sort s1) - (tag_func_sort s2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
 let rec compare_typ (t1 : typ) (t2 : typ) =
   if t1 == t2 then 0
   else match (t1, t2) with
   | Prim p1, Prim p2 ->
-    let d = (tag_prim p1) - (tag_prim p2) in
-    if d > 0 then 1 else if d < 0 then -1 else 0
+    compare_prim p1 p2
   | Var (s1, i1), Var (s2, i2) ->
-   (match Int.compare i1 i2 with
-    | 0 -> String.compare s1 s2
-    | other -> other)
+    (match Int.compare i1 i2 with
+     | 0 -> String.compare s1 s2
+     | ord -> ord)
   | Con (c1, ts1), Con (c2, ts2) ->
-   (match Cons.compare c1 c2 with
-    | 0 -> compare_typs ts1 ts2
-    | other -> other)
+    (match Cons.compare c1 c2 with
+     | 0 -> compare_typs ts1 ts2
+     | ord -> ord)
   | Array t1, Array t2 ->
     compare_typ t1 t2
   | Tup ts1, Tup ts2 ->
     compare_typs ts1 ts2
   | Func (s1, c1, tbs1, ts11, ts12),
     Func (s2, c2, tbs2, ts21, ts22) ->
-    (match compare s1 s2 with
+    (match compare_func_sort s1 s2 with
      | 0 ->
-       (match compare c1 c2 with
+       (match compare_control c1 c2 with
         | 0 ->
           (match compare_tbs tbs1 tbs2 with
            | 0 ->
              (match compare_typs ts11 ts21 with
              | 0 -> compare_typs ts12 ts22
-             | o -> o)
-           | o -> o)
-        | o -> o)
-     | o -> o)
+             | ord -> ord)
+           | ord -> ord)
+        | ord -> ord)
+     | ord -> ord)
   | Opt t1, Opt t2 -> compare_typ t1 t2
   | Async (t11, t12) , Async (t21, t22) ->
     (match compare_typ t11 t21 with
      | 0 -> compare_typ t12 t22
-     | other -> other)
+     | ord -> ord)
   | Obj (s1, fs1), Obj (s2, fs2) ->
-    (match compare s1 s2 with
+    (match compare_obj_sort s1 s2 with
      | 0 -> compare_flds fs1 fs2
-     | o -> o)
+     | ord -> ord)
   | Variant fs1, Variant fs2 ->
     compare_flds fs1 fs2
   | Mut t1, Mut t2 ->
@@ -163,8 +194,8 @@ and compare_tb tb1 tb2 =
   | 0 ->
    (match compare_typ tb1.bound tb2.bound with
     | 0 -> compare tb1.sort tb2.sort
-    | other -> other)
-  | other ->  other
+    | ord -> ord)
+  | ord ->  ord
 
 and compare_tbs tbs1 tbs2 =
   match (tbs1, tbs2) with
@@ -174,15 +205,15 @@ and compare_tbs tbs1 tbs2 =
   | (tb1::tbs1, tb2 :: tbs2) ->
     (match compare_tb tb1 tb2 with
      | 0 -> compare_tbs tbs1 tbs2
-     | other -> other)
+     | ord -> ord)
 
 and compare_fld fld1 fld2 =
   match String.compare fld1.lab fld2.lab with
   | 0 ->
    (match compare_typ fld1.typ fld2.typ with
     | 0 -> compare fld1.depr fld2.depr
-    | other -> other)
-  | other ->  other
+    | ord -> ord)
+  | ord ->  ord
 
 and compare_flds flds1 flds2 =
   match (flds1, flds2) with
@@ -192,7 +223,7 @@ and compare_flds flds1 flds2 =
   | (fld1::flds1, fld2 :: flds2) ->
     (match compare_fld fld1 fld2 with
      | 0 -> compare_flds flds1 flds2
-     | other -> other)
+     | ord -> ord)
 
 and compare_typs ts1 ts2 =
   match (ts1, ts2) with
@@ -202,14 +233,12 @@ and compare_typs ts1 ts2 =
   | (t1::ts1, t2 :: ts2) ->
     (match compare_typ t1 t2 with
      | 0 -> compare_typs ts1 ts2
-     | other -> other)
+     | ord -> ord)
 
-let compare_rel p1 p2 =
-  let (t1 : typ), (t2 : typ) = p1 in
-  let (u1 : typ), (u2 : typ) = p2 in
+let compare_rel (t1, t2) (u1, u2) =
   match compare_typ (t1 : typ) (u1 : typ) with
   | 0 -> compare_typ (t2 : typ) (u2 : typ)
-  | other -> other
+  | ord -> ord
 
 (* Syntactic orderings *)
 
