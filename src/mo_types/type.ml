@@ -85,9 +85,9 @@ let tag_prim p =
   | Float -> 12
   | Char -> 13
   | Text -> 14
-  | Blob (* IR use: Packed representation, vec u8 IDL type *)
-  | Error -> 15
-  | Principal -> 16
+  | Blob -> 15
+  | Error -> 16
+  | Principal -> 17
 
 let tag t =
   match t with
