@@ -123,6 +123,22 @@ let tag t =
   | Pre -> 13
   | Typ _ -> 14
 
+let compare_prim p1 p2 =
+  let d = (tag_prim p1) - (tag_prim p2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
+let compare_control c1 c2 =
+  let d = (tag_control c1) - (tag_control c2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
+let compare_obj_sort s1 s2 =
+  let d = (tag_obj_sort s1) - (tag_obj_sort s2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
+let compare_func_sort s1 s2 =
+  let d = (tag_func_sort s1) - (tag_func_sort s2) in
+  if d > 0 then 1 else if d < 0 then -1 else 0
+
 let compare_bind_sort s1 s2 =
   match s1, s2 with
   | Type, Type
@@ -141,7 +157,7 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
   if t1 == t2 then 0
   else match (t1, t2) with
   | Prim p1, Prim p2 ->
-    Int.compare (tag_prim p1) (tag_prim p2)
+    compare_prim p1 p2
   | Var (s1, i1), Var (s2, i2) ->
     (match Int.compare i1 i2 with
      | 0 -> String.compare s1 s2
@@ -156,9 +172,9 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
     compare_typs ts1 ts2
   | Func (s1, c1, tbs1, ts11, ts12),
     Func (s2, c2, tbs2, ts21, ts22) ->
-    (match Int.compare (tag_func_sort s1) (tag_func_sort s2) with
+    (match compare_func_sort s1 s2 with
      | 0 ->
-       (match Int.compare (tag_control c1) (tag_control c2) with
+       (match compare_control c1 c2 with
         | 0 ->
           (match compare_tbs tbs1 tbs2 with
            | 0 ->
@@ -174,7 +190,7 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
      | 0 -> compare_typ t12 t22
      | ord -> ord)
   | Obj (s1, fs1), Obj (s2, fs2) ->
-    (match Int.compare (tag_obj_sort s1) (tag_obj_sort s2) with
+    (match compare_obj_sort s1 s2 with
      | 0 -> compare_flds fs1 fs2
      | ord -> ord)
   | Variant fs1, Variant fs2 ->
