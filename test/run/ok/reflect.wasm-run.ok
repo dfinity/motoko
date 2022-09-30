@@ -1,0 +1,3 @@
+It's an Int: -42
+It's an Char: 'X'
+It's a pair: (It's an Int: -5, It's an Char: 'C')

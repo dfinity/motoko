@@ -162,7 +162,7 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256:0kq1r2aqhpvg739ljmbr9f6101rfwadnmvjddq297xww6r0mkfqa";
+        cargoSha256 = "0000000000000000000000000000000000000000000000000000";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
@@ -187,7 +187,7 @@ rec {
 
         outputHash = rustStdDepsHash;
         outputHashAlgo = "sha256";
-        outputHashMode = "recursive";
+        #outputHashMode = "recursive";
       };
 
       # Vendor tarball of the RTS
@@ -771,16 +771,18 @@ rec {
         docs.buildInputs ++
         check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
-        [ nixpkgs.ncurses
-          nixpkgs.ocamlPackages.merlin
-          nixpkgs.ocamlformat
-          nixpkgs.ocamlPackages.utop
-          nixpkgs.fswatch
-          nixpkgs.niv
-          nixpkgs.nix-update
-          nixpkgs.rlwrap # for `rlwrap moc`
-          nixpkgs.difftastic
-        ]
+        (with nixpkgs; [
+          ncurses
+          ocamlPackages.merlin
+          ocamlformat
+          ocamlPackages.utop
+          fswatch
+          niv
+          nix-update
+          rlwrap # for `rlwrap moc`
+          difftastic
+          bat
+        ])
       ));
 
     shellHook = llvmEnv + ''
