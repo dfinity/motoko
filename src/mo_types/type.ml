@@ -139,6 +139,20 @@ let compare_func_sort s1 s2 =
   let d = (tag_func_sort s1) - (tag_func_sort s2) in
   if d > 0 then 1 else if d < 0 then -1 else 0
 
+let compare_bind_sort s1 s2 =
+  match s1, s2 with
+  | Type, Type
+  | Scope, Scope -> 0
+  | Type, Scope -> -1
+  | Scope, Type -> 1
+
+let compare_depr d1 d2 =
+  match (d1, d2) with
+  | None, None -> 0
+  | Some s1, Some s2 -> String.compare s1 s2
+  | None, Some _ -> -1
+  | Some _, None -> 1
+
 let rec compare_typ (t1 : typ) (t2 : typ) =
   if t1 == t2 then 0
   else match (t1, t2) with
@@ -193,7 +207,7 @@ and compare_tb tb1 tb2 =
   match String.compare tb1.var tb2.var with
   | 0 ->
    (match compare_typ tb1.bound tb2.bound with
-    | 0 -> compare tb1.sort tb2.sort
+    | 0 -> compare_bind_sort tb1.sort tb2.sort
     | ord -> ord)
   | ord ->  ord
 
@@ -211,9 +225,9 @@ and compare_fld fld1 fld2 =
   match String.compare fld1.lab fld2.lab with
   | 0 ->
    (match compare_typ fld1.typ fld2.typ with
-    | 0 -> compare fld1.depr fld2.depr
+    | 0 -> compare_depr fld1.depr fld2.depr
     | ord -> ord)
-  | ord ->  ord
+  | ord -> ord
 
 and compare_flds flds1 flds2 =
   match (flds1, flds2) with
