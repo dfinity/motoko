@@ -1,5 +1,7 @@
 import {debugPrint} = "mo:⛔";
 
+// Analysis (deconstruction)
+
 type Desc<A> = { #int : A -> Int; #char : A -> Char; #pair : (Desc<A>, Desc<A>) };
 
 func foo</*switch*/ A>(a : A, da : Desc<A>) : Text {
@@ -30,3 +32,16 @@ func bar</*switch*/ A>(a : A, da : Desc<A>) : Text {
 };
 
 debugPrint(bar(-25, #int (func (a : Int) : Int = a)));
+
+
+// Synthesis (Building)
+
+type CoDesc<A> = { #int : Int -> A; #char : Char -> A; #pair : (CoDesc<A>, CoDesc<A>) };
+
+
+func baz<A>(d : CoDesc<A>) : A =
+    switch d {
+        case (#int f) { f 42 };
+        case (#char f) { f '%' };
+        //case (#pair p) { (baz(p.0), baz(p.1)) }
+    };
