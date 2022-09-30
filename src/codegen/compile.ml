@@ -1334,7 +1334,7 @@ module Tagged = struct
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
-  let header_size = 1l
+  let header_size = 2l
   let tag_field = 0l
 
   (* Assumes a pointer to the object on the stack *)

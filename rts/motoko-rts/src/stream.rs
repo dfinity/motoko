@@ -39,7 +39,7 @@ use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(36);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
@@ -193,9 +193,11 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
+        let ptr = Value::from_ptr(blob as usize);
         (*blob).header.tag = TAG_BLOB;
+        (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);
-        Value::from_ptr(blob as usize)
+        ptr
     }
 
     /// Shut down the stream by outputting all data. Lengths are
