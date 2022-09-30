@@ -19,7 +19,7 @@ default = ["ic"]
 ic = []
 
 [dependencies]
-libc = { version = "0.2.132", default_features = false }
+libc = { version = "0.2.112", default_features = false }
 motoko-rts-macros = { path = "../motoko-rts-macros" }
 
 [profile.dev]
