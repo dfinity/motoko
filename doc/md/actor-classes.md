@@ -73,5 +73,5 @@ This constructor takes an additional first argument that specifies the desired i
 Using this syntax, it's possible to specify initial canister settings (such as an array of controllers), manually install, upgrade and reinstall canisters, exposing all of the
 lower-level facilities of the Internet Computer.
 
-See [Actor class management](language-manual.md#actor_class_management) for more details.
+See [Actor class management](language-manual.md#actor-class-management) for more details.
 
