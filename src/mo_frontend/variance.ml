@@ -38,7 +38,7 @@ module PS = Set.Make
     let compare (p1,t1) (p2, t2) =
       match compare p1 p2 with
       | 0 -> Ord.compare t1 t2
-      | o -> o
+      | ord -> ord
   end)
 
 let variances cons t =
