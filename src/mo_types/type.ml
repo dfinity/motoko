@@ -124,19 +124,19 @@ let tag t =
   | Typ _ -> 14
 
 let compare_prim p1 p2 =
-  let d = (tag_prim p1) - (tag_prim p2) in
+  let d = tag_prim p1 - tag_prim p2 in
   if d > 0 then 1 else if d < 0 then -1 else 0
 
 let compare_control c1 c2 =
-  let d = (tag_control c1) - (tag_control c2) in
+  let d = tag_control c1 - tag_control c2 in
   if d > 0 then 1 else if d < 0 then -1 else 0
 
 let compare_obj_sort s1 s2 =
-  let d = (tag_obj_sort s1) - (tag_obj_sort s2) in
+  let d = tag_obj_sort s1 - tag_obj_sort s2 in
   if d > 0 then 1 else if d < 0 then -1 else 0
 
 let compare_func_sort s1 s2 =
-  let d = (tag_func_sort s1) - (tag_func_sort s2) in
+  let d = tag_func_sort s1 - tag_func_sort s2 in
   if d > 0 then 1 else if d < 0 then -1 else 0
 
 let compare_bind_sort s1 s2 =
@@ -206,9 +206,9 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
 and compare_tb tb1 tb2 =
   match String.compare tb1.var tb2.var with
   | 0 ->
-   (match compare_typ tb1.bound tb2.bound with
-    | 0 -> compare_bind_sort tb1.sort tb2.sort
-    | ord -> ord)
+    (match compare_typ tb1.bound tb2.bound with
+     | 0 -> compare_bind_sort tb1.sort tb2.sort
+     | ord -> ord)
   | ord ->  ord
 
 and compare_tbs tbs1 tbs2 =
@@ -224,9 +224,9 @@ and compare_tbs tbs1 tbs2 =
 and compare_fld fld1 fld2 =
   match String.compare fld1.lab fld2.lab with
   | 0 ->
-   (match compare_typ fld1.typ fld2.typ with
-    | 0 -> compare_depr fld1.depr fld2.depr
-    | ord -> ord)
+    (match compare_typ fld1.typ fld2.typ with
+     | 0 -> compare_depr fld1.depr fld2.depr
+     | ord -> ord)
   | ord -> ord
 
 and compare_flds flds1 flds2 =
