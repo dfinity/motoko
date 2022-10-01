@@ -129,7 +129,7 @@ unsafe fn evac<M: Memory>(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
-    let obj = (*ptr_loc).as_obj();
+    let obj = (*ptr_loc).get_ptr() as *mut Obj;
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
