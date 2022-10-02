@@ -27,7 +27,7 @@ let () =
       method candid s = Flags.compiled := true; js_candid s
       method stableCompatible pre post = js_stable_compatible pre post
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
-      method parseMotoko s = js_parse_motoko s
-      method parseMotokoTyped s = js_parse_motoko_typed s
       method parseCandid s = js_parse_candid s
+      method parseMotoko s = js_parse_motoko s
+      method parseMotokoTyped paths = js_parse_motoko_typed paths
      end);

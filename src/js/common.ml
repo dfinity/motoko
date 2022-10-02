@@ -107,32 +107,26 @@ let js_compile_wasm mode source =
       end)
     )
 
-let js_parse_motoko s =
-  let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
-  js_result parse_result (fun (prog, _) ->
-    Js.some (js_of_sexpr (Arrange_sources.prog prog))
-  )
-
-let js_parse_motoko_typed filename =
-  let
-    load_result = Pipeline.load_progs Pipeline.parse_file [Js.to_string filename] Pipeline.initial_stat_env in
-    js_result load_result (fun (libs, progs, senv) ->
-      (match progs with
-      | [prog] -> Js.some (object%js
-          val ast = js_of_sexpr (Arrange_types.prog prog)
-          (* val typ = js_of_sexpr (Mo_types.Arrange_type.typ typ) *)
-        end)
-      | progs ->
-        (* TODO: return an appropriate `Error` *)
-        let exception Unexpected of string in
-        raise (Unexpected "progs"))
-    )
-
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog))
-  )
+    Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog)))
+
+let js_parse_motoko s =
+  let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
+  js_result parse_result (fun (prog, _) ->
+    Js.some (js_of_sexpr (Arrange_sources.prog prog)))
+
+let js_parse_motoko_typed paths =
+  let paths = paths |> Js.to_array |> Array.to_list in
+  let
+    load_result = Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env
+  in js_result load_result (fun (libs, progs, senv) ->
+    progs |> List.map (fun prog ->
+      object%js
+        val ast = js_of_sexpr (Arrange_types.prog prog)
+        (* val typ = js_of_sexpr (Arrange_types.typ typ) *)
+      end) |> Array.of_list |> Js.array |> Js.some)
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
