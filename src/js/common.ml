@@ -113,21 +113,20 @@ let js_parse_motoko s =
     Js.some (js_of_sexpr (Arrange_sources.prog prog))
   )
 
-let js_parse_motoko_typed s =
+let js_parse_motoko_typed filename =
   let
-    result = match Pipeline.parse_string "main" (Js.to_string s) with
-    | Ok ((prog, _rel), prog_ms) ->
-      (match Mo_frontend.Typing.infer_prog Pipeline.initial_stat_env prog with
-      | Ok ((typ, _scope), typ_ms) ->
-        Ok (object%js
+    load_result = Pipeline.load_progs Pipeline.parse_file [Js.to_string filename] Pipeline.initial_stat_env in
+    js_result load_result (fun (libs, progs, senv) ->
+      (match progs with
+      | [prog] -> Js.some (object%js
           val ast = js_of_sexpr (Arrange_types.prog prog)
-          val typ = js_of_sexpr (Mo_types.Arrange_type.typ typ)
-          (* val typ = js_of_sexpr (Arrange_types.typ typ) *)
-        end, List.concat [prog_ms; typ_ms])
-      | Error e -> Error e)
-    | Error e -> Error e
-  in
-  js_result result Js.some
+          (* val typ = js_of_sexpr (Mo_types.Arrange_type.typ typ) *)
+        end)
+      | progs ->
+        (* TODO: return an appropriate `Error` *)
+        let exception Unexpected of string in
+        raise (Unexpected "progs"))
+    )
 
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
