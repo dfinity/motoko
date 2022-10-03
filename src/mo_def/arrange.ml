@@ -21,9 +21,9 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
 
   let source at it = if Config.sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
-  (* let typ typ = Atom (Pretty.string_of_typ typ) *)
+  let typ typ = Atom (Pretty.string_of_typ typ)
   (* let typ typ = Atom (Type.string_of_typ typ) *)
-  let typ = Mo_types.Arrange_type.typ
+  (* let typ = Mo_types.Arrange_type.typ *)
   
   let eff (eff : Mo_types.Type.eff) = match eff with
   | Mo_types.Type.Triv -> Atom "Triv"
