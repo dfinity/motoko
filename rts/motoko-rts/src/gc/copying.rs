@@ -1,7 +1,7 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
-use crate::{types::*, print};
+use crate::{print, types::*};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -36,7 +36,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
-    
+
     ic::LAST_HP = ic::HP;
     println!(100, "Copying GC stops ...");
 }

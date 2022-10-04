@@ -1,6 +1,6 @@
 pub mod copying;
-pub mod mark_compact;
 pub mod experimental;
+pub mod mark_compact;
 pub mod no;
 
 #[cfg(feature = "ic")]

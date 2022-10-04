@@ -1,10 +1,14 @@
 //! Experimental GC, currently very simple generational GC.
-//! Two generations: young and old 
-//! Full heap mark, then compection decision (young only, full collection, or no collection) 
+//! Two generations: young and old
+//! Full heap mark, then compection decision (young only, full collection, or no collection)
 //! Based on the Motoko RTS mark & compact GC.
 
-use crate::gc::mark_compact::bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
-use crate::gc::mark_compact::mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
+use crate::gc::mark_compact::bitmap::{
+    alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
+};
+use crate::gc::mark_compact::mark_stack::{
+    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack,
+};
 
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
@@ -20,13 +24,13 @@ static mut MARKED_YOUNG_SPACE: usize = 0;
 struct HeapLimits {
     pub base: usize,
     pub last_free: usize,
-    pub free: usize
+    pub free: usize,
 }
 
 static mut HEAP_LIMITS: HeapLimits = HeapLimits {
     base: 0,
     last_free: 0,
-    free: 0
+    free: 0,
 };
 
 static mut FORCE_YOUNG_GC: bool = true; // for test runs
@@ -97,7 +101,7 @@ pub unsafe fn experimental_gc_internal<
     HEAP_LIMITS = HeapLimits {
         base: heap_base as usize,
         last_free: get_last_hp(),
-        free: get_hp()
+        free: get_hp(),
     };
 
     let old_hp = get_hp() as u32;
@@ -148,11 +152,17 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     let total_space = old_generation_size();
     let ratio = old_survival_rate();
-    println!(1000, "MARKED OLD {MARKED_OLD_SPACE} OF {total_space} RATIO {ratio:.3}");
+    println!(
+        1000,
+        "MARKED OLD {MARKED_OLD_SPACE} OF {total_space} RATIO {ratio:.3}"
+    );
 
     let total_space = young_generation_size();
     let ratio = young_survival_rate();
-    println!(1000, "MARKED YOUNG {MARKED_YOUNG_SPACE} OF {total_space} RATIO {ratio:.3}");
+    println!(
+        1000,
+        "MARKED YOUNG {MARKED_YOUNG_SPACE} OF {total_space} RATIO {ratio:.3}"
+    );
 
     update_refs(set_hp, heap_base);
 
@@ -215,7 +225,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     push_mark_stack(mem, obj as usize, obj_tag);
 
     let obj_size = object_size(obj as usize).to_bytes().as_usize();
-    
+
     if obj >= HEAP_LIMITS.last_free as u32 {
         MARKED_YOUNG_SPACE += obj_size;
     } else {
@@ -270,23 +280,24 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
     }
 }
 
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 enum Strategy {
-    Young, 
+    Young,
     Full,
-    None
+    None,
 }
 
 unsafe fn decide_strategy() -> Strategy {
     // TODO: Also determine whether free space is urgently needed (allocation on full heap), then go for full collection
     const SUBSTANTIAL_FREE_SPACE: u32 = 1024 * 1024 * 1024;
-    const CRITICAL_MEMORY_LIMIT: u32 = (4096 - 256) * 1024 * 1024; 
-    if FORCE_YOUNG_GC || young_survival_rate() < 0.8  {
+    const CRITICAL_MEMORY_LIMIT: u32 = (4096 - 256) * 1024 * 1024;
+    if FORCE_YOUNG_GC || young_survival_rate() < 0.8 {
         Strategy::Young
-    } else if old_survival_rate() < 0.5 || 
-              old_generation_size() + young_generation_size() >= CRITICAL_MEMORY_LIMIT && old_survival_rate() < 0.95||
-              old_generation_free_space() + young_generation_free_space() >= SUBSTANTIAL_FREE_SPACE {
+    } else if old_survival_rate() < 0.5
+        || old_generation_size() + young_generation_size() >= CRITICAL_MEMORY_LIMIT
+            && old_survival_rate() < 0.95
+        || old_generation_free_space() + young_generation_free_space() >= SUBSTANTIAL_FREE_SPACE
+    {
         Strategy::Full
     } else {
         Strategy::None
@@ -305,14 +316,15 @@ unsafe fn decide_strategy() -> Strategy {
 unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let strategy = decide_strategy();
     println!(100, "STRATEGY: {strategy:?}");
-    
+
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
         let p = (bit * WORD_SIZE) as *mut Obj;
-        let should_move = strategy == Strategy::Full || p as u32 >= HEAP_LIMITS.last_free as u32 && strategy == Strategy::Young;
+        let should_move = strategy == Strategy::Full
+            || p as u32 >= HEAP_LIMITS.last_free as u32 && strategy == Strategy::Young;
         if !should_move {
             free = p as u32;
         }
