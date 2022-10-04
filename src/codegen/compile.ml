@@ -566,8 +566,9 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying" | "experimental") "_gc" *)
+    (* GC function name = "schedule_"? ("compacting" | "copying" | "experimental" | "no") "_gc" *)
     let gc_fn = match !Flags.gc_strategy with
+    | Mo_config.Flags.No -> "no"
     | Mo_config.Flags.Experimental -> "experimental"
     | Mo_config.Flags.MarkCompact -> "compacting"
     | Mo_config.Flags.Copying -> "copying"
@@ -919,9 +920,11 @@ module RTS = struct
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
     E.add_func_import env "rts" "experimental_gc" [] [];
+    E.add_func_import env "rts" "no_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "schedule_experimental_gc" [] [];
+    E.add_func_import env "rts" "schedule_no_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
