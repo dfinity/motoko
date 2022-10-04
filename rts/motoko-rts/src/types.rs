@@ -535,6 +535,7 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
+    pub padding: u32, // insertion of forward address in the header implies 1 word padding to 64-bit
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,

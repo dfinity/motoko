@@ -1413,7 +1413,7 @@ module Tagged = struct
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
       compile_unboxed_const (int_of_tag tag) ::
-      compile_unboxed_const (int_of_tag Null) ::
+      compile_unboxed_const (int_of_tag Null) :: (* forward address *)
       element_instructions
 
 end (* Tagged *)
@@ -6203,7 +6203,7 @@ module Stabilization = struct
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
-    let ptr64_field = Int32.add Blob.len_field 1l (* see invariant in `stream.rs` *)
+    let ptr64_field = Int32.add Blob.len_field 2l (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
     let terminate env get_token get_data_size header_size =
       get_token ^^
