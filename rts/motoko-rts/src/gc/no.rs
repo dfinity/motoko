@@ -9,6 +9,6 @@ unsafe fn schedule_no_gc<M: Memory>(mem: &mut M) {
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn no_gc<M: Memory>(mem: &mut M) {
+unsafe fn no_gc<M: Memory>(_mem: &mut M) {
     println!(100, "INFO: GC DISABLED ...");
 }
