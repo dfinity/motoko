@@ -157,4 +157,5 @@ let gc_flags option =
   | "scheduling" -> Flags.force_gc := false
   | "copying" -> Flags.gc_strategy := Mo_config.Flags.Copying
   | "marking" -> Flags.gc_strategy := Mo_config.Flags.MarkCompact
+  | "no" -> Flags.gc_strategy := Mo_config.Flags.No
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")

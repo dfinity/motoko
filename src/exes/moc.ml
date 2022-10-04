@@ -138,6 +138,10 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
+  "--no-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.No),
+  " use no GC";
+
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
   " use compacting GC";
