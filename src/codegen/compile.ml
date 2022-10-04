@@ -566,8 +566,9 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying") "_gc" *)
+    (* GC function name = "schedule_"? ("compacting" | "copying" | "experimental") "_gc" *)
     let gc_fn = match !Flags.gc_strategy with
+    | Mo_config.Flags.Experimental -> "experimental"
     | Mo_config.Flags.MarkCompact -> "compacting"
     | Mo_config.Flags.Copying -> "copying"
     in
@@ -917,8 +918,10 @@ module RTS = struct
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
+    E.add_func_import env "rts" "experimental_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
+    E.add_func_import env "rts" "schedule_experimental_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
@@ -9851,7 +9854,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact && !Flags.gc_strategy = Mo_config.Flags.Experimental) ^^
     E.call_import env "rts" "init" ^^
     match start_fi_o with
     | Some fi ->

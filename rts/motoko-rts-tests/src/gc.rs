@@ -14,6 +14,7 @@ use utils::{get_scalar_value, read_word, unskew_pointer, make_pointer, ObjectIdx
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
+use motoko_rts::gc::experimental::experimental_gc_internal;
 use motoko_rts::types::*;
 
 use std::fmt::Write;
@@ -368,6 +369,25 @@ impl GC {
             GC::MarkCompact => {
                 unsafe {
                     compacting_gc_internal(
+                        &mut heap,
+                        heap_base,
+                        // get_hp
+                        || heap_1.heap_ptr_address(),
+                        // set_hp
+                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                        static_roots,
+                        continuation_table_ptr_address,
+                        // note_live_size
+                        |_live_size| {},
+                        // note_reclaimed
+                        |_reclaimed| {},
+                    );
+                }
+            }
+
+            GC::Experimental => {
+                unsafe {
+                    experimental_gc_internal(
                         &mut heap,
                         heap_base,
                         // get_hp
