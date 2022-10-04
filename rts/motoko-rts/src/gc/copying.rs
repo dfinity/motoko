@@ -20,7 +20,7 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    println!(100, "Copying GC starts ...");
+    //println!(100, "Copying GC starts ...");
 
     copying_gc_internal(
         mem,
@@ -38,7 +38,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     );
 
     ic::LAST_HP = ic::HP;
-    println!(100, "Copying GC stops ...");
+    //println!(100, "Copying GC stops ...");
 }
 
 pub unsafe fn copying_gc_internal<
