@@ -68,8 +68,7 @@ and kind =
   | Abs of bind list * typ
 
 (* Efficient comparison *)
-let tag_prim p =
-  match p with
+let tag_prim = function
   | Null -> 0
   | Bool -> 1
   | Nat -> 2
@@ -242,11 +241,12 @@ and compare_typs ts1 ts2 =
   match (ts1, ts2) with
   | [], [] -> 0
   | [], (_::_) -> -1
-  | (_::_, []) -> 1
   | (t1::ts1, t2 :: ts2) ->
     (match compare_typ t1 t2 with
      | 0 -> compare_typs ts1 ts2
      | ord -> ord)
+  | _ -> 1
+
 
 let compare_rel (t1, t2) (u1, u2) =
   match compare_typ (t1 : typ) (u1 : typ) with
@@ -257,12 +257,12 @@ let compare_rel (t1, t2) (u1, u2) =
 
 module Ord = struct
   type t = typ
-  let compare t1 t2 = compare_typ t1 t2
+  let compare = compare_typ
 end
 
 module OrdPair = struct
   type t = typ * typ
-  let compare p1 p2 = compare_rel p1 p2
+  let compare = compare_rel
 end
 
 (* Function sorts *)
