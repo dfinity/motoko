@@ -158,8 +158,12 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     let strategy = decide_strategy();
     println!(100, "STRATEGY: {strategy:?}");
     
-    thread_backward_phase(strategy, heap_base, static_roots, continuation_table_ptr_loc);
-    move_phase(strategy, set_hp, heap_base);
+    let mut free = heap_end;
+    if strategy != Strategy::None {
+        thread_backward_phase(strategy, heap_base, static_roots, continuation_table_ptr_loc);
+        free = move_phase(strategy, heap_base);
+    }
+    set_hp(free);
 
     free_mark_stack();
     free_bitmap();
@@ -388,8 +392,10 @@ unsafe fn thread_backward_pointer_fields(strategy: Strategy, obj: *mut Obj, obj_
 /// - Move the object
 ///
 /// - Thread forward pointers of the object
+/// 
+/// Returns the new free pointer
 ///
-unsafe fn move_phase<SetHp: Fn(u32)>(strategy: Strategy, set_hp: SetHp, heap_base: u32) {
+unsafe fn move_phase(strategy: Strategy, heap_base: u32) -> u32 {
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
@@ -425,7 +431,7 @@ unsafe fn move_phase<SetHp: Fn(u32)>(strategy: Strategy, set_hp: SetHp, heap_bas
         bit = bitmap_iter.next();
     }
 
-    set_hp(free);
+    free
 }
 
 /// Thread forward pointers in object
