@@ -351,6 +351,9 @@ unsafe fn thread_root_mutbox_fields(strategy: Strategy, mutbox: *mut MutBox, hea
 
 unsafe fn thread_all_backward_pointers(strategy: Strategy, heap_base: u32) {
     let mut bitmap_iter = iter_bits();
+    if strategy == Strategy::Young {
+        bitmap_iter.advance(HEAP_LIMITS.last_free as u32);
+    }
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
         let obj = (bit * WORD_SIZE) as *mut Obj;

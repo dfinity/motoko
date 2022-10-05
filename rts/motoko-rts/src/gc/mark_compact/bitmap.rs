@@ -1,3 +1,4 @@
+use crate::constants::WORD_SIZE;
 use crate::mem_utils::memzero;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{size_of, Blob, Bytes, Obj};
@@ -157,10 +158,24 @@ pub unsafe fn iter_bits() -> BitmapIter {
 pub const BITMAP_ITER_END: u32 = u32::MAX;
 
 impl BitmapIter {
+    pub unsafe fn advance(&mut self, address: u32) {
+        debug_assert!(address % WORD_SIZE == 0);
+        self.current_bit_idx = address / WORD_SIZE;
+        let base = get_bitmap_forbidden_size() as u32 * 8;
+        assert!(base % 8 == 0);
+        assert!(self.current_bit_idx >= base);
+        let word_idx = get_bitmap_forbidden_size() + (self.current_bit_idx - base) as usize / 64 * 8;
+        self.current_word = *(BITMAP_FORBIDDEN_PTR.add(word_idx) as *const u64);
+        self.leading_zeros = self.current_word.leading_zeros();
+        let bit_offset = (self.current_bit_idx - base) % 64;
+        self.current_word >>= bit_offset;
+        self.leading_zeros = core::cmp::min(self.leading_zeros, 64 - bit_offset);
+    }
+
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_bit_idx <= self.size);
-
+        
         if self.current_bit_idx == self.size {
             return BITMAP_ITER_END;
         }
