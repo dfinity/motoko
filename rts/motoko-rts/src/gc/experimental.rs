@@ -140,7 +140,6 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     alloc_mark_stack(mem);
 
     mark_phase(mem, heap_base, static_roots, continuation_table_ptr_loc);
-    thread_backward_phase(heap_base, static_roots, continuation_table_ptr_loc);
 
     let total_space = old_generation_size();
     let ratio = old_survival_rate();
@@ -155,8 +154,12 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         1000,
         "MARKED YOUNG {MARKED_YOUNG_SPACE} OF {total_space} RATIO {ratio:.3}"
     );
-
-    move_phase(set_hp, heap_base);
+    
+    let strategy = decide_strategy();
+    println!(100, "STRATEGY: {strategy:?}");
+    
+    thread_backward_phase(strategy, heap_base, static_roots, continuation_table_ptr_loc);
+    move_phase(strategy, set_hp, heap_base);
 
     free_mark_stack();
     free_bitmap();
@@ -274,7 +277,7 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 enum Strategy {
     Young,
     Full,
@@ -298,21 +301,30 @@ unsafe fn decide_strategy() -> Strategy {
     }
 }
 
-unsafe fn thread_backward_phase(heap_base: u32, static_roots: Value, continuation_table_ptr_loc: *mut Value) {
-    thread_all_backward_pointers(heap_base);
+unsafe fn should_be_threaded(strategy: Strategy, obj: *mut Obj) -> bool {
+    let address = obj as usize;
+    match strategy {
+        Strategy::Young => address >= HEAP_LIMITS.last_free,
+        Strategy::Full => true,
+        Strategy::None => false
+    }
+}
+
+unsafe fn thread_backward_phase(strategy: Strategy, heap_base: u32, static_roots: Value, continuation_table_ptr_loc: *mut Value) {
+    thread_all_backward_pointers(strategy, heap_base);
     
     // For static root, also forward pointers are threaded. 
     // Therefore, this must happen after the heap traversal for backwards pointer threading.
-    thread_static_roots(static_roots, heap_base);
+    thread_static_roots(strategy, static_roots, heap_base);
 
     if (*continuation_table_ptr_loc).is_ptr() {
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
         // it will be readable when we unthread the continuation table
-        thread(continuation_table_ptr_loc);
+        thread(strategy, continuation_table_ptr_loc);
     }
 }
 
-unsafe fn thread_static_roots(static_roots: Value, heap_base: u32) {
+unsafe fn thread_static_roots(strategy: Strategy, static_roots: Value, heap_base: u32) {
     let root_array = static_roots.as_array();
 
     for i in 0..root_array.len() {
@@ -320,33 +332,33 @@ unsafe fn thread_static_roots(static_roots: Value, heap_base: u32) {
         // Root array should only have pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
         debug_assert!((obj as u32) < heap_base); // check that MutBox is static
-        thread_root_mutbox_fields(obj as *mut MutBox, heap_base);
+        thread_root_mutbox_fields(strategy, obj as *mut MutBox, heap_base);
     }
 }
 
-unsafe fn thread_root_mutbox_fields(mutbox: *mut MutBox, heap_base: u32) {
+unsafe fn thread_root_mutbox_fields(strategy: Strategy, mutbox: *mut MutBox, heap_base: u32) {
     let field_addr = &mut (*mutbox).field;
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
-        thread(field_addr);
+        thread(strategy, field_addr);
     }
 }
 
-unsafe fn thread_all_backward_pointers(heap_base: u32) {
+unsafe fn thread_all_backward_pointers(strategy: Strategy, heap_base: u32) {
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
         let obj = (bit * WORD_SIZE) as *mut Obj;
         let tag = obj.tag();
         
-        thread_backward_pointer_fields(obj, tag, heap_base);
+        thread_backward_pointer_fields(strategy, obj, tag, heap_base);
         
         bit = bitmap_iter.next();
     }
 }
 
-unsafe fn thread_backward_pointer_fields(obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
+unsafe fn thread_backward_pointer_fields(strategy: Strategy, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     assert!(obj_tag < TAG_ARRAY_SLICE_MIN);
     visit_pointer_fields(
         &mut (),
@@ -358,7 +370,7 @@ unsafe fn thread_backward_pointer_fields(obj: *mut Obj, obj_tag: Tag, heap_base:
             
             // Thread if backwards or self pointer
             if field_value.get_ptr() <= obj as usize {
-                thread(field_addr);
+                thread(strategy, field_addr);
             }
         },
         |_, slice_start, arr| {
@@ -377,25 +389,24 @@ unsafe fn thread_backward_pointer_fields(obj: *mut Obj, obj_tag: Tag, heap_base:
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn move_phase<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
-    let strategy = decide_strategy();
-    println!(100, "STRATEGY: {strategy:?}");
-
+unsafe fn move_phase<SetHp: Fn(u32)>(strategy: Strategy, set_hp: SetHp, heap_base: u32) {
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
         let p = (bit * WORD_SIZE) as *mut Obj;
-        let should_move = strategy == Strategy::Full
+        let compacting = strategy == Strategy::Full
             || p as u32 >= HEAP_LIMITS.last_free as u32 && strategy == Strategy::Young;
-        if !should_move {
+        if !compacting {
             free = p as u32;
         }
         let p_new = free;
 
-        // Update backwards references to the object's new location and restore object header
-        unthread(p, p_new);
+        if compacting {
+            // Update backwards references to the object's new location and restore object header
+            unthread(strategy, p, p_new);
+        }
 
         // Move the object
         let p_size_words = object_size(p as usize);
@@ -408,8 +419,8 @@ unsafe fn move_phase<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 
         free += p_size_words.to_bytes().as_u32();
 
-        // Thread forward pointers of the object
-        thread_fwd_pointers(p_new as *mut Obj, heap_base);
+        // Thread forward pointers of the object, even if not moved
+        thread_fwd_pointers(strategy, p_new as *mut Obj, heap_base);
 
         bit = bitmap_iter.next();
     }
@@ -418,7 +429,7 @@ unsafe fn move_phase<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 }
 
 /// Thread forward pointers in object
-unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
+unsafe fn thread_fwd_pointers(strategy: Strategy, obj: *mut Obj, heap_base: u32) {
     visit_pointer_fields(
         &mut (),
         obj,
@@ -426,7 +437,7 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
         heap_base as usize,
         |_, field_addr| {
             if (*field_addr).get_ptr() > obj as usize {
-                thread(field_addr)
+                thread(strategy, field_addr)
             }
         },
         |_, _, arr| arr.len(),
@@ -434,16 +445,19 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
 }
 
 /// Thread a pointer field
-unsafe fn thread(field: *mut Value) {
+unsafe fn thread(strategy: Strategy, field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
     let pointed = (*field).get_ptr() as *mut Obj;
-    let pointed_header = pointed.tag();
-    *field = Value::from_raw(pointed_header);
-    (*pointed).tag = field as u32;
+    if should_be_threaded(strategy, pointed) {
+        let pointed_header = pointed.tag();
+        *field = Value::from_raw(pointed_header);
+        (*pointed).tag = field as u32;
+    }
 }
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
-unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
+unsafe fn unthread(strategy: Strategy, obj: *mut Obj, new_loc: u32) {
+    assert!(should_be_threaded(strategy, obj));
     let mut header = obj.tag();
 
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
