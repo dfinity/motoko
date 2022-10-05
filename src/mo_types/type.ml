@@ -151,7 +151,7 @@ let compare_depr d1 d2 =
   | None, None -> 0
   | Some s1, Some s2 -> String.compare s1 s2
   | None, Some _ -> -1
-  | Some _, None -> 1
+  | _ -> 1
 
 let rec compare_typ (t1 : typ) (t2 : typ) =
   if t1 == t2 then 0
