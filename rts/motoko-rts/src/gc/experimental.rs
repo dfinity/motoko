@@ -100,7 +100,7 @@ pub unsafe fn experimental_gc_internal<
 ) {
     HEAP_LIMITS = HeapLimits {
         base: heap_base as usize,
-        last_free: get_last_hp(),
+        last_free: core::cmp::max(get_last_hp(), heap_base as usize), // max because of aligned heap base
         free: get_hp(),
     };
 
@@ -139,16 +139,8 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
     alloc_mark_stack(mem);
 
-    mark_static_roots(mem, static_roots, heap_base);
-
-    if (*continuation_table_ptr_loc).is_ptr() {
-        mark_object(mem, *continuation_table_ptr_loc);
-        // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
-        // it will be readable when we unthread the continuation table
-        thread(continuation_table_ptr_loc);
-    }
-
-    mark_stack(mem, heap_base);
+    mark_phase(mem, heap_base, static_roots, continuation_table_ptr_loc);
+    thread_backward_phase(heap_base, static_roots, continuation_table_ptr_loc);
 
     let total_space = old_generation_size();
     let ratio = old_survival_rate();
@@ -164,10 +156,20 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         "MARKED YOUNG {MARKED_YOUNG_SPACE} OF {total_space} RATIO {ratio:.3}"
     );
 
-    update_refs(set_hp, heap_base);
+    move_phase(set_hp, heap_base);
 
     free_mark_stack();
     free_bitmap();
+}
+
+unsafe fn mark_phase<M: Memory>(mem: &mut M, heap_base: u32, static_roots: Value, continuation_table_ptr_loc: *mut Value) {
+    mark_static_roots(mem, static_roots, heap_base);
+
+    if (*continuation_table_ptr_loc).is_ptr() {
+        mark_object(mem, *continuation_table_ptr_loc);
+    }
+
+    mark_all_reachable(mem, heap_base);
 }
 
 unsafe fn old_generation_size() -> u32 {
@@ -233,7 +235,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     }
 }
 
-unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
+unsafe fn mark_all_reachable<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack() {
         mark_fields(mem, obj as *mut Obj, tag, heap_base)
     }
@@ -248,11 +250,6 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         |mem, field_addr| {
             let field_value = *field_addr;
             mark_object(mem, field_value);
-
-            // Thread if backwards or self pointer
-            if field_value.get_ptr() <= obj as usize {
-                thread(field_addr);
-            }
         },
         |mem, slice_start, arr| {
             const SLICE_INCREMENT: u32 = 127;
@@ -274,9 +271,6 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
     let field_addr = &mut (*mutbox).field;
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
         mark_object(mem, *field_addr);
-        // It's OK to thread forward pointers here as the static objects won't be moved, so we will
-        // be able to unthread objects pointed by these fields later.
-        thread(field_addr);
     }
 }
 
@@ -304,6 +298,76 @@ unsafe fn decide_strategy() -> Strategy {
     }
 }
 
+unsafe fn thread_backward_phase(heap_base: u32, static_roots: Value, continuation_table_ptr_loc: *mut Value) {
+    thread_all_backward_pointers(heap_base);
+    
+    // For static root, also forward pointers are threaded. 
+    // Therefore, this must happen after the heap traversal for backwards pointer threading.
+    thread_static_roots(static_roots, heap_base);
+
+    if (*continuation_table_ptr_loc).is_ptr() {
+        // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
+        // it will be readable when we unthread the continuation table
+        thread(continuation_table_ptr_loc);
+    }
+}
+
+unsafe fn thread_static_roots(static_roots: Value, heap_base: u32) {
+    let root_array = static_roots.as_array();
+
+    for i in 0..root_array.len() {
+        let obj = root_array.get(i).as_obj();
+        // Root array should only have pointers to other static MutBoxes
+        debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
+        debug_assert!((obj as u32) < heap_base); // check that MutBox is static
+        thread_root_mutbox_fields(obj as *mut MutBox, heap_base);
+    }
+}
+
+unsafe fn thread_root_mutbox_fields(mutbox: *mut MutBox, heap_base: u32) {
+    let field_addr = &mut (*mutbox).field;
+    if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
+        // It's OK to thread forward pointers here as the static objects won't be moved, so we will
+        // be able to unthread objects pointed by these fields later.
+        thread(field_addr);
+    }
+}
+
+unsafe fn thread_all_backward_pointers(heap_base: u32) {
+    let mut bitmap_iter = iter_bits();
+    let mut bit = bitmap_iter.next();
+    while bit != BITMAP_ITER_END {
+        let obj = (bit * WORD_SIZE) as *mut Obj;
+        let tag = obj.tag();
+        
+        thread_backward_pointer_fields(obj, tag, heap_base);
+        
+        bit = bitmap_iter.next();
+    }
+}
+
+unsafe fn thread_backward_pointer_fields(obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
+    assert!(obj_tag < TAG_ARRAY_SLICE_MIN);
+    visit_pointer_fields(
+        &mut (),
+        obj,
+        obj_tag,
+        heap_base as usize,
+        |_, field_addr| {
+            let field_value = *field_addr;
+            
+            // Thread if backwards or self pointer
+            if field_value.get_ptr() <= obj as usize {
+                thread(field_addr);
+            }
+        },
+        |_, slice_start, arr| {
+            debug_assert!(slice_start == 0);
+            arr.len()
+        },
+    );
+}
+
 /// Linearly scan the heap, for each live object:
 ///
 /// - Mark step threads all backwards pointers and pointers from roots, so unthread to update those
@@ -313,7 +377,7 @@ unsafe fn decide_strategy() -> Strategy {
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
+unsafe fn move_phase<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
     let strategy = decide_strategy();
     println!(100, "STRATEGY: {strategy:?}");
 
