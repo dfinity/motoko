@@ -633,7 +633,7 @@ and check_con_env env at ce =
   if not (T.ConSet.is_empty cs) then
     error env at "M0157" "block contains non-productive definition%s %s"
       (if T.ConSet.cardinal cs = 1 then "" else "s")
-      (String.concat ", " (List.map Cons.name (T.ConSet.elements cs)));
+      (String.concat ", " (List.sort compare (List.map Cons.name (T.ConSet.elements cs))));
   begin match Mo_types.Expansive.is_expansive ce with
   | None -> ()
   | Some msg ->

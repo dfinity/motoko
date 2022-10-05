@@ -4747,7 +4747,7 @@ module MakeSerialization (Strm : Stream) = struct
      it is easier to start like this.
   *)
 
-  module TM = Map.Make (struct type t = Type.typ let compare = compare end)
+  module TM = Map.Make (Type.Ord)
   let to_idl_prim = let open Type in function
     | Prim Null | Tup [] -> Some 1l
     | Prim Bool -> Some 2l
