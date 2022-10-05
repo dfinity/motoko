@@ -105,8 +105,7 @@ let tag_control = function
   | Promises -> 1
   | Replies -> 2
 
-let tag t =
-  match t with
+let tag = function
   | Prim _ -> 0
   | Var _ -> 1
   | Con _ -> 2
