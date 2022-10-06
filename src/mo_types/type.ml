@@ -195,8 +195,8 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
     compare_flds fs1 fs2
   | Mut t1, Mut t2 ->
     compare_typ t1 t2
-  | Any, Any -> 0
-  | Non, Non -> 0
+  | Any, Any
+  | Non, Non
   | Pre, Pre -> 0
   | Typ c1, Typ c2 -> Cons.compare c1 c2
   | _ -> Int.compare (tag t1) (tag t2)
