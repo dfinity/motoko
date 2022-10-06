@@ -1,13 +1,13 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ query test_loop1()
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> query test_loop1()
 debug.print: done
-← replied: ()
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+<= replied: ()
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: preupgrade
 debug.print: preupgrade_loop done
 debug.print: postupgrade
 debug.print: postupgrade_loop done
-← replied: ()
+<= replied: ()

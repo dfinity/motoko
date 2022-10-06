@@ -25,7 +25,7 @@ let
     nixpkgs.runCommandNoCC "${name}-${releaseVersion}.js" {
       allowedRequisites = [];
     } ''
-      cp -v ${derivation}/bin/* $out
+      cp -v ${derivation}/bin/*.min.js $out
     '';
 
   release =

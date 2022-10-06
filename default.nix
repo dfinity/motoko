@@ -515,6 +515,7 @@ rec {
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
           nixpkgs.nodejs-16_x
+          nixpkgs.nodePackages.uglify-js
         ];
         buildPhase = ''
           patchShebangs .
@@ -522,11 +523,13 @@ rec {
           ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
+          uglifyjs ${n}.js -o ${n}.min.js -c -m
         '';
         installPhase = ''
           mkdir -p $out
           mkdir -p $out/bin
           cp --verbose --dereference ${n}.js $out/bin
+          cp --verbose --dereference ${n}.min.js $out/bin
         '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
@@ -776,6 +779,7 @@ rec {
           nixpkgs.niv
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
+          nixpkgs.difftastic
         ]
       ));
 

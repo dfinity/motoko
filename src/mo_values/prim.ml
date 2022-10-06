@@ -196,9 +196,16 @@ let prim =
   | "trap" -> fun _ v k ->
     raise (Invalid_argument ("explicit trap: "^ (as_text v)))
   | "rts_version" -> fun _ v k -> as_unit v; k (Text "0.1")
-  | "rts_heap_size" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
-  | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
-  | "rts_outstanding_callbacks" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
+  | (  "rts_memory_size"
+     | "rts_heap_size"
+     | "rts_total_allocation"
+     | "rts_reclaimed"
+     | "rts_max_live_size"
+     | "rts_callback_table_count"
+     | "rts_callback_table_size"
+     | "rts_mutator_instructions"
+     | "rts_collector_instructions") ->
+        fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
   | "idlHash" -> fun _ v k ->
     let s = as_text v in

@@ -6,7 +6,7 @@
 (menhir
   (modules parser)
   (flags --table --inspection -v --strict)
-  (infer false)
+  (infer true)
 )
 
 (ocamllex source_lexer)

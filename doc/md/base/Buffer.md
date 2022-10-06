@@ -117,3 +117,17 @@ Create a stateful buffer class encapsulating a mutable array.
 The argument `initCapacity` determines its initial capacity.
 The underlying mutable array grows by doubling when its current
 capacity is exceeded.
+
+## Function `fromArray`
+``` motoko no-repl
+func fromArray<X>(elems : [X]) : Buffer<X>
+```
+
+Creates a buffer from immutable array elements.
+
+## Function `fromVarArray`
+``` motoko no-repl
+func fromVarArray<X>(elems : [var X]) : Buffer<X>
+```
+
+Creates a buffer from the elements of a mutable array.

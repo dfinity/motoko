@@ -937,6 +937,50 @@ module RTS = struct
 
 end (* RTS *)
 
+module GC = struct
+  (* Record mutator/gc instructions counts *)
+
+  let instruction_counter env =
+    compile_unboxed_zero ^^
+    E.call_import env "ic0" "performance_counter"
+
+  let register_globals env =
+    (E.add_global64 env "__mutator_instructions" Mutable 0L;
+     E.add_global64 env "__collector_instructions" Mutable 0L)
+
+  let get_mutator_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
+  let set_mutator_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__mutator_instructions")))
+
+  let get_collector_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
+  let set_collector_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let record_mutator_instructions env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode)  ->
+      instruction_counter env ^^
+      set_mutator_instructions env
+    | _ -> G.nop
+
+  let record_collector_instructions env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode)  ->
+      instruction_counter env ^^
+      get_mutator_instructions env ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+      set_collector_instructions env
+    | _ -> G.nop
+
+  let collect_garbage env =
+    record_mutator_instructions env ^^
+    E.collect_garbage env ^^
+    record_collector_instructions env
+
+end (* GC *)
+
 module Heap = struct
   (* General heap object functionality (allocation, setting fields, reading fields) *)
 
@@ -3796,7 +3840,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InInit ^^
 
       G.i (Call (nr (E.built_in env "init"))) ^^
-      E.collect_garbage env ^^
+      GC.collect_garbage env ^^
 
       Lifecycle.trans env Lifecycle.Idle
     ) in
@@ -3811,7 +3855,7 @@ module IC = struct
     let fi = E.add_fun env "canister_heartbeat"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
-        E.collect_garbage env))
+        GC.collect_garbage env))
     in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_heartbeat";
@@ -3865,7 +3909,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
-      E.collect_garbage env
+      GC.collect_garbage env
     )) in
 
     E.add_export env (nr {
@@ -4174,6 +4218,7 @@ module Cycles = struct
     )
 
 end (* Cycles *)
+
 
 module StableMem = struct
 
@@ -4702,7 +4747,7 @@ module MakeSerialization (Strm : Stream) = struct
      it is easier to start like this.
   *)
 
-  module TM = Map.Make (struct type t = Type.typ let compare = compare end)
+  module TM = Map.Make (Type.Ord)
   let to_idl_prim = let open Type in function
     | Prim Null | Tup [] -> Some 1l
     | Prim Bool -> Some 2l
@@ -6401,8 +6446,7 @@ module Stabilization = struct
     | _ -> assert false
 end
 
-module GC = struct
-
+module GCRoots = struct
   let register env static_roots =
 
     let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
@@ -6417,7 +6461,7 @@ module GC = struct
   let store_static_roots env =
     Arr.vanilla_lit env (E.get_static_roots env)
 
-end (* GC *)
+end (* GCRoots *)
 
 module StackRep = struct
   open SR
@@ -6707,33 +6751,42 @@ module Var = struct
 
   open VarEnv
 
-  (* Desired stack rep, and code to store payload on the stack *)
-  let set_val env ae var = match VarEnv.lookup_var ae var with
+  (* Returns desired stack representation, preparation code and code to consume
+     the value onto the stack *)
+  let set_val env ae var : G.t * SR.t * G.t = match VarEnv.lookup_var ae var with
     | Some (Local (sr, i)) ->
+      G.nop,
       sr,
       G.i (LocalSet (nr i))
     | Some (HeapInd i) ->
+      G.i (LocalGet (nr i)),
       SR.Vanilla,
-      let (set_new_val, get_new_val) = new_local env "new_val" in
-      set_new_val ^^
-      G.i (LocalGet (nr i)) ^^
-      get_new_val ^^
       Heap.store_field MutBox.field
     | Some (HeapStatic ptr) ->
+      compile_unboxed_const ptr,
       SR.Vanilla,
-      let (set_new_val, get_new_val) = new_local env "new_val" in
-      set_new_val ^^
-      compile_unboxed_const ptr ^^
-      get_new_val ^^
       Heap.store_field MutBox.field
     | Some (Const _) -> fatal "set_val: %s is const" var
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
 
+  (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
+  let set_val_vanilla env ae var : G.t * G.t =
+    let pre_code, sr, code = set_val env ae var in
+    pre_code, StackRep.adjust env SR.Vanilla sr ^^ code
+
   (* Stores the payload (which is found on the stack, in Vanilla stackrep) *)
-  let set_val_vanilla env ae var =
-    let (sr, code) = set_val env ae var in
-    StackRep.adjust env SR.Vanilla sr ^^ code
+  let set_val_vanilla_from_stack env ae var : G.t =
+    let pre_code, code = set_val_vanilla env ae var in
+    if G.is_nop pre_code
+    then code
+    else
+      (* Need to shuffle the stack entries *)
+      let (set_x, get_x) = new_local env "var_scrut" in
+      set_x ^^
+      pre_code ^^
+      get_x ^^
+      code
 
   (* Returns the payload (optimized representation) *)
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
@@ -6789,6 +6842,11 @@ module Var = struct
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
     | Some (HeapStatic i) -> compile_unboxed_const i
+    | _ -> assert false
+
+  let capture_aliased_box env ae var = match VarEnv.lookup_var ae var with
+    | Some (HeapInd i) ->
+      G.i (LocalSet (nr i))
     | _ -> assert false
 
 end (* Var *)
@@ -6851,7 +6909,7 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        E.collect_garbage env ^^
+        GC.collect_garbage env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
@@ -6876,7 +6934,7 @@ module FuncDec = struct
       let arg_tys = List.map (fun a -> a.note) args in
       let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
       Serialization.deserialize env arg_tys ^^
-      G.concat_map (Var.set_val_vanilla env ae1) (List.rev arg_names) ^^
+      G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names) ^^
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
@@ -7380,15 +7438,19 @@ module AllocHow = struct
     let how1 = match dec.it with
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
-      M.map (fun t -> LocalMut (stackrep_of_type t)) d
+        M.map (fun t -> LocalMut (stackrep_of_type t)) d
 
       (* Constant expressions (trusting static_vals.ml) *)
       | LetD (_, e) when e.note.Note.const ->
-      M.map (fun _t -> (Const : how)) d
+        M.map (fun _ -> (Const : how)) d
+
+      (* References to mutboxes *)
+      | RefD _ ->
+        M.map (fun _ -> StoreHeap) d
 
       (* Everything else needs at least a local *)
       | _ ->
-      M.map (fun t -> LocalImmut (stackrep_of_type t)) d in
+        M.map (fun t -> LocalImmut (stackrep_of_type t)) d in
 
     (* Which allocation does this require for its captured things? *)
     let how2 = how_captured lvl how_all seen captured in
@@ -7438,6 +7500,13 @@ module AllocHow = struct
       let ptr = MutBox.static env in
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
+
+  let add_local_for_alias env ae how name : VarEnv.t * G.t =
+    match M.find name how with
+    | StoreHeap ->
+      let ae1, _ = VarEnv.add_local_with_heap_ind env ae name in
+      ae1, G.nop
+    | _ -> assert false
 
 end (* AllocHow *)
 
@@ -8094,11 +8163,9 @@ let compile_load_field env typ name =
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
-  (fun (code, sr, fill_code) -> (G.with_region lexp.at code, sr, G.with_region lexp.at fill_code)) @@
+  (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it with
-  | VarLE var ->
-     let sr, code = Var.set_val env ae var in
-     G.nop, sr, code
+  | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8499,7 +8566,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICPerformGC, [] ->
     SR.unit,
-    E.collect_garbage env
+    GC.collect_garbage env
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,
@@ -8705,6 +8772,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_callback_table_size", [] ->
     SR.Vanilla,
     ContinuationTable.size env ^^ Prim.prim_word32toNat env
+
+  | OtherPrim "rts_mutator_instructions", [] ->
+    SR.Vanilla,
+    GC.get_mutator_instructions env ^^ BigNum.from_word64 env
+
+  | OtherPrim "rts_collector_instructions", [] ->
+    SR.Vanilla,
+    GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
@@ -9113,8 +9188,10 @@ and compile_exp (env : E.t) ae exp =
     code
   | DefineE (name, _, e) ->
     SR.unit,
-    compile_exp_vanilla env ae e ^^
-    Var.set_val_vanilla env ae name
+    let pre_code, sr, code = Var.set_val env ae name in
+    pre_code ^^
+    compile_exp_as env ae sr e ^^
+    code
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
@@ -9336,7 +9413,7 @@ and fill_pat env ae pat : patternCode =
         compile_lit_pat env l ^^
         G.if0 G.nop fail_code)
   | VarP name ->
-      CannotFail (Var.set_val_vanilla env ae name)
+      CannotFail (Var.set_val_vanilla_from_stack env ae name)
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
       let rec go i = function
@@ -9398,6 +9475,7 @@ and compile_unboxed_pat env ae how pat =
   (* It returns:
      - the extended environment
      - the code to allocate memory
+     - the code to prepare the stack (e.g. push destination addresses)
      - the desired stack rep
      - the code to do the pattern matching.
        This expects the undestructed value is on top of the stack,
@@ -9405,13 +9483,12 @@ and compile_unboxed_pat env ae how pat =
        If the pattern does not match, it branches to the depth at fail_depth.
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
-  let arity, fill_code =
-    (fun (sr, code) -> sr, G.with_region pat.at code) @@
-    match pat.it with
+  let pre_code, sr, fill_code = match pat.it with
     (* Nothing to match: Do not even put something on the stack *)
-    | WildP -> None, G.nop
+    | WildP -> G.nop, None, G.nop
     (* Tuple patterns *)
     | TupP ps when List.length ps <> 1 ->
+      G.nop,
       Some (SR.UnboxedTuple (List.length ps)),
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
@@ -9419,19 +9496,21 @@ and compile_unboxed_pat env ae how pat =
       G.concat_mapi (fun i p -> orTrap env (fill_pat env ae1 p)) (List.rev ps)
     (* Variable patterns *)
     | VarP name ->
-      let sr, code = Var.set_val env ae1 name in
-      Some sr,
-      code
+      let pre_code, sr, code = Var.set_val env ae1 name in
+      pre_code, Some sr, code
     (* The general case: Create a single value, match that. *)
     | _ ->
+      G.nop,
       Some SR.Vanilla,
-      orTrap env (fill_pat env ae1 pat)
-  in (ae1, alloc_code, arity, fill_code)
+      orTrap env (fill_pat env ae1 pat) in
+  let pre_code = G.with_region pat.at pre_code in
+  let fill_code = G.with_region pat.at fill_code in
+  (ae1, alloc_code, pre_code, sr, fill_code)
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
-       (pre_ae, G.with_region dec.at alloc_code, fun ae body_code ->
-         G.with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
+       G.(pre_ae, with_region dec.at alloc_code, fun ae body_code ->
+          with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -9449,9 +9528,9 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
-    let (pre_ae1, alloc_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
+    let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
-      (fun ae -> compile_exp_as_opt env ae sr e ^^ fill_code),
+      (fun ae -> pre_code ^^ compile_exp_as_opt env ae sr e ^^ fill_code),
       unmodified
     )
 
@@ -9459,20 +9538,33 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-      let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    ( pre_ae1,
+      alloc_code,
+      (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
+                 pre_code ^^ compile_exp_as env ae sr e ^^ code),
+      unmodified
+    )
 
-      ( pre_ae1,
-        alloc_code,
-        (fun ae -> let sr, code = Var.set_val env ae name in compile_exp_as env ae sr e ^^ code),
-        unmodified
-      )
+  | RefD (name, _, { it = DotLE (e, n); _ }) ->
+    let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name in
+
+    ( pre_ae1,
+      alloc_code,
+      (fun ae ->
+        compile_exp_vanilla env ae e ^^
+        Object.load_idx_raw env n ^^
+        Var.capture_aliased_box env ae name),
+      unmodified
+    )
+  | RefD _ -> assert false
 
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae = function
-    | []          -> (pre_ae, G.nop, fun _ -> unmodified)
-    | [dec]       -> compile_dec env pre_ae how v2en dec
-    | (dec::decs) ->
+    | []        -> (pre_ae, G.nop, fun _ -> unmodified)
+    | [dec]     -> compile_dec env pre_ae how v2en dec
+    | dec::decs ->
         let (pre_ae1, alloc_code1, mk_codeW1) = compile_dec env pre_ae how v2en dec in
         let (pre_ae2, alloc_code2, mk_codeW2) = go              pre_ae1 decs in
         ( pre_ae2,
@@ -9611,7 +9703,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
     let (const, fill) = compile_const_exp env pre_ae e in
     (fun ae -> destruct_const_pat ae p const),
     (fun env ae -> fill env ae)
-  | VarD _ -> fatal "compile_const_dec: Unexpected VarD"
+  | VarD _ | RefD _ -> fatal "compile_const_dec: Unexpected VarD/RefD"
 
 and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   assert (not flavor.has_typ_field);
@@ -9715,7 +9807,7 @@ and main_actor as_opt mod_env ds fs up =
         G.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
         Serialization.deserialize env arg_tys ^^
-        G.concat_map (Var.set_val_vanilla env ae1) (List.rev arg_names)
+        G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop
@@ -9731,7 +9823,7 @@ and conclude_module env start_fi_o =
 
   FuncDec.export_async_method env;
 
-  let static_roots = GC.store_static_roots env in
+  let static_roots = GCRoots.store_static_roots env in
   (* declare before building GC *)
 
   (* add beginning-of-heap pointer, may be changed by linker *)
@@ -9740,7 +9832,7 @@ and conclude_module env start_fi_o =
   E.export_global env "__heap_base";
 
   Heap.register env;
-  GC.register env static_roots;
+  GCRoots.register env static_roots;
   IC.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
@@ -9823,6 +9915,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
   Stack.register_globals env;
+  GC.register_globals env;
   StableMem.register_globals env;
 
   IC.system_imports env;

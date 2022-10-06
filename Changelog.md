@@ -1,5 +1,86 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
+
+## 0.7.0 (2022-08-25)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+    Adds new syntax for merging records (objects) and
+    adding/overwriting fields. The expression
+    ``` motoko
+    { baseA and baseB with field1 = val1; field2 = val2 }
+    ```
+    creates a new record by joining all (statically known) fields from
+    `baseA/B` and the explicitly specified `field1/2`.
+    This is a _breaking change_, as a new keyword `with` has been added.
+    Restrictions for ambiguous and `var` fields from bases apply. (#3084)
+
+  * Add new support for installing actor class instances on the IC,
+    enabling specification of canister settings, install, upgrade and
+    reinstall. (#3386)
+
+    A new expression
+
+    ``` bnf
+      (system <exp> . <id>)
+    ```
+    where `<exp>` is an imported library and `<id>` is the name of
+    an actor class, accesses a secondary constructor of the class
+    that takes an additional argument controlling the installation.
+
+    For example,
+    ``` motoko
+      await (system Lib.Node)(#upgrade a)(i);
+    ```
+    upgrades actor `a` with the code for a new instance of class `Lib.Node`,
+    passing constructor argument `(i)`.
+
+  * Performance improvements for assigment-heavy code (thanks to nomeata) (#3406)
+
+## 0.6.30 (2022-08-11)
+
+* motoko (`moc`)
+
+  * add primitives
+    ```motoko
+    shiftLeft : (Nat, Nat32) -> Nat
+    shiftRight : (Nat, Nat32) -> Nat
+    ```
+    for efficiently multiplying/dividing a `Nat` by a power of 2
+    (#3112)
+
+  * add primitives
+    ```motoko
+    rts_mutator_instructions : () -> Nat
+    rts_collector_instructions : () -> Nat
+    ```
+    to report approximate IC instruction costs of the last message
+    due to mutation (computation) and collection (GC), respectively (#3381)
+
+* motoko-base
+
+  * Add
+    ```motoko
+    Buffer.fromArray
+    Buffer.fromVarArray
+    ```
+    for efficiently adding an array to a `Buffer`
+    (dfinity/motoko-base#389)
+
+  * Add
+    ```motoko
+    Iter.sort : (xs : Iter<A>, compare : (A, A) -> Order) : Iter<A>
+    ```
+    for sorting an `Iter` given a comparison function
+    (dfinity/motoko-base#406)
+
+  * Performance: `HashMap` now avoids re-computing hashes on `resize`
+    (dfinity/motoko-base#394)
+
 ## 0.6.29 (2022-06-10)
 
 * motoko (`moc`)
