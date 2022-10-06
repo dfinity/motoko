@@ -13,7 +13,7 @@ actor {
       type U<A> = (A, A);
       type List<A> = List<A>; // references previous List type, not this List component (type components aren't recursive, let alone mutually recursive)
       type Pair<A,B> = (A,B);
-      type Bound<A<:{}> = Bound<A>; // ditto
+      type Bound<A <: {}> = Bound<A>; // ditto
     }
   ] = [];
 

@@ -227,7 +227,7 @@ let system_funcs tfs =
 let check_closed env id k at =
   let is_typ_param c =
     match Cons.kind c with
-    | T.Def _ -> false
+    | T.Def _
     | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
     | T.Abs( _, _) -> true in
   let typ_params = T.ConSet.filter is_typ_param env.cons in
@@ -668,7 +668,8 @@ and check_con_env env at ce =
   if not (T.ConSet.is_empty cs) then
     error env at "M0157" "block contains non-productive definition%s %s"
       (plural cs)
-      (String.concat ", " (List.map Cons.name (T.ConSet.elements cs)));
+      (String.concat ", " (List.sort compare (List.map Cons.name (T.ConSet.elements cs))));
+
   begin match Mo_types.Expansive.is_expansive ce with
   | None -> ()
   | Some msg ->
