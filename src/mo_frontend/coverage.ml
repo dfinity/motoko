@@ -9,8 +9,8 @@ module T = Type
 module V = Value
 
 module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
-module TagSet = Set.Make(struct type t = string let compare = compare end)
-module LabMap = Map.Make(struct type t = string let compare = compare end)
+module TagSet = Set.Make(struct type t = string let compare = String.compare end)
+module LabMap = Map.Make(struct type t = string let compare = String.compare end)
 module AtSet = Set.Make(struct type t = Source.region let compare = compare end)
 
 type desc =

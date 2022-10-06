@@ -61,6 +61,18 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Syntactic orderings *)
+
+module Ord : sig
+  type t = typ
+  val compare : t -> t -> int
+end
+
+module OrdPair : sig
+  type t = typ * typ
+  val compare : t -> t -> int
+end
+
 (* Function sorts *)
 
 val is_shared_sort : 'a shared -> bool
