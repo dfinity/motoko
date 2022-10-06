@@ -133,10 +133,11 @@ let error_in modes env at code fmt =
   if diag_in type_error modes env at code fmt then
     raise Recover
 
+let plural cs = if T.ConSet.cardinal cs = 1 then "" else "s"
+
 (* Currently unused *)
 let _warn_in modes env at code fmt =
   ignore (diag_in type_warning modes env at code fmt)
-
 
 (* Context extension *)
 
@@ -237,7 +238,7 @@ let check_closed env id k at =
     error env at "M0137"
       "type %s%s %s %s references type parameter%s %s from an outer scope"
       id.it sbs op st
-      (if T.ConSet.cardinal free_params = 1 then "" else "s")
+      (plural free_params)
       (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
 
 (* Imports *)
@@ -666,7 +667,7 @@ and check_con_env env at ce =
   let cs = Productive.non_productive ce in
   if not (T.ConSet.is_empty cs) then
     error env at "M0157" "block contains non-productive definition%s %s"
-      (if T.ConSet.cardinal cs = 1 then "" else "s")
+      (plural cs)
       (String.concat ", " (List.map Cons.name (T.ConSet.elements cs)));
   begin match Mo_types.Expansive.is_expansive ce with
   | None -> ()
@@ -2742,7 +2743,7 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           check_ids env "object type" "type field"
             (List.filter_map (fun (field : typ_field) ->
                  match field.it with TypF (id, _, _) -> Some id | _ -> None)
-               sfs); (*TODO: reject/assert instead *)
+               sfs);
           let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
           let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
           List.iter (fun (field : Syntax.typ_field) ->

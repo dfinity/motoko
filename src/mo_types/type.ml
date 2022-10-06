@@ -513,11 +513,10 @@ let rec span = function
 
 let rec cons' inTyp t cs =
   match t with
-  | Var _ ->  cs
-  | (Prim _ | Any | Non | Pre ) -> cs
+  | Var _ | Prim _ | Any | Non | Pre -> cs
   | Con (c, ts) ->
     List.fold_right (cons' inTyp) ts (cons_con inTyp c cs)
-  | (Opt t | Mut t | Array t) ->
+  | Opt t | Mut t | Array t ->
     cons' inTyp t cs
   | Async (t1, t2) ->
     cons' inTyp t2 (cons' inTyp t1 cs)
@@ -526,7 +525,7 @@ let rec cons' inTyp t cs =
     let cs = List.fold_right (cons_bind inTyp) tbs  cs in
     let cs = List.fold_right (cons' inTyp) ts1 cs in
     List.fold_right (cons' inTyp) ts2 cs
-  | (Obj (_, fs) | Variant fs) ->
+  | Obj (_, fs) | Variant fs ->
     List.fold_right (cons_field inTyp) fs cs
   | Typ c ->
     if inTyp then
