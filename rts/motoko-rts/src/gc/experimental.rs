@@ -289,17 +289,16 @@ enum Strategy {
 }
 
 unsafe fn decide_strategy() -> Strategy {
-    // TODO: Also determine whether free space is urgently needed (allocation on full heap), then go for full collection
     const SUBSTANTIAL_FREE_SPACE: u32 = 1024 * 1024 * 1024;
     const CRITICAL_MEMORY_LIMIT: u32 = (4096 - 256) * 1024 * 1024;
-    if FORCE_YOUNG_GC || young_survival_rate() < 0.8 {
-        Strategy::Young
-    } else if old_survival_rate() < 0.5
+    if old_survival_rate() < 0.5
         || old_generation_size() + young_generation_size() >= CRITICAL_MEMORY_LIMIT
             && old_survival_rate() < 0.95
         || old_generation_free_space() + young_generation_free_space() >= SUBSTANTIAL_FREE_SPACE
     {
         Strategy::Full
+    } else if FORCE_YOUNG_GC || young_survival_rate() < 0.8 {
+        Strategy::Young
     } else {
         Strategy::None
     }
