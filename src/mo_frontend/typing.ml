@@ -226,7 +226,7 @@ let system_funcs tfs =
 let check_closed env id k at =
   let is_typ_param c =
     match Cons.kind c with
-    | T.Def _ -> false
+    | T.Def _
     | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
     | T.Abs( _, _) -> true in
   let typ_params = T.ConSet.filter is_typ_param env.cons in
