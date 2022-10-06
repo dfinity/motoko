@@ -27,4 +27,3 @@ do {
 do {
   type Outer<A> = module { type Open<B> = (A, B) }; // reject (open type definition)
 };
-
