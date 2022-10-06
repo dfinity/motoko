@@ -190,9 +190,11 @@ fn test_iter_advance<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResu
         let mut bitmap_iter = iter_bits();
         let mut bit = bitmap_iter.next();
         while bit != BITMAP_ITER_END {
+            let next_bit = bitmap_iter.next();
             let address = bit * WORD_SIZE;
             bitmap_iter.advance(address);
             bit = bitmap_iter.next();
+            assert_eq!(bit, next_bit);
         }
 
         free_bitmap()
