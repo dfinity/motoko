@@ -2,7 +2,7 @@ use crate::memory::TestMemory;
 
 use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::gc::mark_compact::bitmap::{
-    alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
+    alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END, self,
 };
 use motoko_rts::memory::Memory;
 use motoko_rts::types::{Bytes, Words};
@@ -42,6 +42,15 @@ pub unsafe fn test() {
             // Same as above
             let mut mem = TestMemory::new(Words(2051));
             test_bit_iter(&mut mem, bits)
+        })
+        .unwrap();
+
+    println!("  Testing iter advance");
+    proptest_runner
+        .run(&bit_index_set_strategy(), |bits| {
+            // Same as above
+            let mut mem = TestMemory::new(Words(2051));
+            test_iter_advance(&mut mem, bits)
         })
         .unwrap();
 }
@@ -156,6 +165,34 @@ fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
                 )
                 .into(),
             ));
+        }
+
+        free_bitmap()
+    }
+
+    Ok(())
+}
+
+fn test_iter_advance<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
+    // If the max bit is N, the heap size is at least N+1 words
+    let heap_size = Words(u32::from(
+        bits.iter().max().map(|max_bit| max_bit + 1).unwrap_or(0),
+    ))
+    .to_bytes();
+
+    unsafe {
+        alloc_bitmap(mem, heap_size, 0);
+
+        for bit in bits.iter() {
+            set_bit(u32::from(*bit));
+        }
+
+        let mut bitmap_iter = iter_bits();
+        let mut bit = bitmap_iter.next();
+        while bit != BITMAP_ITER_END {
+            let address = bit * WORD_SIZE;
+            bitmap_iter.advance(address);
+            bit = bitmap_iter.next();
         }
 
         free_bitmap()
