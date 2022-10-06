@@ -164,7 +164,8 @@ impl BitmapIter {
         let base = get_bitmap_forbidden_size() as u32 * 8;
         assert!(base % 8 == 0);
         assert!(self.current_bit_idx >= base);
-        let word_idx = get_bitmap_forbidden_size() + (self.current_bit_idx - base) as usize / 64 * 8;
+        let word_idx =
+            get_bitmap_forbidden_size() + (self.current_bit_idx - base) as usize / 64 * 8;
         self.current_word = *(BITMAP_FORBIDDEN_PTR.add(word_idx) as *const u64);
         self.leading_zeros = self.current_word.leading_zeros();
         let bit_offset = (self.current_bit_idx - base) % 64;
@@ -175,7 +176,7 @@ impl BitmapIter {
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
     pub fn next(&mut self) -> u32 {
         debug_assert!(self.current_bit_idx <= self.size);
-        
+
         if self.current_bit_idx == self.size {
             return BITMAP_ITER_END;
         }

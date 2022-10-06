@@ -39,7 +39,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
     println!(100, "INFO: Experimental GC starts ...");
-    
+
     experimental_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
@@ -93,18 +93,14 @@ pub unsafe fn experimental_gc_internal<
         continuation_table_ptr_loc,
     };
 
-    let heap = Heap {
-        mem,
-        limits,
-        roots,
-    };
+    let heap = Heap { mem, limits, roots };
 
     let mut gc = ExperimentalGC {
         heap,
         marked_old_space: 0,
         marked_young_space: 0,
         strategy: Strategy::None,
-        force_young_gc
+        force_young_gc,
     };
 
     let old_hp = get_hp() as u32;
@@ -158,42 +154,44 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         let mem_size = Bytes(heap_end - self.heap.limits.base as u32);
         self.marked_old_space = 0;
         self.marked_young_space = 0;
-    
-        alloc_bitmap(self.heap.mem, mem_size, self.heap.limits.base as u32 / WORD_SIZE);
+
+        alloc_bitmap(
+            self.heap.mem,
+            mem_size,
+            self.heap.limits.base as u32 / WORD_SIZE,
+        );
         alloc_mark_stack(self.heap.mem);
-    
+
         self.mark_phase();
-    
+
         let total_space = self.old_generation_size();
         let ratio = self.old_survival_rate();
         println!(
             1000,
-            "MARKED OLD {} OF {total_space} RATIO {ratio:.3}",
-            self.marked_old_space
+            "MARKED OLD {} OF {total_space} RATIO {ratio:.3}", self.marked_old_space
         );
-    
+
         let total_space = self.young_generation_size();
         let ratio = self.young_survival_rate();
         println!(
             1000,
-            "MARKED YOUNG {} OF {total_space} RATIO {ratio:.3}",
-            self.marked_young_space
+            "MARKED YOUNG {} OF {total_space} RATIO {ratio:.3}", self.marked_young_space
         );
-        
+
         self.strategy = self.decide_strategy();
         println!(100, "STRATEGY: {:?}", self.strategy);
-        
+
         let mut free = heap_end;
         if self.strategy != Strategy::None {
             self.thread_backward_phase();
             free = self.move_phase() as u32;
         }
         set_hp(free);
-    
+
         free_mark_stack();
         free_bitmap();
     }
-    
+
     unsafe fn mark_phase(&mut self) {
         self.mark_static_roots();
 
@@ -312,7 +310,8 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         if self.old_survival_rate() < 0.5
             || self.old_generation_size() + self.young_generation_size() >= CRITICAL_MEMORY_LIMIT
                 && self.old_survival_rate() < 0.95
-            || self.old_generation_free_space() + self.young_generation_free_space() >= SUBSTANTIAL_FREE_SPACE
+            || self.old_generation_free_space() + self.young_generation_free_space()
+                >= SUBSTANTIAL_FREE_SPACE
         {
             Strategy::Full
         } else if self.force_young_gc || self.young_survival_rate() < 0.8 {
@@ -327,14 +326,14 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         match self.strategy {
             Strategy::Young => address >= self.heap.limits.last_free,
             Strategy::Full => true,
-            Strategy::None => false
+            Strategy::None => false,
         }
     }
 
     unsafe fn thread_backward_phase(&mut self) {
         self.thread_all_backward_pointers();
-        
-        // For static root, also forward pointers are threaded. 
+
+        // For static root, also forward pointers are threaded.
         // Therefore, this must happen after the heap traversal for backwards pointer threading.
         self.thread_static_roots();
 
@@ -375,9 +374,9 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         while bit != BITMAP_ITER_END {
             let obj = (bit * WORD_SIZE) as *mut Obj;
             let tag = obj.tag();
-            
+
             self.thread_backward_pointer_fields(obj, tag);
-            
+
             bit = bitmap_iter.next();
         }
     }
@@ -391,7 +390,7 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
             self.heap.limits.base,
             |gc, field_addr| {
                 let field_value = *field_addr;
-                
+
                 // Thread if backwards or self pointer
                 if field_value.get_ptr() <= obj as usize {
                     gc.thread(field_addr);
@@ -412,7 +411,7 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
     /// - Move the object
     ///
     /// - Thread forward pointers of the object
-    /// 
+    ///
     /// Returns the new free pointer
     ///
     unsafe fn move_phase(&mut self) -> usize {
