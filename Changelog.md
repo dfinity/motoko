@@ -8,7 +8,7 @@
     ``` motoko
       type Record = { type T = Nat; x : Nat};
     ```
-    is now legal. Note the definition of `T` is neither recursive, nor bound in `x : Nat`, but can refer to an existing recursive type.
+    is now legal. Note the definition of `T` is neither recursive, nor bound in `x : Nat`, but can refer to an existing recursive type declared in an outer scope.
 
 
 ## 0.7.0 (2022-08-25)
