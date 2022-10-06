@@ -405,6 +405,7 @@ impl GC {
                         |_live_size| {},
                         // note_reclaimed
                         |_reclaimed| {},
+                        true,
                     );
                 }
             }
