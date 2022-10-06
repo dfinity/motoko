@@ -721,7 +721,7 @@ let rec cons' inTyp t cs =
     cons' inTyp t2 (cons' inTyp t1 cs)
   | Tup ts -> List.fold_right (cons' inTyp) ts cs
   | Func (s, c, tbs, ts1, ts2) ->
-    let cs = List.fold_right (cons_bind inTyp) tbs  cs in
+    let cs = List.fold_right (cons_bind inTyp) tbs cs in
     let cs = List.fold_right (cons' inTyp) ts1 cs in
     List.fold_right (cons' inTyp) ts2 cs
   | (Obj (_, fs) | Variant fs) ->
