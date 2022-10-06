@@ -33,5 +33,9 @@ let name c = c.name
 let to_string show_stamps sep c =
   if not show_stamps || c.stamp = 0 then c.name else Printf.sprintf "%s%s%i" c.name sep c.stamp
 
-let eq c1 c2 = (c1.name, c1.stamp) = (c2.name, c2.stamp)
-let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)
+let eq c1 c2 = c1.stamp = c2.stamp && c1.name = c2.name
+
+let compare c1 c2 =
+  match Int.compare c1.stamp c2.stamp with
+  | 0 -> String.compare c1.name c2.name
+  | ord -> ord

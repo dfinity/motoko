@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
+
 ## 0.7.0 (2022-08-25)
 
 * motoko (`moc`)
