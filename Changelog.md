@@ -2,7 +2,14 @@
 
 * motoko (`moc`)
 
-  * halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
+    * halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
+
+    * Add support for type components in object type syntax (#3457, also fixes #3449)
+    ``` motoko
+      type Record = { type T = Nat; x : Nat};
+    ```
+    is now legal. Note the definition of `T` is neither recursive, nor bound in `x : Nat`, but can refer to an existing recursive type declared in an outer scope.
+
 
 ## 0.7.0 (2022-08-25)
 
