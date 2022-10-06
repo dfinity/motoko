@@ -17,7 +17,7 @@ do {
 do {
   type List<A> = ?(A,List<A>);
   type R1 = module { type List<A> = List<A> }; // accept (non-recursive, refers to previous List)
-  type R2 = module { type Bogus<A> = Bogus<A> }; // reject (non-recursive, referes to nothing)
+  type R2 = module { type Bogus<A> = Bogus<A> }; // reject (non-recursive, refers to nothing)
 };
 
 do {
