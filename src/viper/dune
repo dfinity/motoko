@@ -1,0 +1,5 @@
+(library
+  (name viper)
+  (libraries lib mo_def mo_types)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
+)
