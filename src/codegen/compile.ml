@@ -1276,6 +1276,8 @@ module Tagged = struct
 
      The tag is a word at the beginning of the object.
 
+     Additional forward address in header.
+
      All tagged heap objects have a size of at least two words
      (important for GC, which replaces them with an Indirection).
 
@@ -1336,13 +1338,18 @@ module Tagged = struct
   (* The tag *)
   let header_size = 2l
   let tag_field = 0l
+  let forward_address_field = 1l
 
   (* Assumes a pointer to the object on the stack *)
-  let store tag =
+  let store_tag tag =
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
 
-  let load =
+  let store_forward_address =
+    compile_unboxed_const (int_of_tag Null) ^^
+    Heap.store_field forward_address_field
+
+  let load_tag =
     Heap.load_field tag_field
 
   (* Branches based on the tag of the object pointed to,
@@ -1357,7 +1364,7 @@ module Tagged = struct
         compile_eq_const (int_of_tag tag) ^^
         E.if_ env retty code (go cases)
     in
-    load ^^
+    load_tag ^^
     set_tag ^^
     go cases
 
@@ -1629,9 +1636,10 @@ module BoxedWord64 = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Heap.alloc env 3l ^^
+    Heap.alloc env 4l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits64) ^^
+    get_i ^^ Tagged.(store_tag Bits64) ^^
+    get_i ^^ Tagged.(store_forward_address) ^^ (* forward address *)
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1748,9 +1756,10 @@ module BoxedSmallWord = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Heap.alloc env 2l ^^
+    Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits32) ^^
+    get_i ^^ Tagged.(store_tag Bits32) ^^
+    get_i ^^ Tagged.(store_forward_address) ^^ (* forward address *)
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -1991,9 +2000,10 @@ module Float = struct
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Heap.alloc env 3l ^^
+    Heap.alloc env 4l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits64) ^^
+    get_i ^^ Tagged.(store_tag Bits64) ^^
+    get_i ^^ Tagged.(store_forward_address) ^^ (* forward address *)
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
@@ -3016,7 +3026,11 @@ module Object = struct
 
     (* Set tag *)
     get_ri ^^
-    Tagged.(store Object) ^^
+    Tagged.(store_tag Object) ^^
+
+    (* Set forward address *)
+    get_ri ^^
+    Tagged.(store_forward_address) ^^
 
     (* Set size *)
     get_ri ^^
@@ -4968,7 +4982,7 @@ module MakeSerialization (Strm : Stream) = struct
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -4989,7 +5003,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.(store StableSeen) ^^
+          get_x ^^ Tagged.(store_tag StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -5099,7 +5113,7 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0
         begin
@@ -7012,7 +7026,11 @@ module FuncDec = struct
 
         (* Store the tag *)
         get_clos ^^
-        Tagged.(store Closure) ^^
+        Tagged.(store_tag Closure) ^^
+
+        (* Store the forward address *)
+        get_clos ^^
+        Tagged.(store_forward_address) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^
