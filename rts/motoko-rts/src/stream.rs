@@ -14,13 +14,15 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
-//      │ tag (blob) │ len │ ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴───┴───┴────┴────┴────┴────┴───────────┴────────┴──────────┘
+//      ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┐
+//      │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+//      └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
-// - `tag` and `len` are blob metadata
+// - `obj header` contains tag and forward address
+// - `len` is in blob metadata
+// - 'padding' to align to 64-bit
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
@@ -110,6 +112,7 @@ impl Stream {
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
+            (*self).padding = 0;
             (*self).ptr64 = start;
             (*self).start64 = start;
             (*self).limit64 = limit;
