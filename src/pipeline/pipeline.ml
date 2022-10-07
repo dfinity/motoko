@@ -485,14 +485,14 @@ let check_files files : check_result =
 
 (* Generate Viper *)
 
-type viper_result = unit Diag.result
+type viper_result = string list Diag.result
 
-let viper_files' parsefn files : check_result =
+let viper_files' parsefn files : viper_result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let vs = List.map Viper.Trans.trans progs in
+  let vs = List.map Viper.Trans.prog progs in
   let ss = List.map Viper.Pretty.prog vs in
-  Diag.return ()
+  Diag.return ss
 
 
 let viper_files files : viper_result =

@@ -191,7 +191,8 @@ let process_files files : unit =
   | Check ->
     Diag.run (Pipeline.check_files files)
   | Viper ->
-    Diag.run (Pipeline.viper_files files)
+    let ss = Diag.run (Pipeline.viper_files files) in
+    List.iter2 (fun f s -> printf "%s\n%s" f s) files ss
   | StableCompatible ->
     begin
       match (!Flags.pre_ref, !Flags.post_ref) with

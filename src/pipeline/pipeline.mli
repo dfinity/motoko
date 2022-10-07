@@ -15,7 +15,7 @@ val print_deps: string -> unit
 val check_files  : string list -> unit Diag.result
 val check_files' : parse_fn -> string list -> unit Diag.result
 
-val viper_files : string list -> unit Diag.result
+val viper_files : string list -> string list Diag.result
 
 val stable_compatible : string -> string -> unit Diag.result
 
