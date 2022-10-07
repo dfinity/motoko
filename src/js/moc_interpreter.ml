@@ -13,6 +13,7 @@ let () =
   Flags.actor_idl_path := Some "idl/";
   Js.export "Motoko"
     (object%js
+      val version = js_version
       method saveFile name content = js_save_file name content
       method addPackage package dir = add_package package dir
       method clearPackage () = clear_package ()

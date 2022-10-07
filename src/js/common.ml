@@ -63,6 +63,8 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
        val code = Js.null
      end
 
+let js_version = Js.string Source_id.id
+
 let js_check source =
   js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
 
