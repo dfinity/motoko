@@ -483,6 +483,22 @@ let check_files' parsefn files : check_result =
 let check_files files : check_result =
   check_files' parse_file files
 
+(* Generate Viper *)
+
+type viper_result = unit Diag.result
+
+let viper_files' parsefn files : check_result =
+  let open Diag.Syntax in
+  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
+  let vs = List.map Viper.Trans.trans progs in
+  let ss = List.map Viper.Pretty.prog vs in
+  Diag.return ()
+
+
+let viper_files files : viper_result =
+  viper_files' parse_file files
+
+
 (* Generate IDL *)
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =

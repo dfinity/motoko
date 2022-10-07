@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | StableCompatible | Compile | Run | Interact | PrintDeps | Explain
+type mode = Default | Check | StableCompatible | Compile | Run | Interact | PrintDeps | Explain | Viper
 
 let mode = ref Default
 let args = ref []
@@ -42,6 +42,7 @@ let argspec = [
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
+  "--viper", Arg.Unit (set_mode Viper), " emit viper code";
   "--stable-compatible",
     Arg.Tuple [
       Arg.String (fun fp -> Flags.pre_ref := Some fp);
@@ -189,6 +190,8 @@ let process_files files : unit =
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
+  | Viper ->
+    Diag.run (Pipeline.viper_files files)
   | StableCompatible ->
     begin
       match (!Flags.pre_ref, !Flags.post_ref) with
