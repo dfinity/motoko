@@ -20,6 +20,7 @@ let () =
       method readDir path = js_read_dir path
       method addPackage package dir = add_package package dir
       method clearPackage () = clear_package ()
+      method setCandidPath path = set_candid_path path
       method setActorAliases entries = set_actor_aliases entries
       method setPublicMetadata entries = set_public_metadata entries
       method gcFlags option = gc_flags option
