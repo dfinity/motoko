@@ -15,7 +15,7 @@ use utils::{
 };
 
 use motoko_rts::gc::copying::copying_gc_internal;
-use motoko_rts::gc::experimental::experimental_gc_internal;
+use motoko_rts::gc::experimental::{experimental_gc_internal, Strategy};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
@@ -108,7 +108,7 @@ fn test_gc(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+    let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
@@ -122,14 +122,14 @@ fn test_gc(
         heap.continuation_table_ptr_offset(),
     );
 
-    for _ in 0..3 {
-        gc.run(heap.clone());
+    for round in 0..3 {
+        let check_all_reclaimed = gc.run(&mut heap, round);
 
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
         let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
         check_dynamic_heap(
-            true, // after gc
+            check_all_reclaimed, // after gc
             refs,
             roots,
             continuation_table,
@@ -139,6 +139,8 @@ fn test_gc(
             continuation_table_ptr_offset,
         );
     }
+
+    // TODO Delete roots, collect, check
 }
 
 /// Check the dynamic heap:
@@ -341,7 +343,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 }
 
 impl GC {
-    fn run(&self, mut heap: MotokoHeap) {
+    fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
         let heap_base = heap.heap_base_address() as u32;
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
@@ -353,7 +355,7 @@ impl GC {
             GC::Copying => {
                 unsafe {
                     copying_gc_internal(
-                        &mut heap,
+                        heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
@@ -367,12 +369,13 @@ impl GC {
                         |_reclaimed| {},
                     );
                 }
+                true
             }
 
             GC::MarkCompact => {
                 unsafe {
                     compacting_gc_internal(
-                        &mut heap,
+                        heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
@@ -386,28 +389,37 @@ impl GC {
                         |_reclaimed| {},
                     );
                 }
+                true
             }
 
             GC::Experimental => {
+                let strategy = match round {
+                    0 => Some(Strategy::Young),
+                    1 => Some(Strategy::Full),
+                    _ => None,
+                };
                 unsafe {
                     experimental_gc_internal(
-                        &mut heap,
+                        heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
                         // get_last_hp
-                        || heap_base as usize,
+                        || heap_1.last_ptr_address(),
                         // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
+                        |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
                         |_reclaimed| {},
-                        true,
+                        strategy,
                     );
+                    heap.set_last_ptr_address(heap_2.heap_ptr_address());
+                    heap.set_heap_ptr_address(heap_2.heap_ptr_address());
                 }
+                round >= 2
             }
         }
     }

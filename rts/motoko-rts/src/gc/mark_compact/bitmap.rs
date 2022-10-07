@@ -162,8 +162,8 @@ impl BitmapIter {
         debug_assert!(address % WORD_SIZE == 0);
         self.current_bit_idx = address / WORD_SIZE;
         let base = get_bitmap_forbidden_size() as u32 * 8;
-        assert!(base % 8 == 0);
-        assert!(self.current_bit_idx >= base);
+        debug_assert!(base % 8 == 0);
+        debug_assert!(self.current_bit_idx >= base);
         let word_idx =
             get_bitmap_forbidden_size() + (self.current_bit_idx - base) as usize / 64 * 8;
         self.current_word = *(BITMAP_FORBIDDEN_PTR.add(word_idx) as *const u64);

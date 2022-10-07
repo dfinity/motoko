@@ -18,6 +18,13 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum Strategy {
+    Young,
+    Full,
+    None,
+}
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_experimental_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
@@ -55,7 +62,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
-        false,
+        None,
     );
 
     println!(100, "INFO: Experimental GC stops ...");
@@ -80,7 +87,7 @@ pub unsafe fn experimental_gc_internal<
     continuation_table_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
-    force_young_gc: bool,
+    forced_strategy: Option<Strategy>,
 ) {
     let limits = Limits {
         base: heap_base as usize,
@@ -100,7 +107,7 @@ pub unsafe fn experimental_gc_internal<
         marked_old_space: 0,
         marked_young_space: 0,
         strategy: Strategy::None,
-        force_young_gc,
+        forced_strategy,
     };
 
     let old_hp = get_hp() as u32;
@@ -133,19 +140,12 @@ struct Limits {
     pub free: usize,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-enum Strategy {
-    Young,
-    Full,
-    None,
-}
-
 struct ExperimentalGC<'a, M: Memory> {
     heap: Heap<'a, M>,
     marked_old_space: usize,
     marked_young_space: usize,
     strategy: Strategy,
-    force_young_gc: bool, // for test runs
+    forced_strategy: Option<Strategy>,
 }
 
 impl<'a, M: Memory> ExperimentalGC<'a, M> {
@@ -305,6 +305,9 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
     }
 
     fn decide_strategy(&self) -> Strategy {
+        if let Some(strategy) = self.forced_strategy {
+            return strategy;
+        }
         const SUBSTANTIAL_FREE_SPACE: u32 = 1024 * 1024 * 1024;
         const CRITICAL_MEMORY_LIMIT: u32 = (4096 - 256) * 1024 * 1024;
         if self.old_survival_rate() < 0.5
@@ -314,7 +317,7 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
                 >= SUBSTANTIAL_FREE_SPACE
         {
             Strategy::Full
-        } else if self.force_young_gc || self.young_survival_rate() < 0.8 {
+        } else if self.young_survival_rate() < 0.8 {
             Strategy::Young
         } else {
             Strategy::None

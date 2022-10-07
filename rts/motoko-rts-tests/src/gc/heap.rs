@@ -69,6 +69,17 @@ impl MotokoHeap {
         self.inner.borrow_mut().set_heap_ptr_address(address)
     }
 
+    /// Get the last heap pointer, as address in the current process. The address can be used to mutate
+    /// the heap.
+    pub fn last_ptr_address(&self) -> usize {
+        self.inner.borrow().last_ptr_address()
+    }
+
+    /// Update the last heap pointer given as an address in the current process.
+    pub fn set_last_ptr_address(&self, address: usize) {
+        self.inner.borrow_mut().set_last_ptr_address(address)
+    }
+
     /// Get the beginning of dynamic heap, as an address in the current process
     pub fn heap_base_address(&self) -> usize {
         self.inner.borrow().heap_base_address()
@@ -116,6 +127,9 @@ struct MotokoHeapInner {
     /// Where the dynamic heap starts
     heap_base_offset: usize,
 
+    /// Last dynamic heap end, used for generational gc testing
+    heap_ptr_last: usize,
+
     /// Where the dynamic heap ends, i.e. the heap pointer
     heap_ptr_offset: usize,
 
@@ -151,6 +165,16 @@ impl MotokoHeapInner {
     /// Set heap pointer
     fn set_heap_ptr_address(&mut self, address: usize) {
         self.heap_ptr_offset = self.address_to_offset(address);
+    }
+
+    /// Get last heap pointer (i.e. where the dynamic heap ends last GC run) in the process's address space
+    fn last_ptr_address(&self) -> usize {
+        self.offset_to_address(self.heap_ptr_last)
+    }
+
+    /// Set last heap pointer
+    fn set_last_ptr_address(&mut self, address: usize) {
+        self.heap_ptr_last = self.address_to_offset(address);
     }
 
     /// Get static root array address in the process's address space
@@ -241,6 +265,7 @@ impl MotokoHeapInner {
         MotokoHeapInner {
             heap: heap.into_boxed_slice(),
             heap_base_offset: static_heap_size_bytes + realign,
+            heap_ptr_last: static_heap_size_bytes + realign,
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_offset: realign,
             continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
