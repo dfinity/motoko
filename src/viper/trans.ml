@@ -12,4 +12,4 @@ let rec prog (p : Mo_def.Syntax.prog) : prog =
 and prog' p =
   match p.it with
   | _ ->
-     (Prog, NoInfo)
+     ([], NoInfo)
