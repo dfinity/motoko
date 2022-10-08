@@ -2,6 +2,8 @@
 
 type 'a t
 
+val reset : unit -> unit
+
 val fresh : string -> 'a -> 'a t
 val clone: 'a t -> 'a -> 'a t
 

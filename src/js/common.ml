@@ -66,9 +66,11 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
 let js_version = Js.string Source_id.id
 
 let js_check source =
+  let _ = Mo_types.Cons.reset () in
   js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
 
 let js_run list source =
+  let _ = Mo_types.Cons.reset () in
   let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
   ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
@@ -90,6 +92,7 @@ let js_compile_wasm mode source =
     | "ic" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
+  let _ = Mo_types.Cons.reset () in
   js_result (Pipeline.compile_files mode true [source])
     (fun (idl_prog, m) ->
       let open CustomModule in
@@ -121,6 +124,7 @@ let js_parse_motoko s =
 
 let js_parse_motoko_typed paths =
   let paths = paths |> Js.to_array |> Array.to_list in
+  let _ = Mo_types.Cons.reset () in
   let
     load_result = Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env
   in js_result load_result (fun (libs, progs, senv) ->
