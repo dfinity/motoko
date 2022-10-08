@@ -10,7 +10,7 @@ module Arrange_sources = Mo_def.Arrange.Make (struct
   let types = false
 end)
 
-module Arrange_types = Mo_def.Arrange.Make (struct
+module Arrange_sources_types = Mo_def.Arrange.Make (struct
   let sources = true
   let types = true
 end)
@@ -126,8 +126,8 @@ let js_parse_motoko_typed paths =
   in js_result load_result (fun (libs, progs, senv) ->
     progs |> List.map (fun prog ->
       object%js
-        val ast = js_of_sexpr (Arrange_types.prog prog)
-        (* val typ = js_of_sexpr (Arrange_types.typ typ) *)
+        val ast = js_of_sexpr (Arrange_sources_types.prog prog)
+        (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
       end) |> Array.of_list |> Js.array |> Js.some)
 
 let js_save_file filename content =
