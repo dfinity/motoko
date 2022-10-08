@@ -2,7 +2,8 @@
 
 type 'a t
 
-val reset : unit -> unit
+(* Reset to the original state after running the provided function *)
+val session : (unit -> 'a) -> 'a
 
 val fresh : string -> 'a -> 'a t
 val clone: 'a t -> 'a -> 'a t

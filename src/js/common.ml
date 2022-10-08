@@ -66,20 +66,21 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
 let js_version = Js.string Source_id.id
 
 let js_check source =
-  let _ = Mo_types.Cons.reset () in
-  js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
+  Mo_types.Cons.session (fun _ -> 
+    js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null))
 
 let js_run list source =
-  let _ = Mo_types.Cons.reset () in
-  let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
-  ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
+  Mo_types.Cons.session (fun _ -> 
+    let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
+    ignore (Pipeline.run_stdin_from_file list (Js.to_string source)))
 
 let js_candid source =
-  js_result (Pipeline.generate_idl [Js.to_string source])
-    (fun prog ->
-      let code = Idllib.Arrange_idl.string_of_prog prog in
-      Js.some (Js.string code)
-    )
+  Mo_types.Cons.session (fun _ -> 
+    js_result (Pipeline.generate_idl [Js.to_string source])
+      (fun prog ->
+        let code = Idllib.Arrange_idl.string_of_prog prog in
+        Js.some (Js.string code)
+      ))
 
 let js_stable_compatible pre post =
   js_result (Pipeline.stable_compatible (Js.to_string pre) (Js.to_string post)) (fun _ -> Js.null)
@@ -92,8 +93,7 @@ let js_compile_wasm mode source =
     | "ic" -> Flags.ICMode
     | _ -> raise (Invalid_argument "js_compile_with: Unexpected mode")
   in
-  let _ = Mo_types.Cons.reset () in
-  js_result (Pipeline.compile_files mode true [source])
+  Mo_types.Cons.session (fun _ -> js_result (Pipeline.compile_files mode true [source])
     (fun (idl_prog, m) ->
       let open CustomModule in
       let sig_ = match m.motoko.stable_types with
@@ -109,8 +109,7 @@ let js_compile_wasm mode source =
         val wasm = code
         val candid = Js.string candid
         val stable = sig_
-      end)
-    )
+      end)))
 
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
@@ -124,10 +123,10 @@ let js_parse_motoko s =
 
 let js_parse_motoko_typed paths =
   let paths = paths |> Js.to_array |> Array.to_list in
-  let _ = Mo_types.Cons.reset () in
-  let
-    load_result = Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env
-  in js_result load_result (fun (libs, progs, senv) ->
+  let load_result = Mo_types.Cons.session (fun _ ->
+      Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env)
+  in
+  js_result load_result (fun (libs, progs, senv) ->
     progs |> List.map (fun prog ->
       object%js
         val ast = js_of_sexpr (Arrange_sources_types.prog prog)
