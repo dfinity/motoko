@@ -171,9 +171,10 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
       | Flexible -> Atom "Flexible"
       | Stable -> Atom "Stable")
 
-  and typ_field (tf : typ_field)
-    = source tf.at (tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut])
-
+  and typ_field (tf : typ_field) = match tf.it with
+    | ValF (id, t, m) -> id.it $$ [typ t; mut m]
+    | TypF (id', tbs, t) ->
+        "TypF" $$ [id id'] @ List.map typ_bind tbs @ [typ t]
   and typ_item ((id, ty) : typ_item) =
     match id with
     | None -> [typ ty]
