@@ -36,7 +36,7 @@ debugPrint(bar(-25, #int (func (a : Int) : Int = a)));
 
 // Synthesis (Building)
 
-type CoDesc<A> = { #int : Int -> A; #char : Char -> A; #pair : (CoDesc<A>, CoDesc<A>) };
+type CoDesc<A> = { #int : Int -> A; #char : Char -> A; #pair : <B, C>(CoDesc<B>, CoDesc<C>, (B, C) -> A) -> A };
 
 
 func baz<A>(d : CoDesc<A>) : A =
