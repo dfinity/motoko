@@ -1,7 +1,7 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
-use crate::{print, types::*};
+use crate::{types::*};
 
 use motoko_rts_macros::ic_mem_fn;
 
