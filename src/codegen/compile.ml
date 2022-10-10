@@ -925,14 +925,7 @@ module RTS = struct
     E.add_func_import env "rts" "init" [I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
-    E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
-    E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -6758,16 +6751,34 @@ module Var = struct
       G.nop,
       sr,
       G.i (LocalSet (nr i))
+
     | Some (HeapInd i) ->
+      G.i (LocalGet (nr i)) ^^
+      compile_add_const ptr_unskew ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "write_barrier" ^^
+      
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       Heap.store_field MutBox.field
+
     | Some (HeapStatic ptr) ->
-      compile_unboxed_const ptr,
-      SR.Vanilla,
+      let (set_new_val, get_new_val) = new_local env "new_val" in
+      set_new_val ^^
+
+      compile_unboxed_const ptr ^^
+      compile_add_const ptr_unskew ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "write_barrier" ^^
+
+      compile_unboxed_const ptr ^^
+      get_new_val ^^
       Heap.store_field MutBox.field
+
     | Some (Const _) -> fatal "set_val: %s is const" var
+
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
+
     | None   -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
@@ -8165,17 +8176,47 @@ let compile_load_field env typ name =
 let rec compile_lexp (env : E.t) ae lexp =
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it with
-  | VarLE var -> Var.set_val env ae var
+  | VarLE var ->
+     G.nop,
+     Var.set_val env ae var
   | IdxLE (e1, e2) ->
-     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    let (set_field, get_field) = new_local env "field" in
+    let (set_new_value, get_new_value) = new_local env "new_value" in
+
+   ( compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
-     Arr.idx_bigint env,
+     Arr.idx_bigint env ^^
+     set_field
+
+   ,
+     set_new_value ^^
+
+     get_field ^^
+     compile_add_const ptr_unskew ^^
+     E.call_import env "rts" "write_barrier" ^^
+
+     get_field ^^
+     get_new_value ^^
      SR.Vanilla,
      store_ptr
+   )
   | DotLE (e, n) ->
-     compile_exp_vanilla env ae e ^^
+    let (set_field, get_field) = new_local env "field" in
+    let (set_new_value, get_new_value) = new_local env "new_value" in
+
+   ( compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env e.note.Note.typ n,
+     Object.idx env e.note.Note.typ n ^^
+     set_field
+   ,
+     set_new_value ^^
+
+     get_field ^^
+     compile_add_const ptr_unskew ^^
+     E.call_import env "rts" "write_barrier" ^^
+
+     get_field ^^
+     get_new_value ^^
      SR.Vanilla,
      store_ptr
 

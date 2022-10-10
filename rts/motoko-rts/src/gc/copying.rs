@@ -21,9 +21,13 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
+    let heap_base = ic::get_heap_base();
+
+    crate::write_barrier::check_heap_copy(heap_base, ic::HP);
+
     copying_gc_internal(
         mem,
-        ic::get_heap_base(),
+        heap_base,
         // get_hp
         || ic::HP as usize,
         // set_hp
@@ -35,6 +39,8 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
+
+    crate::write_barrier::copy_heap(mem, heap_base, ic::HP);
 
     ic::LAST_HP = ic::HP;
 }
