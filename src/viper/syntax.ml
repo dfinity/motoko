@@ -12,16 +12,18 @@ and item' =
 
 and par = id * typ
 
-and seqn = (stmt list * decl list, info ) Source.annotated_phrase
+and seqn = (decl list * stmt list, info ) Source.annotated_phrase
 
-and decl = ((id * typ), info) Source.annotated_phrase
+and decl = (id * typ, info) Source.annotated_phrase
 
 and exp = (exp', info) Source.annotated_phrase
 
 and exp' =
+  | LocalVar of id * typ
+  | Result of typ
   | BoolLitE of bool
   | NullLitE
-  | IntE of int (* Num.Big_int.t *)
+  | IntLitE of int (* Num.Big_int.t *)
   | AddE of exp * exp
   | SubE of exp * exp
   | MulE of exp * exp
