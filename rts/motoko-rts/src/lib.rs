@@ -33,7 +33,6 @@ mod tommath_bindings;
 pub mod types;
 pub mod utf8;
 mod visitor;
-mod write_barrier;
 
 use types::Bytes;
 

@@ -150,6 +150,10 @@ let argspec = [
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
 
+  "--write-barrier",
+  Arg.Unit (fun () -> Flags.write_barrier := true),
+  " activate write barrier";
+
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,
   "<n>  set maximum number of pages available for library `ExperimentalStableMemory.mo` (default " ^ (Int.to_string Flags.max_stable_pages_default) ^ ")";

@@ -22,10 +22,10 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
+use crate::gc::write_barrier::write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
-use crate::types::SkewedPtr;
-use crate::write_barrier::write_barrier;
+use crate::types::Value;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -95,9 +95,9 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     let table = TABLE.as_array();
 
-    FREE_SLOT = (table.get(idx).0 >> 2) as u32;
+    FREE_SLOT = table.get(idx).get_scalar();
 
-    write_barrier(table.payload_addr().add(idx as usize) as usize);
+    write_barrier(mem, table.payload_addr().add(idx as usize) as u32);
     table.set(idx, ptr);
 
     N_CONTINUATIONS += 1;
@@ -142,8 +142,7 @@ pub unsafe extern "C" fn recall_continuation(idx: u32) -> Value {
 
     let ptr = table.get(idx);
 
-    write_barrier(table.payload_addr().add(idx as usize) as usize);
-    table.set(idx, SkewedPtr((FREE_SLOT << 2) as usize));
+    table.set(idx, Value::from_scalar(FREE_SLOT));
 
     FREE_SLOT = idx;
 
