@@ -24,7 +24,8 @@
 
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
-use crate::types::Value;
+use crate::types::SkewedPtr;
+use crate::write_barrier::write_barrier;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -92,8 +93,13 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     let idx = FREE_SLOT;
 
-    FREE_SLOT = TABLE.as_array().get(idx).get_scalar();
-    TABLE.as_array().set(idx, ptr);
+    let table = TABLE.as_array();
+
+    FREE_SLOT = (table.get(idx).0 >> 2) as u32;
+
+    write_barrier(table.payload_addr().add(idx as usize) as usize);
+    table.set(idx, ptr);
+
     N_CONTINUATIONS += 1;
 
     idx
@@ -132,9 +138,13 @@ pub unsafe extern "C" fn recall_continuation(idx: u32) -> Value {
         rts_trap_with("recall_continuation: Continuation index out of range");
     }
 
-    let ptr = TABLE.as_array().get(idx);
+    let table = TABLE.as_array();
 
-    TABLE.as_array().set(idx, Value::from_scalar(FREE_SLOT));
+    let ptr = table.get(idx);
+
+    write_barrier(table.payload_addr().add(idx as usize) as usize);
+    table.set(idx, SkewedPtr((FREE_SLOT << 2) as usize));
+
     FREE_SLOT = idx;
 
     N_CONTINUATIONS -= 1;

@@ -13,7 +13,8 @@
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{SkewedPtr, TAG_BLOB, TAG_CONCAT};
+use crate::write_barrier::write_barrier;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -104,17 +105,25 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             // If next one is a concat node re-use both the iterator and the todo objects (avoids
             // allocation)
             let concat = text.as_concat();
+
+            write_barrier(todo_array.payload_addr().add(TODO_TEXT_IDX as usize) as usize);
             todo_array.set(TODO_TEXT_IDX, (*concat).text2);
             iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
+
+            write_barrier(iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as usize);
             iter_array.set(ITER_BLOB_IDX, find_leaf(mem, (*concat).text1, todo_addr));
+
             text_iter_next(mem, iter)
         } else {
             // Otherwise remove the entry from the chain
             debug_assert_eq!(text.tag(), TAG_BLOB);
+
+            write_barrier(iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as usize);
             iter_array.set(ITER_BLOB_IDX, text);
             iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
             iter_array.set(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX));
+
             text_iter_next(mem, iter)
         }
     } else {
