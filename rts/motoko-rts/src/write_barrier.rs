@@ -4,7 +4,9 @@ use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
-static mut UPDATED_FIELDS: [usize; 1024] = [0usize; 1024];
+const MAX_UPDATES: usize = 1024 * 1024;
+
+static mut UPDATED_FIELDS: [usize; MAX_UPDATES] = [0usize; MAX_UPDATES];
 
 static mut N_UPDATED_FIELDS: usize = 0;
 
@@ -19,7 +21,7 @@ pub unsafe extern "C" fn write_barrier(loc: usize) {
     // Make sure we unskewed the object when calculating the field
     assert_eq!(loc & 0b1, 0);
 
-    assert!(N_UPDATED_FIELDS < 1024);
+    assert!(N_UPDATED_FIELDS < MAX_UPDATES);
 
     // println!(100, "Write barrier recording {:#x}", loc);
 
@@ -31,7 +33,7 @@ pub unsafe extern "C" fn write_barrier(loc: usize) {
 /// the blob. This copy will then be used to check write barrier correctness, by `check_heap_copy`.
 pub unsafe fn copy_heap<M: Memory>(mem: &mut M, heap_base: u32, hp: u32) {
     let blob_size = Bytes(hp - heap_base);
-    let blob = alloc_blob(mem, blob_size).unskew() as *mut Blob;
+    let blob = alloc_blob(mem, blob_size).get_ptr() as *mut Blob;
     let mut payload = blob.payload_addr() as *mut u32;
 
     let mut p = heap_base;
@@ -64,36 +66,46 @@ pub unsafe fn check_heap_copy(heap_base: u32, hp: u32) {
 
         assert_eq!(tag, obj_copy.tag());
 
-        visit_pointer_fields(obj_heap, tag, heap_base as usize, |obj_field_ptr| {
-            let copy_field_ptr = (obj_field_ptr as usize + diff) as *mut SkewedPtr;
+        visit_pointer_fields(
+            &mut (), 
+            obj_heap, 
+            tag, 
+            heap_base as usize, 
+            |_, obj_field_ptr| {
+                let copy_field_ptr = (obj_field_ptr as usize + diff) as *mut Value;
 
-            let obj_field_value = *obj_field_ptr;
-            let copy_field_value = *copy_field_ptr;
+                let obj_field_value = *obj_field_ptr;
+                let copy_field_value = *copy_field_ptr;
 
-            if obj_field_value != copy_field_value {
-                // Field was updated, check that we called the write barrier
-                let mut found = false;
-                for updated_field_idx in 0..N_UPDATED_FIELDS {
-                    if UPDATED_FIELDS[updated_field_idx] == obj_field_ptr as usize {
-                        found = true;
-                        break;
+                if obj_field_value != copy_field_value {
+                    // Field was updated, check that we called the write barrier
+                    let mut found = false;
+                    for updated_field_idx in 0..N_UPDATED_FIELDS {
+                        if UPDATED_FIELDS[updated_field_idx] == obj_field_ptr as usize {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if !found {
+                        panic!(
+                            "Updated field {:#x} of object {:#x} ({:?}) not found in \
+                            updated fields recorded by write barrier (heap base={:#x}, hp={:#x}, static={})",
+                            obj_field_ptr as usize,
+                            obj_heap as usize,
+                            tag,
+                            heap_base,
+                            hp,
+                            (obj_heap as u32) < heap_base,
+                        );
                     }
                 }
-
-                if !found {
-                    panic!(
-                        "Updated field {:#x} of object {:#x} ({}) not found in \
-                         updated fields recorded by write barrier (heap base={:#x}, hp={:#x}, static={})",
-                        obj_field_ptr as usize,
-                        obj_heap as usize,
-                        tag_str(tag),
-                        heap_base,
-                        hp,
-                        (obj_heap as u32) < heap_base,
-                    );
-                }
-            }
-        });
+            },
+            |_, slice_start, arr| {
+                debug_assert!(slice_start == 0);
+                arr.len()
+            },
+        );
 
         let size: Words<u32> = object_size(obj_heap as usize);
 

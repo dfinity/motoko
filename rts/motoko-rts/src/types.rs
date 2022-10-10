@@ -736,39 +736,3 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         }
     }
 }
-
-pub(crate) unsafe fn tag_str(tag: Tag) -> &'static str {
-    match tag {
-        TAG_OBJECT => "Object",
-
-        TAG_OBJ_IND => "Object indirection",
-
-        TAG_ARRAY => "Array",
-
-        TAG_BITS64 => "Bits64",
-
-        TAG_MUTBOX => "MutBox",
-
-        TAG_CLOSURE => "Closure",
-
-        TAG_SOME => "Some",
-
-        TAG_VARIANT => "Variant",
-
-        TAG_BLOB => "Blob",
-
-        TAG_FWD_PTR => "Forwarding pointer",
-
-        TAG_BITS32 => "Bits32",
-
-        TAG_BIGINT => "BitInt",
-
-        TAG_CONCAT => "Concat",
-
-        TAG_NULL => "Null",
-
-        _ => {
-            rts_trap_with("tag_str: invalid object tag");
-        }
-    }
-}

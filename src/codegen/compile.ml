@@ -931,6 +931,14 @@ module RTS = struct
     E.add_func_import env "rts" "init" [I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
+    E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
@@ -6829,16 +6837,13 @@ module Var = struct
       Heap.store_field MutBox.field
 
     | Some (HeapStatic ptr) ->
-      let (set_new_val, get_new_val) = new_local env "new_val" in
-      set_new_val ^^
-
       compile_unboxed_const ptr ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "write_barrier" ^^
 
-      compile_unboxed_const ptr ^^
-      get_new_val ^^
+      compile_unboxed_const ptr,
+      SR.Vanilla,
       Heap.store_field MutBox.field
 
     | Some (Const _) -> fatal "set_val: %s is const" var
@@ -8246,50 +8251,37 @@ let compile_load_field env typ name =
 let rec compile_lexp (env : E.t) ae lexp =
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it with
-  | VarLE var ->
-     G.nop,
-     Var.set_val env ae var
+  | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
     let (set_field, get_field) = new_local env "field" in
-    let (set_new_value, get_new_value) = new_local env "new_value" in
-
+    
    ( compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      Arr.idx_bigint env ^^
-     set_field
-
-   ,
-     set_new_value ^^
-
+     set_field ^^
      get_field ^^
      compile_add_const ptr_unskew ^^
      E.call_import env "rts" "write_barrier" ^^
 
-     get_field ^^
-     get_new_value ^^
+     get_field,
      SR.Vanilla,
      store_ptr
    )
   | DotLE (e, n) ->
     let (set_field, get_field) = new_local env "field" in
-    let (set_new_value, get_new_value) = new_local env "new_value" in
-
+    
    ( compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n ^^
-     set_field
-   ,
-     set_new_value ^^
-
+     set_field ^^
      get_field ^^
      compile_add_const ptr_unskew ^^
      E.call_import env "rts" "write_barrier" ^^
 
-     get_field ^^
-     get_new_value ^^
+     get_field,
      SR.Vanilla,
      store_ptr
-
+   )
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
   let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
