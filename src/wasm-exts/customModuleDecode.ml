@@ -996,12 +996,12 @@ let custom size s =
   is_icp motoko_stable_types_name n)*)
 let custom_section s =
   section_with_size `CustomSection custom None s
-
+(*
 let non_custom_section s =
   match id s with
   | None | Some `CustomSection -> None
   | _ -> skip 1 s; sized skip s; Some ()
-
+ *)
 
 (* Modules *)
 
