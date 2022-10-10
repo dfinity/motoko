@@ -24,7 +24,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
     let heap_base = ic::get_heap_base();
 
-    crate::write_barrier::check_heap_copy(heap_base, ic::HP);
+    crate::write_barrier::verify_snapshot(heap_base, ic::HP, ic::get_static_roots());
 
     copying_gc_internal(
         mem,
@@ -41,7 +41,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    crate::write_barrier::copy_heap(mem, heap_base, ic::HP);
+    crate::write_barrier::take_snapshot(mem, ic::HP);
 
     ic::LAST_HP = ic::HP;
     //println!(100, "Copying GC stops ...");

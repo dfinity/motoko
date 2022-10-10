@@ -1,16 +1,17 @@
 //! Write barrier implementation and testing utilities
 
+use core::ptr::null_mut;
+
+use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
-const MAX_UPDATES: usize = 1024 * 1024;
+const MAX_UPDATES: usize = 1024;
 
 static mut UPDATED_FIELDS: [usize; MAX_UPDATES] = [0usize; MAX_UPDATES];
 
 static mut N_UPDATED_FIELDS: usize = 0;
-
-static mut HEAP_COPY: *mut Blob = core::ptr::null_mut();
 
 // loc: updated location (object field)
 // new: value being written
@@ -18,98 +19,83 @@ static mut HEAP_COPY: *mut Blob = core::ptr::null_mut();
 // Called before writing the value, so `*loc` gives the old (current) value.
 #[no_mangle]
 pub unsafe extern "C" fn write_barrier(loc: usize) {
+    //println!(100, "Write barrier {:#x}", loc);
+    
     // Make sure we unskewed the object when calculating the field
     assert_eq!(loc & 0b1, 0);
 
     assert!(N_UPDATED_FIELDS < MAX_UPDATES);
 
-    // println!(100, "Write barrier recording {:#x}", loc);
-
     UPDATED_FIELDS[N_UPDATED_FIELDS] = loc;
     N_UPDATED_FIELDS += 1;
 }
+static mut SNAPSHOT: *mut Blob = null_mut();
 
-/// Copy the current heap, store it in heap as a blob. Update `HEAP_COPY_BLOB` to the location of
-/// the blob. This copy will then be used to check write barrier correctness, by `check_heap_copy`.
-pub unsafe fn copy_heap<M: Memory>(mem: &mut M, heap_base: u32, hp: u32) {
-    let blob_size = Bytes(hp - heap_base);
-    let blob = alloc_blob(mem, blob_size).get_ptr() as *mut Blob;
-    let mut payload = blob.payload_addr() as *mut u32;
-
-    let mut p = heap_base;
-    while p < hp {
-        *payload = *(p as *const u32);
-        payload = payload.add(1);
-        p += core::mem::size_of::<u32>() as u32;
-    }
-
-    HEAP_COPY = blob;
+pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, hp: u32) {
+    let length = Bytes(hp);
+    let blob = alloc_blob(mem, length).get_ptr() as *mut Blob;
+    memcpy_bytes(blob.payload_addr() as usize, 0, length);
+    SNAPSHOT = blob;
     N_UPDATED_FIELDS = 0;
 }
 
-pub unsafe fn check_heap_copy(heap_base: u32, hp: u32) {
-    if HEAP_COPY.is_null() {
+pub unsafe fn verify_snapshot(heap_base: u32, hp: u32, static_roots: Value) {
+    assert!(heap_base <= hp);
+    verify_static_roots(static_roots.as_array());
+    verify_heap(heap_base as usize, hp as usize);
+}
+
+unsafe fn verify_static_roots(static_roots: *mut Array) {
+    for index in 0..static_roots.len() {
+        let current = static_roots.get(index).as_obj();
+        assert_eq!(current.tag(), TAG_MUTBOX); // check tag
+        let mutbox = current as *mut MutBox;
+        let current_field = &mut (*mutbox).field;
+        verify_field(current_field);
+    }
+}
+
+unsafe fn verify_heap(base: usize, limit: usize) {
+    if SNAPSHOT.is_null() {
         return;
     }
-
-    assert!((HEAP_COPY as u32) < hp);
-
-    let mut copy_ptr = HEAP_COPY.payload_addr() as *mut u32;
-
-    let mut p = heap_base;
-    while p < HEAP_COPY as u32 {
-        let obj_heap = p as *mut Obj;
-        let obj_copy = copy_ptr as *mut Obj;
-        let diff = obj_copy as usize - obj_heap as usize;
-
-        let tag = obj_heap.tag();
-
-        assert_eq!(tag, obj_copy.tag());
-
+    assert!(SNAPSHOT.len().as_usize() <= limit);
+    let mut pointer = base;
+    while pointer < SNAPSHOT.len().as_usize() {
+        let current = pointer as *mut Obj;
+        let previous = (SNAPSHOT.payload_addr() as usize + pointer) as *mut Obj;
+        assert!(current.tag() == previous.tag());
         visit_pointer_fields(
             &mut (), 
-            obj_heap, 
-            tag, 
-            heap_base as usize, 
-            |_, obj_field_ptr| {
-                let copy_field_ptr = (obj_field_ptr as usize + diff) as *mut Value;
-
-                let obj_field_value = *obj_field_ptr;
-                let copy_field_value = *copy_field_ptr;
-
-                if obj_field_value != copy_field_value {
-                    // Field was updated, check that we called the write barrier
-                    let mut found = false;
-                    for updated_field_idx in 0..N_UPDATED_FIELDS {
-                        if UPDATED_FIELDS[updated_field_idx] == obj_field_ptr as usize {
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if !found {
-                        panic!(
-                            "Updated field {:#x} of object {:#x} ({:?}) not found in \
-                            updated fields recorded by write barrier (heap base={:#x}, hp={:#x}, static={})",
-                            obj_field_ptr as usize,
-                            obj_heap as usize,
-                            tag,
-                            heap_base,
-                            hp,
-                            (obj_heap as u32) < heap_base,
-                        );
-                    }
-                }
+            current, 
+            current.tag(), 
+            0, 
+            |_, current_field| {
+                verify_field(current_field);
             },
             |_, slice_start, arr| {
-                debug_assert!(slice_start == 0);
+                assert!(slice_start == 0);
                 arr.len()
-            },
+            }
         );
+        pointer += object_size(current as usize).to_bytes().as_usize();
+    }
+}
 
-        let size: Words<u32> = object_size(obj_heap as usize);
-
-        p += size.to_bytes().0;
-        copy_ptr = copy_ptr.add(size.0 as usize);
+unsafe fn verify_field(current_field: *mut Value) {
+    let memory_copy = SNAPSHOT.payload_addr() as usize;
+    let previous_field = (memory_copy + current_field as usize) as *mut Value;
+    if *previous_field != *current_field {
+        // TODO: Faster search
+        let mut found = false;
+        for updated_field_idx in 0..N_UPDATED_FIELDS {
+            if UPDATED_FIELDS[updated_field_idx] == current_field as usize {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            panic!("Missing write barrier at {:#x}", current_field as usize);
+        }
     }
 }
