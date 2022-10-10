@@ -1276,21 +1276,32 @@ module BitTagged = struct
 end (* BitTagged *)
 
 module Tagged = struct
-  (* Tagged objects have, well, a tag to describe their runtime type.
-     This tag is used to traverse the heap (serialization, GC), but also
-     for objectification of arrays.
+  (* Tagged objects all have an object header consisting of a tag and a forward address.
+     The tag is to describe their runtime type and serves to traverse the heap 
+     (serialization, GC), but also for objectification of arrays.
 
      The tag is a word at the beginning of the object.
 
-     Additional forward address in header.
+     They forward address supports advanced garbage collection (incremental or generational).
+
+         obj header
+     ┌──────┬──────────┬──
+     │ tag  │ fwd addr │ ...
+     └──────┴──────────┴──
 
      All tagged heap objects have a size of at least two words
      (important for GC, which replaces them with an Indirection).
 
      Attention: This mapping is duplicated in these places
        * here
-       * rts/rts.h
        * motoko-rts/src/types.rs
+       * motoko-rts/src/stream.rs
+       * motoko-rts/src/text.rs
+       * motoko-rts/src/memory.rs
+       * motoko-rts/src/bigint.rs
+       * motoko-rts/src/blob-iter.rs
+       * motoko-rts/src/static-checks.rs
+       * In all GC implementations in motoko-rts/src/gc/
      so update all!
    *)
 
@@ -1432,7 +1443,15 @@ module Tagged = struct
 end (* Tagged *)
 
 module MutBox = struct
-  (* Mutable heap objects *)
+  (* 
+      Mutable heap objects 
+  
+       ┌──────┬─────┬─────────┐
+       │ obj header │ payload │
+       └──────┴─────┴─────────┘
+
+     The object header includes the obj tag (MutBox) and the forward address.
+  *)
 
   let field = Tagged.header_size
 
@@ -1541,10 +1560,11 @@ module Variant = struct
      optimize and squeeze it in the Tagged tag. We can also later support unboxing
      variants with an argument of type ().
 
-       ┌─────────┬────────────┬─────────┐
-       │ heaptag │ varianttag │ payload │
-       └─────────┴────────────┴─────────┘
+       ┌──────┬─────┬────────────┬─────────┐
+       │ obj header │ varianttag │ payload │
+       └──────┴─────┴────────────┴─────────┘
 
+     The object header includes the obj tag (TAG_VARIANT) and the forward address.
   *)
 
   let variant_tag_field = Tagged.header_size
@@ -1573,9 +1593,11 @@ module Closure = struct
 
      The structure of a closure is:
 
-       ┌─────┬───────┬──────┬──────────────┐
-       │ tag │ funid │ size │ captured ... │
-       └─────┴───────┴──────┴──────────────┘
+       ┌──────┬─────┬───────┬──────┬──────────────┐
+       │ obj header │ funid │ size │ captured ... │
+       └──────┴─────┴───────┴──────┴──────────────┘
+
+     The object header includes the object tag (TAG_CLOSURE) and the forward address.
 
   *)
   let header_size = Int32.add Tagged.header_size 2l
@@ -1622,9 +1644,11 @@ module BoxedWord64 = struct
 
      The heap layout of a BoxedWord64 is:
 
-       ┌─────┬─────┬─────┐
-       │ tag │    i64    │
-       └─────┴─────┴─────┘
+       ┌──────┬─────┬─────┬─────┐
+       │ obj header │    i64    │
+       └──────┴─────┴─────┴─────┘
+
+     The object header includes the object tag (Bits64) and the forward address.
 
   *)
 
@@ -1742,9 +1766,11 @@ module BoxedSmallWord = struct
 
      The heap layout of a BoxedSmallWord is:
 
-       ┌─────┬─────┐
-       │ tag │ i32 │
-       └─────┴─────┘
+       ┌──────┬─────┬─────┐
+       │ obj header │ i32 │
+       └──────┴─────┴─────┘
+
+     The object header includes the object tag (Bits32) and the forward address.
 
   *)
 
@@ -1981,14 +2007,15 @@ module Float = struct
 
      The heap layout of a Float is:
 
-       ┌─────┬─────┬─────┐
-       │ tag │    f64    │
-       └─────┴─────┴─────┘
+       ┌──────┬─────┬─────┬─────┐
+       │ obj header │    f64    │
+       └──────┴─────┴─────┴─────┘
 
      For now the tag stored is that of a Bits64, because the payload is
      treated opaquely by the RTS. We'll introduce a separate tag when the need of
      debug inspection (or GC representation change) arises.
 
+     The object header includes the object tag (Bits64) and the forward address.
   *)
 
   let payload_field = Tagged.header_size
@@ -2948,11 +2975,11 @@ module Object = struct
  (* An object with a mutable field1 and immutable field 2 has the following
     heap layout:
 
-    ┌────────┬──────────┬──────────┬─────────┬─────────────┬───┐
-    │ Object │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
-    └────────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
-         ┌───────────────┘          │
-         │   ┌──────────────────────┘
+    ┌──────┬─────┬──────────┬──────────┬─────────┬─────────────┬───┐
+    │ obj header │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
+    └──────┴─────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
+         ┌───────────────────┘          │
+         │   ┌──────────────────────────┘
          │   ↓
          │  ╶─┬────────┬─────────────┐
          │    │ ObjInd │ field1_data │
@@ -2961,6 +2988,7 @@ module Object = struct
           │ field1_hash │ field2_hash │ … │
           └─────────────┴─────────────┴───┘
 
+    The object header includes the object tag (Object) and the forward address.
 
     The field hash array lives in static memory (so no size header needed).
     The hash_ptr is skewed.
@@ -3146,9 +3174,11 @@ end (* Object *)
 module Blob = struct
   (* The layout of a blob object is
 
-     ┌─────┬─────────┬──────────────────┐
-     │ tag │ n_bytes │ bytes (padded) … │
-     └─────┴─────────┴──────────────────┘
+     ┌──────┬─────┬─────────┬──────────────────┐
+     │ obj header │ n_bytes │ bytes (padded) … │
+     └──────┴─────┴─────────┴──────────────────┘
+
+    The object header includes the object tag (Blob) and the forward address.
 
     This heap object is used for various kinds of binary, non-pointer data.
 
@@ -3334,9 +3364,11 @@ module Text = struct
 
   (* The layout of a concatenation node is
 
-     ┌─────┬─────────┬───────┬───────┐
-     │ tag │ n_bytes │ text1 │ text2 │
-     └─────┴─────────┴───────┴───────┘
+     ┌──────┬─────┬─────────┬───────┬───────┐
+     │ obj header │ n_bytes │ text1 │ text2 │
+     └──────┴─────┴─────────┴───────┴───────┘
+
+    The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the forward address
 
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
@@ -3399,9 +3431,11 @@ end (* Text *)
 module Arr = struct
   (* Object layout:
 
-     ┌─────┬──────────┬────────┬───┐
-     │ tag │ n_fields │ field1 │ … │
-     └─────┴──────────┴────────┴───┘
+     ┌──────┬─────┬──────────┬────────┬───┐
+     │ obj header │ n_fields │ field1 │ … │
+     └──────┴─────┴──────────┴────────┴───┘
+     
+     The object  header includes the object tag (Array) and the forward address.
 
      No difference between mutable and immutable arrays.
   *)
