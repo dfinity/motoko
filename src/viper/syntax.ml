@@ -23,7 +23,7 @@ and exp' =
   | Result of typ
   | BoolLitE of bool
   | NullLitE
-  | IntLitE of int (* Num.Big_int.t *)
+  | IntLitE of Mo_values.Numerics.Int.t
   | AddE of exp * exp
   | SubE of exp * exp
   | MulE of exp * exp
@@ -36,7 +36,7 @@ and exp' =
   | EqCmpE of exp * exp
   | NeCmpE of exp * exp
   | MinusE of exp
-  | NotE of exp * exp
+  | NotE of exp
   | AndE of exp * exp
   | OrE of exp * exp
   | Implies of exp * exp
@@ -66,11 +66,11 @@ and stmt' =
   | AssertS of exp
   | AssumeS of exp
   | SeqnS of seqn
-  | VarAssignE of id * exp
-  | FieldAssignE of fldacc * exp
+  | VarAssignS of id * exp
+  | FieldAssignS of fldacc * exp
   | IfS of exp * seqn * seqn
-  | WhileE of exp * invariants * seqn
-  | LabelE of id * invariants
+  | WhileS of exp * invariants * seqn
+  | LabelS of id * invariants
 
 
 and typ = (typ', info) Source.annotated_phrase

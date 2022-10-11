@@ -5,11 +5,11 @@ open Syntax
 module T = Mo_types.Type
 module M = Mo_def.Syntax
 
-let unit (u : Mo_def.Syntax.comp_unit) : prog =
+let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-     { it = [];
+     { it = dec_fields decs;
        at = body.at;
        note = NoInfo
      }
@@ -210,14 +210,17 @@ and dec d = match d.it with
 
  *)
 
-let rec dec_field d =
+and dec_fields ds =
+  List.map dec_field ds
+
+and dec_field d =
   let (d', info) = dec_field' d.it in
   { it = d';
     at = d.at;
     note = info }
 
 and dec_field' d =
-  match d with
+  match d.M.dec.it with
   (*  | ExpD e -> "ExpD" $$ [exp e ] *)
 
   | M.VarD (x, e) ->
@@ -226,8 +229,8 @@ and dec_field' d =
       NoInfo)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
-                       { it = BlockE ds; at; _} );_})) ->
-     (MethodI(id f, args p, rets t_opt, [], [], Some (block at ds)),
+                       {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
+     (MethodI(id f, args p, rets t_opt, [], [], Some (stmt e)),
       NoInfo)
 (*
   | TypD (x, tp, t) ->
@@ -264,46 +267,96 @@ and dec d =
      ([{ it = (id x, tr_typ e.note.M.note_typ);
         at = d.at;
         note = NoInfo }],
-      [{ it = VarAssignE (id x, exp e);
+      [{ it = VarAssignS (id x, exp e);
         at = d.at;
         note = NoInfo }])
   | M.(LetD ({it=VarP x;_}, e))->
      ([{ it = (id x, tr_typ e.note.M.note_typ);
         at = d.at;
         note = NoInfo }],
-      [{ it = VarAssignE (id x, exp e);
-        at = d.at;
-        note = NoInfo }])
-  | M.(ExpD {it=IfE(e,
-                     { it = BlockE ds1; at = at1; _},
-                     { it = BlockE ds2; at = at2; _});
-              _})->
-     ([],
-      [{ it = IfS(exp e, block at1 ds1, block at2 ds2);
+      [{ it = VarAssignS (id x, exp e);
         at = d.at;
         note = NoInfo }])
 
+  | M.(ExpD e) ->
+     let s = stmt e in
+     s.it
 
+and stmt s : seqn =
+  match s.it with
+  | M.TupE [] ->
+     block s.at []
+  | M.BlockE ds ->
+     block s.at ds
+  | M.IfE(e, s1, s2) ->
+     { it =
+         ([],
+          [ { it = IfS(exp e, stmt s1, stmt s2);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+(*    
+  | M.AsyncE(_, e) -> (* gross hack *)
+     { it =
+         ([],
+          [ { it = SeqnS (stmt e);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+*)
+  | M.WhileE(e, s1) ->
+     { it =
+         ([],
+          [ { it = WhileS(exp e, [], stmt s1); (* TODO: invariant *)
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+  | M.AssignE({it = VarE id; _}, e2) when isLocal id->
+     let loc = { it = id.it; at = id.at; note = NoInfo } in
+     { it =
+         ([],
+          [ { it = VarAssignS(loc, exp e2);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+(*    
+  | M.AssignE({it = VarE id;_}, e2) when isField e1->
+     { it =
+         ([],
+          [ { it = FieldAssignS((), exp e2);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+*)
+
+and isLocal id = true (* fix me *)    
 
 and exp e =
-  let (e', info) = exp' e.it in
+  let (e', info) = exp' e in
   { it = e';
     at = e.at;
     note = info }
 
-and exp' e =
-  match e with
+and exp' (e : M.exp) =
+  match e.it with
   | M.VarE x ->
      (*TODO: need environment to distinguish fields from locals *)
-     (LocalVar (id x, tr_typ e.M.note.note_typ),
+     (LocalVar (id x, tr_typ e.note.note_typ),
       NoInfo)
   | M.LitE r ->
     begin match !r with
     | M.BoolLit b ->
        (BoolLitE b, NoInfo)
     | M.IntLit i ->
-       (IntLitE 0, NoInfo)
+       (IntLitE i, NoInfo)
     end
+  | M.NotE e ->
+     (NotE (exp e), NoInfo)
 (*           
   | VarE x              -> 
   | LitE l              -> "LitE"      $$ [lit !l]
@@ -369,8 +422,11 @@ and rets t_opt =
   match t_opt with
   | None -> []
   | Some t ->
-     match T.normalize t.note with
+    (match T.normalize t.note with
      | T.Tup [] -> []
+     | T.Async (_, _) -> [])
+
+
 
 and id id = { it = id.it; at = id.at; note = NoInfo }
 
@@ -382,3 +438,4 @@ and tr_typ' typ =
   match T.normalize typ with
   | T.Prim T.Int -> IntT
   | T.Prim T.Bool -> BoolT
+

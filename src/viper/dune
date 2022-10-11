@@ -1,6 +1,6 @@
 (library
   (name viper)
 
-  (libraries lib num lang_utils mo_def mo_types)
+  (libraries lib num lang_utils mo_def mo_types mo_values)
   (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

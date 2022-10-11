@@ -20,11 +20,11 @@ let rec pp_prog ppf p =
 and pp_item ppf i =
   match i.it with
   | FieldI (id, typ) ->
-    fprintf ppf "@[<2>field %s :@ %a@]"
+    fprintf ppf "@[<2>field %s:@ %a@]"
       id.it
       pp_typ typ
   | MethodI (id, locals, rets, pres, posts, bo) ->
-    fprintf ppf "@[<2>method %s%a :@ %a %a %a %a @]"
+     fprintf ppf "@[<hov 2>method %s%a@ %a@ %a@ %a@; %a@]"
       id.it
       pp_locals locals
       pp_returns rets
@@ -35,7 +35,20 @@ and pp_item ppf i =
 and pp_block_opt ppf bo =
   match bo with
   | None -> ()
-  | Some ss -> () (* TODO *)
+  | Some seqn ->
+    pp_seqn ppf seqn
+
+and pp_seqn ppf seqn =
+    let (ds, ss) = seqn.it in
+    fprintf ppf "@[<v 2>{ %a@ %a @;<0 -2>}@]"
+     (pp_print_list pp_decl) ds
+     (pp_print_list pp_stmt) ss
+
+and pp_decl ppf decl =
+    let (id, typ) = decl.it in
+    fprintf ppf "@[<v 0>var %s: %a@]"
+    id.it
+    pp_typ typ
 
 and pp_pres ppf exps =
    fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_pre) exps
@@ -50,7 +63,7 @@ and pp_post ppf exp =
    fprintf ppf "ensures @[<2>%a@]" pp_exp exp
 
 and pp_local ppf (id, typ) =
-  fprintf ppf "@[<2>%s :@ %a@]"
+  fprintf ppf "@[<2>%s: %a@]"
     id.it
     pp_typ typ
 
@@ -72,9 +85,35 @@ and pp_typ ppf t =
 
 and pp_exp ppf exp =
   match exp.it with
-  | _ -> pr ppf "?" (* TBC *)
+  | LocalVar (id, _) ->
+     fprintf ppf "%s" id.it
+  | NotE e ->
+     fprintf ppf "@[(not %a)@]" pp_exp e
+  | BoolLitE b ->
+     fprintf ppf "%s" (if b then "true" else "false")
+  | IntLitE i ->
+     fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
+
+and pp_stmt ppf stmt =
+  match stmt.it with
+  | SeqnS seqn -> pp_seqn ppf seqn
+  | IfS(exp1, s1, { it = ([],[]); _ }) ->
+    fprintf ppf "@[<v 2>if %a@ %a@]"
+      pp_exp exp1
+      pp_seqn s1
+  | IfS(exp1, s1, s2) ->
+    fprintf ppf "@[<v 2>if %a@ %aelse@ %a@]"
+      pp_exp exp1
+      pp_seqn s1
+      pp_seqn s2
+  | VarAssignS(id, exp) ->
+    fprintf ppf "@[<v 2>%s := %a@]"
+      id.it
+      pp_exp exp
 
 let prog p =
-  Lib.Format.with_str_formatter (fun ppf ->
-    pp_prog ppf) p
-
+    let b = Buffer.create 16 in
+    let ppf = Format.formatter_of_buffer b in
+    Format.fprintf ppf "@[%a@]" pp_prog p;
+    Format.pp_print_flush ppf ();
+    Buffer.contents b
