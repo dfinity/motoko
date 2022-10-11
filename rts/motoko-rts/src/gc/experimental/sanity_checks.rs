@@ -4,7 +4,7 @@
 
 use core::ptr::null_mut;
 
-use super::write_barrier::{N_UPDATED_FIELDS, UPDATED_FIELDS};
+use super::write_barrier::REMEMBERED_SET;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
@@ -18,7 +18,6 @@ pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, hp: u32) {
     let blob = alloc_blob(mem, length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
-    N_UPDATED_FIELDS = 0;
 }
 
 /// Verify write barrier coverag by comparing the memory against the previous snapshot.
@@ -72,16 +71,24 @@ unsafe fn verify_field(current_field: *mut Value) {
     let memory_copy = SNAPSHOT.payload_addr() as usize;
     let previous_field = (memory_copy + current_field as usize) as *mut Value;
     if *previous_field != *current_field {
-        // TODO: Faster search
-        let mut found = false;
-        for updated_field_idx in 0..N_UPDATED_FIELDS {
-            if UPDATED_FIELDS[updated_field_idx] == current_field as usize {
-                found = true;
-                break;
-            }
-        }
-        if !found {
+        if !recorded(current_field as u32) {
             panic!("Missing write barrier at {:#x}", current_field as usize);
+        }
+    }
+}
+
+unsafe fn recorded(value: u32) -> bool {
+    match &REMEMBERED_SET {
+        None => panic!("No remembered set"),
+        Some(remembered_set) => {
+            let mut iterator = remembered_set.iterate();
+            while iterator.has_next() {
+                if iterator.current().get_raw() == value {
+                    return true;
+                }
+                iterator.next();
+            }
+            false
         }
     }
 }

@@ -1,14 +1,14 @@
 //! Remembered set.
 //! Serves for recording pointer locations trapped by the write barrier.
 //! The remembered set may store duplicates, as it is optimized for fast insertion.
-//! 
-//! Linked list of record tables, each containing a series of entries. 
+//!
+//! Linked list of record tables, each containing a series of entries.
 //! A table is represented as an array with the following internal layout:
-//! 
+//!
 //! ┌──────────┬───────┬─────────┬──────┬────────────────┬────────┐
 //! │ next_ptr │ count │ entry[0]|  ... | entry[count-1] | (free) |
 //! └──────────┴───────┴─────────┴──────┴────────────────┴────────┘
-//! 
+//!
 //! `next_ptr` points to the next record table (unless null)
 //! `count` is the number of stored entries in the table.
 //! New entries are stored at the beginning of the free table space.
@@ -16,17 +16,17 @@
 
 use core::mem::size_of;
 
+use crate::memory::{alloc_array, Memory};
 use crate::types::{Array, Value, TAG_NULL};
-use crate::memory::{Memory, alloc_array};
 
 pub struct RememberedSet {
     first: *mut Array,
-    last: *mut Array
+    last: *mut Array,
 }
 
 pub struct RememberedSetIterator {
     table: *mut Array,
-    index: u32
+    index: u32,
 }
 
 const TABLE_ARRAY_LENGTH: u32 = 1024 - size_of::<Array>() as u32;
@@ -39,9 +39,9 @@ const NULL_POINTER: Value = Value::from_raw(TAG_NULL);
 impl RememberedSet {
     pub unsafe fn new<M: Memory>(mem: &mut M) -> RememberedSet {
         let table = Self::new_table(mem);
-        RememberedSet { 
+        RememberedSet {
             first: table,
-            last: table
+            last: table,
         }
     }
 
@@ -60,10 +60,17 @@ impl RememberedSet {
     }
 
     unsafe fn append_table<M: Memory>(&mut self, mem: &mut M) {
-        debug_assert_eq!(self.last.get(COUNT_ENTRIES_OFFSET).get_scalar(), MAX_ENTRIES_PER_TABLE);
+        debug_assert_eq!(
+            self.last.get(COUNT_ENTRIES_OFFSET).get_scalar(),
+            MAX_ENTRIES_PER_TABLE
+        );
         let next = Self::new_table(mem);
-        debug_assert_eq!(self.last.get(NEXT_POINTER_OFFSET).get_raw(), NULL_POINTER.get_raw());
-        self.last.set(NEXT_POINTER_OFFSET, Value::from_ptr(next as usize));
+        debug_assert_eq!(
+            self.last.get(NEXT_POINTER_OFFSET).get_raw(),
+            NULL_POINTER.get_raw()
+        );
+        self.last
+            .set(NEXT_POINTER_OFFSET, Value::from_ptr(next as usize));
         self.last = next;
     }
 
@@ -77,14 +84,18 @@ impl RememberedSet {
     pub fn iterate(&self) -> RememberedSetIterator {
         RememberedSetIterator {
             table: self.first,
-            index: 0
+            index: 0,
         }
     }
 }
 
 impl RememberedSetIterator {
     pub unsafe fn has_next(&self) -> bool {
-        debug_assert!(self.index < MAX_ENTRIES_PER_TABLE || self.index == MAX_ENTRIES_PER_TABLE && self.table.get(NEXT_POINTER_OFFSET).is_null());
+        debug_assert!(
+            self.index < MAX_ENTRIES_PER_TABLE
+                || self.index == MAX_ENTRIES_PER_TABLE
+                    && self.table.get(NEXT_POINTER_OFFSET).is_null()
+        );
         self.index < self.table.get(COUNT_ENTRIES_OFFSET).get_scalar()
     }
 

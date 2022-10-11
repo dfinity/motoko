@@ -9,10 +9,10 @@ mod leb128;
 mod mark_stack;
 mod memory;
 mod principal_id;
+mod remembered_set;
 mod stream;
 mod text;
 mod utf8;
-mod remembered_set;
 
 use motoko_rts::types::Bytes;
 

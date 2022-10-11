@@ -939,7 +939,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "activate_write_barrier" [] [];
+    E.add_func_import env "rts" "create_remembered_set" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
@@ -9963,7 +9963,7 @@ and conclude_module env start_fi_o =
     E.call_import env "rts" "init" ^^
     (if !Flags.gc_strategy = Mo_config.Flags.Experimental
      then
-      E.call_import env "rts" "activate_write_barrier"
+      E.call_import env "rts" "create_remembered_set"
      else 
       G.nop 
     ) ^^

@@ -3,9 +3,9 @@
 //! Full heap mark, then compection decision (young only, full collection, or no collection)
 //! Based on the Motoko RTS mark & compact GC.
 
+pub mod remembered_set;
 #[cfg(debug_assertions)]
 mod sanity_checks;
-pub mod remembered_set;
 pub mod write_barrier;
 
 use crate::gc::mark_compact::bitmap::{
@@ -75,6 +75,8 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
 
     #[cfg(debug_assertions)]
     sanity_checks::take_snapshot(mem, ic::HP);
+
+    write_barrier::create_remembered_set(mem);
 
     ic::LAST_HP = ic::HP;
 

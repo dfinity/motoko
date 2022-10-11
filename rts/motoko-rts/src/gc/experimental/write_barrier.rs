@@ -1,36 +1,33 @@
 //! Write barrier, used for experimental GC
 
-const MAX_UPDATES: usize = 1024;
+use super::remembered_set::RememberedSet;
+use crate::memory::Memory;
+use crate::types::Value;
+use motoko_rts_macros::ic_mem_fn;
 
-static mut ACTIVATED: bool = false;
+pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
 
-pub static mut UPDATED_FIELDS: [usize; MAX_UPDATES] = [0usize; MAX_UPDATES];
-
-pub static mut N_UPDATED_FIELDS: usize = 0;
-
-/// Activate the write barrier for experimental GC.
-#[no_mangle]
-pub unsafe extern "C" fn activate_write_barrier() {
-    ACTIVATED = true;
+/// Create an new remembered set. Necessary to activate the write barrier for experimental GC.
+#[ic_mem_fn]
+pub unsafe fn create_remembered_set<M: Memory>(mem: &mut M) {
+    REMEMBERED_SET = Some(RememberedSet::new(mem));
 }
 
 /// Write barrier, used for experimental GC. Called before the actual write.
-/// `loc`: updated location (object field, array element).
+/// `location`: updated location of pointer (address of object field or array element).
 ///
-/// As the barrier is called before the write, `*loc` still refers to the old value.
+/// As the barrier is called before the write, `*location` still refers to the old value.
 /// No effect is the write barrier is deactivated.
-#[no_mangle]
-pub unsafe extern "C" fn write_barrier(loc: usize) {
-    if !ACTIVATED {
-        return;
+#[ic_mem_fn]
+pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
+    match &mut REMEMBERED_SET {
+        None => return,
+        Some(remembered_set) => {
+            //println!(100, "Write barrier {:#x}", location);
+
+            // Make sure we unskewed the object when calculating the field
+            debug_assert_eq!(location & 0b1, 0);
+            remembered_set.insert(mem, Value::from_raw(location));
+        }
     }
-    //println!(100, "Write barrier {:#x}", loc);
-
-    // Make sure we unskewed the object when calculating the field
-    assert_eq!(loc & 0b1, 0);
-
-    assert!(N_UPDATED_FIELDS < MAX_UPDATES);
-
-    UPDATED_FIELDS[N_UPDATED_FIELDS] = loc;
-    N_UPDATED_FIELDS += 1;
 }
