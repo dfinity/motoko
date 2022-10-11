@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # fetch full history so that git merge-base works
         fetch-depth: 0
@@ -52,7 +52,7 @@ jobs:
     - name: Read performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       id: perf
-      uses: juliangruber/read-file-action@v1
+      uses: juliangruber/read-file-action@v1.1.5
       with:
         path: ./perf-delta.txt
 
@@ -84,7 +84,7 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v17
       with:
         extra_nix_config: |

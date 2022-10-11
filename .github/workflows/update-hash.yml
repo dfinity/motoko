@@ -11,7 +11,7 @@ jobs:
   update-hash:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # This is needed to be able to push and trigger CI with that push
         token: ${{ secrets.NIV_UPDATER_TOKEN }}
@@ -27,7 +27,7 @@ jobs:
         cd nix
         nix --extra-experimental-features nix-command shell -f . nix-update -c nix-update --version=skip drun
     - name: Commit changes
-      uses: EndBug/add-and-commit@v7.5.0
+      uses: EndBug/add-and-commit@v9.1.1
       with:
         author_name: Nix hash updater
         author_email: "<nobody@example.com>"
