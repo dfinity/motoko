@@ -11,7 +11,7 @@ jobs:
   update-hash:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # This is needed to be able to push and trigger CI with that push
         token: ${{ secrets.NIV_UPDATER_TOKEN }}
