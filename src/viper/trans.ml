@@ -5,15 +5,277 @@ open Syntax
 module T = Mo_types.Type
 module M = Mo_def.Syntax
 
+let fail sexp =
+  failwith (Wasm.Sexpr.to_string 80 sexp)
+
+type sort = Field | Local | Method
+
+module Env = T.Env
+
+type ctxt =
+  { self : string;
+    ids : sort T.Env.t
+  }
+
 let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-     { it = dec_fields decs;
+     let ctxt = { self = "self"; ids = Env.empty } in
+     let (ctxt', mk_is) = dec_fields ctxt decs in
+     let is = List.map (fun mk_i -> mk_i ctxt') mk_is in
+     { it = is;
        at = body.at;
        note = NoInfo
      }
   | _ -> assert false
+
+and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
+  match ds with
+  | [] ->
+    (ctxt, [])
+  | d :: ds ->
+    let ctxt, mk_i = dec_field ctxt d in
+    let ctxt, mk_is = dec_fields ctxt ds in
+    (ctxt, mk_i::mk_is)
+
+and dec_field ctxt d =
+  let (ctxt, mk_i) = dec_field' ctxt d.it in
+  (ctxt,
+   fun ctxt' ->
+     let (i, info) = mk_i ctxt' in
+     { it = i;
+       at = d.at;
+       note = info })
+
+and dec_field' ctxt d =
+  match d.M.dec.it with
+  (*  | ExpD e -> "ExpD" $$ [exp e ] *)
+
+  | M.VarD (x, e) ->
+     { ctxt with ids = Env.add x.it Field ctxt.ids },
+     (* TODO: translate e? *)
+     fun ctxt' ->
+       (FieldI(id x, tr_typ e.note.M.note_typ),
+       NoInfo)
+  | M.(LetD ({it=VarP f;_},
+             {it=FuncE(x, sp, tp, p, t_opt, sugar,
+                       {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
+     { ctxt with ids = Env.add f.it Method ctxt.ids },
+     fun ctxt' -> (MethodI(id f, args p, rets t_opt, [], [], Some (stmt e)),
+                   NoInfo)
+  | _ -> fail (Mo_def.Arrange.dec d.M.dec)
+
+(*
+  | TypD (x, tp, t) ->
+    "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
+  | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
+    "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
+      pat p;
+      (match rt with None -> Atom "_" | Some t -> typ t);
+      obj_sort s; id i'
+    ] @ List.map dec_field dfs
+*)
+
+and args p = match p.it with
+  | M.TupP ps ->
+    List.map (fun {it = M.VarP x; note; _} -> (id x, tr_typ note)) ps
+
+and block at ds =
+  { it = decs ds;
+    at;
+    note = NoInfo }
+
+and decs ds =
+  match ds with
+  | [] -> ([],[])
+  | d::ds' ->
+    let (l, s) = dec d in
+    let (ls, ss) = decs ds' in
+    (l @ ls, s @ ss)
+
+and dec d =
+  match d.it with
+  | M.VarD (x, e) ->
+     (* TODO: translate e? *)
+     ([{ it = (id x, tr_typ e.note.M.note_typ);
+        at = d.at;
+        note = NoInfo }],
+      [{ it = VarAssignS (id x, exp e);
+        at = d.at;
+        note = NoInfo }])
+  | M.(LetD ({it=VarP x;_}, e))->
+     ([{ it = (id x, tr_typ e.note.M.note_typ);
+        at = d.at;
+        note = NoInfo }],
+      [{ it = VarAssignS (id x, exp e);
+         at = d.at;
+         note = NoInfo }])
+  | M.(ExpD e) ->
+     let s = stmt e in
+     s.it
+  | _ -> fail (Mo_def.Arrange.dec d)
+
+and stmt (s : M.exp) : seqn =
+  match s.it with
+  | M.TupE [] ->
+     block s.at []
+  | M.BlockE ds ->
+     block s.at ds
+  | M.IfE(e, s1, s2) ->
+     { it =
+         ([],
+          [ { it = IfS(exp e, stmt s1, stmt s2);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+(*    
+  | M.AsyncE(_, e) -> (* gross hack *)
+     { it =
+         ([],
+          [ { it = SeqnS (stmt e);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+*)
+  | M.WhileE(e, s1) ->
+     { it =
+         ([],
+          [ { it = WhileS(exp e, [], stmt s1); (* TODO: invariant *)
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+  | M.AssignE({it = VarE id; _}, e2) when isLocal id->
+     let loc = { it = id.it; at = id.at; note = NoInfo } in
+     { it =
+         ([],
+          [ { it = VarAssignS(loc, exp e2);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+  | _ -> fail (Mo_def.Arrange.exp s)
+(*    
+  | M.AssignE({it = VarE id;_}, e2) when isField e1->
+     { it =
+         ([],
+          [ { it = FieldAssignS((), exp e2);
+              at = s.at;
+              note = NoInfo } ]);
+       at = s.at;
+       note = NoInfo }
+*)
+
+and isLocal id = true (* fix me *)
+
+and exp e =
+  let (e', info) = exp' e in
+  { it = e';
+    at = e.at;
+    note = info }
+and exp' (e : M.exp) =
+  match e.it with
+  | M.VarE x ->
+     (*TODO: need environment to distinguish fields from locals *)
+     (LocalVar (id x, tr_typ e.note.note_typ),
+      NoInfo)
+  | M.LitE r ->
+    begin match !r with
+    | M.BoolLit b ->
+       (BoolLitE b, NoInfo)
+    | M.IntLit i ->
+       (IntLitE i, NoInfo)
+    | _ -> fail (Mo_def.Arrange.exp e)
+    end
+  | M.NotE e ->
+     (NotE (exp e), NoInfo)
+  | _ -> fail (Mo_def.Arrange.exp e)
+(*           
+  | VarE x              -> 
+  | LitE l              -> "LitE"      $$ [lit !l]
+  | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
+  | UnE (ot, uo, e)     -> "UnE"       $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
+  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
+  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
+  | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
+  | ToCandidE es        -> "ToCandidE"   $$ exps es
+  | FromCandidE e       -> "FromCandidE" $$ [exp e]
+  | TupE es             -> "TupE"      $$ exps es
+  | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
+  | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
+  | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
+  | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
+  | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
+  | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
+  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
+  | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
+  | FuncE (x, sp, tp, p, t, sugar, e') ->
+    "FuncE" $$ [
+      Atom (Type.string_of_typ e.note.note_typ);
+      shared_pat sp;
+      Atom x] @
+      List.map typ_bind tp @ [
+      pat p;
+      (match t with None -> Atom "_" | Some t -> typ t);
+      Atom (if sugar then "" else "=");
+      exp e'
+    ]
+  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
+  | BlockE ds           -> "BlockE"  $$ List.map dec ds
+  | NotE e              -> "NotE"    $$ [exp e]
+  | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
+  | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
+  | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
+  | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
+  | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
+  | LoopE (e1, None)    -> "LoopE"   $$ [exp e1]
+  | LoopE (e1, Some e2) -> "LoopE"   $$ [exp e1; exp e2]
+  | ForE (p, e1, e2)    -> "ForE"    $$ [pat p; exp e1; exp e2]
+  | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
+  | DebugE e            -> "DebugE"  $$ [exp e]
+  | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
+  | RetE e              -> "RetE"    $$ [exp e]
+  | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
+  | AwaitE e            -> "AwaitE"  $$ [exp e]
+  | AssertE e           -> "AssertE" $$ [exp e]
+  | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
+  | OptE e              -> "OptE"    $$ [exp e]
+  | DoOptE e            -> "DoOptE"  $$ [exp e]
+  | BangE e             -> "BangE"   $$ [exp e]
+  | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
+  | PrimE p             -> "PrimE"   $$ [Atom p]
+  | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
+  | ThrowE e            -> "ThrowE"  $$ [exp e]
+  | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+  | IgnoreE e           -> "IgnoreE" $$ [exp e]
+*)
+
+
+and rets t_opt =
+  match t_opt with
+  | None -> []
+  | Some t ->
+    (match T.normalize t.note with
+     | T.Tup [] -> []
+     | T.Async (_, _) -> [])
+
+
+
+and id id = { it = id.it; at = id.at; note = NoInfo }
+
+and tr_typ typ =
+  { it = tr_typ' typ;
+    at = Source.no_region;
+    note = NoInfo }
+and tr_typ' typ =
+  match T.normalize typ with
+  | T.Prim T.Int -> IntT
+  | T.Prim T.Bool -> BoolT
+
+
 
 (*       
 let rec exp e = match e.it with
@@ -210,232 +472,4 @@ and dec d = match d.it with
 
  *)
 
-and dec_fields ds =
-  List.map dec_field ds
-
-and dec_field d =
-  let (d', info) = dec_field' d.it in
-  { it = d';
-    at = d.at;
-    note = info }
-
-and dec_field' d =
-  match d.M.dec.it with
-  (*  | ExpD e -> "ExpD" $$ [exp e ] *)
-
-  | M.VarD (x, e) ->
-     (* TODO: translate e? *)
-     (FieldI(id x, tr_typ e.note.M.note_typ),
-      NoInfo)
-  | M.(LetD ({it=VarP f;_},
-             {it=FuncE(x, sp, tp, p, t_opt, sugar,
-                       {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
-     (MethodI(id f, args p, rets t_opt, [], [], Some (stmt e)),
-      NoInfo)
-(*
-  | TypD (x, tp, t) ->
-    "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
-    "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
-      pat p;
-      (match rt with None -> Atom "_" | Some t -> typ t);
-      obj_sort s; id i'
-    ] @ List.map dec_field dfs
-*)
-
-and args p = match p.it with
-  | M.TupP ps ->
-    List.map (fun {it = M.VarP x; note; _} -> (id x, tr_typ note)) ps
-
-and block at ds =
-  { it = decs ds;
-    at;
-    note = NoInfo }
-
-and decs ds =
-  match ds with
-  | [] -> ([],[])
-  | d::ds' ->
-    let (l, s) = dec d in
-    let (ls, ss) = decs ds' in
-    (l @ ls, s @ ss)
-
-and dec d =
-  match d.it with
-  | M.VarD (x, e) ->
-     (* TODO: translate e? *)
-     ([{ it = (id x, tr_typ e.note.M.note_typ);
-        at = d.at;
-        note = NoInfo }],
-      [{ it = VarAssignS (id x, exp e);
-        at = d.at;
-        note = NoInfo }])
-  | M.(LetD ({it=VarP x;_}, e))->
-     ([{ it = (id x, tr_typ e.note.M.note_typ);
-        at = d.at;
-        note = NoInfo }],
-      [{ it = VarAssignS (id x, exp e);
-        at = d.at;
-        note = NoInfo }])
-
-  | M.(ExpD e) ->
-     let s = stmt e in
-     s.it
-
-and stmt s : seqn =
-  match s.it with
-  | M.TupE [] ->
-     block s.at []
-  | M.BlockE ds ->
-     block s.at ds
-  | M.IfE(e, s1, s2) ->
-     { it =
-         ([],
-          [ { it = IfS(exp e, stmt s1, stmt s2);
-              at = s.at;
-              note = NoInfo } ]);
-       at = s.at;
-       note = NoInfo }
-(*    
-  | M.AsyncE(_, e) -> (* gross hack *)
-     { it =
-         ([],
-          [ { it = SeqnS (stmt e);
-              at = s.at;
-              note = NoInfo } ]);
-       at = s.at;
-       note = NoInfo }
-*)
-  | M.WhileE(e, s1) ->
-     { it =
-         ([],
-          [ { it = WhileS(exp e, [], stmt s1); (* TODO: invariant *)
-              at = s.at;
-              note = NoInfo } ]);
-       at = s.at;
-       note = NoInfo }
-  | M.AssignE({it = VarE id; _}, e2) when isLocal id->
-     let loc = { it = id.it; at = id.at; note = NoInfo } in
-     { it =
-         ([],
-          [ { it = VarAssignS(loc, exp e2);
-              at = s.at;
-              note = NoInfo } ]);
-       at = s.at;
-       note = NoInfo }
-(*    
-  | M.AssignE({it = VarE id;_}, e2) when isField e1->
-     { it =
-         ([],
-          [ { it = FieldAssignS((), exp e2);
-              at = s.at;
-              note = NoInfo } ]);
-       at = s.at;
-       note = NoInfo }
-*)
-
-and isLocal id = true (* fix me *)    
-
-and exp e =
-  let (e', info) = exp' e in
-  { it = e';
-    at = e.at;
-    note = info }
-
-and exp' (e : M.exp) =
-  match e.it with
-  | M.VarE x ->
-     (*TODO: need environment to distinguish fields from locals *)
-     (LocalVar (id x, tr_typ e.note.note_typ),
-      NoInfo)
-  | M.LitE r ->
-    begin match !r with
-    | M.BoolLit b ->
-       (BoolLitE b, NoInfo)
-    | M.IntLit i ->
-       (IntLitE i, NoInfo)
-    end
-  | M.NotE e ->
-     (NotE (exp e), NoInfo)
-(*           
-  | VarE x              -> 
-  | LitE l              -> "LitE"      $$ [lit !l]
-  | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
-  | UnE (ot, uo, e)     -> "UnE"       $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
-  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
-  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
-  | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
-  | ToCandidE es        -> "ToCandidE"   $$ exps es
-  | FromCandidE e       -> "FromCandidE" $$ [exp e]
-  | TupE es             -> "TupE"      $$ exps es
-  | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
-  | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
-  | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-  | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
-  | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
-  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
-  | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
-  | FuncE (x, sp, tp, p, t, sugar, e') ->
-    "FuncE" $$ [
-      Atom (Type.string_of_typ e.note.note_typ);
-      shared_pat sp;
-      Atom x] @
-      List.map typ_bind tp @ [
-      pat p;
-      (match t with None -> Atom "_" | Some t -> typ t);
-      Atom (if sugar then "" else "=");
-      exp e'
-    ]
-  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
-  | BlockE ds           -> "BlockE"  $$ List.map dec ds
-  | NotE e              -> "NotE"    $$ [exp e]
-  | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
-  | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
-  | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
-  | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
-  | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
-  | LoopE (e1, None)    -> "LoopE"   $$ [exp e1]
-  | LoopE (e1, Some e2) -> "LoopE"   $$ [exp e1; exp e2]
-  | ForE (p, e1, e2)    -> "ForE"    $$ [pat p; exp e1; exp e2]
-  | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | DebugE e            -> "DebugE"  $$ [exp e]
-  | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
-  | RetE e              -> "RetE"    $$ [exp e]
-  | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
-  | AwaitE e            -> "AwaitE"  $$ [exp e]
-  | AssertE e           -> "AssertE" $$ [exp e]
-  | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
-  | OptE e              -> "OptE"    $$ [exp e]
-  | DoOptE e            -> "DoOptE"  $$ [exp e]
-  | BangE e             -> "BangE"   $$ [exp e]
-  | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
-  | PrimE p             -> "PrimE"   $$ [Atom p]
-  | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
-  | ThrowE e            -> "ThrowE"  $$ [exp e]
-  | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
-  | IgnoreE e           -> "IgnoreE" $$ [exp e]
-*)
-
-
-and rets t_opt =
-  match t_opt with
-  | None -> []
-  | Some t ->
-    (match T.normalize t.note with
-     | T.Tup [] -> []
-     | T.Async (_, _) -> [])
-
-
-
-and id id = { it = id.it; at = id.at; note = NoInfo }
-
-and tr_typ typ =
-  { it = tr_typ' typ;
-    at = Source.no_region;
-    note = NoInfo }
-and tr_typ' typ =
-  match T.normalize typ with
-  | T.Prim T.Int -> IntT
-  | T.Prim T.Bool -> BoolT
-
+                       
