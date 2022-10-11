@@ -29,7 +29,8 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot note it = if Config.types then ":" $$ [typ note.note_typ; it] else it
+  let annot_typ t it = if Config.types then ":" $$ [it; typ t] else it
+  let annot note = annot_typ note.note_typ
 
   let id i = Atom i.it
   let tag i = Atom ("#" ^ i.it)
@@ -99,7 +100,7 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | None -> []
     | Some ts -> List.map typ ts
 
-  and pat p = source p.at (match p.it with
+  and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"
     | VarP x          -> "VarP"       $$ [id x]
     | TupP ps         -> "TupP"       $$ List.map pat ps
@@ -109,8 +110,8 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | SignP (uo, l)   -> "SignP"      $$ [Arrange_ops.unop uo ; lit !l]
     | OptP p          -> "OptP"       $$ [pat p]
     | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
-    | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
-    | ParP p          -> "ParP"       $$ [pat p])
+    | AltP (p1, p2)    -> "AltP"       $$ [pat p1; pat p2]
+    | ParP p          -> "ParP"       $$ [pat p]))
 
   and lit = function
     | NullLit       -> Atom "NullLit"
@@ -130,7 +131,7 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
     | TextLit t     -> "TextLit"   $$ [ Atom t ]
     | BlobLit b     -> "BlobLit"   $$ [ Atom b ]
-    | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
+    | PreLit (s, p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
   and case c = source c.at ("case" $$ [pat c.it.pat; exp c.it.exp])
 
@@ -196,7 +197,7 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
 
   and path p = match p.it with
     | IdH i -> "IdH" $$ [id i]
-    | DotH (p,i) -> "DotH" $$ [path p; id i]
+    | DotH (p, i) -> "DotH" $$ [path p; id i]
 
   and typ t = source t.at (match t.it with
     | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
