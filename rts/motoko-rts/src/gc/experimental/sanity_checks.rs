@@ -1,5 +1,7 @@
 //! Extensive sanity checks for experimental GC features.
 //! * Write barrier coverage by memory snapshot comparisons.
+#![allow(dead_code)]
+
 use core::ptr::null_mut;
 
 use crate::mem_utils::memcpy_bytes;

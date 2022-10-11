@@ -939,6 +939,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "activate_write_barrier" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
@@ -6827,21 +6828,27 @@ module Var = struct
       G.i (LocalSet (nr i))
 
     | Some (HeapInd i) ->
-      G.i (LocalGet (nr i)) ^^
-      compile_add_const ptr_unskew ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "write_barrier" ^^
-      
+      (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+       then
+        G.i (LocalGet (nr i)) ^^
+        compile_add_const ptr_unskew ^^
+        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+        E.call_import env "rts" "write_barrier"
+       else G.nop
+      ) ^^
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       Heap.store_field MutBox.field
 
     | Some (HeapStatic ptr) ->
-      compile_unboxed_const ptr ^^
-      compile_add_const ptr_unskew ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "write_barrier" ^^
-
+      (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+       then 
+        compile_unboxed_const ptr ^^
+        compile_add_const ptr_unskew ^^
+        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+        E.call_import env "rts" "write_barrier"
+       else G.nop
+      ) ^^
       compile_unboxed_const ptr,
       SR.Vanilla,
       Heap.store_field MutBox.field
@@ -8255,30 +8262,40 @@ let rec compile_lexp (env : E.t) ae lexp =
   | IdxLE (e1, e2) ->
     let (set_field, get_field) = new_local env "field" in
     
-   ( compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-     compile_exp_vanilla env ae e2 ^^ (* idx *)
-     Arr.idx_bigint env ^^
-     set_field ^^
-     get_field ^^
-     compile_add_const ptr_unskew ^^
-     E.call_import env "rts" "write_barrier" ^^
-
-     get_field,
+   ( 
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+     then
+      Arr.idx_bigint env ^^
+      set_field ^^
+      get_field ^^
+      compile_add_const ptr_unskew ^^
+      E.call_import env "rts" "write_barrier" ^^
+      get_field
+     else
+      Arr.idx_bigint env
+     ),
      SR.Vanilla,
      store_ptr
    )
   | DotLE (e, n) ->
     let (set_field, get_field) = new_local env "field" in
     
-   ( compile_exp_vanilla env ae e ^^
-     (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env e.note.Note.typ n ^^
-     set_field ^^
-     get_field ^^
-     compile_add_const ptr_unskew ^^
-     E.call_import env "rts" "write_barrier" ^^
-
-     get_field,
+   ( 
+     compile_exp_vanilla env ae e ^^
+     (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+      then  
+        (* Only real objects have mutable fields, no need to branch on the tag *)
+        Object.idx env e.note.Note.typ n ^^
+        set_field ^^
+        get_field ^^
+        compile_add_const ptr_unskew ^^
+        E.call_import env "rts" "write_barrier" ^^
+        get_field
+      else
+        Object.idx env e.note.Note.typ n
+     ),
      SR.Vanilla,
      store_ptr
    )
@@ -9942,8 +9959,14 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact && !Flags.gc_strategy = Mo_config.Flags.Experimental) ^^
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Experimental) ^^
     E.call_import env "rts" "init" ^^
+    (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+     then
+      E.call_import env "rts" "activate_write_barrier"
+     else 
+      G.nop 
+    ) ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
