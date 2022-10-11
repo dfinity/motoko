@@ -1,5 +1,6 @@
 open Source
 open Ir
+open Mo_types
 
 (* We collect a few things along the way *)
 
@@ -95,7 +96,11 @@ let args as_ : fd = union_binders arg as_
 
 let id i = M.singleton i {captured = false; eager = true}
 
-let fields fs = unions (fun f -> id f.it.var) fs
+(* The mutable fields of an IR object behave a bit like a lambda, in that they capture mutable
+boxes by reference. So set captured = true for them. *)
+let fields fs = unions (fun f ->
+  M.singleton f.it.var {captured = Type.is_mut f.note; eager = true}
+) fs
 
 let rec exp e : f = match e.it with
   | VarE i              -> id i
@@ -118,7 +123,11 @@ let rec exp e : f = match e.it with
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
-and system {meta; preupgrade; postupgrade; heartbeat} = under_lambda (exp preupgrade) ++ under_lambda (exp postupgrade) ++ under_lambda (exp heartbeat)
+and system {meta; preupgrade; postupgrade; heartbeat; inspect} =
+  under_lambda (exp preupgrade) ++
+  under_lambda (exp postupgrade) ++
+  under_lambda (exp heartbeat) ++
+  under_lambda (exp inspect)
 
 and exps es : f = unions exp es
 
@@ -134,6 +143,7 @@ and cases cs : f = unions case cs
 and dec d = match d.it with
   | LetD (p, e) -> fd_of_defs (pat p) +++ exp e
   | VarD (i, t, e) -> fd_of_defs (M.singleton i t) +++ exp e
+  | RefD (i, t, e) -> fd_of_defs (M.singleton i t) +++ lexp e
 
 (* The variables captured by a function. May include the function itself! *)
 and captured e =

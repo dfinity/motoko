@@ -80,6 +80,7 @@ val ifE : exp -> exp -> exp -> typ -> exp
 val dotE : exp -> Type.lab -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
+val switch_textE : exp -> (string * exp) list -> (pat * exp) -> typ -> exp
 val tupE : exp list -> exp
 val breakE: id -> exp -> exp
 val retE: exp -> exp
@@ -109,6 +110,7 @@ val unreachableE : unit -> exp
 val letP : pat -> exp -> dec
 val letD : var -> exp -> dec
 val varD : var -> exp -> dec
+val refD : var -> lexp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var -> var list -> exp -> dec
@@ -132,3 +134,11 @@ val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
 val (-*-) : exp -> exp -> exp       (* application *)
+
+(* Objects *)
+
+val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
+
+(* Records *)
+
+val recordE : (lab * exp) list -> exp

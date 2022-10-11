@@ -169,7 +169,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256:1nky4lrj8vd55h2lg4r0vhfg15xm2gfkbjv783qdkxy8afqagqph";
+      rustStdDepsHash = "sha256-VLT4Vz7se8clzo3LPjJ1CEfnpGDTkOKH38GZOsXVbdc";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -313,7 +313,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x sources.esm ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
       [ filecheck wasmtime ];
 
 
@@ -432,7 +432,7 @@ rec {
       checkPhase = ''
         patchShebangs .
         type -p moc && moc --version
-        type -p drun && drun --version
+        type -p drun && drun --help
         ./profile-report.sh
       '';
       installPhase = ''
@@ -489,6 +489,7 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
@@ -514,6 +515,7 @@ rec {
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
           nixpkgs.nodejs-16_x
+          nixpkgs.nodePackages.uglify-js
         ];
         buildPhase = ''
           patchShebangs .
@@ -521,11 +523,13 @@ rec {
           ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
+          uglifyjs ${n}.js -o ${n}.min.js -c -m
         '';
         installPhase = ''
           mkdir -p $out
           mkdir -p $out/bin
           cp --verbose --dereference ${n}.js $out/bin
+          cp --verbose --dereference ${n}.min.js $out/bin
         '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
@@ -554,16 +558,10 @@ rec {
   docs = stdenv.mkDerivation {
     name = "docs";
     src = subpath ./doc;
-    buildInputs = with nixpkgs; [ pandoc bash antora gitMinimal ];
+    buildInputs = with nixpkgs; [ pandoc bash gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
-      # Make this a git repo, to please antora
-      git -C .. init
-      git add .
-      git config user.name "Nobody"
-      git config user.email "nobody@example.com"
-      git commit -m 'Dummy commit for antora'
       export HOME=$PWD
       export MOC_JS=${js.moc}/bin/moc.js
       export MOTOKO_BASE=${base-src}
@@ -573,16 +571,16 @@ rec {
     installPhase = ''
       mkdir -p $out
       mv overview-slides.html $out/
-      mv build/site/* $out/
+      mv html $out/
       mkdir -p $out/nix-support
-      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out html/motoko.html" >> $out/nix-support/hydra-build-products
       echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
-    buildInputs = with nixpkgs; [ ocamlformat ];
+    buildInputs = [ nixpkgs.ocamlformat ];
     src = subpath ./src;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
@@ -633,7 +631,7 @@ rec {
 
   guide-examples-tc =  stdenv.mkDerivation {
     name = "guid-examples-tc";
-    src = subpath ./doc/modules/language-guide/examples;
+    src = subpath ./doc/md/examples;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     MOTOKO_BASE = base-src;
@@ -676,7 +674,7 @@ rec {
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
-      echo docs/docs/language-guide/motoko.html;
+      echo docs/html/motoko.html;
       echo base-doc/
       echo coverage/
       echo flamegraphs/ ) | \
@@ -692,7 +690,7 @@ rec {
       touch $out
     '';
 
-  # Checks that doc/modules/language-guide/examples/grammar.txt is up-to-date
+  # Checks that doc/md/examples/grammar.txt is up-to-date
   check-grammar = stdenv.mkDerivation {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
@@ -703,7 +701,7 @@ rec {
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
         echo "If the following fails, please run:"
         echo "nix-shell --command 'make -C src grammar'"
-        diff -r -U 3 ${./doc/modules/language-guide/examples/grammar.txt} expected
+        diff -r -U 3 ${./doc/md/examples/grammar.txt} expected
         echo "ok, all good"
       '';
       installPhase = ''
@@ -781,6 +779,7 @@ rec {
           nixpkgs.niv
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
+          nixpkgs.difftastic
         ]
       ));
 

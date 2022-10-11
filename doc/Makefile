@@ -1,6 +1,7 @@
-all: overview-slides.html antora
+all: overview-slides.html html
 
 SHELL=bash
+OUT=md
 
 overview-slides.html : overview-slides.md
 	pandoc \
@@ -15,10 +16,24 @@ overview-slides.html : overview-slides.md
 	  # # -V minScale=2 \
 	  # # -V maxScale=2
 
+base:
+	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
 
-antora:
-	rm -rf build
-	antora antora-test-playbook.yml
-	./patch-antora-js.sh
+html:
+        # TODO: perhaps use node and remark-cli to compile out remark plugins first or use docusaurus to build site properly
+	rm -rf html
+	mkdir -p html
+	for f in md/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
-.PHONY: antora
+
+preview:
+	make -C ../src moc_interpreter.js
+	cp -f ../src/moc_interpreter.js docusaurus/static
+	cd docusaurus; npm install; npm start
+
+
+.PHONY: base
+.PHONY: md
+.PHONY: html
+.PHONY: preview
+

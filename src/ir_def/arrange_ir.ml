@@ -33,8 +33,13 @@ let rec exp e = match e.it with
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
-and system { meta; preupgrade; postupgrade; heartbeat } = (* TODO: show meta? *)
-  "System" $$ ["Pre" $$ [exp preupgrade]; "Post" $$ [exp postupgrade]; "Heartbeat" $$ [exp heartbeat]]
+and system { meta; preupgrade; postupgrade; heartbeat; inspect} = (* TODO: show meta? *)
+  "System" $$ [
+      "Pre" $$ [exp preupgrade];
+      "Post" $$ [exp postupgrade];
+      "Heartbeat" $$ [exp heartbeat];
+      "Inspect" $$ [exp inspect];
+    ]
 
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]
@@ -74,6 +79,7 @@ and prim = function
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
   | SerializePrim t   -> "SerializePrim" $$ List.map typ t
   | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
+  | DeserializeOptPrim t -> "DeserializeOptPrim" $$ List.map typ t
   | NumConvWrapPrim (t1, t2) -> "NumConvWrapPrim" $$ [prim_ty t1; prim_ty t2]
   | NumConvTrapPrim (t1, t2) -> "NumConvTrapPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
@@ -94,6 +100,7 @@ and prim = function
   | OtherPrim s       -> Atom s
   | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | ICArgDataPrim     -> Atom "ICArgDataPrim"
   | ICStableSize t    -> "ICStableSize" $$ [typ t]
   | ICPerformGC       -> Atom "ICPerformGC"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
@@ -101,6 +108,7 @@ and prim = function
   | ICCallerPrim      -> Atom "ICCallerPrim"
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
+  | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
 
@@ -118,7 +126,7 @@ and pat p = match p.it with
   | TagP (i, p)     -> "TagP"       $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
 
-and lit (l:lit) = match l with
+and lit = function
   | NullLit       -> Atom "NullLit"
   | BoolLit b     -> "BoolLit"   $$ [ Atom (if b then "true" else "false") ]
   | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
@@ -147,6 +155,7 @@ and control s = Atom (Arrange_type.control s)
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, t, e) -> "VarD" $$ [id i; typ t; exp e]
+  | RefD (i, t, e) -> "RefD" $$ [id i; typ t; lexp e]
 
 and typ_bind (tb : typ_bind) =
   Type.string_of_con tb.it.con $$ [typ tb.it.bound]

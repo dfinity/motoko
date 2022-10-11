@@ -12,7 +12,7 @@
 * Representation of canisters as *actors* with asynchronous and atomic methods.
 * Automatic integration with *Candid* for implicitly de/serialising message arguments and automatic derivation of Candid interfaces.
 * *Async/await* support for straight-line coding of asynchronous messaging patterns.
-* *Orthogonal peristence* keeping program state alive across messages automatically.
+* *Orthogonal persistence* keeping program state alive across messages automatically.
 * *Stable variables* for persisting selected program state even across program version upgrades.
 * Built-in support for other IC mechanisms, such as cycles, upgrades, heartbeat, etc (some of it still incomplete).
 
@@ -31,7 +31,7 @@ Motoko tries to follow a set of design principles:
 
 * *Simple.* The language should avoid complicated, hard-to-understand, or overly bleeding-edge features. It should minimise multiple redundant or overlapping ways to express the same thing (unless one can be expressed as syntactic sugar for another).
 
-* *Understandable.* Where possible, the language should pick syntax and terminiology that is intuitive and familiar from mainstream languages. It should avoid niche technical or theoretical jargon.
+* *Understandable.* Where possible, the language should pick syntax and terminology that is intuitive and familiar from mainstream languages. It should avoid niche technical or theoretical jargon.
 
 * *High-level.* The language should be productive and convenient to use, sufficiently expressive, and not bother the programmer with irrelevant details or error-prone routine.
 
@@ -73,7 +73,7 @@ In some cases, the description contains partial sketches of a formalisation. Thi
 Motoko should help detecting common sources of bugs, especially those of the subtle kind. To that end, the language ought to add more checking mechanisms.
 
 
-#### Unused Identifiers ((#1489)[https://github.com/dfinity/motoko/issues/1489])
+#### Unused Identifiers ([#1489](https://github.com/dfinity/motoko/issues/1489))
 
 It often is a symptom of a bug that an identifier is defined but never used. To diagnose these, the compiler should warn about unused identifiers (values, types, or otherwise).
 
@@ -84,7 +84,7 @@ The `_` prefix convention is natural and common in languages that provide patter
 
 #### Atomicity Violations ([#792](https://github.com/dfinity/motoko/issues/792))
 
-Following the actor model, method execution is atomic in Motoko. However, this is only true up to uses of `await`. Semantically, every await splits execution of a method into separate actor-to-actor messages that can be interleaved by other calls. These calls may modify the state, opening up the possiblity of subtle reentrency bugs if computations after an await depend on state read before the await. For example:
+Following the actor model, method execution is atomic in Motoko. However, this is only true up to uses of `await`. Semantically, every await splits execution of a method into separate actor-to-actor messages that can be interleaved by other calls. These calls may modify the state, opening up the possiblity of subtle reentrancy bugs if computations after an await depend on state read before the await. For example:
 ```
 actor {
   var list : List<Nat> = null;
@@ -101,7 +101,7 @@ actor {
 ```
 Here, `size` is computed before calling out to `other.cap_value` and awaiting the result. Because of the await, another call to `put` may happen in the meantime, resulting in an incorrect average computation.
 
-The async/awaiy construct and the ability to suspend a method with it undermines one of the core properties of the actor model, namely the fact that methods are fully atomic. On the other hand, the practical convenience of async/await is so substantial that it still is a worthwhile trade-off.
+The async/await construct, and the ability to suspend a method with it, undermines one of the core properties of the actor model, namely the fact that methods are fully atomic. On the other hand, the practical convenience of async/await is so substantial that it still is a worthwhile trade-off.
 
 To eliminate the disadvantage, the Motoko compiler could detect that there is a dependency on the current state of `list` across an await and warn.
 

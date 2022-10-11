@@ -147,7 +147,7 @@ and pat env p =
   let env = pat' env p.it in
   env
 
-and pat' env p = match p with
+and pat' env = function
   | WildP         ->  env
   | VarP i        ->
     let env1 = bind env i None in
@@ -231,6 +231,10 @@ and dec' env d =
   | VarD (i, t, e) ->
     let env = bind env i None in
     (fun env1 -> VarD(i, t, exp env1 e)),
+    env
+  | RefD (i, t, e) ->
+    let env = bind env i None in
+    (fun env1 -> RefD(i, t, lexp env1 e)),
     env
 
 and decs env ds =

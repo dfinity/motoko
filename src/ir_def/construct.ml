@@ -84,10 +84,12 @@ let varLE (id, typ) =
 let primE prim es =
   let typ = match prim with
     | ShowPrim _ -> T.text
+    | ICArgDataPrim -> T.blob
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
+    | ICMethodNamePrim -> T.text
     | ICPerformGC
     | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64
@@ -104,6 +106,9 @@ let primE prim es =
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim -> T.nat
+    | DeserializePrim ts -> T.seq ts
+    | DeserializeOptPrim ts -> T.Opt (T.seq ts)
+    | OtherPrim "trap" -> T.Non
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -211,7 +216,11 @@ let tagE i e =
  }
 
 let dec_eff dec = match dec.it with
-  | LetD (_,e) | VarD (_, _, e) -> eff e
+  | LetD (_, e) | VarD (_, _, e) -> eff e
+  | RefD (_, _, le) ->
+    match le.it with
+    | DotLE (e, _) -> eff e
+    | _ -> assert false (*FIXME*)
 
 let rec simpl_decs decs = List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
@@ -284,8 +293,8 @@ let funcE name sort ctrl typ_binds args typs exp =
 
 let callE exp1 typs exp2 =
   let typ =  match T.promote (typ exp1) with
-    | T.Func (_sort, _control, _, _, ret_tys) ->
-      T.open_ typs (T.seq ret_tys)
+    | T.Func (_sort, control, _, _, ret_tys) ->
+      T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
     | T.Non -> T.Non
     | _ -> raise (Invalid_argument "callE expect a function")
   in
@@ -370,6 +379,31 @@ let switch_variantE exp1 cases typ1 =
     }
   }
 
+let switch_textE exp1 cases (pat, exp2) typ1 =
+  let cs =
+    (List.map (fun (t, e) ->
+      {it = {pat =
+        {it = LitP (TextLit t);
+         at = no_region;
+         note = typ exp1};
+         exp = e};
+         at = no_region;
+         note = ()})
+      cases) @
+    [{it = {pat = pat; exp = exp2};
+      at = no_region;
+      note = ()}]
+  in
+  { it = SwitchE (exp1, cs);
+    at = no_region;
+    note = Note.{
+      def with
+      typ = typ1;
+      eff = List.fold_left max_eff (eff exp1) (List.map (fun c -> eff c.it.exp) cs)
+    }
+  }
+
+
 let tupE exps =
   let effs = List.map eff exps in
   let eff = List.fold_left max_eff T.Triv effs in
@@ -446,6 +480,11 @@ let varD x exp =
   let t = typ_of_var x in
   assert (T.is_mut t);
   VarD (id_of_var x, T.as_immut t, exp) @@ no_region
+
+let refD x lexp =
+  let t = typ_of_var x in
+  assert (T.is_mut t);
+  RefD (id_of_var x, t, lexp) @@ no_region
 
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.Note.typ } in
@@ -651,3 +690,25 @@ let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
 
+let objE sort typ_flds flds =
+  let rec go ds fields fld_tys flds =
+    match flds with
+    | [] ->
+      blockE
+        (List.rev ds)
+        (newObjE sort fields
+           (T.obj sort
+              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+               @ fld_tys)))
+    | (lab, exp)::flds ->
+      let v = fresh_var lab (typ exp) in
+      let field = {
+        it = {name = lab; var = id_of_var v};
+        at = no_region;
+        note = typ exp
+      } in
+      go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+  in
+  go [] [] [] flds
+
+let recordE flds = objE T.Object [] flds

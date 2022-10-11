@@ -24,7 +24,7 @@ let display_rel = Lib.Format.display pp_rel
 
 exception Bimatch of string
 
-module SS = Set.Make (struct type t = typ * typ let compare = compare end)
+module SS = Set.Make (OrdPair)
 
 (* Types that are denotable (ranged over) by type variables *)
 let denotable t =

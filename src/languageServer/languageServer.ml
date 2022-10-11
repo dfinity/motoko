@@ -101,9 +101,7 @@ let start : string -> bool -> int option -> 'a =
   in
   let module IO = Communication.MakeIO (struct
     let debug_channel = debug_channel
-
     let in_channel = in_channel
-
     let out_channel = out_channel
   end) in
   let _ = Debug.logger := IO.log_to_file in

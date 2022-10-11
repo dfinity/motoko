@@ -1,8 +1,8 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
-← replied: ()
-→ update drill((42 : nat8))
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> update drill((42 : nat8))
 debug.print: drill! 42 0
 debug.print: drill! 41 2
 debug.print: drill! 40 4
@@ -46,25 +46,25 @@ debug.print: drill! 3 78
 debug.print: drill! 2 80
 debug.print: drill! 1 82
 debug.print: drill! 0 84
-← replied: ()
-→ update go(true)
+<= replied: ()
+=> update go(true)
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "uninitialized element -1"
-→ update go(false)
+<= rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "uninitialized element -1"
+=> update go(false)
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
-← replied: ()
-→ update go(true)
+<= replied: ()
+=> update go(true)
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "uninitialized element -1"
+<= rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "uninitialized element -1"

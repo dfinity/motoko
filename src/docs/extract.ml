@@ -75,9 +75,7 @@ type extracted = {
 
 module MakeExtract (Env : sig
   val all_decs : Syntax.dec_field list
-
   val imports : (string * string) list
-
   val find_trivia : Source.region -> Trivia.trivia_info
 end) =
 struct
@@ -108,7 +106,7 @@ struct
           (extract_args p)
     | Source.{ it = Syntax.WildP; _ } -> None
     | pat ->
-        Wasm.Sexpr.print 80 (Arrange.pat pat);
+        (* Wasm.Sexpr.print 80 (Arrange.pat pat); *)
         None
 
   let extract_func_args = function
@@ -200,9 +198,7 @@ let extract_docs : Syntax.prog -> (extracted, string) result =
   | Ok (imports, decls) ->
       let module Ex = MakeExtract (struct
         let all_decs = decls
-
         let imports = imports
-
         let find_trivia = find_trivia
       end) in
       let docs = List.filter_map (Ex.extract_dec_field Fun.id) decls in

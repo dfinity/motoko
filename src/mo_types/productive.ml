@@ -23,7 +23,7 @@ type info =
 
 let non_productive cs =
   let map = ref ConEnv.empty in
-  let rec rhs cs t : info = match t with
+  let rec rhs cs = function
     | Pre
     | Mut _ | Typ _ ->
       assert false (* body of a Def shouldn't be 2nd class *)

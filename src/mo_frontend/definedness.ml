@@ -97,12 +97,14 @@ let rec exp msgs e : f = match e.it with
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
   | ShowE (_, e)        -> exp msgs e
+  | ToCandidE es        -> exps msgs es
+  | FromCandidE e       -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
   | ObjBlockE (s, dfs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     group msgs (dec_fields msgs dfs)
-  | ObjE efs            -> exp_fields msgs efs
+  | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es

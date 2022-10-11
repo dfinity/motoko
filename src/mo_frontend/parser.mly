@@ -145,8 +145,11 @@ let share_typ t =
     { t with it = funcT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
-let share_typfield (tf : typ_field) =
-  {tf with it = {tf.it with typ = share_typ tf.it.typ}}
+let share_typfield' = function
+  | TypF (c, tps, t) -> TypF (c, tps, t)
+  | ValF (x, t, m) -> ValF (x, share_typ t, m)
+
+let share_typfield (tf : typ_field) = { tf with it = share_typfield' tf.it }
 
 let share_exp e =
   match e.it with
@@ -203,13 +206,14 @@ and objblock s dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
+%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
 %token IMPORT MODULE
 %token DEBUG_SHOW
+%token TO_CANDID FROM_CANDID
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token WRAPADDOP WRAPSUBOP WRAPMULOP WRAPPOWOP
@@ -266,7 +270,8 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.exp_field list> seplist1(exp_field,semicolon) seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.exp list> separated_nonempty_list(AND, exp_post(ob))
 %type<Mo_def.Syntax.dec_field list> seplist(dec_field,semicolon) obj_body
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
@@ -451,12 +456,14 @@ inst :
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
 typ_field :
+  | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
+    { TypF (c, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
-    { {id = x; typ = t; mut} @@ at $sloc }
+    { ValF (x, t, mut) @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
     { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
-      {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
+      ValF (x, t, Const @@ no_region) @@ at $sloc }
 
 typ_tag :
   | HASH x=id t=annot_opt
@@ -547,7 +554,11 @@ ob : e=exp_obj { e }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE efs @? at $sloc }
+    { ObjE ([], efs) @? at $sloc }
+  | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
+    { ObjE (base :: bases, []) @? at $sloc }
+  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist1(exp_field, semicolon) RCURLY
+    { ObjE (bases, efs) @? at $sloc }
 
 exp_plain :
   | l=lit
@@ -580,6 +591,10 @@ exp_post(B) :
     { CallE(e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
+  | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
+    { DotE(
+        DotE(e1, "system" @@ at ($startpos($1),$endpos($1))) @? at $sloc,
+        x) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -605,6 +620,10 @@ exp_un(B) :
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
     { ShowE (ref Type.Pre, e) @? at $sloc }
+  | TO_CANDID LPAR es=seplist(exp(ob), COMMA) RPAR
+    { ToCandidE es @? at $sloc }
+  | FROM_CANDID e=exp_un(ob)
+    { FromCandidE e @? at $sloc }
 
 exp_bin(B) :
   | e=exp_un(B)
@@ -906,7 +925,7 @@ typ_dec :
 
 stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
-    { {id = x; typ = t; mut} @@ at $sloc }
+    { ValF (x, t, mut) @@ at $sloc }
 
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY

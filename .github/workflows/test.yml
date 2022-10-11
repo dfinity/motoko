@@ -11,13 +11,13 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # fetch full history so that git merge-base works
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v16
+    - uses: cachix/install-nix-action@v17
       with:
         extra_nix_config: |
           experimental-features = nix-command
@@ -52,13 +52,13 @@ jobs:
     - name: Read performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       id: perf
-      uses: juliangruber/read-file-action@v1
+      uses: juliangruber/read-file-action@v1.1.5
       with:
         path: ./perf-delta.txt
 
     - name: Find performance comment
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
-      uses: peter-evans/find-comment@v1
+      uses: peter-evans/find-comment@v2
       id: fc
       with:
         issue-number: ${{ github.event.pull_request.number }}
@@ -69,7 +69,7 @@ jobs:
     # motoko#2864.
     - name: Create or update performance comment
       if: runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-      uses: peter-evans/create-or-update-comment@v1
+      uses: peter-evans/create-or-update-comment@v2
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
@@ -84,8 +84,8 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v16
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v17
       with:
         extra_nix_config: |
           experimental-features = nix-command

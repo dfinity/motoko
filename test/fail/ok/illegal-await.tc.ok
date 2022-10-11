@@ -24,14 +24,14 @@ illegal-await.mo:24.11: info, start of scope $anon-async-24.11 mentioned in erro
 illegal-await.mo:26.5: info, end of scope $anon-async-24.11 mentioned in error at illegal-await.mo:25.7-25.14
 illegal-await.mo:22.10: info, start of scope $anon-async-22.10 mentioned in error at illegal-await.mo:25.7-25.14
 illegal-await.mo:27.3: info, end of scope $anon-async-22.10 mentioned in error at illegal-await.mo:25.7-25.14
-illegal-await.mo:35.11-35.12: type error [M0087], ill-scoped await: expected async type from current scope $Rec, found async type from other scope $__6
+illegal-await.mo:35.11-35.12: type error [M0087], ill-scoped await: expected async type from current scope $Rec, found async type from other scope $__9
   scope $Rec is illegal-await.mo:33.44-40.2
-  scope $__6 is illegal-await.mo:33.1-40.2
+  scope $__9 is illegal-await.mo:33.1-40.2
 illegal-await.mo:33.44: info, start of scope $Rec mentioned in error at illegal-await.mo:35.5-35.12
 illegal-await.mo:40.1: info, end of scope $Rec mentioned in error at illegal-await.mo:35.5-35.12
-illegal-await.mo:33.1: info, start of scope $__6 mentioned in error at illegal-await.mo:35.5-35.12
-illegal-await.mo:40.1: info, end of scope $__6 mentioned in error at illegal-await.mo:35.5-35.12
+illegal-await.mo:33.1: info, start of scope $__9 mentioned in error at illegal-await.mo:35.5-35.12
+illegal-await.mo:40.1: info, end of scope $__9 mentioned in error at illegal-await.mo:35.5-35.12
 illegal-await.mo:38.20-38.21: type error [M0096], expression of type
-  async<$__6> ()
+  async<$__9> ()
 cannot produce expected type
   async<$Rec> ()
