@@ -4,11 +4,11 @@
 
 use core::ptr::null_mut;
 
+use super::write_barrier::{N_UPDATED_FIELDS, UPDATED_FIELDS};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
-use crate::write_barrier::{N_UPDATED_FIELDS, UPDATED_FIELDS};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 

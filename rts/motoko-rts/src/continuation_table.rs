@@ -22,10 +22,10 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
+use crate::gc::experimental::write_barrier::write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::Value;
-use crate::write_barrier::write_barrier;
 
 use motoko_rts_macros::ic_mem_fn;
 

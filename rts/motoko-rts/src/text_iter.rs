@@ -10,11 +10,11 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
+use crate::gc::experimental::write_barrier::write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
 use crate::types::{Value, TAG_BLOB, TAG_CONCAT};
-use crate::write_barrier::write_barrier;
 
 use motoko_rts_macros::ic_mem_fn;
 
