@@ -70,7 +70,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     // Initialize blob field
     array.set(ITER_BLOB_IDX, find_leaf(mem, text, todo_addr as *mut _));
     write_barrier(mem, array.payload_addr().add(ITER_BLOB_IDX as usize) as u32);
-    
+
     iter
 }
 
@@ -128,7 +128,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
                 mem,
                 iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as u32,
             );
-            
+
             text_iter_next(mem, iter)
         } else {
             // Otherwise remove the entry from the chain
@@ -146,7 +146,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
                 mem,
                 iter_array.payload_addr().add(TODO_LINK_IDX as usize) as u32,
             );
-            
+
             text_iter_next(mem, iter)
         }
     } else {

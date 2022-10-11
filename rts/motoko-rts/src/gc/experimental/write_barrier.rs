@@ -15,7 +15,7 @@ pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
     LAST_HP = crate::memory::ic::LAST_HP;
 }
 
-/// Write barrier to be called AFTER the pointer store, used for experimental GC. 
+/// Write barrier to be called AFTER the pointer store, used for experimental GC.
 /// `location`: location of modified pointer (address of object field or array element).
 ///
 /// As the barrier is called after the write, `*location` refers to the NEW value.
@@ -30,9 +30,9 @@ pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
                 let value = *(location as *mut Value);
                 if value.is_ptr() && value.get_raw() >= LAST_HP {
                     // trap pointers that lead from old generation (or static roots) to young generation
-                    println!(100, "Write barrier {:#x}", location);    
+                    //println!(100, "Write barrier {:#x}", location);
                     remembered_set.insert(mem, Value::from_raw(location));
-                }                
+                }
             }
         }
     }

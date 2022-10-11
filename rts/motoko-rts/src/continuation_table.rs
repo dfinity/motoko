@@ -99,7 +99,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     table.set(idx, ptr);
     write_barrier(mem, table.payload_addr().add(idx as usize) as u32);
-    
+
     N_CONTINUATIONS += 1;
 
     idx

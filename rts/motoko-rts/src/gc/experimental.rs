@@ -53,7 +53,12 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     println!(100, "INFO: Experimental GC starts ...");
 
     #[cfg(debug_assertions)]
-    sanity_checks::verify_snapshot(ic::get_aligned_heap_base(), ic::LAST_HP, ic::HP, ic::get_static_roots());
+    sanity_checks::verify_snapshot(
+        ic::get_aligned_heap_base(),
+        ic::LAST_HP,
+        ic::HP,
+        ic::get_static_roots(),
+    );
 
     experimental_gc_internal(
         mem,
@@ -73,7 +78,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         None,
     );
     ic::LAST_HP = ic::HP;
-    
+
     #[cfg(debug_assertions)]
     sanity_checks::take_snapshot(mem, ic::HP);
 

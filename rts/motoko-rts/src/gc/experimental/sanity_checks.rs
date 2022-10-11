@@ -83,10 +83,8 @@ unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
 unsafe fn verify_field(current_field: *mut Value) {
     let memory_copy = SNAPSHOT.payload_addr() as usize;
     let previous_field = (memory_copy + current_field as usize) as *mut Value;
-    if *previous_field != *current_field {
-        if !recorded(current_field as u32) {
-            panic!("Missing write barrier at {:#x}", current_field as usize);
-        }
+    if *previous_field != *current_field && !recorded(current_field as u32) {
+        panic!("Missing write barrier at {:#x}", current_field as usize);
     }
 }
 

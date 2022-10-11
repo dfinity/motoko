@@ -22,6 +22,7 @@ use crate::types::{Array, Value, TAG_NULL};
 pub struct RememberedSet {
     first: *mut Array,
     last: *mut Array,
+    cache: Value, // optimization, least recently inserted value
 }
 
 pub struct RememberedSetIterator {
@@ -42,10 +43,16 @@ impl RememberedSet {
         RememberedSet {
             first: table,
             last: table,
+            cache: Value::from_raw(TAG_NULL),
         }
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+        if value.is_null() || self.cache.get_raw() == value.get_raw() {
+            return;
+        }
+        self.cache = value;
+        //println!(100, "Remembered set insert: {:#x}", value.get_raw());
         let mut table = self.last;
         let mut count = table.get(COUNT_ENTRIES_OFFSET).get_scalar();
         if count == MAX_ENTRIES_PER_TABLE {
