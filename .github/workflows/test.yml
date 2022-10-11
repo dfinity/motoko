@@ -17,7 +17,7 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v16
+    - uses: cachix/install-nix-action@v17
       with:
         extra_nix_config: |
           experimental-features = nix-command
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v16
+    - uses: cachix/install-nix-action@v17
       with:
         extra_nix_config: |
           experimental-features = nix-command
