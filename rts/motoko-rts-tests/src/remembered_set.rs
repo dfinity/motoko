@@ -23,7 +23,7 @@ unsafe fn test_insert_iterate(amount: u32) {
 
     let mut remembered_set = RememberedSet::new(&mut mem);
     for value in 0..amount {
-        remembered_set.insert(Value::from_scalar(value));
+        remembered_set.insert(&mut mem, Value::from_scalar(value));
     }
 
     let mut iterator = remembered_set.iterate();

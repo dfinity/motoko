@@ -19,8 +19,7 @@ use core::mem::size_of;
 use crate::types::{Array, Value, TAG_NULL};
 use crate::memory::{Memory, alloc_array};
 
-pub struct RememberedSet<'a, M: Memory> {
-    mem: &'a mut M,
+pub struct RememberedSet {
     first: *mut Array,
     last: *mut Array
 }
@@ -37,21 +36,20 @@ const FIRST_ENTRY_OFFSET: u32 = 2;
 pub const MAX_ENTRIES_PER_TABLE: u32 = TABLE_ARRAY_LENGTH - FIRST_ENTRY_OFFSET;
 const NULL_POINTER: Value = Value::from_raw(TAG_NULL);
 
-impl<'a, M: Memory> RememberedSet<'a, M> {
-    pub unsafe fn new(mem: &'a mut M) -> RememberedSet<M> {
+impl RememberedSet {
+    pub unsafe fn new<M: Memory>(mem: &mut M) -> RememberedSet {
         let table = Self::new_table(mem);
         RememberedSet { 
-            mem,
             first: table,
             last: table
         }
     }
 
-    pub unsafe fn insert(&mut self, value: Value) {
+    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
         let mut table = self.last;
         let mut count = table.get(COUNT_ENTRIES_OFFSET).get_scalar();
         if count == MAX_ENTRIES_PER_TABLE {
-            self.append_table();
+            self.append_table(mem);
             table = self.last;
             debug_assert_eq!(table.get(COUNT_ENTRIES_OFFSET).get_scalar(), 0);
             count = 0;
@@ -61,15 +59,15 @@ impl<'a, M: Memory> RememberedSet<'a, M> {
         table.set(COUNT_ENTRIES_OFFSET, Value::from_scalar(count + 1));
     }
 
-    unsafe fn append_table(&mut self) {
+    unsafe fn append_table<M: Memory>(&mut self, mem: &mut M) {
         debug_assert_eq!(self.last.get(COUNT_ENTRIES_OFFSET).get_scalar(), MAX_ENTRIES_PER_TABLE);
-        let next = Self::new_table(self.mem);
+        let next = Self::new_table(mem);
         debug_assert_eq!(self.last.get(NEXT_POINTER_OFFSET).get_raw(), NULL_POINTER.get_raw());
         self.last.set(NEXT_POINTER_OFFSET, Value::from_ptr(next as usize));
         self.last = next;
     }
 
-    unsafe fn new_table(mem: &mut M) -> *mut Array {
+    unsafe fn new_table<M: Memory>(mem: &mut M) -> *mut Array {
         let table = alloc_array(mem, TABLE_ARRAY_LENGTH).as_array();
         table.set(NEXT_POINTER_OFFSET, NULL_POINTER);
         table.set(COUNT_ENTRIES_OFFSET, Value::from_scalar(0));
