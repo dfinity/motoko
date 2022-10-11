@@ -22,23 +22,25 @@ pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, hp: u32) {
 
 /// Verify write barrier coverag by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
-pub unsafe fn verify_snapshot(heap_base: u32, hp: u32, static_roots: Value) {
+pub unsafe fn verify_snapshot(heap_base: u32, last_free: u32, hp: u32, static_roots: Value) {
     assert!(heap_base <= hp);
-    verify_static_roots(static_roots.as_array());
-    verify_heap(heap_base as usize, hp as usize);
+    verify_static_roots(static_roots.as_array(), last_free as usize);
+    verify_heap(heap_base as usize, last_free as usize, hp as usize);
 }
 
-unsafe fn verify_static_roots(static_roots: *mut Array) {
+unsafe fn verify_static_roots(static_roots: *mut Array, last_free: usize) {
     for index in 0..static_roots.len() {
         let current = static_roots.get(index).as_obj();
         assert_eq!(current.tag(), TAG_MUTBOX); // check tag
         let mutbox = current as *mut MutBox;
         let current_field = &mut (*mutbox).field;
-        verify_field(current_field);
+        if relevant_field(current_field, last_free) {
+            verify_field(current_field);
+        }
     }
 }
 
-unsafe fn verify_heap(base: usize, limit: usize) {
+unsafe fn verify_heap(base: usize, last_free: usize, limit: usize) {
     if SNAPSHOT.is_null() {
         return;
     }
@@ -55,7 +57,9 @@ unsafe fn verify_heap(base: usize, limit: usize) {
             current.tag(),
             0,
             |_, current_field| {
-                verify_field(current_field);
+                if relevant_field(current_field, last_free) {
+                    verify_field(current_field);
+                }
             },
             |_, slice_start, arr| {
                 assert!(slice_start == 0);
@@ -65,6 +69,15 @@ unsafe fn verify_heap(base: usize, limit: usize) {
         pointer += object_size(current as usize).to_bytes().as_usize();
     }
     println!(100, "Heap verification stops...");
+}
+
+unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
+    if (current_field as usize) < last_free {
+        let value = *current_field;
+        value.is_ptr() && value.get_raw() as usize >= last_free
+    } else {
+        false
+    }
 }
 
 unsafe fn verify_field(current_field: *mut Value) {

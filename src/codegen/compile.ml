@@ -939,7 +939,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "create_remembered_set" [] [];
+    E.add_func_import env "rts" "init_write_barrier" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
@@ -6828,31 +6828,29 @@ module Var = struct
       G.i (LocalSet (nr i))
 
     | Some (HeapInd i) ->
-      (if !Flags.gc_strategy = Mo_config.Flags.Experimental
-       then
-        G.i (LocalGet (nr i)) ^^
-        compile_add_const ptr_unskew ^^
-        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-        E.call_import env "rts" "write_barrier"
-       else G.nop
-      ) ^^
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field MutBox.field
-
-    | Some (HeapStatic ptr) ->
+      Heap.store_field MutBox.field ^^
       (if !Flags.gc_strategy = Mo_config.Flags.Experimental
-       then 
-        compile_unboxed_const ptr ^^
-        compile_add_const ptr_unskew ^^
-        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-        E.call_import env "rts" "write_barrier"
-       else G.nop
-      ) ^^
+        then
+         G.i (LocalGet (nr i)) ^^
+         compile_add_const ptr_unskew ^^
+         compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+         E.call_import env "rts" "write_barrier"
+        else G.nop
+       )
+    | Some (HeapStatic ptr) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field MutBox.field
-
+      Heap.store_field MutBox.field ^^
+      (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+        then 
+         compile_unboxed_const ptr ^^
+         compile_add_const ptr_unskew ^^
+         compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+         E.call_import env "rts" "write_barrier"
+        else G.nop
+       )
     | Some (Const _) -> fatal "set_val: %s is const" var
 
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
@@ -8265,39 +8263,35 @@ let rec compile_lexp (env : E.t) ae lexp =
    ( 
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    set_field ^^
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
     (if !Flags.gc_strategy = Mo_config.Flags.Experimental
      then
-      Arr.idx_bigint env ^^
-      set_field ^^
       get_field ^^
       compile_add_const ptr_unskew ^^
-      E.call_import env "rts" "write_barrier" ^^
-      get_field
-     else
-      Arr.idx_bigint env
-     ),
-     SR.Vanilla,
-     store_ptr
+      E.call_import env "rts" "write_barrier"
+     else G.nop
+    )
    )
   | DotLE (e, n) ->
     let (set_field, get_field) = new_local env "field" in
-    
    ( 
      compile_exp_vanilla env ae e ^^
+     Object.idx env e.note.Note.typ n ^^
+     set_field ^^
+     get_field,
+     SR.Vanilla,
+     store_ptr ^^
      (if !Flags.gc_strategy = Mo_config.Flags.Experimental
       then  
-        (* Only real objects have mutable fields, no need to branch on the tag *)
-        Object.idx env e.note.Note.typ n ^^
-        set_field ^^
         get_field ^^
         compile_add_const ptr_unskew ^^
-        E.call_import env "rts" "write_barrier" ^^
-        get_field
-      else
-        Object.idx env e.note.Note.typ n
-     ),
-     SR.Vanilla,
-     store_ptr
+        E.call_import env "rts" "write_barrier"
+      else G.nop
+     )
    )
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
@@ -9963,7 +9957,7 @@ and conclude_module env start_fi_o =
     E.call_import env "rts" "init" ^^
     (if !Flags.gc_strategy = Mo_config.Flags.Experimental
      then
-      E.call_import env "rts" "create_remembered_set"
+      E.call_import env "rts" "init_write_barrier"
      else 
       G.nop 
     ) ^^

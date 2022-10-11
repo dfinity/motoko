@@ -53,7 +53,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     println!(100, "INFO: Experimental GC starts ...");
 
     #[cfg(debug_assertions)]
-    sanity_checks::verify_snapshot(ic::get_aligned_heap_base(), ic::HP, ic::get_static_roots());
+    sanity_checks::verify_snapshot(ic::get_aligned_heap_base(), ic::LAST_HP, ic::HP, ic::get_static_roots());
 
     experimental_gc_internal(
         mem,
@@ -72,13 +72,12 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
         None,
     );
-
+    ic::LAST_HP = ic::HP;
+    
     #[cfg(debug_assertions)]
     sanity_checks::take_snapshot(mem, ic::HP);
 
-    write_barrier::create_remembered_set(mem);
-
-    ic::LAST_HP = ic::HP;
+    write_barrier::init_write_barrier(mem);
 
     println!(100, "INFO: Experimental GC stops ...");
 }
