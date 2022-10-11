@@ -88,7 +88,7 @@ and pp_exp ppf exp =
   | LocalVar (id, _) ->
      fprintf ppf "%s" id.it
   | NotE e ->
-     fprintf ppf "@[(not %a)@]" pp_exp e
+     fprintf ppf "@[(!%a)@]" pp_exp e
   | BoolLitE b ->
      fprintf ppf "%s" (if b then "true" else "false")
   | IntLitE i ->
