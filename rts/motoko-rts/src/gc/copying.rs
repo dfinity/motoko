@@ -1,7 +1,7 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
-use crate::{types::*};
+use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -24,8 +24,6 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
     let heap_base = ic::get_heap_base();
 
-    crate::write_barrier::verify_snapshot(heap_base, ic::HP, ic::get_static_roots());
-
     copying_gc_internal(
         mem,
         heap_base,
@@ -40,8 +38,6 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
-
-    crate::write_barrier::take_snapshot(mem, ic::HP);
 
     ic::LAST_HP = ic::HP;
     //println!(100, "Copying GC stops ...");

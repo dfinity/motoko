@@ -37,10 +37,6 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     println!(100, "Compacting GC starts ...");
 
-    let heap_base = ic::get_heap_base();
-
-    crate::write_barrier::verify_snapshot(heap_base, ic::HP, ic::get_static_roots());
-
     compacting_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
@@ -55,8 +51,6 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
-
-    crate::write_barrier::take_snapshot(mem, ic::HP);
 
     ic::LAST_HP = ic::HP;
     println!(100, "Compacting GC stops ...");

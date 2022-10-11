@@ -3,6 +3,9 @@
 //! Full heap mark, then compection decision (young only, full collection, or no collection)
 //! Based on the Motoko RTS mark & compact GC.
 
+#[cfg(debug_assertions)]
+mod sanity_checks;
+
 use crate::gc::mark_compact::bitmap::{
     alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
 };
@@ -47,6 +50,9 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
 
     println!(100, "INFO: Experimental GC starts ...");
 
+    #[cfg(debug_assertions)]
+    sanity_checks::verify_snapshot(ic::get_aligned_heap_base(), ic::HP, ic::get_static_roots());
+
     experimental_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
@@ -65,9 +71,12 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         None,
     );
 
-    println!(100, "INFO: Experimental GC stops ...");
+    #[cfg(debug_assertions)]
+    sanity_checks::take_snapshot(mem, ic::HP);
 
     ic::LAST_HP = ic::HP;
+
+    println!(100, "INFO: Experimental GC stops ...");
 }
 
 pub unsafe fn experimental_gc_internal<
