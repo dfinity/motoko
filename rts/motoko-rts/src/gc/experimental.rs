@@ -5,6 +5,7 @@
 
 #[cfg(debug_assertions)]
 mod sanity_checks;
+pub mod remembered_set;
 pub mod write_barrier;
 
 use crate::gc::mark_compact::bitmap::{

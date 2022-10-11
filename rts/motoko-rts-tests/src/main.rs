@@ -12,6 +12,7 @@ mod principal_id;
 mod stream;
 mod text;
 mod utf8;
+mod remembered_set;
 
 use motoko_rts::types::Bytes;
 
@@ -33,6 +34,7 @@ fn main() {
         stream::test();
         text::test();
         utf8::test();
+        remembered_set::test();
     }
 }
 
