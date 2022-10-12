@@ -62,8 +62,10 @@ and dec_field' ctxt d =
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
                        {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
      { ctxt with ids = Env.add f.it Method ctxt.ids },
-     fun ctxt' -> (MethodI(id f, args p, rets t_opt, [], [], Some (stmt e)),
-                   NoInfo)
+     fun ctxt' ->
+       let ctxt'' = ctxt' in (* TODO: add args (and rets?) *)
+       (MethodI(id f, args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
+        NoInfo)
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*
@@ -81,51 +83,62 @@ and args p = match p.it with
   | M.TupP ps ->
     List.map (fun {it = M.VarP x; note; _} -> (id x, tr_typ note)) ps
 
-and block at ds =
-  { it = decs ds;
+and block ctxt at ds =
+  let ctxt, mk_ss = decs ctxt ds in
+  { it = mk_ss ctxt;
     at;
     note = NoInfo }
 
-and decs ds =
+and decs ctxt ds =
   match ds with
-  | [] -> ([],[])
+  | [] -> (ctxt, fun ctxt' -> ([],[]))
   | d::ds' ->
-    let (l, s) = dec d in
-    let (ls, ss) = decs ds' in
-    (l @ ls, s @ ss)
+    let (ctxt1, mk_s) = dec ctxt d in
+    let (ctxt2, mk_ss) = decs ctxt1 ds' in
+    (ctxt2,
+     fun ctxt' ->
+       let (l, s) = mk_s ctxt' in
+       let (ls, ss) = mk_ss ctxt' in
+       (l @ ls, s @ ss))
 
-and dec d =
+and dec ctxt d =
   match d.it with
   | M.VarD (x, e) ->
      (* TODO: translate e? *)
-     ([{ it = (id x, tr_typ e.note.M.note_typ);
+    { ctxt with ids = Env.add x.it Local ctxt.ids },
+    fun ctxt' ->
+      ([{ it = (id x, tr_typ e.note.M.note_typ);
         at = d.at;
         note = NoInfo }],
-      [{ it = VarAssignS (id x, exp e);
-        at = d.at;
-        note = NoInfo }])
+       [{ it = VarAssignS (id x, exp ctxt' e);
+          at = d.at;
+          note = NoInfo } ])
   | M.(LetD ({it=VarP x;_}, e))->
-     ([{ it = (id x, tr_typ e.note.M.note_typ);
-        at = d.at;
-        note = NoInfo }],
-      [{ it = VarAssignS (id x, exp e);
-         at = d.at;
-         note = NoInfo }])
+     { ctxt with ids = Env.add x.it Local ctxt.ids },
+     fun ctxt' ->
+       ([{ it = (id x, tr_typ e.note.M.note_typ);
+           at = d.at;
+           note = NoInfo }],
+        [{ it = VarAssignS (id x, exp ctxt' e);
+           at = d.at;
+           note = NoInfo }])
   | M.(ExpD e) ->
-     let s = stmt e in
-     s.it
+     (ctxt,
+      fun ctxt' ->
+        let s = stmt ctxt' e in
+        s.it)
   | _ -> fail (Mo_def.Arrange.dec d)
 
-and stmt (s : M.exp) : seqn =
+and stmt ctxt (s : M.exp) : seqn =
   match s.it with
   | M.TupE [] ->
-     block s.at []
+     block ctxt s.at []
   | M.BlockE ds ->
-     block s.at ds
+     block ctxt s.at ds
   | M.IfE(e, s1, s2) ->
      { it =
          ([],
-          [ { it = IfS(exp e, stmt s1, stmt s2);
+          [ { it = IfS(exp ctxt e, stmt ctxt s1, stmt ctxt s2);
               at = s.at;
               note = NoInfo } ]);
        at = s.at;
@@ -143,7 +156,7 @@ and stmt (s : M.exp) : seqn =
   | M.WhileE(e, s1) ->
      { it =
          ([],
-          [ { it = WhileS(exp e, [], stmt s1); (* TODO: invariant *)
+          [ { it = WhileS(exp ctxt e, [], stmt ctxt s1); (* TODO: invariant *)
               at = s.at;
               note = NoInfo } ]);
        at = s.at;
@@ -152,7 +165,7 @@ and stmt (s : M.exp) : seqn =
      let loc = { it = id.it; at = id.at; note = NoInfo } in
      { it =
          ([],
-          [ { it = VarAssignS(loc, exp e2);
+          [ { it = VarAssignS(loc, exp ctxt e2);
               at = s.at;
               note = NoInfo } ]);
        at = s.at;
@@ -171,17 +184,22 @@ and stmt (s : M.exp) : seqn =
 
 and isLocal id = true (* fix me *)
 
-and exp e =
-  let (e', info) = exp' e in
+and exp ctxt e =
+  let (e', info) = exp' ctxt e in
   { it = e';
     at = e.at;
     note = info }
-and exp' (e : M.exp) =
+and exp' ctxt (e : M.exp) =
   match e.it with
-  | M.VarE x ->
+  | M.VarE x (* when Env.find x.it ctxt = Local *) ->
+     (LocalVar (id x, tr_typ e.note.note_typ),
+      NoInfo)
+(*
+  | M.VarE x when Env.find x.it ctxt = Field ->
      (*TODO: need environment to distinguish fields from locals *)
      (LocalVar (id x, tr_typ e.note.note_typ),
       NoInfo)
+*)
   | M.LitE r ->
     begin match !r with
     | M.BoolLit b ->
@@ -191,7 +209,7 @@ and exp' (e : M.exp) =
     | _ -> fail (Mo_def.Arrange.exp e)
     end
   | M.NotE e ->
-     (NotE (exp e), NoInfo)
+     (NotE (exp ctxt e), NoInfo)
   | _ -> fail (Mo_def.Arrange.exp e)
 (*           
   | VarE x              -> 
@@ -261,8 +279,6 @@ and rets t_opt =
     (match T.normalize t.note with
      | T.Tup [] -> []
      | T.Async (_, _) -> [])
-
-
 
 and id id = { it = id.it; at = id.at; note = NoInfo }
 

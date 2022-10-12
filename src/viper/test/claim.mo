@@ -8,7 +8,7 @@ actor {
 
   public shared func claim() : async () {
     var t = true;
-    let f = false or true;
+    let f = false;
     if (not claimed) {
       claimed := true;
 /*
