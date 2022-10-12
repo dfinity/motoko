@@ -82,11 +82,14 @@ and pp_typ ppf t =
   match t.it with
   | IntT -> pr ppf "Int"
   | BoolT -> pr ppf "Bool"
+  | RefT -> pr ppf "Ref"
 
 and pp_exp ppf exp =
   match exp.it with
   | LocalVar (id, _) ->
      fprintf ppf "%s" id.it
+  | FldAcc fldacc ->
+     pp_fldacc ppf fldacc
   | NotE e ->
      fprintf ppf "@[(!%a)@]" pp_exp e
   | BoolLitE b ->
@@ -110,6 +113,15 @@ and pp_stmt ppf stmt =
     fprintf ppf "@[<v 2>%s := %a@]"
       id.it
       pp_exp exp
+  | FieldAssignS(fldacc, exp2) ->
+    fprintf ppf "@[<v 2>%a := %a@]"
+      pp_fldacc fldacc
+      pp_exp exp2
+
+and pp_fldacc ppf fldacc =
+  match fldacc with
+  | (exp1, id) ->
+    fprintf ppf "@[(%a).%s@]" pp_exp exp1 id.it
 
 let prog p =
     let b = Buffer.create 16 in

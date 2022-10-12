@@ -13,15 +13,23 @@ type sort = Field | Local | Method
 module Env = T.Env
 
 type ctxt =
-  { self : string;
+  { self : string option;
     ids : sort T.Env.t
   }
+
+let self ctxt at =
+  match ctxt.self with
+  | Some id -> { it = LocalVar ({ it = id; at; note = NoInfo},
+                                { it = RefT; at; note = NoInfo });
+                   at;
+                   note = NoInfo }
+  | _ -> failwith "no self"
 
 let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-     let ctxt = { self = "self"; ids = Env.empty } in
+     let ctxt = { self = None; ids = Env.empty } in
      let (ctxt', mk_is) = dec_fields ctxt decs in
      let is = List.map (fun mk_i -> mk_i ctxt') mk_is in
      { it = is;
@@ -63,8 +71,10 @@ and dec_field' ctxt d =
                        {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
      { ctxt with ids = Env.add f.it Method ctxt.ids },
      fun ctxt' ->
-       let ctxt'' = ctxt' in (* TODO: add args (and rets?) *)
-       (MethodI(id f, args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
+       let self_id = {it = "$Self"; at = Source.no_region; note = NoInfo } in
+       let ctxt'' = { ctxt' with self = Some self_id.it }
+       in (* TODO: add args (and rets?) *)
+       (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
@@ -161,16 +171,29 @@ and stmt ctxt (s : M.exp) : seqn =
               note = NoInfo } ]);
        at = s.at;
        note = NoInfo }
-  | M.AssignE({it = VarE id; _}, e2) when isLocal id->
-     let loc = { it = id.it; at = id.at; note = NoInfo } in
-     { it =
-         ([],
-          [ { it = VarAssignS(loc, exp ctxt e2);
-              at = s.at;
-              note = NoInfo } ]);
-       at = s.at;
-       note = NoInfo }
+  | M.(AssignE({it = VarE x; _}, e2)) ->
+     match Env.find x.it ctxt.ids with
+     | Local ->
+       let loc = { it = x.it; at = x.at; note = NoInfo } in
+       { it =
+           ([],
+            [ { it = VarAssignS(loc, exp ctxt e2);
+                at = s.at;
+                note = NoInfo } ]);
+         at = s.at;
+         note = NoInfo }
+     | Field ->
+       let fld = (self ctxt x.at, id x) in
+       { it =
+           ([],
+            [ { it = FieldAssignS(fld, exp ctxt e2);
+                at = s.at;
+                note = NoInfo } ]);
+         at = s.at;
+         note = NoInfo }
+        
   | _ -> fail (Mo_def.Arrange.exp s)
+          
 (*    
   | M.AssignE({it = VarE id;_}, e2) when isField e1->
      { it =
@@ -192,8 +215,16 @@ and exp ctxt e =
 and exp' ctxt (e : M.exp) =
   match e.it with
   | M.VarE x (* when Env.find x.it ctxt = Local *) ->
-     (LocalVar (id x, tr_typ e.note.note_typ),
-      NoInfo)
+    begin
+     match Env.find x.it ctxt.ids with
+     | Local ->
+        (LocalVar (id x, tr_typ e.note.note_typ),
+        NoInfo)
+     | Field ->
+        (FldAcc (self ctxt x.at, id x),
+         NoInfo)
+     | _ -> fail (Mo_def.Arrange.exp e)
+    end
 (*
   | M.VarE x when Env.find x.it ctxt = Field ->
      (*TODO: need environment to distinguish fields from locals *)

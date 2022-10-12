@@ -78,4 +78,5 @@ and typ = (typ', info) Source.annotated_phrase
 and typ' =
   | IntT
   | BoolT
+  | RefT
 
