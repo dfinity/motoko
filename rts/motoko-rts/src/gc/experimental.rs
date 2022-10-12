@@ -33,16 +33,12 @@ pub enum Strategy {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_experimental_gc<M: Memory>(mem: &mut M) {
-    // 512 MiB slack for mark stack + allocation area for the next message
-    let slack: u64 = 512 * 1024 * 1024;
-    let heap_size_bytes: u64 =
-        u64::from(crate::constants::WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
-    // Larger than necessary to keep things simple
-    let max_bitmap_size_bytes = heap_size_bytes / 32;
-    // NB. `max_live` is evaluated in compile time to a constant
-    let max_live: Bytes<u64> = Bytes(heap_size_bytes - slack - max_bitmap_size_bytes);
+    use crate::memory::ic;
+    let hp = ic::HP as usize;
+    let last_hp = ic::LAST_HP as usize;
+    let heap_base = ic::get_aligned_heap_base() as usize;
 
-    if super::should_do_gc(max_live) {
+    if decide_strategy(heap_base, last_hp, hp).is_some() {
         experimental_gc(mem);
     }
 }
@@ -51,7 +47,7 @@ unsafe fn schedule_experimental_gc<M: Memory>(mem: &mut M) {
 unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
-    println!(100, "INFO: Experimental GC starts ...");
+    println!(100, "INFO: Generational GC starts ...");
 
     #[cfg(debug_assertions)]
     sanity_checks::verify_snapshot(
@@ -61,6 +57,13 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         ic::get_static_roots(),
         false, // roots not recorded by write barrier for generational GC
     );
+
+    let strategy = decide_strategy(
+        ic::get_aligned_heap_base() as usize,
+        ic::LAST_HP as usize,
+        ic::HP as usize,
+    )
+    .unwrap_or(Strategy::Young);
 
     experimental_gc_internal(
         mem,
@@ -77,34 +80,49 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
-        decide_strategy(ic::HP as usize),
+        strategy,
     );
     ic::LAST_HP = ic::HP;
+
+    update_strategy(strategy, ic::HP as usize);
 
     #[cfg(debug_assertions)]
     sanity_checks::take_snapshot(mem, ic::HP);
 
     write_barrier::init_write_barrier(mem);
 
-    println!(100, "INFO: Experimental GC stops ...");
+    println!(100, "INFO: Generational GC stops ...");
 }
 
-// TODO: Only for testing, improve strategy decision later
-static mut RUN: usize = 0;
+static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
-unsafe fn decide_strategy(hp: usize) -> Strategy {
-    RUN = RUN + 1;
-    if RUN % 3 == 0 {
-        return Strategy::Full;
-    }
+unsafe fn decide_strategy(heap_base: usize, last_free: usize, hp: usize) -> Option<Strategy> {
+    const REMEMBERED_SET_THRESHOLD: usize = 1024;
+    const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
+    const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 
-    const CRITICAL_MEMORY_LIMIT: usize = (4096 - 256) * 1024 * 1024;
-    // TODO: Refine, run full GC at certain low frequency of young collection runs
-    if hp >= CRITICAL_MEMORY_LIMIT {
-        println!(100, "CRITICAL MEMORY LIMIT");
-        Strategy::Full
+    let old_generation_size = last_free - heap_base;
+    let young_generation_size = hp - last_free;
+    let remembered_set_size = REMEMBERED_SET
+        .as_ref()
+        .expect("Write barrier is not activated")
+        .size();
+
+    if old_generation_size > OLD_GENERATION_THRESHOLD || hp >= CRITICAL_MEMORY_LIMIT {
+        Some(Strategy::Full)
+    } else if remembered_set_size > REMEMBERED_SET_THRESHOLD
+        || young_generation_size > YOUNG_GENERATION_THRESHOLD
+    {
+        Some(Strategy::Young)
     } else {
-        Strategy::Young
+        None
+    }
+}
+
+unsafe fn update_strategy(strategy: Strategy, hp: usize) {
+    const GROWTH_RATE: usize = 2;
+    if strategy == Strategy::Full {
+        OLD_GENERATION_THRESHOLD = hp as usize * GROWTH_RATE;
     }
 }
 
@@ -265,22 +283,16 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
     }
 
     unsafe fn mark_additional_young_root_set(&mut self) {
-        match &REMEMBERED_SET {
-            None => panic!("Write barrier is not activated"),
-            Some(remembered_set) => {
-                let mut iterator = remembered_set.iterate();
-                while iterator.has_next() {
-                    let location = iterator.current().get_raw() as *mut Value;
-                    let object = *location;
-                    // Check whether the location still refers to young object as this may have changed
-                    // due to subsequent writes to that location after the write barrier recording.
-                    if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free
-                    {
-                        self.mark_object(object);
-                    }
-                    iterator.next();
-                }
+        let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
+        while iterator.has_next() {
+            let location = iterator.current().get_raw() as *mut Value;
+            let object = *location;
+            // Check whether the location still refers to young object as this may have changed
+            // due to subsequent writes to that location after the write barrier recording.
+            if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
+                self.mark_object(object);
             }
+            iterator.next();
         }
     }
 
@@ -345,7 +357,7 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         let address = obj as usize;
         match self.strategy {
             Strategy::Young => address >= self.heap.limits.last_free,
-            Strategy::Full => true,
+            Strategy::Full => address >= self.heap.limits.base,
         }
     }
 
@@ -429,28 +441,22 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
 
     // Thread forward pointers in old generation leading to young generation
     unsafe fn thread_old_generation_pointers(&mut self) {
-        match &REMEMBERED_SET {
-            None => panic!("Write barrier is not activated"),
-            Some(remembered_set) => {
-                let mut iterator = remembered_set.iterate();
-                while iterator.has_next() {
-                    let location = iterator.current().get_raw() as *mut Value;
-                    debug_assert!(
-                        (location as usize) >= self.heap.limits.base
-                            && (location as usize) < self.heap.limits.last_free
-                    );
-                    let object = *location;
-                    // Implicit check that it is still unthreaded, considering that the remembered set can contain duplicates.
-                    if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free
-                    {
-                        #[cfg(debug_assertions)]
-                        self.assert_unthreaded(location);
+        let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
+        while iterator.has_next() {
+            let location = iterator.current().get_raw() as *mut Value;
+            debug_assert!(
+                (location as usize) >= self.heap.limits.base
+                    && (location as usize) < self.heap.limits.last_free
+            );
+            let object = *location;
+            // Implicit check that it is still unthreaded, considering that the remembered set can contain duplicates.
+            if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
+                #[cfg(debug_assertions)]
+                self.assert_unthreaded(location);
 
-                        self.thread(location);
-                    }
-                    iterator.next();
-                }
+                self.thread(location);
             }
+            iterator.next();
         }
     }
 

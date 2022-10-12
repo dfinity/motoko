@@ -25,6 +25,7 @@ use crate::types::{Array, Value, TAG_NULL};
 pub struct RememberedSet {
     first: *mut Array,
     last: *mut Array,
+    size: usize,
     cache: Value, // optimization, least recently inserted value
 }
 
@@ -46,6 +47,7 @@ impl RememberedSet {
         RememberedSet {
             first: table,
             last: table,
+            size: 0,
             cache: Value::from_raw(TAG_NULL),
         }
     }
@@ -67,6 +69,7 @@ impl RememberedSet {
         debug_assert!(count < MAX_ENTRIES_PER_TABLE);
         table.set(FIRST_ENTRY_OFFSET + count, value);
         table.set(COUNT_ENTRIES_OFFSET, Value::from_scalar(count + 1));
+        self.size += 1;
     }
 
     unsafe fn append_table<M: Memory>(&mut self, mem: &mut M) {
@@ -96,6 +99,10 @@ impl RememberedSet {
             table: self.first,
             index: 0,
         }
+    }
+
+    pub fn size(&self) -> usize {
+        self.size
     }
 }
 
