@@ -126,6 +126,14 @@ and pp_fldacc ppf fldacc =
 let prog p =
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
+    let out, flush = pp_get_formatter_output_functions ppf () in
+    let line = ref 0 in
+    let flush' () = line := !line + 1; flush () in
+    pp_set_formatter_output_functions ppf out flush';
+    let outfs = pp_get_formatter_out_functions ppf () in
+    let out_newline () = line := !line + 1; outfs.out_newline () in
+    pp_set_formatter_out_functions ppf { outfs with out_newline };
     Format.fprintf ppf "@[%a@]" pp_prog p;
     Format.pp_print_flush ppf ();
+    Printf.eprintf "\nLINES: %d" !line;
     Buffer.contents b
