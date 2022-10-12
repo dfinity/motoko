@@ -3,6 +3,8 @@ open Syntax
 
 open Format
 
+let line = ref 0
+
 let pr = pp_print_string
 
 let comma ppf () = fprintf ppf ",@ "
@@ -98,6 +100,7 @@ and pp_exp ppf exp =
      fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
 
 and pp_stmt ppf stmt =
+  Printf.eprintf "\nLINES: %d -> %d" stmt.at.left.line !line;
   match stmt.it with
   | SeqnS seqn -> pp_seqn ppf seqn
   | IfS(exp1, s1, { it = ([],[]); _ }) ->
@@ -126,10 +129,6 @@ and pp_fldacc ppf fldacc =
 let prog p =
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
-    let out, flush = pp_get_formatter_output_functions ppf () in
-    let line = ref 0 in
-    let flush' () = line := !line + 1; flush () in
-    pp_set_formatter_output_functions ppf out flush';
     let outfs = pp_get_formatter_out_functions ppf () in
     let out_newline () = line := !line + 1; outfs.out_newline () in
     pp_set_formatter_out_functions ppf { outfs with out_newline };
