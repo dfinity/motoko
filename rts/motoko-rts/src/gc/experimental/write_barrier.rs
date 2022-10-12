@@ -6,13 +6,16 @@ use crate::types::Value;
 use motoko_rts_macros::ic_mem_fn;
 
 pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
+pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
 /// (Re-)initialize the write barrier for experimental GC.
 #[ic_mem_fn(ic_only)]
 pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
+    use crate::memory::ic;
     REMEMBERED_SET = Some(RememberedSet::new(mem));
-    LAST_HP = crate::memory::ic::LAST_HP;
+    HEAP_BASE = ic::get_aligned_heap_base();
+    LAST_HP = ic::LAST_HP;
 }
 
 /// Write barrier to be called AFTER the pointer store, used for experimental GC.
@@ -26,7 +29,8 @@ pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
     match &mut REMEMBERED_SET {
         None => return,
         Some(remembered_set) => {
-            if location < LAST_HP {
+            // Only record locations inside old generation, static roots are anyway marked by GC.
+            if location >= HEAP_BASE && location < LAST_HP {
                 let value = *(location as *mut Value);
                 if value.is_ptr() && value.get_raw() >= LAST_HP {
                     // trap pointers that lead from old generation (or static roots) to young generation

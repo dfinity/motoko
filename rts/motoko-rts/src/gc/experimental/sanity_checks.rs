@@ -22,9 +22,17 @@ pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, hp: u32) {
 
 /// Verify write barrier coverag by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
-pub unsafe fn verify_snapshot(heap_base: u32, last_free: u32, hp: u32, static_roots: Value) {
+pub unsafe fn verify_snapshot(
+    heap_base: u32,
+    last_free: u32,
+    hp: u32,
+    static_roots: Value,
+    verify_roots: bool,
+) {
     assert!(heap_base <= hp);
-    verify_static_roots(static_roots.as_array(), last_free as usize);
+    if verify_roots {
+        verify_static_roots(static_roots.as_array(), last_free as usize);
+    }
     verify_heap(heap_base as usize, last_free as usize, hp as usize);
 }
 

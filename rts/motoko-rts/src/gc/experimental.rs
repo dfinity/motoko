@@ -59,6 +59,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         ic::LAST_HP,
         ic::HP,
         ic::get_static_roots(),
+        false, // roots not recorded by write barrier for generational GC
     );
 
     experimental_gc_internal(
@@ -94,7 +95,7 @@ static mut RUN: usize = 0;
 unsafe fn decide_strategy(hp: usize) -> Strategy {
     RUN = RUN + 1;
     if RUN % 3 == 0 {
-        return Strategy::Full
+        return Strategy::Full;
     }
 
     const CRITICAL_MEMORY_LIMIT: usize = (4096 - 256) * 1024 * 1024;
@@ -269,8 +270,8 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
             Some(remembered_set) => {
                 let mut iterator = remembered_set.iterate();
                 while iterator.has_next() {
-                    let location = iterator.current().get_raw();
-                    let object = *(location as *mut Value);
+                    let location = iterator.current().get_raw() as *mut Value;
+                    let object = *location;
                     // Check whether the location still refers to young object as this may have changed
                     // due to subsequent writes to that location after the write barrier recording.
                     if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free
@@ -360,6 +361,11 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
             // it will be readable when we unthread the continuation table
             self.thread(self.heap.roots.continuation_table_ptr_loc);
         }
+
+        // If young collection, the forward pointers of old generation need to be threaded too.
+        if self.strategy == Strategy::Young {
+            self.thread_old_generation_pointers();
+        }
     }
 
     unsafe fn thread_static_roots(&self) {
@@ -421,6 +427,47 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         );
     }
 
+    // Thread forward pointers in old generation leading to young generation
+    unsafe fn thread_old_generation_pointers(&mut self) {
+        match &REMEMBERED_SET {
+            None => panic!("Write barrier is not activated"),
+            Some(remembered_set) => {
+                let mut iterator = remembered_set.iterate();
+                while iterator.has_next() {
+                    let location = iterator.current().get_raw() as *mut Value;
+                    debug_assert!(
+                        (location as usize) >= self.heap.limits.base
+                            && (location as usize) < self.heap.limits.last_free
+                    );
+                    let object = *location;
+                    // Implicit check that it is still unthreaded, considering that the remembered set can contain duplicates.
+                    if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free
+                    {
+                        #[cfg(debug_assertions)]
+                        self.assert_unthreaded(location);
+
+                        self.thread(location);
+                    }
+                    iterator.next();
+                }
+            }
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn assert_unthreaded(&self, location: *mut Value) {
+        // Only during debug assertions and only during young generation collection:
+        // Use the bitmap in the old generation to detect multiple threading attempts of same field.
+        debug_assert!(self.strategy == Strategy::Young);
+        let address = location as usize;
+        debug_assert!(address >= self.heap.limits.base && address < self.heap.limits.last_free);
+        let location_index = address as u32 / WORD_SIZE;
+        if get_bit(location_index) {
+            panic!("Same field threaded multiple times");
+        }
+        set_bit(location_index);
+    }
+
     /// Linearly scan the heap, for each live object:
     ///
     /// - Mark step threads all backwards pointers and pointers from roots, so unthread to update those
@@ -437,7 +484,6 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
 
         let mut bitmap_iter = iter_bits();
         if self.strategy == Strategy::Young {
-            self.thread_old_generation_pointers();
             bitmap_iter.advance(self.heap.limits.last_free as u32);
             free = self.heap.limits.last_free;
         }
@@ -467,23 +513,6 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         }
 
         free
-    }
-
-    // Thread forward pointers in old generation leading to young generation
-    unsafe fn thread_old_generation_pointers(&mut self) {
-        // TODO: implement this more efficiently, by focussing on remembered set
-        let mut pointer = self.heap.limits.base;
-        while pointer < self.heap.limits.last_free {
-            let object = pointer as *mut Obj;
-            let tag = (*object).tag;
-            assert!(tag < TAG_FREE_SPACE);
-            if tag != TAG_ONE_WORD_FILLER {
-                assert!((*object).forward.is_null() || (*object).forward.get_ptr() == pointer);
-                self.thread_fwd_pointers(object);
-            }
-            let object_size = object_size(pointer).to_bytes().as_usize();
-            pointer += object_size;
-        }
     }
 
     /// Thread forward pointers in object
