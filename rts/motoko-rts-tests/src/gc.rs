@@ -10,6 +10,8 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
+use motoko_rts::gc::experimental::remembered_set::RememberedSet;
+use motoko_rts::gc::experimental::write_barrier::{LAST_HP, REMEMBERED_SET};
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
 };
@@ -394,11 +396,12 @@ impl GC {
 
             GC::Experimental => {
                 let strategy = match round {
-                    0 => Some(Strategy::Young),
-                    1 => Some(Strategy::Full),
-                    _ => None,
+                    0 => Strategy::Young,
+                    _ => Strategy::Full,
                 };
                 unsafe {
+                    REMEMBERED_SET = Some(RememberedSet::new(heap));
+                    LAST_HP = heap_1.last_ptr_address() as u32;
                     experimental_gc_internal(
                         heap,
                         heap_base,

@@ -13,6 +13,9 @@
 //! `count` is the number of stored entries in the table.
 //! New entries are stored at the beginning of the free table space.
 //! Otherwise, if the table is a full, a new next table is appended.
+//!
+//! NOTE: Remembered set structure is not recorded by write barriers
+//! as it is discarded by each GC run.
 
 use core::mem::size_of;
 

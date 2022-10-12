@@ -311,7 +311,7 @@ fn heap_size_for_gc(
             let to_space_bytes = dynamic_heap_size_bytes;
             total_heap_size_bytes + to_space_bytes
         }
-        GC::MarkCompact | GC::Experimental => {
+        GC::MarkCompact => {
             let bitmap_size_bytes = {
                 let dynamic_heap_bytes = Bytes(dynamic_heap_size_bytes as u32);
                 // `...to_words().to_bytes()` below effectively rounds up heap size to word size
@@ -330,6 +330,17 @@ fn heap_size_for_gc(
                 + size_of::<Blob>().as_usize();
 
             total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
+        }
+        GC::Experimental => {
+            const ROUNDS: usize = 3;
+            const REMEMBERED_SET_MINIMUM_SIZE: usize = 1024 * WORD_SIZE;
+            let size = heap_size_for_gc(
+                GC::MarkCompact,
+                static_heap_size_bytes,
+                dynamic_heap_size_bytes,
+                n_objects,
+            );
+            size + ROUNDS * REMEMBERED_SET_MINIMUM_SIZE
         }
     }
 }

@@ -23,11 +23,12 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
+use self::write_barrier::REMEMBERED_SET;
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Strategy {
     Young,
     Full,
-    None,
 }
 
 #[ic_mem_fn(ic_only)]
@@ -75,7 +76,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
         |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
-        None,
+        decide_strategy(ic::HP as usize),
     );
     ic::LAST_HP = ic::HP;
 
@@ -85,6 +86,25 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     write_barrier::init_write_barrier(mem);
 
     println!(100, "INFO: Experimental GC stops ...");
+}
+
+// TODO: Only for testing, improve strategy decision later
+static mut RUN: usize = 0;
+
+unsafe fn decide_strategy(hp: usize) -> Strategy {
+    RUN = RUN + 1;
+    if RUN % 3 == 0 {
+        return Strategy::Full
+    }
+
+    const CRITICAL_MEMORY_LIMIT: usize = (4096 - 256) * 1024 * 1024;
+    // TODO: Refine, run full GC at certain low frequency of young collection runs
+    if hp >= CRITICAL_MEMORY_LIMIT {
+        println!(100, "CRITICAL MEMORY LIMIT");
+        Strategy::Full
+    } else {
+        Strategy::Young
+    }
 }
 
 pub unsafe fn experimental_gc_internal<
@@ -104,7 +124,7 @@ pub unsafe fn experimental_gc_internal<
     continuation_table_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
-    forced_strategy: Option<Strategy>,
+    strategy: Strategy,
 ) {
     let limits = Limits {
         base: heap_base as usize,
@@ -121,10 +141,8 @@ pub unsafe fn experimental_gc_internal<
 
     let mut gc = ExperimentalGC {
         heap,
-        marked_old_space: 0,
-        marked_young_space: 0,
-        strategy: Strategy::None,
-        forced_strategy,
+        marked_space: 0,
+        strategy,
     };
 
     let old_hp = get_hp() as u32;
@@ -159,18 +177,16 @@ struct Limits {
 
 struct ExperimentalGC<'a, M: Memory> {
     heap: Heap<'a, M>,
-    marked_old_space: usize,
-    marked_young_space: usize,
+    marked_space: usize,
     strategy: Strategy,
-    forced_strategy: Option<Strategy>,
 }
 
 impl<'a, M: Memory> ExperimentalGC<'a, M> {
     unsafe fn mark_compact<SetHp: Fn(u32)>(&mut self, set_hp: SetHp) {
+        println!(100, "STRATEGY: {:?}", self.strategy);
+
         let heap_end = self.heap.limits.free as u32;
         let mem_size = Bytes(heap_end - self.heap.limits.base as u32);
-        self.marked_old_space = 0;
-        self.marked_young_space = 0;
 
         alloc_bitmap(
             self.heap.mem,
@@ -181,25 +197,16 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
 
         self.mark_phase();
 
-        let total_space = self.old_generation_size();
-        let ratio = self.old_survival_rate();
         println!(
-            1000,
-            "MARKED OLD {} OF {total_space} RATIO {ratio:.3}", self.marked_old_space
+            100,
+            "MARKED {} OF {} RATIO {:.3}",
+            self.marked_space,
+            self.generation_size(),
+            self.survival_rate()
         );
-
-        let total_space = self.young_generation_size();
-        let ratio = self.young_survival_rate();
-        println!(
-            1000,
-            "MARKED YOUNG {} OF {total_space} RATIO {ratio:.3}", self.marked_young_space
-        );
-
-        self.strategy = self.decide_strategy();
-        println!(100, "STRATEGY: {:?}", self.strategy);
 
         let mut free = heap_end;
-        if self.strategy != Strategy::None {
+        if self.is_compaction_beneficial() {
             self.thread_backward_phase();
             free = self.move_phase() as u32;
         }
@@ -209,38 +216,38 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         free_bitmap();
     }
 
+    fn is_compaction_beneficial(&self) -> bool {
+        self.survival_rate() < 0.95
+    }
+
+    fn generation_size(&self) -> usize {
+        let base = match self.strategy {
+            Strategy::Young => self.heap.limits.last_free,
+            Strategy::Full => self.heap.limits.base,
+        };
+        self.heap.limits.free - base
+    }
+
+    fn survival_rate(&self) -> f64 {
+        self.marked_space as f64 / self.generation_size() as f64
+    }
+
     unsafe fn mark_phase(&mut self) {
+        self.marked_space = 0;
+        self.mark_root_set();
+        self.mark_all_reachable();
+    }
+
+    unsafe fn mark_root_set(&mut self) {
         self.mark_static_roots();
 
         if (*self.heap.roots.continuation_table_ptr_loc).is_ptr() {
             self.mark_object(*self.heap.roots.continuation_table_ptr_loc);
         }
 
-        self.mark_all_reachable();
-    }
-
-    fn old_generation_size(&self) -> u32 {
-        self.heap.limits.last_free as u32 - self.heap.limits.base as u32
-    }
-
-    fn old_generation_free_space(&self) -> u32 {
-        self.old_generation_size() - self.marked_old_space as u32
-    }
-
-    fn old_survival_rate(&self) -> f64 {
-        self.marked_old_space as f64 / self.old_generation_size() as f64
-    }
-
-    fn young_generation_size(&self) -> u32 {
-        self.heap.limits.free as u32 - self.heap.limits.last_free as u32
-    }
-
-    fn young_generation_free_space(&self) -> u32 {
-        self.young_generation_size() - self.marked_young_space as u32
-    }
-
-    fn young_survival_rate(&self) -> f64 {
-        self.marked_young_space as f64 / self.young_generation_size() as f64
+        if self.strategy == Strategy::Young {
+            self.mark_additional_young_root_set();
+        }
     }
 
     unsafe fn mark_static_roots(&mut self) {
@@ -256,30 +263,42 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         }
     }
 
-    unsafe fn mark_object(&mut self, obj: Value) {
-        let obj_tag = obj.tag();
-        let obj = obj.get_ptr() as u32;
+    unsafe fn mark_additional_young_root_set(&mut self) {
+        match &REMEMBERED_SET {
+            None => panic!("Write barrier is not activated"),
+            Some(remembered_set) => {
+                let mut iterator = remembered_set.iterate();
+                while iterator.has_next() {
+                    let location = iterator.current().get_raw();
+                    let object = *(location as *mut Value);
+                    // Check whether the location still refers to young object as this may have changed
+                    // due to subsequent writes to that location after the write barrier recording.
+                    if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free
+                    {
+                        self.mark_object(object);
+                    }
+                    iterator.next();
+                }
+            }
+        }
+    }
 
-        // Check object alignment to avoid undefined behavior. See also static_checks module.
-        debug_assert_eq!(obj % WORD_SIZE, 0);
-
-        let obj_idx = obj / WORD_SIZE;
-
-        if get_bit(obj_idx) {
-            // Already marked
+    unsafe fn mark_object(&mut self, object: Value) {
+        let pointer = object.get_ptr() as u32;
+        if self.strategy == Strategy::Young && pointer < self.heap.limits.last_free as u32 {
             return;
         }
+        debug_assert_eq!(pointer % WORD_SIZE, 0);
 
-        set_bit(obj_idx);
-        push_mark_stack(self.heap.mem, obj as usize, obj_tag);
-
-        let obj_size = object_size(obj as usize).to_bytes().as_usize();
-
-        if obj >= self.heap.limits.last_free as u32 {
-            self.marked_young_space += obj_size;
-        } else {
-            self.marked_old_space += obj_size;
+        let obj_idx = pointer / WORD_SIZE;
+        if get_bit(obj_idx) {
+            return;
         }
+        set_bit(obj_idx);
+
+        push_mark_stack(self.heap.mem, pointer as usize, object.tag());
+        let obj_size = object_size(pointer as usize).to_bytes().as_usize();
+        self.marked_space += obj_size;
     }
 
     unsafe fn mark_all_reachable(&mut self) {
@@ -321,32 +340,11 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         }
     }
 
-    fn decide_strategy(&self) -> Strategy {
-        if let Some(strategy) = self.forced_strategy {
-            return strategy;
-        }
-        const SUBSTANTIAL_FREE_SPACE: u32 = 1024 * 1024 * 1024;
-        const CRITICAL_MEMORY_LIMIT: u32 = (4096 - 256) * 1024 * 1024;
-        if self.old_survival_rate() < 0.5
-            || self.old_generation_size() + self.young_generation_size() >= CRITICAL_MEMORY_LIMIT
-                && self.old_survival_rate() < 0.95
-            || self.old_generation_free_space() + self.young_generation_free_space()
-                >= SUBSTANTIAL_FREE_SPACE
-        {
-            Strategy::Full
-        } else if self.young_survival_rate() < 0.8 {
-            Strategy::Young
-        } else {
-            Strategy::None
-        }
-    }
-
     unsafe fn should_be_threaded(&self, obj: *mut Obj) -> bool {
         let address = obj as usize;
         match self.strategy {
             Strategy::Young => address >= self.heap.limits.last_free,
             Strategy::Full => true,
-            Strategy::None => false,
         }
     }
 
@@ -438,20 +436,18 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         let mut free = self.heap.limits.base;
 
         let mut bitmap_iter = iter_bits();
+        if self.strategy == Strategy::Young {
+            self.thread_old_generation_pointers();
+            bitmap_iter.advance(self.heap.limits.last_free as u32);
+            free = self.heap.limits.last_free;
+        }
         let mut bit = bitmap_iter.next();
         while bit != BITMAP_ITER_END {
             let p = (bit * WORD_SIZE) as *mut Obj;
-            let compacting = self.strategy == Strategy::Full
-                || p as usize >= self.heap.limits.last_free && self.strategy == Strategy::Young;
-            if !compacting {
-                free = p as usize;
-            }
             let p_new = free;
 
-            if compacting {
-                // Update backwards references to the object's new location and restore object header
-                self.unthread(p, p_new);
-            }
+            // Update backwards references to the object's new location and restore object header
+            self.unthread(p, p_new);
 
             // Move the object
             let p_size_words = object_size(p as usize);
@@ -471,6 +467,23 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         }
 
         free
+    }
+
+    // Thread forward pointers in old generation leading to young generation
+    unsafe fn thread_old_generation_pointers(&mut self) {
+        // TODO: implement this more efficiently, by focussing on remembered set
+        let mut pointer = self.heap.limits.base;
+        while pointer < self.heap.limits.last_free {
+            let object = pointer as *mut Obj;
+            let tag = (*object).tag;
+            assert!(tag < TAG_FREE_SPACE);
+            if tag != TAG_ONE_WORD_FILLER {
+                assert!((*object).forward.is_null() || (*object).forward.get_ptr() == pointer);
+                self.thread_fwd_pointers(object);
+            }
+            let object_size = object_size(pointer).to_bytes().as_usize();
+            pointer += object_size;
+        }
     }
 
     /// Thread forward pointers in object
