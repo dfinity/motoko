@@ -22,12 +22,13 @@ unsafe fn test_insert_iterate(amount: u32) {
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
-    for value in 0..amount {
+    // start at 1 since 0 is the null ptr and not stored in the remembered set
+    for value in 1..amount+1 {
         remembered_set.insert(&mut mem, Value::from_scalar(value));
     }
 
     let mut iterator = remembered_set.iterate();
-    for expected in 0..amount {
+    for expected in 1..amount+1 {
         assert!(iterator.has_next());
         let actual = iterator.current().get_scalar();
         assert_eq!(actual, expected);

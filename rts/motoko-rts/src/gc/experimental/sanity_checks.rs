@@ -8,7 +8,7 @@ use super::write_barrier::REMEMBERED_SET;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
-use crate::visitor::visit_pointer_fields;
+use crate::visitor::{visit_pointer_fields, pointer_to_dynamic_heap};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 
@@ -111,3 +111,93 @@ unsafe fn recorded(value: u32) -> bool {
         }
     }
 }
+
+pub struct MemoryChecker {
+    heap_base: u32,
+    hp: u32,
+    static_roots: Value,
+    continuation_table_ptr_loc: *mut Value,
+}
+
+pub unsafe fn check_memory(
+    heap_base: u32,
+    hp: u32,
+    static_roots: Value,
+    continuation_table_ptr_loc: *mut Value
+) {
+    let checker = MemoryChecker {
+        heap_base,
+        hp, 
+        static_roots,
+        continuation_table_ptr_loc,
+    };
+    checker.check_memory();
+}
+
+impl MemoryChecker {
+    unsafe fn check_memory(&self) {
+        println!(100, "Memory check starts...");
+        println!(100, "  Static roots...");
+        self.check_static_roots();
+        if (*self.continuation_table_ptr_loc).is_ptr() {
+            println!(100, "  Continuation table...");
+            self.check_object(*self.continuation_table_ptr_loc);
+        }
+        println!(100, "  Heap...");
+        self.check_heap();
+        println!(100, "Memory check stops...");
+    }
+    
+    unsafe fn check_static_roots(&self) {
+        let root_array = self.static_roots.as_array();
+        for i in 0..root_array.len() {
+            let obj = root_array.get(i).as_obj();
+            assert_eq!(obj.tag(), TAG_MUTBOX);
+            assert!((obj as u32) < self.heap_base);
+            let mutbox = obj as *mut MutBox;
+            let field_addr = &mut (*mutbox).field;
+            if pointer_to_dynamic_heap(field_addr, self.heap_base as usize) {
+                let object = *field_addr;
+                println!(100, "Check root {:#x} {:#x}", field_addr.get_raw() as usize, object.get_raw() as usize);
+                self.check_object(object);
+            }
+        }
+    }
+    
+    unsafe fn check_object(&self, object: Value) {
+        self.check_object_header(object);
+        visit_pointer_fields(
+            &mut(),
+            object.as_obj(),
+            object.tag(),
+            0,
+            |_, field_address| {
+                (&self).check_object_header(*field_address);
+            },
+            |_, _, arr| {
+                arr.len()
+            },
+        );
+    }
+
+    unsafe fn check_object_header(&self, object: Value) {
+        assert!(object.is_ptr());
+        let pointer = object.get_ptr() as u32;
+        assert!(pointer < self.hp);
+        let tag = object.tag();
+        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+        let forward = object.forward();
+        assert!(forward.is_null_ptr() || forward.get_ptr() == pointer as usize);
+    }
+    
+    unsafe fn check_heap(&self) {
+        let mut pointer = self.heap_base;
+        while pointer < self.hp {
+            let object = Value::from_ptr(pointer as usize);
+            self.check_object(object);
+            let object_size = object_size(pointer as usize).to_bytes().as_usize();
+            pointer += object_size as u32;
+        }
+    }
+}
+

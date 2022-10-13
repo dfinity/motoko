@@ -18,9 +18,10 @@
 //! as it is discarded by each GC run.
 
 use core::mem::size_of;
+use core::ptr::null_mut;
 
 use crate::memory::{alloc_array, Memory};
-use crate::types::{Array, Value, TAG_NULL};
+use crate::types::{Array, Value};
 
 pub struct RememberedSet {
     first: *mut Array,
@@ -39,7 +40,6 @@ const NEXT_POINTER_OFFSET: u32 = 0;
 const COUNT_ENTRIES_OFFSET: u32 = 1;
 const FIRST_ENTRY_OFFSET: u32 = 2;
 pub const MAX_ENTRIES_PER_TABLE: u32 = TABLE_ARRAY_LENGTH - FIRST_ENTRY_OFFSET;
-const NULL_POINTER: Value = Value::from_raw(TAG_NULL);
 
 impl RememberedSet {
     pub unsafe fn new<M: Memory>(mem: &mut M) -> RememberedSet {
@@ -48,12 +48,12 @@ impl RememberedSet {
             first: table,
             last: table,
             size: 0,
-            cache: Value::from_raw(TAG_NULL),
+            cache: Self::null_ptr(),
         }
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        if value.is_null() || self.cache.get_raw() == value.get_raw() {
+        if value.is_null_ptr() || self.cache.get_raw() == value.get_raw() {
             return;
         }
         self.cache = value;
@@ -78,10 +78,7 @@ impl RememberedSet {
             MAX_ENTRIES_PER_TABLE
         );
         let next = Self::new_table(mem);
-        debug_assert_eq!(
-            self.last.get(NEXT_POINTER_OFFSET).get_raw(),
-            NULL_POINTER.get_raw()
-        );
+        debug_assert!(self.last.get(NEXT_POINTER_OFFSET).is_null_ptr());
         self.last
             .set(NEXT_POINTER_OFFSET, Value::from_ptr(next as usize));
         self.last = next;
@@ -89,7 +86,7 @@ impl RememberedSet {
 
     unsafe fn new_table<M: Memory>(mem: &mut M) -> *mut Array {
         let table = alloc_array(mem, TABLE_ARRAY_LENGTH).as_array();
-        table.set(NEXT_POINTER_OFFSET, NULL_POINTER);
+        table.set(NEXT_POINTER_OFFSET, Self::null_ptr());
         table.set(COUNT_ENTRIES_OFFSET, Value::from_scalar(0));
         table
     }
@@ -104,6 +101,10 @@ impl RememberedSet {
     pub fn size(&self) -> usize {
         self.size
     }
+
+    unsafe fn null_ptr() -> Value {
+        Value::from_raw((null_mut() as *mut usize) as u32)
+    }
 }
 
 impl RememberedSetIterator {
@@ -111,7 +112,7 @@ impl RememberedSetIterator {
         debug_assert!(
             self.index < MAX_ENTRIES_PER_TABLE
                 || self.index == MAX_ENTRIES_PER_TABLE
-                    && self.table.get(NEXT_POINTER_OFFSET).is_null()
+                    && self.table.get(NEXT_POINTER_OFFSET).is_null_ptr()
         );
         self.index < self.table.get(COUNT_ENTRIES_OFFSET).get_scalar()
     }
@@ -126,7 +127,7 @@ impl RememberedSetIterator {
         self.index += 1;
         if self.index == MAX_ENTRIES_PER_TABLE {
             let next = self.table.get(NEXT_POINTER_OFFSET);
-            if !next.is_null() {
+            if !next.is_null_ptr() {
                 self.table = next.as_array();
                 self.index = 0;
             }
