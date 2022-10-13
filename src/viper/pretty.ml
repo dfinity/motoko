@@ -131,13 +131,13 @@ let prog p =
     let ppf = Format.formatter_of_buffer b in
     Format.fprintf ppf "@[%a@]" pp_prog p;
     Format.pp_print_flush ppf ();
-    let marks = ref (List.rev_map (fun loc -> loc, loc) !marks, []) in
+    let marks = ref (List.rev_map (fun loc -> loc, loc) !marks, [], []) in
     let pos = ref 0 in
     let push line column = match !marks with
-        | (mot, vip) :: tl, r -> marks := tl, (mot, { vip with left = { vip.left with line; column } }) :: r
+        | (mot, vip) :: clos, ope, don -> marks := clos, (mot, { vip with left = { vip.left with line; column } }) :: ope, don
         | _ -> assert false in
     let pop line column = match !marks with
-        | r, (mot, vip) :: tl -> marks := (mot, { vip with right = { vip.right with line; column } }) :: r, tl
+        | clos, (mot, vip) :: ope, don -> marks := clos, ope, (mot, { vip with right = { vip.right with line; column } }) :: don
         | _ -> assert false in
     let line = ref 0 in
     let examine = function
