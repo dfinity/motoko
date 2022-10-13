@@ -171,4 +171,4 @@ let Some mot = lookup vip in
 Printf.eprintf "\ninput (VIP: %d:%d...%d:%d)\n" vip.left.line vip.left.column vip.right.line vip.right.column;
 Printf.eprintf "\nfound (MOT: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column;
 
-    Buffer.contents b
+    Buffer.contents b, lookup
