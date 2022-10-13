@@ -150,7 +150,14 @@ let prog p =
     | _ -> true in
     let b = Buffer.(of_seq Seq.(filter clean (map examine (to_seq b)))) in
     Printf.eprintf "\nLINES: %d\n" !line;
-    let dump = List.iter (fun (mot, vip) -> Printf.eprintf "(MOT: %d:%d, %d:%d) -> (VIP: %d:%d, %d:%d)\n" mot.left.line mot.right.line mot.left.column mot.right.column vip.left.line vip.right.line vip.left.column vip.right.column) in
+    let dump = List.iter (fun (mot, vip) -> Printf.eprintf "(MOT: %d:%d...%d:%d) -> (VIP: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column vip.left.line vip.left.column vip.right.line vip.right.column) in
     let _, _, mapping = !marks in
     dump mapping;
+    let inside { left; right } other = false in
+    let lookup (r : Source.region) =
+        let tighten prev (mot, vip) =
+            if inside r vip
+            then Some mot
+            else prev in
+        List.fold_left tighten None mapping in
     Buffer.contents b
