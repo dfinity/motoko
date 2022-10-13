@@ -4,7 +4,7 @@
 //! Based on the Motoko RTS mark & compact GC.
 
 pub mod remembered_set;
-//#[cfg(debug_assertions)]
+#[cfg(debug_assertions)]
 mod sanity_checks;
 pub mod write_barrier;
 
@@ -58,17 +58,12 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
         false, // roots not recorded by write barrier for generational GC
     );
 
-    let mut strategy = decide_strategy(
+    let strategy = decide_strategy(
         ic::get_aligned_heap_base() as usize,
         ic::LAST_HP as usize,
         ic::HP as usize,
     )
     .unwrap_or(Strategy::Young);
-
-    if INITIAL {
-        assert!(ic::LAST_HP == ic::get_aligned_heap_base());
-        strategy = Strategy::Full;
-    }
 
     experimental_gc_internal(
         mem,
@@ -91,9 +86,9 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
 
     update_strategy(strategy, ic::HP as usize);
 
-    sanity_checks::check_memory(ic::get_aligned_heap_base(), ic::HP, ic::get_static_roots(), crate::continuation_table::continuation_table_loc());
-    INITIAL = false;
-
+    #[cfg(debug_assertions)]
+    sanity_checks::check_memory(ic::get_aligned_heap_base(), ic::LAST_HP, ic::HP, ic::get_static_roots(), crate::continuation_table::continuation_table_loc());
+    
     #[cfg(debug_assertions)]
     sanity_checks::take_snapshot(mem, ic::HP);
 
@@ -102,7 +97,6 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     println!(100, "INFO: Generational GC stops ...");
 }
 
-static mut INITIAL: bool = true;
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
 unsafe fn decide_strategy(heap_base: usize, last_free: usize, hp: usize) -> Option<Strategy> {
@@ -234,7 +228,7 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
         );
 
         let mut free = heap_end;
-        if INITIAL || self.is_compaction_beneficial() {
+        if self.is_compaction_beneficial() {
             self.thread_backward_phase();
             free = self.move_phase() as u32;
         }

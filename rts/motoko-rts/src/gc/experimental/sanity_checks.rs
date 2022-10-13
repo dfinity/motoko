@@ -114,6 +114,7 @@ unsafe fn recorded(value: u32) -> bool {
 
 pub struct MemoryChecker {
     heap_base: u32,
+    last_hp: u32,
     hp: u32,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
@@ -121,12 +122,14 @@ pub struct MemoryChecker {
 
 pub unsafe fn check_memory(
     heap_base: u32,
+    last_hp: u32,
     hp: u32,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value
 ) {
     let checker = MemoryChecker {
         heap_base,
+        last_hp,
         hp, 
         static_roots,
         continuation_table_ptr_loc,
@@ -158,7 +161,6 @@ impl MemoryChecker {
             let field_addr = &mut (*mutbox).field;
             if pointer_to_dynamic_heap(field_addr, self.heap_base as usize) {
                 let object = *field_addr;
-                println!(100, "Check root {:#x} {:#x}", field_addr.get_raw() as usize, object.get_raw() as usize);
                 self.check_object(object);
             }
         }
@@ -194,7 +196,9 @@ impl MemoryChecker {
         let mut pointer = self.heap_base;
         while pointer < self.hp {
             let object = Value::from_ptr(pointer as usize);
-            self.check_object(object);
+            if object.tag() != TAG_ONE_WORD_FILLER {
+                self.check_object(object);
+            }
             let object_size = object_size(pointer as usize).to_bytes().as_usize();
             pointer += object_size as u32;
         }
