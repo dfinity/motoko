@@ -9,12 +9,15 @@ use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use crate::constants::WORD_SIZE;
+use crate::gc::{show_gc_start, show_gc_stop};
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
+
+const NAME: &str = "Compacting GC";
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
@@ -35,7 +38,8 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    println!(100, "Compacting GC starts ...");
+
+    show_gc_start(NAME);
 
     compacting_gc_internal(
         mem,
@@ -53,7 +57,8 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     );
 
     ic::LAST_HP = ic::HP;
-    println!(100, "Compacting GC stops ...");
+
+    show_gc_stop(NAME);
 }
 
 pub unsafe fn compacting_gc_internal<

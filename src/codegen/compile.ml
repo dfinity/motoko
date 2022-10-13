@@ -917,6 +917,7 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
+    E.add_func_import env "rts" "show_gc_messages" [] [];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
     E.add_func_import env "rts" "experimental_gc" [] [];
@@ -9958,7 +9959,13 @@ and conclude_module env start_fi_o =
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Experimental) ^^
     E.call_import env "rts" "init" ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+    (if !Flags.show_gc
+      then
+       E.call_import env "rts" "show_gc_messages"
+      else 
+       G.nop 
+     ) ^^
+     (if !Flags.gc_strategy = Mo_config.Flags.Experimental
      then
       E.call_import env "rts" "init_write_barrier"
      else 

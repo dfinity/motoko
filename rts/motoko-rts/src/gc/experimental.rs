@@ -16,6 +16,7 @@ use crate::gc::mark_compact::mark_stack::{
 };
 
 use crate::constants::WORD_SIZE;
+use crate::gc::{show_gc_start, show_gc_stop, SHOW_GC_MESSAGES};
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
@@ -24,6 +25,8 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 use motoko_rts_macros::ic_mem_fn;
 
 use self::write_barrier::REMEMBERED_SET;
+
+const NAME: &str = "Generational GC";
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Strategy {
@@ -43,14 +46,11 @@ unsafe fn schedule_experimental_gc<M: Memory>(mem: &mut M) {
     }
 }
 
-static mut GC_RUN: usize = 0;
-
 #[ic_mem_fn(ic_only)]
 unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
-    GC_RUN += 1;
-    println!(100, "INFO: Generational GC run {GC_RUN} starts ...");
+    show_gc_start(NAME);
 
     #[cfg(debug_assertions)]
     sanity_checks::verify_snapshot(
@@ -103,7 +103,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
 
     write_barrier::init_write_barrier(mem);
 
-    println!(100, "INFO: Generational GC run {GC_RUN} stops ...");
+    show_gc_stop(NAME);
 }
 
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
@@ -214,7 +214,9 @@ struct ExperimentalGC<'a, M: Memory> {
 
 impl<'a, M: Memory> ExperimentalGC<'a, M> {
     unsafe fn mark_compact<SetHp: Fn(u32)>(&mut self, set_hp: SetHp) {
-        println!(100, "STRATEGY: {:?}", self.strategy);
+        if SHOW_GC_MESSAGES {
+            println!(100, "STRATEGY: {:?}", self.strategy);
+        }
 
         let heap_end = self.heap.limits.free as u32;
         let mem_size = Bytes(heap_end - self.heap.limits.base as u32);
@@ -228,13 +230,15 @@ impl<'a, M: Memory> ExperimentalGC<'a, M> {
 
         self.mark_phase();
 
-        println!(
-            1000,
-            "MARKED {} OF {} RATIO {:.3}",
-            self.marked_space,
-            self.generation_size(),
-            self.survival_rate()
-        );
+        if SHOW_GC_MESSAGES {
+            println!(
+                1000,
+                "MARKED {} OF {} RATIO {:.3}",
+                self.marked_space,
+                self.generation_size(),
+                self.survival_rate()
+            );
+        }
 
         let mut free = heap_end;
         if self.is_compaction_beneficial() {
