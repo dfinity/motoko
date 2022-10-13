@@ -18,7 +18,6 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
   let ($$) head inner = Node (head, inner)
 
   let pos p = "Pos" $$ [Atom p.file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
-
   let source at it = if Config.sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
   let typ typ = Atom (Pretty.string_of_typ typ)
