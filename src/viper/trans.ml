@@ -153,16 +153,15 @@ and stmt ctxt (s : M.exp) : seqn =
               note = NoInfo } ]);
        at = s.at;
        note = NoInfo }
-(*    
-  | M.AsyncE(_, e) -> (* gross hack *)
+  | M.(AwaitE({ it = AsyncE (_, e); _ })) -> (* gross hack *)
      { it =
          ([],
-          [ { it = SeqnS (stmt e);
+          (* TODO: add havoc etc *)
+          [ { it = SeqnS (stmt ctxt e);
               at = s.at;
               note = NoInfo } ]);
        at = s.at;
        note = NoInfo }
-*)
   | M.WhileE(e, s1) ->
      { it =
          ([],

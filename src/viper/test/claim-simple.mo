@@ -7,9 +7,7 @@ actor {
   public shared func claim() : async () {
     if (not claimed) {
       claimed := true;
-      await async {
-        count := 1;
-      };
+      count := 1;
     };
   };
 
