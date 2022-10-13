@@ -101,7 +101,6 @@ and pp_exp ppf exp =
      fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
 
 and pp_stmt ppf stmt =
-  (*Printf.eprintf "\nLINES: %d -> %d" stmt.at.left.line !line;*)
   marks := stmt.at :: !marks;
   match stmt.it with
   | SeqnS seqn -> pp_seqn ppf seqn
@@ -131,15 +130,21 @@ and pp_fldacc ppf fldacc =
 let prog p =
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
-    let outfs = pp_get_formatter_out_functions ppf () in
-    let out_newline () = line := !line + 1; outfs.out_newline () in
-    (*pp_set_formatter_out_functions ppf { outfs with out_newline };*)
     Format.fprintf ppf "@[%a@]" pp_prog p;
     Format.pp_print_flush ppf ();
-    let marks = ref (List.rev !marks, []) in
+    let marks = ref (List.rev_map (fun loc -> loc, loc) !marks, []) in
+    let pos = ref 0 in
+    let push line column = match !marks with
+        | (mot, vip) :: tl, r -> marks := tl, (mot, { vip with left = { vip.left with line; column } }) :: r
+        | _ -> assert false in
+    let pop line column = match !marks with
+        | r, (mot, vip) :: tl -> marks := (mot, { vip with right = { vip.right with line; column } }) :: r, tl
+        | _ -> assert false in
     let examine = function
-    | '\n' -> line := !line + 1; '\n';
-    | a -> a in
+    | '\n' -> line := !line + 1; pos := 0; '\n';
+    | '\017' -> push !line !pos; ' '
+    | '\019' -> pop !line !pos; ' '
+    | a -> pos := !pos + 1; a in
     let b = Buffer.(of_seq (Seq.map examine (to_seq b))) in
     Printf.eprintf "\nLINES: %d\n" !line;
     Buffer.contents b
