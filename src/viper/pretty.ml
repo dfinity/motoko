@@ -117,7 +117,7 @@ and pp_stmt ppf stmt =
       id.it
       pp_exp exp
   | FieldAssignS(fldacc, exp2) ->
-    fprintf ppf "@[<v 2>%a := %a@]"
+    fprintf ppf "\017@[<v 2>%a := %a@]\019"
       pp_fldacc fldacc
       pp_exp exp2
 
