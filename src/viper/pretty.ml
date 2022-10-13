@@ -3,7 +3,6 @@ open Syntax
 
 open Format
 
-let line = ref 0
 let marks = ref []
 
 let pr = pp_print_string
@@ -140,11 +139,15 @@ let prog p =
     let pop line column = match !marks with
         | r, (mot, vip) :: tl -> marks := (mot, { vip with right = { vip.right with line; column } }) :: r, tl
         | _ -> assert false in
+    let line = ref 0 in
     let examine = function
     | '\n' -> line := !line + 1; pos := 0; '\n';
-    | '\017' -> push !line !pos; ' '
-    | '\019' -> pop !line !pos; ' '
+    | '\017' -> push !line !pos; '\017'
+    | '\019' -> pop !line !pos; '\017'
     | a -> pos := !pos + 1; a in
-    let b = Buffer.(of_seq (Seq.map examine (to_seq b))) in
+    let clean = function
+    | '\017' -> false
+    | _ -> true in
+    let b = Buffer.(of_seq Seq.(filter clean (map examine (to_seq b)))) in
     Printf.eprintf "\nLINES: %d\n" !line;
     Buffer.contents b
