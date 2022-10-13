@@ -153,11 +153,22 @@ let prog p =
     let dump = List.iter (fun (mot, vip) -> Printf.eprintf "(MOT: %d:%d...%d:%d) -> (VIP: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column vip.left.line vip.left.column vip.right.line vip.right.column) in
     let _, _, mapping = !marks in
     dump mapping;
-    let inside { left; right } other = false in
+    let inside { left; right } other =
+        left.file = other.left.file &&
+        right.file = other.right.file &&
+        (other.left.line, other.left.column) <= (left.line, left.column) &&
+        (right.line, right.column) <= (other.right.line, other.right.column) in
     let lookup (r : Source.region) =
         let tighten prev (mot, vip) =
             if inside r vip
             then Some mot
             else prev in
         List.fold_left tighten None mapping in
+
+let _, vip = List.(hd (tl ( mapping))) in
+let vip = { vip with left = { vip.left with column = vip.left.column + 1 } } in
+let Some mot = lookup vip in
+Printf.eprintf "\ninput (VIP: %d:%d...%d:%d)\n" vip.left.line vip.left.column vip.right.line vip.right.column;
+Printf.eprintf "\nfound (MOT: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column;
+
     Buffer.contents b
