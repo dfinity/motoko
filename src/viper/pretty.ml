@@ -139,7 +139,7 @@ let prog p =
     let pop line column = match !marks with
         | clos, (mot, vip) :: ope, don -> marks := clos, ope, (mot, { vip with right = { vip.right with line; column } }) :: don
         | _ -> assert false in
-    let line = ref 0 in
+    let line = ref 1 in
     let examine = function
     | '\n' -> line := !line + 1; pos := 0; '\n';
     | '\017' -> push !line !pos; '\017'
@@ -150,4 +150,7 @@ let prog p =
     | _ -> true in
     let b = Buffer.(of_seq Seq.(filter clean (map examine (to_seq b)))) in
     Printf.eprintf "\nLINES: %d\n" !line;
+    let dump = List.iter (fun (mot, vip) -> Printf.eprintf "(MOT: %d:%d, %d:%d) -> (VIP: %d:%d, %d:%d)\n" mot.left.line mot.right.line mot.left.column mot.right.column vip.left.line vip.right.line vip.left.column vip.right.column) in
+    let _, _, mapping = !marks in
+    dump mapping;
     Buffer.contents b
