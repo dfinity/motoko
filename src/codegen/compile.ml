@@ -1346,6 +1346,8 @@ module Tagged = struct
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
+  let null_ptr = 0l
+
   (* The tag *)
   let header_size = 2l
   let tag_field = 0l
@@ -1357,7 +1359,7 @@ module Tagged = struct
     Heap.store_field tag_field
 
   let store_forward_address =
-    compile_unboxed_const (int_of_tag Null) ^^
+    compile_unboxed_const null_ptr ^^ (* forward address *)
     Heap.store_field forward_address_field
 
   let load_tag =
@@ -1431,7 +1433,7 @@ module Tagged = struct
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
       compile_unboxed_const (int_of_tag tag) ::
-      compile_unboxed_const (int_of_tag Null) :: (* forward address *)
+      compile_unboxed_const null_ptr :: (* forward address *)
       element_instructions
 
 end (* Tagged *)
@@ -1454,7 +1456,7 @@ module MutBox = struct
 
   let static env =
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
-    let forward = bytes_of_int32 (Tagged.int_of_tag Tagged.Null) in (* forward address *)
+    let forward = bytes_of_int32 Tagged.null_ptr in (* forward address *)
     let zero = bytes_of_int32 0l in
     let ptr = E.add_mutable_static_bytes env (tag ^ forward ^ zero) in
     E.add_static_root env ptr;
@@ -1499,6 +1501,7 @@ module Opt = struct
   let null_vanilla_lit env : int32 =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Null);
+      I32 Tagged.null_ptr; (* forward address *)
     ]
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
@@ -1519,7 +1522,7 @@ module Opt = struct
                singleton for that: *)
             compile_unboxed_const (E.add_static env StaticBytes.[
               I32 Tagged.(int_of_tag Some);
-              I32 Tagged.(int_of_tag Null); (* forward address *)
+              I32 Tagged.null_ptr; (* forward address *)
               I32 (null_vanilla_lit env)
             ])
           ; Tagged.Some,
@@ -1622,7 +1625,7 @@ module Closure = struct
   let static_closure env fi : int32 =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Closure);
-      I32 Tagged.(int_of_tag Null); (* forward address *)
+      I32 Tagged.null_ptr; (* forward address *)
       I32 (E.add_fun_ptr env fi);
       I32 0l
     ]
@@ -1654,7 +1657,7 @@ module BoxedWord64 = struct
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits64);
-        I32 Tagged.(int_of_tag Null); (* forward address *)
+        I32 Tagged.null_ptr; (* forward address *)
         I64 i
       ]
 
@@ -1776,7 +1779,7 @@ module BoxedSmallWord = struct
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits32);
-        I32 Tagged.(int_of_tag Null); (* forward address *)
+        I32 Tagged.null_ptr; (* forward address *)
         I32 i
       ]
 
@@ -2021,7 +2024,7 @@ module Float = struct
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Bits64);
-      I32 Tagged.(int_of_tag Null); (* forward address *)
+      I32 Tagged.null_ptr; (* forward address *)
       I64 (Wasm.F64.to_bits f)
     ]
 
@@ -2886,7 +2889,7 @@ module BigNumLibtommath : BigNumType = struct
     (* cf. mp_int in tommath.h *)
     let ptr = E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag BigInt);
-      I32 Tagged.(int_of_tag Null); (* forward address *)
+      I32 Tagged.null_ptr; (* forward address *)
       I32 size; (* used *)
       I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
@@ -3019,7 +3022,7 @@ module Object = struct
 
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Object);
-      I32 Tagged.(int_of_tag Null); (* forward address *)
+      I32 Tagged.null_ptr; (* forward address *)
       I32 (Int32.of_int (List.length fs));
       I32 hash_ptr;
       i32s ptrs;
@@ -3188,7 +3191,7 @@ module Blob = struct
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Blob);
-      I32 Tagged.(int_of_tag Null); (* forward address *)
+      I32 Tagged.null_ptr; (* forward address *)
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -3473,7 +3476,7 @@ module Arr = struct
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Array);
-      I32 Tagged.(int_of_tag Null); (* forward address *)
+      I32 Tagged.null_ptr; (* forward address *)
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]
@@ -5283,7 +5286,7 @@ module MakeSerialization (Strm : Stream) = struct
   let coercion_error_value env : int32 =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag CoercionFailure);
-      I32 Tagged.(int_of_tag Null); (* forward address *)
+      I32 Tagged.null_ptr; (* forward address *)
     ]
 
   (* The main deserialization function, generated once per type hash.

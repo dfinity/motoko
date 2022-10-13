@@ -162,6 +162,8 @@ unsafe fn evac<M: Memory>(
 
     // Update forward address
     let to_space_obj = obj_addr as *mut Obj;
+    debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
+    debug_assert!((*to_space_obj).tag >= TAG_OBJECT && (*to_space_obj).tag <= TAG_NULL);
     (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
