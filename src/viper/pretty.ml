@@ -4,6 +4,7 @@ open Syntax
 open Format
 
 let line = ref 0
+let marks = ref []
 
 let pr = pp_print_string
 
@@ -100,20 +101,21 @@ and pp_exp ppf exp =
      fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
 
 and pp_stmt ppf stmt =
-  Printf.eprintf "\nLINES: %d -> %d" stmt.at.left.line !line;
+  (*Printf.eprintf "\nLINES: %d -> %d" stmt.at.left.line !line;*)
+  marks := stmt.at :: !marks;
   match stmt.it with
   | SeqnS seqn -> pp_seqn ppf seqn
   | IfS(exp1, s1, { it = ([],[]); _ }) ->
-    fprintf ppf "@[<v 2>if %a@ %a@]"
+    fprintf ppf "\017@[<v 2>if %a@ %a@]\019"
       pp_exp exp1
       pp_seqn s1
   | IfS(exp1, s1, s2) ->
-    fprintf ppf "@[<v 2>if %a@ %aelse@ %a@]"
+    fprintf ppf "\017@[<v 2>if %a@ %aelse@ %a@]\019"
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
   | VarAssignS(id, exp) ->
-    fprintf ppf "@[<v 2>%s := %a@]"
+    fprintf ppf "\017@[<v 2>%s := %a@]\019"
       id.it
       pp_exp exp
   | FieldAssignS(fldacc, exp2) ->
@@ -131,8 +133,13 @@ let prog p =
     let ppf = Format.formatter_of_buffer b in
     let outfs = pp_get_formatter_out_functions ppf () in
     let out_newline () = line := !line + 1; outfs.out_newline () in
-    pp_set_formatter_out_functions ppf { outfs with out_newline };
+    (*pp_set_formatter_out_functions ppf { outfs with out_newline };*)
     Format.fprintf ppf "@[%a@]" pp_prog p;
     Format.pp_print_flush ppf ();
-    Printf.eprintf "\nLINES: %d" !line;
+    let marks = ref (List.rev !marks, []) in
+    let examine = function
+    | '\n' -> line := !line + 1; '\n';
+    | a -> a in
+    let b = Buffer.(of_seq (Seq.map examine (to_seq b))) in
+    Printf.eprintf "\nLINES: %d\n" !line;
     Buffer.contents b
