@@ -43,11 +43,14 @@ unsafe fn schedule_experimental_gc<M: Memory>(mem: &mut M) {
     }
 }
 
+static mut GC_RUN: usize = 0;
+
 #[ic_mem_fn(ic_only)]
 unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
-    println!(100, "INFO: Generational GC starts ...");
+    GC_RUN += 1;
+    println!(100, "INFO: Generational GC run {GC_RUN} starts ...");
 
     #[cfg(debug_assertions)]
     sanity_checks::verify_snapshot(
@@ -94,7 +97,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
 
     write_barrier::init_write_barrier(mem);
 
-    println!(100, "INFO: Generational GC stops ...");
+    println!(100, "INFO: Generational GC run {GC_RUN} stops ...");
 }
 
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
