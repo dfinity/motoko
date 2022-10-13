@@ -126,9 +126,9 @@ unsafe fn decide_strategy(heap_base: usize, last_free: usize, hp: usize) -> Opti
 }
 
 unsafe fn update_strategy(strategy: Strategy, hp: usize) {
-    const GROWTH_RATE: usize = 2;
+    const GROWTH_RATE: f64 = 1.5;
     if strategy == Strategy::Full {
-        OLD_GENERATION_THRESHOLD = hp as usize * GROWTH_RATE;
+        OLD_GENERATION_THRESHOLD = (hp as f64 * GROWTH_RATE) as usize;
     }
 }
 
