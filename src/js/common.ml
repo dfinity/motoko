@@ -5,16 +5,6 @@ open Mo_config
 module Js = Js_of_ocaml.Js
 module Sys_js = Js_of_ocaml.Sys_js
 
-module Arrange_sources = Mo_def.Arrange.Make (struct
-  let sources = true
-  let types = false
-end)
-
-module Arrange_sources_types = Mo_def.Arrange.Make (struct
-  let sources = true
-  let types = true
-end)
-
 let position_of_pos pos =
   object%js
     (* The LSP spec requires zero-based positions *)
@@ -115,20 +105,32 @@ let js_parse_candid s =
     Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog)))
 
 let js_parse_motoko s =
-  let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
+  let main_file = "" in
+  let parse_result = Pipeline.parse_string main_file (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    Js.some (js_of_sexpr (Arrange_sources.prog prog)))
+    let module Arrange = Mo_def.Arrange.Make (struct
+      let include_sources = true
+      let include_types = false
+      let main_file = Some main_file
+    end)
+    in Js.some (js_of_sexpr (Arrange.prog prog)))
 
 let js_parse_motoko_typed paths =
   let paths = paths |> Js.to_array |> Array.to_list in
   let
     load_result = Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env
-  in js_result load_result (fun (libs, progs, senv) ->
-    progs |> List.map (fun prog ->
-      object%js
-        val ast = js_of_sexpr (Arrange_sources_types.prog prog)
-        (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
-      end) |> Array.of_list |> Js.array |> Js.some)
+  in
+  js_result load_result (fun (libs, progs, senv) ->
+  progs |> List.map (fun prog ->
+    let module Arrange_sources_types = Mo_def.Arrange.Make (struct
+      let include_sources = true
+      let include_types = true
+      let main_file = Some prog.at.left.file
+    end)
+    in object%js
+      val ast = js_of_sexpr (Arrange_sources_types.prog prog)
+      (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
+    end) |> Array.of_list |> Js.array |> Js.some)
 
 let js_save_file filename content =
   let filename = Js.to_string filename in

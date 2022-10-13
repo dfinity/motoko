@@ -5,22 +5,31 @@ open Source
 open Syntax
 open Wasm.Sexpr
 
-type config = {
-  sources: bool;
-  types: bool;
-}
+module type Config = sig
+  val include_sources : bool
+  val include_types : bool
+  val main_file : string option
+end
 
-let default_config : config = {sources = false; types = false}
+module Default = struct
+  let include_sources = false
+  let include_types = false
+  let main_file = None
+end
 
-module Pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
+module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
 
-module Make (Config : sig val sources : bool val types : bool end) = struct
+module Make (Cfg : Config) = struct
   let ($$) head inner = Node (head, inner)
 
-  let pos p = "Pos" $$ [Atom p.file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
-  let source at it = if Config.sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
+  let pos p =
+    let file = match Cfg.main_file with
+    | Some f when f <> p.file -> p.file
+    | _ -> ""
+    in "Pos" $$ [Atom file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
+  let source at it = if Cfg.include_sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
-  let typ typ = Atom (Pretty.string_of_typ typ)
+  let typ typ = Atom (Type_pretty.string_of_typ typ)
   (* let typ typ = Atom (Type.string_of_typ typ) *)
   (* let typ = Mo_types.Arrange_type.typ *)
   
@@ -28,7 +37,7 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot_typ t it = if Config.types then ":" $$ [it; typ t] else it
+  let annot_typ t it = if Cfg.include_types then ":" $$ [it; typ t] else it
   let annot note = annot_typ note.note_typ
 
   let id i = Atom i.it
@@ -230,7 +239,4 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
 end
 
 (* Defaults *)
-include Make (struct
-  let sources = false
-  let types = false
-end)
+include Make (Default)
