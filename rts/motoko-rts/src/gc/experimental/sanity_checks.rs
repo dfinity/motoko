@@ -8,7 +8,7 @@ use super::write_barrier::REMEMBERED_SET;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
-use crate::visitor::{visit_pointer_fields, pointer_to_dynamic_heap};
+use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 
@@ -125,12 +125,12 @@ pub unsafe fn check_memory(
     last_hp: u32,
     hp: u32,
     static_roots: Value,
-    continuation_table_ptr_loc: *mut Value
+    continuation_table_ptr_loc: *mut Value,
 ) {
     let checker = MemoryChecker {
         heap_base,
         last_hp,
-        hp, 
+        hp,
         static_roots,
         continuation_table_ptr_loc,
     };
@@ -150,7 +150,7 @@ impl MemoryChecker {
         self.check_heap();
         println!(100, "Memory check stops...");
     }
-    
+
     unsafe fn check_static_roots(&self) {
         let root_array = self.static_roots.as_array();
         for i in 0..root_array.len() {
@@ -165,20 +165,18 @@ impl MemoryChecker {
             }
         }
     }
-    
+
     unsafe fn check_object(&self, object: Value) {
         self.check_object_header(object);
         visit_pointer_fields(
-            &mut(),
+            &mut (),
             object.as_obj(),
             object.tag(),
             0,
             |_, field_address| {
                 (&self).check_object_header(*field_address);
             },
-            |_, _, arr| {
-                arr.len()
-            },
+            |_, _, arr| arr.len(),
         );
     }
 
@@ -191,7 +189,7 @@ impl MemoryChecker {
         let forward = object.forward();
         assert!(forward.is_null_ptr() || forward.get_ptr() == pointer as usize);
     }
-    
+
     unsafe fn check_heap(&self) {
         let mut pointer = self.heap_base;
         while pointer < self.hp {
@@ -204,4 +202,3 @@ impl MemoryChecker {
         }
     }
 }
-

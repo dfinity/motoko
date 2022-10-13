@@ -16,8 +16,8 @@
 //!
 //! NOTE: Remembered set structure is not recorded by write barriers
 //! as it is discarded by each GC run.
-//! 
-//! NOTE: The table must be blobs, as their entries must not be 
+//!
+//! NOTE: The table must be blobs, as their entries must not be
 //! analyzed by the GC.
 
 use core::mem::size_of;
@@ -25,7 +25,7 @@ use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{Blob, Value, Bytes};
+use crate::types::{Blob, Bytes, Value};
 
 pub struct RememberedSet {
     first: *mut Blob,
@@ -84,7 +84,11 @@ impl RememberedSet {
         );
         let next = Self::new_table(mem);
         debug_assert!(table_get(self.last, NEXT_POINTER_OFFSET).is_null_ptr());
-        table_set(self.last, NEXT_POINTER_OFFSET, Value::from_ptr(next as usize));
+        table_set(
+            self.last,
+            NEXT_POINTER_OFFSET,
+            Value::from_ptr(next as usize),
+        );
         self.last = next;
     }
 
@@ -115,7 +119,7 @@ impl RememberedSetIterator {
     pub unsafe fn has_next(&self) -> bool {
         debug_assert!(
             self.index < MAX_ENTRIES_PER_TABLE
-                || self.index == MAX_ENTRIES_PER_TABLE 
+                || self.index == MAX_ENTRIES_PER_TABLE
                     && table_get(self.table, NEXT_POINTER_OFFSET).is_null_ptr()
         );
         self.index < table_get(self.table, COUNT_ENTRIES_OFFSET).get_scalar()

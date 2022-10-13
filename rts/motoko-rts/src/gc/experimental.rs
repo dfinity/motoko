@@ -90,8 +90,14 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     update_strategy(strategy, ic::HP as usize);
 
     #[cfg(debug_assertions)]
-    sanity_checks::check_memory(ic::get_aligned_heap_base(), ic::LAST_HP, ic::HP, ic::get_static_roots(), crate::continuation_table::continuation_table_loc());
-    
+    sanity_checks::check_memory(
+        ic::get_aligned_heap_base(),
+        ic::LAST_HP,
+        ic::HP,
+        ic::get_static_roots(),
+        crate::continuation_table::continuation_table_loc(),
+    );
+
     #[cfg(debug_assertions)]
     sanity_checks::take_snapshot(mem, ic::HP);
 
