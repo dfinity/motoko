@@ -58,7 +58,8 @@ impl RememberedSet {
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        if (value.get_raw() as *mut Value) == null_mut() || self.cache.get_raw() == value.get_raw() {
+        if (value.get_raw() as *mut Value) == null_mut() || self.cache.get_raw() == value.get_raw()
+        {
             return;
         }
         self.cache = value;
@@ -83,7 +84,10 @@ impl RememberedSet {
             MAX_ENTRIES_PER_TABLE
         );
         let next = Self::new_table(mem);
-        debug_assert_eq!(table_get(self.last, NEXT_POINTER_OFFSET).get_raw() as *mut Blob, null_mut());
+        debug_assert_eq!(
+            table_get(self.last, NEXT_POINTER_OFFSET).get_raw() as *mut Blob,
+            null_mut()
+        );
         table_set(
             self.last,
             NEXT_POINTER_OFFSET,
@@ -120,7 +124,8 @@ impl RememberedSetIterator {
         debug_assert!(
             self.index < MAX_ENTRIES_PER_TABLE
                 || self.index == MAX_ENTRIES_PER_TABLE
-                    && table_get(self.table, NEXT_POINTER_OFFSET).get_raw() as *mut Blob == null_mut()
+                    && table_get(self.table, NEXT_POINTER_OFFSET).get_raw() as *mut Blob
+                        == null_mut()
         );
         self.index < table_get(self.table, COUNT_ENTRIES_OFFSET).get_scalar()
     }
