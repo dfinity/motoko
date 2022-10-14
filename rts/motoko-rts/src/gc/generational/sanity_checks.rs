@@ -114,10 +114,7 @@ pub struct MemoryChecker<'a> {
 }
 
 pub unsafe fn check_memory(limits: &Limits, roots: &Roots) {
-    let checker = MemoryChecker {
-        limits,
-        roots,
-    };
+    let checker = MemoryChecker { limits, roots };
     checker.check_memory();
 }
 

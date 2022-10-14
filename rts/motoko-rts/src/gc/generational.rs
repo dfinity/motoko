@@ -27,12 +27,6 @@ use motoko_rts_macros::ic_mem_fn;
 
 use self::write_barrier::REMEMBERED_SET;
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum Strategy {
-    Young,
-    Full,
-}
-
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
     let limits = get_limits();
@@ -61,7 +55,6 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     let mut gc = GenerationalGC::new(heap, strategy);
 
     #[cfg(debug_assertions)]
-    // roots not recorded by write barrier for generational GC
     sanity_checks::verify_snapshot(&gc.heap, false);
 
     gc.run();
@@ -106,6 +99,12 @@ unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
     ic::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
 }
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum Strategy {
+    Young,
+    Full,
+}
+
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
@@ -119,10 +118,6 @@ unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
         .as_ref()
         .expect("Write barrier is not activated")
         .size();
-
-    if remembered_set_size > 1000 {
-        println!(100, "INFO: REMEMBERED SET SIZE {remembered_set_size}");
-    }
 
     if old_generation_size > OLD_GENERATION_THRESHOLD || limits.free >= CRITICAL_MEMORY_LIMIT {
         Some(Strategy::Full)
@@ -192,7 +187,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
         if crate::gc::SHOW_GC_MESSAGES {
             println!(
-                1000,
+                100,
                 "MARKED {} OF {} RATIO {:.3}",
                 self.marked_space,
                 self.generation_size(),
@@ -245,14 +240,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn mark_static_roots(&mut self) {
         let root_array = self.heap.roots.static_roots.as_array();
-
-        // Static objects are not in the dynamic heap so don't need marking.
         for i in 0..root_array.len() {
-            let obj = root_array.get(i).as_obj();
-            // Root array should only have pointers to other static MutBoxes
-            debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
-            debug_assert!((obj as usize) < self.heap.limits.base); // check that MutBox is static
-            self.mark_root_mutbox_fields(obj as *mut MutBox);
+            let object = root_array.get(i).as_obj();
+            debug_assert_eq!(object.tag(), TAG_MUTBOX);
+            debug_assert!((object as usize) < self.heap.limits.base);
+            self.mark_root_mutbox_fields(object as *mut MutBox);
         }
     }
 
@@ -284,8 +276,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         set_bit(obj_idx);
 
         push_mark_stack(self.heap.mem, pointer as usize, object.tag());
-        let obj_size = object_size(pointer as usize).to_bytes().as_usize();
-        self.marked_space += obj_size;
+        self.marked_space += object_size(pointer as usize).to_bytes().as_usize();
     }
 
     unsafe fn mark_all_reachable(&mut self) {
@@ -294,41 +285,40 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
     }
 
-    unsafe fn mark_fields(&mut self, obj: *mut Obj, obj_tag: Tag) {
+    unsafe fn mark_fields(&mut self, object: *mut Obj, object_tag: Tag) {
         visit_pointer_fields(
             self,
-            obj,
-            obj_tag,
+            object,
+            object_tag,
             self.heap.limits.base,
-            |gc, field_addr| {
-                let field_value = *field_addr;
+            |gc, field_address| {
+                let field_value = *field_address;
                 gc.mark_object(field_value);
             },
-            |gc, slice_start, arr| {
+            |gc, slice_start, array| {
                 const SLICE_INCREMENT: u32 = 127;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-                if arr.len() - slice_start > SLICE_INCREMENT {
+                if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     // push an entire (suffix) array slice
-                    push_mark_stack(gc.heap.mem, arr as usize, new_start);
+                    push_mark_stack(gc.heap.mem, array as usize, new_start);
                     new_start
                 } else {
-                    arr.len()
+                    array.len()
                 }
             },
         );
     }
 
-    /// Specialized version of `mark_fields` for root `MutBox`es.
     unsafe fn mark_root_mutbox_fields(&mut self, mutbox: *mut MutBox) {
-        let field_addr = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field_addr, self.heap.limits.base) {
-            self.mark_object(*field_addr);
+        let field_address = &mut (*mutbox).field;
+        if pointer_to_dynamic_heap(field_address, self.heap.limits.base) {
+            self.mark_object(*field_address);
         }
     }
 
-    unsafe fn should_be_threaded(&self, obj: *mut Obj) -> bool {
-        let address = obj as usize;
+    unsafe fn should_be_threaded(&self, object: *mut Obj) -> bool {
+        let address = object as usize;
         match self.strategy {
             Strategy::Young => address >= self.heap.limits.last_free,
             Strategy::Full => address >= self.heap.limits.base,
@@ -338,17 +328,15 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn thread_backward_phase(&mut self) {
         self.thread_all_backward_pointers();
 
-        // For static root, also forward pointers are threaded.
+        // For static roots, also forward pointers are threaded.
         // Therefore, this must happen after the heap traversal for backwards pointer threading.
         self.thread_static_roots();
 
         if (*self.heap.roots.continuation_table_ptr_loc).is_ptr() {
-            // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
-            // it will be readable when we unthread the continuation table
             self.thread(self.heap.roots.continuation_table_ptr_loc);
         }
 
-        // If young collection, the forward pointers of old generation need to be threaded too.
+        // For the young generation GC run, the forward pointers from the old generation must be threaded too.
         if self.strategy == Strategy::Young {
             self.thread_old_generation_pointers();
         }
@@ -356,21 +344,17 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn thread_static_roots(&self) {
         let root_array = self.heap.roots.static_roots.as_array();
-
         for i in 0..root_array.len() {
-            let obj = root_array.get(i).as_obj();
-            // Root array should only have pointers to other static MutBoxes
-            debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
-            debug_assert!((obj as usize) < self.heap.limits.base); // check that MutBox is static
-            self.thread_root_mutbox_fields(obj as *mut MutBox);
+            let object = root_array.get(i).as_obj();
+            debug_assert_eq!(object.tag(), TAG_MUTBOX);
+            debug_assert!((object as usize) < self.heap.limits.base);
+            self.thread_root_mutbox_fields(object as *mut MutBox);
         }
     }
 
     unsafe fn thread_root_mutbox_fields(&self, mutbox: *mut MutBox) {
         let field_addr = &mut (*mutbox).field;
         if pointer_to_dynamic_heap(field_addr, self.heap.limits.base) {
-            // It's OK to thread forward pointers here as the static objects won't be moved, so we will
-            // be able to unthread objects pointed by these fields later.
             self.thread(field_addr);
         }
     }
@@ -382,34 +366,27 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
         let mut bit = bitmap_iter.next();
         while bit != BITMAP_ITER_END {
-            let obj = (bit * WORD_SIZE) as *mut Obj;
-            let tag = obj.tag();
-
-            self.thread_backward_pointer_fields(obj, tag);
-
+            let object = (bit * WORD_SIZE) as *mut Obj;
+            self.thread_backward_pointer_fields(object);
             bit = bitmap_iter.next();
         }
     }
 
-    unsafe fn thread_backward_pointer_fields(&mut self, obj: *mut Obj, obj_tag: Tag) {
-        assert!(obj_tag < TAG_ARRAY_SLICE_MIN);
+    unsafe fn thread_backward_pointer_fields(&mut self, object: *mut Obj) {
+        debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         visit_pointer_fields(
-            self,
-            obj,
-            obj_tag,
+            &mut (),
+            object,
+            object.tag(),
             self.heap.limits.base,
-            |gc, field_addr| {
-                let field_value = *field_addr;
-
+            |_, field_address| {
+                let field_value = *field_address;
                 // Thread if backwards or self pointer
-                if field_value.get_ptr() <= obj as usize {
-                    gc.thread(field_addr);
+                if field_value.get_ptr() <= object as usize {
+                    (&self).thread(field_address);
                 }
             },
-            |_, slice_start, arr| {
-                debug_assert!(slice_start == 0);
-                arr.len()
-            },
+            |_, _, array| array.len(),
         );
     }
 
@@ -448,19 +425,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         set_bit(location_index);
     }
 
-    /// Linearly scan the heap, for each live object:
-    ///
-    /// - Mark step threads all backwards pointers and pointers from roots, so unthread to update those
-    ///   pointers to the objects new location.
-    ///
-    /// - Move the object
-    ///
-    /// - Thread forward pointers of the object
-    ///
-    /// Sets the new free pointer in self.heap.limits
-    ///
     unsafe fn move_phase(&mut self) {
-        REMEMBERED_SET = None; // no longer valid when moving phase starts
+        REMEMBERED_SET = None; // no longer valid when the moving phase starts
         let mut free = self.heap.limits.base;
 
         let mut bitmap_iter = iter_bits();
@@ -470,27 +436,27 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
         let mut bit = bitmap_iter.next();
         while bit != BITMAP_ITER_END {
-            let p = (bit * WORD_SIZE) as *mut Obj;
-            let p_new = free;
+            let old_pointer = (bit * WORD_SIZE) as *mut Obj;
+            let new_pointer = free;
 
             // Update backwards references to the object's new location and restore object header
-            self.unthread(p, p_new);
+            self.unthread(old_pointer, new_pointer);
 
             // Move the object
-            let p_size_words = object_size(p as usize);
-            if p_new as usize != p as usize {
-                memcpy_words(p_new as usize, p as usize, p_size_words);
-                assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
+            let object_size = object_size(old_pointer as usize);
+            if new_pointer as usize != old_pointer as usize {
+                memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
+                debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
                 // Update forward address
-                let new_obj = p_new as *mut Obj;
-                assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-                (*new_obj).forward = Value::from_ptr(p_new as usize);
+                let new_object = new_pointer as *mut Obj;
+                debug_assert!(new_object.tag() >= TAG_OBJECT && new_object.tag() <= TAG_NULL);
+                (*new_object).forward = Value::from_ptr(new_pointer as usize);
             }
 
-            free += p_size_words.to_bytes().as_usize();
+            free += object_size.to_bytes().as_usize();
 
             // Thread forward pointers of the object, even if not moved
-            self.thread_fwd_pointers(p_new as *mut Obj);
+            self.thread_forward_pointers(new_pointer as *mut Obj);
 
             bit = bitmap_iter.next();
         }
@@ -499,24 +465,22 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     /// Thread forward pointers in object
-    unsafe fn thread_fwd_pointers(&mut self, obj: *mut Obj) {
+    unsafe fn thread_forward_pointers(&mut self, object: *mut Obj) {
         visit_pointer_fields(
-            self,
-            obj,
-            obj.tag(),
+            &mut (),
+            object,
+            object.tag(),
             self.heap.limits.base,
-            |gc, field_addr| {
-                if (*field_addr).get_ptr() > obj as usize {
-                    gc.thread(field_addr)
+            |_, field_address| {
+                if (*field_address).get_ptr() > object as usize {
+                    (&self).thread(field_address)
                 }
             },
-            |_, _, arr| arr.len(),
+            |_, _, array| array.len(),
         );
     }
 
-    /// Thread a pointer field
     unsafe fn thread(&self, field: *mut Value) {
-        // Store pointed object's header in the field, field address in the pointed object's header
         let pointed = (*field).get_ptr() as *mut Obj;
         if self.should_be_threaded(pointed) {
             let pointed_header = pointed.tag();
@@ -525,22 +489,15 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
     }
 
-    /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
-    unsafe fn unthread(&self, obj: *mut Obj, new_loc: usize) {
-        assert!(self.should_be_threaded(obj));
-        let mut header = obj.tag();
-
-        // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
-        // bit to distinguish a header (tag) from a field address.
+    unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {
+        debug_assert!(self.should_be_threaded(object));
+        let mut header = object.tag();
         while header & 0b1 == 0 {
             let tmp = (header as *const Obj).tag();
-            (*(header as *mut Value)) = Value::from_ptr(new_loc);
+            (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
-
-        // At the end of the chain is the original header for the object
         debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
-
-        (*obj).tag = header;
+        (*object).tag = header;
     }
 }
