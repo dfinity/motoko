@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-EbYM5DxJILstvNjQS4Jr9RvCxsT71XfcZ4lWzBiJaTU=";
+      cargoSha256 = "sha256-x12gccBEJ8XoO1p8nVTYz6xOkGoB6d4lLNvie2HfDNw=";
 
       nativeBuildInputs = with pkgs; [
         pkg-config
