@@ -490,6 +490,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      viper      = perf_subdir "viper"      [ moc ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
@@ -751,8 +752,8 @@ rec {
   };
 
   viperServer = builtins.fetchurl {
-    url = https://github.com/viperproject/viperserver/releases/download/v.22.07-release/viperserver.jar;
-    sha256 = "0glbzf875pv4hvl1kh7wl064ipz6vabjcacc1l28r7szblgpba8n";
+    url = https://github.com/viperproject/viperserver/releases/download/v-2022-10-13-0725/viperserver.jar;
+    sha256 = "0vvkyz58ni0hh49arlgc7xr8cl1q5200h9pmd3kmqpkiv1my3f22";
   };
 
   shell = stdenv.mkDerivation {
