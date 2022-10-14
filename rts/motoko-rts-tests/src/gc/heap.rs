@@ -206,11 +206,7 @@ impl MotokoHeapInner {
         // Each object will be 3 words per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
         // continuation table pointer.
-        let static_heap_size_bytes = (size_of::<Array>().as_usize()
-            + roots.len()
-            + (roots.len() * size_of::<MutBox>().as_usize())
-            + 1)
-            * WORD_SIZE;
+        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
             let object_headers_words = map.len() * 3;

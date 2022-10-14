@@ -1,10 +1,9 @@
 use crate::memory::TestMemory;
 
-use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::continuation_table::{
     continuation_count, recall_continuation, remember_continuation,
 };
-use motoko_rts::types::{size_of, Array, Value, Words};
+use motoko_rts::types::{Value, Words};
 
 pub unsafe fn test() {
     println!("Testing continuation table ...");
