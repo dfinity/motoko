@@ -33,6 +33,8 @@ and pp_item ppf i =
       pp_pres pres
       pp_posts posts
       pp_block_opt bo
+  | InvariantI _e ->
+    fprintf ppf "@[<2>define invariant_Actor(self) ( 1 == 1 )@]"
 
 and pp_block_opt ppf bo =
   match bo with

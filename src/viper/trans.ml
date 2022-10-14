@@ -76,6 +76,7 @@ and dec_field' ctxt d =
        in (* TODO: add args (and rets?) *)
        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
+  | M.(ExpD { it = AssertE e; at; _ }) -> ctxt, fun ctxt' -> InvariantI { it = SeqnS (stmt ctxt' e); at = d.M.dec.at; note = NoInfo }, NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*
@@ -122,8 +123,8 @@ and dec ctxt d =
         note = NoInfo }],
        [{ it = VarAssignS (id x, exp ctxt' e);
           at = d.at;
-          note = NoInfo } ])
-  | M.(LetD ({it=VarP x;_}, e))->
+          note = NoInfo }])
+  | M.(LetD ({it=VarP x;_}, e)) ->
      { ctxt with ids = Env.add x.it Local ctxt.ids },
      fun ctxt' ->
        ([{ it = (id x, tr_typ e.note.M.note_typ);
@@ -171,7 +172,7 @@ and stmt ctxt (s : M.exp) : seqn =
        at = s.at;
        note = NoInfo }
   | M.(AssignE({it = VarE x; _}, e2)) ->
-     match Env.find x.it ctxt.ids with
+     begin match Env.find x.it ctxt.ids with
      | Local ->
        let loc = { it = x.it; at = x.at; note = NoInfo } in
        { it =
@@ -190,9 +191,10 @@ and stmt ctxt (s : M.exp) : seqn =
                 note = NoInfo } ]);
          at = s.at;
          note = NoInfo }
-        
+     end
+  | M.LitE e -> { it = [], []; at = s.at; note = NoInfo }
   | _ -> fail (Mo_def.Arrange.exp s)
-          
+
 (*    
   | M.AssignE({it = VarE id;_}, e2) when isField e1->
      { it =
