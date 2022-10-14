@@ -101,25 +101,26 @@ and pp_exp ppf exp =
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
-  pp_stmt' ppf stmt.it
+  fprintf ppf "\017%a\019"
+    pp_stmt' stmt.it
 
 and pp_stmt' ppf = function
   | SeqnS seqn -> pp_seqn ppf seqn
   | IfS(exp1, s1, { it = ([],[]); _ }) ->
-    fprintf ppf "\017@[<v 2>if %a@ %a@]\019"
+    fprintf ppf "@[<v 2>if %a@ %a@]"
       pp_exp exp1
       pp_seqn s1
   | IfS(exp1, s1, s2) ->
-    fprintf ppf "\017@[<v 2>if %a@ %aelse@ %a@]\019"
+    fprintf ppf "@[<v 2>if %a@ %aelse@ %a@]"
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
   | VarAssignS(id, exp) ->
-    fprintf ppf "\017@[<v 2>%s := %a@]\019"
+    fprintf ppf "@[<v 2>%s := %a@]"
       id.it
       pp_exp exp
   | FieldAssignS(fldacc, exp2) ->
-    fprintf ppf "\017@[<v 2>%a := %a@]\019"
+    fprintf ppf "@[<v 2>%a := %a@]"
       pp_fldacc fldacc
       pp_exp exp2
 
