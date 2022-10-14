@@ -1,0 +1,12 @@
+field claimed: Bool
+field count: Int
+method claim($Self: Ref)   
+   { 
+     if (!($Self).claimed)
+        { 
+          ($Self).claimed := true
+          { 
+             ($Self).count := 1 
+           } 
+        } 
+   }

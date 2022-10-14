@@ -490,6 +490,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      viper      = perf_subdir "viper"      [ moc ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
@@ -750,6 +751,11 @@ rec {
     builtins.attrValues js;
   };
 
+  viperServer = builtins.fetchurl {
+    url = https://github.com/viperproject/viperserver/releases/download/v-2022-10-13-0725/viperserver.jar;
+    sha256 = "0vvkyz58ni0hh49arlgc7xr8cl1q5200h9pmd3kmqpkiv1my3f22";
+  };
+
   shell = stdenv.mkDerivation {
     name = "motoko-shell";
 
@@ -780,6 +786,7 @@ rec {
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
           nixpkgs.difftastic
+          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
         ]
       ));
 
@@ -797,6 +804,7 @@ rec {
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
+    VIPER_SERVER = "${viperServer}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
