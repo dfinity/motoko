@@ -111,7 +111,8 @@ CLANG_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm
+all: mo-rts-release.wasm mo-rts-debug.wasm
+	cp mo-rts-release.wasm mo-rts.wasm
 
 _build:
 	mkdir -p $@
@@ -260,7 +261,7 @@ EXPORTED_SYMBOLS=\
   fmod \
   log \
 
-mo-rts.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
+mo-rts-release.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
                 $(EXPORTED_SYMBOLS:%=--export=%) \
@@ -274,16 +275,23 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 		--whole-archive \
 		$+
 
-
 format:
 	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
 	cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml
 
+clippy:
+	cargo clippy --manifest-path motoko-rts/Cargo.toml
+	
 clean:
 	rm -rf \
 	  _build \
 	  mo-rts.wasm \
+	  mo-rts-release.wasm \
 	  mo-rts-debug.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts/cargo-home
+
+use-debug: all
+	cp mo-rts-debug.wasm mo-rts.wasm
+
