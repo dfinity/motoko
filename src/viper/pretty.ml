@@ -149,10 +149,12 @@ let prog p =
     | '\017' -> false
     | _ -> true in
     let b = Buffer.(of_seq Seq.(filter clean (map examine (to_seq b)))) in
-    Printf.eprintf "\nLINES: %d\n" !line;
     let dump = List.iter (fun (mot, vip) -> Printf.eprintf "(MOT: %d:%d...%d:%d) -> (VIP: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column vip.left.line vip.left.column vip.right.line vip.right.column) in
     let _, _, mapping = !marks in
+    (*
+    Printf.eprintf "\nLINES: %d\n" !line;
     dump mapping;
+    *)
     let inside { left; right } other =
         left.file = other.left.file &&
         right.file = other.right.file &&
@@ -164,11 +166,11 @@ let prog p =
             then Some mot
             else prev in
         List.fold_left tighten None mapping in
-
+(*
 let _, vip = List.(hd (tl ( mapping))) in
 let vip = { vip with left = { vip.left with column = vip.left.column + 1 } } in
 let Some mot = lookup vip in
 Printf.eprintf "\ninput (VIP: %d:%d...%d:%d)\n" vip.left.line vip.left.column vip.right.line vip.right.column;
 Printf.eprintf "\nfound (MOT: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column;
-
+*)
     Buffer.contents b, lookup
