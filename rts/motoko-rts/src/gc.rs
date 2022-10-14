@@ -1,6 +1,7 @@
 pub mod copying;
 pub mod generational;
 pub mod mark_compact;
+pub mod no;
 
 #[cfg(feature = "ic")]
 use crate::types::Bytes;
@@ -18,4 +19,25 @@ unsafe fn should_do_gc(max_live: Bytes<u64>) -> bool {
     );
 
     u64::from(HP) >= heap_limit
+}
+
+static mut SHOW_GC_MESSAGES: bool = false;
+static mut GC_RUN: usize = 0;
+
+#[no_mangle]
+pub unsafe fn show_gc_messages() {
+    SHOW_GC_MESSAGES = true;
+}
+
+pub unsafe fn show_gc_start(name: &str) {
+    GC_RUN += 1;
+    if SHOW_GC_MESSAGES {
+        println!(100, "INFO: {name} run {GC_RUN} starts ...");
+    }
+}
+
+pub unsafe fn show_gc_stop(name: &str) {
+    if SHOW_GC_MESSAGES {
+        println!(100, "INFO: {name} run {GC_RUN} stops ...");
+    }
 }
