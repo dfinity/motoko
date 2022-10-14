@@ -494,7 +494,7 @@ let viper_files' parsefn files : viper_result =
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
   let v = Viper.Trans.unit u in
-  let s, _ = Viper.Pretty.prog v in
+  let s = Viper.Pretty.prog v in
   Diag.return s
 
 

@@ -129,12 +129,15 @@ and pp_fldacc ppf fldacc =
   | (exp1, id) ->
     fprintf ppf "@[(%a).%s@]" pp_exp exp1 id.it
 
-let prog p =
+let prog_mapped file p =
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
     Format.fprintf ppf "@[%a@]" pp_prog p;
     Format.pp_print_flush ppf ();
-    let marks = ref (List.rev_map (fun loc -> loc, loc) !marks, [], []) in
+    let in_file { left; right } =
+      let left, right = { left with file }, { right with file } in
+      { left ; right } in
+    let marks = ref (List.rev_map (fun loc -> loc, in_file loc) !marks, [], []) in
     let pos = ref 0 in
     let push line column = match !marks with
         | (mot, vip) :: clos, ope, don -> marks := clos, (mot, { vip with left = { vip.left with line; column } }) :: ope, don
@@ -165,3 +168,5 @@ let prog p =
             else prev in
         List.fold_left tighten None mapping in
     Buffer.contents b, lookup
+
+let prog p = fst (prog_mapped "" p)
