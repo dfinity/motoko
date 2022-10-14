@@ -18,11 +18,10 @@
 
 // Layout of a concat node:
 //
-//      ┌────────────┬─────────┬───────┬───────┐
-//      │ obj header │ n_bytes │ text1 │ text2 │
-//      └────────────┴─────────┴───────┴───────┘
+//      ┌──────────────┬─────────┬───────┬───────┐
+//      │ tag (concat) │ n_bytes │ text1 │ text2 │
+//      └──────────────┴─────────┴───────┴───────┘
 //
-// The object header includes tag (`TAG_CONCAT`) and forward address.
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
