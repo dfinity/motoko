@@ -101,7 +101,9 @@ and pp_exp ppf exp =
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
-  match stmt.it with
+  pp_stmt' ppf stmt.it
+
+and pp_stmt' ppf = function
   | SeqnS seqn -> pp_seqn ppf seqn
   | IfS(exp1, s1, { it = ([],[]); _ }) ->
     fprintf ppf "\017@[<v 2>if %a@ %a@]\019"
