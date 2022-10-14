@@ -76,7 +76,9 @@ and dec_field' ctxt d =
        in (* TODO: add args (and rets?) *)
        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
-  | M.(ExpD { it = AssertE e; at; _ }) -> ctxt, fun ctxt' -> InvariantI { it = SeqnS (stmt ctxt' e); at = d.M.dec.at; note = NoInfo }, NoInfo
+  | M.(ExpD { it = AssertE e; at; _ }) ->
+	    ctxt,
+	    fun ctxt' -> InvariantI (exp ctxt' e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*

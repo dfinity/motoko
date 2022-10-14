@@ -1,6 +1,6 @@
 field claimed: Bool
 field count: Int
-define invariant_Actor(self) ( 1 == 1 )
+define invariant_Actor(self) (true)
 method claim($Self: Ref)   
    { 
      if (!($Self).claimed)
