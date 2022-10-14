@@ -207,20 +207,20 @@ module Make (Cfg : Config) = struct
     | IdH i -> "IdH" $$ [id i]
     | DotH (p, i) -> "DotH" $$ [path p; id i]
 
-  and typ t = source t.at (match t.it with
-    | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
-    | PrimT p -> "PrimT" $$ [Atom p]
-    | ObjT (s, ts) -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
-    | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
-    | OptT t -> "OptT" $$ [typ t]
-    | VariantT cts -> "VariantT" $$ List.map typ_tag cts
-    | TupT ts -> "TupT" $$ List.concat_map typ_item ts
-    | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-    | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
-    | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
-    | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
-    | ParT t -> "ParT" $$ [typ t]
-    | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t])
+  and typ t = source t.at (annot_typ t.note (match t.it with
+  | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
+  | PrimT p -> "PrimT" $$ [Atom p]
+  | ObjT (s, ts) -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
+  | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
+  | OptT t -> "OptT" $$ [typ t]
+  | VariantT cts -> "VariantT" $$ List.map typ_tag cts
+  | TupT ts -> "TupT" $$ List.concat_map typ_item ts
+  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
+  | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
+  | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
+  | ParT t -> "ParT" $$ [typ t]
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
 
   and dec d = source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e ]
