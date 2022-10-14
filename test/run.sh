@@ -13,6 +13,7 @@
 #    -i: Only check mo to idl generation
 #    -p: Produce perf statistics
 #        only compiles and runs drun, writes stats to $PERF_OUT
+#    -v: Translate to Viper
 #
 
 function realpath() {
@@ -24,6 +25,7 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
+VIPER=no
 WASMTIME_OPTIONS="--disable-cache"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
@@ -35,7 +37,7 @@ ECHO=echo
 # Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
 EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
 
-while getopts "adpstir" o; do
+while getopts "adpstirv" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -54,6 +56,9 @@ while getopts "adpstir" o; do
             ;;
         i)
             IDL=yes
+            ;;
+        v)
+            VIPER=yes
             ;;
     esac
 done
@@ -263,6 +268,18 @@ do
         if [ "$idl_succeeded" -eq 0 ]
         then
           run didc didc --check $out/$base.did
+        fi
+      elif [ $VIPER = 'yes' ]
+      then
+        run vpr $moc_with_flags --viper $base.mo -o $out/$base.vpr
+        vpr_succeeded=$?
+
+        normalize $out/$base.vpr
+        diff_files="$diff_files $base.vpr"
+
+        if [ "$vpr_succeeded" -eq 0 ]
+        then
+          true # run silicon silicon --check $out/$base.vpr -- RUN PROVER??
         fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
