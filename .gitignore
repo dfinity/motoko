@@ -26,3 +26,4 @@ Session.vim
 .cproject
 .favorites.json
 .settings/
+*.wasm
