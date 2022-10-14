@@ -100,6 +100,10 @@ and pp_exp ppf exp =
      fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
   | EqCmpE (e1, e2) ->
      fprintf ppf "(%a == %a)" pp_exp e1 pp_exp e2
+  | OrE (e1, e2) ->
+     fprintf ppf "(%a || %a)" pp_exp e1 pp_exp e2
+  | AndE (e1, e2) ->
+     fprintf ppf "(%a && %a)" pp_exp e1 pp_exp e2
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
