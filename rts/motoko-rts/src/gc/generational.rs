@@ -1,7 +1,9 @@
-//! Experimental GC, currently very simple generational GC.
-//! Two generations: young and old
-//! Full heap mark, then compection decision (young only, full collection, or no collection)
-//! Based on the Motoko RTS mark & compact GC.
+//! Generational compacting GC.
+//! Two generations: young and old.
+//! Frequent collection of young generation, sporadic full collection (old + young).
+//! Young generation collection requires an extra root set of old-to-young pointers.
+//! A write barrier catches all pointers leading from old to young generation.
+//! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
 pub mod remembered_set;
 #[cfg(debug_assertions)]
@@ -35,19 +37,19 @@ pub enum Strategy {
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn schedule_experimental_gc<M: Memory>(mem: &mut M) {
+unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     let hp = ic::HP as usize;
     let last_hp = ic::LAST_HP as usize;
     let heap_base = ic::get_aligned_heap_base() as usize;
 
     if decide_strategy(heap_base, last_hp, hp).is_some() {
-        experimental_gc(mem);
+        generational_gc(mem);
     }
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
+unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
     show_gc_start(NAME);
@@ -68,7 +70,7 @@ unsafe fn experimental_gc<M: Memory>(mem: &mut M) {
     )
     .unwrap_or(Strategy::Young);
 
-    experimental_gc_internal(
+    generational_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
@@ -120,6 +122,10 @@ unsafe fn decide_strategy(heap_base: usize, last_free: usize, hp: usize) -> Opti
         .expect("Write barrier is not activated")
         .size();
 
+    if remembered_set_size > 1000 {
+        println!(100, "INFO: REMEMBERED SET SIZE {remembered_set_size}");
+    }
+
     if old_generation_size > OLD_GENERATION_THRESHOLD || hp >= CRITICAL_MEMORY_LIMIT {
         Some(Strategy::Full)
     } else if remembered_set_size > REMEMBERED_SET_THRESHOLD
@@ -138,7 +144,7 @@ unsafe fn update_strategy(strategy: Strategy, hp: usize) {
     }
 }
 
-pub unsafe fn experimental_gc_internal<
+pub unsafe fn generational_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
     GetLastHp: Fn() -> usize,
@@ -170,7 +176,7 @@ pub unsafe fn experimental_gc_internal<
 
     let heap = Heap { mem, limits, roots };
 
-    let mut gc = ExperimentalGC {
+    let mut gc = GenerationalGC {
         heap,
         marked_space: 0,
         strategy,
@@ -206,13 +212,13 @@ struct Limits {
     pub free: usize,
 }
 
-struct ExperimentalGC<'a, M: Memory> {
+struct GenerationalGC<'a, M: Memory> {
     heap: Heap<'a, M>,
     marked_space: usize,
     strategy: Strategy,
 }
 
-impl<'a, M: Memory> ExperimentalGC<'a, M> {
+impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn mark_compact<SetHp: Fn(u32)>(&mut self, set_hp: SetHp) {
         if SHOW_GC_MESSAGES {
             println!(100, "STRATEGY: {:?}", self.strategy);

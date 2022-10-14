@@ -10,7 +10,7 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
-use crate::gc::experimental::write_barrier::write_barrier;
+use crate::gc::generational::write_barrier::write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;

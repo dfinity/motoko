@@ -1,5 +1,5 @@
 use crate::memory::TestMemory;
-use motoko_rts::gc::experimental::remembered_set::{RememberedSet, MAX_ENTRIES_PER_TABLE};
+use motoko_rts::gc::generational::remembered_set::{RememberedSet, MAX_ENTRIES_PER_TABLE};
 use motoko_rts::types::{Value, Words};
 
 pub unsafe fn test() {

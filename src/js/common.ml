@@ -158,6 +158,6 @@ let gc_flags option =
   | "show" --> Flags.show_gc := true
   | "copying" -> Flags.gc_strategy := Mo_config.Flags.Copying
   | "marking" -> Flags.gc_strategy := Mo_config.Flags.MarkCompact
-  | "experimental" -> Flags.gc_strategy := Mo_config.Flags.Experimental
+  | "generational" -> Flags.gc_strategy := Mo_config.Flags.Generational
   | "no" -> Flags.gc_strategy := Mo_config.Flags.No
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")

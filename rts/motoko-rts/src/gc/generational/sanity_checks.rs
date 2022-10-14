@@ -1,5 +1,6 @@
-//! Extensive sanity checks for experimental GC features.
+//! Extensive sanity checks for geberational GC features.
 //! * Write barrier coverage by memory snapshot comparisons.
+//! * Memory sanity check, including a full heap scan.
 #![allow(dead_code)]
 
 use core::ptr::null_mut;

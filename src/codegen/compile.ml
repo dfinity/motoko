@@ -566,10 +566,10 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying" | "experimental" | "no") "_gc" *)
+    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "no") "_gc" *)
     let gc_fn = match !Flags.gc_strategy with
     | Mo_config.Flags.No -> "no"
-    | Mo_config.Flags.Experimental -> "experimental"
+    | Mo_config.Flags.Generational -> "generational"
     | Mo_config.Flags.MarkCompact -> "compacting"
     | Mo_config.Flags.Copying -> "copying"
     in
@@ -920,11 +920,11 @@ module RTS = struct
     E.add_func_import env "rts" "show_gc_messages" [] [];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
-    E.add_func_import env "rts" "experimental_gc" [] [];
+    E.add_func_import env "rts" "generational_gc" [] [];
     E.add_func_import env "rts" "no_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
-    E.add_func_import env "rts" "schedule_experimental_gc" [] [];
+    E.add_func_import env "rts" "schedule_generational_gc" [] [];
     E.add_func_import env "rts" "schedule_no_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
@@ -6835,7 +6835,7 @@ module Var = struct
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+      (if !Flags.gc_strategy = Mo_config.Flags.Generational
         then
          G.i (LocalGet (nr i)) ^^
          compile_add_const ptr_unskew ^^
@@ -6847,7 +6847,7 @@ module Var = struct
       compile_unboxed_const ptr,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+      (if !Flags.gc_strategy = Mo_config.Flags.Generational
         then 
          compile_unboxed_const ptr ^^
          compile_add_const ptr_unskew ^^
@@ -8272,7 +8272,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     get_field,
     SR.Vanilla,
     store_ptr ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+    (if !Flags.gc_strategy = Mo_config.Flags.Generational
      then
       get_field ^^
       compile_add_const ptr_unskew ^^
@@ -8289,7 +8289,7 @@ let rec compile_lexp (env : E.t) ae lexp =
      get_field,
      SR.Vanilla,
      store_ptr ^^
-     (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+     (if !Flags.gc_strategy = Mo_config.Flags.Generational
       then  
         get_field ^^
         compile_add_const ptr_unskew ^^
@@ -9957,7 +9957,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Experimental) ^^
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Generational) ^^
     E.call_import env "rts" "init" ^^
     (if !Flags.show_gc
       then
@@ -9965,7 +9965,7 @@ and conclude_module env start_fi_o =
       else 
        G.nop 
      ) ^^
-     (if !Flags.gc_strategy = Mo_config.Flags.Experimental
+     (if !Flags.gc_strategy = Mo_config.Flags.Generational
      then
       E.call_import env "rts" "init_write_barrier"
      else 

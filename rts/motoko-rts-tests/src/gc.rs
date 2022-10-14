@@ -10,14 +10,14 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
-use motoko_rts::gc::experimental::remembered_set::RememberedSet;
-use motoko_rts::gc::experimental::write_barrier::{LAST_HP, REMEMBERED_SET};
+use motoko_rts::gc::generational::remembered_set::RememberedSet;
+use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
 };
 
 use motoko_rts::gc::copying::copying_gc_internal;
-use motoko_rts::gc::experimental::{experimental_gc_internal, Strategy};
+use motoko_rts::gc::generational::{generational_gc_internal, Strategy};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
@@ -394,7 +394,7 @@ impl GC {
                 true
             }
 
-            GC::Experimental => {
+            GC::Generational => {
                 let strategy = match round {
                     0 => Strategy::Young,
                     _ => Strategy::Full,
@@ -402,7 +402,7 @@ impl GC {
                 unsafe {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
                     LAST_HP = heap_1.last_ptr_address() as u32;
-                    experimental_gc_internal(
+                    generational_gc_internal(
                         heap,
                         heap_base,
                         // get_hp

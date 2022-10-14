@@ -1,5 +1,5 @@
 pub mod copying;
-pub mod experimental;
+pub mod generational;
 pub mod mark_compact;
 pub mod no;
 

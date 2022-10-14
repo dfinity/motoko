@@ -1,4 +1,4 @@
-//! Write barrier, used for experimental GC
+//! Write barrier, used for generational GC
 
 use super::remembered_set::RememberedSet;
 use crate::memory::Memory;
@@ -9,7 +9,7 @@ pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
 pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
-/// (Re-)initialize the write barrier for experimental GC.
+/// (Re-)initialize the write barrier for generational GC.
 #[ic_mem_fn(ic_only)]
 pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
@@ -18,7 +18,7 @@ pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
     LAST_HP = ic::LAST_HP;
 }
 
-/// Write barrier to be called AFTER the pointer store, used for experimental GC.
+/// Write barrier to be called AFTER the pointer store, used for generational GC.
 /// `location`: location of modified pointer (address of object field or array element).
 ///
 /// As the barrier is called after the write, `*location` refers to the NEW value.

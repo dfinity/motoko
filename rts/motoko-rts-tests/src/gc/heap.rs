@@ -239,7 +239,7 @@ impl MotokoHeapInner {
         // MarkCompact assumes that the dynamic heap starts at a 32-byte multiple
         let realign = match gc {
             GC::Copying => 0,
-            GC::MarkCompact | GC::Experimental => {
+            GC::MarkCompact | GC::Generational => {
                 (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32
             }
         };
@@ -331,7 +331,7 @@ fn heap_size_for_gc(
 
             total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
         }
-        GC::Experimental => {
+        GC::Generational => {
             const ROUNDS: usize = 3;
             const REMEMBERED_SET_MINIMUM_SIZE: usize = 1024 * WORD_SIZE;
             let size = heap_size_for_gc(
