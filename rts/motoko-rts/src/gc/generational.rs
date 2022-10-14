@@ -105,8 +105,10 @@ pub enum Strategy {
     Full,
 }
 
+#[cfg(feature = "ic")]
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
+#[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const REMEMBERED_SET_THRESHOLD: usize = 1024;
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
@@ -130,6 +132,7 @@ unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     }
 }
 
+#[cfg(feature = "ic")]
 unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     const GROWTH_RATE: f64 = 1.5;
     if strategy == Strategy::Full {
@@ -447,10 +450,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             if new_pointer as usize != old_pointer as usize {
                 memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
-                // Update forward address
-                let new_object = new_pointer as *mut Obj;
-                debug_assert!(new_object.tag() >= TAG_OBJECT && new_object.tag() <= TAG_NULL);
-                (*new_object).forward = Value::from_ptr(new_pointer as usize);
             }
 
             free += object_size.to_bytes().as_usize();

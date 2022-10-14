@@ -58,7 +58,7 @@ impl RememberedSet {
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        if value.is_null_ptr() || self.cache.get_raw() == value.get_raw() {
+        if (value.get_raw() as *mut Value) == null_mut() || self.cache.get_raw() == value.get_raw() {
             return;
         }
         self.cache = value;
@@ -83,7 +83,7 @@ impl RememberedSet {
             MAX_ENTRIES_PER_TABLE
         );
         let next = Self::new_table(mem);
-        debug_assert!(table_get(self.last, NEXT_POINTER_OFFSET).is_null_ptr());
+        debug_assert_eq!(table_get(self.last, NEXT_POINTER_OFFSET).get_raw() as *mut Blob, null_mut());
         table_set(
             self.last,
             NEXT_POINTER_OFFSET,
@@ -120,7 +120,7 @@ impl RememberedSetIterator {
         debug_assert!(
             self.index < MAX_ENTRIES_PER_TABLE
                 || self.index == MAX_ENTRIES_PER_TABLE
-                    && table_get(self.table, NEXT_POINTER_OFFSET).is_null_ptr()
+                    && table_get(self.table, NEXT_POINTER_OFFSET).get_raw() as *mut Blob == null_mut()
         );
         self.index < table_get(self.table, COUNT_ENTRIES_OFFSET).get_scalar()
     }
@@ -135,7 +135,7 @@ impl RememberedSetIterator {
         self.index += 1;
         if self.index == MAX_ENTRIES_PER_TABLE {
             let next = table_get(self.table, NEXT_POINTER_OFFSET);
-            if !next.is_null_ptr() {
+            if next.get_raw() as *mut Blob != null_mut() {
                 self.table = next.as_blob_mut();
                 self.index = 0;
             }

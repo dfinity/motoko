@@ -21,7 +21,6 @@
 
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
-use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -236,10 +235,6 @@ impl Value {
         self.get().is_ptr()
     }
 
-    pub unsafe fn is_null_ptr(&self) -> bool {
-        self.0 as *mut Value == null_mut()
-    }
-
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
     /// the value is not a scalar.
     pub fn get_scalar(&self) -> u32 {
@@ -267,15 +262,9 @@ impl Value {
         (self.get_ptr() as *mut Obj).tag()
     }
 
-    pub unsafe fn forward(self) -> Value {
-        let obj = self.get_ptr() as *mut Obj;
-        (*obj).forward
-    }
-
     /// Get the pointer as `Obj`. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
-        debug_assert!(self.forward().is_null_ptr() || self.forward().get_ptr() == self.get_ptr());
         self.get_ptr() as *mut Obj
     }
 
@@ -283,7 +272,6 @@ impl Value {
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
         debug_assert_eq!(self.tag(), TAG_ARRAY);
-        debug_assert!(self.forward().is_null_ptr() || self.forward().get_ptr() == self.get_ptr());
         self.get_ptr() as *mut Array
     }
 
@@ -291,7 +279,6 @@ impl Value {
     /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        debug_assert!(self.forward().is_null_ptr() || self.forward().get_ptr() == self.get_ptr());
         self.get_ptr() as *const Concat
     }
 
@@ -299,13 +286,11 @@ impl Value {
     /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        debug_assert!(self.forward().is_null_ptr() || self.forward().get_ptr() == self.get_ptr());
         self.get_ptr() as *const Blob
     }
 
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        debug_assert!(self.forward().is_null_ptr() || self.forward().get_ptr() == self.get_ptr());
         self.get_ptr() as *mut Blob
     }
 
@@ -314,7 +299,6 @@ impl Value {
     /// pointed object is not a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        debug_assert!(self.forward().is_null_ptr() || self.forward().get_ptr() == self.get_ptr());
         self.get_ptr() as *mut Stream
     }
 
@@ -322,7 +306,6 @@ impl Value {
     /// pointed object is not a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
-        debug_assert!(self.forward().is_null_ptr() || self.forward().get_ptr() == self.get_ptr());
         self.get_ptr() as *mut BigInt
     }
 
@@ -381,9 +364,6 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
-    // LUC TODO: Only use for compacting GC
-    // Forward address for moving without pointer threading
-    pub forward: Value,
 }
 
 impl Obj {
@@ -521,11 +501,11 @@ impl Blob {
         if slop == Words(1) {
             let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
                 as *mut OneWordFiller;
-            (*filler).tag = TAG_ONE_WORD_FILLER;
+            (*filler).header.tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
-            (*filler).tag = TAG_FREE_SPACE;
+            (*filler).header.tag = TAG_FREE_SPACE;
             (*filler).words = slop - Words(1);
         }
 
@@ -536,7 +516,6 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
-    pub padding: u32, // insertion of forward address in the header implies 1 word padding to 64-bit
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -547,7 +526,7 @@ pub struct Stream {
 /// A forwarding pointer placed by the GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
-    pub tag: Tag,
+    pub header: Obj,
     pub fwd: Value,
 }
 
@@ -656,13 +635,13 @@ pub struct Bits32 {
 /// Marks one word empty space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct OneWordFiller {
-    pub tag: Tag,
+    pub header: Obj,
 }
 
 /// Marks arbitrary sized emtpy space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
-    pub tag: Tag,
+    pub header: Obj,
     pub words: Words<u32>,
 }
 

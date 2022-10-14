@@ -167,8 +167,6 @@ impl<'a> MemoryChecker<'a> {
         assert!(pointer < self.limits.free);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
-        let forward = object.forward();
-        assert!(forward.is_null_ptr() || forward.get_ptr() == pointer);
     }
 
     unsafe fn check_heap(&self) {

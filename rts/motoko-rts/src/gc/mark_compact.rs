@@ -227,12 +227,6 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         let p_size_words = object_size(p as usize);
         if p_new as usize != p as usize {
             memcpy_words(p_new as usize, p as usize, p_size_words);
-
-            debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
-            // Update forward address
-            let new_obj = p_new as *mut Obj;
-            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-            (*new_obj).forward = Value::from_ptr(p_new as usize);
         }
 
         free += p_size_words.to_bytes().as_u32();
@@ -265,7 +259,7 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
 /// Thread a pointer field
 unsafe fn thread(field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
-    let pointed = (*field).get_ptr() as *mut Obj;
+    let pointed = (*field).as_obj();
     let pointed_header = pointed.tag();
     *field = Value::from_raw(pointed_header);
     (*pointed).tag = field as u32;

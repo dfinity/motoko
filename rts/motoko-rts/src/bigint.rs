@@ -44,7 +44,6 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
-    (*blob).header.forward = ptr;
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);

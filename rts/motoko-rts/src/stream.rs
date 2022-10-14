@@ -14,15 +14,13 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┐
-//      │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴
+//      ┌────────────┬─────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
+//      │ tag (blob) │ len │ ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+//      └────────────┴─────┴───┴───┴────┴────┴────┴────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
-// - `obj header` contains tag and forward address
-// - `len` is in blob metadata
-// - 'padding' to align to 64-bit
+// - `tag` and `len` are blob metadata
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
@@ -41,7 +39,7 @@ use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(36);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
@@ -54,7 +52,6 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
         rts_trap_with("alloc_stream: Cache too large");
     }
     let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
-    (*stream).padding = 0;
     (*stream).ptr64 = 0;
     (*stream).start64 = 0;
     (*stream).limit64 = 0;
@@ -112,7 +109,6 @@ impl Stream {
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
-            (*self).padding = 0;
             (*self).ptr64 = start;
             (*self).start64 = start;
             (*self).limit64 = limit;
@@ -197,11 +193,9 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        let ptr = Value::from_ptr(blob as usize);
         (*blob).header.tag = TAG_BLOB;
-        (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);
-        ptr
+        Value::from_ptr(blob as usize)
     }
 
     /// Shut down the stream by outputting all data. Lengths are

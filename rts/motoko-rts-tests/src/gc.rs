@@ -197,11 +197,6 @@ fn check_dynamic_heap(
 
         assert_eq!(tag, TAG_ARRAY);
 
-        let forward = read_word(heap, offset);
-        offset += WORD_SIZE;
-
-        assert_eq!(forward, make_pointer(address as u32));
-
         let n_fields = read_word(heap, offset);
         offset += WORD_SIZE;
 
@@ -322,11 +317,7 @@ fn compute_reachable_objects(
 }
 
 fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
-    let table_addr = heap.as_ptr() as usize + offset;
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
-    offset += WORD_SIZE;
-
-    assert_eq!(read_word(heap, offset), make_pointer(table_addr as u32));
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);

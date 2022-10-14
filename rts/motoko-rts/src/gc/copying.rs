@@ -135,7 +135,7 @@ unsafe fn evac<M: Memory>(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
-    let obj = (*ptr_loc).get_ptr() as *mut Obj;
+    let obj = (*ptr_loc).as_obj();
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
@@ -160,17 +160,11 @@ unsafe fn evac<M: Memory>(
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
-    (*fwd).tag = TAG_FWD_PTR;
+    (*fwd).header.tag = TAG_FWD_PTR;
     (*fwd).fwd = Value::from_ptr(obj_loc);
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_loc);
-
-    // Update forward address
-    let to_space_obj = obj_addr as *mut Obj;
-    debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
-    debug_assert!((*to_space_obj).tag >= TAG_OBJECT && (*to_space_obj).tag <= TAG_NULL);
-    (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
 unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: usize, obj: usize) {
