@@ -12,7 +12,7 @@ and item' =
 
 and par = id * typ
 
-and seqn = (decl list * stmt list, info ) Source.annotated_phrase
+and seqn = (decl list * stmt list, info) Source.annotated_phrase
 
 and decl = (id * typ, info) Source.annotated_phrase
 

@@ -3,6 +3,8 @@ open Syntax
 
 open Format
 
+let marks = ref []
+
 let pr = pp_print_string
 
 let comma ppf () = fprintf ppf ",@ "
@@ -98,23 +100,24 @@ and pp_exp ppf exp =
      fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
 
 and pp_stmt ppf stmt =
+  marks := stmt.at :: !marks;
   match stmt.it with
   | SeqnS seqn -> pp_seqn ppf seqn
   | IfS(exp1, s1, { it = ([],[]); _ }) ->
-    fprintf ppf "@[<v 2>if %a@ %a@]"
+    fprintf ppf "\017@[<v 2>if %a@ %a@]\019"
       pp_exp exp1
       pp_seqn s1
   | IfS(exp1, s1, s2) ->
-    fprintf ppf "@[<v 2>if %a@ %aelse@ %a@]"
+    fprintf ppf "\017@[<v 2>if %a@ %aelse@ %a@]\019"
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
   | VarAssignS(id, exp) ->
-    fprintf ppf "@[<v 2>%s := %a@]"
+    fprintf ppf "\017@[<v 2>%s := %a@]\019"
       id.it
       pp_exp exp
   | FieldAssignS(fldacc, exp2) ->
-    fprintf ppf "@[<v 2>%a := %a@]"
+    fprintf ppf "\017@[<v 2>%a := %a@]\019"
       pp_fldacc fldacc
       pp_exp exp2
 
@@ -128,4 +131,46 @@ let prog p =
     let ppf = Format.formatter_of_buffer b in
     Format.fprintf ppf "@[%a@]" pp_prog p;
     Format.pp_print_flush ppf ();
-    Buffer.contents b
+    let marks = ref (List.rev_map (fun loc -> loc, loc) !marks, [], []) in
+    let pos = ref 0 in
+    let push line column = match !marks with
+        | (mot, vip) :: clos, ope, don -> marks := clos, (mot, { vip with left = { vip.left with line; column } }) :: ope, don
+        | _ -> assert false in
+    let pop line column = match !marks with
+        | clos, (mot, vip) :: ope, don -> marks := clos, ope, (mot, { vip with right = { vip.right with line; column } }) :: don
+        | _ -> assert false in
+    let line = ref 1 in
+    let examine = function
+    | '\n' -> line := !line + 1; pos := 0; '\n';
+    | '\017' -> push !line !pos; '\017'
+    | '\019' -> pop !line !pos; '\017'
+    | a -> pos := !pos + 1; a in
+    let clean = function
+    | '\017' -> false
+    | _ -> true in
+    let b = Buffer.(of_seq Seq.(filter clean (map examine (to_seq b)))) in
+    let dump = List.iter (fun (mot, vip) -> Printf.eprintf "(MOT: %d:%d...%d:%d) -> (VIP: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column vip.left.line vip.left.column vip.right.line vip.right.column) in
+    let _, _, mapping = !marks in
+    (*
+    Printf.eprintf "\nLINES: %d\n" !line;
+    dump mapping;
+    *)
+    let inside { left; right } other =
+        left.file = other.left.file &&
+        right.file = other.right.file &&
+        (other.left.line, other.left.column) <= (left.line, left.column) &&
+        (right.line, right.column) <= (other.right.line, other.right.column) in
+    let lookup (r : Source.region) =
+        let tighten prev (mot, vip) =
+            if inside r vip
+            then Some mot
+            else prev in
+        List.fold_left tighten None mapping in
+(*
+let _, vip = List.(hd (tl ( mapping))) in
+let vip = { vip with left = { vip.left with column = vip.left.column + 1 } } in
+let Some mot = lookup vip in
+Printf.eprintf "\ninput (VIP: %d:%d...%d:%d)\n" vip.left.line vip.left.column vip.right.line vip.right.column;
+Printf.eprintf "\nfound (MOT: %d:%d...%d:%d)\n" mot.left.line mot.left.column mot.right.line mot.right.column;
+*)
+    Buffer.contents b, lookup
