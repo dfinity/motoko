@@ -18,7 +18,6 @@ use crate::gc::mark_compact::mark_stack::{
 };
 
 use crate::constants::WORD_SIZE;
-use crate::gc::{show_gc_start, show_gc_stop, SHOW_GC_MESSAGES};
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
@@ -28,8 +27,6 @@ use motoko_rts_macros::ic_mem_fn;
 
 use self::write_barrier::REMEMBERED_SET;
 
-const NAME: &str = "Generational GC";
-
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Strategy {
     Young,
@@ -38,12 +35,8 @@ pub enum Strategy {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
-    let hp = ic::HP as usize;
-    let last_hp = ic::LAST_HP as usize;
-    let heap_base = ic::get_aligned_heap_base() as usize;
-
-    if decide_strategy(heap_base, last_hp, hp).is_some() {
+    let limits = get_limits();
+    if decide_strategy(&limits).is_some() {
         generational_gc(mem);
     }
 }
@@ -51,72 +44,77 @@ unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
+    const NAME: &str = "Generational GC";
+    crate::gc::show_gc_start(NAME);
 
-    show_gc_start(NAME);
-
-    #[cfg(debug_assertions)]
-    sanity_checks::verify_snapshot(
-        ic::get_aligned_heap_base(),
-        ic::LAST_HP,
-        ic::HP,
-        ic::get_static_roots(),
-        false, // roots not recorded by write barrier for generational GC
-    );
-
-    let strategy = decide_strategy(
-        ic::get_aligned_heap_base() as usize,
-        ic::LAST_HP as usize,
-        ic::HP as usize,
-    )
-    .unwrap_or(Strategy::Young);
-
-    generational_gc_internal(
+    let old_limits = get_limits();
+    let roots = Roots {
+        static_roots: ic::get_static_roots(),
+        continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
+    };
+    let heap = Heap {
         mem,
-        ic::get_aligned_heap_base(),
-        // get_hp
-        || ic::HP as usize,
-        // get_last_hp
-        || ic::LAST_HP as usize,
-        // set_hp
-        |hp| ic::HP = hp,
-        ic::get_static_roots(),
-        crate::continuation_table::continuation_table_loc(),
-        // note_live_size
-        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
-        // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
-        strategy,
-    );
-    ic::LAST_HP = ic::HP;
-
-    update_strategy(strategy, ic::HP as usize);
+        limits: get_limits(),
+        roots,
+    };
+    let strategy = decide_strategy(&heap.limits).unwrap_or(Strategy::Young);
+    let mut gc = GenerationalGC::new(heap, strategy);
 
     #[cfg(debug_assertions)]
-    sanity_checks::check_memory(
-        ic::get_aligned_heap_base(),
-        ic::LAST_HP,
-        ic::HP,
-        ic::get_static_roots(),
-        crate::continuation_table::continuation_table_loc(),
-    );
+    // roots not recorded by write barrier for generational GC
+    sanity_checks::verify_snapshot(&gc.heap, false);
+
+    gc.run();
+
+    let new_limits = &gc.heap.limits;
+    set_limits(&gc.heap.limits);
+    update_statistics(&old_limits, new_limits);
+    update_strategy(strategy, new_limits);
 
     #[cfg(debug_assertions)]
-    sanity_checks::take_snapshot(mem, ic::HP);
+    sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
+    #[cfg(debug_assertions)]
+    sanity_checks::take_snapshot(&mut gc.heap);
 
-    write_barrier::init_write_barrier(mem);
+    write_barrier::init_write_barrier(gc.heap.mem);
 
-    show_gc_stop(NAME);
+    crate::gc::show_gc_stop(NAME);
+}
+
+#[cfg(feature = "ic")]
+unsafe fn get_limits() -> Limits {
+    use crate::memory::ic;
+    Limits {
+        base: ic::get_aligned_heap_base() as usize,
+        last_free: core::cmp::max(ic::LAST_HP as usize, ic::get_aligned_heap_base() as usize), // max because of aligned heap base
+        free: ic::HP as usize,
+    }
+}
+
+#[cfg(feature = "ic")]
+unsafe fn set_limits(limits: &Limits) {
+    use crate::memory::ic;
+    ic::HP = limits.free as u32;
+    ic::LAST_HP = limits.free as u32;
+}
+
+#[cfg(feature = "ic")]
+unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
+    use crate::memory::ic;
+    let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
+    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
+    ic::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
 }
 
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
-unsafe fn decide_strategy(heap_base: usize, last_free: usize, hp: usize) -> Option<Strategy> {
+unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const REMEMBERED_SET_THRESHOLD: usize = 1024;
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
     const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 
-    let old_generation_size = last_free - heap_base;
-    let young_generation_size = hp - last_free;
+    let old_generation_size = limits.last_free - limits.base;
+    let young_generation_size = limits.free - limits.last_free;
     let remembered_set_size = REMEMBERED_SET
         .as_ref()
         .expect("Write barrier is not activated")
@@ -126,7 +124,7 @@ unsafe fn decide_strategy(heap_base: usize, last_free: usize, hp: usize) -> Opti
         println!(100, "INFO: REMEMBERED SET SIZE {remembered_set_size}");
     }
 
-    if old_generation_size > OLD_GENERATION_THRESHOLD || hp >= CRITICAL_MEMORY_LIMIT {
+    if old_generation_size > OLD_GENERATION_THRESHOLD || limits.free >= CRITICAL_MEMORY_LIMIT {
         Some(Strategy::Full)
     } else if remembered_set_size > REMEMBERED_SET_THRESHOLD
         || young_generation_size > YOUNG_GENERATION_THRESHOLD
@@ -137,96 +135,52 @@ unsafe fn decide_strategy(heap_base: usize, last_free: usize, hp: usize) -> Opti
     }
 }
 
-unsafe fn update_strategy(strategy: Strategy, hp: usize) {
+unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     const GROWTH_RATE: f64 = 1.5;
     if strategy == Strategy::Full {
-        OLD_GENERATION_THRESHOLD = (hp as f64 * GROWTH_RATE) as usize;
+        OLD_GENERATION_THRESHOLD = (limits.free as f64 * GROWTH_RATE) as usize;
     }
 }
 
-pub unsafe fn generational_gc_internal<
-    M: Memory,
-    GetHp: Fn() -> usize,
-    GetLastHp: Fn() -> usize,
-    SetHp: Fn(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
->(
-    mem: &mut M,
-    heap_base: u32,
-    get_hp: GetHp,
-    get_last_hp: GetLastHp,
-    set_hp: SetHp,
-    static_roots: Value,
-    continuation_table_ptr_loc: *mut Value,
-    note_live_size: NoteLiveSize,
-    note_reclaimed: NoteReclaimed,
-    strategy: Strategy,
-) {
-    let limits = Limits {
-        base: heap_base as usize,
-        last_free: core::cmp::max(get_last_hp(), heap_base as usize), // max because of aligned heap base
-        free: get_hp(),
-    };
-
-    let roots = Roots {
-        static_roots,
-        continuation_table_ptr_loc,
-    };
-
-    let heap = Heap { mem, limits, roots };
-
-    let mut gc = GenerationalGC {
-        heap,
-        marked_space: 0,
-        strategy,
-    };
-
-    let old_hp = get_hp() as u32;
-
-    assert_eq!(heap_base % 32, 0);
-
-    gc.mark_compact(set_hp);
-
-    let reclaimed = old_hp - (get_hp() as u32);
-    note_reclaimed(Bytes(reclaimed));
-
-    let live = get_hp() as u32 - heap_base;
-    note_live_size(Bytes(live));
-}
-
-struct Heap<'a, M: Memory> {
+pub struct Heap<'a, M: Memory> {
     pub mem: &'a mut M,
     pub limits: Limits,
     pub roots: Roots,
 }
 
-struct Roots {
+pub struct Roots {
     pub static_roots: Value,
     pub continuation_table_ptr_loc: *mut Value,
 }
 
-struct Limits {
+pub struct Limits {
     pub base: usize,
     pub last_free: usize,
     pub free: usize,
 }
 
-struct GenerationalGC<'a, M: Memory> {
-    heap: Heap<'a, M>,
+pub struct GenerationalGC<'a, M: Memory> {
+    pub heap: Heap<'a, M>,
     marked_space: usize,
     strategy: Strategy,
 }
 
 impl<'a, M: Memory> GenerationalGC<'a, M> {
-    unsafe fn mark_compact<SetHp: Fn(u32)>(&mut self, set_hp: SetHp) {
-        if SHOW_GC_MESSAGES {
+    pub fn new(heap: Heap<M>, strategy: Strategy) -> GenerationalGC<M> {
+        GenerationalGC {
+            heap,
+            marked_space: 0,
+            strategy,
+        }
+    }
+
+    pub unsafe fn run(&mut self) {
+        if crate::gc::SHOW_GC_MESSAGES {
             println!(100, "STRATEGY: {:?}", self.strategy);
         }
 
-        let heap_end = self.heap.limits.free as u32;
-        let mem_size = Bytes(heap_end - self.heap.limits.base as u32);
-
+        assert_eq!(self.heap.limits.base % 32, 0);
+        let mem_size = Bytes(self.heap.limits.free as u32 - self.heap.limits.base as u32);
         alloc_bitmap(
             self.heap.mem,
             mem_size,
@@ -236,7 +190,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
         self.mark_phase();
 
-        if SHOW_GC_MESSAGES {
+        if crate::gc::SHOW_GC_MESSAGES {
             println!(
                 1000,
                 "MARKED {} OF {} RATIO {:.3}",
@@ -246,12 +200,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             );
         }
 
-        let mut free = heap_end;
         if self.is_compaction_beneficial() {
             self.thread_backward_phase();
-            free = self.move_phase() as u32;
+            self.move_phase();
         }
-        set_hp(free);
 
         free_mark_stack();
         free_bitmap();
@@ -505,9 +457,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     ///
     /// - Thread forward pointers of the object
     ///
-    /// Returns the new free pointer
+    /// Sets the new free pointer in self.heap.limits
     ///
-    unsafe fn move_phase(&mut self) -> usize {
+    unsafe fn move_phase(&mut self) {
         REMEMBERED_SET = None; // no longer valid when moving phase starts
         let mut free = self.heap.limits.base;
 
@@ -543,7 +495,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             bit = bitmap_iter.next();
         }
 
-        free
+        self.heap.limits.free = free;
     }
 
     /// Thread forward pointers in object

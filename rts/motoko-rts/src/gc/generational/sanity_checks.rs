@@ -6,6 +6,7 @@
 use core::ptr::null_mut;
 
 use super::write_barrier::REMEMBERED_SET;
+use super::{Heap, Limits, Roots};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
@@ -14,27 +15,21 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 static mut SNAPSHOT: *mut Blob = null_mut();
 
 /// Take a memory snapshot. To be initiated after GC run.
-pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, hp: u32) {
-    let length = Bytes(hp);
-    let blob = alloc_blob(mem, length).get_ptr() as *mut Blob;
+pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
+    let length = Bytes(heap.limits.free as u32);
+    let blob = alloc_blob(heap.mem, length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }
 
 /// Verify write barrier coverag by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
-pub unsafe fn verify_snapshot(
-    heap_base: u32,
-    last_free: u32,
-    hp: u32,
-    static_roots: Value,
-    verify_roots: bool,
-) {
-    assert!(heap_base <= hp);
+pub unsafe fn verify_snapshot<M: Memory>(heap: &Heap<M>, verify_roots: bool) {
+    assert!(heap.limits.base <= heap.limits.free);
     if verify_roots {
-        verify_static_roots(static_roots.as_array(), last_free as usize);
+        verify_static_roots(heap.roots.static_roots.as_array(), heap.limits.free);
     }
-    verify_heap(heap_base as usize, last_free as usize, hp as usize);
+    verify_heap(&heap.limits);
 }
 
 unsafe fn verify_static_roots(static_roots: *mut Array, last_free: usize) {
@@ -49,13 +44,13 @@ unsafe fn verify_static_roots(static_roots: *mut Array, last_free: usize) {
     }
 }
 
-unsafe fn verify_heap(base: usize, last_free: usize, limit: usize) {
+unsafe fn verify_heap(limits: &Limits) {
     if SNAPSHOT.is_null() {
         return;
     }
     println!(100, "Heap verification starts...");
-    assert!(SNAPSHOT.len().as_usize() <= limit);
-    let mut pointer = base;
+    assert!(SNAPSHOT.len().as_usize() <= limits.free);
+    let mut pointer = limits.base;
     while pointer < SNAPSHOT.len().as_usize() {
         let current = pointer as *mut Obj;
         let previous = (SNAPSHOT.payload_addr() as usize + pointer) as *mut Obj;
@@ -66,7 +61,7 @@ unsafe fn verify_heap(base: usize, last_free: usize, limit: usize) {
             current.tag(),
             0,
             |_, current_field| {
-                if relevant_field(current_field, last_free) {
+                if relevant_field(current_field, limits.last_free) {
                     verify_field(current_field);
                 }
             },
@@ -113,39 +108,27 @@ unsafe fn recorded(value: u32) -> bool {
     }
 }
 
-pub struct MemoryChecker {
-    heap_base: u32,
-    last_hp: u32,
-    hp: u32,
-    static_roots: Value,
-    continuation_table_ptr_loc: *mut Value,
+pub struct MemoryChecker<'a> {
+    limits: &'a Limits,
+    roots: &'a Roots,
 }
 
-pub unsafe fn check_memory(
-    heap_base: u32,
-    last_hp: u32,
-    hp: u32,
-    static_roots: Value,
-    continuation_table_ptr_loc: *mut Value,
-) {
+pub unsafe fn check_memory(limits: &Limits, roots: &Roots) {
     let checker = MemoryChecker {
-        heap_base,
-        last_hp,
-        hp,
-        static_roots,
-        continuation_table_ptr_loc,
+        limits,
+        roots,
     };
     checker.check_memory();
 }
 
-impl MemoryChecker {
+impl<'a> MemoryChecker<'a> {
     unsafe fn check_memory(&self) {
         println!(100, "Memory check starts...");
         println!(100, "  Static roots...");
         self.check_static_roots();
-        if (*self.continuation_table_ptr_loc).is_ptr() {
+        if (*self.roots.continuation_table_ptr_loc).is_ptr() {
             println!(100, "  Continuation table...");
-            self.check_object(*self.continuation_table_ptr_loc);
+            self.check_object(*self.roots.continuation_table_ptr_loc);
         }
         println!(100, "  Heap...");
         self.check_heap();
@@ -153,14 +136,14 @@ impl MemoryChecker {
     }
 
     unsafe fn check_static_roots(&self) {
-        let root_array = self.static_roots.as_array();
+        let root_array = self.roots.static_roots.as_array();
         for i in 0..root_array.len() {
             let obj = root_array.get(i).as_obj();
             assert_eq!(obj.tag(), TAG_MUTBOX);
-            assert!((obj as u32) < self.heap_base);
+            assert!((obj as usize) < self.limits.base);
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(field_addr, self.heap_base as usize) {
+            if pointer_to_dynamic_heap(field_addr, self.limits.base as usize) {
                 let object = *field_addr;
                 self.check_object(object);
             }
@@ -183,23 +166,22 @@ impl MemoryChecker {
 
     unsafe fn check_object_header(&self, object: Value) {
         assert!(object.is_ptr());
-        let pointer = object.get_ptr() as u32;
-        assert!(pointer < self.hp);
+        let pointer = object.get_ptr();
+        assert!(pointer < self.limits.free);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         let forward = object.forward();
-        assert!(forward.is_null_ptr() || forward.get_ptr() == pointer as usize);
+        assert!(forward.is_null_ptr() || forward.get_ptr() == pointer);
     }
 
     unsafe fn check_heap(&self) {
-        let mut pointer = self.heap_base;
-        while pointer < self.hp {
+        let mut pointer = self.limits.base;
+        while pointer < self.limits.free {
             let object = Value::from_ptr(pointer as usize);
             if object.tag() != TAG_ONE_WORD_FILLER {
                 self.check_object(object);
             }
-            let object_size = object_size(pointer as usize).to_bytes().as_usize();
-            pointer += object_size as u32;
+            pointer += object_size(pointer as usize).to_bytes().as_usize();
         }
     }
 }

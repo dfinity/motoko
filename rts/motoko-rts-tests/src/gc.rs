@@ -17,7 +17,7 @@ use utils::{
 };
 
 use motoko_rts::gc::copying::copying_gc_internal;
-use motoko_rts::gc::generational::{generational_gc_internal, Strategy};
+use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
@@ -402,25 +402,26 @@ impl GC {
                 unsafe {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
                     LAST_HP = heap_1.last_ptr_address() as u32;
-                    generational_gc_internal(
-                        heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // get_last_hp
-                        || heap_1.last_ptr_address(),
-                        // set_hp
-                        |hp| heap_2.set_heap_ptr_address(hp as usize),
+
+                    let limits = Limits {
+                        base: heap_base as usize,
+                        last_free: heap_1.last_ptr_address(),
+                        free: heap_1.heap_ptr_address(),
+                    };
+                    let roots = Roots {
                         static_roots,
-                        continuation_table_ptr_address,
-                        // note_live_size
-                        |_live_size| {},
-                        // note_reclaimed
-                        |_reclaimed| {},
-                        strategy,
-                    );
-                    heap.set_last_ptr_address(heap_2.heap_ptr_address());
-                    heap.set_heap_ptr_address(heap_2.heap_ptr_address());
+                        continuation_table_ptr_loc: continuation_table_ptr_address,
+                    };
+                    let gc_heap = motoko_rts::gc::generational::Heap {
+                        mem: heap,
+                        limits,
+                        roots,
+                    };
+                    let mut gc = GenerationalGC::new(gc_heap, strategy);
+                    gc.run();
+                    let free = gc.heap.limits.free;
+                    heap.set_last_ptr_address(free);
+                    heap.set_heap_ptr_address(free);
                 }
                 round >= 2
             }

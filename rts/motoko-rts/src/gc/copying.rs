@@ -1,12 +1,9 @@
 use crate::constants::WORD_SIZE;
-use crate::gc::{show_gc_start, show_gc_stop};
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
 use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
-
-const NAME: &str = "Copying GC";
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
@@ -23,8 +20,8 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-
-    show_gc_start(NAME);
+    const NAME: &str = "Copying GC";
+    crate::gc::show_gc_start(NAME);
 
     let heap_base = ic::get_heap_base();
 
@@ -45,7 +42,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
     ic::LAST_HP = ic::HP;
 
-    show_gc_stop(NAME);
+    crate::gc::show_gc_stop(NAME);
 }
 
 pub unsafe fn copying_gc_internal<
