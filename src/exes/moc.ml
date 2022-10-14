@@ -140,7 +140,11 @@ let argspec = [
  
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC (experimental)";
+  " use generational GC";
+
+  "--no-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.No),
+  " use no GC";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
@@ -153,6 +157,10 @@ let argspec = [
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
+
+  "--show-gc",
+  Arg.Unit (fun () -> Flags.show_gc := true),
+  " show diagnostic GC messages";
 
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,

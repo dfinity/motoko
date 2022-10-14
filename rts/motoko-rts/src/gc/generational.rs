@@ -38,6 +38,8 @@ unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
+    const NAME: &str = "Generational GC";
+    crate::gc::show_gc_start(NAME);
 
     let old_limits = get_limits();
     let roots = Roots {
@@ -68,6 +70,8 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     sanity_checks::take_snapshot(&mut gc.heap);
 
     write_barrier::init_write_barrier(gc.heap.mem);
+
+    crate::gc::show_gc_stop(NAME);
 }
 
 #[cfg(feature = "ic")]
@@ -169,6 +173,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     pub unsafe fn run(&mut self) {
+        if crate::gc::SHOW_GC_MESSAGES {
+            println!(100, "STRATEGY: {:?}", self.strategy);
+        }
+
         assert_eq!(self.heap.limits.base % 32, 0);
         let mem_size = Bytes(self.heap.limits.free as u32 - self.heap.limits.base as u32);
         alloc_bitmap(
@@ -179,6 +187,16 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         alloc_mark_stack(self.heap.mem);
 
         self.mark_phase();
+
+        if crate::gc::SHOW_GC_MESSAGES {
+            println!(
+                100,
+                "MARKED {} OF {} RATIO {:.3}",
+                self.marked_space,
+                self.generation_size(),
+                self.survival_rate()
+            );
+        }
 
         if self.is_compaction_beneficial() {
             self.thread_backward_phase();
