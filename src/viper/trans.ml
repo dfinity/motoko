@@ -239,7 +239,9 @@ and exp' ctxt (e : M.exp) =
     | _ -> fail (Mo_def.Arrange.exp e)
     end
   | M.NotE e ->
-     (NotE (exp ctxt e), NoInfo)
+     NotE (exp ctxt e), NoInfo
+  | M.RelE (ot, e1, EqOp, e2) ->
+     EqCmpE (exp ctxt e1, exp ctxt e2), NoInfo
   | _ -> fail (Mo_def.Arrange.exp e)
 (*           
   | VarE x              -> 
