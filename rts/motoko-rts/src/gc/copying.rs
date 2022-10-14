@@ -20,14 +20,10 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    const NAME: &str = "Copying GC";
-    crate::gc::show_gc_start(NAME);
-
-    let heap_base = ic::get_heap_base();
 
     copying_gc_internal(
         mem,
-        heap_base,
+        ic::get_heap_base(),
         // get_hp
         || ic::HP as usize,
         // set_hp
@@ -41,8 +37,6 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     );
 
     ic::LAST_HP = ic::HP;
-
-    crate::gc::show_gc_stop(NAME);
 }
 
 pub unsafe fn copying_gc_internal<

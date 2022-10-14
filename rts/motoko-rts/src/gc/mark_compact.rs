@@ -35,8 +35,6 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    const NAME: &str = "Compacting GC";
-    crate::gc::show_gc_start(NAME);
 
     compacting_gc_internal(
         mem,
@@ -54,8 +52,6 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     );
 
     ic::LAST_HP = ic::HP;
-
-    crate::gc::show_gc_stop(NAME);
 }
 
 pub unsafe fn compacting_gc_internal<
