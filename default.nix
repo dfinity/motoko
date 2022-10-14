@@ -750,6 +750,11 @@ rec {
     builtins.attrValues js;
   };
 
+  viperServer = builtins.fetchurl {
+    url = https://github.com/viperproject/viperserver/releases/download/v.22.07-release/viperserver.jar;
+    sha256 = "0glbzf875pv4hvl1kh7wl064ipz6vabjcacc1l28r7szblgpba8n";
+  };
+
   shell = stdenv.mkDerivation {
     name = "motoko-shell";
 
@@ -798,6 +803,7 @@ rec {
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
+    VIPER_SERVER = "${viperServer}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.

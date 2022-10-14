@@ -98,7 +98,9 @@ function normalize () {
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
-    sed -e '/RTS error: Cannot grow memory/q' \
+    sed -e '/RTS error: Cannot grow memory/q' |
+    # Delete Viper meta-output
+    sed -e '/^Silicon /d' \
         > $1.norm
     mv $1.norm $1
   fi
@@ -279,7 +281,9 @@ do
 
         if [ "$vpr_succeeded" -eq 0 ]
         then
-          true # run silicon silicon --check $out/$base.vpr -- RUN PROVER??
+	  run silicon java -Xmx2048m -Xss16m -cp $VIPER_SERVER \
+	    viper.silicon.SiliconRunner --logLevel OFF --z3Exe $(which z3) \
+	    $out/$base.vpr
         fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
