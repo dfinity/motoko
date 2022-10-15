@@ -6,11 +6,6 @@ method claim($Self: Ref)
   requires invariant_7($Self)
   requires invariant_8($Self)
   ensures invariant_7($Self)
-  ensures invariant_8($Self)
-   { 
-     if (!($Self).claimed)
-        { 
-          ($Self).claimed := true
-          ($Self).count := 1 
-        } 
-   }
+  ensures invariant_8($Self)  { 
+                                 
+                              }

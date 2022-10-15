@@ -8,10 +8,6 @@ actor {
   assert count > 0;
 
   public shared func claim() : async () {
-    if (not claimed) {
-      claimed := true;
-      count := 1;
-    };
   };
 
 }
