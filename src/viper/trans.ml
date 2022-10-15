@@ -212,6 +212,7 @@ and exp ctxt e =
     at = e.at;
     note = info }
 and exp' ctxt (e : M.exp) =
+  let open Mo_values.Operator in
   match e.it with
   | M.VarE x (* when Env.find x.it ctxt = Local *) ->
     begin
@@ -240,10 +241,25 @@ and exp' ctxt (e : M.exp) =
     end
   | M.NotE e ->
      NotE (exp ctxt e), NoInfo
-  | M.RelE (ot, e1, EqOp, e2) ->
-     EqCmpE (exp ctxt e1, exp ctxt e2), NoInfo
-  | M.RelE (ot, e1, GtOp, e2) ->
-     GtCmpE (exp ctxt e1, exp ctxt e2), NoInfo
+  | M.RelE (ot, e1, op, e2) ->
+     let e1, e2 = exp ctxt e1, exp ctxt e2 in
+     (match op with
+      | EqOp -> EqCmpE (e1, e2)
+      | NeqOp -> NeCmpE (e1, e2)
+      | GtOp -> GtCmpE (e1, e2)
+      | GeOp -> GeCmpE (e1, e2)
+      | LtOp -> LtCmpE (e1, e2)
+      | LeOp -> LeCmpE (e1, e2)
+     ), NoInfo
+  | M.BinE (ot, e1, op, e2) ->
+     let e1, e2 = exp ctxt e1, exp ctxt e2 in
+     (match op with
+      | AddOp -> AddE (e1, e2)
+      | SubOp -> SubE (e1, e2)
+      | MulOp -> MulE (e1, e2)
+      | DivOp -> DivE (e1, e2)
+      | ModOp -> ModE (e1, e2)
+     ), NoInfo
   | M.OrE (e1, e2) ->
      OrE (exp ctxt e1, exp ctxt e2), NoInfo
   | M.AndE (e1, e2) ->
