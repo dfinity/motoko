@@ -28,12 +28,12 @@ let self ctxt at =
 let rec extract_invariants : item list -> (par -> invariants -> invariants) = function
   | [] -> fun _ x -> x
   | { it = InvariantI (s, e); at; _ } :: p ->
-      fun (id, typ) es ->
-        { it = MacroCall(s, { it = LocalVar (id, typ)
+      fun self es ->
+        { it = MacroCall(s, { it = LocalVar (fst self, snd self)
                             ; at
                             ; note = NoInfo })
         ; at
-        ; note = NoInfo } :: extract_invariants p (id, typ) es
+        ; note = NoInfo } :: extract_invariants p self es
   | _ :: p -> extract_invariants p
 
 let rec adorn_invariants (is : par -> invariants -> invariants) = function
