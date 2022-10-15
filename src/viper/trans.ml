@@ -43,7 +43,7 @@ let rec adorn_invariants (is : par -> invariants -> invariants) = function
     m :: adorn_invariants is p
   | i :: p -> i :: adorn_invariants is p
 
-let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
+let rec unit (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
