@@ -9,7 +9,7 @@ and item' =
   (* | import path *)
   | FieldI of id * typ
   | MethodI of id * par list * par list * exp list * exp list * seqn option
-  | InvariantI of exp
+  | InvariantI of string * exp
 
 and par = id * typ
 

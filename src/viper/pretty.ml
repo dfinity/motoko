@@ -33,8 +33,8 @@ and pp_item ppf i =
       pp_pres pres
       pp_posts posts
       pp_block_opt bo
-  | InvariantI e -> (* TODO: srcloc mapping *)
-    fprintf ppf "@[<2>define invariant_%s(self) (%a)@]" "Actor" pp_exp e
+  | InvariantI (s, e) -> (* TODO: srcloc mapping *)
+    fprintf ppf "@[<2>define %s(self) (%a)@]" s pp_exp e
 
 and pp_block_opt ppf bo =
   match bo with
