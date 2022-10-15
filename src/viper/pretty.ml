@@ -33,9 +33,10 @@ and pp_item ppf i =
       pp_pres pres
       pp_posts posts
       pp_block_opt bo
+  | InvariantI (s, e) -> (* TODO: srcloc mapping *)
+    fprintf ppf "@[<2>define %s(self) (%a)@]" s pp_exp e
 
-and pp_block_opt ppf bo =
-  match bo with
+and pp_block_opt ppf = function
   | None -> ()
   | Some seqn ->
     pp_seqn ppf seqn
@@ -92,6 +93,8 @@ and pp_exp ppf exp =
      fprintf ppf "%s" id.it
   | FldAcc fldacc ->
      pp_fldacc ppf fldacc
+  | MacroCall (m, e) ->
+     fprintf ppf "@[%s(%a)@]" m pp_exp e
   | NotE e ->
      fprintf ppf "@[(!%a)@]" pp_exp e
   | MinusE e ->

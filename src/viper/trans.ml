@@ -25,14 +25,36 @@ let self ctxt at =
                    note = NoInfo }
   | _ -> failwith "no self"
 
-let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
+let rec extract_invariants : item list -> (par -> invariants -> invariants) = function
+  | [] -> fun _ x -> x
+  | { it = InvariantI (s, e); at; _ } :: p ->
+      fun self es ->
+        { it = MacroCall(s, { it = LocalVar (fst self, snd self)
+                            ; at
+                            ; note = NoInfo })
+        ; at
+        ; note = NoInfo } :: extract_invariants p self es
+  | _ :: p -> extract_invariants p
+
+let rec adorn_invariants (is : par -> invariants -> invariants) = function
+  | [] -> []
+  | { it = MethodI (d, (self :: _ as i), o, r, e, b); _ } as m :: p ->
+    let pre_is = function
+      | "__init__" -> fun _ l -> l
+      | _ -> is in
+    let m = { m with it = MethodI (d, i, o, pre_is d.it self r, is self e, b) } in
+    m :: adorn_invariants is p
+  | i :: p -> i :: adorn_invariants is p
+
+let rec unit (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
      let ctxt = { self = None; ids = Env.empty } in
-     let (ctxt', mk_is) = dec_fields ctxt decs in
+     let ctxt', mk_is = dec_fields ctxt decs in
      let is = List.map (fun mk_i -> mk_i ctxt') mk_is in
-     { it = is;
+     let invs = extract_invariants is in
+     { it = adorn_invariants invs is;
        at = body.at;
        note = NoInfo
      }
@@ -76,6 +98,10 @@ and dec_field' ctxt d =
        in (* TODO: add args (and rets?) *)
        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
+  | M.(ExpD { it = AssertE e; at; _ }) ->
+	    ctxt,
+	    fun ctxt' ->
+	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "self" }  e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*
@@ -122,8 +148,8 @@ and dec ctxt d =
         note = NoInfo }],
        [{ it = VarAssignS (id x, exp ctxt' e);
           at = d.at;
-          note = NoInfo } ])
-  | M.(LetD ({it=VarP x;_}, e))->
+          note = NoInfo }])
+  | M.(LetD ({it=VarP x;_}, e)) ->
      { ctxt with ids = Env.add x.it Local ctxt.ids },
      fun ctxt' ->
        ([{ it = (id x, tr_typ e.note.M.note_typ);
@@ -171,7 +197,7 @@ and stmt ctxt (s : M.exp) : seqn =
        at = s.at;
        note = NoInfo }
   | M.(AssignE({it = VarE x; _}, e2)) ->
-     match Env.find x.it ctxt.ids with
+     begin match Env.find x.it ctxt.ids with
      | Local ->
        let loc = { it = x.it; at = x.at; note = NoInfo } in
        { it =
@@ -190,9 +216,10 @@ and stmt ctxt (s : M.exp) : seqn =
                 note = NoInfo } ]);
          at = s.at;
          note = NoInfo }
-        
+     end
+  | M.LitE e -> { it = [], []; at = s.at; note = NoInfo }
   | _ -> fail (Mo_def.Arrange.exp s)
-          
+
 (*    
   | M.AssignE({it = VarE id;_}, e2) when isField e1->
      { it =
@@ -541,5 +568,3 @@ and dec d = match d.it with
     ] @ List.map dec_field dfs
 
  *)
-
-                       
