@@ -94,18 +94,24 @@ and pp_exp ppf exp =
      pp_fldacc ppf fldacc
   | NotE e ->
      fprintf ppf "@[(!%a)@]" pp_exp e
+  | MinusE e ->
+     fprintf ppf "@[(-%a)@]" pp_exp e
   | BoolLitE b ->
      fprintf ppf "%s" (if b then "true" else "false")
   | IntLitE i ->
      fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
-  | EqCmpE (e1, e2) ->
-     fprintf ppf "(%a == %a)" pp_exp e1 pp_exp e2
-  | GtCmpE (e1, e2) ->
-     fprintf ppf "(%a > %a)" pp_exp e1 pp_exp e2
-  | OrE (e1, e2) ->
-     fprintf ppf "(%a || %a)" pp_exp e1 pp_exp e2
-  | AndE (e1, e2) ->
-     fprintf ppf "(%a && %a)" pp_exp e1 pp_exp e2
+  | AddE (e1, e2) | SubE (e1, e2) | MulE (e1, e2) | DivE (e1, e2) | ModE (e1, e2)
+  | EqCmpE (e1, e2) | NeCmpE (e1, e2) | GtCmpE (e1, e2) | GeCmpE (e1, e2) | LtCmpE (e1, e2) | LeCmpE (e1, e2)
+  | Implies (e1, e2) | OrE (e1, e2) | AndE (e1, e2) ->
+     let op = match exp.it with
+       | AddE _ -> "+" | SubE _ -> "-"
+       | MulE _ -> "*" | DivE _ -> "/" | ModE _ -> "%"
+       | EqCmpE _ -> "==" | NeCmpE _ -> "!="
+       | GtCmpE _ -> ">" | GeCmpE _ -> ">="
+       | LtCmpE _ -> "<" | LeCmpE _ -> "<="
+       | Implies _ -> "==>" | OrE _ -> "||" | AndE _ -> "&&"
+       | _ -> failwith "not a binary operator" in
+     fprintf ppf "(%a %s %a)" pp_exp e1 op pp_exp e2
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
