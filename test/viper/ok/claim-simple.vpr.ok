@@ -1,7 +1,8 @@
 field claimed: Bool
 field count: Int
 define invariant_Actor(self) ((((!(-1 == -1)) && (-42 == -42)) || true))
-method claim($Self: Ref)  requires true ensures true
+method claim($Self: Ref)  requires invariant_Actor(true)
+  ensures invariant_Actor(true)
    { 
      if (!($Self).claimed)
         { 

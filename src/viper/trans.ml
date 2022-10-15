@@ -27,7 +27,9 @@ let self ctxt at =
 
 let rec extract_invariants = function
   | [] -> fun x -> x
-  | { it = InvariantI (s, e); at; _ } :: p -> fun es -> { it = BoolLitE true; at; note = NoInfo } :: extract_invariants p es
+  | { it = InvariantI (s, e); at; _ } :: p ->
+      let self = { it = BoolLitE true; at = no_region; note = NoInfo } in
+      fun es -> { it = MacroCall(s, self); at; note = NoInfo } :: extract_invariants p es
   | _ :: p -> extract_invariants p
 
 let rec adorn_invariants (is : exp list -> exp list) = function
