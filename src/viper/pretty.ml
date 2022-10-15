@@ -36,8 +36,7 @@ and pp_item ppf i =
   | InvariantI (s, e) -> (* TODO: srcloc mapping *)
     fprintf ppf "@[<2>define %s(self) (%a)@]" s pp_exp e
 
-and pp_block_opt ppf bo =
-  match bo with
+and pp_block_opt ppf = function
   | None -> ()
   | Some seqn ->
     pp_seqn ppf seqn

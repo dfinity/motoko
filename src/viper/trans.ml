@@ -546,8 +546,21 @@ and dec d = match d.it with
 
  *)
 
-                       
-(* knot-tying adorner *)
+
+let rec extract_invariants (p : item list) : (exp list -> exp list) =
+  match p with
+  | [] -> fun x -> x
+  | { it = InvariantI (s, e); at; _ } :: p -> fun es -> { it = BoolLitE true; at; note = NoInfo } :: extract_invariants p es
+  | _ :: p -> extract_invariants p
+
+let rec adorn_invariants (is : exp list -> exp list) = function
+  | [] -> []
+  | { it = MethodI (d, i, o, r, e, b); _ } as m :: p ->
+    let m = { m with it = MethodI (d, i, o, is r, is e, b) } in
+    m :: adorn_invariants is p
+  | i :: p -> i :: adorn_invariants is p
+
+(* knot-tying adorner
 
 open Lazy
 
@@ -563,3 +576,4 @@ let rec adorn_invariants (is : (exp list -> exp list) t) (p : item list) : (exp 
     let is', p' = adorn_invariants is p in is', m :: p'
 
 (*let knot (p : item list) = let *)
+ *)
