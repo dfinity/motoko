@@ -1,8 +1,12 @@
 field claimed: Bool
 field count: Int
-define invariant_Actor(self) (((((self).claimed && (!(-1 == -1))) && (-42 == -42)) || true))
-method claim($Self: Ref)  requires invariant_Actor($Self)
-  ensures invariant_Actor($Self)
+define invariant_7(self) (((((self).claimed && (!(-1 == -1))) && (-42 == -42)) || true))
+define invariant_8(self) (((self).count > 0))
+method claim($Self: Ref) 
+  requires invariant_7($Self)
+  requires invariant_8($Self)
+  ensures invariant_7($Self)
+  ensures invariant_8($Self)
    { 
      if (!($Self).claimed)
         { 
