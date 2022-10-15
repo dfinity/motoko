@@ -547,3 +547,19 @@ and dec d = match d.it with
  *)
 
                        
+(* knot-tying adorner *)
+
+open Lazy
+
+let rec adorn_invariants (is : (exp list -> exp list) t) (p : item list) : (exp list -> exp list) t * item list =
+  let id x = x in
+  let comp s f = fun exps -> { it = BoolLitE true; at = no_region; note = NoInfo } :: f exps in
+  let map f x = lazy (f (force x)) in (* FIXME: this is in OCaml 4.13 *)
+  match p with
+  | [] -> from_val id, p
+  | { it = InvariantI (s, e); _ } as i :: p -> let is', p' = adorn_invariants is p in map (comp s) is', i :: p'
+  | { it = MethodI (d, i, o, r, e, b); at; note } :: p ->
+    let m = { it = MethodI (d, i, o, force is r, e, b); at; note } in
+    let is', p' = adorn_invariants is p in is', m :: p'
+
+(*let knot (p : item list) = let *)
