@@ -1,1 +1,1 @@
-  [0] Contract might not be well-formed. There might be insufficient permission to access $Self.claimed (claim-simple.vpr@6.12--6.30)
+  [0] Conditional statement might fail. There might be insufficient permission to access $Self.claimed (claim-simple.vpr@5.10--5.26)
