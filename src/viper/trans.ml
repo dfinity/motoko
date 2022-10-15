@@ -25,17 +25,21 @@ let self ctxt at =
                    note = NoInfo }
   | _ -> failwith "no self"
 
-let rec extract_invariants = function
-  | [] -> fun x -> x
+let rec extract_invariants : item list -> (par -> invariants -> invariants) = function
+  | [] -> fun _ x -> x
   | { it = InvariantI (s, e); at; _ } :: p ->
-      let self = { it = BoolLitE true; at = no_region; note = NoInfo } in
-      fun es -> { it = MacroCall(s, self); at; note = NoInfo } :: extract_invariants p es
+      fun (id, typ) es ->
+        { it = MacroCall(s, { it = LocalVar (id, typ)
+                            ; at
+                            ; note = NoInfo })
+        ; at
+        ; note = NoInfo } :: extract_invariants p (id, typ) es
   | _ :: p -> extract_invariants p
 
-let rec adorn_invariants (is : exp list -> exp list) = function
+let rec adorn_invariants (is : par -> invariants -> invariants) = function
   | [] -> []
-  | { it = MethodI (d, i, o, r, e, b); _ } as m :: p ->
-    let m = { m with it = MethodI (d, i, o, is r, is e, b) } in
+  | { it = MethodI (d, (self :: _ as i), o, r, e, b); _ } as m :: p ->
+    let m = { m with it = MethodI (d, i, o, is self r, is self e, b) } in
     m :: adorn_invariants is p
   | i :: p -> i :: adorn_invariants is p
 
