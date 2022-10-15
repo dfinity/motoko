@@ -1,2 +1,1 @@
-Parse warning: In macro invariant_Actor, the following parameters were defined but not used: self  (claim-simple.vpr@3.1)
-  [0] Conditional statement might fail. There might be insufficient permission to access $Self.claimed (claim-simple.vpr@7.10--7.26)
+  [0] Contract might not be well-formed. There might be insufficient permission to access $Self.claimed (claim-simple.vpr@4.36--4.58)

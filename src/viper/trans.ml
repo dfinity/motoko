@@ -97,7 +97,8 @@ and dec_field' ctxt d =
         NoInfo)
   | M.(ExpD { it = AssertE e; _ }) ->
 	    ctxt,
-	    fun ctxt' -> InvariantI ("invariant_Actor", exp ctxt' e), NoInfo
+	    fun ctxt' ->
+	      InvariantI ("invariant_Actor", exp { ctxt' with self = Some "self" }  e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*
