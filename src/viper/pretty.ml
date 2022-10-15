@@ -59,7 +59,7 @@ and pp_pre ppf exp =
    fprintf ppf "requires @[<2>%a@]" pp_exp exp
 
 and pp_posts ppf exps =
-   fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_pre) exps
+   fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_post) exps
 
 and pp_post ppf exp =
    fprintf ppf "ensures @[<2>%a@]" pp_exp exp
