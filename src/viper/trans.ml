@@ -25,14 +25,27 @@ let self ctxt at =
                    note = NoInfo }
   | _ -> failwith "no self"
 
+let rec extract_invariants = function
+  | [] -> fun x -> x
+  | { it = InvariantI (s, e); at; _ } :: p -> fun es -> { it = BoolLitE true; at; note = NoInfo } :: extract_invariants p es
+  | _ :: p -> extract_invariants p
+
+let rec adorn_invariants (is : exp list -> exp list) = function
+  | [] -> []
+  | { it = MethodI (d, i, o, r, e, b); _ } as m :: p ->
+    let m = { m with it = MethodI (d, i, o, is r, is e, b) } in
+    m :: adorn_invariants is p
+  | i :: p -> i :: adorn_invariants is p
+
 let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
      let ctxt = { self = None; ids = Env.empty } in
-     let (ctxt', mk_is) = dec_fields ctxt decs in
+     let ctxt', mk_is = dec_fields ctxt decs in
      let is = List.map (fun mk_i -> mk_i ctxt') mk_is in
-     { it = is;
+     let invs = extract_invariants is in
+     { it = adorn_invariants invs is;
        at = body.at;
        note = NoInfo
      }
@@ -544,36 +557,4 @@ and dec d = match d.it with
       obj_sort s; id i'
     ] @ List.map dec_field dfs
 
- *)
-
-
-let rec extract_invariants (p : item list) : (exp list -> exp list) =
-  match p with
-  | [] -> fun x -> x
-  | { it = InvariantI (s, e); at; _ } :: p -> fun es -> { it = BoolLitE true; at; note = NoInfo } :: extract_invariants p es
-  | _ :: p -> extract_invariants p
-
-let rec adorn_invariants (is : exp list -> exp list) = function
-  | [] -> []
-  | { it = MethodI (d, i, o, r, e, b); _ } as m :: p ->
-    let m = { m with it = MethodI (d, i, o, is r, is e, b) } in
-    m :: adorn_invariants is p
-  | i :: p -> i :: adorn_invariants is p
-
-(* knot-tying adorner
-
-open Lazy
-
-let rec adorn_invariants (is : (exp list -> exp list) t) (p : item list) : (exp list -> exp list) t * item list =
-  let id x = x in
-  let comp s f = fun exps -> { it = BoolLitE true; at = no_region; note = NoInfo } :: f exps in
-  let map f x = lazy (f (force x)) in (* FIXME: this is in OCaml 4.13 *)
-  match p with
-  | [] -> from_val id, p
-  | { it = InvariantI (s, e); _ } as i :: p -> let is', p' = adorn_invariants is p in map (comp s) is', i :: p'
-  | { it = MethodI (d, i, o, r, e, b); at; note } :: p ->
-    let m = { it = MethodI (d, i, o, force is r, e, b); at; note } in
-    let is', p' = adorn_invariants is p in is', m :: p'
-
-(*let knot (p : item list) = let *)
  *)
