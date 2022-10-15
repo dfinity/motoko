@@ -43,6 +43,7 @@ and exp' =
   | Implies of exp * exp
   | FldAcc of fldacc
   | PermExp of perm
+  | MacroCall of string * exp
 
 and perm = (perm', info) Source.annotated_phrase
 
