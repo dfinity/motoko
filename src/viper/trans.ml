@@ -39,7 +39,10 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
 let rec adorn_invariants (is : par -> invariants -> invariants) = function
   | [] -> []
   | { it = MethodI (d, (self :: _ as i), o, r, e, b); _ } as m :: p ->
-    let m = { m with it = MethodI (d, i, o, is self r, is self e, b) } in
+    let pre_is = function
+      | "__init__" -> fun _ l -> l
+      | _ -> is in
+    let m = { m with it = MethodI (d, i, o, pre_is d.it self r, is self e, b) } in
     m :: adorn_invariants is p
   | i :: p -> i :: adorn_invariants is p
 
