@@ -242,6 +242,8 @@ and exp' ctxt (e : M.exp) =
      NotE (exp ctxt e), NoInfo
   | M.RelE (ot, e1, EqOp, e2) ->
      EqCmpE (exp ctxt e1, exp ctxt e2), NoInfo
+  | M.RelE (ot, e1, GtOp, e2) ->
+     GtCmpE (exp ctxt e1, exp ctxt e2), NoInfo
   | M.OrE (e1, e2) ->
      OrE (exp ctxt e1, exp ctxt e2), NoInfo
   | M.AndE (e1, e2) ->
