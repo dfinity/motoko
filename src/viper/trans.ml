@@ -105,24 +105,25 @@ and dec_field' ctxt d =
   (*  | ExpD e -> "ExpD" $$ [exp e ] *)
 
   | M.VarD (x, e) ->
-     { ctxt with ids = Env.add x.it Field ctxt.ids },
-     Some (id x, e),
-     fun ctxt' ->
-       (FieldI(id x, tr_typ e.note.M.note_typ),
-       NoInfo)
+      { ctxt with ids = Env.add x.it Field ctxt.ids },
+      Some (id x, e),
+      fun ctxt' ->
+        (FieldI(id x, tr_typ e.note.M.note_typ),
+        NoInfo)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
                        {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
-     { ctxt with ids = Env.add f.it Method ctxt.ids },
-     None,
-     fun ctxt' ->
-       let self_id = id_at "$Self" Source.no_region in
-       let ctxt'' = { ctxt' with self = Some self_id.it }
-       in (* TODO: add args (and rets?) *)
-       (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
+      { ctxt with ids = Env.add f.it Method ctxt.ids },
+      None,
+      fun ctxt' ->
+        let self_id = id_at "$Self" Source.no_region in
+        let ctxt'' = { ctxt' with self = Some self_id.it }
+        in (* TODO: add args (and rets?) *)
+        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
   | M.(ExpD { it = AssertE e; at; _ }) ->
 	    ctxt,
+      None,
 	    fun ctxt' ->
 	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "self" }  e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
