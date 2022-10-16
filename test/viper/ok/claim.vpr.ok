@@ -5,7 +5,9 @@ method __init__($Self: Ref)
    }
 field claimed: Bool
 field count: Int
-method claim($Self: Ref)   
+method claim($Self: Ref) 
+  requires (acc(($Self).claimed) && (acc(($Self).claimed) && (acc(($Self).count) && true)))
+  ensures (acc(($Self).claimed) && (acc(($Self).claimed) && (acc(($Self).count) && true)))
    { 
      if (!($Self).claimed)
         { 

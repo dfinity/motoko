@@ -14,7 +14,9 @@ define invariant_8(self) ((acc((self).count) && ((self).count > 0)))
 method claim($Self: Ref) 
   requires invariant_7($Self)
   requires invariant_8($Self)
+  requires true
   ensures invariant_7($Self)
-  ensures invariant_8($Self)  { 
-                                 
-                              }
+  ensures invariant_8($Self)
+  ensures true  { 
+                   
+                }

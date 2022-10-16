@@ -149,7 +149,10 @@ and dec_field' ctxt d =
         let self_id = id_at "$Self" Source.no_region in
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
-        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
+        let seqn = stmt ctxt'' e in
+        let permf = extract_seqn_permissions seqn in
+        let perms = [permf { it = BoolLitE true; at = no_region; note = NoInfo }] in
+        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, perms, perms, Some seqn),
         NoInfo)
   | M.(ExpD { it = AssertE e; at; _ }) ->
 	    ctxt,
