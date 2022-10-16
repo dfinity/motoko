@@ -1,7 +1,8 @@
 field claimed: Bool
 field count: Int
-define invariant_7(self) ((acc((self).claimed) && ((((self).claimed && 
-  (!(-1 == -1))) && (-42 == -42)) || true)))
+define invariant_7(self) ((acc((self).claimed) && (acc((self).count) && (
+  acc((self).count) && ((((self).claimed && (!(-1 >= (self).count))) && (-42 < 
+  (self).count)) || true)))))
 define invariant_8(self) ((acc((self).count) && ((self).count > 0)))
 method claim($Self: Ref) 
   requires invariant_7($Self)
