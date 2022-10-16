@@ -52,7 +52,8 @@ let rec extract_stmt_permissions s : exp -> exp =
       fun e -> e' (s1 (s2 e))
   | WhileS _ | LabelS _ -> failwith "cannot do loops yet"
 
-and extract_seqn_permissions _ = failwith "cannot do seqn yet"
+and extract_seqn_permissions s =
+  List.fold_left (fun f s -> fun e -> f (extract_stmt_permissions s e)) (fun x -> x) (snd s.it)
 
 let rec extract_invariants : item list -> (par -> invariants -> invariants) = function
   | [] -> fun _ x -> x
