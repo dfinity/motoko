@@ -1,6 +1,8 @@
-method __init__($Self: Ref)  
+method __init__($Self: Ref) 
+  requires (acc(($Self).claimed) && (acc(($Self).count) && true))
   ensures invariant_7($Self)
   ensures invariant_8($Self)
+  ensures (acc(($Self).claimed) && (acc(($Self).count) && true))
    { 
      ($Self).claimed := false
      ($Self).count := 0 

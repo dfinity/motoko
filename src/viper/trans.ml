@@ -96,10 +96,12 @@ let rec unit (u : M.comp_unit) : prog =
         it = [], init_list;
         note = NoInfo
       } in
-    let m = 
+    let m =
+      let permf = extract_seqn_permissions init_body in
+      let perms = [permf { it = BoolLitE true; at = no_region; note = NoInfo }] in
       { it = MethodI(init_id, [
           self_id, { it = RefT; at = self_id.at; note = NoInfo }
-        ], [], [], [], Some init_body);
+        ], [], perms, perms, Some init_body);
         at = no_region;
         note = NoInfo
       } in
@@ -152,8 +154,8 @@ and dec_field' ctxt d =
         let seqn = stmt ctxt'' e in
         let permf = extract_seqn_permissions seqn in
         let perms = [permf { it = BoolLitE true; at = no_region; note = NoInfo }] in
-        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, perms, perms, Some seqn),
-        NoInfo)
+        MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, perms, perms, Some seqn),
+        NoInfo
   | M.(ExpD { it = AssertE e; at; _ }) ->
 	    ctxt,
       None,

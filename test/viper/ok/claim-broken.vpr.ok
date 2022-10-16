@@ -1,4 +1,6 @@
-method __init__($Self: Ref)   
+method __init__($Self: Ref) 
+  requires (acc(($Self).claimed) && (acc(($Self).count) && true))
+  ensures (acc(($Self).claimed) && (acc(($Self).count) && true))
    { 
      ($Self).claimed := false
      ($Self).count := 0 
