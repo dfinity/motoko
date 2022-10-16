@@ -36,18 +36,18 @@ let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
     let self_id = id_at "$Self" Source.no_region in
     let ctxt'' = { ctxt' with self = Some self_id.it } in
     let init_list = List.map (fun (id, init) -> 
-      { at = init.at;
+      { at = { left = id.at.left; right = init.at.right };
         it = FieldAssignS((self ctxt'' init.at, id), exp ctxt'' init);
         note = NoInfo
       }) inits in
     let init_body = 
-      { at = body.at;
+      { at = body.at;  (* ATG: Is this the correct position? *)
         it = [], init_list;
         note = NoInfo
       } in
     let m = 
       { it = MethodI(init_id, [
-          self_id, {it = RefT; at = self_id.at; note = NoInfo}
+          self_id, { it = RefT; at = self_id.at; note = NoInfo }
         ], [], [], [], Some init_body);
         at = no_region;
         note = NoInfo
