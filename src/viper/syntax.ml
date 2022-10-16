@@ -9,6 +9,7 @@ and item' =
   (* | import path *)
   | FieldI of id * typ
   | MethodI of id * par list * par list * exp list * exp list * seqn option
+  | InvariantI of string * exp
 
 and par = id * typ
 
@@ -42,6 +43,7 @@ and exp' =
   | Implies of exp * exp
   | FldAcc of fldacc
   | PermExp of perm
+  | MacroCall of string * exp
 
 and perm = (perm', info) Source.annotated_phrase
 
