@@ -117,7 +117,8 @@ and pp_exp ppf exp =
        | Implies _ -> "==>" | OrE _ -> "||" | AndE _ -> "&&"
        | _ -> failwith "not a binary operator" in
      fprintf ppf "(%a %s %a)" pp_exp e1 op pp_exp e2
-  | PermExp { it = WildcardP; _ } -> fprintf ppf "@[acc(self.claimed)@]"
+  | PermExp { it = WildcardP; _ } -> fprintf ppf "@[acc(*)@]"
+  | PermExp { it = FullP acc; _ } -> fprintf ppf "@[acc(%a)@]" pp_fldacc acc
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;

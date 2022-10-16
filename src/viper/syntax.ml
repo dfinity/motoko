@@ -49,7 +49,7 @@ and perm = (perm', info) Source.annotated_phrase
 
 and perm' =
   | WildcardP
-  | FullP
+  | FullP of fldacc
   | NoP
   | EpsilonP
 (* | FractionalP of exp * exp | ...*)
