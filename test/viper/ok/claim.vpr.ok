@@ -1,3 +1,8 @@
+method __init__($Self: Ref)   
+   { 
+     ($Self).claimed := false
+     ($Self).count := 0 
+   }
 field claimed: Bool
 field count: Int
 method claim($Self: Ref)   
