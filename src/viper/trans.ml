@@ -29,7 +29,7 @@ let rec extract_permissions e : exp -> exp =
   match e.it with
   | LocalVar _ | Result _ | BoolLitE _ | NullLitE | IntLitE _ -> fun x -> x
   | PermExp _ | MacroCall _ -> failwith "we should not encounter these"
-  | FldAcc acc -> fun e -> { e with it = AndE ({ e with it = PermExp { e with it = FullP acc }; note = NoInfo }, e); note = NoInfo }
+  | FldAcc acc -> fun e -> { e with it = AndE ({ e with it = PermExp { e with it = FullP acc; note = NoInfo }; note = NoInfo }, e); note = NoInfo }
   | NotE e1 | MinusE e1 -> fun e -> extract_permissions e1 e
   | AddE (e1, e2) | SubE (e1, e2) | MulE (e1, e2) | DivE (e1, e2) | ModE (e1, e2)
   | EqCmpE (e1, e2) | NeCmpE (e1, e2) | GtCmpE (e1, e2) | GeCmpE (e1, e2) | LtCmpE (e1, e2) | LeCmpE (e1, e2)
@@ -43,7 +43,7 @@ let rec extract_stmt_permissions s : exp -> exp =
   | ExhaleS e | InhaleS e | AssertS e | AssumeS e | VarAssignS (_, e) -> extract_permissions e
   | SeqnS seqn -> extract_seqn_permissions seqn
   | FieldAssignS (acc, e) ->
-      fun e -> { it = AndE ({ e with it = PermExp { e with it = FullP acc; note = NoInfo } }, e)
+      fun e -> { it = AndE ({ e with it = PermExp { e with it = FullP acc; note = NoInfo }; note = NoInfo }, e)
                ; at = s.at
                ; note = NoInfo
                }
