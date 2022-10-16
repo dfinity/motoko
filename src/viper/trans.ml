@@ -29,35 +29,34 @@ let rec unit (u : Mo_def.Syntax.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-     let ctxt = { self = None; ids = Env.empty } in
-     let ctxt', inits, mk_is = dec_fields ctxt decs in
-     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
-     let init_id = id_at "__init__" Source.no_region in
-     let self_id = id_at "$Self" Source.no_region in
-     let ctxt'' = { ctxt' with self = Some self_id.it } in
-     let init_list = List.map (fun (id, init) -> {
-      at = init.at;
-      it = FieldAssignS((self ctxt'' init.at, id), exp ctxt'' init);
-      note = NoInfo
-    }) inits
-    in
-     let init_body = {
-      at = body.at;
-      it = [], init_list;
-      note = NoInfo
-     } in
-     let m = {
-      it = MethodI(init_id, [
-        self_id, {it = RefT; at = self_id.at; note = NoInfo}
-      ], [], [], [], Some init_body);
-      at = no_region;
-      note = NoInfo
-     } in
+    let ctxt = { self = None; ids = Env.empty } in
+    let ctxt', inits, mk_is = dec_fields ctxt decs in
+    let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
+    let init_id = id_at "__init__" Source.no_region in
+    let self_id = id_at "$Self" Source.no_region in
+    let ctxt'' = { ctxt' with self = Some self_id.it } in
+    let init_list = List.map (fun (id, init) -> 
+      { at = init.at;
+        it = FieldAssignS((self ctxt'' init.at, id), exp ctxt'' init);
+        note = NoInfo
+      }) inits in
+    let init_body = 
+      { at = body.at;
+        it = [], init_list;
+        note = NoInfo
+      } in
+    let m = 
+      { it = MethodI(init_id, [
+          self_id, {it = RefT; at = self_id.at; note = NoInfo}
+        ], [], [], [], Some init_body);
+        at = no_region;
+        note = NoInfo
+      } in
      let is = m :: is' in
-     { it = is;
-       at = body.at;
-       note = NoInfo
-     }
+      { it = is;
+        at = body.at;
+        note = NoInfo
+      }
   | _ -> assert false
 
 and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
