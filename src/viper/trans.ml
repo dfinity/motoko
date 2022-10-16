@@ -25,6 +25,18 @@ let self ctxt at =
                    note = NoInfo }
   | _ -> failwith "no self"
 
+let rec extract_permissions e : exp -> exp =
+  match e.it with
+  | LocalVar _ | Result _ | BoolLitE _ | NullLitE | IntLitE _ -> fun x -> x
+  | PermExp _ | MacroCall _ -> failwith "we should not encounter these"
+  | FldAcc acc -> fun e -> { e with it = AndE ({ e with it = PermExp { e with it = WildcardP } }, e) }
+  | NotE e1 | MinusE e1 -> fun e -> extract_permissions e1 e
+  | AddE (e1, e2) | SubE (e1, e2) | MulE (e1, e2) | DivE (e1, e2) | ModE (e1, e2)
+  | EqCmpE (e1, e2) | NeCmpE (e1, e2) | GtCmpE (e1, e2) | GeCmpE (e1, e2) | LtCmpE (e1, e2) | LeCmpE (e1, e2)
+  | Implies (e1, e2) | OrE (e1, e2) | AndE (e1, e2) ->
+      let e1, e2 = extract_permissions e1, extract_permissions e2 in
+        fun e -> e1 (e2 e)
+
 let rec extract_invariants : item list -> (par -> invariants -> invariants) = function
   | [] -> fun _ x -> x
   | { it = InvariantI (s, e); at; _ } :: p ->
@@ -101,7 +113,9 @@ and dec_field' ctxt d =
   | M.(ExpD { it = AssertE e; at; _ }) ->
 	    ctxt,
 	    fun ctxt' ->
-	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "self" }  e), NoInfo
+	      let e = exp { ctxt' with self = Some "self" } e in
+	      let perms = extract_permissions e in
+	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, perms e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*
