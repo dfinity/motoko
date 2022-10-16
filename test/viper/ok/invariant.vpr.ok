@@ -1,3 +1,10 @@
+method __init__($Self: Ref)  
+  ensures invariant_7($Self)
+  ensures invariant_8($Self)
+   { 
+     ($Self).claimed := false
+     ($Self).count := 0 
+   }
 field claimed: Bool
 field count: Int
 define invariant_7(self) ((acc((self).claimed) && (acc((self).count) && (
