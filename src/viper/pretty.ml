@@ -99,6 +99,8 @@ and pp_exp ppf exp =
      fprintf ppf "@[(!%a)@]" pp_exp e
   | MinusE e ->
      fprintf ppf "@[(-%a)@]" pp_exp e
+  | NullLitE ->
+     fprintf ppf "null"
   | BoolLitE b ->
      fprintf ppf "%s" (if b then "true" else "false")
   | IntLitE i ->
