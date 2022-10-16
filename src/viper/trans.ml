@@ -29,13 +29,30 @@ let rec extract_permissions e : exp -> exp =
   match e.it with
   | LocalVar _ | Result _ | BoolLitE _ | NullLitE | IntLitE _ -> fun x -> x
   | PermExp _ | MacroCall _ -> failwith "we should not encounter these"
-  | FldAcc acc -> fun e -> { e with it = AndE ({ e with it = PermExp { e with it = FullP acc } }, e) }
+  | FldAcc acc -> fun e -> { e with it = AndE ({ e with it = PermExp { e with it = FullP acc }; note = NoInfo }, e); note = NoInfo }
   | NotE e1 | MinusE e1 -> fun e -> extract_permissions e1 e
   | AddE (e1, e2) | SubE (e1, e2) | MulE (e1, e2) | DivE (e1, e2) | ModE (e1, e2)
   | EqCmpE (e1, e2) | NeCmpE (e1, e2) | GtCmpE (e1, e2) | GeCmpE (e1, e2) | LtCmpE (e1, e2) | LeCmpE (e1, e2)
   | Implies (e1, e2) | OrE (e1, e2) | AndE (e1, e2) ->
       let e1, e2 = extract_permissions e1, extract_permissions e2 in
         fun e -> e1 (e2 e)
+
+let rec extract_stmt_permissions s : exp -> exp =
+  match s.it with
+  | MethodCallS (id, exps, ids) -> failwith "cannot call methods yet"
+  | ExhaleS e | InhaleS e | AssertS e | AssumeS e | VarAssignS (_, e) -> extract_permissions e
+  | SeqnS seqn -> extract_seqn_permissions seqn
+  | FieldAssignS (acc, e) ->
+      fun e -> { it = AndE ({ e with it = PermExp { e with it = FullP acc; note = NoInfo } }, e)
+               ; at = s.at
+               ; note = NoInfo
+               }
+  | IfS (e, s1, s2) ->
+      let e', s1, s2 = extract_permissions e, extract_seqn_permissions s1, extract_seqn_permissions s2 in
+      fun e -> e' (s1 (s2 e))
+  | WhileS _ | LabelS _ -> failwith "cannot do loops yet"
+
+and extract_seqn_permissions _ = failwith "cannot do seqn yet"
 
 let rec extract_invariants : item list -> (par -> invariants -> invariants) = function
   | [] -> fun _ x -> x
