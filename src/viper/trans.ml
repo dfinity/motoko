@@ -50,28 +50,50 @@ let rec unit (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-     let ctxt = { self = None; ids = Env.empty } in
-     let ctxt', mk_is = dec_fields ctxt decs in
-     let is = List.map (fun mk_i -> mk_i ctxt') mk_is in
-     let invs = extract_invariants is in
-     { it = adorn_invariants invs is;
-       at = body.at;
-       note = NoInfo
-     }
+    let ctxt = { self = None; ids = Env.empty } in
+    let ctxt', inits, mk_is = dec_fields ctxt decs in
+    let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
+    let init_id = id_at "__init__" Source.no_region in
+    let self_id = id_at "$Self" Source.no_region in
+    let ctxt'' = { ctxt' with self = Some self_id.it } in
+    let init_list = List.map (fun (id, init) -> 
+      { at = { left = id.at.left; right = init.at.right };
+        it = FieldAssignS((self ctxt'' init.at, id), exp ctxt'' init);
+        note = NoInfo
+      }) inits in
+    let init_body = 
+      { at = body.at;  (* ATG: Is this the correct position? *)
+        it = [], init_list;
+        note = NoInfo
+      } in
+    let m = 
+      { it = MethodI(init_id, [
+          self_id, { it = RefT; at = self_id.at; note = NoInfo }
+        ], [], [], [], Some init_body);
+        at = no_region;
+        note = NoInfo
+      } in
+    let is = m :: is' in
+    let invs = extract_invariants is in
+      { it = adorn_invariants invs is;
+        at = body.at;
+        note = NoInfo
+      }
   | _ -> assert false
 
 and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
   match ds with
   | [] ->
-    (ctxt, [])
+    (ctxt, [], [])
   | d :: ds ->
-    let ctxt, mk_i = dec_field ctxt d in
-    let ctxt, mk_is = dec_fields ctxt ds in
-    (ctxt, mk_i::mk_is)
+    let ctxt, init, mk_i = dec_field ctxt d in
+    let ctxt, inits, mk_is = dec_fields ctxt ds in
+    (ctxt, (match init with Some i -> i::inits | _ -> inits), mk_i::mk_is)
 
 and dec_field ctxt d =
-  let (ctxt, mk_i) = dec_field' ctxt d.it in
+  let ctxt, init, mk_i = dec_field' ctxt d.it in
   (ctxt,
+  init,
    fun ctxt' ->
      let (i, info) = mk_i ctxt' in
      { it = i;
@@ -83,23 +105,25 @@ and dec_field' ctxt d =
   (*  | ExpD e -> "ExpD" $$ [exp e ] *)
 
   | M.VarD (x, e) ->
-     { ctxt with ids = Env.add x.it Field ctxt.ids },
-     (* TODO: translate e? *)
-     fun ctxt' ->
-       (FieldI(id x, tr_typ e.note.M.note_typ),
-       NoInfo)
+      { ctxt with ids = Env.add x.it Field ctxt.ids },
+      Some (id x, e),
+      fun ctxt' ->
+        (FieldI(id x, tr_typ e.note.M.note_typ),
+        NoInfo)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
                        {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
-     { ctxt with ids = Env.add f.it Method ctxt.ids },
-     fun ctxt' ->
-       let self_id = {it = "$Self"; at = Source.no_region; note = NoInfo } in
-       let ctxt'' = { ctxt' with self = Some self_id.it }
-       in (* TODO: add args (and rets?) *)
-       (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
+      { ctxt with ids = Env.add f.it Method ctxt.ids },
+      None,
+      fun ctxt' ->
+        let self_id = id_at "$Self" Source.no_region in
+        let ctxt'' = { ctxt' with self = Some self_id.it }
+        in (* TODO: add args (and rets?) *)
+        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
   | M.(ExpD { it = AssertE e; at; _ }) ->
 	    ctxt,
+      None,
 	    fun ctxt' ->
 	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "self" }  e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
@@ -252,6 +276,8 @@ and exp' ctxt (e : M.exp) =
          NoInfo)
      | _ -> fail (Mo_def.Arrange.exp e)
     end
+  | M.AnnotE(a, b) ->
+    exp' ctxt a
 (*
   | M.VarE x when Env.find x.it ctxt = Field ->
      (*TODO: need environment to distinguish fields from locals *)
@@ -361,6 +387,8 @@ and rets t_opt =
      | T.Tup [] -> []
      | T.Async (_, _) -> [])
 
+and id_at id at = { it = id; at = at; note = NoInfo }
+
 and id id = { it = id.it; at = id.at; note = NoInfo }
 
 and tr_typ typ =
@@ -371,7 +399,7 @@ and tr_typ' typ =
   match T.normalize typ with
   | T.Prim T.Int -> IntT
   | T.Prim T.Bool -> BoolT
-
+  | _ -> fail (Mo_types.Arrange_type.typ (T.normalize typ))
 
 
 (*       

@@ -1,1 +1,2 @@
-  [0] Conditional statement might fail. There might be insufficient permission to access $Self.claimed (claim.vpr@5.10--5.26)
+  [0] Assignment might fail. There might be insufficient permission to access $Self.claimed (claim.vpr@3.6--3.30)
+  [1] Conditional statement might fail. There might be insufficient permission to access $Self.claimed (claim.vpr@10.10--10.26)

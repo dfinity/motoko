@@ -1,1 +1,2 @@
-  [0] Contract might not be well-formed. There might be insufficient permission to access $Self.claimed (invariant.vpr@6.12--6.30)
+  [0] Contract might not be well-formed. There might be insufficient permission to access $Self.claimed (invariant.vpr@2.11--2.29)
+  [1] Contract might not be well-formed. There might be insufficient permission to access $Self.claimed (invariant.vpr@13.12--13.30)
