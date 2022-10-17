@@ -145,8 +145,11 @@ let share_typ t =
     { t with it = funcT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
-let share_typfield (tf : typ_field) =
-  {tf with it = {tf.it with typ = share_typ tf.it.typ}}
+let share_typfield' = function
+  | TypF (c, tps, t) -> TypF (c, tps, t)
+  | ValF (x, t, m) -> ValF (x, share_typ t, m)
+
+let share_typfield (tf : typ_field) = { tf with it = share_typfield' tf.it }
 
 let share_exp e =
   match e.it with
@@ -453,12 +456,14 @@ inst :
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
 typ_field :
+  | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
+    { TypF (c, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
-    { {id = x; typ = t; mut} @@ at $sloc }
+    { ValF (x, t, mut) @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
     { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
-      {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
+      ValF (x, t, Const @@ no_region) @@ at $sloc }
 
 typ_tag :
   | HASH x=id t=annot_opt
@@ -920,7 +925,7 @@ typ_dec :
 
 stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
-    { {id = x; typ = t; mut} @@ at $sloc }
+    { ValF (x, t, mut) @@ at $sloc }
 
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY

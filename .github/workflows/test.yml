@@ -11,13 +11,13 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # fetch full history so that git merge-base works
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v16
+    - uses: cachix/install-nix-action@v18
       with:
         extra_nix_config: |
           experimental-features = nix-command
@@ -25,7 +25,7 @@ jobs:
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
-    - uses: cachix/cachix-action@v10
+    - uses: cachix/cachix-action@v11
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -52,7 +52,7 @@ jobs:
     - name: Read performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       id: perf
-      uses: juliangruber/read-file-action@v1
+      uses: juliangruber/read-file-action@v1.1.5
       with:
         path: ./perf-delta.txt
 
@@ -84,12 +84,12 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v16
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v18
       with:
         extra_nix_config: |
           experimental-features = nix-command
-    - uses: cachix/cachix-action@v10
+    - uses: cachix/cachix-action@v11
       with:
         name: ic-hs-test
     - name: Fetch report

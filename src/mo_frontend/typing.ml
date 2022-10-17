@@ -133,10 +133,11 @@ let error_in modes env at code fmt =
   if diag_in type_error modes env at code fmt then
     raise Recover
 
+let plural cs = if T.ConSet.cardinal cs = 1 then "" else "s"
+
 (* Currently unused *)
 let _warn_in modes env at code fmt =
   ignore (diag_in type_warning modes env at code fmt)
-
 
 (* Context extension *)
 
@@ -222,6 +223,23 @@ let system_funcs tfs =
         T.Func (T.Local, T.Returns, [],  [record_typ], [T.bool])))
   ]
 
+
+let check_closed env id k at =
+  let is_typ_param c =
+    match Cons.kind c with
+    | T.Def _
+    | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
+    | T.Abs( _, _) -> true in
+  let typ_params = T.ConSet.filter is_typ_param env.cons in
+  let cs_k = T.cons_kind k in
+  let free_params = T.ConSet.inter typ_params cs_k in
+  if not (T.ConSet.is_empty free_params) then
+    let op, sbs, st = T.strings_of_kind k in
+    error env at "M0137"
+      "type %s%s %s %s references type parameter%s %s from an outer scope"
+      id.it sbs op st
+      (plural free_params)
+      (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
 
 (* Imports *)
 
@@ -486,7 +504,13 @@ and check_typ' env typ : T.typ =
     T.Async (t0, t)
   | ObjT (sort, fields) ->
     check_ids env "object type" "field"
-      (List.map (fun (field : typ_field) -> field.it.id) fields);
+      (List.filter_map (fun (field : typ_field) ->
+        match field.it with ValF (x, _, _) -> Some x | _ -> None
+      ) fields);
+    check_ids env "object type" "type field"
+      (List.filter_map (fun (field : typ_field) ->
+        match field.it with TypF (x, _, _) -> Some x | _ -> None
+      ) fields);
     let fs = List.map (check_typ_field env sort.it) fields in
     T.Obj (sort.it, List.sort T.compare_field fs)
   | AndT (typ1, typ2) ->
@@ -522,16 +546,27 @@ and check_typ' env typ : T.typ =
   | NamedT (_, typ) ->
     check_typ env typ
 
-and check_typ_field env s typ_field : T.field =
-  let {id; mut; typ} = typ_field.it in
-  let t = infer_mut mut (check_typ env typ) in
-  if not env.pre && s = T.Actor then begin
-    if not (T.is_shared_func t) then
-      error env typ.at "M0042" "actor field %s must have shared function type, but has type%a"
-        id.it
-        display_typ_expand t
-  end;
-  T.{lab = id.it; typ = t; depr = None}
+and check_typ_def env at (id, typ_binds, typ) : T.kind =
+  let cs, tbs, te, ce = check_typ_binds {env with pre = true} typ_binds in
+  let env' = adjoin_typs env te ce in
+  let t = check_typ env' typ in
+  let k = T.Def (T.close_binds cs tbs, T.close cs t) in
+  check_closed env id k at;
+  k
+
+and check_typ_field env s typ_field : T.field = match typ_field.it with
+  | ValF (id, typ, mut) ->
+    let t = infer_mut mut (check_typ env typ) in
+    if not env.pre && s = T.Actor then begin
+      if not (T.is_shared_func t) then
+        error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
+          id.it (T.string_of_typ_expand t)
+    end;
+    T.{lab = id.it; typ = t; depr = None}
+  | TypF (id, typ_binds, typ) ->
+    let k = check_typ_def env typ_field.at (id, typ_binds, typ) in
+    let c = Cons.fresh id.it k in
+    T.{lab = id.it; typ = Typ c; depr = None}
 
 and check_typ_tag env typ_tag =
   let {tag; typ} = typ_tag.it in
@@ -632,8 +667,9 @@ and check_con_env env at ce =
   let cs = Productive.non_productive ce in
   if not (T.ConSet.is_empty cs) then
     error env at "M0157" "block contains non-productive definition%s %s"
-      (if T.ConSet.cardinal cs = 1 then "" else "s")
-      (String.concat ", " (List.map Cons.name (T.ConSet.elements cs)));
+      (plural cs)
+      (String.concat ", " (List.sort compare (List.map Cons.name (T.ConSet.elements cs))));
+
   begin match Mo_types.Expansive.is_expansive ce with
   | None -> ()
   | Some msg ->
@@ -2486,13 +2522,9 @@ and infer_dec_typdecs env dec : Scope.t =
     )
   | LetD _ | ExpD _ | VarD _ ->
     Scope.empty
-  | TypD (id, binds, typ) ->
+  | TypD (id, typ_binds, typ) ->
+    let k = check_typ_def env dec.at (id, typ_binds, typ) in
     let c = T.Env.find id.it env.typs in
-    let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
-    let env' = adjoin_typs env te ce in
-    let t = check_typ env' typ in
-    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
-    check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
@@ -2516,23 +2548,6 @@ and infer_dec_typdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
-
-and check_closed env id k at =
-  let is_typ_param c =
-    match Cons.kind c with
-    | T.Def _ -> false
-    | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
-    | T.Abs( _, _) -> true in
-  let typ_params = T.ConSet.filter is_typ_param env.cons in
-  let cs_k = T.cons_kind k in
-  let free_params = T.ConSet.inter typ_params cs_k in
-  if not (T.ConSet.is_empty free_params) then
-    let op, sbs, st = T.strings_of_kind k in
-    error env at "M0137"
-      "type %s%s %s %s references type parameter%s %s from an outer scope"
-      id.it sbs op st
-      (if T.ConSet.cardinal free_params = 1 then "" else "s")
-      (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
 
 and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
@@ -2723,15 +2738,24 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
           check_ids env "object type" "field"
-            (List.map (fun (field : typ_field) -> field.it.id) sfs);
+            (List.filter_map (fun (field : typ_field) ->
+                 match field.it with ValF (id, _, _) -> Some id | _ -> None)
+               sfs);
+          check_ids env "object type" "type field"
+            (List.filter_map (fun (field : typ_field) ->
+                 match field.it with TypF (id, _, _) -> Some id | _ -> None)
+               sfs);
           let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
           let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
-          List.iter (fun (typ_field : Syntax.typ_field) ->
-            let t = typ_field.it.typ.note in
-            if not (T.stable t) then
-              error env typ_field.it.id.at "M0131" "variable %s is declared stable but has non-stable type%a"
-                typ_field.it.id.it
-                display_typ t) sfs;
+          List.iter (fun (field : Syntax.typ_field) ->
+              match field.it with
+              | TypF _ -> ()
+              | ValF (id, typ, _) ->
+                if not (T.stable typ.note) then
+                   error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
+                   id.it
+                   display_typ typ.note)
+            sfs;
           List.sort T.compare_field fs
         ) sig_.it
     )
