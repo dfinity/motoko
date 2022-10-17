@@ -10,8 +10,8 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
-use motoko_rts::gc::generational::remembered_set::RememberedSet;
-use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
+use motoko_rts::gc::generational::remembered_log::RememberedLog;
+use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_LOG};
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
 };
@@ -390,7 +390,7 @@ impl GC {
                     _ => Strategy::Full,
                 };
                 unsafe {
-                    REMEMBERED_SET = Some(RememberedSet::new(heap));
+                    REMEMBERED_LOG = Some(RememberedLog::new(heap));
                     LAST_HP = heap_1.last_ptr_address() as u32;
 
                     let limits = Limits {
