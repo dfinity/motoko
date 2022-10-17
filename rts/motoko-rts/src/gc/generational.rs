@@ -114,7 +114,7 @@ const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const REMEMBERED_LOG_THRESHOLD: usize = 1024;
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
-    
+
     let old_generation_size = limits.last_free - limits.base;
     let young_generation_size = limits.free - limits.last_free;
     let remembered_log_size = REMEMBERED_LOG
