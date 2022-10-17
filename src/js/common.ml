@@ -61,7 +61,7 @@ let js_run list source =
   ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
 let js_viper filenames =
-  let result = Pipeline.viper_files (filenames |> Array.to_list |> List.map Js.to_string) in
+  let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
   js_result result (fun s ->
     Js.some (Js.string s)
   )
