@@ -5,7 +5,7 @@
 //! A write barrier catches all pointers leading from old to young generation.
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
-pub mod remembered_set;
+pub mod remembered_log;
 #[cfg(debug_assertions)]
 mod sanity_checks;
 pub mod write_barrier;
@@ -25,7 +25,7 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
-use self::write_barrier::REMEMBERED_SET;
+use self::write_barrier::REMEMBERED_LOG;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
@@ -110,20 +110,20 @@ static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
 #[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
-    const REMEMBERED_SET_THRESHOLD: usize = 1024;
+    const REMEMBERED_LOG_THRESHOLD: usize = 1024;
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
     const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 
     let old_generation_size = limits.last_free - limits.base;
     let young_generation_size = limits.free - limits.last_free;
-    let remembered_set_size = REMEMBERED_SET
+    let remembered_log_size = REMEMBERED_LOG
         .as_ref()
         .expect("Write barrier is not activated")
         .size();
 
     if old_generation_size > OLD_GENERATION_THRESHOLD || limits.free >= CRITICAL_MEMORY_LIMIT {
         Some(Strategy::Full)
-    } else if remembered_set_size > REMEMBERED_SET_THRESHOLD
+    } else if remembered_log_size > REMEMBERED_LOG_THRESHOLD
         || young_generation_size > YOUNG_GENERATION_THRESHOLD
     {
         Some(Strategy::Young)
@@ -252,7 +252,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn mark_additional_young_root_set(&mut self) {
-        let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
+        let mut iterator = REMEMBERED_LOG.as_ref().unwrap().iterate();
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
             let object = *location;
@@ -395,7 +395,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     // Thread forward pointers in old generation leading to young generation
     unsafe fn thread_old_generation_pointers(&mut self) {
-        let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
+        let mut iterator = REMEMBERED_LOG.as_ref().unwrap().iterate();
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
             debug_assert!(
@@ -429,7 +429,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn move_phase(&mut self) {
-        REMEMBERED_SET = None; // no longer valid when the moving phase starts
+        REMEMBERED_LOG = None; // no longer valid when the moving phase starts
         let mut free = self.heap.limits.base;
 
         let mut bitmap_iter = iter_bits();

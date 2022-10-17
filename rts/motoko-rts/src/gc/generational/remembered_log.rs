@@ -1,6 +1,7 @@
-//! Remembered set.
+//! Remembered log.
 //! Serves for recording pointer locations trapped by the write barrier.
-//! The remembered set may store duplicates, as it is optimized for fast insertion.
+//! The remembered log may store duplicates, as it is optimized for fast insertion.
+//! It performs faster than a hash-based remembered set according to GC benchmark.
 //!
 //! Linked list of record tables, each containing a series of entries.
 //! A table is represented as a blob with the following internal layout:
@@ -14,7 +15,7 @@
 //! New entries are stored at the beginning of the free table space.
 //! Otherwise, if the table is a full, a new next table is appended.
 //!
-//! NOTE: Remembered set structure is not recorded by write barriers
+//! NOTE: Remembered log structure is not recorded by write barriers
 //! as it is discarded by each GC run.
 //!
 //! NOTE: The table must be blobs, as their entries must not be
@@ -27,14 +28,14 @@ use crate::constants::WORD_SIZE;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{Blob, Bytes, Value};
 
-pub struct RememberedSet {
+pub struct RememberedLog {
     first: *mut Blob,
     last: *mut Blob,
     size: usize,
     cache: Value, // optimization, least recently inserted value
 }
 
-pub struct RememberedSetIterator {
+pub struct RememberedLogIterator {
     table: *mut Blob,
     index: u32,
 }
@@ -46,10 +47,10 @@ const COUNT_ENTRIES_OFFSET: u32 = 1;
 const FIRST_ENTRY_OFFSET: u32 = 2;
 pub const MAX_ENTRIES_PER_TABLE: u32 = TABLE_LENGTH - FIRST_ENTRY_OFFSET;
 
-impl RememberedSet {
-    pub unsafe fn new<M: Memory>(mem: &mut M) -> RememberedSet {
+impl RememberedLog {
+    pub unsafe fn new<M: Memory>(mem: &mut M) -> RememberedLog {
         let table = Self::new_table(mem);
-        RememberedSet {
+        RememberedLog {
             first: table,
             last: table,
             size: 0,
@@ -63,7 +64,7 @@ impl RememberedSet {
             return;
         }
         self.cache = value;
-        //println!(100, "Remembered set insert: {:#x}", value.get_raw());
+        //println!(100, "Remembered log insert: {:#x}", value.get_raw());
         let mut table = self.last;
         let mut count = table_get(table, COUNT_ENTRIES_OFFSET).get_scalar();
         if count == MAX_ENTRIES_PER_TABLE {
@@ -103,8 +104,8 @@ impl RememberedSet {
         table
     }
 
-    pub fn iterate(&self) -> RememberedSetIterator {
-        RememberedSetIterator {
+    pub fn iterate(&self) -> RememberedLogIterator {
+        RememberedLogIterator {
             table: self.first,
             index: 0,
         }
@@ -119,7 +120,7 @@ impl RememberedSet {
     }
 }
 
-impl RememberedSetIterator {
+impl RememberedLogIterator {
     pub unsafe fn has_next(&self) -> bool {
         debug_assert!(
             self.index < MAX_ENTRIES_PER_TABLE

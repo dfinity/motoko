@@ -1,9 +1,9 @@
 use crate::memory::TestMemory;
-use motoko_rts::gc::generational::remembered_set::{RememberedSet, MAX_ENTRIES_PER_TABLE};
+use motoko_rts::gc::generational::remembered_log::{RememberedLog, MAX_ENTRIES_PER_TABLE};
 use motoko_rts::types::{Value, Words};
 
 pub unsafe fn test() {
-    println!("Testing mark stack ...");
+    println!("Testing remembered log ...");
 
     test_insert_iterate(0);
     test_insert_iterate(1);
@@ -21,13 +21,13 @@ unsafe fn test_insert_iterate(amount: u32) {
 
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
-    let mut remembered_set = RememberedSet::new(&mut mem);
-    // start at 1 since 0 is the null ptr and not stored in the remembered set
+    let mut remembered_log = RememberedLog::new(&mut mem);
+    // start at 1 since 0 is the null ptr and not stored in the remembered log
     for value in 1..amount + 1 {
-        remembered_set.insert(&mut mem, Value::from_scalar(value));
+        remembered_log.insert(&mut mem, Value::from_scalar(value));
     }
 
-    let mut iterator = remembered_set.iterate();
+    let mut iterator = remembered_log.iterate();
     for expected in 1..amount + 1 {
         assert!(iterator.has_next());
         let actual = iterator.current().get_scalar();

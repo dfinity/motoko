@@ -5,7 +5,7 @@
 
 use core::ptr::null_mut;
 
-use super::write_barrier::REMEMBERED_SET;
+use super::write_barrier::REMEMBERED_LOG;
 use super::{Heap, Limits, Roots};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
@@ -93,10 +93,10 @@ unsafe fn verify_field(current_field: *mut Value) {
 }
 
 unsafe fn recorded(value: u32) -> bool {
-    match &REMEMBERED_SET {
-        None => panic!("No remembered set"),
-        Some(remembered_set) => {
-            let mut iterator = remembered_set.iterate();
+    match &REMEMBERED_LOG {
+        None => panic!("No remembered log"),
+        Some(remembered_log) => {
+            let mut iterator = remembered_log.iterate();
             while iterator.has_next() {
                 if iterator.current().get_raw() == value {
                     return true;
