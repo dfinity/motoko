@@ -5,7 +5,7 @@
 //! A write barrier catches all pointers leading from old to young generation.
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
-pub mod remembered_log;
+pub mod remembered_set;
 #[cfg(debug_assertions)]
 mod sanity_checks;
 pub mod write_barrier;
@@ -25,7 +25,7 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
-use self::write_barrier::REMEMBERED_LOG;
+use self::write_barrier::REMEMBERED_SET;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
@@ -111,31 +111,24 @@ pub enum Strategy {
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
 #[cfg(feature = "ic")]
-static mut PASSED_CRITICAL_LIMIT: bool = false;
+static mut PASSED_CRITICIAL_LIMIT: bool = false;
 
 #[cfg(feature = "ic")]
 const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 
 #[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
-    const REMEMBERED_LOG_THRESHOLD: usize = 1024;
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
 
     let old_generation_size = limits.last_free - limits.base;
     let young_generation_size = limits.free - limits.last_free;
-    let remembered_log_size = REMEMBERED_LOG
-        .as_ref()
-        .expect("Write barrier is not activated")
-        .size();
 
-    if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
-        PASSED_CRITICAL_LIMIT = true;
+    if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICIAL_LIMIT {
+        PASSED_CRITICIAL_LIMIT = true;
         Some(Strategy::Full)
     } else if old_generation_size > OLD_GENERATION_THRESHOLD {
         Some(Strategy::Full)
-    } else if remembered_log_size > REMEMBERED_LOG_THRESHOLD
-        || young_generation_size > YOUNG_GENERATION_THRESHOLD
-    {
+    } else if young_generation_size > YOUNG_GENERATION_THRESHOLD {
         Some(Strategy::Young)
     } else {
         None
@@ -148,7 +141,7 @@ unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     if strategy == Strategy::Full {
         OLD_GENERATION_THRESHOLD = (limits.free as f64 * GROWTH_RATE) as usize;
         if limits.free < CRITICAL_MEMORY_LIMIT {
-            PASSED_CRITICAL_LIMIT = false;
+            PASSED_CRITICIAL_LIMIT = false
         }
     }
 }
@@ -251,14 +244,14 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn mark_additional_young_root_set(&mut self) {
-        let mut iterator = REMEMBERED_LOG.as_ref().unwrap().iterate();
+        let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
-            let object = *location;
+            let value = *location;
             // Check whether the location still refers to young object as this may have changed
             // due to subsequent writes to that location after the write barrier recording.
-            if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
-                self.mark_object(object);
+            if value.is_ptr() && (value.get_raw() as usize) >= self.heap.limits.last_free {
+                self.mark_object(value);
             }
             iterator.next();
         }
@@ -394,19 +387,15 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     // Thread forward pointers in old generation leading to young generation
     unsafe fn thread_old_generation_pointers(&mut self) {
-        let mut iterator = REMEMBERED_LOG.as_ref().unwrap().iterate();
+        let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
-            debug_assert!(
-                (location as usize) >= self.heap.limits.base
-                    && (location as usize) < self.heap.limits.last_free
-            );
-            let object = *location;
-            // Implicit check that it is still unthreaded, considering that the remembered log can contain duplicates.
-            if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
+            let value = *location;
+            // value in the location may have changed since recording by the write barrer
+            if value.is_ptr() && (value.get_raw() as usize) >= self.heap.limits.last_free {
+                debug_assert!((location as usize) >= self.heap.limits.base);
                 #[cfg(debug_assertions)]
                 self.assert_unthreaded(location);
-
                 self.thread(location);
             }
             iterator.next();
@@ -428,7 +417,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn move_phase(&mut self) {
-        REMEMBERED_LOG = None; // no longer valid when the moving phase starts
+        REMEMBERED_SET = None; // no longer valid when the moving phase starts
         let mut free = self.heap.limits.base;
 
         let mut bitmap_iter = iter_bits();
