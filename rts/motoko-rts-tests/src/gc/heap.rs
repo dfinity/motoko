@@ -329,14 +329,14 @@ fn heap_size_for_gc(
         }
         GC::Generational => {
             const ROUNDS: usize = 3;
-            const REMEMBERED_SET_MINIMUM_SIZE: usize = 1024 * WORD_SIZE;
+            const REMEMBERED_SET_MAXIMUM_SIZE: usize = 1024 * 1024 * WORD_SIZE;
             let size = heap_size_for_gc(
                 GC::MarkCompact,
                 static_heap_size_bytes,
                 dynamic_heap_size_bytes,
                 n_objects,
             );
-            size + ROUNDS * REMEMBERED_SET_MINIMUM_SIZE
+            size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
         }
     }
 }
