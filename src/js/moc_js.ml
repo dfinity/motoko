@@ -29,4 +29,5 @@ let () =
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
       method parseMotoko s = js_parse_motoko s
       method parseCandid s = js_parse_candid s
+      method viper s = js_viper s
      end);

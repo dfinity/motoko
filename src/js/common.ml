@@ -112,6 +112,12 @@ let js_parse_candid s =
     Js.some (js_of_sexpr ast)
   )
 
+let js_viper filenames =
+  let parse_result = Pipeline.viper_files (filenames |> Array.to_list |> List.map Js.to_string) in
+  js_result parse_result (fun result ->
+    Js.some (Js.string result)
+  )
+
 let js_save_file filename content =
   let filename = Js.to_string filename in
   let content = Js.to_string content in
