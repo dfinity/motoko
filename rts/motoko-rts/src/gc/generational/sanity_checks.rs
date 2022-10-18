@@ -148,12 +148,13 @@ impl<'a> MemoryChecker<'a> {
     }
 
     unsafe fn check_object(&self, object: Value) {
+        const VALID_POINTER_THRESHOLD: usize = unskew(1) + 1;
         self.check_object_header(object);
         visit_pointer_fields(
             &mut (),
             object.as_obj(),
             object.tag(),
-            2,
+            VALID_POINTER_THRESHOLD,
             |_, field_address| {
                 (&self).check_object_header(*field_address);
             },
