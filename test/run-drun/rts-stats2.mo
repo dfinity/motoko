@@ -6,7 +6,7 @@ actor a {
   public func check_A() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
     assert (Prim.rts_reclaimed() > 10000);
-    // Generational GC has additional remembered set that is discarded on each GC run
+    // Generational GC has additional remembered log that is discarded on each GC run
     assert (Prim.rts_reclaimed() < 25000);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
@@ -20,7 +20,7 @@ actor a {
   public func check_B() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
     assert (Prim.rts_reclaimed() > 10000);
-    // Generational GC has additional remembered set that is discarded on each GC run
+    // Generational GC has additional remembered log that is discarded on each GC run
     assert (Prim.rts_reclaimed() < 36000);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());

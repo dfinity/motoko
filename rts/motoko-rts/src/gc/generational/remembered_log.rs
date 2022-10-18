@@ -1,7 +1,7 @@
 //! Remembered log.
 //! Serves for recording pointer locations trapped by the write barrier.
 //! The remembered log may store duplicates, as it is optimized for fast insertion.
-//! It performs faster than a hash-based remembered set according to GC benchmark.
+//! It performs somewhat better than a hash-based remembered set according to the GC benchmark.
 //!
 //! Linked list of record tables, each containing a series of entries.
 //! A table is represented as a blob with the following internal layout:
