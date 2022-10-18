@@ -141,8 +141,6 @@ fn test_gc(
             continuation_table_ptr_offset,
         );
     }
-
-    // TODO Delete roots, collect, check
 }
 
 /// Check the dynamic heap:
