@@ -60,6 +60,12 @@ let js_run list source =
   let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
   ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
+let js_viper filenames =
+  let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
+  js_result result (fun s ->
+    Js.some (Js.string s)
+  )
+
 let js_candid source =
   js_result (Pipeline.generate_idl [Js.to_string source])
     (fun prog ->
