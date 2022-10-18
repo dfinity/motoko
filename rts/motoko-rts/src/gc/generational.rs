@@ -396,7 +396,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                     && (location as usize) < self.heap.limits.last_free
             );
             let object = *location;
-            // Implicit check that it is still unthreaded, considering that the remembered set can contain duplicates.
+            // Implicit check that it is still unthreaded, considering that the remembered log can contain duplicates.
             if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
                 #[cfg(debug_assertions)]
                 self.assert_unthreaded(location);
