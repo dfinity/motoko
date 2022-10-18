@@ -64,7 +64,6 @@ impl RememberedLog {
             return;
         }
         self.cache = value;
-        //println!(100, "Remembered log insert: {:#x}", value.get_raw());
         let mut table = self.last;
         let mut count = table_get(table, COUNT_ENTRIES_OFFSET).get_scalar();
         if count == MAX_ENTRIES_PER_TABLE {
