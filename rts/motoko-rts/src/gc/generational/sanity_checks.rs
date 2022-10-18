@@ -153,7 +153,7 @@ impl<'a> MemoryChecker<'a> {
             &mut (),
             object.as_obj(),
             object.tag(),
-            0,
+            2,
             |_, field_address| {
                 (&self).check_object_header(*field_address);
             },
