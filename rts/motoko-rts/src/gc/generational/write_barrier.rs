@@ -34,7 +34,6 @@ pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
                 let value = *(location as *mut Value);
                 if value.is_ptr() && value.get_raw() >= LAST_HP {
                     // trap pointers that lead from old generation (or static roots) to young generation
-                    //println!(100, "Write barrier {:#x} {:#x} {:#x}", location, value.get_raw(), LAST_HP);
                     remembered_set.insert(mem, Value::from_raw(location));
                 }
             }

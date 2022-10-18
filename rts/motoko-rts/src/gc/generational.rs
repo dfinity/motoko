@@ -203,7 +203,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
 
         if self.is_compaction_beneficial() {
-            self.thread_backward_phase();
+            self.thread_initial_phase();
             self.move_phase();
         }
 
@@ -332,7 +332,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
     }
 
-    unsafe fn thread_backward_phase(&mut self) {
+    unsafe fn thread_initial_phase(&mut self) {
         self.thread_all_backward_pointers();
 
         // For static roots, also forward pointers are threaded.
