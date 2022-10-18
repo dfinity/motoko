@@ -63,14 +63,14 @@ let rec unit (u : M.comp_unit) : prog =
       { at;
         it = List.fold_left
         (fun pexp -> fun p_fn -> AndE(
-            { at;
+          { at;
             it = pexp;
             note = NoInfo
-            },
-            { at;
+          },
+          { at;
             it = (p_fn at);
             note = NoInfo
-            }))
+          }))
           (BoolLitE true)
           perms;
           note = NoInfo

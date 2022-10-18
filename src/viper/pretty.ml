@@ -119,8 +119,7 @@ and pp_exp ppf exp =
      fprintf ppf "(%a %s %a)" pp_exp e1 op pp_exp e2
   | PermE p -> pp_perm ppf p
   | AccE (fldacc, perm) -> fprintf ppf "@[acc(%a,%a)@]" pp_fldacc fldacc pp_exp perm
-     (* fprintf ppf "@[acc(%a.%s,%a)@]" (pp_exp exp) it (pp_exp perm) *)
-  | _ -> fprintf ppf "@[// pretty printer not implemneted for node at %s@]" (string_of_region exp.at)
+  | _ -> fprintf ppf "@[// pretty printer not implemented for node at %s@]" (string_of_region exp.at)
 
 and pp_perm ppf perm =
   match perm.it with
@@ -129,7 +128,7 @@ and pp_perm ppf perm =
   | WildcardP -> fprintf ppf "wildcard"
   | FractionalP (a, b) -> fprintf ppf "@[(%a/%a)@]" pp_exp a pp_exp b
 
-  and pp_stmt ppf stmt =
+and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
   fprintf ppf "\017%a\019"
     pp_stmt' stmt.it
