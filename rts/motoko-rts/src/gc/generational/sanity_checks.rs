@@ -156,14 +156,16 @@ impl<'a> MemoryChecker<'a> {
             object.tag(),
             VALID_POINTER_THRESHOLD,
             |_, field_address| {
-                (&self).check_object_header(*field_address);
+                if Self::is_ptr(*field_address) {
+                    (&self).check_object_header(*field_address);
+                }
             },
             |_, _, arr| arr.len(),
         );
     }
 
     unsafe fn check_object_header(&self, object: Value) {
-        assert!(object.is_ptr());
+        assert!(Self::is_ptr(object));
         let pointer = object.get_ptr();
         assert!(pointer < self.limits.free);
         let tag = object.tag();
@@ -179,5 +181,10 @@ impl<'a> MemoryChecker<'a> {
             }
             pointer += object_size(pointer as usize).to_bytes().as_usize();
         }
+    }
+
+    unsafe fn is_ptr(value: Value) -> bool {
+        const TRUE_VALUE: u32 = 1;
+        value.is_ptr() && value.get_raw() != TRUE_VALUE
     }
 }
