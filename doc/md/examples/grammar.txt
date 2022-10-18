@@ -62,6 +62,7 @@
     '<' <list(<typ>, ',')> '>'
 
 <typ_field> ::= 
+    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     'var'? <id> ':' <typ>
     <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> ':' <typ>
 
@@ -140,6 +141,8 @@
 
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
+    '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
+    '{' <exp_post> ('and' <exp_post>)* WITH <list1(<exp_field>, ';')> '}'
 
 <exp_plain> ::= 
     <lit>
@@ -158,6 +161,7 @@
     <exp_post> '.' <id>
     <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
     <exp_post> BANG
+    '(' 'system' <exp_post> '.' <id> ')'
 
 <exp_un> ::= 
     <exp_post>

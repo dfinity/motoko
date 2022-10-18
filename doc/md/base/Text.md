@@ -113,7 +113,7 @@ Returns `t1 >= t2`.
 func compare(t1 : Text, t2 : Text) : {#less; #equal; #greater}
 ```
 
-Returns the order of `t1` and `t1`.
+Returns the order of `t1` and `t2`.
 
 ## Function `join`
 ``` motoko no-repl

@@ -1,0 +1,6 @@
+bad-obj-base.mo:1.3-1.7: type error [M0093], expected object type, but expression produces type
+  Bool
+bad-obj-base.mo:3.3-3.6: type error [M0178], actors cannot serve as bases in record extensions
+bad-obj-base.mo:4.26-4.44: info, field also present in base, here (consider overwriting)
+bad-obj-base.mo:4.49-4.67: type error [M0177], ambiguous field in base
+  zx

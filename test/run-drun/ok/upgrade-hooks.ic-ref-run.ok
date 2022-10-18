@@ -1,45 +1,45 @@
-→ update create_canister(record {settings = null})
-← replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+=> update create_canister(record {settings = null})
+<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: init'ed
-← replied: ()
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+<= replied: ()
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: init'ed 0
 debug.print: postupgrade 0
-← replied: ()
-→ query check(1)
+<= replied: ()
+=> query check(1)
 debug.print: a
-← replied: ()
-→ update inc()
-← replied: ()
-→ query check(2)
+<= replied: ()
+=> update inc()
+<= replied: ()
+=> query check(2)
 debug.print: aa
-← replied: ()
-→ update inc()
-← replied: ()
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+<= replied: ()
+=> update inc()
+<= replied: ()
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: preupgrade 0
 debug.print: init'ed 1
 debug.print: postupgrade 1
-← replied: ()
-→ query check(3)
+<= replied: ()
+=> query check(3)
 debug.print: 3
 debug.print: aaa
-← replied: ()
-→ update inc()
-← replied: ()
-→ query check(4)
+<= replied: ()
+=> update inc()
+<= replied: ()
+=> query check(4)
 debug.print: 4
 debug.print: aaa
-← replied: ()
-→ update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0…
+<= replied: ()
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: preupgrade 1
 debug.print: init'ed 2
 debug.print: postupgrade 2
-← replied: ()
-→ query check(4)
-← replied: ()
-→ update inc()
-← replied: ()
-→ query check(5)
-← replied: ()
+<= replied: ()
+=> query check(4)
+<= replied: ()
+=> update inc()
+<= replied: ()
+=> query check(5)
+<= replied: ()

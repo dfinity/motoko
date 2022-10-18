@@ -216,7 +216,11 @@ let tagE i e =
  }
 
 let dec_eff dec = match dec.it with
-  | LetD (_,e) | VarD (_, _, e) -> eff e
+  | LetD (_, e) | VarD (_, _, e) -> eff e
+  | RefD (_, _, le) ->
+    match le.it with
+    | DotLE (e, _) -> eff e
+    | _ -> assert false (*FIXME*)
 
 let rec simpl_decs decs = List.concat_map simpl_dec decs
 and simpl_dec dec = match dec.it with
@@ -289,8 +293,8 @@ let funcE name sort ctrl typ_binds args typs exp =
 
 let callE exp1 typs exp2 =
   let typ =  match T.promote (typ exp1) with
-    | T.Func (_sort, _control, _, _, ret_tys) ->
-      T.open_ typs (T.seq ret_tys)
+    | T.Func (_sort, control, _, _, ret_tys) ->
+      T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
     | T.Non -> T.Non
     | _ -> raise (Invalid_argument "callE expect a function")
   in
@@ -476,6 +480,11 @@ let varD x exp =
   let t = typ_of_var x in
   assert (T.is_mut t);
   VarD (id_of_var x, T.as_immut t, exp) @@ no_region
+
+let refD x lexp =
+  let t = typ_of_var x in
+  assert (T.is_mut t);
+  RefD (id_of_var x, t, lexp) @@ no_region
 
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.Note.typ } in
@@ -681,3 +690,25 @@ let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
 
+let objE sort typ_flds flds =
+  let rec go ds fields fld_tys flds =
+    match flds with
+    | [] ->
+      blockE
+        (List.rev ds)
+        (newObjE sort fields
+           (T.obj sort
+              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+               @ fld_tys)))
+    | (lab, exp)::flds ->
+      let v = fresh_var lab (typ exp) in
+      let field = {
+        it = {name = lab; var = id_of_var v};
+        at = no_region;
+        note = typ exp
+      } in
+      go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+  in
+  go [] [] [] flds
+
+let recordE flds = objE T.Object [] flds

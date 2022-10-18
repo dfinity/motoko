@@ -55,7 +55,9 @@ and typ' =
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
-and typ_field' = {id : id; typ : typ; mut : mut}
+and typ_field' =
+  | ValF of id * typ * mut
+  | TypF of typ_id * typ_bind list * typ
 
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}
@@ -160,7 +162,7 @@ and exp' =
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
   | ObjBlockE of obj_sort * dec_field list     (* object block *)
-  | ObjE of exp_field list                     (* record literal *)
+  | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)

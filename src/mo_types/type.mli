@@ -61,6 +61,18 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Syntactic orderings *)
+
+module Ord : sig
+  type t = typ
+  val compare : t -> t -> int
+end
+
+module OrdPair : sig
+  type t = typ * typ
+  val compare : t -> t -> int
+end
+
 (* Function sorts *)
 
 val is_shared_sort : 'a shared -> bool
@@ -77,6 +89,9 @@ val blob : typ
 val error : typ
 val char : typ
 val principal : typ
+
+val sum : (lab * typ) list -> typ
+val obj : obj_sort -> (lab * typ) list -> typ
 
 val throwErrorCodes : field list
 val catchErrorCodes : field list
@@ -196,7 +211,6 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
-
 (* Equivalence and Subtyping *)
 
 val eq : typ -> typ -> bool
@@ -246,6 +260,10 @@ val get_candid_interface_fld : field
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ
 
+val canister_settings_typ : typ
+val install_arg_typ : typ
+val install_typ : typ list -> typ -> typ
+
 (* Pretty printing *)
 
 val string_of_prim : prim -> string
@@ -253,6 +271,7 @@ val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
 
 module type Pretty = sig
+  val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->
