@@ -51,7 +51,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
         limits: get_limits(),
         roots,
     };
-    let strategy = decide_strategy(&heap.limits).unwrap_or(Strategy::Young);
+    let strategy = decide_strategy(&heap.limits);
+    #[cfg(debug_assertions)]
+    let forced_gc = strategy.is_none();
+    let strategy = strategy.unwrap_or(Strategy::Young);
     let mut gc = GenerationalGC::new(heap, strategy);
 
     #[cfg(debug_assertions)]
@@ -65,9 +68,12 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     update_strategy(strategy, new_limits);
 
     #[cfg(debug_assertions)]
-    sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
-    #[cfg(debug_assertions)]
-    sanity_checks::take_snapshot(&mut gc.heap);
+    if !forced_gc {
+        #[cfg(debug_assertions)]
+        sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
+        #[cfg(debug_assertions)]
+        sanity_checks::take_snapshot(&mut gc.heap);
+    }
 
     write_barrier::init_write_barrier(gc.heap.mem);
 

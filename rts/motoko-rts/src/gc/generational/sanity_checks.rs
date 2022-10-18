@@ -25,11 +25,15 @@ pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
 /// Verify write barrier coverag by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
 pub unsafe fn verify_snapshot<M: Memory>(heap: &Heap<M>, verify_roots: bool) {
+    if SNAPSHOT.is_null() {
+        return;
+    }
     assert!(heap.limits.base <= heap.limits.free);
     if verify_roots {
         verify_static_roots(heap.roots.static_roots.as_array(), heap.limits.free);
     }
     verify_heap(&heap.limits);
+    SNAPSHOT = null_mut();
 }
 
 unsafe fn verify_static_roots(static_roots: *mut Array, last_free: usize) {
@@ -45,9 +49,6 @@ unsafe fn verify_static_roots(static_roots: *mut Array, last_free: usize) {
 }
 
 unsafe fn verify_heap(limits: &Limits) {
-    if SNAPSHOT.is_null() {
-        return;
-    }
     println!(100, "Heap verification starts...");
     assert!(SNAPSHOT.len().as_usize() <= limits.free);
     let mut pointer = limits.base;
