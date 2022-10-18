@@ -48,7 +48,6 @@ unsafe fn verify_heap(limits: &Limits) {
     if SNAPSHOT.is_null() {
         return;
     }
-    println!(100, "Heap verification starts...");
     assert!(SNAPSHOT.len().as_usize() <= limits.free);
     let mut pointer = limits.base;
     while pointer < SNAPSHOT.len().as_usize() {
@@ -72,7 +71,6 @@ unsafe fn verify_heap(limits: &Limits) {
         );
         pointer += object_size(current as usize).to_bytes().as_usize();
     }
-    println!(100, "Heap verification stops...");
 }
 
 unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
@@ -120,16 +118,11 @@ pub unsafe fn check_memory(limits: &Limits, roots: &Roots) {
 
 impl<'a> MemoryChecker<'a> {
     unsafe fn check_memory(&self) {
-        println!(100, "Memory check starts...");
-        println!(100, "  Static roots...");
         self.check_static_roots();
         if (*self.roots.continuation_table_ptr_loc).is_ptr() {
-            println!(100, "  Continuation table...");
             self.check_object(*self.roots.continuation_table_ptr_loc);
         }
-        println!(100, "  Heap...");
         self.check_heap();
-        println!(100, "Memory check stops...");
     }
 
     unsafe fn check_static_roots(&self) {
