@@ -33,8 +33,8 @@ and pp_item ppf i =
       pp_pres pres
       pp_posts posts
       pp_block_opt bo
-  | InvariantI (s, e) -> (* TODO: srcloc mapping *)
-    fprintf ppf "@[<2>define %s(self) (%a)@]" s pp_exp e
+  | InvariantI (inv_name, e) -> (* TODO: srcloc mapping *)
+    fprintf ppf "@[<2>define %s($Self) (%a)@]" inv_name pp_exp e
 
 and pp_block_opt ppf = function
   | None -> ()
@@ -117,6 +117,16 @@ and pp_exp ppf exp =
        | Implies _ -> "==>" | OrE _ -> "||" | AndE _ -> "&&"
        | _ -> failwith "not a binary operator" in
      fprintf ppf "(%a %s %a)" pp_exp e1 op pp_exp e2
+  | PermE p -> pp_perm ppf p
+  | AccE (fldacc, perm) -> fprintf ppf "@[acc(%a,%a)@]" pp_fldacc fldacc pp_exp perm
+  | _ -> fprintf ppf "@[// pretty printer not implemented for node at %s@]" (string_of_region exp.at)
+
+and pp_perm ppf perm =
+  match perm.it with
+  | NoP -> fprintf ppf "none"
+  | FullP -> fprintf ppf "write"
+  | WildcardP -> fprintf ppf "wildcard"
+  | FractionalP (a, b) -> fprintf ppf "@[(%a/%a)@]" pp_exp a pp_exp b
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
