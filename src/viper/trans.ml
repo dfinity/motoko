@@ -5,6 +5,23 @@ open Syntax
 module T = Mo_types.Type
 module M = Mo_def.Syntax
 
+module Stamps = Env.Make(String)
+
+let stamps : int Stamps.t ref = ref Stamps.empty
+
+let (!!) ?(at = Source.no_region) ?(note = NoInfo) it = { it; at; note}
+
+let fresh_stamp name =
+  let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
+  stamps := Stamps.add name (n + 1) !stamps;
+  n
+
+let fresh_id name =
+  let n = fresh_stamp name in
+  if n = 0 then
+    name
+  else Printf.sprintf "%s_%i" name (fresh_stamp name)
+
 let fail sexp =
   failwith (Wasm.Sexpr.to_string 80 sexp)
 
@@ -14,7 +31,9 @@ module Env = T.Env
 
 type ctxt =
   { self : string option;
-    ids : sort T.Env.t
+    ids : sort T.Env.t;
+    ghost_items : (ctxt -> item) list ref;
+    ghost_inits : (ctxt -> stmt) list ref;
   }
 
 let self ctxt at =
@@ -50,30 +69,33 @@ let rec unit (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-    let ctxt = { self = None; ids = Env.empty } in
+    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; } in
     let ctxt', inits, mk_is = dec_fields ctxt decs in
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
+    (* given is', compute ghost_is *)
+    let ghost_is = List.map (fun mk_i -> mk_i ctxt') !(ctxt.ghost_items) in
     let init_id = id_at "__init__" Source.no_region in
     let self_id = id_at "$Self" Source.no_region in
     let ctxt'' = { ctxt' with self = Some self_id.it } in
-    let init_list = List.map (fun (id, init) -> 
+    let init_list = List.map (fun (id, init) ->
       { at = { left = id.at.left; right = init.at.right };
         it = FieldAssignS((self ctxt'' init.at, id), exp ctxt'' init);
         note = NoInfo
       }) inits in
-    let init_body = 
+    let init_list = init_list @ List.map (fun mk_s -> mk_s ctxt'') !(ctxt.ghost_inits) in
+    let init_body =
       { at = body.at;  (* ATG: Is this the correct position? *)
         it = [], init_list;
         note = NoInfo
       } in
-    let m = 
+    let m =
       { it = MethodI(init_id, [
           self_id, { it = RefT; at = self_id.at; note = NoInfo }
         ], [], [], [], Some init_body);
         at = no_region;
         note = NoInfo
       } in
-    let is = m :: is' in
+    let is = ghost_is @ (m :: is') in
     let invs = extract_invariants is in
       { it = adorn_invariants invs is;
         at = body.at;
@@ -204,12 +226,33 @@ and stmt ctxt (s : M.exp) : seqn =
        at = s.at;
        note = NoInfo }
   | M.(AwaitE({ it = AsyncE (_, e); _ })) -> (* gross hack *)
+     let id' = fresh_id "$message_async" in
+     let id = { it = id'; at = Source.no_region; note = NoInfo } in
+     ctxt.ghost_items :=
+       (fun ctxt ->
+         { it = FieldI (id, { it = IntT; at = Source.no_region; note = NoInfo }); at = Source.no_region; note = NoInfo }) ::
+         !(ctxt.ghost_items);
+     let mk_s = fun ctxt ->
+       { it = FieldAssignS(
+          (self ctxt Source.no_region, id),
+          { it = IntLitE Mo_values.Numerics.Int.zero; at = Source.no_region; note = NoInfo });
+         at = Source.no_region;
+         note = NoInfo }
+     in
+     ctxt.ghost_inits := mk_s :: !(ctxt.ghost_inits);
      { it =
          ([],
-          (* TODO: add havoc etc *)
-          [ { it = SeqnS (stmt ctxt e);
-              at = s.at;
-              note = NoInfo } ]);
+          [ !!(FieldAssignS(
+              (self ctxt Source.no_region, id),
+              (!!(AddE(!!(FldAcc (self ctxt Source.no_region, id)),
+                       !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
+            !!(ExhaleS (!!(BoolLitE true)));
+            !!(InhaleS (!!(BoolLitE true)));
+            !!(FieldAssignS(
+              (self ctxt Source.no_region, id),
+              (!!(SubE(!!(FldAcc (self ctxt Source.no_region, id)),
+                       !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
+            { !!(SeqnS (stmt ctxt e)) with at = e.at }]);
        at = s.at;
        note = NoInfo }
   | M.WhileE(e, s1) ->

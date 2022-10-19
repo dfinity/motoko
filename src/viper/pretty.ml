@@ -138,10 +138,16 @@ and pp_stmt' ppf = function
     fprintf ppf "@[<v 2>%s := %a@]"
       id.it
       pp_exp exp
-  | FieldAssignS(fldacc, exp2) ->
+  | FieldAssignS(fldacc, exp) ->
     fprintf ppf "@[<v 2>%a := %a@]"
       pp_fldacc fldacc
-      pp_exp exp2
+      pp_exp exp
+  | InhaleS exp ->
+    fprintf ppf "@[<v 2>inhale %a@]"
+      pp_exp exp
+  | ExhaleS exp ->
+    fprintf ppf "@[<v 2>exhale %a@]"
+      pp_exp exp
 
 and pp_fldacc ppf fldacc =
   match fldacc with
