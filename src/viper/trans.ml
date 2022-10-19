@@ -9,7 +9,7 @@ module Stamps = Env.Make(String)
 
 let stamps : int Stamps.t ref = ref Stamps.empty
 
-let (!!) ?(at = Source.no_region) ?(note = NoInfo) it = { it; at; note}
+let (!!) it = { it; at = Source.no_region; note = NoInfo}
 
 let fresh_stamp name =
   let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
@@ -239,9 +239,9 @@ and stmt ctxt (s : M.exp) : seqn =
          at = Source.no_region;
          note = NoInfo }
      in
+
      ctxt.ghost_inits := mk_s :: !(ctxt.ghost_inits);
-     { it =
-         ([],
+     { !!([],
           [ !!(FieldAssignS(
               (self ctxt Source.no_region, id),
               (!!(AddE(!!(FldAcc (self ctxt Source.no_region, id)),
@@ -252,9 +252,9 @@ and stmt ctxt (s : M.exp) : seqn =
               (self ctxt Source.no_region, id),
               (!!(SubE(!!(FldAcc (self ctxt Source.no_region, id)),
                        !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
-            { !!(SeqnS (stmt ctxt e)) with at = e.at }]);
-       at = s.at;
-       note = NoInfo }
+            { !!(SeqnS (stmt ctxt e))
+              with at = e.at }])
+       with at = s.at }
   | M.WhileE(e, s1) ->
      { it =
          ([],
