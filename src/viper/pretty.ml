@@ -142,6 +142,12 @@ and pp_stmt' ppf = function
     fprintf ppf "@[<v 2>%a := %a@]"
       pp_fldacc fldacc
       pp_exp exp2
+  | PreconditionS(exp) ->
+    fprintf ppf "@[<v 2>/*requires %a*/@]"
+      pp_exp exp
+  | PostconditionS(exp) ->
+    fprintf ppf "@[<v 2>/*ensures %a*/@]"
+      pp_exp exp
 
 and pp_fldacc ppf fldacc =
   match fldacc with
