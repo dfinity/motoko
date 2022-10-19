@@ -5,9 +5,11 @@ actor {
   var count = 0 : Int;
 
   assert claimed and not (-1 == -1) and (-42 == -42) or true;
-  assert stable count > 0;
+  assert[stable] count > 0;
 
   public shared func claim() : async () {
+      assert[func] count >= 0;
+      //assert[return] count >= 0;
   };
 
 }

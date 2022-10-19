@@ -242,6 +242,7 @@ and stmt ctxt (s : M.exp) : seqn =
          note = NoInfo }
      end
   | M.LitE e -> { it = [], []; at = s.at; note = NoInfo }
+  | M.AssertE e -> failwith "PRECOND"
   | _ -> fail (Mo_def.Arrange.exp s)
 
 (*    
