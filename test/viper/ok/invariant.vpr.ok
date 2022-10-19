@@ -1,7 +1,5 @@
 method __init__($Self: Ref) 
   requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
-  requires invariant_7($Self)
-  requires invariant_8($Self)
   ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
   ensures invariant_7($Self)
   ensures invariant_8($Self)
