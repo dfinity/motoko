@@ -619,12 +619,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | AwaitE exp1 ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)
-  | AssertE exp1 ->
+  | AssertE (Runtime, exp1) ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
       then k V.unit
       else trap exp.at "assertion failure"
     )
+  | AssertE (_, exp1) -> k V.unit
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
   | IgnoreE exp1 ->

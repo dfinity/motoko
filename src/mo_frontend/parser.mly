@@ -655,7 +655,7 @@ exp_bin(B) :
   | AWAIT e=exp_nest
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp_nest
-    { AssertE(e) @? at $sloc }
+    { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
     { let x' = ("continue " ^ x.it) @@ x.at in
       let unit () = TupT [] @! at $sloc in

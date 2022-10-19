@@ -2,10 +2,10 @@
 
 %public exp_nondec(B) :
   | ASSERT COLON STABLE e=exp_nest
-    { AssertE(e) @? at $sloc }
+    { AssertE(Invariant, e) @? at $sloc }
   | ASSERT COLON FUNC e=exp_nest
-    { AssertE(e) @? at $sloc }
+    { AssertE(Precondition, e) @? at $sloc }
   | ASSERT COLON RETURN e=exp_nest
-    { AssertE(e) @? at $sloc }
+    { AssertE(Postcondition, e) @? at $sloc }
 
 %%

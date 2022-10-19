@@ -1429,7 +1429,7 @@ and infer_exp'' env exp : T.typ =
         "expected async type, but expression has type%a"
         display_typ_expand t1
     )
-  | AssertE exp1 ->
+  | AssertE (_, exp1) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     T.unit
   | AnnotE (exp1, typ) ->

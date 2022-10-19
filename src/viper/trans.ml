@@ -121,7 +121,7 @@ and dec_field' ctxt d =
         in (* TODO: add args (and rets?) *)
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
-  | M.(ExpD { it = AssertE e; at; _ }) ->
+  | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
       None,
       fun ctxt' ->
@@ -242,9 +242,14 @@ and stmt ctxt (s : M.exp) : seqn =
          note = NoInfo }
      end
   | M.LitE e -> { it = [], []; at = s.at; note = NoInfo }
-  | M.AssertE e ->
+  | M.AssertE (Precondition, e) ->
     { it = [],
            [ { it = PreconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
+      at = s.at;
+      note = NoInfo }
+  | M.AssertE (Postcondition, e) ->
+    { it = [],
+           [ { it = PostconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
   | _ -> fail (Mo_def.Arrange.exp s)

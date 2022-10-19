@@ -184,7 +184,7 @@ and exp' =
   | DebugE of exp                              (* debugging *)
   | AsyncE of typ_bind * exp                   (* async *)
   | AwaitE of exp                              (* await *)
-  | AssertE of exp                             (* assertion *)
+  | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
@@ -194,6 +194,9 @@ and exp' =
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)
+
+and assert_kind =
+  | Runtime | Invariant | Precondition | Postcondition | Loop_entry | Loop_continue | Loop_exit
 
 and dec_field = dec_field' Source.phrase
 and dec_field' = {dec : dec; vis : vis; stab: stab option}

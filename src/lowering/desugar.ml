@@ -222,7 +222,8 @@ and exp' at note = function
               | T.Async (t, _) -> t
               | _ -> assert false)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
-  | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
+  | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
+  | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
