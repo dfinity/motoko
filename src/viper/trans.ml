@@ -63,14 +63,14 @@ let rec unit (u : M.comp_unit) : prog =
       { at;
         it = List.fold_left
         (fun pexp -> fun p_fn -> AndE(
-            { at;
+          { at;
             it = pexp;
             note = NoInfo
-            },
-            { at;
+          },
+          { at;
             it = (p_fn at);
             note = NoInfo
-            }))
+          }))
           (BoolLitE true)
           perms;
           note = NoInfo
@@ -108,7 +108,7 @@ let rec unit (u : M.comp_unit) : prog =
       match it with
       | MethodI (id, ins, outs, pres, posts, body) ->
         { at;
-          it = MethodI(id, ins, outs, List.append pres invs, List.append posts invs, body);
+          it = MethodI(id, ins, outs, (if id.it = init_id.it then pres else List.append pres invs), List.append posts invs, body);
           note
         }
         | _ -> {it; at; note}
@@ -160,7 +160,7 @@ and dec_field' ctxt d =
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
   | M.(ExpD { it = AssertE e; at; _ }) ->
-	    ctxt,
+      ctxt,
       None,
 	    fun ctxt' ->
 	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "$Self" }  e), NoInfo
