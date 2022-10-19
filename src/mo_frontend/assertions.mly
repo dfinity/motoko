@@ -1,11 +1,11 @@
 %%
 
 %public exp_nondec(B) :
-  | ASSERT LBRACKET STABLE RBRACKET e=exp_nest
+  | ASSERT COLON STABLE e=exp_nest
     { AssertE(e) @? at $sloc }
-  | ASSERT LBRACKET FUNC RBRACKET e=exp_nest
+  | ASSERT COLON FUNC e=exp_nest
     { AssertE(e) @? at $sloc }
- (* | ASSERT LBRACKET RETURN RBRACKET e=exp_nest
-    { AssertE(e) @? at $sloc } *)
+  | ASSERT COLON RETURN e=exp_nest
+    { AssertE(e) @? at $sloc }
 
 %%

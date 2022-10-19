@@ -13,6 +13,8 @@ method claim($Self: Ref)
   requires invariant_7($Self)
   requires invariant_8($Self)
   ensures invariant_7($Self)
-  ensures invariant_8($Self)  { 
-                                 
-                              }
+  ensures invariant_8($Self)
+   { 
+     /*requires (($Self).count >= 0)*/
+     /*requires (($Self).count >= 0)*/ 
+   }
