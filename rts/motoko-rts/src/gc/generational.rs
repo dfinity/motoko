@@ -116,24 +116,17 @@ const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 
 #[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
-    const REMEMBERED_LOG_THRESHOLD: usize = 1024;
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
     
     let old_generation_size = limits.last_free - limits.base;
     let young_generation_size = limits.free - limits.last_free;
-    let remembered_log_size = REMEMBERED_LOG
-        .as_ref()
-        .expect("Write barrier is not activated")
-        .size();
-
+    
     if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
         PASSED_CRITICAL_LIMIT = true;
         Some(Strategy::Full)
-    } else if old_generation_size > OLD_GENERATION_THRESHOLD {
+    } else if old_generation_size > OLD_GENERATION_THRESHOLD || REMEMBERED_LOG.is_none() {
         Some(Strategy::Full)
-    } else if remembered_log_size > REMEMBERED_LOG_THRESHOLD
-        || young_generation_size > YOUNG_GENERATION_THRESHOLD
-    {
+    } else if young_generation_size > YOUNG_GENERATION_THRESHOLD {
         Some(Strategy::Young)
     } else {
         None
@@ -240,7 +233,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         self.mark_all_reachable();
 
         #[cfg(debug_assertions)]
-        REMEMBERED_LOG.as_ref().unwrap().assert_is_garbage();
+        if REMEMBERED_LOG.is_some() {
+            #[cfg(debug_assertions)]
+            REMEMBERED_LOG.as_ref().unwrap().assert_is_garbage();
+        }
     }
 
     unsafe fn mark_root_set(&mut self) {

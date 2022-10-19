@@ -45,7 +45,7 @@ unsafe fn verify_static_roots(static_roots: *mut Array, last_free: usize) {
 }
 
 unsafe fn verify_heap(limits: &Limits) {
-    if SNAPSHOT.is_null() {
+    if SNAPSHOT.is_null() || REMEMBERED_LOG.is_none() {
         return;
     }
     println!(100, "Heap verification starts...");
