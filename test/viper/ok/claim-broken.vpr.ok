@@ -1,7 +1,9 @@
+field $message_async: Int
 method __init__($Self: Ref)   
    { 
      ($Self).claimed := false
-     ($Self).count := 0 
+     ($Self).count := 0
+     ($Self).$message_async := 0 
    }
 field claimed: Bool
 field count: Int
@@ -9,6 +11,10 @@ method claim($Self: Ref)
    { 
      if (!($Self).claimed)
         { 
+          ($Self).$message_async := (($Self).$message_async + 1)
+          exhale true
+          inhale true
+          ($Self).$message_async := (($Self).$message_async - 1)
           { 
              ($Self).claimed := true
              ($Self).count := 1 
