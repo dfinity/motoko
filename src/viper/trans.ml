@@ -108,7 +108,7 @@ let rec unit (u : M.comp_unit) : prog =
       match it with
       | MethodI (id, ins, outs, pres, posts, body) ->
         { at;
-          it = MethodI(id, ins, outs, List.append pres invs, List.append posts invs, body);
+          it = MethodI(id, ins, outs, (if id.it = init_id.it then pres else List.append pres invs), List.append posts invs, body);
           note
         }
         | _ -> {it; at; note}
