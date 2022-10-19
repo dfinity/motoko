@@ -122,10 +122,10 @@ and dec_field' ctxt d =
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
         NoInfo)
   | M.(ExpD { it = AssertE e; at; _ }) ->
-	    ctxt,
+      ctxt,
       None,
-	    fun ctxt' ->
-	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "self" }  e), NoInfo
+      fun ctxt' ->
+        InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "self" }  e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*
