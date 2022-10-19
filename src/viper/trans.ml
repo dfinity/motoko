@@ -36,16 +36,6 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
         ; note = NoInfo } :: extract_invariants p self es
   | _ :: p -> extract_invariants p
 
-let rec adorn_invariants (is : par -> invariants -> invariants) = function
-  | [] -> []
-  | { it = MethodI (d, (self :: _ as i), o, r, e, b); _ } as m :: p ->
-    let pre_is = function
-      | "__init__" -> fun _ l -> l
-      | _ -> is in
-    let m = { m with it = MethodI (d, i, o, pre_is d.it self r, is self e, b) } in
-    m :: adorn_invariants is p
-  | i :: p -> i :: adorn_invariants is p
-
 let rec unit (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
@@ -55,7 +45,37 @@ let rec unit (u : M.comp_unit) : prog =
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
     let init_id = id_at "__init__" Source.no_region in
     let self_id = id_at "$Self" Source.no_region in
+    let self_typ = { it = RefT; at = self_id.at; note = NoInfo } in
     let ctxt'' = { ctxt' with self = Some self_id.it } in
+    let perms = List.map (fun (id, _) -> fun (at : region) ->
+      AccE(
+        (self ctxt'' at, id),
+        { at;
+          it = PermE {
+            at;
+            it = FullP;
+            note = NoInfo
+          };
+          note = NoInfo
+        }
+      )) inits in
+    let perm = fun (at : region) ->
+      { at;
+        it = List.fold_left
+        (fun pexp -> fun p_fn -> AndE(
+          { at;
+            it = pexp;
+            note = NoInfo
+          },
+          { at;
+            it = (p_fn at);
+            note = NoInfo
+          }))
+          (BoolLitE true)
+          perms;
+          note = NoInfo
+        } in
+    (* Add initializer *)
     let init_list = List.map (fun (id, init) -> 
       { at = { left = id.at.left; right = init.at.right };
         it = FieldAssignS((self ctxt'' init.at, id), exp ctxt'' init);
@@ -66,19 +86,37 @@ let rec unit (u : M.comp_unit) : prog =
         it = [], init_list;
         note = NoInfo
       } in
-    let m = 
-      { it = MethodI(init_id, [
-          self_id, { it = RefT; at = self_id.at; note = NoInfo }
-        ], [], [], [], Some init_body);
+    let init_m =
+      { it = MethodI(init_id, [self_id, self_typ], [], [], [], Some init_body);
         at = no_region;
         note = NoInfo
       } in
-    let is = m :: is' in
-    let invs = extract_invariants is in
-      { it = adorn_invariants invs is;
-        at = body.at;
-        note = NoInfo
-      }
+    let is'' = init_m :: is' in
+    (* Add permissions *)
+    let is''' = List.map (fun {it; at; note: info} -> (
+      match it with
+      | MethodI (id, ins, outs, pres, posts, body) ->
+        { at;
+          it = MethodI (id, ins, outs, (perm at)::pres, (perm at)::posts, body);
+          note
+        }
+        | _ -> {it; at; note}
+    )) is'' in
+    (* Add functional invariants *)
+    let invs = extract_invariants is''' (self_id, self_typ) [] in
+    let is = List.map (fun {it; at; note: info} ->
+      match it with
+      | MethodI (id, ins, outs, pres, posts, body) ->
+        { at;
+          it = MethodI(id, ins, outs, (if id.it = init_id.it then pres else List.append pres invs), List.append posts invs, body);
+          note
+        }
+        | _ -> {it; at; note}
+    ) is''' in
+    { it = is;
+      at = body.at;
+      note = NoInfo
+    }
   | _ -> assert false
 
 and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
@@ -124,8 +162,8 @@ and dec_field' ctxt d =
   | M.(ExpD { it = AssertE e; at; _ }) ->
       ctxt,
       None,
-      fun ctxt' ->
-        InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "self" }  e), NoInfo
+	    fun ctxt' ->
+	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "$Self" }  e), NoInfo
   | _ -> fail (Mo_def.Arrange.dec d.M.dec)
 
 (*
