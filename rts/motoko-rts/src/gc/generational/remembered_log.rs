@@ -54,7 +54,7 @@ impl RememberedLog {
             first: table,
             last: table,
             size: 0,
-            cache: Self::null_ptr(),
+            cache: Value::from_raw((null_mut() as *mut usize) as u32)
         }
     }
 
@@ -85,7 +85,7 @@ impl RememberedLog {
         );
         let next = Self::new_table(mem);
         debug_assert_eq!(
-            table_get(self.last, NEXT_POINTER_OFFSET).get_raw() as *mut Blob,
+            table_get(self.last, NEXT_POINTER_OFFSET).get_ptr() as *mut Blob,
             null_mut()
         );
         table_set(
@@ -98,7 +98,7 @@ impl RememberedLog {
 
     unsafe fn new_table<M: Memory>(mem: &mut M) -> *mut Blob {
         let table = alloc_blob(mem, Bytes(TABLE_BLOB_SIZE)).as_blob_mut();
-        table_set(table, NEXT_POINTER_OFFSET, Self::null_ptr());
+        table_set(table, NEXT_POINTER_OFFSET, Value::from_ptr((null_mut() as *mut usize) as usize));
         table_set(table, COUNT_ENTRIES_OFFSET, Value::from_scalar(0));
         table
     }
@@ -114,10 +114,6 @@ impl RememberedLog {
         self.size
     }
 
-    unsafe fn null_ptr() -> Value {
-        Value::from_raw((null_mut() as *mut usize) as u32)
-    }
-
     #[cfg(debug_assertions)]
     pub unsafe fn assert_is_garbage(&self) {
         use crate::gc::mark_compact::bitmap::get_bit;
@@ -125,7 +121,7 @@ impl RememberedLog {
         while table != null_mut() {
             assert!(!get_bit(self.first as u32 / WORD_SIZE));
             let next = table_get(table, NEXT_POINTER_OFFSET);
-            if next.get_raw() as *mut Blob == null_mut() {
+            if next.get_ptr() as *mut Blob == null_mut() {
                 table = null_mut();
             } else {
                 table = next.as_blob_mut();
@@ -139,7 +135,7 @@ impl RememberedLogIterator {
         debug_assert!(
             self.index < MAX_ENTRIES_PER_TABLE
                 || self.index == MAX_ENTRIES_PER_TABLE
-                    && table_get(self.table, NEXT_POINTER_OFFSET).get_raw() as *mut Blob
+                    && table_get(self.table, NEXT_POINTER_OFFSET).get_ptr() as *mut Blob
                         == null_mut()
         );
         self.index < table_get(self.table, COUNT_ENTRIES_OFFSET).get_scalar()
@@ -155,7 +151,7 @@ impl RememberedLogIterator {
         self.index += 1;
         if self.index == MAX_ENTRIES_PER_TABLE {
             let next = table_get(self.table, NEXT_POINTER_OFFSET);
-            if next.get_raw() as *mut Blob != null_mut() {
+            if next.get_ptr() as *mut Blob != null_mut() {
                 self.table = next.as_blob_mut();
                 self.index = 0;
             }
