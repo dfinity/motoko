@@ -238,6 +238,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         self.marked_space = 0;
         self.mark_root_set();
         self.mark_all_reachable();
+
+        #[cfg(debug_assertions)]
+        REMEMBERED_LOG.as_ref().unwrap().assert_is_garbage();
     }
 
     unsafe fn mark_root_set(&mut self) {

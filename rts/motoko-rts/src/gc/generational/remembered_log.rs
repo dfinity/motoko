@@ -117,6 +117,21 @@ impl RememberedLog {
     unsafe fn null_ptr() -> Value {
         Value::from_raw((null_mut() as *mut usize) as u32)
     }
+
+    #[cfg(debug_assertions)]
+    pub unsafe fn assert_is_garbage(&self) {
+        use crate::gc::mark_compact::bitmap::get_bit;
+        let mut table = self.first;
+        while table != null_mut() {
+            assert!(!get_bit(self.first as u32 / WORD_SIZE));
+            let next = table_get(table, NEXT_POINTER_OFFSET);
+            if next.get_raw() as *mut Blob == null_mut() {
+                table = null_mut();
+            } else {
+                table = next.as_blob_mut();
+            }
+        }
+    }
 }
 
 impl RememberedLogIterator {
