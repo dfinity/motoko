@@ -114,6 +114,7 @@ type token =
   | TEXT of string
   | PRIM
   | UNDERSCORE
+  | INVARIANT
   (* Trivia *)
   | LINEFEED of line_feed
   | SINGLESPACE
@@ -236,6 +237,7 @@ let to_parser_token :
   | TEXT s -> Ok (Parser.TEXT s)
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
+  | INVARIANT -> Ok Parser.INVARIANT
   (*Trivia *)
   | SINGLESPACE -> Error (Space 1)
   | SPACE n -> Error (Space n)
@@ -361,6 +363,7 @@ let string_of_parser_token = function
   | Parser.TEXT _ -> "TEXT of string"
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
+  | Parser.INVARIANT -> "INVARIANT"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)
