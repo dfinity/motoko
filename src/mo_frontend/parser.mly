@@ -639,7 +639,7 @@ exp_bin(B) :
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
 
-exp_nondec(B) :
+%public exp_nondec(B) :
   | e=exp_bin(B)
     { e }
   | e1=exp_bin(B) ASSIGN e2=exp(ob)
@@ -717,7 +717,7 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp_nest :
+%public exp_nest :
   | e=block
     { e }
   | e=exp(bl)
