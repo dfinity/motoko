@@ -56,7 +56,7 @@ unsafe fn verify_static_roots(static_roots: *mut Array) {
         assert_eq!(current.tag(), TAG_MUTBOX); // check tag
         let mutbox = current as *mut MutBox;
         let current_field = &mut (*mutbox).field;
-        verify_field(current_field);
+        verify_field(current, current_field);
     }
 }
 
@@ -73,7 +73,7 @@ unsafe fn verify_heap(heap_base: usize, heap_free: usize) {
             current.tag(),
             0,
             |_, current_field| {
-                verify_field(current_field);
+                verify_field(current, current_field);
             },
             |_, slice_start, arr| {
                 assert!(slice_start == 0);
@@ -84,17 +84,17 @@ unsafe fn verify_heap(heap_base: usize, heap_free: usize) {
     }
 }
 
-unsafe fn verify_field(current_field: *mut Value) {
+unsafe fn verify_field(current_object: *mut Obj, current_field: *mut Value) {
     let memory_copy = SNAPSHOT.payload_addr() as usize;
     let previous_field = (memory_copy + current_field as usize) as *mut Value;
-    if *previous_field != *current_field && !recorded(current_field as u32) {
+    if *previous_field != *current_field && !recorded(current_object) {
         panic!("Missing write barrier at {:#x}", current_field as usize);
     }
 }
 
-unsafe fn recorded(value: u32) -> bool {
+unsafe fn recorded(object: *mut Obj) -> bool {
     REMEMBERED_SET
         .as_ref()
         .unwrap()
-        .contains(Value::from_raw(value))
+        .contains(Value::from_ptr(object as usize))
 }

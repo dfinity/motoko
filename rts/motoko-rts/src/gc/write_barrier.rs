@@ -27,19 +27,19 @@ pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
 /// `field_address` (unskewed) is the address of the written field or array element within the `object`.
 #[ic_mem_fn]
 pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, object: Value, field_address: u32) {
-    debug_assert!(object.is_ptr());
-    debug_assert_eq!(field_address & 0b1, 0);
+    assert!(object.is_ptr());
+    assert_eq!(field_address & 0b1, 0);
     if (object.get_ptr() as *mut Value) != null_mut() {
         let tag = object.tag();
-        debug_assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         let size = object_size(object.get_ptr()).to_bytes().as_usize();
-        debug_assert!(field_address as usize >= object.get_ptr() + size_of::<Obj>() && field_address as usize <= object.get_ptr() + size);
+        assert!(field_address as usize >= object.get_ptr() + size_of::<Obj>() && field_address as usize <= object.get_ptr() + size);
     }
     #[cfg(debug_assertions)]
     match &mut REMEMBERED_SET {
         None => return,
         Some(remembered_set) => {
-            remembered_set.insert(_mem, Value::from_raw(field_address));
+            remembered_set.insert(_mem, object);
         }
     }
 }
