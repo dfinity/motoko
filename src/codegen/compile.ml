@@ -3083,6 +3083,10 @@ module Object = struct
     )
     else idx_hash_raw env low_bound
 
+  let field_type env obj_type s = 
+    let _, fields = Type.as_obj_sub [s] obj_type in
+    Type.lookup_val_field s fields
+  
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
     let _, fields = Type.as_obj_sub [s] obj_type in
@@ -3419,6 +3423,10 @@ module Arr = struct
       BigNum.to_word32_with env ^^
       idx env
   )
+
+  let element_type env typ = match Type.promote typ with
+  | Type.Array element_type -> element_type
+  | _ -> assert false
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
@@ -6680,7 +6688,7 @@ module VarEnv = struct
   module NameEnv = Env.Make(String)
   type t = {
     lvl : lvl;
-    vars : varloc NameEnv.t; (* variables ↦ their location *)
+    vars : (varloc * Type.typ) NameEnv.t; (* variables ↦ their location and type *)
     labels : G.depth NameEnv.t; (* jump label ↦ their depth *)
   }
 
@@ -6696,7 +6704,7 @@ module VarEnv = struct
 
   let mk_fun_ae ae = { ae with
     lvl = NotTopLvl;
-    vars = NameEnv.filter (fun v l ->
+    vars = NameEnv.filter (fun v (l, _) ->
       let non_local = is_non_local l in
       (* For debugging, enable this:
       (if not non_local then Printf.eprintf "VarEnv.mk_fun_ae: Removing %s\n" v);
@@ -6704,50 +6712,56 @@ module VarEnv = struct
       non_local
     ) ae.vars;
   }
-  let lookup_var ae var =
+
+  let lookup ae var =
     match NameEnv.find_opt var ae.vars with
-      | Some l -> Some l
+      | Some e -> Some e
       | None   -> Printf.eprintf "Could not find %s\n" var; None
+
+  let lookup_var ae var =
+    match lookup ae var with
+      | Some (l, _) -> Some l
+      | None -> None
 
   let needs_capture ae var = match lookup_var ae var with
     | Some l -> not (is_non_local l)
     | None -> assert false
 
-  let add_local_with_heap_ind env (ae : t) name =
+  let add_local_with_heap_ind env (ae : t) name typ =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      ({ ae with vars = NameEnv.add name (HeapInd i) ae.vars }, i)
+      ({ ae with vars = NameEnv.add name ((HeapInd i), typ) ae.vars }, i)
 
-  let add_local_heap_static (ae : t) name ptr =
-      { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
+  let add_local_heap_static (ae : t) name ptr typ =
+      { ae with vars = NameEnv.add name ((HeapStatic ptr), typ) ae.vars }
 
-  let add_local_public_method (ae : t) name (fi, exported_name) =
-      { ae with vars = NameEnv.add name (PublicMethod (fi, exported_name) : varloc) ae.vars }
+  let add_local_public_method (ae : t) name (fi, exported_name) typ =
+    { ae with vars = NameEnv.add name ((PublicMethod (fi, exported_name) : varloc), typ) ae.vars }
 
-  let add_local_const (ae : t) name cv =
-      { ae with vars = NameEnv.add name (Const cv : varloc) ae.vars }
+  let add_local_const (ae : t) name cv typ =
+    { ae with vars = NameEnv.add name ((Const cv : varloc), typ) ae.vars }
 
-  let add_local_local env (ae : t) name sr i =
-      { ae with vars = NameEnv.add name (Local (sr, i)) ae.vars }
+  let add_local_local env (ae : t) name sr i typ =
+    { ae with vars = NameEnv.add name ((Local (sr, i)), typ) ae.vars }
 
-  let add_direct_local env (ae : t) name sr =
+  let add_direct_local env (ae : t) name sr typ =
       let i = E.add_anon_local env (SR.to_var_type sr) in
       E.add_local_name env i name;
-      (add_local_local env ae name sr i, i)
+      (add_local_local env ae name sr i typ, i)
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_arguments env (ae : t) as_local = function
     | [] -> ae
-    | (name :: names) ->
+    | ((name, typ) :: remainder) ->
       if as_local name then
         let i = E.add_anon_local env I32Type in
         E.add_local_name env i name;
-        let ae' = { ae with vars = NameEnv.add name (Local (SR.Vanilla, i)) ae.vars } in
-        add_arguments env ae' as_local names
+        let ae' = { ae with vars = NameEnv.add name ((Local (SR.Vanilla, i)), typ) ae.vars } in
+        add_arguments env ae' as_local remainder
       else (* needs to go to static memory *)
         let ptr = MutBox.static env in
-        let ae' = add_local_heap_static ae name ptr in
-        add_arguments env ae' as_local names
+        let ae' = add_local_heap_static ae name ptr typ in
+        add_arguments env ae' as_local remainder
 
   let add_argument_locals env (ae : t) =
     add_arguments env ae (fun _ -> true)
@@ -6769,6 +6783,17 @@ type scope_wrap = G.t -> G.t
 
 let unmodified : scope_wrap = fun code -> code
 
+let potential_pointer typ : bool = 
+  (* must not eliminate nested optional types as they refer to a heap object for ??null, ???null etc. *)
+  let rec can_be_pointer typ nested_optional = 
+    let open Type in
+    match normalize typ with
+    | Mut t -> (can_be_pointer t nested_optional)
+    | Opt t -> (if nested_optional then true else (can_be_pointer t true))
+    | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
+    | _ -> true in
+  can_be_pointer typ false
+
 module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
@@ -6777,35 +6802,35 @@ module Var = struct
 
   (* Returns desired stack representation, preparation code and code to consume
      the value onto the stack *)
-  let set_val env ae var : G.t * SR.t * G.t = match VarEnv.lookup_var ae var with
-    | Some (Local (sr, i)) ->
+  let set_val env ae var : G.t * SR.t * G.t = match VarEnv.lookup ae var with
+    | Some ((Local (sr, i)), _) ->
       G.nop,
       sr,
       G.i (LocalSet (nr i))
-    | Some (HeapInd i) ->
+    | Some ((HeapInd i), typ) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Flags.Generational
+      (if !Flags.gc_strategy = Flags.Generational && (potential_pointer typ)
         then
          G.i (LocalGet (nr i)) ^^
          compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
         else G.nop)
-    | Some (HeapStatic ptr) ->
+    | Some ((HeapStatic ptr), typ) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Flags.Generational
+      (if !Flags.gc_strategy = Flags.Generational && (potential_pointer typ)
         then
          compile_unboxed_const ptr ^^
          compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
         else G.nop)
-    | Some (Const _) -> fatal "set_val: %s is const" var
-    | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
+    | Some ((Const _), _) -> fatal "set_val: %s is const" var
+    | Some ((PublicMethod _), _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
@@ -6851,20 +6876,20 @@ module Var = struct
      and code to restore it, including adding to the environment
   *)
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
-    match VarEnv.lookup_var ae0 var with
-    | Some (Local (sr, i)) ->
+    match VarEnv.lookup ae0 var with
+    | Some ((Local (sr, i)), typ) ->
       ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
       , fun new_env ae1 ->
         (* we use SR.Vanilla in the restored environment. We could use sr;
            like for parameters hard to predict what’s better *)
-        let ae2, j = VarEnv.add_direct_local new_env ae1 var SR.Vanilla in
+        let ae2, j = VarEnv.add_direct_local new_env ae1 var SR.Vanilla typ in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
-    | Some (HeapInd i) ->
+    | Some ((HeapInd i), typ) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let ae2, j = VarEnv.add_local_with_heap_ind new_env ae1 var in
+        let ae2, j = VarEnv.add_local_with_heap_ind new_env ae1 var typ in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
@@ -6915,7 +6940,7 @@ module FuncDec = struct
       (* Function arguments are always vanilla, due to subtyping and uniform representation.
          We keep them as such here for now. We _could_ always unpack those that can be unpacked
          (Nat32 etc.). It is generally hard to predict which strategy is better. *)
-      let ae' = VarEnv.add_local_local env ae a.it SR.Vanilla (Int32.of_int i) in
+      let ae' = VarEnv.add_local_local env ae a.it SR.Vanilla (Int32.of_int i) a.note in
       go (i+1) ae' args in
     go first_arg ae0 args
 
@@ -6968,9 +6993,10 @@ module FuncDec = struct
          IC.reply_with_data env
        else G.nop) ^^
       (* Deserialize argument and add params to the environment *)
+      let arg_list = List.map (fun a -> (a.it, a.note)) args in
       let arg_names = List.map (fun a -> a.it) args in
       let arg_tys = List.map (fun a -> a.note) args in
-      let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
+      let ae1 = VarEnv.add_argument_locals env ae0 arg_list in
       Serialization.deserialize env arg_tys ^^
       G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names) ^^
       mk_body env ae1 ^^
@@ -7499,13 +7525,15 @@ module AllocHow = struct
 
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
-  let how_of_ae ae : allocHow = M.map (function
+  let how_of_ae ae : allocHow = 
+    let locations = M.map (fun (l, _) -> l) ae.VarEnv.vars in 
+    M.map (function
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
     | VarEnv.HeapInd _      -> StoreHeap
     | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
-    ) ae.VarEnv.vars
+    ) locations
 
   let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
     let lvl = ae.VarEnv.lvl in
@@ -7524,25 +7552,25 @@ module AllocHow = struct
 
   (* Functions to extend the environment (and possibly allocate memory)
      based on how we want to store them. *)
-  let add_local env ae how name : VarEnv.t * G.t =
+  let add_local env ae how name typ : VarEnv.t * G.t =
     match M.find name how with
     | (Const : how) -> (ae, G.nop)
     | LocalImmut sr | LocalMut sr ->
-      let (ae1, i) = VarEnv.add_direct_local env ae name sr in
+      let (ae1, i) = VarEnv.add_direct_local env ae name sr typ in
       (ae1, G.nop)
     | StoreHeap ->
-      let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
+      let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name typ in
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
     | StoreStatic ->
       let ptr = MutBox.static env in
-      let ae1 = VarEnv.add_local_heap_static ae name ptr in
+      let ae1 = VarEnv.add_local_heap_static ae name ptr typ in
       (ae1, G.nop)
 
-  let add_local_for_alias env ae how name : VarEnv.t * G.t =
+  let add_local_for_alias env ae how name typ : VarEnv.t * G.t =
     match M.find name how with
     | StoreHeap ->
-      let ae1, _ = VarEnv.add_local_with_heap_ind env ae name in
+      let ae1, _ = VarEnv.add_local_with_heap_ind env ae name typ in
       ae1, G.nop
     | _ -> assert false
 
@@ -8204,7 +8232,7 @@ let rec compile_lexp (env : E.t) ae lexp =
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it, !Flags.gc_strategy with
   | VarLE var, _ -> Var.set_val env ae var
-  | IdxLE (e1, e2), Flags.Generational ->
+  | IdxLE (e1, e2), Flags.Generational when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
     let (set_field, get_field) = new_local env "field" in
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8222,7 +8250,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     Arr.idx_bigint env,
     SR.Vanilla,
     store_ptr
-  | DotLE (e, n), Flags.Generational ->
+  | DotLE (e, n), Flags.Generational when potential_pointer (Object.field_type env e.note.Note.typ n) ->
     let (set_field, get_field) = new_local env "field" in
     compile_exp_vanilla env ae e ^^
     Object.idx env e.note.Note.typ n ^^
@@ -9241,8 +9269,8 @@ and compile_exp (env : E.t) ae exp =
       let code2 = go env cs in
       code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
-  | DeclareE (name, _, e) ->
-    let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
+  | DeclareE (name, typ, e) ->
+    let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name typ in
     let sr, code = compile_exp env ae1 e in
     sr,
     MutBox.alloc env ^^ G.i (LocalSet (nr i)) ^^
@@ -9504,16 +9532,16 @@ and fill_pat env ae pat : patternCode =
 
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
-  AllocHow.M.fold (fun v _ty ae ->
-    let (ae1, _i) = VarEnv.add_direct_local env ae v SR.Vanilla
+  AllocHow.M.fold (fun v typ ae ->
+    let (ae1, _i) = VarEnv.add_direct_local env ae v SR.Vanilla typ
     in ae1
   ) d ae
 
 and alloc_pat env ae how pat : VarEnv.t * G.t  =
   (fun (ae, code) -> (ae, G.with_region pat.at code)) @@
   let d = Freevars.pat pat in
-  AllocHow.M.fold (fun v _ty (ae, code0) ->
-    let ae1, code1 = AllocHow.add_local env ae how v
+  AllocHow.M.fold (fun v typ (ae, code0) ->
+    let ae1, code1 = AllocHow.add_local env ae how v typ
     in (ae1, code0 ^^ code1)
   ) d (ae, G.nop)
 
@@ -9580,7 +9608,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     let fi = match const with
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
-    let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) in
+    let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) e.note.Note.typ in
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
@@ -9595,11 +9623,11 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
 
-  | VarD (name, _, e) ->
+  | VarD (name, typ, e) ->
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name typ in
     ( pre_ae1,
       alloc_code,
       (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
@@ -9607,8 +9635,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
 
-  | RefD (name, _, { it = DotLE (e, n); _ }) ->
-    let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name in
+  | RefD (name, typ, { it = DotLE (e, n); _ }) ->
+    let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name typ in
 
     ( pre_ae1,
       alloc_code,
@@ -9737,7 +9765,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
 
 and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
-  | VarP v -> VarEnv.add_local_const ae v const
+  | VarP v -> VarEnv.add_local_const ae v const pat.note
   | ObjP pfs ->
     let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
     List.fold_left (fun ae (pf : pat_field) ->
@@ -9812,10 +9840,11 @@ and main_actor as_opt mod_env ds fs up =
     (* Add any params to the environment *)
     (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
+    let arg_list = List.map (fun a -> (a.it, a.note)) args in
     let arg_names = List.map (fun a -> a.it) args in
     let arg_tys = List.map (fun a -> a.note) args in
     let as_local n = not (Freevars.S.mem n captured) in
-    let ae1 = VarEnv.add_arguments env ae0 as_local arg_names in
+    let ae1 = VarEnv.add_arguments env ae0 as_local arg_list in
 
     (* Reverse the fs, to a map from variable to exported name *)
     let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
