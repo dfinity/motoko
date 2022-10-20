@@ -934,7 +934,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "init_write_barrier" [] [];
-    E.add_func_import env "rts" "write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "write_barrier" [I32Type; I32Type] [];
     ()
 
 end (* RTS *)
@@ -6764,9 +6764,10 @@ module Var = struct
     | Some (HeapInd i) ->
       (if !Flags.write_barrier
        then
+        G.i (LocalGet (nr i)) ^^ (* write barrier: object argument *)
         G.i (LocalGet (nr i)) ^^
         compile_add_const ptr_unskew ^^
-        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^ (* write barrier: location argument *)
         E.call_import env "rts" "write_barrier"
        else G.nop
       ) ^^
@@ -6777,9 +6778,10 @@ module Var = struct
     | Some (HeapStatic ptr) ->
       (if !Flags.write_barrier
        then 
+        compile_unboxed_const ptr ^^ (* write barrier: object argument *)
         compile_unboxed_const ptr ^^
         compile_add_const ptr_unskew ^^
-        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^ (* write barrier: location argument *)
         E.call_import env "rts" "write_barrier"
        else G.nop
       ) ^^
@@ -8199,8 +8201,9 @@ let rec compile_lexp (env : E.t) ae lexp =
      then
       Arr.idx_bigint env ^^
       set_field ^^
+      compile_exp_vanilla env ae e1 ^^ (* write barrier: object argument *)
       get_field ^^
-      compile_add_const ptr_unskew ^^
+      compile_add_const ptr_unskew ^^ (* write barrier: location argument *)
       E.call_import env "rts" "write_barrier" ^^
       get_field
      else
@@ -8219,8 +8222,17 @@ let rec compile_lexp (env : E.t) ae lexp =
         (* Only real objects have mutable fields, no need to branch on the tag *)
         Object.idx env e.note.Note.typ n ^^
         set_field ^^
+        (if Object.is_mut_field env e.note.Note.typ n
+         then 
+          (* indirected field, go back to beginning of MutBox *)
+          get_field ^^ 
+          compile_sub_const (Int32.mul MutBox.field Heap.word_size)
+         else 
+          (* inlined field *)
+          compile_exp_vanilla env ae e
+        ) ^^ (* write barrier: object argument *)
         get_field ^^
-        compile_add_const ptr_unskew ^^
+        compile_add_const ptr_unskew ^^ (* write barrier: location argument *)
         E.call_import env "rts" "write_barrier" ^^
         get_field
       else
