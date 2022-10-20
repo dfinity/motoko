@@ -745,7 +745,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -1288,6 +1288,12 @@ and infer_exp'' env exp : T.typ =
     end;
     T.bool
   | OrE (exp1, exp2) ->
+    if not env.pre then begin
+      check_exp_strong env T.bool exp1;
+      check_exp_strong env T.bool exp2
+    end;
+    T.bool
+  | ImpliesE (exp1, exp2) ->
     if not env.pre then begin
       check_exp_strong env T.bool exp1;
       check_exp_strong env T.bool exp2

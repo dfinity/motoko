@@ -173,6 +173,7 @@ and exp' =
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
+  | ImpliesE of exp * exp                      (* implication *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | WhileE of exp * exp                        (* while-do loop *)

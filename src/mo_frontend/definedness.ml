@@ -113,6 +113,7 @@ let rec exp msgs e : f = match e.it with
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
   | OrE (e1, e2)        -> exps msgs [e1; e2]
+  | ImpliesE (e1, e2)   -> exps msgs [e1; e2]
   | IfE (e1, e2, e3)    -> exps msgs [e1; e2; e3]
   | SwitchE (e, cs)     -> exp msgs e ++ cases msgs cs
   | TryE (e, cs)        -> exp msgs e ++ cases msgs cs

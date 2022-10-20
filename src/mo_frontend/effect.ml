@@ -64,6 +64,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | CallE (exp1, _, exp2)
   | AndE (exp1, exp2)
   | OrE (exp1, exp2)
+  | ImpliesE (exp1, exp2)
   | WhileE (exp1, exp2)
   | LoopE (exp1, Some exp2)
   | ForE (_, exp1, exp2) ->
