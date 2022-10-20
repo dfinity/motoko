@@ -1,5 +1,6 @@
 open Source
 
+   
 open Syntax
 
 module T = Mo_types.Type
@@ -14,15 +15,19 @@ let (!!!) at it = { it; at; note = NoInfo}
 let accE at fldacc =
   !!! at
     (AccE(
-      fldacc,
-      { at;
-        it = PermE {
-                 at;
-                 it = FullP;
-                 note = NoInfo
-               };
-        note = NoInfo
-    }))
+         fldacc,
+         !!! at (PermE (!!! at FullP))))
+
+
+let conjoin es at =
+  match es with
+  | [] -> !!! at (BoolLitE true)
+  | e0::es0 ->
+    List.fold_left
+      (fun e1 -> fun e2 ->
+        !!! at (AndE(e1, e2)))
+        e0
+        es0
 
 let fresh_stamp name =
   let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
@@ -49,6 +54,7 @@ type ctxt =
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> stmt) list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
+    (*    invariants : (ctxt -> exp) list ref; *)
   }
 
 let self ctxt at =
@@ -84,10 +90,11 @@ let rec unit (u : M.comp_unit) : prog =
     let self_typ = { it = RefT; at = self_id.at; note = NoInfo } in
     let ctxt'' = { ctxt' with self = Some self_id.it } in
     let perms = List.map (fun (id, _) -> fun (at : region) ->
-        (accE at (self ctxt'' at, id))) inits in
+       (accE at (self ctxt'' at, id))) inits in
     let ghost_perms = List.map (fun mk_p -> fun at ->
-          mk_p ctxt'' at) !(ctxt.ghost_perms) in
-    let perm = fun (at : region) ->
+       mk_p ctxt'' at) !(ctxt.ghost_perms) in
+    let perm =
+      fun (at : region) ->
        List.fold_left
          (fun pexp -> fun p_fn ->
            !!! at (AndE(pexp, p_fn at)))
@@ -111,6 +118,7 @@ let rec unit (u : M.comp_unit) : prog =
         at = no_region;
         note = NoInfo
       } in
+
     let is'' = init_m :: is' in
     (* Add permissions *)
     let is''' = List.map (fun {it; at; note: info} -> (
@@ -130,8 +138,10 @@ let rec unit (u : M.comp_unit) : prog =
           it = MethodI(id, ins, outs, (if id.it = init_id.it then pres else List.append pres invs), List.append posts invs, body);
           note
         }
-        | _ -> {it; at; note}) is''' in
-    let is = ghost_is @ is4 in
+      | _ -> {it; at; note}) is''' in
+    let perm_def = !!! (body.at) (InvariantI("$Perm", perm body.at)) in
+    let inv_def = !!! (body.at) (InvariantI("$Inv", conjoin invs body.at)) in
+    let is = ghost_is @ (perm_def :: inv_def :: is4) in
     { it = is;
       at = body.at;
       note = NoInfo
@@ -286,14 +296,23 @@ and stmt ctxt (s : M.exp) : seqn =
               (self ctxt Source.no_region, id),
               (!!(AddE(!!(FldAcc (self ctxt Source.no_region, id)),
                        !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
-            !!(ExhaleS (!!(BoolLitE true)));
-            !!(InhaleS (!!(BoolLitE true)));
-            !!(FieldAssignS(
-              (self ctxt Source.no_region, id),
-              (!!(SubE(!!(FldAcc (self ctxt Source.no_region, id)),
-                       !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
-            !!! (e.at) (SeqnS (stmt ctxt e))]
-            )
+            !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
+                                !!(MacroCall("$Inv", self ctxt at))))));
+            !!(SeqnS (
+                !!([],
+                   [
+                     !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
+                                         !!(MacroCall("$Inv", self ctxt at))))));
+                     !!(FieldAssignS(
+                            (self ctxt Source.no_region, id),
+                            (!!(SubE(!!(FldAcc (self ctxt at, id)),
+                                     !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
+                     !!! (e.at) (SeqnS (stmt ctxt e));
+                     !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
+                                         !!(MacroCall("$Inv", self ctxt at)))))) ])));
+            !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
+                                !!(MacroCall("$Inv", self ctxt at))))));
+          ])
   | M.WhileE(e, s1) ->
      { it =
          ([],
