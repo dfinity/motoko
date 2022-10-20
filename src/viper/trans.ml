@@ -9,7 +9,20 @@ module Stamps = Env.Make(String)
 
 let stamps : int Stamps.t ref = ref Stamps.empty
 
-let (!!) it = { it; at = Source.no_region; note = NoInfo}
+let (!!!) at it = { it; at; note = NoInfo}
+
+let accE at fldacc =
+  !!! at
+    (AccE(
+      fldacc,
+      { at;
+        it = PermE {
+                 at;
+                 it = FullP;
+                 note = NoInfo
+               };
+        note = NoInfo
+    }))
 
 let fresh_stamp name =
   let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
@@ -25,6 +38,7 @@ let fresh_id name =
 let fail sexp =
   failwith (Wasm.Sexpr.to_string 80 sexp)
 
+  
 type sort = Field | Local | Method
 
 module Env = T.Env
@@ -34,7 +48,7 @@ type ctxt =
     ids : sort T.Env.t;
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> stmt) list ref;
-    invariants : (ctxt -> exp) list ref;
+    ghost_perms : (ctxt -> Source.region -> exp) list ref;
   }
 
 let self ctxt at =
@@ -60,7 +74,7 @@ let rec unit (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; } in
+    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; ghost_perms = ref [] } in
     let ctxt', inits, mk_is = dec_fields ctxt decs in
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
     (* given is', compute ghost_is *)
@@ -70,33 +84,16 @@ let rec unit (u : M.comp_unit) : prog =
     let self_typ = { it = RefT; at = self_id.at; note = NoInfo } in
     let ctxt'' = { ctxt' with self = Some self_id.it } in
     let perms = List.map (fun (id, _) -> fun (at : region) ->
-      AccE(
-        (self ctxt'' at, id),
-        { at;
-          it = PermE {
-            at;
-            it = FullP;
-            note = NoInfo
-          };
-          note = NoInfo
-        }
-      )) inits in
+        (accE at (self ctxt'' at, id))) inits in
+    let ghost_perms = List.map (fun mk_p -> fun at ->
+          mk_p ctxt'' at) !(ctxt.ghost_perms) in
     let perm = fun (at : region) ->
-      { at;
-        it = List.fold_left
-        (fun pexp -> fun p_fn -> AndE(
-          { at;
-            it = pexp;
-            note = NoInfo
-          },
-          { at;
-            it = (p_fn at);
-            note = NoInfo
-          }))
-          (BoolLitE true)
-          perms;
-          note = NoInfo
-        } in
+       List.fold_left
+         (fun pexp -> fun p_fn ->
+           !!! at (AndE(pexp, p_fn at)))
+         (!!! at (BoolLitE true))
+         (perms @ ghost_perms)
+    in
     (* Add initializer *)
     let init_list = List.map (fun (id, init) ->
       { at = { left = id.at.left; right = init.at.right };
@@ -119,12 +116,11 @@ let rec unit (u : M.comp_unit) : prog =
     let is''' = List.map (fun {it; at; note: info} -> (
       match it with
       | MethodI (id, ins, outs, pres, posts, body) ->
-        { at;
-          it = MethodI (id, ins, outs, (perm at)::pres, (perm at)::posts, body);
-          note
-        }
-        | _ -> {it; at; note}
-    )) is'' in
+         { at;
+           it = MethodI (id, ins, outs, (perm at)::pres, (perm at)::posts, body);
+           note
+         }
+      | _ -> {it; at; note})) is'' in
     (* Add functional invariants *)
     let invs = extract_invariants is''' (self_id, self_typ) [] in
     let is4 = List.map (fun {it; at; note: info} ->
@@ -264,7 +260,7 @@ and stmt ctxt (s : M.exp) : seqn =
               note = NoInfo } ]);
        at = s.at;
        note = NoInfo }
-  | M.(AwaitE({ it = AsyncE (_, e); _ })) -> (* gross hack *)
+  | M.(AwaitE({ it = AsyncE (_, e); at;_ })) -> (* gross hack *)
      let id' = fresh_id "$message_async" in
      let id = { it = id'; at = Source.no_region; note = NoInfo } in
      ctxt.ghost_items :=
@@ -278,9 +274,14 @@ and stmt ctxt (s : M.exp) : seqn =
          at = Source.no_region;
          note = NoInfo }
      in
-
      ctxt.ghost_inits := mk_s :: !(ctxt.ghost_inits);
-     { !!([],
+     let mk_p = fun ctxt at ->
+       accE at (self ctxt Source.no_region, id)
+     in
+     ctxt.ghost_perms := mk_p :: !(ctxt.ghost_perms);
+     let (!!) p = !!! at p in
+     !!! (s.at)
+         ([],
           [ !!(FieldAssignS(
               (self ctxt Source.no_region, id),
               (!!(AddE(!!(FldAcc (self ctxt Source.no_region, id)),
@@ -291,9 +292,8 @@ and stmt ctxt (s : M.exp) : seqn =
               (self ctxt Source.no_region, id),
               (!!(SubE(!!(FldAcc (self ctxt Source.no_region, id)),
                        !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
-            { !!(SeqnS (stmt ctxt e))
-              with at = e.at }])
-       with at = s.at }
+            !!! (e.at) (SeqnS (stmt ctxt e))]
+            )
   | M.WhileE(e, s1) ->
      { it =
          ([],
