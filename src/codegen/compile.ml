@@ -3076,6 +3076,10 @@ module Object = struct
     )
     else idx_hash_raw env low_bound
 
+  let field_type env obj_type s = 
+    let _, fields = Type.as_obj_sub [s] obj_type in
+    Type.lookup_val_field s fields
+
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
     let _, fields = Type.as_obj_sub [s] obj_type in
@@ -3413,6 +3417,9 @@ module Arr = struct
       idx env
   )
 
+  let element_type env typ = match typ with
+    | Type.Array (element_type) -> element_type
+    | _ -> assert false
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
@@ -6747,6 +6754,12 @@ type scope_wrap = G.t -> G.t
 
 let unmodified : scope_wrap = fun code -> code
 
+let potential_pointer typ : bool = 
+  let open Type in
+  match typ with
+  | Prim (Bool | Nat8 | Nat16 | Int8 | Int16) | Non -> false
+  | _ -> true
+  
 module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
@@ -6762,7 +6775,7 @@ module Var = struct
       G.i (LocalSet (nr i))
 
     | Some (HeapInd i) ->
-      (if !Flags.write_barrier
+      (if !Flags.write_barrier (* TODO: Optimize by determining whether the field type allows potential pointers *)
        then
         G.i (LocalGet (nr i)) ^^ (* write barrier: object argument *)
         G.i (LocalGet (nr i)) ^^
@@ -6776,7 +6789,7 @@ module Var = struct
       Heap.store_field MutBox.field
 
     | Some (HeapStatic ptr) ->
-      (if !Flags.write_barrier
+      (if !Flags.write_barrier (* TODO: Optimize by determining whether the field type allows potential pointers *)
        then 
         compile_unboxed_const ptr ^^ (* write barrier: object argument *)
         compile_unboxed_const ptr ^^
@@ -8197,7 +8210,7 @@ let rec compile_lexp (env : E.t) ae lexp =
    ( 
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
-    (if !Flags.write_barrier
+    (if !Flags.write_barrier && (potential_pointer (Arr.element_type env e1.note.Note.typ))
      then
       Arr.idx_bigint env ^^
       set_field ^^
@@ -8217,7 +8230,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     
    ( 
      compile_exp_vanilla env ae e ^^
-     (if !Flags.write_barrier
+     (if !Flags.write_barrier && (potential_pointer (Object.field_type env e.note.Note.typ n))
       then  
         (* Only real objects have mutable fields, no need to branch on the tag *)
         Object.idx env e.note.Note.typ n ^^
