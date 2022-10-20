@@ -236,11 +236,12 @@ and objblock s dec_fields =
 %token PRIM
 %token UNDERSCORE
 
+%token IMPLIES
+%nonassoc IMPLIES
+
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 
-%token IMPLIES
-%nonassoc IMPLIES
 %left COLON
 %left OR
 %left AND
@@ -638,8 +639,6 @@ exp_un(B) :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
- (* | e1=exp_bin(B) IMPLIES e2=exp_bin(ob)
-    { AndE(e1, e2) @? at $sloc }*)
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
 
