@@ -42,18 +42,17 @@ and exp' =
   | OrE of exp * exp
   | Implies of exp * exp
   | FldAcc of fldacc
-  | PermExp of perm
+  | PermE of perm          (* perm_amount *)
+  | AccE of fldacc * exp   (* acc((rcvr: exp).field, (exp: perm_amount)) *)
   | MacroCall of string * exp
 
 and perm = (perm', info) Source.annotated_phrase
 
 and perm' =
-  | WildcardP
-  | FullP
-  | NoP
-  | EpsilonP
-(* | FractionalP of exp * exp | ...*)
-
+  | NoP                       (* 0 / 1 *)
+  | FullP                     (* 1 / 1 *)
+  | WildcardP                 (* 1 / N for some N *)
+  | FractionalP of exp * exp  (* (a: exp) / (b: exp) *)
 
 and invariants = exp list
 

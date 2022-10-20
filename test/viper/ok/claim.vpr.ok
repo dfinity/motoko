@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 field $message_async: Int
 method __init__($Self: Ref)   
+=======
+method __init__($Self: Ref) 
+  requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+  ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+>>>>>>> origin/viper
    { 
      ($Self).claimed := false
      ($Self).count := 0
@@ -7,7 +13,9 @@ method __init__($Self: Ref)
    }
 field claimed: Bool
 field count: Int
-method claim($Self: Ref)   
+method claim($Self: Ref) 
+  requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+  ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
    { 
      if (!($Self).claimed)
         { 
