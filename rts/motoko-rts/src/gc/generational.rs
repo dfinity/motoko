@@ -111,7 +111,7 @@ pub enum Strategy {
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
 #[cfg(feature = "ic")]
-static mut PASSED_CRITICIAL_LIMIT: bool = false;
+static mut PASSED_CRITICAL_LIMIT: bool = false;
 
 #[cfg(feature = "ic")]
 const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
@@ -123,8 +123,8 @@ unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     let old_generation_size = limits.last_free - limits.base;
     let young_generation_size = limits.free - limits.last_free;
 
-    if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICIAL_LIMIT {
-        PASSED_CRITICIAL_LIMIT = true;
+    if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
+        PASSED_CRITICAL_LIMIT = true;
         Some(Strategy::Full)
     } else if old_generation_size > OLD_GENERATION_THRESHOLD {
         Some(Strategy::Full)
@@ -141,7 +141,7 @@ unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     if strategy == Strategy::Full {
         OLD_GENERATION_THRESHOLD = (limits.free as f64 * GROWTH_RATE) as usize;
         if limits.free < CRITICAL_MEMORY_LIMIT {
-            PASSED_CRITICIAL_LIMIT = false
+            PASSED_CRITICAL_LIMIT = false
         }
     }
 }
