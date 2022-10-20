@@ -62,8 +62,22 @@ let js_run list source =
 
 let js_viper filenames =
   let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
-  js_result result (fun s ->
-    Js.some (Js.string s)
+  js_result result (fun (viper, lookup) ->
+    let js_viper = Js.string viper in
+    let js_lookup = Js.wrap_callback (fun js_region ->
+      let viper_region = match js_region |> Js.to_array |> Array.to_list with
+      | [a; b; c; d] ->
+        lookup { left = { file = ""; line = a; column = b }; right = { file = ""; line = c; column = d } }
+      | _ -> None
+      in match viper_region with
+      | Some region -> [
+        region.left.line;
+        region.left.column;
+        region.right.line;
+        region.right.column;
+      ] |> Array.of_list |> Js.array |> Js.some
+      | None -> Js.null)
+    in [Js.Unsafe.inject js_viper; Js.Unsafe.inject js_lookup] |> Array.of_list |> Js.array |> Js.some
   )
 
 let js_candid source =
