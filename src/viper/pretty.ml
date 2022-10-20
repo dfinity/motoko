@@ -26,7 +26,7 @@ and pp_item ppf i =
       id.it
       pp_typ typ
   | MethodI (id, locals, rets, pres, posts, bo) ->
-     fprintf ppf "@[<hov 2>method %s%a@ %a@ %a@ %a@; %a@]"
+     fprintf ppf "@[<hov 2>method %s%a@; %a@; %a@; %a@; %a@]"
       id.it
       pp_locals locals
       pp_returns rets
@@ -57,13 +57,13 @@ and pp_pres ppf exps =
    fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_pre) exps
 
 and pp_pre ppf exp =
-   fprintf ppf "requires @[<2>%a@]" pp_exp exp
+   fprintf ppf "@[<2>requires %a@]" pp_exp exp
 
 and pp_posts ppf exps =
    fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_post) exps
 
 and pp_post ppf exp =
-   fprintf ppf "ensures @[<2>%a@]" pp_exp exp
+   fprintf ppf "@[<2>ensures %a@]" pp_exp exp
 
 and pp_local ppf (id, typ) =
   fprintf ppf "@[<2>%s: %a@]"
