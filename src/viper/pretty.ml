@@ -128,7 +128,7 @@ and pp_perm ppf perm =
   | WildcardP -> fprintf ppf "wildcard"
   | FractionalP (a, b) -> fprintf ppf "@[(%a/%a)@]" pp_exp a pp_exp b
 
-  and pp_stmt ppf stmt =
+and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
   fprintf ppf "\017%a\019"
     pp_stmt' stmt.it
