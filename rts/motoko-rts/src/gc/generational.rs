@@ -163,7 +163,6 @@ pub struct Limits {
 
 pub struct GenerationalGC<'a, M: Memory> {
     pub heap: Heap<'a, M>,
-    marked_space: usize,
     strategy: Strategy,
 }
 
@@ -171,7 +170,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     pub fn new(heap: Heap<M>, strategy: Strategy) -> GenerationalGC<M> {
         GenerationalGC {
             heap,
-            marked_space: 0,
             strategy,
         }
     }
@@ -192,43 +190,13 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
         self.mark_phase();
 
-        if crate::gc::SHOW_GC_MESSAGES {
-            println!(
-                100,
-                "MARKED {} OF {} RATIO {:.3}",
-                self.marked_space,
-                self.generation_size(),
-                self.survival_rate()
-            );
-        }
-
-        if self.is_compaction_beneficial() {
-            self.thread_initial_phase();
-            self.move_phase();
-        }
-
+        self.move_phase();
+        
         free_mark_stack();
         free_bitmap();
     }
 
-    fn is_compaction_beneficial(&self) -> bool {
-        self.survival_rate() < 0.95
-    }
-
-    fn generation_size(&self) -> usize {
-        let base = match self.strategy {
-            Strategy::Young => self.heap.limits.last_free,
-            Strategy::Full => self.heap.limits.base,
-        };
-        self.heap.limits.free - base
-    }
-
-    fn survival_rate(&self) -> f64 {
-        self.marked_space as f64 / self.generation_size() as f64
-    }
-
     unsafe fn mark_phase(&mut self) {
-        self.marked_space = 0;
         self.mark_root_set();
         self.mark_all_reachable();
 
@@ -241,13 +209,17 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn mark_root_set(&mut self) {
         self.mark_static_roots();
-
-        if (*self.heap.roots.continuation_table_ptr_loc).is_ptr() {
-            self.mark_object(*self.heap.roots.continuation_table_ptr_loc);
-        }
-
+        self.mark_continuation_table();
         if self.strategy == Strategy::Young {
             self.mark_additional_young_root_set();
+        }
+    }
+
+    unsafe fn mark_continuation_table(&mut self) {
+        let continuation_table_address = self.heap.roots.continuation_table_ptr_loc;
+        if (*continuation_table_address).is_ptr() {
+            self.mark_object(*continuation_table_address);
+            self.thread(continuation_table_address);
         }
     }
 
@@ -270,6 +242,14 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             // due to subsequent writes to that location after the write barrier recording.
             if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
                 self.mark_object(object);
+
+                // Thread forward pointers in old generation leading to young generation
+                // Implicit check that it is still unthreaded, considering that the remembered log can contain duplicates.
+                if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
+                    #[cfg(debug_assertions)]
+                    self.assert_unthreaded(location);
+                    self.thread(location);
+                }
             }
             iterator.next();
         }
@@ -289,7 +269,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         set_bit(obj_idx);
 
         push_mark_stack(self.heap.mem, pointer as usize, object.tag());
-        self.marked_space += object_size(pointer as usize).to_bytes().as_usize();
     }
 
     unsafe fn mark_all_reachable(&mut self) {
@@ -307,6 +286,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
+
+                // Thread if backwards or self pointer
+                if field_value.get_ptr() <= object as usize {
+                    gc.thread(field_address);
+                }
             },
             |gc, slice_start, array| {
                 const SLICE_INCREMENT: u32 = 127;
@@ -327,6 +311,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let field_address = &mut (*mutbox).field;
         if pointer_to_dynamic_heap(field_address, self.heap.limits.base) {
             self.mark_object(*field_address);
+            self.thread(field_address);
         }
     }
 
@@ -337,93 +322,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             Strategy::Full => address >= self.heap.limits.base,
         }
     }
-
-    unsafe fn thread_initial_phase(&mut self) {
-        self.thread_all_backward_pointers();
-
-        // For static roots, also forward pointers are threaded.
-        // Therefore, this must happen after the heap traversal for backwards pointer threading.
-        self.thread_static_roots();
-
-        if (*self.heap.roots.continuation_table_ptr_loc).is_ptr() {
-            self.thread(self.heap.roots.continuation_table_ptr_loc);
-        }
-
-        // For the young generation GC run, the forward pointers from the old generation must be threaded too.
-        if self.strategy == Strategy::Young {
-            self.thread_old_generation_pointers();
-        }
-    }
-
-    unsafe fn thread_static_roots(&self) {
-        let root_array = self.heap.roots.static_roots.as_array();
-        for i in 0..root_array.len() {
-            let object = root_array.get(i).as_obj();
-            debug_assert_eq!(object.tag(), TAG_MUTBOX);
-            debug_assert!((object as usize) < self.heap.limits.base);
-            self.thread_root_mutbox_fields(object as *mut MutBox);
-        }
-    }
-
-    unsafe fn thread_root_mutbox_fields(&self, mutbox: *mut MutBox) {
-        let field_addr = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field_addr, self.heap.limits.base) {
-            self.thread(field_addr);
-        }
-    }
-
-    unsafe fn thread_all_backward_pointers(&mut self) {
-        let mut bitmap_iter = iter_bits();
-        if self.strategy == Strategy::Young {
-            bitmap_iter.advance(self.heap.limits.last_free as u32);
-        }
-        let mut bit = bitmap_iter.next();
-        while bit != BITMAP_ITER_END {
-            let object = (bit * WORD_SIZE) as *mut Obj;
-            self.thread_backward_pointer_fields(object);
-            bit = bitmap_iter.next();
-        }
-    }
-
-    unsafe fn thread_backward_pointer_fields(&mut self, object: *mut Obj) {
-        debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
-        visit_pointer_fields(
-            &mut (),
-            object,
-            object.tag(),
-            self.heap.limits.base,
-            |_, field_address| {
-                let field_value = *field_address;
-                // Thread if backwards or self pointer
-                if field_value.get_ptr() <= object as usize {
-                    (&self).thread(field_address);
-                }
-            },
-            |_, _, array| array.len(),
-        );
-    }
-
-    // Thread forward pointers in old generation leading to young generation
-    unsafe fn thread_old_generation_pointers(&mut self) {
-        let mut iterator = REMEMBERED_LOG.as_ref().unwrap().iterate();
-        while iterator.has_next() {
-            let location = iterator.current().get_raw() as *mut Value;
-            debug_assert!(
-                (location as usize) >= self.heap.limits.base
-                    && (location as usize) < self.heap.limits.last_free
-            );
-            let object = *location;
-            // Implicit check that it is still unthreaded, considering that the remembered log can contain duplicates.
-            if object.is_ptr() && (object.get_raw() as usize) >= self.heap.limits.last_free {
-                #[cfg(debug_assertions)]
-                self.assert_unthreaded(location);
-
-                self.thread(location);
-            }
-            iterator.next();
-        }
-    }
-
+    
     #[cfg(debug_assertions)]
     unsafe fn assert_unthreaded(&self, location: *mut Value) {
         // Only during debug assertions and only during young generation collection:
