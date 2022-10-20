@@ -15,14 +15,14 @@ define invariant_8($Self) ((($Self).count > 0))
 define invariant_9($Self) (((!($Self).claimed) ==> (($Self).count == 0)))
 method claim($Self: Ref) 
   requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+  requires (($Self).count >= 0)
   requires invariant_7($Self)
   requires invariant_8($Self)
   requires invariant_9($Self)
   ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+  ensures (($Self).count >= 0)
   ensures invariant_7($Self)
   ensures invariant_8($Self)
-  ensures invariant_9($Self)
-   { 
-     /*requires (($Self).count >= 0)*/
-     /*ensures (($Self).count >= 0)*/ 
-   }
+  ensures invariant_9($Self)  { 
+                                 
+                              }

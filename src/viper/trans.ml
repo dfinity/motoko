@@ -157,7 +157,10 @@ and dec_field' ctxt d =
         let self_id = id_at "$Self" Source.no_region in
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
-        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
+        let stmts = stmt ctxt'' e in
+        let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
+        let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
+        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
         NoInfo)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
