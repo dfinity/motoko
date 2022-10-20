@@ -2,7 +2,9 @@ field $message_async: Int
 define $Perm($Self) ((((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
   acc(($Self).$message_async,write)))
 define $Inv($Self) (true)
-method __init__($Self: Ref)    requires $Perm($Self)
+method __init__($Self: Ref)
+   
+   requires $Perm($Self)
    ensures $Perm($Self)
    ensures $Inv($Self)
    { 
@@ -12,8 +14,10 @@ method __init__($Self: Ref)    requires $Perm($Self)
    }
 field claimed: Bool
 field count: Int
-method claim($Self: Ref)    requires $Perm($Self)
-                            requires $Inv($Self)
+method claim($Self: Ref)
+   
+   requires $Perm($Self)
+   requires $Inv($Self)
    ensures $Perm($Self)
    ensures $Inv($Self)
    { 

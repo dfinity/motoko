@@ -1,18 +1,24 @@
 define $Perm($Self) (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)))
 define $Inv($Self) ((invariant_7($Self) && invariant_8($Self)))
-method __init__($Self: Ref)    requires $Perm($Self)
+method __init__($Self: Ref)
+   
+   requires $Perm($Self)
    ensures $Perm($Self)
-   ensures $Inv($Self)  { 
-                          ($Self).claimed := false
-                          ($Self).count := 0 
-                        }
+   ensures $Inv($Self)
+   { 
+     ($Self).claimed := false
+     ($Self).count := 0 
+   }
 field claimed: Bool
 field count: Int
 define invariant_7($Self) ((((($Self).claimed && (!(-1 == -1))) && (-42 == -42)) || true))
 define invariant_8($Self) ((($Self).count > 0))
-method claim($Self: Ref)    requires $Perm($Self)
-                            requires $Inv($Self)
+method claim($Self: Ref)
+   
+   requires $Perm($Self)
+   requires $Inv($Self)
    ensures $Perm($Self)
-   ensures $Inv($Self)  { 
-                           
-                        }
+   ensures $Inv($Self)
+   { 
+      
+   }
