@@ -1,3 +1,5 @@
+define $Perm($Self) (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)))
+define $Inv($Self) ((invariant_7($Self) && invariant_8($Self)))
 method __init__($Self: Ref) 
   requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
   ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))

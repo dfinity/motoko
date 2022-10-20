@@ -1,2 +1,1 @@
-  [0] Assignment might fail. There might be insufficient permission to access $Self.claimed (claim-broken.vpr@4.6--4.30)
-  [1] Conditional statement might fail. There might be insufficient permission to access $Self.claimed (claim-broken.vpr@12.10--12.26)
+Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (claim-broken.vpr@4.1)

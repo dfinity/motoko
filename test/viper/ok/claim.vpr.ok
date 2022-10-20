@@ -1,11 +1,12 @@
-<<<<<<< HEAD
 field $message_async: Int
-method __init__($Self: Ref)   
-=======
+define $Perm($Self) ((((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
+  acc(($Self).$message_async,write)))
+define $Inv($Self) (true)
 method __init__($Self: Ref) 
-  requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
-  ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
->>>>>>> origin/viper
+  requires (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
+             acc(($Self).$message_async,write))
+  ensures (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
+            acc(($Self).$message_async,write))
    { 
      ($Self).claimed := false
      ($Self).count := 0
@@ -14,18 +15,24 @@ method __init__($Self: Ref)
 field claimed: Bool
 field count: Int
 method claim($Self: Ref) 
-  requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
-  ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+  requires (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
+             acc(($Self).$message_async,write))
+  ensures (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
+            acc(($Self).$message_async,write))
    { 
      if (!($Self).claimed)
         { 
           ($Self).claimed := true
           ($Self).$message_async := (($Self).$message_async + 1)
-          exhale true
-          inhale true
-          ($Self).$message_async := (($Self).$message_async - 1)
+          exhale ($Perm($Self) && $Inv($Self))
           { 
-             ($Self).count := 1 
-           } 
+             inhale ($Perm($Self) && $Inv($Self))
+             ($Self).$message_async := (($Self).$message_async - 1)
+             { 
+                ($Self).count := 1 
+              }
+             exhale ($Perm($Self) && $Inv($Self)) 
+           }
+          inhale ($Perm($Self) && $Inv($Self)) 
         } 
    }
