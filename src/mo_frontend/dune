@@ -4,7 +4,8 @@
   (instrumentation (backend bisect_ppx --bisect-silent yes))
 )
 (menhir
-  (modules parser)
+  (modules parser assertions)
+  (merge_into parser)
   (flags --table --inspection -v --strict)
   (infer true)
 )

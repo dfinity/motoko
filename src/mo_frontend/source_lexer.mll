@@ -212,6 +212,8 @@ rule token mode = parse
   | "if" { IF }
   | "ignore" { IGNORE }
   | "in" { IN }
+  | "invariant" { INVARIANT }
+  | "implies" { IMPLIES }
   | "import" { IMPORT }
   | "module" { MODULE }
   | "not" { NOT }
