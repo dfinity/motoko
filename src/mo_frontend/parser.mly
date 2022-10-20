@@ -239,6 +239,8 @@ and objblock s dec_fields =
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 
+%token IMPLIES
+%nonassoc IMPLIES
 %left COLON
 %left OR
 %left AND
@@ -550,7 +552,7 @@ lit :
 
 
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
-ob : e=exp_obj { e }
+%public ob : e=exp_obj { e }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
@@ -625,7 +627,7 @@ exp_un(B) :
   | FROM_CANDID e=exp_un(ob)
     { FromCandidE e @? at $sloc }
 
-exp_bin(B) :
+%public exp_bin(B) :
   | e=exp_un(B)
     { e }
   | e1=exp_bin(B) op=binop e2=exp_bin(ob)
@@ -636,6 +638,8 @@ exp_bin(B) :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
+ (* | e1=exp_bin(B) IMPLIES e2=exp_bin(ob)
+    { AndE(e1, e2) @? at $sloc }*)
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
 

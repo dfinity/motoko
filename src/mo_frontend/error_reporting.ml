@@ -116,6 +116,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_ANDOP -> ANDOP
       | T_ANDASSIGN -> ANDASSIGN
       | T_AND -> AND
+      | T_IMPLIES -> IMPLIES
       | T_ADDOP -> ADDOP
       | T_ACTOR -> ACTOR
       | T_INVARIANT -> INVARIANT

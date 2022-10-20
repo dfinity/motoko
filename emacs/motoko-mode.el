@@ -73,6 +73,7 @@
                  "while"
                  "prim"
                  "invariant"
+                 "implies"
                  ))
               ;; Braces introduce blocks; it's nice to make them stand
               ;; out more than ordinary symbols

@@ -131,6 +131,7 @@ let string_of_symbol = function
   | X (T T_ANDOP) -> binop "&"
   | X (T T_ANDASSIGN) -> binassign "&="
   | X (T T_AND) -> "and"
+  | X (T T_IMPLIES) -> "implies"
   | X (T T_ADDOP) -> unop "+"
   | X (T T_ACTOR) -> "actor"
   | X (T T_INVARIANT) -> "invariant"
