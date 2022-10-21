@@ -87,8 +87,10 @@ let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
     | ConcurrencyS _ -> s.it :: concs, stmts
     | SeqnS seq ->
       let concs', seq = extract_concurrency seq in
-      List.append concs' concs, { s with it = SeqnS seq } :: stmts
-    | WhileS _ -> failwith "WhileS"
+      List.(append (rev concs') concs), { s with it = SeqnS seq } :: stmts
+    | WhileS (e, inv, seq) ->
+      let concs', seq = extract_concurrency seq in
+      List.(append (rev concs') concs), { s with it = WhileS (e, inv, seq) } :: stmts
     | IfS (e, the, els) ->
       let the_concs, the = extract_concurrency the in
       let els_concs, els = extract_concurrency els in
