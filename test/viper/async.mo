@@ -7,10 +7,11 @@ actor {
         await a;
         if true {
             let b = async { flag := false };
+            await b;
         } else {
             let c = async { flag := false };
-        };
-        ()
+            await c;
+        }
     };
 
 }
