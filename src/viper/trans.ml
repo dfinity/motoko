@@ -79,6 +79,21 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
         ; note = NoInfo } :: extract_invariants p self es
   | _ :: p -> extract_invariants p
 
+let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
+  let extr s =
+    Either.(match s.it with
+    | ConcurrencyS _ -> Left s.it
+    | SeqnS seq ->
+      let stmts, seq = extract_concurrency seq in
+      failwith "SeqnS"
+    | WhileS _ -> failwith "WhileS"
+    | IfS (_, the, els) -> failwith "IfS"
+    | _ -> Right s) in
+
+  let stmts = snd seq.it in
+  let conc, stmts = List.partition_map extr stmts in
+  conc, { seq with it = fst seq.it, stmts }
+
 let rec unit (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
