@@ -5,9 +5,9 @@ actor a {
   };
   public func check_A() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
-    // 10116 at some point
     assert (Prim.rts_reclaimed() > 10000);
-    assert (Prim.rts_reclaimed() < 11000);
+    // debug sanity check for write barrier coverage peforms memory snapshot
+    assert (Prim.rts_reclaimed() < 200_000);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
     // 8 at some point
@@ -19,9 +19,9 @@ actor a {
   };
   public func check_B() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
-    // 10_716 at some point
     assert (Prim.rts_reclaimed() > 10000);
-    assert (Prim.rts_reclaimed() < 12000);
+    // debug sanity check for write barrier coverage peforms memory snapshot
+    assert (Prim.rts_reclaimed() < 400_000);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
     // 10_008 at some point
