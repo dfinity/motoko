@@ -485,7 +485,7 @@ let check_files files : check_result =
 
 (* Generate Viper *)
 
-type viper_result = string Diag.result
+type viper_result = (string * (Source.region -> Source.region option)) Diag.result
 
 let viper_files' parsefn files : viper_result =
   let open Diag.Syntax in
@@ -494,13 +494,11 @@ let viper_files' parsefn files : viper_result =
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
   let* v = Viper.Trans.unit u in
-  let s = Viper.Pretty.prog v in
+  let s = Viper.Pretty.prog_mapped "" v in
   Diag.return s
-
 
 let viper_files files : viper_result =
   viper_files' parse_file files
-
 
 (* Generate IDL *)
 

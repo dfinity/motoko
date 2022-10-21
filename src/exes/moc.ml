@@ -191,7 +191,7 @@ let process_files files : unit =
   | Check ->
     Diag.run (Pipeline.check_files files)
   | Viper ->
-    let s = Diag.run (Pipeline.viper_files files) in
+    let (s, _) = Diag.run (Pipeline.viper_files files) in
     printf "%s" s
   | StableCompatible ->
     begin
