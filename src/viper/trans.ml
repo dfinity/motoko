@@ -97,7 +97,7 @@ let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
 
   let stmts = snd seq.it in
   let conc, stmts = List.fold_left extr ([], []) stmts in
-  conc, { seq with it = fst seq.it, List.rev stmts }
+  List.rev conc, { seq with it = fst seq.it, List.rev stmts }
 
 let rec unit (u : M.comp_unit) : prog Diag.result =
   Diag.(

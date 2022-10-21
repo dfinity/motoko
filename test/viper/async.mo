@@ -7,7 +7,9 @@ actor {
                 flag := false;
         await async {
             assert:1:async not flag;
-            flag := true
+            flag := true;
+            flag := false;
+            flag := flag
         };
     /*
         if true {

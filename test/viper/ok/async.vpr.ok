@@ -26,7 +26,9 @@ field $message_async: Int
           inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
           ($Self).$message_async := (($Self).$message_async - 1)
           { 
-             ($Self).flag := true 
+             ($Self).flag := true
+             ($Self).flag := false
+             ($Self).flag := ($Self).flag 
            }
           exhale ($Perm($Self) && $Inv($Self)) 
         }
