@@ -97,6 +97,7 @@ val trueE : unit -> exp
 val notE : exp -> exp
 val andE : exp -> exp -> exp
 val orE : exp -> exp -> exp
+val impliesE : exp -> exp -> exp
 val conjE : exp list -> exp
 
 val declare_idE : id -> typ -> exp -> exp

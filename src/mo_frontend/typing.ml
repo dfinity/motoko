@@ -745,7 +745,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -1293,6 +1293,12 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.bool exp2
     end;
     T.bool
+  | ImpliesE (exp1, exp2) ->
+    if not env.pre then begin
+      check_exp_strong env T.bool exp1;
+      check_exp_strong env T.bool exp2
+    end;
+    T.bool
   | IfE (exp1, exp2, exp3) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     let t2 = infer_exp env exp2 in
@@ -1429,7 +1435,7 @@ and infer_exp'' env exp : T.typ =
         "expected async type, but expression has type%a"
         display_typ_expand t1
     )
-  | AssertE exp1 ->
+  | AssertE (_, exp1) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     T.unit
   | AnnotE (exp1, typ) ->

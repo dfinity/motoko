@@ -3,6 +3,7 @@ method __init__($Self: Ref)
   ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
   ensures invariant_7($Self)
   ensures invariant_8($Self)
+  ensures invariant_9($Self)
    { 
      ($Self).claimed := false
      ($Self).count := 0 
@@ -11,12 +12,17 @@ field claimed: Bool
 field count: Int
 define invariant_7($Self) ((((($Self).claimed && (!(-1 == -1))) && (-42 == -42)) || true))
 define invariant_8($Self) ((($Self).count > 0))
+define invariant_9($Self) (((!($Self).claimed) ==> (($Self).count == 0)))
 method claim($Self: Ref) 
   requires ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+  requires (($Self).count >= 0)
   requires invariant_7($Self)
   requires invariant_8($Self)
+  requires invariant_9($Self)
   ensures ((true && acc(($Self).claimed,write)) && acc(($Self).count,write))
+  ensures (($Self).count >= 0)
   ensures invariant_7($Self)
-  ensures invariant_8($Self)  { 
+  ensures invariant_8($Self)
+  ensures invariant_9($Self)  { 
                                  
                               }

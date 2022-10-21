@@ -157,9 +157,12 @@ and dec_field' ctxt d =
         let self_id = id_at "$Self" Source.no_region in
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
-        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, [], [], Some (stmt ctxt'' e)),
+        let stmts = stmt ctxt'' e in
+        let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
+        let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
+        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
         NoInfo)
-  | M.(ExpD { it = AssertE e; at; _ }) ->
+  | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
       None,
 	    fun ctxt' ->
@@ -280,6 +283,16 @@ and stmt ctxt (s : M.exp) : seqn =
          note = NoInfo }
      end
   | M.LitE e -> { it = [], []; at = s.at; note = NoInfo }
+  | M.AssertE (Precondition, e) ->
+    { it = [],
+           [ { it = PreconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
+      at = s.at;
+      note = NoInfo }
+  | M.AssertE (Postcondition, e) ->
+    { it = [],
+           [ { it = PostconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
+      at = s.at;
+      note = NoInfo }
   | _ -> fail (Mo_def.Arrange.exp s)
 
 (*    
@@ -355,6 +368,8 @@ and exp' ctxt (e : M.exp) =
      OrE (exp ctxt e1, exp ctxt e2), NoInfo
   | M.AndE (e1, e2) ->
      AndE (exp ctxt e1, exp ctxt e2), NoInfo
+  | M.ImpliesE (e1, e2) ->
+     Implies (exp ctxt e1, exp ctxt e2), NoInfo
   | _ -> fail (Mo_def.Arrange.exp e)
 (*           
   | VarE x              -> 
