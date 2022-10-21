@@ -12,6 +12,9 @@ let stamps : int Stamps.t ref = ref Stamps.empty
 
 let (!!!) at it = { it; at; note = NoInfo}
 
+let intLitE at i =
+  !!! at (IntLitE (Mo_values.Numerics.Int.of_int i))
+
 let accE at fldacc =
   !!! at
     (AccE(
@@ -287,7 +290,7 @@ and stmt ctxt (s : M.exp) : seqn =
      let mk_s = fun ctxt ->
        { it = FieldAssignS(
           (self ctxt Source.no_region, id),
-          { it = IntLitE Mo_values.Numerics.Int.zero; at = Source.no_region; note = NoInfo });
+           intLitE (Source.no_region) 0);
          at = Source.no_region;
          note = NoInfo }
      in
@@ -302,18 +305,20 @@ and stmt ctxt (s : M.exp) : seqn =
           [ !!(FieldAssignS(
               (self ctxt Source.no_region, id),
               (!!(AddE(!!(FldAcc (self ctxt Source.no_region, id)),
-                       !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
+                       intLitE Source.no_region 1)))));
             !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                 !!(MacroCall("$Inv", self ctxt at))))));
             !!(SeqnS (
                 !!([],
                    [
                      !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
-                                         !!(MacroCall("$Inv", self ctxt at))))));
+                                    !!(AndE(!!(MacroCall("$Inv", self ctxt at)),
+                                         !!(GtCmpE(!!(FldAcc (self ctxt Source.no_region, id)),                                                        intLitE Source.no_region 0))))))))
+                     ;
                      !!(FieldAssignS(
                             (self ctxt Source.no_region, id),
                             (!!(SubE(!!(FldAcc (self ctxt at, id)),
-                                     !!(IntLitE (Mo_values.Numerics.Int.of_int 1)))))));
+                                     intLitE Source.no_region 1)))));
                      !!! (e.at) (SeqnS (stmt ctxt e));
                      !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                          !!(MacroCall("$Inv", self ctxt at)))))) ])));
