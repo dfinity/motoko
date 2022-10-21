@@ -10,7 +10,7 @@ use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
-use super::REMEMBERED_SET;
+use super::remembered_set::RememberedSet;
 
 struct Heap {
     pub limits: Limits,
@@ -26,7 +26,25 @@ struct Limits {
     pub free: usize,
 }
 
+// Note: Both the snapshot and the remembered set will be collected by the GC.
 static mut SNAPSHOT: *mut Blob = null_mut();
+static mut REMEMBERED_SET: Option<RememberedSet> = None;
+
+/// (Re-)create the write barrier barrier's remembered set.
+pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
+    REMEMBERED_SET = Some(RememberedSet::new(mem));
+}
+
+/// Record write in object (skewed), to be called for each pointers store.
+/// May also be conservatively called when writing a scalar value.
+pub unsafe fn record_write<M: Memory>(mem: &mut M, object: Value) {
+    match &mut REMEMBERED_SET {
+        None => return,
+        Some(remembered_set) => {
+            remembered_set.insert(mem, object);
+        }
+    }
+}
 
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, heap_free: usize) {
@@ -34,6 +52,7 @@ pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, heap_free: usize) {
     let blob = alloc_blob(mem, length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
+    init_write_barrier(mem);
 }
 
 /// Verify write barrier coverag by comparing the memory against the previous snapshot.
@@ -42,12 +61,11 @@ pub unsafe fn verify_snapshot(heap_base: usize, heap_free: usize, static_roots: 
     if SNAPSHOT.is_null() {
         return;
     }
-    println!(100, "Barrier coverage check starts...");
     assert!(heap_base <= heap_free);
     verify_static_roots(static_roots.as_array());
     verify_heap(heap_base, heap_free);
-    SNAPSHOT = null_mut();
-    println!(100, "Barrier coverage check stops...");
+    SNAPSHOT = null_mut(); // will be collected by the GC
+    REMEMBERED_SET = None; // will be collected by the GC
 }
 
 unsafe fn verify_static_roots(static_roots: *mut Array) {

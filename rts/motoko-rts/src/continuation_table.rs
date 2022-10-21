@@ -97,11 +97,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     FREE_SLOT = table.get(idx).get_scalar();
 
-    write_barrier(
-        mem,
-        Value::from_ptr(table as usize),
-        table.payload_addr().add(idx as usize) as u32,
-    );
+    write_barrier(mem, Value::from_ptr(table as usize));
     table.set(idx, ptr);
 
     N_CONTINUATIONS += 1;

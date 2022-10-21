@@ -19,22 +19,16 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
-    use super::write_barrier::{init_write_barrier, REMEMBERED_SET};
     use crate::memory::ic;
 
     let heap_base = ic::get_heap_base();
 
-    let using_write_barrier = REMEMBERED_SET.is_some();
-    if using_write_barrier {
-        #[cfg(debug_assertions)]
-        super::write_barrier::sanity_checks::verify_snapshot(
-            heap_base as usize,
-            ic::HP as usize,
-            ic::get_static_roots(),
-        );
-        // remembered set is collected by GC
-        REMEMBERED_SET = None;
-    }
+    #[cfg(debug_assertions)]
+    super::write_barrier::sanity_checks::verify_snapshot(
+        heap_base as usize,
+        ic::HP as usize,
+        ic::get_static_roots(),
+    );
 
     copying_gc_internal(
         mem,
@@ -53,11 +47,8 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
     ic::LAST_HP = ic::HP;
 
-    if using_write_barrier {
-        #[cfg(debug_assertions)]
-        super::write_barrier::sanity_checks::take_snapshot(mem, ic::HP as usize);
-        init_write_barrier(mem);
-    }
+    #[cfg(debug_assertions)]
+    super::write_barrier::sanity_checks::take_snapshot(mem, ic::HP as usize);
 }
 
 pub unsafe fn copying_gc_internal<
