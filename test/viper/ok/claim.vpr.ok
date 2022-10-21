@@ -32,6 +32,8 @@ method claim($Self: Ref)
              inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
              ($Self).$message_async := (($Self).$message_async - 1)
              { 
+                /*concurrency name: async_15, max 1, cond: s (($Self).claimed && (
+                   ($Self).count == 0))*/
                 ($Self).count := (($Self).count + 1) 
               }
              exhale ($Perm($Self) && $Inv($Self)) 

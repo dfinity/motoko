@@ -370,7 +370,7 @@ and stmt ctxt (s : M.exp) : seqn =
       note = NoInfo }
   | M.AssertE (Concurrency n, e) ->
     { it = [],
-           [ { it = ConcurrencyS (n, exp ctxt e); at = s.at; note = NoInfo } ];
+           [ { it = ConcurrencyS (Printf.sprintf "async_%d" s.at.left.line, n, exp ctxt e); at = s.at; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
   | _ -> fail (Mo_def.Arrange.exp s)
