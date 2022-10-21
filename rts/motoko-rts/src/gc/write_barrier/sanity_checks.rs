@@ -30,8 +30,12 @@ struct Limits {
 static mut SNAPSHOT: *mut Blob = null_mut();
 static mut REMEMBERED_SET: Option<RememberedSet> = None;
 
+const SNAPSHOT_FREQUENCY: usize = 4;
+static mut COUNTER: usize = 0;
+
 /// (Re-)create the write barrier barrier's remembered set.
 pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
+    assert!(COUNTER % SNAPSHOT_FREQUENCY == 0);
     REMEMBERED_SET = Some(RememberedSet::new(mem));
 }
 
@@ -48,11 +52,14 @@ pub unsafe fn record_write<M: Memory>(mem: &mut M, object: Value) {
 
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, heap_free: usize) {
-    let length = Bytes(heap_free as u32);
-    let blob = alloc_blob(mem, length).get_ptr() as *mut Blob;
-    memcpy_bytes(blob.payload_addr() as usize, 0, length);
-    SNAPSHOT = blob;
-    init_write_barrier(mem);
+    if COUNTER % SNAPSHOT_FREQUENCY == 0 {
+        let length = Bytes(heap_free as u32);
+        let blob = alloc_blob(mem, length).get_ptr() as *mut Blob;
+        memcpy_bytes(blob.payload_addr() as usize, 0, length);
+        SNAPSHOT = blob;
+        init_write_barrier(mem);
+    }
+    COUNTER += 1
 }
 
 /// Verify write barrier coverag by comparing the memory against the previous snapshot.
