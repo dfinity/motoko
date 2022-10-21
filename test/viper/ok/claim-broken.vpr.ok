@@ -26,7 +26,7 @@ method claim($Self: Ref)
           ($Self).$message_async := (($Self).$message_async + 1)
           exhale ($Perm($Self) && $Inv($Self))
           { 
-             inhale ($Perm($Self) && $Inv($Self))
+             inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
              ($Self).$message_async := (($Self).$message_async - 1)
              { 
                 ($Self).claimed := true

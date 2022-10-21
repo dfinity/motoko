@@ -72,6 +72,8 @@ and stmt' =
   | IfS of exp * seqn * seqn
   | WhileS of exp * invariants * seqn
   | LabelS of id * invariants
+  | PreconditionS of exp
+  | PostconditionS of exp
 
 
 and typ = (typ', info) Source.annotated_phrase
