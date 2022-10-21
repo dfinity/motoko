@@ -64,17 +64,18 @@ let js_viper filenames =
   let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
   js_result result (fun (viper, lookup) ->
     let js_viper = Js.string viper in
-    let js_lookup = Js.wrap_callback (fun js_region ->
+    let js_lookup = Js.wrap_callback (fun js_file js_region ->
+      let file = Js.to_string js_file in
       let viper_region = match js_region |> Js.to_array |> Array.to_list with
       | [a; b; c; d] ->
-        lookup { left = { file = ""; line = a + 1; column = b }; right = { file = ""; line = c + 1; column = d } }
+        lookup { left = { file; line = a + 1; column = b }; right = { file; line = c + 1; column = d } }
       | _ -> None in
       match viper_region with
       | Some region ->
         Js.some (range_of_region region)
       | None -> Js.null) in
     Js.some (object%js
-      val source = js_viper
+      val viper = js_viper
       val lookup = js_lookup
     end))
 
