@@ -37,7 +37,7 @@ let
         do
           # ignore all errors
           echo -n $file
-          if timeout 10s moc $file --omit-metadata motoko:compiler --force-gc --compacting-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
+          if timeout 10s moc $file --omit-metadata motoko:compiler --force-gc --write-barrier --compacting-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
           then echo " ok"
           else echo " failed (ignored)"
           fi
