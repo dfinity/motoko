@@ -1,8 +1,5 @@
-field $message_async_4: Int
- field $message_async_2: Int
- field $message_async: Int
- define $Perm($Self) (((((true && acc(($Self).flag,write)) && acc(($Self).$message_async_4,write)) && 
-   acc(($Self).$message_async_2,write)) && acc(($Self).$message_async,write)))
+field $message_async: Int
+ define $Perm($Self) (((true && acc(($Self).flag,write)) && acc(($Self).$message_async,write)))
  define $Inv($Self) (true)
  method __init__($Self: Ref)
      
@@ -11,8 +8,6 @@ field $message_async_4: Int
      ensures $Inv($Self)
      { 
        ($Self).flag := false
-       ($Self).$message_async_4 := 0
-       ($Self).$message_async_2 := 0
        ($Self).$message_async := 0 
      }
  field flag: Bool
@@ -23,45 +18,17 @@ field $message_async_4: Int
      ensures $Perm($Self)
      ensures $Inv($Self)
      { 
+       ($Self).flag := true
+       ($Self).flag := false
        ($Self).$message_async := (($Self).$message_async + 1)
        exhale ($Perm($Self) && $Inv($Self))
        { 
           inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
           ($Self).$message_async := (($Self).$message_async - 1)
           { 
-             /*concurrency name: async_7, max 1, cond: s (!($Self).flag)*/
              ($Self).flag := true 
            }
           exhale ($Perm($Self) && $Inv($Self)) 
         }
-       inhale ($Perm($Self) && $Inv($Self))
-       if true
-          { 
-            ($Self).$message_async_4 := (($Self).$message_async_4 + 1)
-            exhale ($Perm($Self) && $Inv($Self))
-            { 
-               inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_4 > 0)))
-               ($Self).$message_async_4 := (($Self).$message_async_4 - 1)
-               { 
-                  /*concurrency name: async_12, max 1, cond: s ($Self).flag*/
-                  ($Self).flag := false 
-                }
-               exhale ($Perm($Self) && $Inv($Self)) 
-             }
-            inhale ($Perm($Self) && $Inv($Self)) 
-          }else
-          { 
-            ($Self).$message_async_2 := (($Self).$message_async_2 + 1)
-            exhale ($Perm($Self) && $Inv($Self))
-            { 
-               inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_2 > 0)))
-               ($Self).$message_async_2 := (($Self).$message_async_2 - 1)
-               { 
-                  /*concurrency name: async_17, max 1, cond: s ($Self).flag*/
-                  ($Self).flag := false 
-                }
-               exhale ($Perm($Self) && $Inv($Self)) 
-             }
-            inhale ($Perm($Self) && $Inv($Self)) 
-          } 
+       inhale ($Perm($Self) && $Inv($Self)) 
      }

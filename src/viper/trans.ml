@@ -97,7 +97,7 @@ let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
 
   let stmts = snd seq.it in
   let conc, stmts = List.fold_left extr ([], []) stmts in
-  conc, { seq with it = fst seq.it, stmts }
+  conc, { seq with it = fst seq.it, List.rev stmts }
 
 let rec unit (u : M.comp_unit) : prog Diag.result =
   Diag.(
@@ -224,6 +224,7 @@ and dec_field' ctxt d =
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
+        let conc, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
