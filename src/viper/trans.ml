@@ -92,12 +92,12 @@ let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
     | IfS (e, the, els) ->
       let the_concs, the = extract_concurrency the in
       let els_concs, els = extract_concurrency els in
-      List.append the_concs (List.append els_concs concs), { s with it = IfS (e, the, els) } :: stmts
+      List.(append (rev els_concs) (append (rev the_concs) concs)), { s with it = IfS (e, the, els) } :: stmts
     | _ -> concs, s :: stmts in
 
   let stmts = snd seq.it in
   let conc, stmts = List.fold_left extr ([], []) stmts in
-  List.rev conc, { seq with it = fst seq.it, List.rev stmts }
+  List.(rev conc, { seq with it = fst seq.it, rev stmts })
 
 let rec unit (u : M.comp_unit) : prog Diag.result =
   Diag.(
@@ -225,6 +225,8 @@ and dec_field' ctxt d =
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
         let conc, stmts = extract_concurrency stmts in
+        assert List.(length conc = 3);
+        List.iter (fun (ConcurrencyS (name, _, _)) -> Printf.eprintf "ConcurrencyS %s\n" name) conc;
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
