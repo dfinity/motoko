@@ -1,1 +1,1 @@
-Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (async.vpr@3.2)
+  [0] Parse error: Expected Expected entireProgram:1:1 / programDecl:1:1 / (suffix | termOp | sumOp | cmpOp | eqOp | "&&" | "||" | "--*" | StringIn("==>") | "<==>" | "?" | ";" | stmt | "}"):39:8, found "if ($Self)" (async.vpr@39.8)

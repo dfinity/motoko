@@ -11,18 +11,19 @@ actor {
             flag := false;
             flag := flag
         };
-    /*
-        if true {
+        if flag {
             await async {
                 assert:1:async flag;
                 flag := false
             };
         } else {
+    /*
             await async {
                 assert:1:async flag;
                 flag := false
             };
-        }*/
+*/
+        }
     };
 
 }
