@@ -29,6 +29,7 @@ field $message_async_4: Int
           inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
           ($Self).$message_async := (($Self).$message_async - 1)
           { 
+             /*concurrency name: async_7, max 1, cond: s (!($Self).flag)*/
              ($Self).flag := true 
            }
           exhale ($Perm($Self) && $Inv($Self)) 
@@ -42,6 +43,7 @@ field $message_async_4: Int
                inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_4 > 0)))
                ($Self).$message_async_4 := (($Self).$message_async_4 - 1)
                { 
+                  /*concurrency name: async_12, max 1, cond: s ($Self).flag*/
                   ($Self).flag := false 
                 }
                exhale ($Perm($Self) && $Inv($Self)) 
@@ -55,6 +57,7 @@ field $message_async_4: Int
                inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_2 > 0)))
                ($Self).$message_async_2 := (($Self).$message_async_2 - 1)
                { 
+                  /*concurrency name: async_17, max 1, cond: s ($Self).flag*/
                   ($Self).flag := false 
                 }
                exhale ($Perm($Self) && $Inv($Self)) 
