@@ -21,18 +21,16 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
-    let heap_base = ic::get_heap_base();
-
     #[cfg(debug_assertions)]
     super::write_barrier::sanity_checks::verify_snapshot(
-        heap_base as usize,
+        ic::get_heap_base() as usize,
         ic::HP as usize,
         ic::get_static_roots(),
     );
 
     copying_gc_internal(
         mem,
-        heap_base,
+        ic::get_heap_base(),
         // get_hp
         || ic::HP as usize,
         // set_hp
