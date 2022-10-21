@@ -43,10 +43,11 @@ let fresh_id name =
     name
   else Printf.sprintf "%s_%i" name (fresh_stamp name)
 
-let fail sexp =
-  failwith (Wasm.Sexpr.to_string 80 sexp)
+exception Unsupported of Source.region * string
 
-  
+let unsupported at sexp =
+  raise (Unsupported (at, (Wasm.Sexpr.to_string 80 sexp)))
+
 type sort = Field | Local | Method
 
 module Env = T.Env
@@ -79,7 +80,14 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
         ; note = NoInfo } :: extract_invariants p self es
   | _ :: p -> extract_invariants p
 
-let rec unit (u : M.comp_unit) : prog =
+let rec unit (u : M.comp_unit) : prog Diag.result =
+  Diag.(
+    try return (unit' u) with
+    | Unsupported (at, desc) -> error at "0" "viper" ("translation to viper failed:\n"^desc)
+    | _ -> error u.it.M.body.at "1" "viper" "translation to viper failed"
+  )
+
+and unit' (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
@@ -206,7 +214,8 @@ and dec_field' ctxt d =
       None,
 	    fun ctxt' ->
 	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "$Self" }  e), NoInfo
-  | _ -> fail (Mo_def.Arrange.dec d.M.dec)
+  | _ ->
+     unsupported d.M.dec.at (Mo_def.Arrange.dec d.M.dec)
 
 (*
   | TypD (x, tp, t) ->
@@ -267,7 +276,8 @@ and dec ctxt d =
       fun ctxt' ->
         let s = stmt ctxt' e in
         s.it)
-  | _ -> fail (Mo_def.Arrange.dec d)
+  | _ ->
+     unsupported d.at (Mo_def.Arrange.dec d)
 
 and stmt ctxt (s : M.exp) : seqn =
   match s.it with
@@ -316,8 +326,8 @@ and stmt ctxt (s : M.exp) : seqn =
                    [
                      !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                     !!(AndE(!!(MacroCall("$Inv", self ctxt at)),
-                                         !!(GtCmpE(!!(FldAcc (self ctxt Source.no_region, id)),                                                        intLitE Source.no_region 0))))))))
-                     ;
+                                            !!(GtCmpE(!!(FldAcc (self ctxt Source.no_region, id)),
+                                                 intLitE Source.no_region 0))))))));
                      !!(FieldAssignS(
                             (self ctxt Source.no_region, id),
                             (!!(SubE(!!(FldAcc (self ctxt at, id)),
@@ -368,20 +378,8 @@ and stmt ctxt (s : M.exp) : seqn =
            [ { it = PostconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
-  | _ -> fail (Mo_def.Arrange.exp s)
-
-(*    
-  | M.AssignE({it = VarE id;_}, e2) when isField e1->
-     { it =
-         ([],
-          [ { it = FieldAssignS((), exp e2);
-              at = s.at;
-              note = NoInfo } ]);
-       at = s.at;
-       note = NoInfo }
-*)
-
-and isLocal id = true (* fix me *)
+  | _ ->
+     unsupported s.at (Mo_def.Arrange.exp s)
 
 and exp ctxt e =
   let (e', info) = exp' ctxt e in
@@ -391,7 +389,7 @@ and exp ctxt e =
 and exp' ctxt (e : M.exp) =
   let open Mo_values.Operator in
   match e.it with
-  | M.VarE x (* when Env.find x.it ctxt = Local *) ->
+  | M.VarE x ->
     begin
      match Env.find x.it ctxt.ids with
      | Local ->
@@ -400,23 +398,19 @@ and exp' ctxt (e : M.exp) =
      | Field ->
         (FldAcc (self ctxt x.at, id x),
          NoInfo)
-     | _ -> fail (Mo_def.Arrange.exp e)
+     | _ ->
+        unsupported e.at (Mo_def.Arrange.exp e)
     end
   | M.AnnotE(a, b) ->
     exp' ctxt a
-(*
-  | M.VarE x when Env.find x.it ctxt = Field ->
-     (*TODO: need environment to distinguish fields from locals *)
-     (LocalVar (id x, tr_typ e.note.note_typ),
-      NoInfo)
-*)
   | M.LitE r ->
     begin match !r with
     | M.BoolLit b ->
        (BoolLitE b, NoInfo)
     | M.IntLit i ->
        (IntLitE i, NoInfo)
-    | _ -> fail (Mo_def.Arrange.exp e)
+    | _ ->
+       unsupported e.at (Mo_def.Arrange.exp e)
     end
   | M.NotE e ->
      NotE (exp ctxt e), NoInfo
@@ -445,7 +439,8 @@ and exp' ctxt (e : M.exp) =
      AndE (exp ctxt e1, exp ctxt e2), NoInfo
   | M.ImpliesE (e1, e2) ->
      Implies (exp ctxt e1, exp ctxt e2), NoInfo
-  | _ -> fail (Mo_def.Arrange.exp e)
+  | _ ->
+     unsupported e.at (Mo_def.Arrange.exp e)
 (*           
   | VarE x              -> 
   | LitE l              -> "LitE"      $$ [lit !l]
@@ -527,7 +522,7 @@ and tr_typ' typ =
   match T.normalize typ with
   | T.Prim T.Int -> IntT
   | T.Prim T.Bool -> BoolT
-  | _ -> fail (Mo_types.Arrange_type.typ (T.normalize typ))
+  | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ (T.normalize typ))
 
 
 (*       
