@@ -1,7 +1,8 @@
-field $message_async_2: Int
+field $message_async_4: Int
+ field $message_async_2: Int
  field $message_async: Int
- define $Perm($Self) ((((true && acc(($Self).flag,write)) && acc(($Self).$message_async_2,write)) && 
-   acc(($Self).$message_async,write)))
+ define $Perm($Self) (((((true && acc(($Self).flag,write)) && acc(($Self).$message_async_4,write)) && 
+   acc(($Self).$message_async_2,write)) && acc(($Self).$message_async,write)))
  define $Inv($Self) (true)
  method __init__($Self: Ref)
      
@@ -10,6 +11,7 @@ field $message_async_2: Int
      ensures $Inv($Self)
      { 
        ($Self).flag := false
+       ($Self).$message_async_4 := 0
        ($Self).$message_async_2 := 0
        ($Self).$message_async := 0 
      }
@@ -37,6 +39,19 @@ field $message_async_2: Int
         }
        inhale ($Perm($Self) && $Inv($Self))
        if ($Self).flag
+          { 
+            ($Self).$message_async_4 := (($Self).$message_async_4 + 1)
+            exhale ($Perm($Self) && $Inv($Self))
+            { 
+               inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_4 > 0)))
+               ($Self).$message_async_4 := (($Self).$message_async_4 - 1)
+               { 
+                  ($Self).flag := false 
+                }
+               exhale ($Perm($Self) && $Inv($Self)) 
+             }
+            inhale ($Perm($Self) && $Inv($Self)) 
+          }else
           { 
             ($Self).$message_async_2 := (($Self).$message_async_2 + 1)
             exhale ($Perm($Self) && $Inv($Self))

@@ -17,12 +17,10 @@ actor {
                 flag := false
             };
         } else {
-    /*
             await async {
                 assert:1:async flag;
                 flag := false
             };
-*/
         }
     };
 
