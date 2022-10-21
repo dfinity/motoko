@@ -26,7 +26,8 @@ and pp_item ppf i =
       id.it
       pp_typ typ
   | MethodI (id, locals, rets, pres, posts, bo) ->
-     fprintf ppf "@[<v 2>method %s%a@; %a@; %a@; %a@; %a@]"
+    marks := i.at :: !marks;
+    fprintf ppf "\017@[<v 2>method %s%a@; %a@; %a@; %a@; %a@]\019"
       id.it
       pp_locals locals
       pp_returns rets
