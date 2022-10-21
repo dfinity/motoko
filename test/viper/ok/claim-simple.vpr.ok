@@ -21,6 +21,6 @@ method claim($Self: Ref)
      if (!($Self).claimed)
         { 
           ($Self).claimed := true
-          ($Self).count := 1 
+          ($Self).count := (($Self).count + 1) 
         } 
    }

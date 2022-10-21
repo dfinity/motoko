@@ -30,7 +30,7 @@ method claim($Self: Ref)
              ($Self).$message_async := (($Self).$message_async - 1)
              { 
                 ($Self).claimed := true
-                ($Self).count := 1 
+                ($Self).count := (($Self).count + 1) 
               }
              exhale ($Perm($Self) && $Inv($Self)) 
            }

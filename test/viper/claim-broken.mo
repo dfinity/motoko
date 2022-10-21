@@ -8,7 +8,7 @@ actor {
     if (not claimed) {
       await async {
         claimed := true;
-        count := 1;
+        count += 1;
       };
     };
   };
