@@ -368,6 +368,11 @@ and stmt ctxt (s : M.exp) : seqn =
            [ { it = PostconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
+  | M.AssertE (Concurrency n, e) ->
+    { it = [],
+           [ { it = ConcurrencyS (n, exp ctxt e); at = s.at; note = NoInfo } ];
+      at = s.at;
+      note = NoInfo }
   | _ -> fail (Mo_def.Arrange.exp s)
 
 (*    

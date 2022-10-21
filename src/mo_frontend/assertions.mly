@@ -19,5 +19,7 @@ when I write this here (instead of in parser.mly)
     { AssertE(Precondition, e) @? at $sloc }
   | ASSERT COLON RETURN e=exp_nest
     { AssertE(Postcondition, e) @? at $sloc }
+  | ASSERT COLON s=NAT COLON ASYNC e=exp_nest
+    { AssertE(Concurrency s, e) @? at $sloc }
 
 %%

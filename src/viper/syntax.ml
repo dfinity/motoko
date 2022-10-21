@@ -74,6 +74,7 @@ and stmt' =
   | LabelS of id * invariants
   | PreconditionS of exp
   | PostconditionS of exp
+  | ConcurrencyS of string * exp
 
 
 and typ = (typ', info) Source.annotated_phrase
