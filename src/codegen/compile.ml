@@ -8222,10 +8222,10 @@ let rec compile_lexp (env : E.t) ae lexp =
     
    ( 
      compile_exp_vanilla env ae e ^^
+     (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n ^^
      (if !Flags.write_barrier && (potential_pointer (Object.field_type env e.note.Note.typ n))
       then  
-        (* Only real objects have mutable fields, no need to branch on the tag *)
         set_field ^^
         (if Object.is_mut_field env e.note.Note.typ n
          then 
@@ -8235,7 +8235,7 @@ let rec compile_lexp (env : E.t) ae lexp =
          else 
           (* inlined field *)
           compile_exp_vanilla env ae e
-        ) ^^ (* write barrier: object argument *)
+        ) ^^
         E.call_import env "rts" "write_barrier" ^^
         get_field
       else
