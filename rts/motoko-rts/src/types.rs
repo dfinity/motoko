@@ -24,7 +24,7 @@ use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
-use crate::{rts_trap_with, print};
+use crate::rts_trap_with;
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
@@ -237,7 +237,7 @@ impl Value {
     }
 
     pub unsafe fn is_null_ptr(&self) -> bool {
-        self.0 as *mut Value == null_mut()
+        self.get_ptr() as *mut Value == null_mut()
     }
 
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
@@ -267,6 +267,7 @@ impl Value {
         (self.get_ptr() as *mut Obj).tag()
     }
 
+    /// Get the forwarding pointer. Used in incremental GC.
     pub unsafe fn forward(self) -> Value {
         let obj = self.get_ptr() as *mut Obj;
         (*obj).forward
@@ -361,7 +362,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19;
+pub const TAG_FWD_PTR: Tag = 19; // only used in copying GC - not to be confused with forwarding pointer in header used for incremental GC
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -381,9 +382,8 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
-    // LUC TODO: Only use for compacting GC
-    // Forward address for moving without pointer threading
-    pub forward: Value
+    // Forwarding pointer to support object moving in the incremental GC
+    pub forward: Value,
 }
 
 impl Obj {
@@ -536,7 +536,7 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
-    pub padding: u32, // insertion of forward address in the header implies 1 word padding to 64-bit
+    pub padding: u32, // insertion of forwarding pointer in the header implies 1 word padding to 64-bit
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -544,7 +544,9 @@ pub struct Stream {
     pub filled: Bytes<u32>, // cache data follows ..
 }
 
-/// A forwarding pointer placed by the GC in place of an evacuated object.
+/// Only used in copying GC - not to be confused with the forwarding pointer in the general object header
+/// that is used in the incremental GC.
+/// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
     pub tag: Tag,

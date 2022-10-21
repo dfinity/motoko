@@ -22,7 +22,7 @@
 //      │ obj header │ n_bytes │ text1 │ text2 │
 //      └────────────┴─────────┴───────┴───────┘
 //
-// The object header includes tag (`TAG_CONCAT`) and forward address.
+// The object header includes tag (`TAG_CONCAT`) and forwarding pointer.
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 

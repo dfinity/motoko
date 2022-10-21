@@ -10,7 +10,9 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
-use utils::{get_scalar_value, read_word, unskew_pointer, make_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
+use utils::{
+    get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
+};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
@@ -194,7 +196,7 @@ fn check_dynamic_heap(
         offset += WORD_SIZE;
 
         assert_eq!(forward, make_pointer(address as u32));
-        
+
         let n_fields = read_word(heap, offset);
         offset += WORD_SIZE;
 
@@ -221,7 +223,8 @@ fn check_dynamic_heap(
             // Get index of the object pointed by the field
             let pointee_address = field.wrapping_add(1); // unskew
             let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
-            let pointee_idx_offset = pointee_offset as usize + size_of::<Array>().to_bytes().as_usize(); // skip array header (incl. length)
+            let pointee_idx_offset =
+                pointee_offset as usize + size_of::<Array>().to_bytes().as_usize(); // skip array header (incl. length)
             let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
             let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
             assert_eq!(

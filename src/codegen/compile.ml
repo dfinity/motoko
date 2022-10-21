@@ -1270,18 +1270,18 @@ module BitTagged = struct
 end (* BitTagged *)
 
 module Tagged = struct
-  (* Tagged objects all have an object header consisting of a tag and a forward address.
+  (* Tagged objects all have an object header consisting of a tag and a forwarding pointer.
      The tag is to describe their runtime type and serves to traverse the heap 
      (serialization, GC), but also for objectification of arrays.
 
      The tag is a word at the beginning of the object.
 
-     They forward address supports advanced garbage collection (incremental or generational).
+     They forwarding pointer supports object moving in the incremental garbage collection.
 
          obj header
-     ┌──────┬──────────┬──
-     │ tag  │ fwd addr │ ...
-     └──────┴──────────┴──
+     ┌──────┬─────────┬──
+     │ tag  │ fwd ptr │ ...
+     └──────┴─────────┴──
 
      All tagged heap objects have a size of at least two words
      (important for GC, which replaces them with an Indirection).
@@ -1346,21 +1346,21 @@ module Tagged = struct
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
-  let null_ptr = 0l
+  let null_ptr = ptr_skew
 
   (* The tag *)
   let header_size = 2l
   let tag_field = 0l
-  let forward_address_field = 1l
+  let forwarding_pointer_field = 1l
 
   (* Assumes a pointer to the object on the stack *)
   let store_tag tag =
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
 
-  let store_forward_address =
-    compile_unboxed_const null_ptr ^^ (* forward address *)
-    Heap.store_field forward_address_field
+  let store_forwarding_pointer =
+    compile_unboxed_const null_ptr ^^ (* forwarding pointer *)
+    Heap.store_field forwarding_pointer_field
 
   let load_tag =
     Heap.load_field tag_field
@@ -1433,7 +1433,7 @@ module Tagged = struct
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
       compile_unboxed_const (int_of_tag tag) ::
-      compile_unboxed_const null_ptr :: (* forward address *)
+      compile_unboxed_const null_ptr :: (* forwarding pointer *)
       element_instructions
 
 end (* Tagged *)
@@ -1446,7 +1446,7 @@ module MutBox = struct
        │ obj header │ payload │
        └──────┴─────┴─────────┘
 
-     The object header includes the obj tag (MutBox) and the forward address.
+     The object header includes the obj tag (MutBox) and the forwarding pointer.
   *)
 
   let field = Tagged.header_size
@@ -1456,7 +1456,7 @@ module MutBox = struct
 
   let static env =
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
-    let forward = bytes_of_int32 Tagged.null_ptr in (* forward address *)
+    let forward = bytes_of_int32 Tagged.null_ptr in (* forwarding pointer *)
     let zero = bytes_of_int32 0l in
     let ptr = E.add_mutable_static_bytes env (tag ^ forward ^ zero) in
     E.add_static_root env ptr;
@@ -1501,7 +1501,7 @@ module Opt = struct
   let null_vanilla_lit env : int32 =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Null);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
     ]
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
@@ -1522,7 +1522,7 @@ module Opt = struct
                singleton for that: *)
             compile_unboxed_const (E.add_static env StaticBytes.[
               I32 Tagged.(int_of_tag Some);
-              I32 Tagged.null_ptr; (* forward address *)
+              I32 Tagged.null_ptr; (* forwarding pointer *)
               I32 (null_vanilla_lit env)
             ])
           ; Tagged.Some,
@@ -1561,7 +1561,7 @@ module Variant = struct
        │ obj header │ varianttag │ payload │
        └──────┴─────┴────────────┴─────────┘
 
-     The object header includes the obj tag (TAG_VARIANT) and the forward address.
+     The object header includes the obj tag (TAG_VARIANT) and the forwarding pointer.
   *)
 
   let variant_tag_field = Tagged.header_size
@@ -1594,7 +1594,7 @@ module Closure = struct
        │ obj header │ funid │ size │ captured ... │
        └──────┴─────┴───────┴──────┴──────────────┘
 
-     The object header includes the object tag (TAG_CLOSURE) and the forward address.
+     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
 
   *)
   let header_size = Int32.add Tagged.header_size 2l
@@ -1625,7 +1625,7 @@ module Closure = struct
   let static_closure env fi : int32 =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Closure);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
       I32 (E.add_fun_ptr env fi);
       I32 0l
     ]
@@ -1645,7 +1645,7 @@ module BoxedWord64 = struct
        │ obj header │    i64    │
        └──────┴─────┴─────┴─────┘
 
-     The object header includes the object tag (Bits64) and the forward address.
+     The object header includes the object tag (Bits64) and the forwarding pointer.
 
   *)
 
@@ -1657,7 +1657,7 @@ module BoxedWord64 = struct
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits64);
-        I32 Tagged.null_ptr; (* forward address *)
+        I32 Tagged.null_ptr; (* forwarding pointer *)
         I64 i
       ]
 
@@ -1666,7 +1666,7 @@ module BoxedWord64 = struct
     Heap.alloc env 4l ^^
     set_i ^^
     get_i ^^ Tagged.(store_tag Bits64) ^^
-    get_i ^^ Tagged.(store_forward_address) ^^ (* forward address *)
+    get_i ^^ Tagged.(store_forwarding_pointer) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1767,7 +1767,7 @@ module BoxedSmallWord = struct
        │ obj header │ i32 │
        └──────┴─────┴─────┘
 
-     The object header includes the object tag (Bits32) and the forward address.
+     The object header includes the object tag (Bits32) and the forwarding pointer.
 
   *)
 
@@ -1779,7 +1779,7 @@ module BoxedSmallWord = struct
     else
       E.add_static env StaticBytes.[
         I32 Tagged.(int_of_tag Bits32);
-        I32 Tagged.null_ptr; (* forward address *)
+        I32 Tagged.null_ptr; (* forwarding pointer *)
         I32 i
       ]
 
@@ -1788,7 +1788,7 @@ module BoxedSmallWord = struct
     Heap.alloc env 3l ^^
     set_i ^^
     get_i ^^ Tagged.(store_tag Bits32) ^^
-    get_i ^^ Tagged.(store_forward_address) ^^ (* forward address *)
+    get_i ^^ Tagged.(store_forwarding_pointer) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -2012,7 +2012,7 @@ module Float = struct
      treated opaquely by the RTS. We'll introduce a separate tag when the need of
      debug inspection (or GC representation change) arises.
 
-     The object header includes the object tag (Bits64) and the forward address.
+     The object header includes the object tag (Bits64) and the forwarding pointer.
   *)
 
   let payload_field = Tagged.header_size
@@ -2024,7 +2024,7 @@ module Float = struct
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Bits64);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
       I64 (Wasm.F64.to_bits f)
     ]
 
@@ -2033,7 +2033,7 @@ module Float = struct
     Heap.alloc env 4l ^^
     set_i ^^
     get_i ^^ Tagged.(store_tag Bits64) ^^
-    get_i ^^ Tagged.(store_forward_address) ^^ (* forward address *)
+    get_i ^^ Tagged.(store_forwarding_pointer) ^^ (* forwarding pointer *)
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
@@ -2889,7 +2889,7 @@ module BigNumLibtommath : BigNumType = struct
     (* cf. mp_int in tommath.h *)
     let ptr = E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag BigInt);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
       I32 size; (* used *)
       I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
@@ -2985,7 +2985,7 @@ module Object = struct
           │ field1_hash │ field2_hash │ … │
           └─────────────┴─────────────┴───┘
 
-    The object header includes the object tag (Object) and the forward address.
+    The object header includes the object tag (Object) and the forwarding pointer.
 
     The field hash array lives in static memory (so no size header needed).
     The hash_ptr is skewed.
@@ -3022,7 +3022,7 @@ module Object = struct
 
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Object);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
       I32 (Int32.of_int (List.length fs));
       I32 hash_ptr;
       i32s ptrs;
@@ -3059,9 +3059,9 @@ module Object = struct
     get_ri ^^
     Tagged.(store_tag Object) ^^
 
-    (* Set forward address *)
+    (* Set forwarding pointer *)
     get_ri ^^
-    Tagged.(store_forward_address) ^^
+    Tagged.(store_forwarding_pointer) ^^
 
     (* Set size *)
     get_ri ^^
@@ -3175,7 +3175,7 @@ module Blob = struct
      │ obj header │ n_bytes │ bytes (padded) … │
      └──────┴─────┴─────────┴──────────────────┘
 
-    The object header includes the object tag (Blob) and the forward address.
+    The object header includes the object tag (Blob) and the forwarding pointer.
 
     This heap object is used for various kinds of binary, non-pointer data.
 
@@ -3191,7 +3191,7 @@ module Blob = struct
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Blob);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -3365,7 +3365,7 @@ module Text = struct
      │ obj header │ n_bytes │ text1 │ text2 │
      └──────┴─────┴─────────┴───────┴───────┘
 
-    The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the forward address
+    The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the forwarding pointer
 
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
@@ -3432,7 +3432,7 @@ module Arr = struct
      │ obj header │ n_fields │ field1 │ … │
      └──────┴─────┴──────────┴────────┴───┘
      
-     The object  header includes the object tag (Array) and the forward address.
+     The object  header includes the object tag (Array) and the forwarding pointer.
 
      No difference between mutable and immutable arrays.
   *)
@@ -3476,7 +3476,7 @@ module Arr = struct
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Array);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]
@@ -5286,7 +5286,7 @@ module MakeSerialization (Strm : Stream) = struct
   let coercion_error_value env : int32 =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag CoercionFailure);
-      I32 Tagged.null_ptr; (* forward address *)
+      I32 Tagged.null_ptr; (* forwarding pointer *)
     ]
 
   (* The main deserialization function, generated once per type hash.
@@ -7065,9 +7065,9 @@ module FuncDec = struct
         get_clos ^^
         Tagged.(store_tag Closure) ^^
 
-        (* Store the forward address *)
+        (* Store the forwarding pointer *)
         get_clos ^^
-        Tagged.(store_forward_address) ^^
+        Tagged.(store_forwarding_pointer) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^
