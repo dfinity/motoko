@@ -3,14 +3,11 @@ actor {
     var flag = false;
 
     public shared func claim() : async () {
-        let a = async { flag := true };
-        await a;
+        await async { flag := true };
         if true {
-            let b = async { flag := false };
-            await b;
+            await async { flag := false };
         } else {
-            let c = async { flag := false };
-            await c;
+            await async { flag := false };
         }
     };
 

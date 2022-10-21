@@ -1,6 +1,64 @@
-async.mo:6.17-6.39: viper error [0], translation to viper failed:
-(AsyncE
-  ($anon-async-6.17 (PrimT Any))
-  (BlockE (ExpD (AssignE (VarE flag) (LitE (BoolLit true)))))
-)
-
+field $message_async_4: Int
+ field $message_async_2: Int
+ field $message_async: Int
+ define $Perm($Self) (((((true && acc(($Self).flag,write)) && acc(($Self).$message_async_4,write)) && 
+   acc(($Self).$message_async_2,write)) && acc(($Self).$message_async,write)))
+ define $Inv($Self) (true)
+ method __init__($Self: Ref)
+     
+     requires $Perm($Self)
+     ensures $Perm($Self)
+     ensures $Inv($Self)
+     { 
+       ($Self).flag := false
+       ($Self).$message_async_4 := 0
+       ($Self).$message_async_2 := 0
+       ($Self).$message_async := 0 
+     }
+ field flag: Bool
+ method claim($Self: Ref)
+     
+     requires $Perm($Self)
+     requires $Inv($Self)
+     ensures $Perm($Self)
+     ensures $Inv($Self)
+     { 
+       ($Self).$message_async := (($Self).$message_async + 1)
+       exhale ($Perm($Self) && $Inv($Self))
+       { 
+          inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
+          ($Self).$message_async := (($Self).$message_async - 1)
+          { 
+             ($Self).flag := true 
+           }
+          exhale ($Perm($Self) && $Inv($Self)) 
+        }
+       inhale ($Perm($Self) && $Inv($Self))
+       if true
+          { 
+            ($Self).$message_async_4 := (($Self).$message_async_4 + 1)
+            exhale ($Perm($Self) && $Inv($Self))
+            { 
+               inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_4 > 0)))
+               ($Self).$message_async_4 := (($Self).$message_async_4 - 1)
+               { 
+                  ($Self).flag := false 
+                }
+               exhale ($Perm($Self) && $Inv($Self)) 
+             }
+            inhale ($Perm($Self) && $Inv($Self)) 
+          }else
+          { 
+            ($Self).$message_async_2 := (($Self).$message_async_2 + 1)
+            exhale ($Perm($Self) && $Inv($Self))
+            { 
+               inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_2 > 0)))
+               ($Self).$message_async_2 := (($Self).$message_async_2 - 1)
+               { 
+                  ($Self).flag := false 
+                }
+               exhale ($Perm($Self) && $Inv($Self)) 
+             }
+            inhale ($Perm($Self) && $Inv($Self)) 
+          } 
+     }
