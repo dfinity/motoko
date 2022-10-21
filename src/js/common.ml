@@ -67,25 +67,22 @@ let js_viper filenames =
     let js_lookup = Js.wrap_callback (fun js_region ->
       let viper_region = match js_region |> Js.to_array |> Array.to_list with
       | [a; b; c; d] ->
-        lookup { left = { file = ""; line = a; column = b }; right = { file = ""; line = c; column = d } }
-      | _ -> None
-      in match viper_region with
-      | Some region -> [
-        region.left.line;
-        region.left.column;
-        region.right.line;
-        region.right.column;
-      ] |> Array.of_list |> Js.array |> Js.some
-      | None -> Js.null)
-    in [Js.Unsafe.inject js_viper; Js.Unsafe.inject js_lookup] |> Array.of_list |> Js.array |> Js.some
-  )
+        lookup { left = { file = ""; line = a + 1; column = b }; right = { file = ""; line = c + 1; column = d } }
+      | _ -> None in
+      match viper_region with
+      | Some region ->
+        Js.some (range_of_region region)
+      | None -> Js.null) in
+    Js.some (object%js
+      val source = js_viper
+      val lookup = js_lookup
+    end))
 
 let js_candid source =
   js_result (Pipeline.generate_idl [Js.to_string source])
     (fun prog ->
       let code = Idllib.Arrange_idl.string_of_prog prog in
-      Js.some (Js.string code)
-    )
+      Js.some (Js.string code))
 
 let js_stable_compatible pre post =
   js_result (Pipeline.stable_compatible (Js.to_string pre) (Js.to_string post)) (fun _ -> Js.null)
@@ -114,23 +111,20 @@ let js_compile_wasm mode source =
         val wasm = code
         val candid = Js.string candid
         val stable = sig_
-      end)
-    )
+      end))
 
 let js_parse_motoko s =
   let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     (* let _ = Pipeline.infer_prog *)
     let ast = Mo_def.Arrange.prog prog in
-    Js.some (js_of_sexpr ast)
-  )
+    Js.some (js_of_sexpr ast))
 
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     let ast = Idllib.Arrange_idl.prog prog in
-    Js.some (js_of_sexpr ast)
-  )
+    Js.some (js_of_sexpr ast))
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
