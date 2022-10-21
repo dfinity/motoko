@@ -157,7 +157,7 @@ and pp_stmt' ppf = function
       pp_exp exp
   | ExhaleS exp ->
     fprintf ppf "@[<v 2>exhale %a@]"
-      pp_exp exp2
+      pp_exp exp
   | PreconditionS(exp) ->
     fprintf ppf "@[<v 2>/*requires %a*/@]"
       pp_exp exp
