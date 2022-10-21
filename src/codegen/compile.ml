@@ -278,6 +278,7 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
+    object_pool_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -321,6 +322,7 @@ module E = struct
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
+    object_pool_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -520,6 +522,10 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
+  let update_static_memory (env : t) ptr data =
+    env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
+    ()
+
   let add_mutable_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
@@ -548,6 +554,13 @@ module E = struct
       let ptr = add_mutable_static_bytes env b  in
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
+
+  let object_pool_find (env: t) (key: string) : int32 option =
+    StringEnv.find_opt key !(env.object_pool_strings)
+    
+  let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
+    env.object_pool_strings := StringEnv.add key ptr !(env.object_pool_strings);
+    ()
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -1056,22 +1069,6 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = F64Type; align = 2; offset; sz = None})
 
-  (* Create a heap object with instructions that fill in each word *)
-  let obj env element_instructions : G.t =
-    let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
-
-    let n = List.length element_instructions in
-    alloc env (Wasm.I32.of_int_u n) ^^
-    set_heap_obj ^^
-
-    let init_elem idx instrs : G.t =
-      get_heap_obj ^^
-      instrs ^^
-      store_field (Wasm.I32.of_int_u idx)
-    in
-    G.concat_mapi init_elem element_instructions ^^
-    get_heap_obj
-
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
@@ -1346,8 +1343,6 @@ module Tagged = struct
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
-  let null_ptr = ptr_skew
-
   (* The tag *)
   let header_size = 2l
   let tag_field = 0l
@@ -1358,8 +1353,13 @@ module Tagged = struct
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
 
-  let store_forwarding_pointer =
-    compile_unboxed_const null_ptr ^^ (* forwarding pointer *)
+  let store_forwarding_pointer env =
+    let (set_object_ptr, get_object_ptr) = new_local env "object_ptr" in
+    set_object_ptr ^^
+    get_object_ptr ^^ (* object pointer *)
+    get_object_ptr ^^ 
+    compile_unboxed_const (ptr_skew) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (* forwarding pointer *)
     Heap.store_field forwarding_pointer_field
 
   let load_tag =
@@ -1431,10 +1431,50 @@ module Tagged = struct
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
   let obj env tag element_instructions : G.t =
-    Heap.obj env @@
-      compile_unboxed_const (int_of_tag tag) ::
-      compile_unboxed_const null_ptr :: (* forwarding pointer *)
-      element_instructions
+    let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
+
+    let n = List.length element_instructions in
+    Heap.alloc env (Wasm.I32.add header_size (Wasm.I32.of_int_u n)) ^^
+    set_heap_obj ^^
+
+    get_heap_obj ^^
+    compile_unboxed_const (int_of_tag tag) ^^
+    Heap.store_field tag_field ^^
+
+    get_heap_obj ^^
+    get_heap_obj ^^ (* forwarding pointer *)
+    Heap.store_field forwarding_pointer_field ^^
+
+    let init_elem idx instrs : G.t =
+      get_heap_obj ^^
+      instrs ^^
+      Heap.store_field (Wasm.I32.add header_size (Wasm.I32.of_int_u idx))
+    in
+    G.concat_mapi init_elem element_instructions ^^
+    get_heap_obj
+
+  let new_static_obj env tag payload =
+    let payload = StaticBytes.as_bytes payload in
+    let header_size = Int32.(mul Heap.word_size header_size) in
+    let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
+    let unskewed_ptr = E.reserve_static_memory env size in
+    let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
+    let tag = bytes_of_int32 (int_of_tag tag) in
+    let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
+    let data = tag ^ forward ^ payload in
+    E.update_static_memory env unskewed_ptr data;
+    skewed_ptr
+
+  let shared_static_obj env tag payload =
+    let tag_word = bytes_of_int32 (int_of_tag tag) in
+    let payload_bytes = StaticBytes.as_bytes payload in
+    let key = tag_word ^ payload_bytes in
+    match E.object_pool_find env key with
+    | Some ptr -> ptr
+    | None ->
+      let ptr = new_static_obj env tag payload in
+      E.object_pool_add env key ptr;
+      ptr
 
 end (* Tagged *)
 
@@ -1455,12 +1495,12 @@ module MutBox = struct
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
 
   let static env =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
-    let forward = bytes_of_int32 Tagged.null_ptr in (* forwarding pointer *)
-    let zero = bytes_of_int32 0l in
-    let ptr = E.add_mutable_static_bytes env (tag ^ forward ^ zero) in
+    let ptr = Tagged.new_static_obj env Tagged.MutBox StaticBytes.[
+      I32 0l; (* zero *)
+    ] in
     E.add_static_root env ptr;
     ptr
+    
 end
 
 
@@ -1499,10 +1539,8 @@ module Opt = struct
 
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
-    E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Null);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
-    ]
+    Tagged.shared_static_obj env Tagged.Null []
+    
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
@@ -1520,9 +1558,7 @@ module Opt = struct
           [ Tagged.Null,
             (* NB: even ?null does not require allocation: We use a static
                singleton for that: *)
-            compile_unboxed_const (E.add_static env StaticBytes.[
-              I32 Tagged.(int_of_tag Some);
-              I32 Tagged.null_ptr; (* forwarding pointer *)
+            compile_unboxed_const (Tagged.shared_static_obj env Tagged.Some StaticBytes.[
               I32 (null_vanilla_lit env)
             ])
           ; Tagged.Some,
@@ -1623,9 +1659,7 @@ module Closure = struct
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
   let static_closure env fi : int32 =
-    E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Closure);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
+    Tagged.shared_static_obj env Tagged.Closure StaticBytes.[
       I32 (E.add_fun_ptr env fi);
       I32 0l
     ]
@@ -1655,9 +1689,7 @@ module BoxedWord64 = struct
     if BitTagged.can_tag_const i
     then BitTagged.tag_const i
     else
-      E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits64);
-        I32 Tagged.null_ptr; (* forwarding pointer *)
+      Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
         I64 i
       ]
 
@@ -1666,7 +1698,7 @@ module BoxedWord64 = struct
     Heap.alloc env 4l ^^
     set_i ^^
     get_i ^^ Tagged.(store_tag Bits64) ^^
-    get_i ^^ Tagged.(store_forwarding_pointer) ^^ (* forwarding pointer *)
+    get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1777,9 +1809,7 @@ module BoxedSmallWord = struct
     if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
     then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
-      E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Bits32);
-        I32 Tagged.null_ptr; (* forwarding pointer *)
+      Tagged.shared_static_obj env Tagged.Bits32 StaticBytes.[
         I32 i
       ]
 
@@ -1788,7 +1818,7 @@ module BoxedSmallWord = struct
     Heap.alloc env 3l ^^
     set_i ^^
     get_i ^^ Tagged.(store_tag Bits32) ^^
-    get_i ^^ Tagged.(store_forwarding_pointer) ^^ (* forwarding pointer *)
+    get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -2022,9 +2052,7 @@ module Float = struct
   let compile_unboxed_zero = lit 0.0
 
   let vanilla_lit env f =
-    E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Bits64);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
+    Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
       I64 (Wasm.F64.to_bits f)
     ]
 
@@ -2033,7 +2061,7 @@ module Float = struct
     Heap.alloc env 4l ^^
     set_i ^^
     get_i ^^ Tagged.(store_tag Bits64) ^^
-    get_i ^^ Tagged.(store_forwarding_pointer) ^^ (* forwarding pointer *)
+    get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
@@ -2887,9 +2915,7 @@ module BigNumLibtommath : BigNumType = struct
     let size = Int32.of_int (List.length limbs) in
 
     (* cf. mp_int in tommath.h *)
-    let ptr = E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag BigInt);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
+    let ptr = Tagged.shared_static_obj env Tagged.BigInt StaticBytes.[
       I32 size; (* used *)
       I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
@@ -3020,9 +3046,7 @@ module Object = struct
 
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
-    E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Object);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
+    Tagged.shared_static_obj env Tagged.Object StaticBytes.[
       I32 (Int32.of_int (List.length fs));
       I32 hash_ptr;
       i32s ptrs;
@@ -3061,7 +3085,7 @@ module Object = struct
 
     (* Set forwarding pointer *)
     get_ri ^^
-    Tagged.(store_forwarding_pointer) ^^
+    Tagged.(store_forwarding_pointer env) ^^
 
     (* Set size *)
     get_ri ^^
@@ -3189,9 +3213,7 @@ module Blob = struct
   let len env = Heap.load_field len_field
 
   let vanilla_lit env s =
-    E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Blob);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
+    Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -3474,9 +3496,7 @@ module Arr = struct
 
 
   let vanilla_lit env ptrs =
-    E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag Array);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
+    Tagged.shared_static_obj env Tagged.Array StaticBytes.[
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]
@@ -5284,10 +5304,7 @@ module MakeSerialization (Strm : Stream) = struct
      comparison.
   *)
   let coercion_error_value env : int32 =
-    E.add_static env StaticBytes.[
-      I32 Tagged.(int_of_tag CoercionFailure);
-      I32 Tagged.null_ptr; (* forwarding pointer *)
-    ]
+    Tagged.shared_static_obj env Tagged.CoercionFailure []
 
   (* The main deserialization function, generated once per type hash.
      Is parameters are:
@@ -7067,7 +7084,7 @@ module FuncDec = struct
 
         (* Store the forwarding pointer *)
         get_clos ^^
-        Tagged.(store_forwarding_pointer) ^^
+        Tagged.(store_forwarding_pointer env) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^
