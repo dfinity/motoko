@@ -63,7 +63,6 @@ type ctxt =
     ghost_inits : (ctxt -> stmt) list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
     ghost_conc : (ctxt -> exp -> exp) list ref;
-    (*    invariants : (ctxt -> exp) list ref; *)
   }
 
 let self ctxt at =
@@ -344,15 +343,14 @@ and stmt ctxt (s : M.exp) : seqn =
      let mk_c = match conc with
        | [] ->
          fun _ x -> x
-       | ConcurrencyS (name, "1", cond) :: _ ->
-         (* HACK: cond is in ctxt but being used in "$Inv" macro *)
+       | ConcurrencyS (name, "1", _, cond) :: _ ->
          let (!!) p = !!! (cond.at) p in
          let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
          fun ctxt x ->
            let ghost_fld = !!(FldAcc (self ctxt Source.no_region, id)) in
            let between = !!(AndE (!!(LeCmpE (zero, ghost_fld)), !!(LeCmpE (ghost_fld, one)))) in
            let is_one = !!(EqCmpE (ghost_fld, one)) in
-           !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond))))))
+           !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond.it.t ctxt exp))))))
        | _ -> unsupported e.at (Mo_def.Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
      let (!!) p = !!! at p in
@@ -423,7 +421,9 @@ and stmt ctxt (s : M.exp) : seqn =
       note = NoInfo }
   | M.AssertE (Concurrency n, e) ->
     { it = [],
-           [ { it = ConcurrencyS (Printf.sprintf "async_%d" s.at.left.line, n, exp ctxt e); at = s.at; note = NoInfo } ];
+           [ { it = ConcurrencyS (Printf.sprintf "async_%d" s.at.left.line, n, exp ctxt e, { it = { t = fun ctxt res -> res ctxt e }; at = s.at; note = NoInfo })
+             ; at = s.at
+             ; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
   | _ ->

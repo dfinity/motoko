@@ -58,6 +58,9 @@ and invariants = exp list
 
 and stmt = (stmt', info) Source.annotated_phrase
 
+and tmpl = (tmpl', info) Source.annotated_phrase
+and tmpl' = { t : 'a. 'a -> ('a -> Mo_def.Syntax.exp -> exp) -> exp }
+
 and fldacc = exp * id
 
 and stmt' =
@@ -74,7 +77,7 @@ and stmt' =
   | LabelS of id * invariants
   | PreconditionS of exp
   | PostconditionS of exp
-  | ConcurrencyS of string * string * exp
+  | ConcurrencyS of string * string * exp * tmpl
 
 
 and typ = (typ', info) Source.annotated_phrase
