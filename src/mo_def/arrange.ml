@@ -65,6 +65,7 @@ let rec exp e = match e.it with
   | AssertE (Loop_entry, e)    -> "Loop_entry" $$ [exp e]
   | AssertE (Loop_continue, e) -> "Loop_continue" $$ [exp e]
   | AssertE (Loop_exit, e)     -> "Loop_exit" $$ [exp e]
+  | AssertE (Concurrency s, e) -> "Concurrency"^s $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
   | DoOptE e            -> "DoOptE"  $$ [exp e]

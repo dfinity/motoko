@@ -1,3 +1,5 @@
+// @verify
+
 actor {
 
     var flag = false;

@@ -1,14 +1,31 @@
 open Source
 
-   
 open Syntax
 
 module T = Mo_types.Type
 module M = Mo_def.Syntax
+module Arrange = Mo_def.Arrange
 
 module Stamps = Env.Make(String)
 
+(* symbol generation *)
+
 let stamps : int Stamps.t ref = ref Stamps.empty
+
+let reset_stamps () = stamps := Stamps.empty
+
+let fresh_stamp name =
+  let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
+  stamps := Stamps.add name (n + 1) !stamps;
+  n
+
+let fresh_id name =
+  let n = fresh_stamp name in
+  if n = 0 then
+    name
+  else Printf.sprintf "%s_%i" name (fresh_stamp name)
+
+(* helpers for constructing annotated syntax *)
 
 let (!!!) at it = { it; at; note = NoInfo}
 
@@ -20,7 +37,6 @@ let accE at fldacc =
     (AccE(
          fldacc,
          !!! at (PermE (!!! at FullP))))
-
 
 let conjoin es at =
   match es with
@@ -36,17 +52,8 @@ let rec adjoin ctxt e = function
   | [] -> e
   | f :: fs -> f ctxt (adjoin ctxt e fs)
 
-let fresh_stamp name =
-  let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
-  stamps := Stamps.add name (n + 1) !stamps;
-  n
 
-let fresh_id name =
-  let n = fresh_stamp name in
-  if n = 0 then
-    name
-  else Printf.sprintf "%s_%i" name (fresh_stamp name)
-
+(* exception for reporting unsupported Motoko syntax *)
 exception Unsupported of Source.region * string
 
 let unsupported at sexp =
@@ -107,6 +114,7 @@ let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
 
 let rec unit (u : M.comp_unit) : prog Diag.result =
   Diag.(
+    reset_stamps();
     try return (unit' u) with
     | Unsupported (at, desc) -> error at "0" "viper" ("translation to viper failed:\n"^desc)
     | _ -> error u.it.M.body.at "1" "viper" "translation to viper failed"
@@ -211,8 +219,6 @@ and dec_field ctxt d =
 
 and dec_field' ctxt d =
   match d.M.dec.it with
-  (*  | ExpD e -> "ExpD" $$ [exp e ] *)
-
   | M.VarD (x, e) ->
       { ctxt with ids = Env.add x.it Field ctxt.ids },
       Some (id x, e),
@@ -225,6 +231,7 @@ and dec_field' ctxt d =
       { ctxt with ids = Env.add f.it Method ctxt.ids },
       None,
       fun ctxt' ->
+        let open Either in
         let self_id = id_at "$Self" Source.no_region in
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
@@ -240,8 +247,7 @@ and dec_field' ctxt d =
 	    fun ctxt' ->
 	      InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "$Self" }  e), NoInfo
   | _ ->
-     unsupported d.M.dec.at (Mo_def.Arrange.dec d.M.dec)
-
+     unsupported d.M.dec.at (Arrange.dec d.M.dec)
 (*
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
@@ -255,7 +261,15 @@ and dec_field' ctxt d =
 
 and args p = match p.it with
   | M.TupP ps ->
-    List.map (fun {it = M.VarP x; note; _} -> (id x, tr_typ note)) ps
+     List.map (
+         fun p ->
+         match p.it with
+         | M.VarP x ->
+            (id x, tr_typ p.note)
+         | _ -> unsupported p.at (Arrange.pat p)
+       )
+       ps
+  |  _ -> unsupported p.at (Arrange.pat p)
 
 and block ctxt at ds =
   let ctxt, mk_ss = decs ctxt ds in
@@ -302,7 +316,7 @@ and dec ctxt d =
         let s = stmt ctxt' e in
         s.it)
   | _ ->
-     unsupported d.at (Mo_def.Arrange.dec d)
+     unsupported d.at (Arrange.dec d)
 
 and stmt ctxt (s : M.exp) : seqn =
   match s.it with
@@ -351,7 +365,7 @@ and stmt ctxt (s : M.exp) : seqn =
            let between = !!(AndE (!!(LeCmpE (zero, ghost_fld ())), !!(LeCmpE (ghost_fld (), one)))) in
            let is_one = !!(EqCmpE (ghost_fld (), one)) in
            !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond.it (exp ctxt)))))))
-       | _ -> unsupported e.at (Mo_def.Arrange.exp e) in
+       | _ -> unsupported e.at (Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
      let (!!) p = !!! at p in
      !!! (s.at)
@@ -407,19 +421,21 @@ and stmt ctxt (s : M.exp) : seqn =
                 note = NoInfo } ]);
          at = s.at;
          note = NoInfo }
+     | _ ->
+        unsupported s.at (Arrange.exp s)
      end
   | M.LitE e -> { it = [], []; at = s.at; note = NoInfo }
-  | M.AssertE (Precondition, e) ->
+  | M.AssertE (M.Precondition, e) ->
     { it = [],
            [ { it = PreconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
-  | M.AssertE (Postcondition, e) ->
+  | M.AssertE (M.Postcondition, e) ->
     { it = [],
            [ { it = PostconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
-  | M.AssertE (Concurrency n, e) ->
+  | M.AssertE (M.Concurrency n, e) ->
     { it = [],
            [ { it = ConcurrencyS (n, exp ctxt e, { it = (|>) e; at = s.at; note = NoInfo })
              ; at = s.at
@@ -427,7 +443,7 @@ and stmt ctxt (s : M.exp) : seqn =
       at = s.at;
       note = NoInfo }
   | _ ->
-     unsupported s.at (Mo_def.Arrange.exp s)
+     unsupported s.at (Arrange.exp s)
 
 and exp ctxt e =
   let (e', info) = exp' ctxt e in
@@ -441,13 +457,13 @@ and exp' ctxt (e : M.exp) =
     begin
      match Env.find x.it ctxt.ids with
      | Local ->
-        (LocalVar (id x, tr_typ e.note.note_typ),
+        (LocalVar (id x, tr_typ e.note.M.note_typ),
         NoInfo)
      | Field ->
         (FldAcc (self ctxt x.at, id x),
          NoInfo)
      | _ ->
-        unsupported e.at (Mo_def.Arrange.exp e)
+        unsupported e.at (Arrange.exp e)
     end
   | M.AnnotE(a, b) ->
     exp' ctxt a
@@ -458,7 +474,7 @@ and exp' ctxt (e : M.exp) =
     | M.IntLit i ->
        (IntLitE i, NoInfo)
     | _ ->
-       unsupported e.at (Mo_def.Arrange.exp e)
+       unsupported e.at (Arrange.exp e)
     end
   | M.NotE e ->
      NotE (exp ctxt e), NoInfo
@@ -480,6 +496,7 @@ and exp' ctxt (e : M.exp) =
       | MulOp -> MulE (e1, e2)
       | DivOp -> DivE (e1, e2)
       | ModOp -> ModE (e1, e2)
+      | _ -> unsupported e.at (Arrange.exp e)
      ), NoInfo
   | M.OrE (e1, e2) ->
      OrE (exp ctxt e1, exp ctxt e2), NoInfo
@@ -488,7 +505,7 @@ and exp' ctxt (e : M.exp) =
   | M.ImpliesE (e1, e2) ->
      Implies (exp ctxt e1, exp ctxt e2), NoInfo
   | _ ->
-     unsupported e.at (Mo_def.Arrange.exp e)
+     unsupported e.at (Arrange.exp e)
 (*           
   | VarE x              -> 
   | LitE l              -> "LitE"      $$ [lit !l]
@@ -556,7 +573,9 @@ and rets t_opt =
   | Some t ->
     (match T.normalize t.note with
      | T.Tup [] -> []
-     | T.Async (_, _) -> [])
+     | T.Async (_, _) -> []
+     | _ -> unsupported t.at (Arrange.typ t)
+    )
 
 and id_at id at = { it = id; at = at; note = NoInfo }
 
@@ -573,6 +592,7 @@ and tr_typ' typ =
   | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ (T.normalize typ))
 
 
+(* Crib sheet for other remaining syntax to translate *)
 (*       
 let rec exp e = match e.it with
   | VarE x              -> "VarE"      $$ [id x]
