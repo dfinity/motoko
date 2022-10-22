@@ -85,25 +85,25 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
   | _ :: p -> extract_invariants p
 
 let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
-
+  let open List in
   let extr (concs, stmts) s : stmt' list * stmt list =
     match s.it with
     | ConcurrencyS _ -> s.it :: concs, stmts
     | SeqnS seq ->
       let concs', seq = extract_concurrency seq in
-      List.(append (rev concs') concs), { s with it = SeqnS seq } :: stmts
+      rev_append concs' concs, { s with it = SeqnS seq } :: stmts
     | WhileS (e, inv, seq) ->
       let concs', seq = extract_concurrency seq in
-      List.(append (rev concs') concs), { s with it = WhileS (e, inv, seq) } :: stmts
+      rev_append concs' concs, { s with it = WhileS (e, inv, seq) } :: stmts
     | IfS (e, the, els) ->
       let the_concs, the = extract_concurrency the in
       let els_concs, els = extract_concurrency els in
-      List.(append (rev els_concs) (append (rev the_concs) concs)), { s with it = IfS (e, the, els) } :: stmts
+      rev_append els_concs (rev_append the_concs concs), { s with it = IfS (e, the, els) } :: stmts
     | _ -> concs, s :: stmts in
 
   let stmts = snd seq.it in
   let conc, stmts = List.fold_left extr ([], []) stmts in
-  List.(rev conc, { seq with it = fst seq.it, rev stmts })
+  rev conc, { seq with it = fst seq.it, rev stmts }
 
 let rec unit (u : M.comp_unit) : prog Diag.result =
   Diag.(
