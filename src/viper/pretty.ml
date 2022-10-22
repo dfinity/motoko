@@ -14,11 +14,6 @@ let semi ppf () = fprintf ppf ";@ "
 let pp_info ppf NoInfo = ()
 
 let rec pp_prog ppf p =
-  marks := p.at :: !marks;
-  fprintf ppf "\017%a\019"
-    pp_prog' p
-
-and pp_prog' ppf p =
   match p.it with
   | is ->
    fprintf ppf "@[<v 0>%a@]"
