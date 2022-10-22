@@ -128,8 +128,7 @@ and unit' (u : M.comp_unit) : prog =
     let ctxt'' = { ctxt' with self = Some self_id.it } in
     let perms = List.map (fun (id, _) -> fun (at : region) ->
        (accE at (self ctxt'' at, id))) inits in
-    let ghost_perms = List.map (fun mk_p -> fun at ->
-       mk_p ctxt'' at) !(ctxt.ghost_perms) in
+    let ghost_perms = List.map (fun mk_p -> mk_p ctxt'') !(ctxt.ghost_perms) in
     let perm =
       fun (at : region) ->
        List.fold_left
@@ -231,9 +230,7 @@ and dec_field' ctxt d =
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
-        let conc, stmts = extract_concurrency stmts in
-        (*assert List.(length conc = 3);
-        List.iter (fun (ConcurrencyS (name, _, _)) -> Printf.eprintf "ConcurrencyS %s\n" name) conc;*)
+        let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
