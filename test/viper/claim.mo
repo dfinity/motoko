@@ -12,7 +12,7 @@ actor {
       claimed := true;
 
       await async {
-        // TODO: assert:1:async (claimed and count == 0);
+        assert:1:async (claimed and count == 0);
         count += 1;
       };
     };

@@ -32,6 +32,10 @@ let conjoin es at =
         e0
         es0
 
+let rec adjoin ctxt e = function
+  | [] -> e
+  | f :: fs -> f ctxt (adjoin ctxt e fs)
+
 let fresh_stamp name =
   let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
   stamps := Stamps.add name (n + 1) !stamps;
@@ -58,7 +62,7 @@ type ctxt =
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> stmt) list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
-    (*    invariants : (ctxt -> exp) list ref; *)
+    ghost_conc : (ctxt -> exp -> exp) list ref;
   }
 
 let self ctxt at =
@@ -80,6 +84,27 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
         ; note = NoInfo } :: extract_invariants p self es
   | _ :: p -> extract_invariants p
 
+let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
+  let open List in
+  let extr (concs, stmts) s : stmt' list * stmt list =
+    match s.it with
+    | ConcurrencyS _ -> s.it :: concs, stmts
+    | SeqnS seq ->
+      let concs', seq = extract_concurrency seq in
+      rev_append concs' concs, { s with it = SeqnS seq } :: stmts
+    | WhileS (e, inv, seq) ->
+      let concs', seq = extract_concurrency seq in
+      rev_append concs' concs, { s with it = WhileS (e, inv, seq) } :: stmts
+    | IfS (e, the, els) ->
+      let the_concs, the = extract_concurrency the in
+      let els_concs, els = extract_concurrency els in
+      rev_append els_concs (rev_append the_concs concs), { s with it = IfS (e, the, els) } :: stmts
+    | _ -> concs, s :: stmts in
+
+  let stmts = snd seq.it in
+  let conc, stmts = List.fold_left extr ([], []) stmts in
+  rev conc, { seq with it = fst seq.it, rev stmts }
+
 let rec unit (u : M.comp_unit) : prog Diag.result =
   Diag.(
     try return (unit' u) with
@@ -91,7 +116,7 @@ and unit' (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; ghost_perms = ref [] } in
+    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; ghost_perms = ref []; ghost_conc = ref [] } in
     let ctxt', inits, mk_is = dec_fields ctxt decs in
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
     (* given is', compute ghost_is *)
@@ -102,8 +127,7 @@ and unit' (u : M.comp_unit) : prog =
     let ctxt'' = { ctxt' with self = Some self_id.it } in
     let perms = List.map (fun (id, _) -> fun (at : region) ->
        (accE at (self ctxt'' at, id))) inits in
-    let ghost_perms = List.map (fun mk_p -> fun at ->
-       mk_p ctxt'' at) !(ctxt.ghost_perms) in
+    let ghost_perms = List.map (fun mk_p -> mk_p ctxt'') !(ctxt.ghost_perms) in
     let perm =
       fun (at : region) ->
        List.fold_left
@@ -158,7 +182,7 @@ and unit' (u : M.comp_unit) : prog =
         }
       | _ -> {it; at; note}) is''' in
     let perm_def = !!! (body.at) (InvariantI("$Perm", perm body.at)) in
-    let inv_def = !!! (body.at) (InvariantI("$Inv", conjoin invs body.at)) in
+    let inv_def = !!! (body.at) (InvariantI("$Inv", adjoin ctxt'' (conjoin invs body.at) !(ctxt.ghost_conc))) in
     let is = ghost_is @ (perm_def :: inv_def :: is4) in
     { it = is;
       at = body.at;
@@ -205,6 +229,7 @@ and dec_field' ctxt d =
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
+        let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
@@ -312,6 +337,22 @@ and stmt ctxt (s : M.exp) : seqn =
        accE at (self ctxt Source.no_region, id)
      in
      ctxt.ghost_perms := mk_p :: !(ctxt.ghost_perms);
+     let stmts = stmt ctxt e in
+     (* assume that each `async {...}` has an assertion *)
+     let conc, _ = extract_concurrency stmts in
+     let mk_c = match conc with
+       | [] ->
+         fun _ x -> x
+       | ConcurrencyS ("1", _, cond) :: _ ->
+         let (!!) p = !!! (cond.at) p in
+         let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
+         fun ctxt x ->
+           let ghost_fld () = !!(FldAcc (self ctxt Source.no_region, id)) in
+           let between = !!(AndE (!!(LeCmpE (zero, ghost_fld ())), !!(LeCmpE (ghost_fld (), one)))) in
+           let is_one = !!(EqCmpE (ghost_fld (), one)) in
+           !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond.it (exp ctxt)))))))
+       | _ -> unsupported e.at (Mo_def.Arrange.exp e) in
+     ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
      let (!!) p = !!! at p in
      !!! (s.at)
          ([],
@@ -332,7 +373,7 @@ and stmt ctxt (s : M.exp) : seqn =
                             (self ctxt Source.no_region, id),
                             (!!(SubE(!!(FldAcc (self ctxt at, id)),
                                      intLitE Source.no_region 1)))));
-                     !!! (e.at) (SeqnS (stmt ctxt e));
+                     !!! (e.at) (SeqnS stmts);
                      !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                          !!(MacroCall("$Inv", self ctxt at)))))) ])));
             !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
@@ -376,6 +417,13 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.AssertE (Postcondition, e) ->
     { it = [],
            [ { it = PostconditionS (exp ctxt e); at = s.at; note = NoInfo } ];
+      at = s.at;
+      note = NoInfo }
+  | M.AssertE (Concurrency n, e) ->
+    { it = [],
+           [ { it = ConcurrencyS (n, exp ctxt e, { it = (|>) e; at = s.at; note = NoInfo })
+             ; at = s.at
+             ; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
   | _ ->

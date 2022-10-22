@@ -137,11 +137,11 @@ and pp_stmt ppf stmt =
 and pp_stmt' ppf = function
   | SeqnS seqn -> pp_seqn ppf seqn
   | IfS(exp1, s1, { it = ([],[]); _ }) ->
-    fprintf ppf "@[<v 2>if %a@ %a@]"
+    fprintf ppf "@[<v 2>if (%a)@ %a@]"
       pp_exp exp1
       pp_seqn s1
   | IfS(exp1, s1, s2) ->
-    fprintf ppf "@[<v 2>if %a@ %aelse@ %a@]"
+    fprintf ppf "@[<v 2>if (%a)@ %aelse@ %a@]"
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
@@ -164,6 +164,10 @@ and pp_stmt' ppf = function
       pp_exp exp
   | PostconditionS(exp) ->
     fprintf ppf "@[<v 2>/*ensures %a*/@]"
+      pp_exp exp
+  | ConcurrencyS(max, exp, _) ->
+    fprintf ppf "@[<v 2>/*concurrency max %s, cond: s %a*/@]"
+      max
       pp_exp exp
 
 and pp_fldacc ppf fldacc =
