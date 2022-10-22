@@ -3,8 +3,11 @@ field $message_async_4: Int
  field $message_async: Int
  define $Perm($Self) (((((true && acc(($Self).flag,write)) && acc(($Self).$message_async_4,write)) && 
    acc(($Self).$message_async_2,write)) && acc(($Self).$message_async,write)))
- define $Inv($Self) ((((true && (false ==> (!($Self).flag))) && (false ==> 
-   ($Self).flag)) && (false ==> ($Self).flag)))
+ define $Inv($Self) ((((true && (((0 <= ($Self).$message_async) && (($Self).$message_async <= 1)) && ((
+   ($Self).$message_async == 1) ==> (!($Self).flag)))) && (((0 <= ($Self).$message_async_2) && (
+   ($Self).$message_async_2 <= 1)) && ((($Self).$message_async_2 == 1) ==> 
+   ($Self).flag))) && (((0 <= ($Self).$message_async_4) && (($Self).$message_async_4 <= 1)) && ((
+   ($Self).$message_async_4 == 1) ==> ($Self).flag))))
  method __init__($Self: Ref)
      
      requires $Perm($Self)

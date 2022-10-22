@@ -350,7 +350,11 @@ and stmt ctxt (s : M.exp) : seqn =
        | ConcurrencyS (name, "1", cond) :: _ ->
          (* HACK: cond is in ctxt but being used in "$Inv" macro *)
          let (!!) p = !!! (cond.at) p in
-         fun x -> !!(AndE (x, !!(Implies (!!(BoolLitE false), cond))))
+         let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
+         let ghost_fld = !!(FldAcc ((* HACK *)self ctxt Source.no_region, id)) in
+         let between = !!(AndE (!!(LeCmpE (zero, ghost_fld)), !!(LeCmpE (ghost_fld, one)))) in
+         let is_one = !!(EqCmpE (ghost_fld, one)) in
+         fun x -> !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond))))))
        | _ -> unsupported e.at (Mo_def.Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
      let (!!) p = !!! at p in

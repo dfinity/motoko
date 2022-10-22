@@ -1,7 +1,9 @@
 field $message_async: Int
  define $Perm($Self) ((((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
    acc(($Self).$message_async,write)))
- define $Inv($Self) ((invariant_7($Self) && invariant_8($Self)))
+ define $Inv($Self) (((invariant_7($Self) && invariant_8($Self)) && (((0 <= 
+   ($Self).$message_async) && (($Self).$message_async <= 1)) && ((($Self).$message_async == 1) ==> (
+   ($Self).claimed && (($Self).count == 0))))))
  method __init__($Self: Ref)
      
      requires $Perm($Self)
