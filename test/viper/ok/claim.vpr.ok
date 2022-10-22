@@ -25,7 +25,7 @@ field $message_async: Int
      ensures $Perm($Self)
      ensures $Inv($Self)
      { 
-       if (!($Self).claimed)
+       if ((!($Self).claimed))
           { 
             ($Self).claimed := true
             ($Self).$message_async := (($Self).$message_async + 1)

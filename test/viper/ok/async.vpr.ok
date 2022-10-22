@@ -42,7 +42,7 @@ field $message_async_4: Int
           exhale ($Perm($Self) && $Inv($Self)) 
         }
        inhale ($Perm($Self) && $Inv($Self))
-       if ($Self).flag
+       if (($Self).flag)
           { 
             ($Self).$message_async_4 := (($Self).$message_async_4 + 1)
             exhale ($Perm($Self) && $Inv($Self))

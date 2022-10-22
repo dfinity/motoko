@@ -18,7 +18,7 @@ define $Perm($Self) (((true && acc(($Self).claimed,write)) && acc(($Self).count,
      ensures $Perm($Self)
      ensures $Inv($Self)
      { 
-       if (!($Self).claimed)
+       if ((!($Self).claimed))
           { 
             ($Self).claimed := true
             ($Self).count := (($Self).count + 1) 
