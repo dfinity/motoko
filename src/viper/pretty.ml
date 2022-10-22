@@ -170,9 +170,8 @@ and pp_stmt' ppf = function
   | PostconditionS(exp) ->
     fprintf ppf "@[<v 2>/*ensures %a*/@]"
       pp_exp exp
-  | ConcurrencyS(name, max, exp, _) ->
-    fprintf ppf "@[<v 2>/*concurrency name: %s, max %s, cond: s %a*/@]"
-      name
+  | ConcurrencyS(max, exp, _) ->
+    fprintf ppf "@[<v 2>/*concurrency max %s, cond: s %a*/@]"
       max
       pp_exp exp
 

@@ -343,7 +343,7 @@ and stmt ctxt (s : M.exp) : seqn =
      let mk_c = match conc with
        | [] ->
          fun _ x -> x
-       | ConcurrencyS (name, "1", _, cond) :: _ ->
+       | ConcurrencyS ("1", _, cond) :: _ ->
          let (!!) p = !!! (cond.at) p in
          let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
          fun ctxt x ->
@@ -421,7 +421,7 @@ and stmt ctxt (s : M.exp) : seqn =
       note = NoInfo }
   | M.AssertE (Concurrency n, e) ->
     { it = [],
-           [ { it = ConcurrencyS (Printf.sprintf "async_%d" s.at.left.line, n, exp ctxt e, { it = (fun res -> res e); at = s.at; note = NoInfo })
+           [ { it = ConcurrencyS (n, exp ctxt e, { it = (|>) e; at = s.at; note = NoInfo })
              ; at = s.at
              ; note = NoInfo } ];
       at = s.at;
