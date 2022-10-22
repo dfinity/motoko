@@ -4,7 +4,7 @@ actor {
 
     public shared func claim() : async () {
             flag := true;
-                flag := false;
+            flag := false;
         await async {
             assert:1:async not flag;
             flag := true;
@@ -15,13 +15,13 @@ actor {
             await async {
                 assert:1:async flag;
                 flag := false
-            };
+            }
         } else {
             await async {
                 assert:1:async flag;
                 flag := false
-            };
+            }
         }
-    };
+    }
 
 }

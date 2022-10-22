@@ -32,6 +32,10 @@ let conjoin es at =
         e0
         es0
 
+let rec wrap e = function
+  | [] -> e
+  | f :: fs -> f (wrap e fs)
+
 let fresh_stamp name =
   let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
   stamps := Stamps.add name (n + 1) !stamps;
@@ -58,6 +62,7 @@ type ctxt =
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> stmt) list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
+    ghost_conc : (exp -> exp) list ref;
     (*    invariants : (ctxt -> exp) list ref; *)
   }
 
@@ -112,7 +117,7 @@ and unit' (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; ghost_perms = ref [] } in
+    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; ghost_perms = ref []; ghost_conc = ref [] } in
     let ctxt', inits, mk_is = dec_fields ctxt decs in
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
     (* given is', compute ghost_is *)
@@ -179,7 +184,7 @@ and unit' (u : M.comp_unit) : prog =
         }
       | _ -> {it; at; note}) is''' in
     let perm_def = !!! (body.at) (InvariantI("$Perm", perm body.at)) in
-    let inv_def = !!! (body.at) (InvariantI("$Inv", conjoin invs body.at)) in
+    let inv_def = !!! (body.at) (InvariantI("$Inv", wrap (conjoin invs body.at) !(ctxt.ghost_conc))) in
     let is = ghost_is @ (perm_def :: inv_def :: is4) in
     { it = is;
       at = body.at;
@@ -336,6 +341,18 @@ and stmt ctxt (s : M.exp) : seqn =
        accE at (self ctxt Source.no_region, id)
      in
      ctxt.ghost_perms := mk_p :: !(ctxt.ghost_perms);
+     let stmts = stmt ctxt e in
+     (* assume that each `async {...}` has an assertion *)
+     let conc, _ = extract_concurrency stmts in
+     let mk_c = match conc with
+       | [] ->
+         fun x -> x
+       | ConcurrencyS (name, "1", cond) :: _ ->
+         (* HACK: cond is in ctxt but being used in "$Inv" macro *)
+         let (!!) p = !!! (cond.at) p in
+         fun x -> !!(AndE (x, !!(Implies (!!(BoolLitE false), cond))))
+       | _ -> unsupported e.at (Mo_def.Arrange.exp e) in
+     ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
      let (!!) p = !!! at p in
      !!! (s.at)
          ([],
@@ -356,7 +373,7 @@ and stmt ctxt (s : M.exp) : seqn =
                             (self ctxt Source.no_region, id),
                             (!!(SubE(!!(FldAcc (self ctxt at, id)),
                                      intLitE Source.no_region 1)))));
-                     !!! (e.at) (SeqnS (stmt ctxt e));
+                     !!! (e.at) (SeqnS stmts);
                      !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                          !!(MacroCall("$Inv", self ctxt at)))))) ])));
             !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
