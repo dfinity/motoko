@@ -347,9 +347,9 @@ and stmt ctxt (s : M.exp) : seqn =
          let (!!) p = !!! (cond.at) p in
          let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
          fun ctxt x ->
-           let ghost_fld = !!(FldAcc (self ctxt Source.no_region, id)) in
-           let between = !!(AndE (!!(LeCmpE (zero, ghost_fld)), !!(LeCmpE (ghost_fld, one)))) in
-           let is_one = !!(EqCmpE (ghost_fld, one)) in
+           let ghost_fld () = !!(FldAcc (self ctxt Source.no_region, id)) in
+           let between = !!(AndE (!!(LeCmpE (zero, ghost_fld ())), !!(LeCmpE (ghost_fld (), one)))) in
+           let is_one = !!(EqCmpE (ghost_fld (), one)) in
            !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond.it (exp ctxt)))))))
        | _ -> unsupported e.at (Mo_def.Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
