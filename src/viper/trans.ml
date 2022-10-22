@@ -227,8 +227,8 @@ and dec_field' ctxt d =
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
         let conc, stmts = extract_concurrency stmts in
-        assert List.(length conc = 3);
-        List.iter (fun (ConcurrencyS (name, _, _)) -> Printf.eprintf "ConcurrencyS %s\n" name) conc;
+        (*assert List.(length conc = 3);
+        List.iter (fun (ConcurrencyS (name, _, _)) -> Printf.eprintf "ConcurrencyS %s\n" name) conc;*)
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),

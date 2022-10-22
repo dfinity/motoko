@@ -1,1 +1,39 @@
-claim-broken.mo:1.1-16.2: viper error [1], translation to viper failed
+field $message_async: Int
+ define $Perm($Self) ((((true && acc(($Self).claimed,write)) && acc(($Self).count,write)) && 
+   acc(($Self).$message_async,write)))
+ define $Inv($Self) (true)
+ method __init__($Self: Ref)
+     
+     requires $Perm($Self)
+     ensures $Perm($Self)
+     ensures $Inv($Self)
+     { 
+       ($Self).claimed := false
+       ($Self).count := 0
+       ($Self).$message_async := 0 
+     }
+ field claimed: Bool
+ field count: Int
+ method claim($Self: Ref)
+     
+     requires $Perm($Self)
+     requires $Inv($Self)
+     ensures $Perm($Self)
+     ensures $Inv($Self)
+     { 
+       if (!($Self).claimed)
+          { 
+            ($Self).$message_async := (($Self).$message_async + 1)
+            exhale ($Perm($Self) && $Inv($Self))
+            { 
+               inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
+               ($Self).$message_async := (($Self).$message_async - 1)
+               { 
+                  ($Self).claimed := true
+                  ($Self).count := (($Self).count + 1) 
+                }
+               exhale ($Perm($Self) && $Inv($Self)) 
+             }
+            inhale ($Perm($Self) && $Inv($Self)) 
+          } 
+     }
