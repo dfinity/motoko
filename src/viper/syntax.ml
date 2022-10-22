@@ -75,6 +75,8 @@ and stmt' =
   | IfS of exp * seqn * seqn
   | WhileS of exp * invariants * seqn
   | LabelS of id * invariants
+  (* TODO: these are temporary helper terms  that should not appear in the final translation 
+       we should avoid introducing them in the first place if possible, so they can be removed *)
   | PreconditionS of exp
   | PostconditionS of exp
   | ConcurrencyS of string * exp * tmpl
