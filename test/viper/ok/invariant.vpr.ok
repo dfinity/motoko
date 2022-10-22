@@ -23,5 +23,5 @@ method claim($Self: Ref)
     ensures (($Self).count >= 0)
     ensures $Inv($Self)
     { 
-       
+      assume (($Self).claimed ==> (($Self).count > 0)) 
     }

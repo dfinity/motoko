@@ -442,6 +442,8 @@ and stmt ctxt (s : M.exp) : seqn =
              ; note = NoInfo } ];
       at = s.at;
       note = NoInfo }
+  | M.AssertE (M.Runtime, e) ->
+    !!! (s.at) ([], [!!! (s.at) (AssumeS (exp ctxt e))])
   | _ ->
      unsupported s.at (Arrange.exp s)
 

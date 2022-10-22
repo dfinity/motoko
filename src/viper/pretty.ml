@@ -136,20 +136,20 @@ and pp_stmt ppf stmt =
 
 and pp_stmt' ppf = function
   | SeqnS seqn -> pp_seqn ppf seqn
-  | IfS(exp1, s1, { it = ([],[]); _ }) ->
+  | IfS (exp1, s1, { it = ([],[]); _ }) ->
     fprintf ppf "@[<v 2>if (%a)@ %a@]"
       pp_exp exp1
       pp_seqn s1
-  | IfS(exp1, s1, s2) ->
+  | IfS (exp1, s1, s2) ->
     fprintf ppf "@[<v 2>if (%a)@ %aelse@ %a@]"
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
-  | VarAssignS(id, exp) ->
+  | VarAssignS (id, exp) ->
     fprintf ppf "@[<v 2>%s := %a@]"
       id.it
       pp_exp exp
-  | FieldAssignS(fldacc, exp) ->
+  | FieldAssignS (fldacc, exp) ->
     fprintf ppf "@[<v 2>%a := %a@]"
       pp_fldacc fldacc
       pp_exp exp
@@ -159,13 +159,16 @@ and pp_stmt' ppf = function
   | ExhaleS exp ->
     fprintf ppf "@[<v 2>exhale %a@]"
       pp_exp exp
-  | PreconditionS(exp) ->
+  | AssumeS exp ->
+    fprintf ppf "@[<v 2>assume %a@]"
+      pp_exp exp
+  | PreconditionS exp ->
     fprintf ppf "@[<v 2>/*requires %a*/@]"
       pp_exp exp
-  | PostconditionS(exp) ->
+  | PostconditionS exp ->
     fprintf ppf "@[<v 2>/*ensures %a*/@]"
       pp_exp exp
-  | ConcurrencyS(max, exp, _) ->
+  | ConcurrencyS (max, exp, _) ->
     fprintf ppf "@[<v 2>/*concurrency max %s, cond: s %a*/@]"
       max
       pp_exp exp
