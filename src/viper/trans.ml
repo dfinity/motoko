@@ -32,9 +32,9 @@ let conjoin es at =
         e0
         es0
 
-let rec wrap e = function
+let rec adjoin ctxt e = function
   | [] -> e
-  | f :: fs -> f (wrap e fs)
+  | f :: fs -> f ctxt (adjoin ctxt e fs)
 
 let fresh_stamp name =
   let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
@@ -62,7 +62,7 @@ type ctxt =
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> stmt) list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
-    ghost_conc : (exp -> exp) list ref;
+    ghost_conc : (ctxt -> exp -> exp) list ref;
     (*    invariants : (ctxt -> exp) list ref; *)
   }
 
@@ -183,7 +183,7 @@ and unit' (u : M.comp_unit) : prog =
         }
       | _ -> {it; at; note}) is''' in
     let perm_def = !!! (body.at) (InvariantI("$Perm", perm body.at)) in
-    let inv_def = !!! (body.at) (InvariantI("$Inv", wrap (conjoin invs body.at) !(ctxt.ghost_conc))) in
+    let inv_def = !!! (body.at) (InvariantI("$Inv", adjoin ctxt'' (conjoin invs body.at) !(ctxt.ghost_conc))) in
     let is = ghost_is @ (perm_def :: inv_def :: is4) in
     { it = is;
       at = body.at;
@@ -343,15 +343,16 @@ and stmt ctxt (s : M.exp) : seqn =
      let conc, _ = extract_concurrency stmts in
      let mk_c = match conc with
        | [] ->
-         fun x -> x
+         fun _ x -> x
        | ConcurrencyS (name, "1", cond) :: _ ->
          (* HACK: cond is in ctxt but being used in "$Inv" macro *)
          let (!!) p = !!! (cond.at) p in
          let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
-         let ghost_fld = !!(FldAcc ((* HACK *)self ctxt Source.no_region, id)) in
-         let between = !!(AndE (!!(LeCmpE (zero, ghost_fld)), !!(LeCmpE (ghost_fld, one)))) in
-         let is_one = !!(EqCmpE (ghost_fld, one)) in
-         fun x -> !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond))))))
+         fun ctxt x ->
+           let ghost_fld = !!(FldAcc (self ctxt Source.no_region, id)) in
+           let between = !!(AndE (!!(LeCmpE (zero, ghost_fld)), !!(LeCmpE (ghost_fld, one)))) in
+           let is_one = !!(EqCmpE (ghost_fld, one)) in
+           !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond))))))
        | _ -> unsupported e.at (Mo_def.Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
      let (!!) p = !!! at p in
