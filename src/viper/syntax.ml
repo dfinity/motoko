@@ -59,7 +59,7 @@ and invariants = exp list
 and stmt = (stmt', info) Source.annotated_phrase
 
 and tmpl = (tmpl', info) Source.annotated_phrase
-and tmpl' = { t : 'a. 'a -> ('a -> Mo_def.Syntax.exp -> exp) -> exp }
+and tmpl' = (Mo_def.Syntax.exp -> exp) -> exp
 
 and fldacc = exp * id
 
