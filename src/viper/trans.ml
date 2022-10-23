@@ -279,7 +279,7 @@ and dec ctxt d =
      { ctxt with ids = Env.add x.it Local ctxt.ids },
      fun ctxt' ->
        ([ !!(id x, tr_typ e.note.M.note_typ) ],
-        [  !!(VarAssignS (id x, exp ctxt' e)) ])
+        [ !!(VarAssignS (id x, exp ctxt' e)) ])
   | M.(ExpD e) -> (* TODO: restrict to e of unit type? *)
      (ctxt,
       fun ctxt' ->
