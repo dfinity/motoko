@@ -123,9 +123,9 @@ and unit' (u : M.comp_unit) : prog =
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
     (* given is', compute ghost_is *)
     let ghost_is = List.map (fun mk_i -> mk_i ctxt') !(ctxt.ghost_items) in
-    let init_id = id_at "__init__" Source.no_region in
-    let self_id = id_at "$Self" Source.no_region in
-    let self_typ = { it = RefT; at = self_id.at; note = NoInfo } in
+    let init_id = !!! (Source.no_region) "__init__" in
+    let self_id = !!! (Source.no_region) "$Self" in
+    let self_typ = !!! (self_id.at) RefT in
     let ctxt'' = { ctxt' with self = Some self_id.it } in
     let perms = List.map (fun (id, _) -> fun (at : region) ->
        (accE at (self ctxt'' at, id))) inits in
@@ -219,7 +219,7 @@ and dec_field' ctxt d =
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
-        (MethodI(id f, (self_id, {it = RefT; at = Source.no_region; note = NoInfo})::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
+        (MethodI(id f, (self_id, !!! Source.no_region RefT)::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
         NoInfo)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
@@ -299,21 +299,21 @@ and stmt ctxt (s : M.exp) : seqn =
     !!([],
        [ !!(IfS(exp ctxt e, stmt ctxt s1, stmt ctxt s2))])
   | M.(AwaitE({ it = AsyncE (_, e); at;_ })) -> (* gross hack *)
-     let id' = fresh_id "$message_async" in
-     let id = { it = id'; at = Source.no_region; note = NoInfo } in
+     let id = fresh_id "$message_async" in
+     let (!!) p = !!! (s.at) p in
      ctxt.ghost_items :=
        (fun ctxt ->
-         !!! at (FieldI (id, !!! at IntT))) ::
+         !!(FieldI (!!id, !!IntT))) ::
        !(ctxt.ghost_items);
      let mk_s = fun ctxt ->
        !!! at
          (FieldAssignS (
-            (self ctxt Source.no_region, id),
-            intLitE (Source.no_region) 0))
+            (self  ctxt s.at, !!id),
+            intLitE (s.at) 0))
      in
      ctxt.ghost_inits := mk_s :: !(ctxt.ghost_inits);
      let mk_p = fun ctxt at ->
-       accE at (self ctxt Source.no_region, id)
+       accE at (self ctxt at, !!! at id)
      in
      ctxt.ghost_perms := mk_p :: !(ctxt.ghost_perms);
      let stmts = stmt ctxt e in
@@ -326,32 +326,31 @@ and stmt ctxt (s : M.exp) : seqn =
          let (!!) p = !!! (cond.at) p in
          let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
          fun ctxt x ->
-           let ghost_fld () = !!(FldAcc (self ctxt Source.no_region, id)) in
+           let ghost_fld () = !!(FldAcc (self ctxt cond.at, !!id)) in
            let between = !!(AndE (!!(LeCmpE (zero, ghost_fld ())), !!(LeCmpE (ghost_fld (), one)))) in
            let is_one = !!(EqCmpE (ghost_fld (), one)) in
            !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond.it (exp ctxt)))))))
        | _ -> unsupported e.at (Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
-     let (!!) p = !!! at p in
-     !!! (s.at)
-         ([],
+     !!  ([],
           [ !!(FieldAssignS(
-              (self ctxt Source.no_region, id),
-              (!!(AddE(!!(FldAcc (self ctxt Source.no_region, id)),
+              (self ctxt Source.no_region, !!id),
+              (!!(AddE(!!(FldAcc (self ctxt (s.at), !!id)),
                        intLitE Source.no_region 1)))));
             !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                 !!(MacroCall("$Inv", self ctxt at))))));
             !!(SeqnS (
+                let (!!) p = !!! at p in
                 !!([],
                    [
                      !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                     !!(AndE(!!(MacroCall("$Inv", self ctxt at)),
-                                            !!(GtCmpE(!!(FldAcc (self ctxt Source.no_region, id)),
+                                            !!(GtCmpE(!!(FldAcc (self ctxt at, !!id)),
                                                  intLitE Source.no_region 0))))))));
                      !!(FieldAssignS(
-                            (self ctxt Source.no_region, id),
-                            (!!(SubE(!!(FldAcc (self ctxt at, id)),
-                                     intLitE Source.no_region 1)))));
+                            (self ctxt at, !!id),
+                            (!!(SubE(!!(FldAcc (self ctxt at, !!id)),
+                                     intLitE at 1)))));
                      !!! (e.at) (SeqnS stmts);
                      !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                          !!(MacroCall("$Inv", self ctxt at)))))) ])));
@@ -364,7 +363,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.(AssignE({it = VarE x; _}, e2)) ->
      begin match Env.find x.it ctxt.ids with
      | Local ->
-       let loc = { it = x.it; at = x.at; note = NoInfo } in
+       let loc = !!! (x.at) (x.it) in
        !!([],
           [ !!(VarAssignS(loc, exp ctxt e2)) ])
      | Field ->
