@@ -31,7 +31,7 @@ jobs:
       with:
         author_name: Nix hash updater
         author_email: "<nobody@example.com>"
-        token: ${{ secrets.NIV_UPDATER_TOKEN }}
+        github_token: ${{ secrets.NIV_UPDATER_TOKEN }}
         message: "Updating nix hashes"
         # do not pull: if this branch is behind, then we might as well let
         # the pushing fail
