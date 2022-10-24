@@ -381,7 +381,10 @@ and stmt ctxt (s : M.exp) : seqn =
        [ !!(PostconditionS (exp ctxt e)) ])
   | M.AssertE (M.Concurrency n, e) ->
     !!([],
-       [ !!(ConcurrencyS (n, exp ctxt e, !! ((|>) e))) ]);
+       [ !!(ConcurrencyS (n, exp ctxt e, !! ((|>) e))) ])
+  | M.AssertE (M.Runtime, e) ->
+    !!([],
+       [ !!(AssumeS (exp ctxt e)) ])
   | _ ->
      unsupported s.at (Arrange.exp s)
 

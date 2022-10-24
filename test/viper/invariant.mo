@@ -12,6 +12,7 @@ actor {
 
   public shared func claim() : async () {
       assert:func count >= 0;
+      assert claimed implies count > 0;
       assert:return count >= 0;
   };
 
