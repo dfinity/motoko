@@ -786,7 +786,7 @@ rec {
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
           nixpkgs.difftastic
-          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq nixpkgs.vscodium # for viper dev
+          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
         ]
       ));
 
