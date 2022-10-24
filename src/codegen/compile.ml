@@ -6767,7 +6767,7 @@ let potential_pointer typ : bool =
     match normalize typ with
     | Mut t -> (can_be_pointer t nested_optional)
     | Opt t -> (if nested_optional then true else (can_be_pointer t true))
-    | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non -> false
+    | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Tup [] | Non -> false
     | _ -> true in
   can_be_pointer typ false
   
@@ -6796,8 +6796,9 @@ module Var = struct
       (if not (potential_pointer typ)
         then
           compile_add_const ptr_unskew ^^
+          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
           E.call_import env "rts" "check_barrier" ^^
-           G.i (LocalGet (nr i))
+          G.i (LocalGet (nr i))
          else G.nop
         ),
       SR.Vanilla,
@@ -6813,9 +6814,11 @@ module Var = struct
       compile_unboxed_const ptr ^^
       (if not (potential_pointer typ)
         then
-          compile_add_const ptr_unskew ^^ 
+          compile_unboxed_const ptr ^^
+          compile_add_const ptr_unskew ^^
+          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
           E.call_import env "rts" "check_barrier" ^^
-           compile_unboxed_const ptr
+          compile_unboxed_const ptr
          else G.nop
         ),
       SR.Vanilla,
