@@ -13,6 +13,8 @@ result*
 
 /samples/**/*.txt
 
+**/*.mo.vpr
+
 enable-internals
 
 # Editor configuration
