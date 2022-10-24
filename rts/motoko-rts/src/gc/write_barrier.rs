@@ -35,7 +35,7 @@ pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, _object: Value) {
 #[no_mangle]
 pub unsafe fn check_barrier(location: u32) {
     let value = *(location as *mut Value);
-    println!(100, "Check barrier {:#x} {:#x}", location, value.get_raw());
+    //println!(100, "Check barrier {:#x} {:#x}", location, value.get_raw());
     // if !value.is_scalar() {
     //     println!(100, "POINTER!");
     //     let object = crate::types::unskew(value.get_raw() as usize) as *mut Value;
