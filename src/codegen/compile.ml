@@ -6792,7 +6792,13 @@ module Var = struct
         E.call_import env "rts" "write_barrier"
        else G.nop
       ) ^^
-      G.i (LocalGet (nr i)),
+      G.i (LocalGet (nr i)) ^^
+      (if not (potential_pointer typ)
+        then
+           E.call_import env "rts" "check_barrier" ^^
+           G.i (LocalGet (nr i))
+         else G.nop
+        ),
       SR.Vanilla,
       Heap.store_field MutBox.field
 
@@ -6803,7 +6809,13 @@ module Var = struct
         E.call_import env "rts" "write_barrier"
        else G.nop
       ) ^^
-      compile_unboxed_const ptr,
+      compile_unboxed_const ptr ^^
+      (if not (potential_pointer typ)
+        then
+           E.call_import env "rts" "check_barrier" ^^
+           compile_unboxed_const ptr
+         else G.nop
+        ),
       SR.Vanilla,
       Heap.store_field MutBox.field
 

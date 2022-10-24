@@ -5,8 +5,6 @@ pub mod remembered_set;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
 
-use core::ptr::null_mut;
-
 use crate::{memory::Memory, types::Value};
 
 use motoko_rts_macros::ic_mem_fn;
@@ -41,7 +39,7 @@ pub unsafe fn check_barrier(location: u32) {
     // if !value.is_scalar() {
     //     println!(100, "POINTER!");
     //     let object = crate::types::unskew(value.get_raw() as usize) as *mut Value;
-    //     if object != null_mut() {
+    //     if object != core::ptr::null_mut() {
     //         println!(100, "OBJECT TAG {}", (*(object as *mut crate::types::Obj)).tag);
     //     }
     // }
