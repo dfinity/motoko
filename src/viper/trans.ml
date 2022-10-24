@@ -212,7 +212,7 @@ and dec_field' ctxt d =
       None,
       fun ctxt' ->
         let open Either in
-        let self_id = id_at "$Self" Source.no_region in
+        let self_id = !!! (Source.no_region) "$Self" in
         let ctxt'' = { ctxt' with self = Some self_id.it }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
@@ -508,8 +508,6 @@ and rets t_opt =
      | T.Async (_, _) -> []
      | _ -> unsupported t.at (Arrange.typ t)
     )
-
-and id_at id at = { it = id; at = at; note = NoInfo }
 
 and id id = { it = id.it; at = id.at; note = NoInfo }
 
