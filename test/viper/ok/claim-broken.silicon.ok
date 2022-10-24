@@ -1,1 +1,1 @@
-Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (claim-broken.vpr@4.1)
+  [0] Exhale might fail. Assertion $Self.$message_async == 1 ==> $Self.claimed && $Self.count == 0 might not hold. (claim-broken.vpr@31.20--31.47)
