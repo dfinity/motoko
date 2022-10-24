@@ -6795,7 +6795,8 @@ module Var = struct
       G.i (LocalGet (nr i)) ^^
       (if not (potential_pointer typ)
         then
-           E.call_import env "rts" "check_barrier" ^^
+          compile_add_const ptr_unskew ^^
+          E.call_import env "rts" "check_barrier" ^^
            G.i (LocalGet (nr i))
          else G.nop
         ),
@@ -6812,7 +6813,8 @@ module Var = struct
       compile_unboxed_const ptr ^^
       (if not (potential_pointer typ)
         then
-           E.call_import env "rts" "check_barrier" ^^
+          compile_add_const ptr_unskew ^^ 
+          E.call_import env "rts" "check_barrier" ^^
            compile_unboxed_const ptr
          else G.nop
         ),
