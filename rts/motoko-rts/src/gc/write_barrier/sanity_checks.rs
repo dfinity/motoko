@@ -96,7 +96,9 @@ unsafe fn verify_heap(heap_base: usize, heap_free: usize) {
             current.tag(),
             0,
             |_, current_field| {
-                verify_field(current, current_field);
+                if is_ptr(*current_field) {
+                    verify_field(current, current_field);
+                }
             },
             |_, slice_start, arr| {
                 assert!(slice_start == 0);
@@ -105,6 +107,11 @@ unsafe fn verify_heap(heap_base: usize, heap_free: usize) {
         );
         pointer += object_size(current as usize).to_bytes().as_usize();
     }
+}
+
+unsafe fn is_ptr(value: Value) -> bool {
+    const TRUE_VALUE: u32 = 1;
+    value.is_ptr() && value.get_raw() != TRUE_VALUE
 }
 
 unsafe fn verify_field(current_object: *mut Obj, current_field: *mut Value) {
