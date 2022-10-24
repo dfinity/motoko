@@ -935,6 +935,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "init_write_barrier" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "check_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -6756,9 +6757,9 @@ let unmodified : scope_wrap = fun code -> code
 
 let potential_pointer typ : bool = 
   let open Type in
-  match typ with
-  | Prim (Bool | Nat8 | Nat16 | Int8 | Int16) | Non -> false
-  | _ -> true
+  match normalize typ with
+  | Mut (Prim (Bool | Nat8 | Nat16 | Int8 | Int16)) | Non -> false
+  | _ -> (Printf.printf "TYPE %s \n" (string_of_typ typ)); true
   
 module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
@@ -8200,6 +8201,7 @@ let rec compile_lexp (env : E.t) ae lexp =
   | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
     let (set_array, get_array) = new_local env "array" in
+    let (set_location, get_location) = new_local env "location" in
    ( 
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      (if !Flags.write_barrier && (potential_pointer (Arr.element_type env e1.note.Note.typ))
@@ -8212,7 +8214,16 @@ let rec compile_lexp (env : E.t) ae lexp =
         G.nop
      ) ^^
      compile_exp_vanilla env ae e2 ^^ (* idx *)
-     Arr.idx_bigint env,
+     Arr.idx_bigint env ^^
+     (if not (potential_pointer (Arr.element_type env e1.note.Note.typ))
+     then
+        set_location ^^
+        get_location ^^
+        compile_add_const ptr_unskew ^^
+        E.call_import env "rts" "check_barrier" ^^
+        get_location
+      else G.nop
+     ),
      SR.Vanilla,
      store_ptr
    )
@@ -8242,6 +8253,13 @@ let rec compile_lexp (env : E.t) ae lexp =
         get_field
       else
         G.nop
+     ) ^^
+     (if not (potential_pointer (Object.field_type env e.note.Note.typ n))
+     then
+        compile_add_const ptr_unskew ^^
+        E.call_import env "rts" "check_barrier" ^^
+        get_field
+      else G.nop
      ),
      SR.Vanilla,
      store_ptr
