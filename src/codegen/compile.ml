@@ -6756,8 +6756,8 @@ let unmodified : scope_wrap = fun code -> code
 
 let potential_pointer typ : bool = 
   let open Type in
-  match typ with
-  | Prim (Bool | Nat8 | Nat16 | Int8 | Int16) | Non -> false
+  match normalize typ with
+  | Mut (Prim (Bool | Nat8 | Nat16 | Int8 | Int16)) | Prim (Bool | Nat8 | Nat16 | Int8 | Int16) | Non -> false
   | _ -> true
   
 module Var = struct
