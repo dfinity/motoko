@@ -21,10 +21,9 @@ pub unsafe fn init_write_barrier<M: Memory>(_mem: &mut M) {
 /// The barrier is conservatively called even if the stored value might not be a pointer.
 #[ic_mem_fn]
 pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, _object: Value) {
-    debug_assert!(_object.is_ptr());
-    #[cfg(debug_assertions)]
+    assert!(_object.is_ptr());
     if (_object.get_ptr() as *mut Value) != core::ptr::null_mut() {
-        debug_assert!(
+        assert!(
             _object.tag() >= crate::types::TAG_OBJECT && _object.tag() <= crate::types::TAG_NULL
         );
     }
@@ -35,13 +34,13 @@ pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, _object: Value) {
 #[no_mangle]
 pub unsafe fn check_barrier(location: u32) {
     let value = *(location as *mut Value);
-    //println!(100, "Check barrier {:#x} {:#x}", location, value.get_raw());
-    // if !value.is_scalar() {
-    //     println!(100, "POINTER!");
-    //     let object = crate::types::unskew(value.get_raw() as usize) as *mut Value;
-    //     if object != core::ptr::null_mut() {
-    //         println!(100, "OBJECT TAG {}", (*(object as *mut crate::types::Obj)).tag);
-    //     }
-    // }
+    if !value.is_scalar() {
+        println!(100, "Check barrier {:#x} {:#x}", location, value.get_raw());
+        println!(100, "POINTER!");
+        let object = crate::types::unskew(value.get_raw() as usize) as *mut Value;
+        if object != core::ptr::null_mut() {
+            println!(100, "OBJECT TAG {}", (*(object as *mut crate::types::Obj)).tag);
+        }
+    }
     assert!(value.is_scalar());
 }
