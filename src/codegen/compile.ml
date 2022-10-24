@@ -6767,7 +6767,7 @@ let potential_pointer typ : bool =
     match normalize typ with
     | Mut t -> (can_be_pointer t nested_optional)
     | Opt t -> (if nested_optional then true else (can_be_pointer t true))
-    | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
+    | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non -> false
     | _ -> true in
   can_be_pointer typ false
   
