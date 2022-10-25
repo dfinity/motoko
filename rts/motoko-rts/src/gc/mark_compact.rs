@@ -136,6 +136,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
+    debug_assert!((*(obj as *mut Obj)).forward.get_ptr() as u32 == obj);
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);

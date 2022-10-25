@@ -946,6 +946,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "follow_forwarding_pointer" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -1357,14 +1358,19 @@ module Tagged = struct
     let (set_object_ptr, get_object_ptr) = new_local env "object_ptr" in
     set_object_ptr ^^
     get_object_ptr ^^ (* object pointer *)
-    get_object_ptr ^^ 
-    compile_unboxed_const (ptr_skew) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ (* forwarding pointer *)
+    get_object_ptr ^^ (* forwarding pointer *)
     Heap.store_field forwarding_pointer_field
 
-  let load_tag =
-    Heap.load_field tag_field
+  let load_forwarding_pointer env activate =
+    (* Heap.load_field forwarding_pointer_field *)
+    if activate then
+    E.call_import env "rts" "follow_forwarding_pointer"
+    else G.nop
 
+  let load_tag env =
+    load_forwarding_pointer env false ^^ (* TODO! CHECK *)
+    Heap.load_field tag_field
+    
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
   let branch_default env retty def (cases : (tag * G.t) list) : G.t =
@@ -1377,7 +1383,7 @@ module Tagged = struct
         compile_eq_const (int_of_tag tag) ^^
         E.if_ env retty code (go cases)
     in
-    load_tag ^^
+    load_tag env ^^
     set_tag ^^
     go cases
 
@@ -1470,7 +1476,7 @@ module Tagged = struct
     let payload_bytes = StaticBytes.as_bytes payload in
     let key = tag_word ^ payload_bytes in
     match E.object_pool_find env key with
-    | Some ptr -> ptr
+    | Some ptr -> ptr (* no forwarding pointer dereferencing needed as static objects do not move *)
     | None ->
       let ptr = new_static_obj env tag payload in
       E.object_pool_add env key ptr;
@@ -1501,6 +1507,16 @@ module MutBox = struct
     E.add_static_root env ptr;
     ptr
     
+  let load_field env =
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field field
+
+  let store_field env =
+    let (set_mutbox_value, get_mutbox_value) = new_local env "mutbox_value" in
+    set_mutbox_value ^^
+    Tagged.load_forwarding_pointer env true ^^
+    get_mutbox_value ^^
+    Heap.store_field field
 end
 
 
@@ -1544,7 +1560,8 @@ module Opt = struct
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
-  let is_some env =
+  let is_some env use_forwarding =
+    Tagged.load_forwarding_pointer env use_forwarding ^^
     null_lit env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
@@ -1568,9 +1585,14 @@ module Opt = struct
     )
 
   (* This function is used where conceptually, Opt.inject should be used, but
-  we know for sure that it wouldn’t do anything anyways *)
-  let inject_noop _env e = e
+  we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
+  let inject_direct env e = 
+    Tagged.load_forwarding_pointer env false ^^ (* TODO! CHECK *)
+    e
 
+  let load_some_payload_field env =
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field some_payload_field
 
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
@@ -1579,7 +1601,7 @@ module Opt = struct
         ( get_x ^^ Tagged.branch_default env [I32Type]
           ( get_x ) (* default, no wrapping *)
           [ Tagged.Some,
-            get_x ^^ Heap.load_field some_payload_field
+            get_x ^^ load_some_payload_field env
           ; Tagged.Null,
             E.trap_with env "Internal error: opt_project: null!"
           ]
@@ -1609,12 +1631,17 @@ module Variant = struct
   let inject env l e =
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
-  let get_variant_tag = Heap.load_field variant_tag_field
-  let project = Heap.load_field payload_field
+  let get_variant_tag env = 
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field variant_tag_field
+
+  let project env = 
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field payload_field
 
   (* Test if the top of the stack points to a variant with this label *)
   let test_is env l =
-    get_variant_tag ^^
+    get_variant_tag env ^^
     compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
@@ -1638,8 +1665,16 @@ module Closure = struct
   let funptr_field = Tagged.header_size
   let len_field = Int32.add 1l Tagged.header_size
 
-  let load_data i = Heap.load_field (Int32.add header_size i)
-  let store_data i = Heap.store_field (Int32.add header_size i)
+  let load_data env i = 
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field (Int32.add header_size i)
+
+  let store_data env i = 
+    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
+    set_closure_data ^^
+    Tagged.load_forwarding_pointer env true ^^
+    get_closure_data ^^
+    Heap.store_field (Int32.add header_size i)
 
   (* Expect on the stack
      * the function closure
@@ -1653,6 +1688,7 @@ module Closure = struct
       I32Type :: Lib.List.make n_args I32Type,
       FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
     (* get the table index *)
+    Tagged.load_forwarding_pointer env true ^^
     Heap.load_field funptr_field ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
@@ -1712,7 +1748,7 @@ module BoxedWord64 = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         ( get_n ^^ BitTagged.untag env)
-        ( get_n ^^ Heap.load_field64 payload_field)
+        ( get_n ^^ Tagged.load_forwarding_pointer env true ^^ Heap.load_field64 payload_field)
     )
 end (* BoxedWord64 *)
 
@@ -1835,7 +1871,7 @@ module BoxedSmallWord = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         (get_n ^^ BitTagged.untag_i32)
-        (get_n ^^ Heap.load_field payload_field)
+        (get_n ^^ Tagged.load_forwarding_pointer env true ^^ Heap.load_field payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2066,7 +2102,7 @@ module Float = struct
     get_i
     )
 
-  let unbox env = Heap.load_field_float64 payload_field
+  let unbox env = Tagged.load_forwarding_pointer env true ^^ Heap.load_field_float64 payload_field
 
 end (* Float *)
 
@@ -3112,12 +3148,14 @@ module Object = struct
     get_ri
 
 
-  (* Returns a pointer to the object field (without following the indirection) *)
+  (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       let set_x = G.setter_for get_x in
       let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
+
+      get_x ^^ Tagged.load_forwarding_pointer env true ^^ set_x ^^
 
       get_x ^^ Heap.load_field hash_ptr_field ^^
 
@@ -3125,7 +3163,7 @@ module Object = struct
       (* unskew h_ptr and advance both to low bound *)
       compile_add_const Int32.(add ptr_unskew (mul Heap.word_size (of_int low_bound))) ^^
       set_h_ptr ^^
-      get_x ^^
+      get_x ^^ 
       compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
       set_x ^^
       G.loop0 (
@@ -3148,7 +3186,8 @@ module Object = struct
       Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env low_bound ^^
-      load_ptr ^^ compile_add_const (Int32.mul MutBox.field Heap.word_size)
+      load_ptr ^^ Tagged.load_forwarding_pointer env true ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
     else idx_hash_raw env low_bound
 
@@ -3210,7 +3249,9 @@ module Blob = struct
   let header_size = Int32.add Tagged.header_size 1l
   let len_field = Int32.add Tagged.header_size 0l
 
-  let len env = Heap.load_field len_field
+  let len env = 
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field len_field
 
   let vanilla_lit env s =
     Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
@@ -3227,11 +3268,14 @@ module Blob = struct
   let alloc env = E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
-  let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
+  
+  let payload_ptr_unskewed env = 
+    Tagged.load_forwarding_pointer env true ^^
+    compile_add_const unskewed_payload_offset
 
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
-      get_x ^^ payload_ptr_unskewed ^^
+      get_x ^^ payload_ptr_unskewed env ^^
       get_x ^^ len env
     )
 
@@ -3239,7 +3283,7 @@ module Blob = struct
     fun env get_ptr get_size ->
       let (set_x, get_x) = new_local env "x" in
       get_size ^^ alloc env ^^ set_x ^^
-      get_x ^^ payload_ptr_unskewed ^^
+      get_x ^^ payload_ptr_unskewed env ^^
       get_ptr ^^
       get_size ^^
       Heap.memcpy env ^^
@@ -3252,7 +3296,7 @@ module Blob = struct
     get_size_fun env ^^ set_len ^^
 
     get_len ^^ alloc env ^^ set_blob ^^
-    get_blob ^^ payload_ptr_unskewed ^^
+    get_blob ^^ payload_ptr_unskewed env ^^
     offset_fun env ^^
     get_len ^^
     copy_fun env ^^
@@ -3270,6 +3314,11 @@ module Blob = struct
         | EqOp -> "Blob.compare_eq"
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
+      let set_x = G.setter_for get_x in
+      let set_y = G.setter_for get_y in
+      get_x ^^ Tagged.load_forwarding_pointer env true ^^ set_x ^^
+      get_y ^^ Tagged.load_forwarding_pointer env true ^^ set_y ^^
+
       match op with
         (* Some operators can be reduced to the negation of other operators *)
         | LtOp ->  get_x ^^ get_y ^^ compare env GeOp ^^ Bool.neg
@@ -3305,7 +3354,7 @@ module Blob = struct
         get_len ^^
         from_0_to_n env (fun get_i ->
           get_x ^^
-          payload_ptr_unskewed ^^
+          payload_ptr_unskewed env ^^
           get_i ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3313,7 +3362,7 @@ module Blob = struct
 
 
           get_y ^^
-          payload_ptr_unskewed ^^
+          payload_ptr_unskewed env ^^
           get_i ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3348,7 +3397,7 @@ module Blob = struct
     E.call_import env "rts" "blob_iter_next" ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
-  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
+  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed env
 
   (* TODO: rewrite using MemoryFill *)
   let clear env =
@@ -3412,7 +3461,7 @@ module Text = struct
     set_blob ^^
     get_blob ^^ Blob.as_ptr_len env ^^
     E.call_import env "rts" "utf8_valid" ^^
-    G.if1 I32Type (Opt.inject_noop env get_blob) (Opt.null_lit env)
+    G.if1 I32Type (Opt.inject_direct env get_blob) (Opt.null_lit env)
 
 
   let iter env =
@@ -3433,6 +3482,11 @@ module Text = struct
         | EqOp -> "Text.compare_eq"
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
+      let set_x = G.setter_for get_x in
+      let set_y = G.setter_for get_y in
+      get_x ^^ Tagged.load_forwarding_pointer env true ^^ set_x ^^
+      get_y ^^ Tagged.load_forwarding_pointer env true ^^ set_y ^^
+
       get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0l ^^
       match op with
@@ -3463,8 +3517,14 @@ module Arr = struct
   let element_size = 4l
   let len_field = Int32.add Tagged.header_size 0l
 
+  let len env = 
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field len_field
+
   (* Static array access. No checking *)
-  let load_field n = Heap.load_field Int32.(add n header_size)
+  let load_field env n = 
+    Tagged.load_forwarding_pointer env false ^^ (* TODO! CHECK *)
+    Heap.load_field Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
@@ -3473,7 +3533,7 @@ module Arr = struct
       (* No need to check the lower bound, we interpret idx as unsigned *)
       (* Check the upper bound *)
       get_idx ^^
-      get_array ^^ Heap.load_field len_field ^^
+      get_array ^^ len env ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       E.else_trap_with env "Array index out of bounds" ^^
 
@@ -3481,13 +3541,14 @@ module Arr = struct
       compile_add_const header_size ^^
       compile_mul_const element_size ^^
       get_array ^^
+      Tagged.load_forwarding_pointer env true ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
     Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      get_array ^^
+      get_array ^^ Tagged.load_forwarding_pointer env true ^^
       get_idx ^^
       Blob.lit env "Array index out of bounds" ^^
       BigNum.to_word32_with env ^^
@@ -3578,7 +3639,7 @@ module Arr = struct
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ get_i ^^ idx env ^^
-        get_blob ^^ Blob.payload_ptr_unskewed ^^
+        get_blob ^^ Blob.payload_ptr_unskewed env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
         TaggedSmallWord.msb_adjust Type.Nat8 ^^
@@ -3593,12 +3654,12 @@ module Arr = struct
       let (set_len, get_len) = new_local env "len" in
       let (set_r, get_r) = new_local env "r" in
 
-      get_a ^^ Heap.load_field len_field ^^ set_len ^^
+      get_a ^^ len env ^^ set_len ^^
 
       get_len ^^ Blob.alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
-        get_r ^^ Blob.payload_ptr_unskewed ^^
+        get_r ^^ Blob.payload_ptr_unskewed env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         get_a ^^ get_i ^^ idx env ^^
         load_ptr ^^
@@ -3625,7 +3686,9 @@ module Tuple = struct
   let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
-  let load_n n = Heap.load_field (Int32.add Arr.header_size n)
+  let load_n env n = 
+    Tagged.load_forwarding_pointer env true ^^
+    Heap.load_field (Int32.add Arr.header_size n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
@@ -3644,7 +3707,7 @@ module Tuple = struct
       let name = Printf.sprintf "from_%i_tuple" n in
       let retty = Lib.List.make n I32Type in
       Func.share_code1 env name ("tup", I32Type) retty (fun env get_tup ->
-        G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
+        G.table n (fun i -> get_tup ^^ load_n env (Int32.of_int i))
       )
     end
 
@@ -3878,7 +3941,7 @@ module IC = struct
     Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
       let (set_blob, get_blob) = new_local env "blob" in
       get_str ^^ Text.to_blob env ^^ set_blob ^^
-      get_blob ^^ Blob.payload_ptr_unskewed ^^
+      get_blob ^^ Blob.payload_ptr_unskewed env ^^
       get_blob ^^ Blob.len env ^^
       print_ptr_len env
     )
@@ -4203,7 +4266,7 @@ module IC = struct
       system_call env "data_certificate_present" ^^
       G.if1 I32Type
       begin
-        Opt.inject_noop env (
+        Opt.inject_direct env (
           Blob.of_size_copy env
             (fun env -> system_call env "data_certificate_size")
             (fun env -> system_call env "data_certificate_copy")
@@ -4581,7 +4644,7 @@ module StableMem = struct
           get_len ^^
           guard_range env ^^
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_read" ^^
@@ -4600,7 +4663,7 @@ module StableMem = struct
           get_len ^^
           guard_range env ^^
           get_offset ^^
-          get_blob ^^ Blob.payload_ptr_unskewed ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_write")
     | _ -> assert false
@@ -4711,7 +4774,7 @@ module BumpStream : Stream = struct
     get_data_size ^^ compile_add_const header_size ^^
     Blob.dyn_alloc_scratch env ^^ set_data_buf ^^
     get_data_buf ^^
-    Blob.lit env header ^^ Blob.payload_ptr_unskewed ^^
+    Blob.lit env header ^^ Blob.payload_ptr_unskewed env ^^
     compile_unboxed_const header_size ^^
     Heap.memcpy env ^^
     get_data_buf ^^ compile_add_const header_size ^^ set_data_buf
@@ -4760,7 +4823,7 @@ module BumpStream : Stream = struct
     get_x ^^ Blob.len env ^^ set_len ^^
     write_word_leb env get_data_buf get_len ^^
     get_data_buf ^^
-    get_x ^^ Blob.payload_ptr_unskewed ^^
+    get_x ^^ Blob.payload_ptr_unskewed env ^^
     get_len ^^
     Heap.memcpy env ^^
     get_len ^^ advance_data_buf get_data_buf
@@ -5039,7 +5102,7 @@ module MakeSerialization (Strm : Stream) = struct
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -5080,7 +5143,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Tup [] -> G.nop (* e(()) = null *)
       | Tup ts ->
         G.concat_mapi (fun i t ->
-          get_x ^^ Tuple.load_n (Int32.of_int i) ^^
+          get_x ^^ Tuple.load_n env (Int32.of_int i) ^^
           size env t
           ) ts
       | Obj ((Object | Memory), fs) ->
@@ -5091,8 +5154,8 @@ module MakeSerialization (Strm : Stream) = struct
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
-        size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
-        get_x ^^ Heap.load_field Arr.len_field ^^
+        size_word env (get_x ^^ Arr.len env) ^^
+        get_x ^^ Arr.len env ^^
         from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
@@ -5109,7 +5172,7 @@ module MakeSerialization (Strm : Stream) = struct
         inc_data_size get_len
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^ Opt.is_some env ^^
+        get_x ^^ Opt.is_some env true ^^
         G.if0 (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
@@ -5117,22 +5180,22 @@ module MakeSerialization (Strm : Stream) = struct
             Variant.test_is env l ^^
             G.if0
               ( size_word env (compile_unboxed_const (Int32.of_int i)) ^^
-                get_x ^^ Variant.project ^^ size env t
+                get_x ^^ Variant.project env ^^ size env t
               ) continue
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
-        get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
+        get_x ^^ Arr.load_field env 0l ^^ size env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field env 1l ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | Mut t ->
-        size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
+        size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
       (* Check 32-bit overflow of buffer_size *)
@@ -5170,7 +5233,7 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0
         begin
@@ -5239,7 +5302,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.nop
       | Tup ts ->
         G.concat_mapi (fun i t ->
-          get_x ^^ Tuple.load_n (Int32.of_int i) ^^
+          get_x ^^ Tuple.load_n env (Int32.of_int i) ^^
           write env t
         ) ts
       | Obj ((Object | Memory), fs) ->
@@ -5250,8 +5313,8 @@ module MakeSerialization (Strm : Stream) = struct
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
-        write_word_leb env get_data_buf (get_x ^^ Heap.load_field Arr.len_field) ^^
-        get_x ^^ Heap.load_field Arr.len_field ^^
+        write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
+        get_x ^^ Arr.len env ^^
         from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           write env t
@@ -5260,7 +5323,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Any -> G.nop
       | Opt t ->
         get_x ^^
-        Opt.is_some env ^^
+        Opt.is_some env true ^^
         G.if0
           (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t)
           (write_byte env get_data_buf (compile_unboxed_const 0l))
@@ -5270,7 +5333,7 @@ module MakeSerialization (Strm : Stream) = struct
             Variant.test_is env l ^^
             G.if0
               ( write_word_leb env get_data_buf (compile_unboxed_const (Int32.of_int i)) ^^
-                get_x ^^ Variant.project ^^ write env t)
+                get_x ^^ Variant.project env ^^ write env t)
               continue
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
@@ -5281,8 +5344,8 @@ module MakeSerialization (Strm : Stream) = struct
         write_text env get_data_buf get_x
       | Func _ ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
-        get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
-        get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
+        get_x ^^ Arr.load_field env 0l ^^ write env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field env 1l ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
@@ -5290,7 +5353,8 @@ module MakeSerialization (Strm : Stream) = struct
         E.trap_with env "serializing value of type None"
       | Mut t ->
         write_alias (fun () ->
-          get_x ^^ Heap.load_field MutBox.field ^^ write env t
+          get_x ^^ 
+          MutBox.load_field env ^^ write env t
         )
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
@@ -5437,7 +5501,7 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
-        get_x ^^ Blob.payload_ptr_unskewed ^^
+        get_x ^^ Blob.payload_ptr_unskewed env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
       in
@@ -5454,7 +5518,7 @@ module MakeSerialization (Strm : Stream) = struct
         E.else_trap_with env "IDL error: principal too long" ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
-        get_x ^^ Blob.payload_ptr_unskewed ^^
+        get_x ^^ Blob.payload_ptr_unskewed env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
       in
@@ -5904,7 +5968,7 @@ module MakeSerialization (Strm : Stream) = struct
           on_alloc get_result ^^
           get_result ^^
             get_arg_typ ^^ go env t ^^
-          Heap.store_field MutBox.field
+          MutBox.store_field env
         )
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
@@ -5979,7 +6043,7 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_val, get_val) = new_local env "val" in
 
       get_blob ^^ Blob.len env ^^ set_data_size ^^
-      get_blob ^^ Blob.payload_ptr_unskewed ^^ set_data_start ^^
+      get_blob ^^ Blob.payload_ptr_unskewed env ^^ set_data_start ^^
 
       (* Allocate space for the reference buffer and copy it *)
       compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
@@ -6167,7 +6231,7 @@ module BlobStream : Stream = struct
     get_token ^^ E.call_import env "rts" "stream_split" ^^
     let set_blob, get_blob = new_local env "blob" in
     set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed ^^
+    get_blob ^^ Blob.payload_ptr_unskewed env ^^
     get_blob ^^ Blob.len env
 
   let finalize_buffer code = code
@@ -6204,7 +6268,7 @@ module BlobStream : Stream = struct
     get_x ^^ Blob.len env ^^ set_len ^^
     write_word_leb env get_token get_len ^^
     get_token ^^
-    get_x ^^ Blob.payload_ptr_unskewed ^^
+    get_x ^^ Blob.payload_ptr_unskewed env ^^
     get_len ^^
     E.call_import env "rts" "stream_write"
 
@@ -6498,7 +6562,7 @@ module Stabilization = struct
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          extend64 (get_blob ^^ Blob.payload_ptr_unskewed) ^^
+          extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
           get_offset ^^
           extend64 get_len ^^
           IC.system_call env "stable64_read" ^^
@@ -6516,7 +6580,7 @@ module Stabilization = struct
 
           (* copy zeros from blob to stable memory *)
           get_offset ^^
-          extend64 (get_blob ^^ Blob.payload_ptr_unskewed) ^^
+          extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
           extend64 (get_blob ^^ Blob.len env) ^^
           IC.system_call env "stable64_write" ^^
 
@@ -6841,11 +6905,11 @@ module Var = struct
     | Some (HeapInd i) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      MutBox.store_field env
     | Some (HeapStatic ptr) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      MutBox.store_field env
     | Some (Const _) -> fatal "set_val: %s is const" var
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
@@ -6873,9 +6937,9 @@ module Var = struct
     | Some (Local (sr, i)) ->
       sr, G.i (LocalGet (nr i))
     | Some (HeapInd i) ->
-      SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field MutBox.field
+      SR.Vanilla, G.i (LocalGet (nr i)) ^^ MutBox.load_field env
     | Some (HeapStatic i) ->
-      SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field MutBox.field
+      SR.Vanilla, compile_unboxed_const i ^^ MutBox.load_field env
     | Some (Const c) ->
       SR.Const c, G.nop
     | Some (PublicMethod (_, name)) ->
@@ -7052,7 +7116,7 @@ module FuncDec = struct
               let store_env =
                 get_clos ^^
                 store_this ^^
-                Closure.store_data (Wasm.I32.of_int_u i) ^^
+                Closure.store_data env (Wasm.I32.of_int_u i) ^^
                 store_rest in
               let restore_env env ae1 get_env =
                 let ae2, codeW = restore_this env ae1 in
@@ -7060,7 +7124,7 @@ module FuncDec = struct
                 (ae3,
                  fun body ->
                  get_env ^^
-                 Closure.load_data (Wasm.I32.of_int_u i) ^^
+                 Closure.load_data env (Wasm.I32.of_int_u i) ^^
                  codeW (code_restW body)
                 )
               in store_env, restore_env in
@@ -7159,7 +7223,7 @@ module FuncDec = struct
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
-        Arr.load_field 0l ^^ (* get the reply closure *)
+        Arr.load_field env 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
 
@@ -7179,7 +7243,7 @@ module FuncDec = struct
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
-        Arr.load_field 1l ^^ (* get the reject closure *)
+        Arr.load_field env 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
         (* Synthesize value of type `Text`, the error message
@@ -7233,9 +7297,9 @@ module FuncDec = struct
     | Flags.RefMode ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
-      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
       set_cb_index  ^^ get_cb_index ^^
@@ -7289,9 +7353,9 @@ module FuncDec = struct
     | Flags.ICMode
     | Flags.RefMode ->
       (* The callee *)
-      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
@@ -7313,13 +7377,13 @@ module FuncDec = struct
     let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
     let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
     set_meth_pair2 ^^ set_meth_pair1 ^^
-    get_meth_pair1 ^^ Arr.load_field 0l ^^
-    get_meth_pair2 ^^ Arr.load_field 0l ^^
+    get_meth_pair1 ^^ Arr.load_field env 0l ^^
+    get_meth_pair2 ^^ Arr.load_field env 0l ^^
     Blob.compare env Operator.EqOp ^^
     G.if1 I32Type
     begin
-      get_meth_pair1 ^^ Arr.load_field 1l ^^
-      get_meth_pair2 ^^ Arr.load_field 1l ^^
+      get_meth_pair1 ^^ Arr.load_field env 1l ^^
+      get_meth_pair2 ^^ Arr.load_field env 1l ^^
       Blob.compare env Operator.EqOp
     end
     begin
@@ -8378,7 +8442,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ProjPrim n, [e1] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
-    Tuple.load_n (Int32.of_int n)
+    Tuple.load_n env (Int32.of_int n)
 
   | OptPrim, [e] ->
     SR.Vanilla,
@@ -8428,12 +8492,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
+    Tagged.load_forwarding_pointer env true ^^ (* TODO! CHECK Use different Arr.load_field *)
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
     (* Note: the below two lines compile to `i32.add; i32.load offset=9`,
        thus together also unskewing the pointer and skipping administrative
        fields, effectively arriving at the desired element *)
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Arr.load_field 0l                (* loads the element at the byte offset *)
+    Arr.load_field env 0l                (* loads the element at the byte offset *)
   | GetPastArrayOffset spacing, [e] ->
     let shift =
       match spacing with
@@ -8441,7 +8506,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | One -> BigNum.from_word30 env in    (* make it a compact bignum *)
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* array *)
-    Heap.load_field Arr.len_field ^^
+    Arr.len env ^^
     shift
 
   | BreakPrim name, [e] ->
@@ -8667,7 +8732,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "array_len", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    Heap.load_field Arr.len_field ^^
+    Arr.len env ^^
     BigNum.from_word30 env
 
   | OtherPrim "text_len", [e] ->
@@ -9471,7 +9536,7 @@ and fill_pat env ae pat : patternCode =
       CanFail (fun fail_code ->
         set_x ^^
         get_x ^^
-        Opt.is_some env ^^
+        Opt.is_some env false ^^ (* TODO! CHECK *)
         G.if0
           ( get_x ^^
             Opt.project env ^^
@@ -9487,7 +9552,7 @@ and fill_pat env ae pat : patternCode =
         Variant.test_is env l ^^
         G.if0
           ( get_x ^^
-            Variant.project ^^
+            Variant.project env ^^
             with_fail fail_code (fill_pat env ae p)
           )
           fail_code
@@ -9505,7 +9570,7 @@ and fill_pat env ae pat : patternCode =
         | p::ps ->
           let code1 = fill_pat env ae p in
           let code2 = go (Int32.add i 1l) ps in
-          CannotFail (get_i ^^ Tuple.load_n i) ^^^ code1 ^^^ code2 in
+          CannotFail (get_i ^^ Tuple.load_n env i) ^^^ code1 ^^^ code2 in
       CannotFail set_i ^^^ go 0l ps
   | ObjP pfs ->
       let project = compile_load_field env pat.note in

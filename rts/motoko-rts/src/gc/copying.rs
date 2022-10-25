@@ -141,6 +141,8 @@ unsafe fn evac<M: Memory>(
         return;
     }
 
+    debug_assert!((*ptr_loc).forward().get_ptr() == obj as usize);
+
     let obj_size = object_size(obj as usize);
 
     // Allocate space in to-space for the object

@@ -202,7 +202,8 @@ pub unsafe extern "C" fn text_size(s: Value) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
-    (s.get_ptr() as *mut Blob).len()
+    debug_assert_eq!(s.forward().get_ptr(), s.get_ptr());
+    (s.forward().get_ptr() as *mut Blob).len()
 }
 
 /// Compares texts from given offset on for the given number of bytes. All assumed to be in range.

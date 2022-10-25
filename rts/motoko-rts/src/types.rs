@@ -21,10 +21,9 @@
 
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
-use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
-use crate::rts_trap_with;
+use crate::{print, rts_trap_with};
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
@@ -251,16 +250,17 @@ impl Value {
     }
 
     /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
-    /// the value is not a pointer.
+    /// the value is not a pointer or if it points to a stale object that has been forwarded.
     pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
         unskew(self.0 as usize)
     }
 
-    /// Get the object tag. In debug mode panics if the value is not a pointer.
+    /// Get the object tag, with potential forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
         debug_assert!(self.get().is_ptr());
-        (self.get_ptr() as *mut Obj).tag()
+        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        (self.forward().get_ptr() as *mut Obj).tag()
     }
 
     /// Get the forwarding pointer. Used in incremental GC.
@@ -269,58 +269,59 @@ impl Value {
         (*obj).forward
     }
 
-    /// Get the pointer as `Obj`. In debug mode panics if the value is not a pointer.
+    /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
         debug_assert!(self.forward().get_ptr() == self.get_ptr());
-        self.get_ptr() as *mut Obj
+        self.forward().get_ptr() as *mut Obj
     }
 
-    /// Get the pointer as `Array`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
         debug_assert_eq!(self.tag(), TAG_ARRAY);
         debug_assert!(self.forward().get_ptr() == self.get_ptr());
-        self.get_ptr() as *mut Array
+        self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Concat` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
         debug_assert!(self.forward().get_ptr() == self.get_ptr());
-        self.get_ptr() as *const Concat
+        self.forward().get_ptr() as *const Concat
     }
 
-    /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Blob` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         debug_assert!(self.forward().get_ptr() == self.get_ptr());
-        self.get_ptr() as *const Blob
+        self.forward().get_ptr() as *const Blob
     }
 
+    /// Get the pointer as mutable `Blob` using forwarding.
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         debug_assert!(self.forward().get_ptr() == self.get_ptr());
-        self.get_ptr() as *mut Blob
+        self.forward().get_ptr() as *mut Blob
     }
 
-    /// Get the pointer as `Stream`, which is a glorified `Blob`.
+    /// Get the pointer as `Stream` using forwarding, which is a glorified `Blob`.
     /// In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
         debug_assert_eq!(self.tag(), TAG_BLOB);
         debug_assert!(self.forward().get_ptr() == self.get_ptr());
-        self.get_ptr() as *mut Stream
+        self.forward().get_ptr() as *mut Stream
     }
 
-    /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `BigInt` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
         debug_assert!(self.forward().get_ptr() == self.get_ptr());
-        self.get_ptr() as *mut BigInt
+        self.forward().get_ptr() as *mut BigInt
     }
 
     pub fn as_tiny(self) -> i32 {

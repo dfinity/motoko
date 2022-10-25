@@ -36,7 +36,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
+use crate::types::{size_of, Blob, Bytes, Obj, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -76,6 +76,7 @@ impl Stream {
 
     #[inline]
     pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
+        debug_assert!((*(self as *mut Obj)).forward.get_ptr() == self as usize);
         self as *mut Blob
     }
 

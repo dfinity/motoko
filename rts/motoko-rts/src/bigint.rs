@@ -35,7 +35,7 @@ use crate::buf::{read_byte, Buf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
-use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
+use crate::types::{size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -456,6 +456,7 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
 
 #[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
+    debug_assert!((*(stream as *mut Obj)).forward.get_ptr() == stream as usize);
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     stream.write_leb128(&mut tmp, false)
@@ -499,6 +500,7 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
 
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
+    debug_assert!((*(stream as *mut Obj)).forward.get_ptr() == stream as usize);
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 
