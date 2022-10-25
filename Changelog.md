@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.7.2 (2022-10-25)
+
+* motoko-base
+
+  * Fix bugs in `Buffer` library affecting `remove` and `filterEntries` (dfinity/motoko-base#419).
+
 ## 0.7.1 (2022-10-24)
 
 * motoko (`moc`)
