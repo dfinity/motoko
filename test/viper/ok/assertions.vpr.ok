@@ -1,0 +1,41 @@
+field $message_async: Int
+define $Perm($Self) ((((true && acc(($Self).u,write)) && acc(($Self).v,write)) && 
+  acc(($Self).$message_async,write)))
+define $Inv($Self) ((invariant_11($Self) && (((0 <= ($Self).$message_async) && (
+  ($Self).$message_async <= 1)) && ((($Self).$message_async == 1) ==> true))))
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).u := false
+      ($Self).v := 0
+      ($Self).$message_async := 0 
+    }
+field u: Bool
+field v: Int
+define invariant_11($Self) (($Self).u)
+method claim($Self: Ref)
+    
+    requires $Perm($Self)
+    requires (($Self).v >= 0)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures (($Self).v >= 0)
+    ensures $Inv($Self)
+    { 
+      assert (($Self).u ==> (($Self).v > 0))
+      assume (($Self).u ==> (($Self).v > 0))
+      ($Self).$message_async := (($Self).$message_async + 1)
+      exhale ($Perm($Self) && $Inv($Self))
+      { 
+         inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
+         ($Self).$message_async := (($Self).$message_async - 1)
+         { 
+             
+          }
+         exhale ($Perm($Self) && $Inv($Self)) 
+       }
+      inhale ($Perm($Self) && $Inv($Self)) 
+    }
