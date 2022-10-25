@@ -1,0 +1,2 @@
+  [0] Postcondition of __init__ might not hold. Assertion $Self.u might not hold. (assertions.vpr@10.13--10.24)
+  [1] Assert might fail. Assertion $Self.u ==> $Self.v > 0 might not hold. (assertions.vpr@28.15--28.44)

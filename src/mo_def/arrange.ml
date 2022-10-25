@@ -59,6 +59,7 @@ let rec exp e = match e.it with
   | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
+  | AssertE (Static, e)        -> "Static_AssertE" $$ [exp e]
   | AssertE (Invariant, e)     -> "Invariant" $$ [exp e]
   | AssertE (Precondition, e)  -> "Precondition" $$ [exp e]
   | AssertE (Postcondition, e) -> "Postcondition" $$ [exp e]

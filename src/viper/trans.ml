@@ -382,6 +382,9 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.AssertE (M.Concurrency n, e) ->
     !!([],
        [ !!(ConcurrencyS (n, exp ctxt e, !! ((|>) e))) ])
+  | M.AssertE (M.Static, e) ->
+    !!([],
+       [ !!(AssertS (exp ctxt e)) ])
   | M.AssertE (M.Runtime, e) ->
     !!([],
        [ !!(AssumeS (exp ctxt e)) ])
