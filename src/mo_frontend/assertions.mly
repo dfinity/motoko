@@ -13,6 +13,8 @@ when I write this here (instead of in parser.mly)
     { ImpliesE(e1, e2) @? at $sloc }
 
 %public exp_nondec(B) :
+  | ASSERT COLON SYSTEM e=exp_nest
+    { AssertE(Static, e) @? at $sloc }
   | ASSERT COLON INVARIANT e=exp_nest
     { AssertE(Invariant, e) @? at $sloc }
   | ASSERT COLON FUNC e=exp_nest

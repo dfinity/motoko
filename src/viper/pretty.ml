@@ -162,6 +162,9 @@ and pp_stmt' ppf = function
   | AssumeS exp ->
     fprintf ppf "@[<v 2>assume %a@]"
       pp_exp exp
+  | AssertS exp ->
+    fprintf ppf "@[<v 2>assert %a@]"
+      pp_exp exp
   | PreconditionS exp ->
     fprintf ppf "@[<v 2>/*requires %a*/@]"
       pp_exp exp
