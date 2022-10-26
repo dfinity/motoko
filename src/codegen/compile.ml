@@ -3634,7 +3634,11 @@ module Arr = struct
     get_len ^^
     from_0_to_n env (fun get_i ->
       (* Where to store *)
-      get_r ^^ get_i ^^ idx env ^^
+      get_i ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_r ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       (* The closure *)
       get_f ^^
       (* The arg *)
