@@ -259,7 +259,7 @@ impl Value {
     /// Get the object tag, with potential forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
         debug_assert!(self.get().is_ptr());
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         (self.forward().get_ptr() as *mut Obj).tag()
     }
 
@@ -272,7 +272,7 @@ impl Value {
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         self.forward().get_ptr() as *mut Obj
     }
 
@@ -280,7 +280,7 @@ impl Value {
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
         debug_assert_eq!(self.tag(), TAG_ARRAY);
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         self.forward().get_ptr() as *mut Array
     }
 
@@ -288,7 +288,7 @@ impl Value {
     /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         self.forward().get_ptr() as *const Concat
     }
 
@@ -296,14 +296,14 @@ impl Value {
     /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         self.forward().get_ptr() as *const Blob
     }
 
     /// Get the pointer as mutable `Blob` using forwarding.
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         self.forward().get_ptr() as *mut Blob
     }
 
@@ -312,7 +312,7 @@ impl Value {
     /// pointed object is not a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         self.forward().get_ptr() as *mut Stream
     }
 
@@ -320,7 +320,7 @@ impl Value {
     /// pointed object is not a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert_eq!(self.forward().get_ptr(), self.get_ptr());
         self.forward().get_ptr() as *mut BigInt
     }
 
