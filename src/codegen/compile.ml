@@ -1379,8 +1379,8 @@ module Tagged = struct
     E.call_import env "rts" "follow_forwarding_pointer"
     else G.nop
 
-  let load_tag env use_forwarding =
-    load_forwarding_pointer env use_forwarding ^^ (* TODO! CHECK *)
+  let load_tag env =
+    load_forwarding_pointer env true ^^
     Heap.load_field tag_field
     
   (* Branches based on the tag of the object pointed to,
@@ -1395,7 +1395,7 @@ module Tagged = struct
         compile_eq_const (int_of_tag tag) ^^
         E.if_ env retty code (go cases)
     in
-    load_tag env true ^^
+    load_tag env ^^
     set_tag ^^
     go cases
 
@@ -1600,9 +1600,9 @@ module Opt = struct
 
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
-  let inject_direct env e = 
-    Tagged.load_forwarding_pointer env false ^^ (* TODO! CHECK *)
-    e
+  let inject_simple env e = 
+    e ^^ Tagged.load_forwarding_pointer env true
+    
 
   let load_some_payload_field env =
     Tagged.load_forwarding_pointer env true ^^
@@ -3476,7 +3476,7 @@ module Text = struct
     set_blob ^^
     get_blob ^^ Blob.as_ptr_len env ^^
     E.call_import env "rts" "utf8_valid" ^^
-    G.if1 I32Type (Opt.inject_direct env get_blob) (Opt.null_lit env)
+    G.if1 I32Type (Opt.inject_simple env get_blob) (Opt.null_lit env)
 
 
   let iter env =
@@ -4285,7 +4285,7 @@ module IC = struct
       system_call env "data_certificate_present" ^^
       G.if1 I32Type
       begin
-        Opt.inject_direct env (
+        Opt.inject_simple env (
           Blob.of_size_copy env
             (fun env -> system_call env "data_certificate_size")
             (fun env -> system_call env "data_certificate_copy")
@@ -5121,7 +5121,7 @@ module MakeSerialization (Strm : Stream) = struct
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env false ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -5252,7 +5252,7 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env false ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0
         begin
