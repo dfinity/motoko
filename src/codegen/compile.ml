@@ -1199,8 +1199,18 @@ module BitTagged = struct
      All arithmetic is implemented directly on that representation, see
      module TaggedSmallWord.
   *)
-  let if_tagged_scalar env retty is1 is2 =
+  let is_pointer env =
+    let (set_value, get_value) = new_local env "tag_test_value" in
+    set_value ^^
+    get_value ^^
+    compile_unboxed_const 1l ^^ (* true literal *)
+    G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+    get_value ^^
     compile_bitand_const 0x1l ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+  let if_tagged_scalar env retty is1 is2 =
+    is_pointer env ^^
     E.if_ env retty is2 is1
 
   (* With two bit-tagged pointers on the stack, decide
@@ -1208,8 +1218,12 @@ module BitTagged = struct
      if so, and otherwise is2 (the slow path).
   *)
   let if_both_tagged_scalar env retty is1 is2 =
+    let (set_temporary, get_temporary) = new_local env "temporary_value" in
+    set_temporary ^^
+    is_pointer env ^^
+    get_temporary ^^
+    is_pointer env ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    compile_bitand_const 0x1l ^^
     E.if_ env retty is2 is1
 
   (* 64 bit numbers *)
@@ -1367,8 +1381,8 @@ module Tagged = struct
     E.call_import env "rts" "follow_forwarding_pointer"
     else G.nop
 
-  let load_tag env =
-    load_forwarding_pointer env false ^^ (* TODO! CHECK *)
+  let load_tag env use_forwarding =
+    load_forwarding_pointer env use_forwarding ^^ (* TODO! CHECK *)
     Heap.load_field tag_field
     
   (* Branches based on the tag of the object pointed to,
@@ -1383,7 +1397,7 @@ module Tagged = struct
         compile_eq_const (int_of_tag tag) ^^
         E.if_ env retty code (go cases)
     in
-    load_tag env ^^
+    load_tag env true ^^
     set_tag ^^
     go cases
 
@@ -3523,8 +3537,8 @@ module Arr = struct
     Heap.load_field len_field
 
   (* Static array access. No checking *)
-  let load_field env n use_forwarding = 
-    Tagged.load_forwarding_pointer env use_forwarding ^^ (* TODO! CHECK *)
+  let load_field env n = 
+    Tagged.load_forwarding_pointer env true ^^
     Heap.load_field Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
@@ -5107,7 +5121,7 @@ module MakeSerialization (Strm : Stream) = struct
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env false ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -5192,8 +5206,8 @@ module MakeSerialization (Strm : Stream) = struct
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^ Arr.load_field env 0l true ^^ size env (Obj (Actor, [])) ^^
-        get_x ^^ Arr.load_field env 1l true ^^ size env (Prim Text)
+        get_x ^^ Arr.load_field env 0l ^^ size env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field env 1l ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
@@ -5238,7 +5252,7 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env false ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0
         begin
@@ -5349,8 +5363,8 @@ module MakeSerialization (Strm : Stream) = struct
         write_text env get_data_buf get_x
       | Func _ ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
-        get_x ^^ Arr.load_field env 0l true ^^ write env (Obj (Actor, [])) ^^
-        get_x ^^ Arr.load_field env 1l true ^^ write env (Prim Text)
+        get_x ^^ Arr.load_field env 0l ^^ write env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field env 1l ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
@@ -7228,7 +7242,7 @@ module FuncDec = struct
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
-        Arr.load_field env 0l true ^^ (* get the reply closure *)
+        Arr.load_field env 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
 
@@ -7248,7 +7262,7 @@ module FuncDec = struct
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
-        Arr.load_field env 1l true ^^ (* get the reject closure *)
+        Arr.load_field env 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
         (* Synthesize value of type `Text`, the error message
@@ -7302,9 +7316,9 @@ module FuncDec = struct
     | Flags.RefMode ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
-      get_meth_pair ^^ Arr.load_field env 0l true ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_meth_pair ^^ Arr.load_field env 1l true ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
       set_cb_index  ^^ get_cb_index ^^
@@ -7358,9 +7372,9 @@ module FuncDec = struct
     | Flags.ICMode
     | Flags.RefMode ->
       (* The callee *)
-      get_meth_pair ^^ Arr.load_field env 0l true ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_meth_pair ^^ Arr.load_field env 1l true ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
@@ -7382,13 +7396,13 @@ module FuncDec = struct
     let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
     let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
     set_meth_pair2 ^^ set_meth_pair1 ^^
-    get_meth_pair1 ^^ Arr.load_field env 0l true ^^
-    get_meth_pair2 ^^ Arr.load_field env 0l true ^^
+    get_meth_pair1 ^^ Arr.load_field env 0l ^^
+    get_meth_pair2 ^^ Arr.load_field env 0l ^^
     Blob.compare env Operator.EqOp ^^
     G.if1 I32Type
     begin
-      get_meth_pair1 ^^ Arr.load_field env 1l true ^^
-      get_meth_pair2 ^^ Arr.load_field env 1l true ^^
+      get_meth_pair1 ^^ Arr.load_field env 1l ^^
+      get_meth_pair2 ^^ Arr.load_field env 1l ^^
       Blob.compare env Operator.EqOp
     end
     begin
