@@ -1,29 +1,25 @@
 use crate::{
-    memory::Memory,
     types::{Value, TAG_NULL, TAG_OBJECT, TAG_MUTBOX, MutBox, TAG_ONE_WORD_FILLER, object_size, Obj}, visitor::{pointer_to_dynamic_heap, visit_pointer_fields},
 };
 use motoko_rts_macros::ic_mem_fn;
 
+static mut _SERIALIZING: bool = false;
+
 #[ic_mem_fn(ic_only)]
-unsafe fn follow_forwarding_pointer<M: Memory>(_mem: &mut M, value: Value) -> Value {
+unsafe fn set_serialization_status<M: crate::memory::Memory>(_mem: &mut M, active: bool) {
+    _SERIALIZING = active;
+}
+
+#[ic_mem_fn(ic_only)]
+unsafe fn check_forwarding_pointer<M: crate::memory::Memory>(_mem: &mut M, value: Value) -> Value {
     const TRUE_VALUE: u32 = 1;
-    if !(value.is_ptr() && value.get_raw() != TRUE_VALUE) {
-        println!(100, "ERROR PTR {:#x}", value.get_raw());
-    }
     assert!(value.is_ptr() && value.get_raw() != TRUE_VALUE);
-    if !value.forward().is_ptr() {
-        println!(100, "ERROR FWD {:#x} {:#x}", value.get_raw(), value.forward().get_raw());
-    }
     assert!(value.forward().is_ptr());
     assert_eq!(value.forward().get_ptr(), value.get_ptr());
-    assert!(value.tag() >= TAG_OBJECT && value.tag() <= TAG_NULL);
-    // use crate::memory::ic;
-    // let heap_base = if ic::ALIGN {
-    //     ic::get_aligned_heap_base()
-    // } else {
-    //     ic::get_heap_base()
-    // };
-    //check_memory(heap_base as usize, ic::HP as usize, ic::get_static_roots(), crate::continuation_table::continuation_table_loc());
+    if !_SERIALIZING {
+        assert!(value.tag() >= TAG_OBJECT && value.tag() <= TAG_NULL);
+        //check_memory(_mem);
+    }
     value.forward()
 }
 
@@ -34,22 +30,25 @@ pub struct MemoryChecker {
     continuation_table_ptr_loc: *mut Value
 }
 
-pub unsafe fn check_memory(
-    heap_base: usize,
-    heap_end: usize,
-    static_roots: Value,
-    continuation_table_ptr_loc: *mut Value) {
+#[ic_mem_fn(ic_only)]
+unsafe fn check_memory<M: crate::memory::Memory>(_mem: &mut M) {
+    use crate::memory::ic;
+    let heap_base = if ic::ALIGN {
+        ic::get_aligned_heap_base()
+    } else {
+        ic::get_heap_base()
+    };
     let checker = MemoryChecker { 
-        heap_base,
-        heap_end,
-        static_roots,
-        continuation_table_ptr_loc
+        heap_base: heap_base as usize,
+        heap_end: ic::HP as usize,
+        static_roots: ic::get_static_roots(),
+        continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc()
     };
     checker.check_memory();
 }
 
 impl MemoryChecker {
-    unsafe fn check_memory(&self) {
+    pub unsafe fn check_memory(&self) {
         // println!(100, "Memory check starts...");
         // println!(100, " Checking static roots...");
         self.check_static_roots();
@@ -99,6 +98,9 @@ impl MemoryChecker {
         assert!(pointer < self.heap_end);
         let tag = object.tag();
         const COERCION_FAILURE: u32 = 0xfffffffe;
+        if !(tag >= TAG_OBJECT && tag <= TAG_NULL || tag == COERCION_FAILURE) {
+            println!(100, "ERROR TAG {tag}");
+        }
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL || tag == COERCION_FAILURE);
         let forward = object.forward();
         assert_eq!(forward.get_raw(), object.get_raw());

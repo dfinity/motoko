@@ -946,7 +946,8 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "follow_forwarding_pointer" [I32Type] [I32Type];
+    E.add_func_import env "rts" "set_serialization_status" [I32Type] [];
+    E.add_func_import env "rts" "check_forwarding_pointer" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -1376,7 +1377,7 @@ module Tagged = struct
   let load_forwarding_pointer env activate =
     (* Heap.load_field forwarding_pointer_field *)
     if activate then
-    E.call_import env "rts" "follow_forwarding_pointer"
+    E.call_import env "rts" "check_forwarding_pointer"
     else G.nop
 
   let load_tag env =
@@ -6007,6 +6008,9 @@ module MakeSerialization (Strm : Stream) = struct
       let tydesc = type_desc env ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
+      compile_unboxed_const 1l ^^
+      E.call_import env "rts" "set_serialization_status" ^^
+
       (* Get object sizes *)
       get_x ^^
       buffer_size env (Type.seq ts) ^^
@@ -6031,7 +6035,7 @@ module MakeSerialization (Strm : Stream) = struct
       get_data_start ^^
       get_refs_start ^^
       serialize_go env (Type.seq ts) ^^
-
+      
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -6044,7 +6048,10 @@ module MakeSerialization (Strm : Stream) = struct
       E.else_trap_with env "cannot send references on IC System API" ^^
 
       (* Extract the payload if possible *)
-      Strm.terminate env get_data_start get_data_size tydesc_len
+      Strm.terminate env get_data_start get_data_size tydesc_len ^^
+
+      compile_unboxed_const 0l ^^
+      E.call_import env "rts" "set_serialization_status"
     )
 
   let deserialize_from_blob extended env ts =
