@@ -3417,9 +3417,9 @@ module Arr = struct
       idx env
   )
 
-  let element_type env typ = match typ with
-    | Type.Array (element_type) -> element_type
-    | _ -> assert false
+  let element_type env typ = match Type.promote typ with
+     | Type.Array element_type -> element_type
+     | _ -> assert false
 
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
