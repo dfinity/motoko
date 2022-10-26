@@ -1,4 +1,4 @@
-//! Extensive sanity checks for geberational GC features.
+//! Extensive sanity checks for generational GC features.
 //! * Write barrier coverage by memory snapshot comparisons.
 //! * Memory sanity check, including a full heap scan.
 #![allow(dead_code)]
