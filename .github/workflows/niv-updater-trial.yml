@@ -22,7 +22,7 @@ on:
 jobs:
   niv-updater:
     name: 'Check for updates'
-    timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
+    timeout-minutes: 3 # if this takes more than 3 minutes then something's wrong
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
