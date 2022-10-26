@@ -7,17 +7,23 @@ use motoko_rts_macros::ic_mem_fn;
 #[ic_mem_fn(ic_only)]
 unsafe fn follow_forwarding_pointer<M: Memory>(_mem: &mut M, value: Value) -> Value {
     const TRUE_VALUE: u32 = 1;
+    if !(value.is_ptr() && value.get_raw() != TRUE_VALUE) {
+        println!(100, "ERROR PTR {:#x}", value.get_raw());
+    }
     assert!(value.is_ptr() && value.get_raw() != TRUE_VALUE);
+    if !value.forward().is_ptr() {
+        println!(100, "ERROR FWD {:#x} {:#x}", value.get_raw(), value.forward().get_raw());
+    }
     assert!(value.forward().is_ptr());
-    assert!(value.forward().get_ptr() == value.get_ptr());
+    assert_eq!(value.forward().get_ptr(), value.get_ptr());
     assert!(value.tag() >= TAG_OBJECT && value.tag() <= TAG_NULL);
-    use crate::memory::ic;
-    let heap_base = if ic::ALIGN {
-        ic::get_aligned_heap_base()
-    } else {
-        ic::get_heap_base()
-    };
-    check_memory(heap_base as usize, ic::HP as usize, ic::get_static_roots(), crate::continuation_table::continuation_table_loc());
+    // use crate::memory::ic;
+    // let heap_base = if ic::ALIGN {
+    //     ic::get_aligned_heap_base()
+    // } else {
+    //     ic::get_heap_base()
+    // };
+    //check_memory(heap_base as usize, ic::HP as usize, ic::get_static_roots(), crate::continuation_table::continuation_table_loc());
     value.forward()
 }
 

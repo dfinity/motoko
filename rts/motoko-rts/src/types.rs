@@ -23,7 +23,7 @@ use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 use crate::constants::WORD_SIZE;
-use crate::{print, rts_trap_with};
+use crate::rts_trap_with;
 
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()

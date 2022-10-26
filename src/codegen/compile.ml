@@ -1560,8 +1560,9 @@ module Opt = struct
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
-  let is_some env use_forwarding =
-    Tagged.load_forwarding_pointer env use_forwarding ^^
+  let is_some env =
+    (* no forwarding pointer dereferencing as the null object is static and does not move *)
+    (* Moreover, pattern matching sometimes calls this function to compare scalars against null *)
     null_lit env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
@@ -3522,8 +3523,8 @@ module Arr = struct
     Heap.load_field len_field
 
   (* Static array access. No checking *)
-  let load_field env n = 
-    Tagged.load_forwarding_pointer env false ^^ (* TODO! CHECK *)
+  let load_field env n use_forwarding = 
+    Tagged.load_forwarding_pointer env use_forwarding ^^ (* TODO! CHECK *)
     Heap.load_field Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
@@ -3589,9 +3590,13 @@ module Arr = struct
     (* Write fields *)
     get_len ^^
     from_0_to_n env (fun get_i ->
-      get_r ^^
+      (* optimize, skip forwarding and boundary checks *)
       get_i ^^
-      idx env ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_r ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+
       get_x ^^
       store_ptr
     ) ^^
@@ -5172,7 +5177,7 @@ module MakeSerialization (Strm : Stream) = struct
         inc_data_size get_len
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^ Opt.is_some env true ^^
+        get_x ^^ Opt.is_some env ^^
         G.if0 (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
@@ -5187,8 +5192,8 @@ module MakeSerialization (Strm : Stream) = struct
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^ Arr.load_field env 0l ^^ size env (Obj (Actor, [])) ^^
-        get_x ^^ Arr.load_field env 1l ^^ size env (Prim Text)
+        get_x ^^ Arr.load_field env 0l true ^^ size env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field env 1l true ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
@@ -5323,7 +5328,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Any -> G.nop
       | Opt t ->
         get_x ^^
-        Opt.is_some env true ^^
+        Opt.is_some env ^^
         G.if0
           (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t)
           (write_byte env get_data_buf (compile_unboxed_const 0l))
@@ -5344,8 +5349,8 @@ module MakeSerialization (Strm : Stream) = struct
         write_text env get_data_buf get_x
       | Func _ ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
-        get_x ^^ Arr.load_field env 0l ^^ write env (Obj (Actor, [])) ^^
-        get_x ^^ Arr.load_field env 1l ^^ write env (Prim Text)
+        get_x ^^ Arr.load_field env 0l true ^^ write env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field env 1l true ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
@@ -7223,7 +7228,7 @@ module FuncDec = struct
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
-        Arr.load_field env 0l ^^ (* get the reply closure *)
+        Arr.load_field env 0l true ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
 
@@ -7243,7 +7248,7 @@ module FuncDec = struct
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
-        Arr.load_field env 1l ^^ (* get the reject closure *)
+        Arr.load_field env 1l true ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
         (* Synthesize value of type `Text`, the error message
@@ -7297,9 +7302,9 @@ module FuncDec = struct
     | Flags.RefMode ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
-      get_meth_pair ^^ Arr.load_field env 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 0l true ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 1l true ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
       set_cb_index  ^^ get_cb_index ^^
@@ -7353,9 +7358,9 @@ module FuncDec = struct
     | Flags.ICMode
     | Flags.RefMode ->
       (* The callee *)
-      get_meth_pair ^^ Arr.load_field env 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 0l true ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field env 1l true ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
@@ -7377,13 +7382,13 @@ module FuncDec = struct
     let (set_meth_pair1, get_meth_pair1) = new_local env "meth_pair1" in
     let (set_meth_pair2, get_meth_pair2) = new_local env "meth_pair2" in
     set_meth_pair2 ^^ set_meth_pair1 ^^
-    get_meth_pair1 ^^ Arr.load_field env 0l ^^
-    get_meth_pair2 ^^ Arr.load_field env 0l ^^
+    get_meth_pair1 ^^ Arr.load_field env 0l true ^^
+    get_meth_pair2 ^^ Arr.load_field env 0l true ^^
     Blob.compare env Operator.EqOp ^^
     G.if1 I32Type
     begin
-      get_meth_pair1 ^^ Arr.load_field env 1l ^^
-      get_meth_pair2 ^^ Arr.load_field env 1l ^^
+      get_meth_pair1 ^^ Arr.load_field env 1l true ^^
+      get_meth_pair2 ^^ Arr.load_field env 1l true ^^
       Blob.compare env Operator.EqOp
     end
     begin
@@ -8492,13 +8497,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
-    Tagged.load_forwarding_pointer env true ^^ (* TODO! CHECK Use different Arr.load_field *)
+    Tagged.load_forwarding_pointer env true ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
-    (* Note: the below two lines compile to `i32.add; i32.load offset=9`,
+    (* Note: the below two lines compile to `i32.add; i32.load offset=13`,
        thus together also unskewing the pointer and skipping administrative
        fields, effectively arriving at the desired element *)
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Arr.load_field env 0l                (* loads the element at the byte offset *)
+    Heap.load_field Arr.header_size (* loads the element at the byte offset *)
   | GetPastArrayOffset spacing, [e] ->
     let shift =
       match spacing with
@@ -9536,7 +9541,7 @@ and fill_pat env ae pat : patternCode =
       CanFail (fun fail_code ->
         set_x ^^
         get_x ^^
-        Opt.is_some env false ^^ (* TODO! CHECK *)
+        Opt.is_some env ^^
         G.if0
           ( get_x ^^
             Opt.project env ^^
