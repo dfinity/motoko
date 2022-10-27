@@ -14,10 +14,10 @@ The simplest way of working with `Result`s is to pattern match on them:
 
 For example, given a function `createUser(user : User) : Result<Id, String>`
 where `String` is an error message we could use it like so:
-```
+```motoko no-repl
 switch(createUser(myUser)) {
-  case #ok(id) Debug.print("Created new user with id: " # id)
-  case #err(msg) Debug.print("Failed to create user with the error: " # msg)
+  case (#ok(id)) { Debug.print("Created new user with id: " # id) };
+  case (#err(msg)) { Debug.print("Failed to create user with the error: " # msg) };
 }
 ```
 
