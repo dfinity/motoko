@@ -182,6 +182,7 @@ and pp_fldacc ppf fldacc =
     fprintf ppf "@[(%a).%s@]" pp_exp exp1 id.it
 
 let prog_mapped file p =
+    marks := [];
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
     Format.fprintf ppf "@[%a@]" pp_prog p;
