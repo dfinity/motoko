@@ -153,6 +153,9 @@ impl From<Words<u32>> for Bytes<u32> {
     }
 }
 
+// The `true` value. The only scalar value that has the lowest bit set.
+pub const TRUE_VALUE: u32 = 0x1;
+
 /// A value in a heap slot
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -213,7 +216,7 @@ impl Value {
     /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
     /// cycle.
     pub fn get(&self) -> PtrOrScalar {
-        if self.0 & 0b1 != 0 {
+        if self.0 & 0b1 != 0 && self.0 != TRUE_VALUE {
             PtrOrScalar::Ptr(unskew(self.0 as usize))
         } else {
             PtrOrScalar::Scalar(self.0 >> 1)
