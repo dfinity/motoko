@@ -475,8 +475,7 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
-    if Type.is_shared_sort sort.it then
-      if not env.pre then begin
+    if not env.pre && Type.is_shared_sort sort.it then begin
       check_shared_binds env typ.at tbs;
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
