@@ -1,0 +1,3 @@
+issue-3519b.mo:2.20-2.43: type error [M0180], shared function has unexpected type parameters
+issue-3519b.mo:3.20-3.49: type error [M0180], shared function has unexpected type parameters
+issue-3519b.mo:4.20-4.36: type error [M0180], shared function has unexpected type parameters

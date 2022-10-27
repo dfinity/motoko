@@ -468,6 +468,9 @@ and check_typ' env typ : T.typ =
     check_shared_return env typ2.at sort.it c ts2;
     if Type.is_shared_sort sort.it then
     if not env.pre then begin
+      if List.length binds <> 1 then
+        error env typ.at "M0180"
+          "shared function has unexpected type parameters";
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
         error_shared env t1 typ1.at "M0031" "shared function has non-shared parameter type%a"
@@ -1246,6 +1249,9 @@ and infer_exp'' env exp : T.typ =
       in
       check_exp_strong (adjoin_vals env'' ve2) codom exp1;
       if Type.is_shared_sort sort then begin
+        if List.length typ_binds <> 1 then
+          error env exp.at "M0180"
+            "shared function has unexpected type parameters";
         if not (T.shared t1) then
           error_shared env t1 pat.at "M0031"
             "shared function has non-shared parameter type%a"

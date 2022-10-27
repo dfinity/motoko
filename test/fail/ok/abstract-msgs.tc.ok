@@ -1,5 +1,4 @@
-abstract-msgs.mo:2.31-2.40: type error [M0031], shared function has non-shared parameter type
-  A__9
+abstract-msgs.mo:2.6-2.50: type error [M0180], shared function has unexpected type parameters
 abstract-msgs.mo:3.36-3.38: type error [M0035], shared function must have syntactic return type '()' or 'async <typ>'
 abstract-msgs.mo:5.23-5.32: type error [M0031], shared function has non-shared parameter type
   A__11
@@ -9,10 +8,8 @@ abstract-msgs.mo:10.37-10.38: type error [M0031], shared function has non-shared
   A__12
 abstract-msgs.mo:11.30-11.50: type error [M0032], shared function has non-shared return type
   A__13
-abstract-msgs.mo:14.33-14.34: type error [M0031], shared function has non-shared parameter type
-  A__14
-abstract-msgs.mo:15.16-15.46: type error [M0032], shared function has non-shared return type
-  A__15
+abstract-msgs.mo:14.16-14.40: type error [M0180], shared function has unexpected type parameters
+abstract-msgs.mo:15.16-15.46: type error [M0180], shared function has unexpected type parameters
 abstract-msgs.mo:16.34-16.35: type error [M0031], shared function has non-shared parameter type
   A__16
 abstract-msgs.mo:17.27-17.47: type error [M0032], shared function has non-shared return type
