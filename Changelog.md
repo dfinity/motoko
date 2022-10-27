@@ -3,6 +3,7 @@
 * motoko (`moc`)
 
  * Statically reject shared functions and function types with type parameters (#3519, #3522)
+ * Performance improvement: `Array.init` and `Array.tabulate` (#3526)
 
 * motoko-base
 
