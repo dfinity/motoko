@@ -340,6 +340,15 @@ let as_codomT sort t =
     T.Promises, as_domT t1
   | _ -> T.Returns, as_domT t
 
+let check_shared_binds env at tbs =
+  (* should be ensured by desugaring parser *)
+  assert (List.length tbs > 0 &&
+            (List.hd(tbs)).T.sort = T.Scope);
+  (* shared functions can't have user declared type parameters *)
+  if List.length tbs > 1 then
+    error env at "M0180"
+      "shared function has unexpected type parameters"
+
 let check_shared_return env at sort c ts =
   match sort, c, ts with
   | T.Shared _, T.Promises,  _ -> ()
@@ -466,11 +475,8 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
-    if Type.is_shared_sort sort.it then
-    if not env.pre then begin
-      if List.length binds <> 1 then
-        error env typ.at "M0180"
-          "shared function has unexpected type parameters";
+    if not env.pre && Type.is_shared_sort sort.it then begin
+      check_shared_binds env typ.at tbs;
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
         error_shared env t1 typ1.at "M0031" "shared function has non-shared parameter type%a"
@@ -1249,9 +1255,7 @@ and infer_exp'' env exp : T.typ =
       in
       check_exp_strong (adjoin_vals env'' ve2) codom exp1;
       if Type.is_shared_sort sort then begin
-        if List.length typ_binds <> 1 then
-          error env exp.at "M0180"
-            "shared function has unexpected type parameters";
+        check_shared_binds env exp.at tbs;
         if not (T.shared t1) then
           error_shared env t1 pat.at "M0031"
             "shared function has non-shared parameter type%a"
