@@ -202,7 +202,7 @@ pub unsafe extern "C" fn text_size(s: Value) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
-    debug_assert_eq!(s.forward().get_ptr(), s.get_ptr());
+    s.check_forwarding_pointer();
     (s.forward().get_ptr() as *mut Blob).len()
 }
 

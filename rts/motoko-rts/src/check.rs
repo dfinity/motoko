@@ -1,26 +1,54 @@
 use crate::{
-    types::{Value, TAG_NULL, TAG_OBJECT, TAG_MUTBOX, MutBox, TAG_ONE_WORD_FILLER, object_size, Obj}, visitor::{pointer_to_dynamic_heap, visit_pointer_fields},
+    types::{Value, TAG_NULL, TAG_OBJECT, TAG_MUTBOX, MutBox, TAG_ONE_WORD_FILLER, object_size, Obj}, visitor::{pointer_to_dynamic_heap, visit_pointer_fields}, memory::Memory, mem_utils::{memcpy_bytes, memzero},
 };
 use motoko_rts_macros::ic_mem_fn;
 
 static mut _SERIALIZING: bool = false;
+pub static mut ARTIFICIAL_FORWARDING: bool = false;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn set_serialization_status<M: crate::memory::Memory>(_mem: &mut M, active: bool) {
+unsafe fn set_serialization_status<M: Memory>(_mem: &mut M, active: bool) {
     _SERIALIZING = active;
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn check_forwarding_pointer<M: crate::memory::Memory>(_mem: &mut M, value: Value) -> Value {
+unsafe fn check_forwarding_pointer<M: Memory>(_mem: &mut M, value: Value) -> Value {
     const TRUE_VALUE: u32 = 1;
     assert!(value.is_ptr() && value.get_raw() != TRUE_VALUE);
-    assert!(value.forward().is_ptr());
-    assert_eq!(value.forward().get_ptr(), value.get_ptr());
+    value.check_forwarding_pointer();
     if !_SERIALIZING {
         assert!(value.tag() >= TAG_OBJECT && value.tag() <= TAG_NULL);
-        //check_memory(_mem);
     }
     value.forward()
+}
+
+#[ic_mem_fn(ic_only)]
+unsafe fn set_artificial_forwarding<M: Memory>(_mem: &mut M, active: bool) {
+    ARTIFICIAL_FORWARDING = active;
+}
+
+const INVALID_TAG_BITMASK: u32 = 0x8000_0000;
+
+#[ic_mem_fn]
+/// Forward the object to a new copy and clear the content in the source object.
+pub unsafe fn create_artificial_forward<M: Memory>(mem: &mut M, source: Value) {
+    if !ARTIFICIAL_FORWARDING {
+        return;
+    }
+    assert!(source.is_ptr());
+    let size = object_size(source.get_ptr() as usize);
+    let target = mem.alloc_words(size);
+    memcpy_bytes(target.get_ptr() as usize, source.get_ptr() as usize, size.to_bytes());
+    let target_object = target.get_ptr() as *mut Obj;
+    (*target_object).forward = target;
+    let source_object = source.get_ptr() as *mut Obj;
+    assert!(source.forward() == source);
+    assert_eq!(source.tag(), target.tag());
+    assert_eq!(size.as_usize(), object_size(target_object as usize).as_usize());
+    memzero(source_object as usize, size);
+    assert!(size.to_bytes().as_u32() < INVALID_TAG_BITMASK);
+    (*source_object).tag = size.to_bytes().as_u32() | INVALID_TAG_BITMASK; // encode length in invalid tag
+    (*source_object).forward = target;
 }
 
 pub struct MemoryChecker {
@@ -31,7 +59,7 @@ pub struct MemoryChecker {
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn check_memory<M: crate::memory::Memory>(_mem: &mut M) {
+pub unsafe fn check_memory<M: crate::memory::Memory>(_mem: &mut M) {
     use crate::memory::ic;
     let heap_base = if ic::ALIGN {
         ic::get_aligned_heap_base()
@@ -78,30 +106,32 @@ impl MemoryChecker {
 
     unsafe fn check_object(&self, object: Value) {
         self.check_object_header(object);
-        visit_pointer_fields(
-            &mut (),
-            object.as_obj(),
-            object.tag(),
-            0,
-            |_, field_address| {
-                (&self).check_object_header(*field_address);
-            },
-            |_, _, arr| arr.len(),
-        );
+        let tag = (object.get_ptr() as *mut Obj).tag();
+        if tag & INVALID_TAG_BITMASK == 0 {
+            visit_pointer_fields(
+                &mut (),
+                object.as_obj(),
+                object.tag(),
+                0,
+                |_, field_address| {
+                    (&self).check_object_header(*field_address);
+                },
+                |_, _, arr| arr.len(),
+            );
+        }
     }
 
     unsafe fn check_object_header(&self, object: Value) {
         assert!(object.is_ptr());
         let pointer = object.get_ptr();
         assert!(pointer < self.heap_end);
-        let tag = object.tag();
-        const COERCION_FAILURE: u32 = 0xfffffffe;
-        if !(tag >= TAG_OBJECT && tag <= TAG_NULL || tag == COERCION_FAILURE) {
-            println!(100, "ERROR TAG {tag}");
+        object.check_forwarding_pointer();
+        if object.forward().get_ptr() != object.get_ptr() {
+            self.check_object(object.forward());
+        } else {
+            let tag = object.tag();
+            assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         }
-        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL || tag == COERCION_FAILURE);
-        let forward = object.forward();
-        assert_eq!(forward.get_raw(), object.get_raw());
     }
 
     unsafe fn check_heap(&self) {
@@ -111,7 +141,16 @@ impl MemoryChecker {
             if (object.get_ptr() as *mut Obj).tag() != TAG_ONE_WORD_FILLER {
                 self.check_object(object);
             }
-            pointer += object_size(pointer as usize).to_bytes().as_usize();
+            pointer += Self::object_size(object);
+        }
+    }
+
+    unsafe fn object_size(object: Value) -> usize {
+        let tag = (object.get_ptr() as *mut Obj).tag();
+        if tag & INVALID_TAG_BITMASK != 0 {
+            (tag & !INVALID_TAG_BITMASK) as usize
+        } else {
+            object_size(object.get_ptr() as usize).to_bytes().as_usize()
         }
     }
 }

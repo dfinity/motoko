@@ -948,6 +948,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "set_serialization_status" [I32Type] [];
     E.add_func_import env "rts" "check_forwarding_pointer" [I32Type] [I32Type];
+    E.add_func_import env "rts" "set_artificial_forwarding" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -10042,6 +10043,13 @@ and conclude_module env start_fi_o =
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
     E.call_import env "rts" "init" ^^
+    (
+      if !Flags.sanity then
+        compile_unboxed_const 1l ^^
+        E.call_import env "rts" "set_artificial_forwarding"
+      else 
+        G.nop
+    ) ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
