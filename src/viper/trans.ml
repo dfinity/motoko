@@ -333,30 +333,30 @@ and stmt ctxt (s : M.exp) : seqn =
            !?(AndE (x, !?(AndE (between, !?(Implies (is_one, cond.it (exp ctxt)))))))
        | _ -> unsupported e.at (Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
-     !!  ([],
-          [ !!(FieldAssignS(
-              (self ctxt Source.no_region, !!id),
-              (!!(AddE(!!(FldAcc (self ctxt (s.at), !!id)),
-                       intLitE Source.no_region 1)))));
-            !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
-                                !@(MacroCall("$Inv", self ctxt at))))));
-            !@(SeqnS (
-                !@([],
-                   [
-                     !@(InhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
-                                    !@(AndE(!@(MacroCall("$Inv", self ctxt at)),
-                                            !@(GtCmpE(!@(FldAcc (self ctxt at, !@id)),
-                                                 intLitE Source.no_region 0))))))));
-                     !@(FieldAssignS(
-                            (self ctxt at, !@id),
-                            (!@(SubE(!@(FldAcc (self ctxt at, !@id)),
-                                     intLitE at 1)))));
-                     !!! (e.at) (SeqnS stmts);
-                     !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
-                                         !@(MacroCall("$Inv", self ctxt at)))))) ])));
-            !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
-                                !!(MacroCall("$Inv", self ctxt at))))));
-          ])
+     !!([],
+        [ !!(FieldAssignS(
+            (self ctxt Source.no_region, !!id),
+            (!!(AddE(!!(FldAcc (self ctxt (s.at), !!id)),
+                     intLitE Source.no_region 1)))));
+          !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
+                              !@(MacroCall("$Inv", self ctxt at))))));
+          !@(SeqnS (
+              !@([],
+                 [
+                   !@(InhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
+                                  !@(AndE(!@(MacroCall("$Inv", self ctxt at)),
+                                          !@(GtCmpE(!@(FldAcc (self ctxt at, !@id)),
+                                               intLitE Source.no_region 0))))))));
+                   !@(FieldAssignS(
+                          (self ctxt at, !@id),
+                          (!@(SubE(!@(FldAcc (self ctxt at, !@id)),
+                                   intLitE at 1)))));
+                   !!! (e.at) (SeqnS stmts);
+                   !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
+                                       !@(MacroCall("$Inv", self ctxt at)))))) ])));
+          !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
+                              !!(MacroCall("$Inv", self ctxt at))))));
+        ])
   | M.WhileE(e, s1) ->
      !!([],
         [ !!(WhileS(exp ctxt e, [], stmt ctxt s1)) ]) (* TODO: Invariant *)
