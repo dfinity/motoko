@@ -933,6 +933,8 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "check_memory" [] [];
+    E.add_func_import env "rts" "check_array_pointer" [I32Type; I32Type] [];
     ()
 
 end (* RTS *)
@@ -3451,6 +3453,9 @@ module Arr = struct
       get_boundary ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU))
     ) (
+      get_array ^^ get_pointer ^^ E.call_import env "rts" "check_array_pointer" ^^
+  
+
       body get_pointer ^^      
 
       (* Next element pointer, skewed *)
@@ -3458,6 +3463,7 @@ module Arr = struct
       compile_add_const element_size ^^
       set_pointer
     )
+    ^^ E.call_import env "rts" "check_memory"
 
   (* The primitive operations *)
   (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
