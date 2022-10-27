@@ -1,5 +1,8 @@
 # Motoko compiler changelog
 
+  * Fix bug in `Buffer` library affecting `filterEntries` (dfinity/motoko-base#422).
+  * Statically reject shared functions and function types with type parameters (#3519, #3522)
+
 ## 0.7.2 (2022-10-25)
 
 * motoko-base
