@@ -11,7 +11,7 @@ actor {
 
   public shared func claim() : async () {
     if (not claimed) {
-      claimed := true;
+      //claimed := true;
 
       await async {
         assert:1:async (claimed and count == 0);

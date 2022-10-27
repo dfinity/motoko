@@ -298,9 +298,10 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.IfE(e, s1, s2) ->
     !!([],
        [ !!(IfS(exp ctxt e, stmt ctxt s1, stmt ctxt s2))])
-  | M.(AwaitE({ it = AsyncE (_, e); at;_ })) -> (* gross hack *)
+  | M.(AwaitE({ it = AsyncE (_, e); at; _ })) -> (* gross hack *)
      let id = fresh_id "$message_async" in
      let (!!) p = !!! (s.at) p in
+     let (!@) p = !!! at p in
      ctxt.ghost_items :=
        (fun ctxt ->
          !!(FieldI (!!id, !!IntT))) ::
@@ -323,13 +324,13 @@ and stmt ctxt (s : M.exp) : seqn =
        | [] ->
          fun _ x -> x
        | ConcurrencyS ("1", _, cond) :: _ ->
-         let (!!) p = !!! (cond.at) p in
+         let (!?) p = !!! (cond.at) p in
          let zero, one = intLitE Source.no_region 0, intLitE Source.no_region 1 in
          fun ctxt x ->
-           let ghost_fld () = !!(FldAcc (self ctxt cond.at, !!id)) in
-           let between = !!(AndE (!!(LeCmpE (zero, ghost_fld ())), !!(LeCmpE (ghost_fld (), one)))) in
-           let is_one = !!(EqCmpE (ghost_fld (), one)) in
-           !!(AndE (x, !!(AndE (between, !!(Implies (is_one, cond.it (exp ctxt)))))))
+           let ghost_fld () = !?(FldAcc (self ctxt cond.at, !?id)) in
+           let between = !?(AndE (!?(LeCmpE (zero, ghost_fld ())), !?(LeCmpE (ghost_fld (), one)))) in
+           let is_one = !?(EqCmpE (ghost_fld (), one)) in
+           !?(AndE (x, !?(AndE (between, !?(Implies (is_one, cond.it (exp ctxt)))))))
        | _ -> unsupported e.at (Arrange.exp e) in
      ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
      !!  ([],
@@ -337,23 +338,22 @@ and stmt ctxt (s : M.exp) : seqn =
               (self ctxt Source.no_region, !!id),
               (!!(AddE(!!(FldAcc (self ctxt (s.at), !!id)),
                        intLitE Source.no_region 1)))));
-            !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
-                                !!(MacroCall("$Inv", self ctxt at))))));
-            !!(SeqnS (
-                let (!!) p = !!! at p in
-                !!([],
+            !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
+                                !@(MacroCall("$Inv", self ctxt at))))));
+            !@(SeqnS (
+                !@([],
                    [
-                     !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
-                                    !!(AndE(!!(MacroCall("$Inv", self ctxt at)),
-                                            !!(GtCmpE(!!(FldAcc (self ctxt at, !!id)),
+                     !@(InhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
+                                    !@(AndE(!@(MacroCall("$Inv", self ctxt at)),
+                                            !@(GtCmpE(!@(FldAcc (self ctxt at, !@id)),
                                                  intLitE Source.no_region 0))))))));
-                     !!(FieldAssignS(
-                            (self ctxt at, !!id),
-                            (!!(SubE(!!(FldAcc (self ctxt at, !!id)),
+                     !@(FieldAssignS(
+                            (self ctxt at, !@id),
+                            (!@(SubE(!@(FldAcc (self ctxt at, !@id)),
                                      intLitE at 1)))));
                      !!! (e.at) (SeqnS stmts);
-                     !!(ExhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
-                                         !!(MacroCall("$Inv", self ctxt at)))))) ])));
+                     !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
+                                         !@(MacroCall("$Inv", self ctxt at)))))) ])));
             !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
                                 !!(MacroCall("$Inv", self ctxt at))))));
           ])
