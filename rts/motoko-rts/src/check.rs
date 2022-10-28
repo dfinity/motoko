@@ -106,8 +106,7 @@ impl MemoryChecker {
 
     unsafe fn check_object(&self, object: Value) {
         self.check_object_header(object);
-        let tag = (object.get_ptr() as *mut Obj).tag();
-        if tag & INVALID_TAG_BITMASK == 0 {
+        if object.forward().get_ptr() == object.get_ptr() {
             visit_pointer_fields(
                 &mut (),
                 object.as_obj(),
@@ -148,6 +147,7 @@ impl MemoryChecker {
     unsafe fn object_size(object: Value) -> usize {
         let tag = (object.get_ptr() as *mut Obj).tag();
         if tag & INVALID_TAG_BITMASK != 0 {
+            assert_ne!(object.forward().get_ptr(), object.get_ptr());
             (tag & !INVALID_TAG_BITMASK) as usize
         } else {
             object_size(object.get_ptr() as usize).to_bytes().as_usize()
