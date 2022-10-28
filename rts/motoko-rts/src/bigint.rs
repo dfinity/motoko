@@ -42,13 +42,24 @@ use motoko_rts_macros::ic_mem_fn;
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
-    let blob = ptr.get_ptr() as *mut BigInt;
+    let mut blob = ptr.get_ptr() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
     (*blob).header.forward = ptr;
+
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
+
+    // SANITY CHECK LOGIC BEGIN
+    #[cfg(debug_assertions)]
+    {
+        crate::check::create_artificial_forward(mem, ptr);
+        let ptr = (*blob).header.forward;
+        blob = ptr.as_bigint();
+    }
+    // SANITY CHECK LOGIC END
+
     blob.payload_addr() as *mut u8
 }
 

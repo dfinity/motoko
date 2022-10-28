@@ -13,8 +13,7 @@ unsafe fn set_serialization_status<M: Memory>(_mem: &mut M, active: bool) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn check_forwarding_pointer<M: Memory>(_mem: &mut M, value: Value) -> Value {
-    const TRUE_VALUE: u32 = 1;
-    assert!(value.is_ptr() && value.get_raw() != TRUE_VALUE);
+    assert!(value.is_ptr());
     value.check_forwarding_pointer();
     if !_SERIALIZING {
         assert!(value.tag() >= TAG_OBJECT && value.tag() <= TAG_NULL);
