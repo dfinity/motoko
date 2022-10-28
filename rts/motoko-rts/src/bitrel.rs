@@ -22,12 +22,12 @@ pub struct BitRel {
 
 impl BitRel {
     #[allow(dead_code)]
-    pub(crate) fn words(size1: u32, size2: u32) -> u32 {
+    pub fn words(size1: u32, size2: u32) -> u32 {
         return ((2 * size1 * size2 * BITS) + (usize::BITS - 1)) / usize::BITS;
     }
 
     #[allow(dead_code)]
-    pub(crate) unsafe fn init(&self) {
+    pub unsafe fn init(&self) {
         if (self.end as usize) < (self.ptr as usize) {
             idl_trap_with("BitRel invalid fields");
         };
@@ -83,29 +83,29 @@ impl BitRel {
     }
 
     #[allow(dead_code)]
-    pub(crate) unsafe fn visited(&self, p: bool, i_j: u32, j_i: u32) -> bool {
+    pub unsafe fn visited(&self, p: bool, i_j: u32, j_i: u32) -> bool {
         self.get(p, i_j, j_i, 0)
     }
 
     #[allow(dead_code)]
-    pub(crate) unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) {
+    pub unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 0, true)
     }
 
     #[allow(dead_code)]
     // NB: we store related bits in negated form to avoid setting on assumption
     // This code is a nop in production code.
-    pub(crate) unsafe fn assume(&self, p: bool, i_j: u32, j_i: u32) {
+    pub unsafe fn assume(&self, p: bool, i_j: u32, j_i: u32) {
         debug_assert!(!self.get(p, i_j, j_i, 1));
     }
 
     #[allow(dead_code)]
-    pub(crate) unsafe fn related(&self, p: bool, i_j: u32, j_i: u32) -> bool {
+    pub unsafe fn related(&self, p: bool, i_j: u32, j_i: u32) -> bool {
         !self.get(p, i_j, j_i, 1)
     }
 
     #[allow(dead_code)]
-    pub(crate) unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) {
+    pub unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 1, true)
     }
 }
