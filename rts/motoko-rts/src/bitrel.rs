@@ -36,7 +36,7 @@ impl BitRel {
     }
 
     unsafe fn locate_ptr_bit(
-        self: &Self,
+        &self
         p: bool,
         i_j: u32,
         j_i: u32,
