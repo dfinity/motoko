@@ -29,19 +29,13 @@ impl BitRel {
         };
 
         let bytes = ((self.end as usize) - (self.ptr as usize)) as u32;
-        if (2 * self.size1 * self.size2 * BITS) > bytes * 8 {
-            idl_trap_with("BitRel not enough bytes");
+        if bytes != BitRel::words(self.size1, self.size2) * WORD_SIZE {
+            idl_trap_with("BitRel missized");
         };
         memzero(self.ptr as usize, Words(bytes / WORD_SIZE));
     }
 
-    unsafe fn locate_ptr_bit(
-        &self
-        p: bool,
-        i_j: u32,
-        j_i: u32,
-        bit: u32,
-    ) -> (*mut u32, u32) {
+    unsafe fn locate_ptr_bit(&self, p: bool, i_j: u32, j_i: u32, bit: u32) -> (*mut u32, u32) {
         let size1 = self.size1;
         let size2 = self.size2;
         let (base, i, j) = if p {
