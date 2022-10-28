@@ -87,13 +87,13 @@ impl BitRel {
         self.get(p, i_j, j_i, 0)
     }
 
-    pub(crate) unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) -> () {
+    pub(crate) unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 0, true)
     }
 
     // NB: we store related bits in negated form to avoid setting on assumption
     // This code is a nop in production code.
-    pub(crate) unsafe fn assume(&self, p: bool, i_j: u32, j_i: u32) -> () {
+    pub(crate) unsafe fn assume(&self, p: bool, i_j: u32, j_i: u32) {
         debug_assert!(!self.get(p, i_j, j_i, 1));
     }
 
@@ -101,7 +101,7 @@ impl BitRel {
         !self.get(p, i_j, j_i, 1)
     }
 
-    pub(crate) unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) -> () {
+    pub(crate) unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 1, true)
     }
 }
