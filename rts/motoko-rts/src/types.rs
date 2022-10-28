@@ -318,15 +318,18 @@ impl Value {
     }
 }
 
+#[inline]
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
 pub fn is_ptr(value: u32) -> bool {
     value & 0b1 != 0 && value != TRUE_VALUE
 }
 
+#[inline]
 pub const fn skew(ptr: usize) -> usize {
     ptr.wrapping_sub(1)
 }
 
+#[inline]
 pub const fn unskew(value: usize) -> usize {
     value.wrapping_add(1)
 }
