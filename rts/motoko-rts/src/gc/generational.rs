@@ -180,39 +180,29 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     pub unsafe fn run(&mut self) {
         assert_eq!(self.heap.limits.base % 32, 0);
-        let mem_size = Bytes(self.heap.limits.free as u32 - self.heap.limits.base as u32);
+        self.alloc_mark_structures();
+        self.mark_phase();
+        self.compact_phase();
+        self.free_mark_structures();
+    }
+
+    unsafe fn alloc_mark_structures(&mut self) {
+        let mark_offset = match self.strategy {
+            Strategy::Young => self.heap.limits.last_free,
+            Strategy::Full => self.heap.limits.base
+        };
+        let mem_size = Bytes((self.heap.limits.free - mark_offset) as u32);
         alloc_bitmap(
             self.heap.mem,
             mem_size,
-            self.heap.limits.base as u32 / WORD_SIZE,
+            mark_offset as u32 / WORD_SIZE,
         );
         alloc_mark_stack(self.heap.mem);
+    }
 
-        self.mark_phase();
-
-        if self.is_compaction_beneficial() {
-            self.thread_initial_phase();
-            self.move_phase();
-        }
-
+    unsafe fn free_mark_structures(&mut self) {
         free_mark_stack();
         free_bitmap();
-    }
-
-    fn is_compaction_beneficial(&self) -> bool {
-        self.survival_rate() < 0.95
-    }
-
-    fn generation_size(&self) -> usize {
-        let base = match self.strategy {
-            Strategy::Young => self.heap.limits.last_free,
-            Strategy::Full => self.heap.limits.base,
-        };
-        self.heap.limits.free - base
-    }
-
-    fn survival_rate(&self) -> f64 {
-        self.marked_space as f64 / self.generation_size() as f64
     }
 
     unsafe fn mark_phase(&mut self) {
@@ -320,6 +310,29 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
     }
 
+    unsafe fn compact_phase(&mut self) {
+        if self.is_compaction_beneficial() {
+            self.thread_initial_phase();
+            self.move_phase();
+        }
+    }
+
+    fn is_compaction_beneficial(&self) -> bool {
+        self.survival_rate() < 0.95
+    }
+
+    fn generation_size(&self) -> usize {
+        let base = match self.strategy {
+            Strategy::Young => self.heap.limits.last_free,
+            Strategy::Full => self.heap.limits.base,
+        };
+        self.heap.limits.free - base
+    }
+
+    fn survival_rate(&self) -> f64 {
+        self.marked_space as f64 / self.generation_size() as f64
+    }
+
     unsafe fn thread_initial_phase(&mut self) {
         self.thread_all_backward_pointers();
 
@@ -394,26 +407,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             // value in the location may have changed since recording by the write barrer
             if value.is_ptr() && (value.get_raw() as usize) >= self.heap.limits.last_free {
                 debug_assert!((location as usize) >= self.heap.limits.base);
-                #[cfg(debug_assertions)]
-                self.assert_unthreaded(location);
                 self.thread(location);
             }
             iterator.next();
         }
-    }
-
-    #[cfg(debug_assertions)]
-    unsafe fn assert_unthreaded(&self, location: *mut Value) {
-        // Only during debug assertions and only during young generation collection:
-        // Use the bitmap in the old generation to detect multiple threading attempts of same field.
-        debug_assert!(self.strategy == Strategy::Young);
-        let address = location as usize;
-        debug_assert!(address >= self.heap.limits.base && address < self.heap.limits.last_free);
-        let location_index = address as u32 / WORD_SIZE;
-        if get_bit(location_index) {
-            panic!("Same field threaded multiple times");
-        }
-        set_bit(location_index);
     }
 
     unsafe fn move_phase(&mut self) {
