@@ -54,12 +54,12 @@ jobs:
       with:
         extra_nix_config: |
           experimental-features = nix-command
-    - uses: cachix/cachix-action@v11
+    - uses: cachix/cachix-action@v12
       if: startsWith(github.ref, 'refs/heads/')
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t want to push new stuff here
-    - uses: cachix/cachix-action@v11
+    - uses: cachix/cachix-action@v12
       if: startsWith(github.ref, 'refs/tags/')
       with:
         name: ic-hs-test
@@ -80,7 +80,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v18
-    - uses: cachix/cachix-action@v11
+    - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
