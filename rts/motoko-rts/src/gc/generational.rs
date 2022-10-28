@@ -187,7 +187,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn alloc_mark_structures(&mut self) {
-        let mark_offset = self.heap.limits.base;
+        const BITMAP_ALGNMENT: usize = 8 * WORD_SIZE as usize;
+        let mark_offset = match self.strategy {
+            Strategy::Young => self.heap.limits.last_free / BITMAP_ALGNMENT * BITMAP_ALGNMENT,
+            Strategy::Full => self.heap.limits.base,
+        };
         let mem_size = Bytes((self.heap.limits.free - mark_offset) as u32);
         alloc_bitmap(self.heap.mem, mem_size, mark_offset as u32 / WORD_SIZE);
         alloc_mark_stack(self.heap.mem);
