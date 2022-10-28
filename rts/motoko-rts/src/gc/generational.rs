@@ -189,14 +189,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn alloc_mark_structures(&mut self) {
         let mark_offset = match self.strategy {
             Strategy::Young => self.heap.limits.last_free,
-            Strategy::Full => self.heap.limits.base
+            Strategy::Full => self.heap.limits.base,
         };
         let mem_size = Bytes((self.heap.limits.free - mark_offset) as u32);
-        alloc_bitmap(
-            self.heap.mem,
-            mem_size,
-            mark_offset as u32 / WORD_SIZE,
-        );
+        alloc_bitmap(self.heap.mem, mem_size, mark_offset as u32 / WORD_SIZE);
         alloc_mark_stack(self.heap.mem);
     }
 
@@ -240,7 +236,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let value = *location;
             // Check whether the location still refers to young object as this may have changed
             // due to subsequent writes to that location after the write barrier recording.
-            if value.is_ptr() && (value.get_raw() as usize) >= self.heap.limits.last_free {
+            if (value.get_raw() as usize) >= self.heap.limits.last_free && value.is_ptr() {
                 self.mark_object(value);
             }
             iterator.next();
@@ -405,7 +401,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let location = iterator.current().get_raw() as *mut Value;
             let value = *location;
             // value in the location may have changed since recording by the write barrer
-            if value.is_ptr() && (value.get_raw() as usize) >= self.heap.limits.last_free {
+            if (value.get_raw() as usize) >= self.heap.limits.last_free && value.is_ptr() {
                 debug_assert!((location as usize) >= self.heap.limits.base);
                 self.thread(location);
             }
