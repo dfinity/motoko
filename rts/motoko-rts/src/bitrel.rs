@@ -1,7 +1,5 @@
 //! This module implements a simple subtype cache used by the compiler (in generated code)
 
-//TODO: add unit test and remove #[allow(dead_code)] on tested functions
-
 use crate::constants::WORD_SIZE;
 use crate::idl_trap_with;
 use crate::mem_utils::memzero;
@@ -21,12 +19,10 @@ pub struct BitRel {
 }
 
 impl BitRel {
-    #[allow(dead_code)]
     pub fn words(size1: u32, size2: u32) -> u32 {
         return ((2 * size1 * size2 * BITS) + (usize::BITS - 1)) / usize::BITS;
     }
 
-    #[allow(dead_code)]
     pub unsafe fn init(&self) {
         if (self.end as usize) < (self.ptr as usize) {
             idl_trap_with("BitRel invalid fields");
@@ -39,7 +35,6 @@ impl BitRel {
         memzero(self.ptr as usize, Words(bytes / WORD_SIZE));
     }
 
-    #[allow(dead_code)]
     unsafe fn locate_ptr_bit(&self, p: bool, i_j: u32, j_i: u32, bit: u32) -> (*mut u32, u32) {
         let size1 = self.size1;
         let size2 = self.size2;
@@ -57,7 +52,7 @@ impl BitRel {
         if bit >= BITS {
             idl_trap_with("BitRel bit out of bounds");
         };
-        let k = base + i * size2 * BITS + j + bit;
+        let k = base + i * size2 * BITS + j * BITS + bit;
         let word = (k / usize::BITS) as usize;
         let bit = (k % usize::BITS) as u32;
         let ptr = self.ptr.add(word);
@@ -82,12 +77,10 @@ impl BitRel {
         return *ptr & mask == mask;
     }
 
-    #[allow(dead_code)]
     pub unsafe fn visited(&self, p: bool, i_j: u32, j_i: u32) -> bool {
         self.get(p, i_j, j_i, 0)
     }
 
-    #[allow(dead_code)]
     pub unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 0, true)
     }
@@ -99,12 +92,10 @@ impl BitRel {
         debug_assert!(!self.get(p, i_j, j_i, 1));
     }
 
-    #[allow(dead_code)]
     pub unsafe fn related(&self, p: bool, i_j: u32, j_i: u32) -> bool {
         !self.get(p, i_j, j_i, 1)
     }
 
-    #[allow(dead_code)]
     pub unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 1, true)
     }
