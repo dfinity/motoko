@@ -38,26 +38,16 @@ impl BitRel {
     unsafe fn locate_ptr_bit(&self, p: bool, i_j: u32, j_i: u32, bit: u32) -> (*mut u32, u32) {
         let size1 = self.size1;
         let size2 = self.size2;
-        let (base, i, j) = if p {
-            (0, i_j, j_i)
-        } else {
-            (size1 * size2 * BITS, j_i, i_j)
-        };
-        if i >= size1 {
-            idl_trap_with("BitRel i out of bounds");
-        };
-        if j >= size2 {
-            idl_trap_with("BitRel j out of bounds");
-        };
-        if bit >= BITS {
-            idl_trap_with("BitRel bit out of bounds");
-        };
-        let k = base + (i * size2 + j) * BITS + bit;
+        let (base, i, j) = if p { (0, i_j, j_i) } else { (size1, j_i, i_j) };
+        debug_assert!(i < size1);
+        debug_assert!(j < size2);
+        debug_assert!(bit < BITS);
+        let k = ((base + i) * size2 + j) * BITS + bit;
         let word = (k / usize::BITS) as usize;
         let bit = (k % usize::BITS) as u32;
         let ptr = self.ptr.add(word);
         if ptr > self.end {
-            idl_trap_with("BitRel ptr out of bounds");
+            idl_trap_with("BitRel indices out of bounds");
         };
         return (ptr, bit);
     }
