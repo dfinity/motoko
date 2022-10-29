@@ -52,7 +52,7 @@ impl BitRel {
         if bit >= BITS {
             idl_trap_with("BitRel bit out of bounds");
         };
-        let k = base + i * size2 * BITS + j * BITS + bit;
+        let k = base + (i * size2 + j) * BITS + bit;
         let word = (k / usize::BITS) as usize;
         let bit = (k % usize::BITS) as u32;
         let ptr = self.ptr.add(word);
