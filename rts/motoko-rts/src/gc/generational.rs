@@ -402,7 +402,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let location = iterator.current().get_raw() as *mut Value;
             let value = *location;
             // value in the location may have changed since recording by the write barrer
-            if value.points_to_or_beyond(self.heap.limits.last_free)  {
+            if value.points_to_or_beyond(self.heap.limits.last_free) {
                 debug_assert!((location as usize) >= self.heap.limits.base);
                 self.thread(location);
             }
