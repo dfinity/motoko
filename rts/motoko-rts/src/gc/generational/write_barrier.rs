@@ -32,7 +32,7 @@ pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
             // Only record locations inside old generation, static roots are anyway marked by GC.
             if location >= HEAP_BASE && location < LAST_HP {
                 let value = *(location as *mut Value);
-                if value.is_ptr() && value.get_ptr() >= LAST_HP {
+                if value.points_to_or_beyond(LAST_HP as usize) {
                     // trap pointers that lead from old generation (or static roots) to young generation
                     remembered_set.insert(mem, Value::from_raw(location));
                 }

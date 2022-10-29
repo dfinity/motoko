@@ -224,6 +224,7 @@ impl Value {
     }
 
     /// Get the raw value
+    #[inline]
     pub fn get_raw(&self) -> u32 {
         self.0
     }
@@ -316,12 +317,26 @@ impl Value {
         debug_assert!(self.is_scalar());
         self.0 as i32 >> 1
     }
+
+    // optimized version of `value.is_ptr() && value.get_ptr() >= address`
+    // value is a pointer equal or greater than the unskewed address > 1
+    #[inline]
+    pub fn points_to_or_beyond(&self, address: usize) -> bool {
+        debug_assert!(address > TRUE_VALUE as usize);
+        let raw = self.get_raw();
+        is_skewed(raw) && unskew(raw as usize) >= address
+    }
 }
 
 #[inline]
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
 pub fn is_ptr(value: u32) -> bool {
-    value & 0b1 != 0 && value != TRUE_VALUE
+    is_skewed(value) && value != TRUE_VALUE
+}
+
+#[inline]
+pub const fn is_skewed(value: u32) -> bool {
+    value & 0b1 != 0
 }
 
 #[inline]
