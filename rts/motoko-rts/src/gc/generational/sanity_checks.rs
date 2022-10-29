@@ -77,7 +77,7 @@ unsafe fn verify_heap(limits: &Limits) {
 unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
     if (current_field as usize) < last_free {
         let value = *current_field;
-        value.is_ptr() && value.get_raw() as usize >= last_free
+        value.is_ptr() && value.get_ptr() as usize >= last_free
     } else {
         false
     }
