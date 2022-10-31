@@ -82,6 +82,8 @@ impl RememberedSet {
         if is_null_ptr_value(value) || value.get_raw() == self.fast_cache.get_raw() {
             return;
         }
+        self.fast_cache = Value::from_raw(value.get_raw());
+
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);
         if is_null_ptr_value((*entry).value) {
