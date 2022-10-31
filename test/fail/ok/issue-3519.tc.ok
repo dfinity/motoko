@@ -1,0 +1,1 @@
+issue-3519.mo:8.10-12.4: type error [M0180], shared function has unexpected type parameters
