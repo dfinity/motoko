@@ -1,5 +1,5 @@
 //! Write barrier
-//! Pre-update, object-level barrier for incremental snapshot-at-the-beginning marking.
+//! Pre-update, field-level barrier for incremental snapshot-at-the-beginning marking.
 
 pub mod remembered_set;
 #[cfg(debug_assertions)]
@@ -17,17 +17,21 @@ pub unsafe fn init_write_barrier<M: Memory>(_mem: &mut M) {
 }
 
 /// Write barrier to be called BEFORE a pointer store.
-/// `object` (skewed) denotes the containing object wherein a field or array element is written.
+/// `location` (unskewed) denotes the field or array element that will be written.
 /// The barrier is conservatively called even if the stored value might not be a pointer.
 #[ic_mem_fn]
-pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, _object: Value) {
-    debug_assert!(_object.is_ptr());
+pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, _location: *mut Value) {
+    debug_assert!(_location as usize & 0b1 == 0);
+    debug_assert!(_location != core::ptr::null_mut());
     #[cfg(debug_assertions)]
-    if (_object.get_ptr() as *mut Value) != core::ptr::null_mut() {
-        debug_assert!(
-            _object.tag() >= crate::types::TAG_OBJECT && _object.tag() <= crate::types::TAG_NULL
-        );
+    {
+        let value = *_location;
+        if value.is_ptr() && (value.get_ptr() as *mut Value) != core::ptr::null_mut() {
+            debug_assert!(
+                value.tag() >= crate::types::TAG_OBJECT && value.tag() <= crate::types::TAG_NULL
+            );
+        }
     }
     #[cfg(debug_assertions)]
-    sanity_checks::record_write(_mem, _object);
+    sanity_checks::record_write(_mem, Value::from_raw(_location as u32));
 }

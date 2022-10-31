@@ -6788,6 +6788,8 @@ module Var = struct
       (if !Flags.write_barrier && (potential_pointer typ)
        then
         G.i (LocalGet (nr i)) ^^
+        compile_add_const ptr_unskew ^^
+        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
         E.call_import env "rts" "write_barrier"
        else G.nop
       ) ^^
@@ -6799,6 +6801,8 @@ module Var = struct
       (if !Flags.write_barrier && (potential_pointer typ)
        then 
         compile_unboxed_const ptr ^^
+        compile_add_const ptr_unskew ^^
+        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
         E.call_import env "rts" "write_barrier"
        else G.nop
       ) ^^
@@ -8212,45 +8216,37 @@ let rec compile_lexp (env : E.t) ae lexp =
   match lexp.it with
   | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
-    let (set_array, get_array) = new_local env "array" in
-   ( 
+    let (set_field, get_field) = new_local env "field" in
+    
+   (
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+     compile_exp_vanilla env ae e2 ^^ (* idx *)
+     Arr.idx_bigint env ^^
      (if !Flags.write_barrier && (potential_pointer (Arr.element_type env e1.note.Note.typ))
       then
-        set_array ^^
-        get_array ^^
+        set_field ^^
+        get_field ^^
+        compile_add_const ptr_unskew ^^
         E.call_import env "rts" "write_barrier" ^^
-        get_array
+        get_field
       else
         G.nop
-     ) ^^
-     compile_exp_vanilla env ae e2 ^^ (* idx *)
-     Arr.idx_bigint env,
+     ),
      SR.Vanilla,
      store_ptr
    )
   | DotLE (e, n) ->
-    let (set_object, get_object) = new_local env "object" in
     let (set_field, get_field) = new_local env "field" in
     
    ( 
      compile_exp_vanilla env ae e ^^
-     set_object ^^
-     get_object ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n ^^
      (if !Flags.write_barrier && (potential_pointer (Object.field_type env e.note.Note.typ n))
       then  
         set_field ^^
-        (if Object.is_mut_field env e.note.Note.typ n
-         then 
-          (* indirected field, go back to beginning of MutBox *)
-          get_field ^^ 
-          compile_sub_const (Int32.mul MutBox.field Heap.word_size)
-         else 
-          (* inlined field *)
-          get_object
-        ) ^^
+        get_field ^^
+        compile_add_const ptr_unskew ^^
         E.call_import env "rts" "write_barrier" ^^
         get_field
       else
