@@ -3437,50 +3437,76 @@ module Arr = struct
   (* Does not initialize the fields! *)
   let alloc env = E.call_import env "rts" "alloc_array"
 
+  let iterate env get_array body = 
+    let (set_boundary, get_boundary) = new_local env "boundary" in
+    let (set_pointer, get_pointer) = new_local env "pointer" in
+    
+    (* Initial element pointer, skewed *)
+    compile_unboxed_const header_size ^^
+    compile_mul_const element_size ^^
+    get_array ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_pointer ^^
+    
+    (* Upper pointer boundary, skewed *)
+    get_array ^^ Heap.load_field len_field ^^
+    compile_mul_const element_size ^^
+    get_pointer ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_boundary ^^
+
+    (* Loop through all elements *)
+    compile_while env
+    ( get_pointer ^^
+      get_boundary ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+    ) (
+      body get_pointer ^^      
+
+      (* Next element pointer, skewed *)
+      get_pointer ^^
+      compile_add_const element_size ^^
+      set_pointer
+    )
+
   (* The primitive operations *)
   (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
   let init env =
-    let (set_len, get_len) = new_local env "len" in
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    BigNum.to_word32 env ^^
-    set_len ^^
-
+    
     (* Allocate *)
-    get_len ^^
+    BigNum.to_word32 env ^^
     alloc env ^^
     set_r ^^
 
-    (* Write fields *)
-    get_len ^^
-    from_0_to_n env (fun get_i ->
-      get_r ^^
-      get_i ^^
-      idx env ^^
+    (* Write elements *)
+    iterate env get_r (fun get_pointer -> 
+      get_pointer ^^
       get_x ^^
       store_ptr
     ) ^^
     get_r
 
   let tabulate env =
-    let (set_len, get_len) = new_local env "len" in
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
+    let (set_i, get_i) = new_local env "i" in
     set_f ^^
-    BigNum.to_word32 env ^^
-    set_len ^^
-
+    
     (* Allocate *)
-    get_len ^^
+    BigNum.to_word32 env ^^
     alloc env ^^
     set_r ^^
 
-    (* Write fields *)
-    get_len ^^
-    from_0_to_n env (fun get_i ->
-      (* Where to store *)
-      get_r ^^ get_i ^^ idx env ^^
+    (* Initial index *)
+    compile_unboxed_const 0l ^^
+    set_i ^^
+
+    (* Write elements *)
+    iterate env get_r (fun get_pointer -> 
+      get_pointer ^^
       (* The closure *)
       get_f ^^
       (* The arg *)
@@ -3490,7 +3516,12 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
-      store_ptr
+      store_ptr ^^
+
+      (* Increment index *)
+      get_i ^^
+      compile_add_const 1l ^^
+      set_i
     ) ^^
     get_r
 

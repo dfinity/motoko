@@ -4,7 +4,7 @@
 * [AssocList](AssocList.md) Lists of key-value entries ("associations").
 * [Blob](Blob.md) Binary blobs
 * [Bool](Bool.md) Boolean type and operations.
-* [Buffer](Buffer.md) Generic, extensible buffers
+* [Buffer](Buffer.md) Class `Buffer<X>` provides a mutable list of elements of type `X`.
 * [CertifiedData](CertifiedData.md) Certified data.
 * [Char](Char.md) Characters
 * [Debug](Debug.md) Debugging aids
