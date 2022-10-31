@@ -94,16 +94,7 @@ unsafe fn verify_field(current_field: *mut Value) {
 unsafe fn recorded(value: u32) -> bool {
     match &REMEMBERED_SET {
         None => panic!("No remembered set"),
-        Some(remembered_set) => {
-            let mut iterator = remembered_set.iterate();
-            while iterator.has_next() {
-                if iterator.current().get_raw() == value {
-                    return true;
-                }
-                iterator.next();
-            }
-            false
-        }
+        Some(remembered_set) => remembered_set.contains(Value::from_raw(value)),
     }
 }
 
