@@ -42,8 +42,7 @@ use crate::types::{object_size, Blob, Bytes, Value};
 
 pub struct RememberedSet {
     hash_table: *mut Blob,
-    count: u32,        // contained entries
-    fast_cache: Value, // optimization, last inserted value
+    count: u32, // contained entries
 }
 
 #[repr(C)]
@@ -74,16 +73,13 @@ impl RememberedSet {
         RememberedSet {
             hash_table,
             count: 0,
-            fast_cache: null_ptr_value(),
         }
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        if is_null_ptr_value(value) || value.get_raw() == self.fast_cache.get_raw() {
+        if is_null_ptr_value(value) {
             return;
         }
-        self.fast_cache = Value::from_raw(value.get_raw());
-
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);
         if is_null_ptr_value((*entry).value) {
