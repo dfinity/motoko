@@ -9,7 +9,7 @@ use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use crate::constants::WORD_SIZE;
-use crate::gc::generational::write_barrier::REMEMBERED_SET;
+use crate::gc::generational::write_barrier::{REMEMBERED_SET, init_write_barrier};
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
@@ -55,6 +55,8 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     );
 
     ic::LAST_HP = ic::HP;
+
+    init_write_barrier(mem);
 }
 
 pub unsafe fn compacting_gc_internal<
@@ -229,6 +231,8 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
 /// - Thread forward pointers of the object
 ///
 unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
+    REMEMBERED_SET = None; // will be collected as garbage
+
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
