@@ -109,7 +109,6 @@ impl RememberedSet {
         }
     }
 
-    #[cfg(debug_assertions)]
     pub unsafe fn contains(&self, value: Value) -> bool {
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);

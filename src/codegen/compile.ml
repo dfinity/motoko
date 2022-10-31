@@ -6798,7 +6798,7 @@ module Var = struct
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Mo_config.Flags.Generational
+      (if !Flags.gc_strategy = Mo_config.Flags.Generational || !Flags.gc_strategy = Mo_config.Flags.MarkCompact
         then
          G.i (LocalGet (nr i)) ^^
          compile_add_const ptr_unskew ^^
@@ -6810,7 +6810,7 @@ module Var = struct
       compile_unboxed_const ptr,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Mo_config.Flags.Generational
+      (if !Flags.gc_strategy = Mo_config.Flags.Generational || !Flags.gc_strategy = Mo_config.Flags.MarkCompact
         then 
          compile_unboxed_const ptr ^^
          compile_add_const ptr_unskew ^^
@@ -8231,7 +8231,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     get_field,
     SR.Vanilla,
     store_ptr ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Generational
+    (if !Flags.gc_strategy = Mo_config.Flags.Generational || !Flags.gc_strategy = Mo_config.Flags.MarkCompact
      then
       get_field ^^
       compile_add_const ptr_unskew ^^
@@ -8248,7 +8248,7 @@ let rec compile_lexp (env : E.t) ae lexp =
      get_field,
      SR.Vanilla,
      store_ptr ^^
-     (if !Flags.gc_strategy = Mo_config.Flags.Generational
+     (if !Flags.gc_strategy = Mo_config.Flags.Generational || !Flags.gc_strategy = Mo_config.Flags.MarkCompact
       then  
         get_field ^^
         compile_add_const ptr_unskew ^^
@@ -9918,7 +9918,7 @@ and conclude_module env start_fi_o =
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Generational) ^^
     E.call_import env "rts" "init" ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Generational
+    (if !Flags.gc_strategy = Mo_config.Flags.Generational || !Flags.gc_strategy = Mo_config.Flags.MarkCompact
      then
       E.call_import env "rts" "init_write_barrier"
      else 
