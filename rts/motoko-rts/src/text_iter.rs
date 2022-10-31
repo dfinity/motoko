@@ -30,9 +30,8 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
         // Add right node to TODOs
         let new_todo = alloc_array(mem, 2);
         let new_todo_array = new_todo.as_array();
-        write_barrier(mem, new_todo);
+        // no write barrier for object initialization
         new_todo_array.set(TODO_TEXT_IDX, (*concat).text2);
-        write_barrier(mem, new_todo);
         new_todo_array.set(TODO_LINK_IDX, *todo);
         *todo = new_todo;
 
@@ -61,8 +60,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     // Initialize position field
     array.set(ITER_POS_IDX, Value::from_scalar(0));
 
-    // Initialize blob field
-    write_barrier(mem, iter);
+    // Initialize blob field, no write barrier for object initialization
     array.set(ITER_BLOB_IDX, find_leaf(mem, text, todo_addr as *mut _));
 
     iter
