@@ -344,6 +344,7 @@ impl GC {
         match self {
             GC::Copying => {
                 unsafe {
+                    LAST_HP = heap_1.heap_ptr_offset() as u32;
                     copying_gc_internal(
                         heap,
                         heap_base,
@@ -364,13 +365,12 @@ impl GC {
 
             GC::MarkCompact => {
                 unsafe {
+                    LAST_HP = heap_1.heap_ptr_offset() as u32;
                     compacting_gc_internal(
                         heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
-                        // last_free
-                        heap_1.last_ptr_address() as u32,
                         // set_hp
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,

@@ -1,9 +1,12 @@
 use crate::constants::WORD_SIZE;
+use crate::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
 use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
+
+use super::generational::write_barrier::HEAP_BASE;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
@@ -37,6 +40,8 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     );
 
     ic::LAST_HP = ic::HP;
+
+    crate::gc::generational::write_barrier::init_write_barrier(mem);
 }
 
 pub unsafe fn copying_gc_internal<
@@ -89,6 +94,8 @@ pub unsafe fn copying_gc_internal<
 
     let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
     note_reclaimed(Bytes(reclaimed as u32));
+
+    REMEMBERED_SET = None;
 
     // Copy to-space to the beginning of from-space
     memcpy_bytes(
@@ -170,6 +177,16 @@ unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: 
         obj.tag(),
         begin_from_space,
         |mem, field_addr| {
+            if (field_addr as u32 >= HEAP_BASE)
+                && (field_addr as u32) < LAST_HP
+                && (*field_addr).points_to_or_beyond(LAST_HP as usize)
+            {
+                assert!(REMEMBERED_SET
+                    .as_ref()
+                    .unwrap()
+                    .contains(Value::from_raw(field_addr as u32)));
+            }
+
             evac(mem, begin_from_space, begin_to_space, field_addr as usize);
         },
         |_, _, arr| arr.len(),

@@ -301,7 +301,9 @@ fn heap_size_for_gc(
     dynamic_heap_size_bytes: usize,
     n_objects: usize,
 ) -> usize {
-    let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
+    const REMEMBERED_SET_MAXIMUM_SIZE: usize = 1024 * 1024 * WORD_SIZE;
+    let total_heap_size_bytes =
+        static_heap_size_bytes + dynamic_heap_size_bytes + REMEMBERED_SET_MAXIMUM_SIZE;
     match gc {
         GC::Copying => {
             let to_space_bytes = dynamic_heap_size_bytes;
@@ -329,7 +331,7 @@ fn heap_size_for_gc(
         }
         GC::Generational => {
             const ROUNDS: usize = 3;
-            const REMEMBERED_SET_MAXIMUM_SIZE: usize = 1024 * 1024 * WORD_SIZE;
+
             let size = heap_size_for_gc(
                 GC::MarkCompact,
                 static_heap_size_bytes,

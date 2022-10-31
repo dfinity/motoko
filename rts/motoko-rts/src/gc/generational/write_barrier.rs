@@ -14,7 +14,11 @@ pub static mut LAST_HP: u32 = 0;
 pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     REMEMBERED_SET = Some(RememberedSet::new(mem));
-    HEAP_BASE = ic::get_aligned_heap_base();
+    HEAP_BASE = if ic::ALIGN {
+        ic::get_aligned_heap_base()
+    } else {
+        ic::get_heap_base()
+    };
     LAST_HP = ic::LAST_HP;
 }
 

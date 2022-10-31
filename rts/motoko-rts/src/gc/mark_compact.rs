@@ -9,13 +9,15 @@ use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
 use crate::constants::WORD_SIZE;
-use crate::gc::generational::write_barrier::{REMEMBERED_SET, init_write_barrier};
+use crate::gc::generational::write_barrier::REMEMBERED_SET;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
+
+use super::generational::write_barrier::{HEAP_BASE, LAST_HP};
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
@@ -42,8 +44,6 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         ic::get_aligned_heap_base(),
         // get_hp
         || ic::HP as usize,
-        // last_free
-        ic::LAST_HP,
         // set_hp
         |hp| ic::HP = hp,
         ic::get_static_roots(),
@@ -56,7 +56,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
 
     ic::LAST_HP = ic::HP;
 
-    init_write_barrier(mem);
+    crate::gc::generational::write_barrier::init_write_barrier(mem);
 }
 
 pub unsafe fn compacting_gc_internal<
@@ -69,7 +69,6 @@ pub unsafe fn compacting_gc_internal<
     mem: &mut M,
     heap_base: u32,
     get_hp: GetHp,
-    last_free: u32,
     set_hp: SetHp,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
@@ -84,7 +83,6 @@ pub unsafe fn compacting_gc_internal<
         mem,
         set_hp,
         heap_base,
-        last_free,
         old_hp,
         static_roots,
         continuation_table_ptr_loc,
@@ -101,7 +99,6 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     mem: &mut M,
     set_hp: SetHp,
     heap_base: u32,
-    last_free: u32,
     heap_end: u32,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
@@ -120,7 +117,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         thread(continuation_table_ptr_loc);
     }
 
-    mark_stack(mem, heap_base, last_free);
+    mark_stack(mem, heap_base);
 
     update_refs(set_hp, heap_base);
 
@@ -159,19 +156,13 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     push_mark_stack(mem, obj as usize, obj_tag);
 }
 
-unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32, last_free: u32) {
+unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, tag, heap_base, last_free)
+        mark_fields(mem, obj as *mut Obj, tag, heap_base)
     }
 }
 
-unsafe fn mark_fields<M: Memory>(
-    mem: &mut M,
-    obj: *mut Obj,
-    obj_tag: Tag,
-    heap_base: u32,
-    last_free: u32,
-) {
+unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
     visit_pointer_fields(
         mem,
         obj,
@@ -181,8 +172,9 @@ unsafe fn mark_fields<M: Memory>(
             let field_value = *field_addr;
             mark_object(mem, field_value);
 
-            if (field_addr as u32) < last_free
-                && field_value.points_to_or_beyond(last_free as usize)
+            if (field_addr as u32) >= HEAP_BASE
+                && (field_addr as u32) < LAST_HP
+                && field_value.points_to_or_beyond(LAST_HP as usize)
             {
                 assert!(REMEMBERED_SET
                     .as_ref()

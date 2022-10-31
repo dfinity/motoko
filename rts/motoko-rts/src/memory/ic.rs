@@ -22,6 +22,8 @@ pub(crate) static mut HP: u32 = 0;
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
 
+pub(crate) static mut ALIGN: bool = false;
+
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
@@ -35,6 +37,7 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
 
 #[no_mangle]
 unsafe extern "C" fn init(align: bool) {
+    ALIGN = align;
     HP = if align {
         get_aligned_heap_base()
     } else {
