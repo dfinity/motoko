@@ -279,6 +279,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
                 #[cfg(debug_assertions)]
                 if gc.strategy == Strategy::Full
+                    && (field_address as usize) >= gc.heap.limits.base
                     && (field_address as usize) < gc.heap.limits.last_free
                     && field_value.points_to_or_beyond(gc.heap.limits.last_free)
                 {
