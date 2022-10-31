@@ -67,9 +67,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
     #[cfg(debug_assertions)]
     if !forced_gc {
-        #[cfg(debug_assertions)]
         sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
-        #[cfg(debug_assertions)]
         sanity_checks::take_snapshot(&mut gc.heap);
     }
 
@@ -278,16 +276,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 gc.mark_object(field_value);
 
                 #[cfg(debug_assertions)]
-                if gc.strategy == Strategy::Full
-                    && (field_address as usize) >= gc.heap.limits.base
-                    && (field_address as usize) < gc.heap.limits.last_free
-                    && field_value.points_to_or_beyond(gc.heap.limits.last_free)
-                {
-                    assert!(REMEMBERED_SET
-                        .as_ref()
-                        .unwrap()
-                        .contains(Value::from_raw(field_address as u32)));
-                }
+                gc.barrier_coverage_check(field_address);
             },
             |gc, slice_start, array| {
                 const SLICE_INCREMENT: u32 = 127;
@@ -302,6 +291,20 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 }
             },
         );
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn barrier_coverage_check(&self, field_address: *mut Value) {
+        if self.strategy == Strategy::Full
+            && (field_address as usize) >= self.heap.limits.base
+            && (field_address as usize) < self.heap.limits.last_free
+            && (*field_address).points_to_or_beyond(self.heap.limits.last_free)
+        {
+            assert!(REMEMBERED_SET
+                .as_ref()
+                .unwrap()
+                .contains(Value::from_raw(field_address as u32)));
+        }
     }
 
     unsafe fn mark_root_mutbox_fields(&mut self, mutbox: *mut MutBox) {
