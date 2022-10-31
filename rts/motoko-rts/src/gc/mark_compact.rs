@@ -182,7 +182,10 @@ unsafe fn mark_fields<M: Memory>(
             if (field_addr as u32) < last_free
                 && field_value.points_to_or_beyond(last_free as usize)
             {
-                assert!(REMEMBERED_SET.as_ref().unwrap().contains(Value::from_raw(field_addr as u32)));
+                assert!(REMEMBERED_SET
+                    .as_ref()
+                    .unwrap()
+                    .contains(Value::from_raw(field_addr as u32)));
             }
 
             // Thread if backwards or self pointer

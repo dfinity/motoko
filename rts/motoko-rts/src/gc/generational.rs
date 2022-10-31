@@ -282,7 +282,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                     && (field_address as usize) < gc.heap.limits.last_free
                     && field_value.points_to_or_beyond(gc.heap.limits.last_free)
                 {
-                    assert!(REMEMBERED_SET.as_ref().unwrap().contains(Value::from_raw(field_address as u32)));
+                    assert!(REMEMBERED_SET
+                        .as_ref()
+                        .unwrap()
+                        .contains(Value::from_raw(field_address as u32)));
                 }
             },
             |gc, slice_start, array| {
