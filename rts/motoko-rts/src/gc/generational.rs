@@ -276,6 +276,14 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
+
+                #[cfg(debug_assertions)]
+                if gc.strategy == Strategy::Full
+                    && (field_address as usize) < gc.heap.limits.last_free
+                    && field_value.points_to_or_beyond(gc.heap.limits.last_free)
+                {
+                    assert!(REMEMBERED_SET.as_ref().unwrap().contains(field_value));
+                }
             },
             |gc, slice_start, array| {
                 const SLICE_INCREMENT: u32 = 127;

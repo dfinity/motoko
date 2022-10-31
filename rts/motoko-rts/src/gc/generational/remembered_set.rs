@@ -82,7 +82,6 @@ impl RememberedSet {
         if is_null_ptr_value(value) || value.get_raw() == self.fast_cache.get_raw() {
             return;
         }
-        //println!(100, "Remembered set insert: {:#x} {}", value.get_raw(), self.hash_index(value));
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);
         if is_null_ptr_value((*entry).value) {
@@ -108,6 +107,26 @@ impl RememberedSet {
         if self.count > table_length(self.hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
             self.grow(mem);
         }
+    }
+
+    #[cfg(debug_assertions)]
+    pub unsafe fn contains(&self, value: Value) -> bool {
+        let index = self.hash_index(value);
+        let entry = table_get(self.hash_table, index);
+        if !is_null_ptr_value((*entry).value) {
+            let mut current = entry;
+            while (*current).value.get_raw() != value.get_raw()
+                && (*current).next_collision_ptr != null_mut()
+            {
+                let next_node = (*current).next_collision_ptr;
+                current = &mut (*next_node).entry;
+                debug_assert!(!is_null_ptr_value((*current).value));
+            }
+            if (*current).value.get_raw() == value.get_raw() {
+                return true;
+            }
+        }
+        false
     }
 
     pub unsafe fn hash_index(&self, value: Value) -> u32 {
