@@ -1,5 +1,10 @@
 use crate::{
-    types::{Value, TAG_NULL, TAG_OBJECT, TAG_MUTBOX, MutBox, TAG_ONE_WORD_FILLER, object_size, Obj}, visitor::{pointer_to_dynamic_heap, visit_pointer_fields}, memory::Memory, mem_utils::{memcpy_bytes, memzero},
+    mem_utils::{memcpy_bytes, memzero},
+    memory::Memory,
+    types::{
+        object_size, MutBox, Obj, Value, TAG_MUTBOX, TAG_NULL, TAG_OBJECT, TAG_ONE_WORD_FILLER,
+    },
+    visitor::{pointer_to_dynamic_heap, visit_pointer_fields},
 };
 use motoko_rts_macros::ic_mem_fn;
 
@@ -37,13 +42,20 @@ pub unsafe fn create_artificial_forward<M: Memory>(mem: &mut M, source: Value) {
     assert!(source.is_ptr());
     let size = object_size(source.get_ptr() as usize);
     let target = mem.alloc_words(size);
-    memcpy_bytes(target.get_ptr() as usize, source.get_ptr() as usize, size.to_bytes());
+    memcpy_bytes(
+        target.get_ptr() as usize,
+        source.get_ptr() as usize,
+        size.to_bytes(),
+    );
     let target_object = target.get_ptr() as *mut Obj;
     (*target_object).forward = target;
     let source_object = source.get_ptr() as *mut Obj;
     assert!(source.forward() == source);
     assert_eq!(source.tag(), target.tag());
-    assert_eq!(size.as_usize(), object_size(target_object as usize).as_usize());
+    assert_eq!(
+        size.as_usize(),
+        object_size(target_object as usize).as_usize()
+    );
     memzero(source_object as usize, size);
     assert!(size.to_bytes().as_u32() < INVALID_TAG_BITMASK);
     (*source_object).tag = size.to_bytes().as_u32() | INVALID_TAG_BITMASK; // encode length in invalid tag
@@ -54,7 +66,7 @@ pub struct MemoryChecker {
     heap_base: usize,
     heap_end: usize,
     static_roots: Value,
-    continuation_table_ptr_loc: *mut Value
+    continuation_table_ptr_loc: *mut Value,
 }
 
 #[ic_mem_fn(ic_only)]
@@ -65,11 +77,11 @@ pub unsafe fn check_memory<M: crate::memory::Memory>(_mem: &mut M) {
     } else {
         ic::get_heap_base()
     };
-    let checker = MemoryChecker { 
+    let checker = MemoryChecker {
         heap_base: heap_base as usize,
         heap_end: ic::HP as usize,
         static_roots: ic::get_static_roots(),
-        continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc()
+        continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     checker.check_memory();
 }

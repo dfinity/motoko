@@ -40,7 +40,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     (*blob).header.tag = TAG_BLOB;
     (*blob).header.forward = ptr;
     (*blob).len = size;
-    
+
     // SANITY CHECK LOGIC BEGIN
     #[cfg(debug_assertions)]
     create_artificial_forward(mem, ptr);
