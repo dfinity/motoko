@@ -1,9 +1,11 @@
 # Motoko compiler changelog
 
+## 0.7.3 (2022-11-01)
+
 * motoko (`moc`)
 
- * Statically reject shared functions and function types with type parameters (#3519, #3522)
- * Performance improvement: `Array.init` and `Array.tabulate` (#3526)
+ * Statically reject shared functions and function types with type parameters (#3519, #3522).
+ * Performance improvement: `Array.init` and `Array.tabulate` (#3526).
 
 * motoko-base
 
