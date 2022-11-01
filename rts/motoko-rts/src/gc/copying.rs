@@ -82,7 +82,7 @@ pub unsafe fn copying_gc_internal<
     // Scavenge to-space
     let mut p = begin_to_space;
     while p < get_hp() {
-        let size = object_size(p as *mut Obj);
+        let size = object_size(p);
         scav(mem, begin_from_space, begin_to_space, p);
         p += size.to_bytes().as_usize();
     }
@@ -106,19 +106,6 @@ pub unsafe fn copying_gc_internal<
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     set_hp(new_hp as u32);
-}
-
-// get the size of an object that potentially got already a new forward address in `evac()`.
-unsafe fn object_size(object: *mut Obj) -> Words<u32> {
-    if (*object).tag != TAG_ONE_WORD_FILLER && (*object).tag != TAG_FREE_SPACE {
-        let backup_forward = (*object).forward;
-        (*object).forward = Value::from_ptr(object as usize);
-        let size = crate::types::object_size(object as usize);
-        (*object).forward = backup_forward;
-        size
-    } else {
-        crate::types::object_size(object as usize)
-    }
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
@@ -162,7 +149,7 @@ unsafe fn evac<M: Memory>(
 
     debug_assert!((*ptr_loc).forward().get_ptr() == obj as usize);
 
-    let obj_size = crate::types::object_size(obj as usize);
+    let obj_size = object_size(obj as usize);
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();

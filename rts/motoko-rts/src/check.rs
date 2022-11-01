@@ -104,7 +104,7 @@ impl MemoryChecker {
         let root_array = self.static_roots.as_array();
         for i in 0..root_array.len() {
             let obj = root_array.get(i).as_obj();
-            assert_eq!(obj.tag(), TAG_MUTBOX);
+            assert_eq!((*obj).tag, TAG_MUTBOX);
             assert!((obj as usize) < self.heap_base);
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
@@ -148,7 +148,7 @@ impl MemoryChecker {
         let mut pointer = self.heap_base;
         while pointer < self.heap_end {
             let object = Value::from_ptr(pointer as usize);
-            if (object.get_ptr() as *mut Obj).tag() != TAG_ONE_WORD_FILLER {
+            if (*(object.get_ptr() as *mut Obj)).tag != TAG_ONE_WORD_FILLER {
                 self.check_object(object);
             }
             pointer += Self::object_size(object);
@@ -156,7 +156,7 @@ impl MemoryChecker {
     }
 
     unsafe fn object_size(object: Value) -> usize {
-        let tag = (object.get_ptr() as *mut Obj).tag();
+        let tag = (*(object.get_ptr() as *mut Obj)).tag;
         if tag & INVALID_TAG_BITMASK != 0 {
             assert_ne!(object.forward().get_ptr(), object.get_ptr());
             (tag & !INVALID_TAG_BITMASK) as usize
