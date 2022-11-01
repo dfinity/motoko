@@ -62,10 +62,8 @@ unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
         p2 as *mut libc::c_void,
         len as usize,
     );
-    if cmp == -1 {
-        return -1;
-    } else if cmp == 1 {
-        return 1;
+    if cmp != 0 {
+        return cmp;
     } else if len1 > len {
         return 1;
     } else if len2 > len {
@@ -813,7 +811,7 @@ unsafe extern "C" fn idl_sub_buf_init(
     rel_buf: *mut u32,
     typtbl_size1: u32,
     typtbl_size2: u32,
-) -> () {
+) {
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),

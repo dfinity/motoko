@@ -584,7 +584,7 @@ module E = struct
 
   (* See Note [Candid subtype checks] *)
   (* NB: we don't bother detecting duplicate registrations here because the code sharing machinery
-     ensures that `add_typtbl_typ t` is called at most once for any `t`  with a distinct type hash *)
+     ensures that `add_typtbl_typ t` is called at most once for any `t` with a distinct type hash *)
   let add_typtbl_typ (env : t) ty : Int32.t =
     reg env.typtbl_typs ty
 
@@ -6326,7 +6326,7 @@ Note [Candid subtype checks]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deserializing Candid values requires a Candid subtype check when
-deserializing value of reference types (actors and functions).
+deserializing values of reference types (actors and functions).
 
 The subtype test is performed directly on the expected and actual
 candid type tables using RTS functions `idl_sub_buf_words`,
