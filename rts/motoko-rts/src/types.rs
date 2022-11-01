@@ -432,23 +432,41 @@ pub struct Array {
 }
 
 impl Array {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.check_dereferenced_forwarding();
+        self.payload_addr_unchecked()
+    }
+
+    pub unsafe fn payload_addr_unchecked(self: *mut Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
-        debug_assert!(self.len() > idx);
-        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        self.check_dereferenced_forwarding();
+        self.get_unchecked(idx)
+    }
+
+    pub unsafe fn get_unchecked(self: *mut Self, idx: u32) -> Value {
+        debug_assert!((*self).len > idx);
+        let slot_addr = self.payload_addr_unchecked() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *const Value)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
+        self.check_dereferenced_forwarding();
         debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *mut Value) = ptr;
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {
+        self.check_dereferenced_forwarding();
         (*self).len
     }
 }
@@ -708,7 +726,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_ARRAY => {
             let array = obj as *mut Array;
-            let size = array.len();
+            let size = (*array).len;
             size_of::<Array>() + Words(size)
         }
 

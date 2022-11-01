@@ -187,7 +187,7 @@ unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: 
         |mem, field_addr| {
             evac(mem, begin_from_space, begin_to_space, field_addr as usize);
         },
-        |_, _, arr| arr.len(),
+        |_, _, arr| (*arr).len,
     );
 }
 
@@ -201,8 +201,8 @@ unsafe fn evac_static_roots<M: Memory>(
 ) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
-    for i in 0..roots.len() {
-        let obj = roots.get(i);
+    for i in 0..(*roots).len {
+        let obj = roots.get_unchecked(i);
         scav(mem, begin_from_space, begin_to_space, obj.get_ptr());
     }
 }
