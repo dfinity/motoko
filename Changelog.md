@@ -7,6 +7,7 @@
 
 * motoko-base
 
+  * Add some examples to `Buffer` library documentation (dfinity/motoko-base#420)
   * Fix another bug in `Buffer` library affecting `filterEntries` (dfinity/motoko-base#422).
 
 ## 0.7.2 (2022-10-25)
