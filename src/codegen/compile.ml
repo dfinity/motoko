@@ -949,6 +949,7 @@ module RTS = struct
     E.add_func_import env "rts" "set_serialization_status" [I32Type] [];
     E.add_func_import env "rts" "check_forwarding_pointer" [I32Type] [I32Type];
     E.add_func_import env "rts" "set_artificial_forwarding" [I32Type] [];
+    E.add_func_import env "rts" "create_artificial_forward" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -1471,7 +1472,13 @@ module Tagged = struct
       Heap.store_field (Wasm.I32.add header_size (Wasm.I32.of_int_u idx))
     in
     G.concat_mapi init_elem element_instructions ^^
-    get_heap_obj
+    get_heap_obj ^^
+    (if !Flags.sanity then
+      E.call_import env "rts" "create_artificial_forward" ^^
+      get_heap_obj
+    else
+      G.nop
+    )
 
   let new_static_obj env tag payload =
     let payload = StaticBytes.as_bytes payload in
@@ -1753,7 +1760,13 @@ module BoxedWord64 = struct
     get_i ^^ Tagged.(store_tag Bits64) ^^
     get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
-    get_i
+    get_i ^^
+    (if !Flags.sanity then
+      E.call_import env "rts" "create_artificial_forward" ^^
+      get_i
+    else
+      G.nop
+    )
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -1873,7 +1886,12 @@ module BoxedSmallWord = struct
     get_i ^^ Tagged.(store_tag Bits32) ^^
     get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
-    get_i
+    get_i ^^
+    (if !Flags.sanity then
+      E.call_import env "rts" "create_artificial_forward" ^^
+      get_i
+    else 
+      G.nop)
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const 30l ^^
@@ -2116,8 +2134,14 @@ module Float = struct
     get_i ^^ Tagged.(store_tag Bits64) ^^
     get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
-    get_i
+    get_i ^^
+    (if !Flags.sanity then
+      E.call_import env "rts" "create_artificial_forward" ^^
+      get_i
+    else 
+      G.nop
     )
+  )
 
   let unbox env = Tagged.load_forwarding_pointer env true ^^ Heap.load_field_float64 payload_field
 
@@ -3161,9 +3185,16 @@ module Object = struct
     in
     G.concat_map init_field fs ^^
 
+    (if !Flags.sanity then
+      (* Sanity check: Create artificial forwarding object *)
+      get_ri ^^
+      E.call_import env "rts" "create_artificial_forward"
+    else
+      G.nop
+    ) ^^
+    
     (* Return the pointer to the object *)
     get_ri
-
 
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
@@ -7214,7 +7245,15 @@ module FuncDec = struct
         Heap.store_field Closure.len_field ^^
 
         (* Store all captured values *)
-        store_env
+        store_env ^^
+
+        (if !Flags.sanity then
+          (* Sanity check: create artificial forwarding proxy *)
+          get_clos ^^
+          E.call_import env "rts" "create_artificial_forward"
+        else 
+          G.nop
+        )
       in
 
       if is_local
