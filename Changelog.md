@@ -1,13 +1,17 @@
 # Motoko compiler changelog
 
+## 0.7.3 (2022-11-01)
+
 * motoko (`moc`)
 
- * Statically reject shared functions and function types with type parameters (#3519, #3522)
- * Performance improvement: `Array.init` and `Array.tabulate` (#3526)
+ * Statically reject shared functions and function types with type parameters (#3519, #3522).
+
+ * Performance improvement: `Array.init` and `Array.tabulate` (#3526).
 
 * motoko-base
 
   * Add some examples to `Buffer` library documentation (dfinity/motoko-base#420).
+
   * Fix another bug in `Buffer` library affecting `filterEntries` (dfinity/motoko-base#422).
 
 ## 0.7.2 (2022-10-25)
