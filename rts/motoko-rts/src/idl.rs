@@ -599,10 +599,10 @@ unsafe fn sub(
     'return_false: loop {
         match (u1, u2) {
             (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
-            (_, IDL_PRIM_reserved) => return true,
-            (IDL_PRIM_empty, _) => return true,
-            (IDL_PRIM_nat, IDL_PRIM_int) => return true,
-            (_, IDL_CON_opt) => return true, // apparently, this is admissable
+            (_, IDL_PRIM_reserved)
+            | (IDL_PRIM_empty, _)
+            | (IDL_PRIM_nat, IDL_PRIM_int)
+            | (_, IDL_CON_opt) => return true, // apparently, this is admissable
             (IDL_CON_vec, IDL_CON_vec) => {
                 let t11 = sleb128_decode(&mut tb1);
                 let t21 = sleb128_decode(&mut tb2);
@@ -807,11 +807,7 @@ unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> 
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_init(
-    rel_buf: *mut u32,
-    typtbl_size1: u32,
-    typtbl_size2: u32,
-) {
+unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typtbl_size2: u32) {
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),
