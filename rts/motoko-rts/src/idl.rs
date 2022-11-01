@@ -778,7 +778,7 @@ unsafe fn sub(
                         };
                         break;
                     }
-                    if !(cmp == 0) {
+                    if cmp != 0 {
                         break 'return_false;
                     };
                     if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
