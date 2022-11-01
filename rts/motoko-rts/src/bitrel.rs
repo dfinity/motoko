@@ -1,7 +1,5 @@
 //! This module implements a simple subtype cache used by the compiler (in generated code)
 
-//TODO: add unit test and remove #[allow(dead_code)] on tested functions
-
 use crate::constants::WORD_SIZE;
 use crate::idl_trap_with;
 use crate::mem_utils::memzero;
@@ -21,13 +19,11 @@ pub struct BitRel {
 }
 
 impl BitRel {
-    #[allow(dead_code)]
-    pub(crate) fn words(size1: u32, size2: u32) -> u32 {
+    pub fn words(size1: u32, size2: u32) -> u32 {
         return ((2 * size1 * size2 * BITS) + (usize::BITS - 1)) / usize::BITS;
     }
 
-    #[allow(dead_code)]
-    pub(crate) unsafe fn init(&self) {
+    pub unsafe fn init(&self) {
         if (self.end as usize) < (self.ptr as usize) {
             idl_trap_with("BitRel invalid fields");
         };
@@ -39,30 +35,19 @@ impl BitRel {
         memzero(self.ptr as usize, Words(bytes / WORD_SIZE));
     }
 
-    #[allow(dead_code)]
     unsafe fn locate_ptr_bit(&self, p: bool, i_j: u32, j_i: u32, bit: u32) -> (*mut u32, u32) {
         let size1 = self.size1;
         let size2 = self.size2;
-        let (base, i, j) = if p {
-            (0, i_j, j_i)
-        } else {
-            (size1 * size2 * BITS, j_i, i_j)
-        };
-        if i >= size1 {
-            idl_trap_with("BitRel i out of bounds");
-        };
-        if j >= size2 {
-            idl_trap_with("BitRel j out of bounds");
-        };
-        if bit >= BITS {
-            idl_trap_with("BitRel bit out of bounds");
-        };
-        let k = base + i * size2 * BITS + j + bit;
+        let (base, i, j) = if p { (0, i_j, j_i) } else { (size1, j_i, i_j) };
+        debug_assert!(i < size1);
+        debug_assert!(j < size2);
+        debug_assert!(bit < BITS);
+        let k = ((base + i) * size2 + j) * BITS + bit;
         let word = (k / usize::BITS) as usize;
         let bit = (k % usize::BITS) as u32;
         let ptr = self.ptr.add(word);
         if ptr > self.end {
-            idl_trap_with("BitRel ptr out of bounds");
+            idl_trap_with("BitRel indices out of bounds");
         };
         return (ptr, bit);
     }
@@ -82,30 +67,26 @@ impl BitRel {
         return *ptr & mask == mask;
     }
 
-    #[allow(dead_code)]
-    pub(crate) unsafe fn visited(&self, p: bool, i_j: u32, j_i: u32) -> bool {
+    pub unsafe fn visited(&self, p: bool, i_j: u32, j_i: u32) -> bool {
         self.get(p, i_j, j_i, 0)
     }
 
-    #[allow(dead_code)]
-    pub(crate) unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) {
+    pub unsafe fn visit(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 0, true)
     }
 
     #[allow(dead_code)]
     // NB: we store related bits in negated form to avoid setting on assumption
     // This code is a nop in production code.
-    pub(crate) unsafe fn assume(&self, p: bool, i_j: u32, j_i: u32) {
+    pub unsafe fn assume(&self, p: bool, i_j: u32, j_i: u32) {
         debug_assert!(!self.get(p, i_j, j_i, 1));
     }
 
-    #[allow(dead_code)]
-    pub(crate) unsafe fn related(&self, p: bool, i_j: u32, j_i: u32) -> bool {
+    pub unsafe fn related(&self, p: bool, i_j: u32, j_i: u32) -> bool {
         !self.get(p, i_j, j_i, 1)
     }
 
-    #[allow(dead_code)]
-    pub(crate) unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) {
+    pub unsafe fn disprove(&self, p: bool, i_j: u32, j_i: u32) {
         self.set(p, i_j, j_i, 1, true)
     }
 }
