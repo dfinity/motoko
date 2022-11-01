@@ -112,6 +112,12 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1;
     (*r_concat).text2 = s2;
+
+    // SANITY CHECK LOGIC BEGIN
+    #[cfg(debug_assertions)]
+    crate::check::create_artificial_forward(mem, r);
+    // SANITY CHECK LOGIC END
+
     r
 }
 

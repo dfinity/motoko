@@ -64,5 +64,10 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     (*ptr).header.forward = skewed_ptr;
     (*ptr).len = len;
 
+    // SANITY CHECK LOGIC BEGIN
+    #[cfg(debug_assertions)]
+    create_artificial_forward(mem, skewed_ptr);
+    // SANITY CHECK LOGIC END
+
     skewed_ptr
 }
