@@ -3313,7 +3313,9 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = E.call_import env "rts" "alloc_blob"
+  let alloc env = E.call_import env "rts" "alloc_blob" ^^
+    (* only sanity check already forwards an object on allocation *)
+    (if !Flags.sanity then Tagged.load_forwarding_pointer env true else G.nop)
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   
@@ -3616,7 +3618,10 @@ module Arr = struct
       ] @ element_instructions)
 
   (* Does not initialize the fields! *)
-  let alloc env = E.call_import env "rts" "alloc_array"
+  let alloc env = E.call_import env "rts" "alloc_array" ^^
+    (* only sanity check already forwards an object on allocation *)
+    (if !Flags.sanity then Tagged.load_forwarding_pointer env true else G.nop)
+    
 
   let iterate env get_array body = 
     let (set_boundary, get_boundary) = new_local env "boundary" in
@@ -3626,6 +3631,7 @@ module Arr = struct
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
+    Tagged.load_forwarding_pointer env true ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
     
@@ -3668,7 +3674,12 @@ module Arr = struct
       get_x ^^
       store_ptr
     ) ^^
-    get_r
+    get_r ^^
+    (if !Flags.sanity then
+      E.call_import env "rts" "create_artificial_forward" ^^
+      get_r
+    else
+      G.nop)
 
   let tabulate env =
     let (set_f, get_f) = new_local env "f" in
@@ -3704,7 +3715,12 @@ module Arr = struct
       compile_add_const 1l ^^
       set_i
     ) ^^
-    get_r
+    get_r ^^
+    (if !Flags.sanity then
+      E.call_import env "rts" "create_artificial_forward" ^^
+      get_r
+    else
+      G.nop)
 
   let ofBlob env =
     Func.share_code1 env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
@@ -3724,7 +3740,12 @@ module Arr = struct
         store_ptr
       ) ^^
 
-      get_r
+      get_r ^^
+      (if !Flags.sanity then
+        E.call_import env "rts" "create_artificial_forward" ^^
+        get_r
+      else
+        G.nop)
     )
 
   let toBlob env =
@@ -3745,7 +3766,12 @@ module Arr = struct
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
       ) ^^
 
-      get_r
+      get_r ^^
+      (if !Flags.sanity then
+        E.call_import env "rts" "create_artificial_forward" ^^
+        get_r
+      else
+        G.nop)
     )
 
 end (* Array *)
@@ -4726,7 +4752,12 @@ module StableMem = struct
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_read" ^^
-          get_blob)
+          get_blob ^^
+          (if !Flags.sanity then
+            E.call_import env "rts" "create_artificial_forward" ^^
+            get_blob
+          else
+            G.nop))
     | _ -> assert false
 
   let store_blob env =
@@ -4736,6 +4767,8 @@ module StableMem = struct
         (("offset", I64Type), ("blob", I32Type)) []
         (fun env get_offset get_blob ->
          let (set_len, get_len) = new_local env "len" in
+         let set_blob = G.setter_for get_blob in 
+          get_blob ^^ Tagged.load_forwarding_pointer env true ^^ set_blob ^^
           get_blob ^^ Blob.len env ^^ set_len ^^
           get_offset ^^
           get_len ^^
@@ -6193,9 +6226,13 @@ module MakeSerialization (Strm : Stream) = struct
     )
 
   let deserialize env ts =
+    compile_unboxed_const 1l ^^
+    E.call_import env "rts" "set_serialization_status" ^^
     IC.arg_data env ^^
     Bool.lit false ^^ (* can't recover *)
-    deserialize_from_blob false env ts
+    deserialize_from_blob false env ts ^^
+    compile_unboxed_const 0l ^^
+    E.call_import env "rts" "set_serialization_status"
 
 (*
 Note [speculating for short (S)LEB encoded bignums]

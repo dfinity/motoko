@@ -35,7 +35,6 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     if crate::check::ARTIFICIAL_FORWARDING {
-        //println!(100, "Skipping GC in artificial forwarding test mode, checking memory instead");
         crate::check::check_memory(mem);
         return;
     }

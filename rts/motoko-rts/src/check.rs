@@ -8,19 +8,19 @@ use crate::{
 };
 use motoko_rts_macros::ic_mem_fn;
 
-static mut _SERIALIZING: bool = false;
+static mut SERIALIZING: bool = false;
 pub static mut ARTIFICIAL_FORWARDING: bool = false;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn set_serialization_status<M: Memory>(_mem: &mut M, active: bool) {
-    _SERIALIZING = active;
+    SERIALIZING = active;
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn check_forwarding_pointer<M: Memory>(_mem: &mut M, value: Value) -> Value {
     assert!(value.is_ptr());
     value.check_forwarding_pointer();
-    if !_SERIALIZING {
+    if !SERIALIZING {
         assert!(value.tag() >= TAG_OBJECT && value.tag() <= TAG_NULL);
     }
     value.forward()
@@ -36,7 +36,7 @@ const INVALID_TAG_BITMASK: u32 = 0x8000_0000;
 #[ic_mem_fn]
 /// Forward the object to a new copy and clear the content in the source object.
 pub unsafe fn create_artificial_forward<M: Memory>(mem: &mut M, source: Value) {
-    if !ARTIFICIAL_FORWARDING || _SERIALIZING {
+    if !ARTIFICIAL_FORWARDING || SERIALIZING {
         return;
     }
     assert!(source.is_ptr());
@@ -88,6 +88,7 @@ pub unsafe fn check_memory<M: crate::memory::Memory>(_mem: &mut M) {
 
 impl MemoryChecker {
     pub unsafe fn check_memory(&self) {
+        assert!(!SERIALIZING);
         // println!(100, "Memory check starts...");
         // println!(100, " Checking static roots...");
         self.check_static_roots();
