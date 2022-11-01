@@ -397,16 +397,25 @@ pub struct Obj {
 
 impl Obj {
     pub unsafe fn tag(self: *const Self) -> Tag {
+        self.check_dereferenced_forwarding();
         (*self).tag
+    }
+
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        debug_assert_eq!((*self).forward.get_ptr(), self as usize);
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.check_dereferenced_forwarding();
         self as *mut Blob
     }
 
     pub unsafe fn as_concat(self: *mut Self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
+        self.check_dereferenced_forwarding();
         self as *const Concat
     }
 }

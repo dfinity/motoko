@@ -36,7 +36,7 @@ const INVALID_TAG_BITMASK: u32 = 0x8000_0000;
 #[ic_mem_fn]
 /// Forward the object to a new copy and clear the content in the source object.
 pub unsafe fn create_artificial_forward<M: Memory>(mem: &mut M, source: Value) {
-    if !ARTIFICIAL_FORWARDING {
+    if !ARTIFICIAL_FORWARDING || _SERIALIZING {
         return;
     }
     assert!(source.is_ptr());

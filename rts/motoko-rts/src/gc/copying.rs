@@ -82,7 +82,7 @@ pub unsafe fn copying_gc_internal<
     // Scavenge to-space
     let mut p = begin_to_space;
     while p < get_hp() {
-        let size = object_size(p);
+        let size = object_size(p as *mut Obj);
         scav(mem, begin_from_space, begin_to_space, p);
         p += size.to_bytes().as_usize();
     }
@@ -106,6 +106,19 @@ pub unsafe fn copying_gc_internal<
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     set_hp(new_hp as u32);
+}
+
+// get the size of an object that potentially got already a new forward address in `evac()`.
+unsafe fn object_size(object: *mut Obj) -> Words<u32> {
+    if (*object).tag != TAG_ONE_WORD_FILLER && (*object).tag != TAG_FREE_SPACE {
+        let backup_forward = (*object).forward;
+        (*object).forward = Value::from_ptr(object as usize);
+        let size = crate::types::object_size(object as usize);
+        (*object).forward = backup_forward;
+        size
+    } else {
+        crate::types::object_size(object as usize)
+    }
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
@@ -141,7 +154,7 @@ unsafe fn evac<M: Memory>(
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
     // Update the field if the object is already evacuated
-    if obj.tag() == TAG_FWD_PTR {
+    if (*obj).tag == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
         return;
@@ -149,7 +162,7 @@ unsafe fn evac<M: Memory>(
 
     debug_assert!((*ptr_loc).forward().get_ptr() == obj as usize);
 
-    let obj_size = object_size(obj as usize);
+    let obj_size = crate::types::object_size(obj as usize);
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();
@@ -172,6 +185,7 @@ unsafe fn evac<M: Memory>(
     let to_space_obj = obj_addr as *mut Obj;
     debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
     debug_assert!((*to_space_obj).tag >= TAG_OBJECT && (*to_space_obj).tag <= TAG_NULL);
+
     (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
@@ -181,7 +195,7 @@ unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: 
     crate::visitor::visit_pointer_fields(
         mem,
         obj,
-        obj.tag(),
+        (*obj).tag,
         begin_from_space,
         |mem, field_addr| {
             evac(mem, begin_from_space, begin_to_space, field_addr as usize);
