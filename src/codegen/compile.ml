@@ -3631,7 +3631,6 @@ module Arr = struct
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
-    Tagged.load_forwarding_pointer env true ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
     
