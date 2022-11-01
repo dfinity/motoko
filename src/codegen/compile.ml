@@ -6340,7 +6340,7 @@ The known Motoko types are accumulated in a global list as required
 and then, in a final compilation step, encoded to global type table
 and sequence of type indices. The encoding is stored as static
 data referenced by dedicated wasm globals so that we can generate
-code that reference the globals before their final definitions are
+code that references the globals before their final definitions are
 known.
 
 Deserializing a proper (not extended) Candid value stack allocates a
