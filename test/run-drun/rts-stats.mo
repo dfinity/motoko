@@ -11,8 +11,8 @@ let a1 = Prim.rts_total_allocation();
 
 // this should be rather stable unless the array representation changes
 Prim.debugPrint("Size and allocation delta:  " # debug_show (s1-s0 : Nat, a1-a0 : Nat));
-assert (+s1-s0 == 10012);
-assert (+a1-a0 == 10012);
+assert (+s1-s0 == 20024);
+assert (+a1-a0 == 20024);
 
 assert(Prim.rts_memory_size() > Prim.rts_heap_size());
 

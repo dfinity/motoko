@@ -1,5 +1,5 @@
 => update create_canister(record {settings = null})
 <= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
-debug.print: Size and allocation delta:  (10_012, 10_012)
+debug.print: Size and allocation delta:  (20_024, 20_024)
 <= replied: ()
