@@ -7132,7 +7132,7 @@ module FuncDec = struct
     let retty = Lib.List.make return_arity I32Type in
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
-      let get_closure = G.i (LocalGet (nr 0l)) in
+      let get_closure = G.i (LocalGet (nr 0l)) ^^ Tagged.load_forwarding_pointer env true in
 
       let ae1, closure_codeW = restore_env env ae0 get_closure in
 
@@ -9317,6 +9317,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae p ^^
     compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
+    Tagged.load_forwarding_pointer env true ^^
     Tuple.from_stack env 2 ^^ set_meth_pair ^^
     compile_exp_vanilla env ae a ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
