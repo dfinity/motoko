@@ -40,6 +40,7 @@ pub unsafe fn create_artificial_forward<M: Memory>(mem: &mut M, source: Value) {
         return;
     }
     assert!(source.is_ptr());
+    assert!(source.forward().get_ptr() == source.get_ptr());
     let size = object_size(source.get_ptr() as usize);
     let target = mem.alloc_words(size);
     memcpy_bytes(
