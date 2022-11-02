@@ -20,10 +20,8 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     iter_array.set(ITER_BLOB_IDX, blob);
     iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
 
-    // SANITY CHECK LOGIC BEGIN
     #[cfg(debug_assertions)]
     crate::check::create_artificial_forward(mem, iter_ptr);
-    // SANITY CHECK LOGIC END
 
     iter_ptr
 }

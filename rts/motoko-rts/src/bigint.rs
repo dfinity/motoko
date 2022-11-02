@@ -50,16 +50,6 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
-
-    // SANITY CHECK LOGIC BEGIN
-    #[cfg(debug_assertions)]
-    {
-        crate::check::create_artificial_forward(mem, ptr);
-        let ptr = (*blob).header.forward;
-        blob = ptr.as_bigint();
-    }
-    // SANITY CHECK LOGIC END
-
     blob.payload_addr() as *mut u8
 }
 

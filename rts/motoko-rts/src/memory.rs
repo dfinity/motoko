@@ -1,8 +1,6 @@
 #[cfg(feature = "ic")]
 pub mod ic;
 
-#[cfg(debug_assertions)]
-use crate::check::create_artificial_forward;
 use crate::constants::WASM_HEAP_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
@@ -41,10 +39,8 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     (*blob).header.forward = ptr;
     (*blob).len = size;
 
-    // SANITY CHECK LOGIC BEGIN
     #[cfg(debug_assertions)]
-    create_artificial_forward(mem, ptr);
-    // SANITY CHECK LOGIC END
+    crate::check::create_artificial_forward(mem, ptr);
 
     ptr
 }
@@ -64,10 +60,8 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     (*ptr).header.forward = skewed_ptr;
     (*ptr).len = len;
 
-    // SANITY CHECK LOGIC BEGIN
     #[cfg(debug_assertions)]
-    create_artificial_forward(mem, skewed_ptr);
-    // SANITY CHECK LOGIC END
+    crate::check::create_artificial_forward(mem, skewed_ptr);
 
     skewed_ptr
 }
