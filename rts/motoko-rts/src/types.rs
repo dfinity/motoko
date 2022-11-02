@@ -515,19 +515,8 @@ pub struct Closure {
 }
 
 impl Closure {
-    #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
-    }
-
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
-        self.check_dereferenced_forwarding();
+    pub unsafe fn payload_addr_unchecked(self: *mut Self) -> *mut Value {
         self.offset(1) as *mut Value // skip closure header
-    }
-
-    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        self.check_dereferenced_forwarding();
-        (*self).size
     }
 }
 
@@ -786,7 +775,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
-            let size = closure.size();
+            let size = (*closure).size;
             size_of::<Closure>() + Words(size)
         }
 

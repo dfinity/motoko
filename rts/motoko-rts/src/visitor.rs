@@ -67,8 +67,8 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
-            let closure_payload = closure.payload_addr();
-            for i in 0..closure.size() {
+            let closure_payload = closure.payload_addr_unchecked();
+            for i in 0..(*closure).size {
                 let field_addr = closure_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
                     visit_ptr_field(ctx, field_addr);
