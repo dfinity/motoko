@@ -26,6 +26,12 @@ func @reset_cycles() {
 };
 
 
+var @timers : ?Nat = null;
+
+func @run_timers() {
+
+};
+
 // The @ in the name ensures that this cannot be shadowed by user code, so
 // compiler passes can rely on them being in scope
 

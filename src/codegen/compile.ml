@@ -3892,6 +3892,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
+  let export_global_timer env run_timers =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_global_timer"
+      (Func.of_body env [] [] (fun env ->
+        run_timers ^^
+        GC.collect_garbage env))
+    in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_global_timer";
+      edesc = nr (FuncExport (nr fi))
+    })
+
   let export_inspect env =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let fi = E.add_fun env "canister_inspect_message"
@@ -6896,6 +6908,7 @@ module Internals = struct
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
+  let run_timers env ae = call_prelude_function env ae "@run_timers"
 end
 
 (* This comes late because it also deals with messages *)
@@ -9820,6 +9833,11 @@ and main_actor as_opt mod_env ds fs up =
        Func.define_built_in env "inspect_exp" [] [] (fun env ->
          compile_exp_as env ae2 SR.unit up.inspect);
        IC.export_inspect env;
+    end;
+
+    (* Export global timer (but only when required) *)
+    begin (*TODO: check --no-timers *)
+     IC.export_global_timer env (Internals.run_timers env ae2);
     end;
 
     (* Export metadata *)
