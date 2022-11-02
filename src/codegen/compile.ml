@@ -3214,7 +3214,7 @@ module Object = struct
       (* unskew h_ptr and advance both to low bound *)
       compile_add_const Int32.(add ptr_unskew (mul Heap.word_size (of_int low_bound))) ^^
       set_h_ptr ^^
-      get_x ^^ 
+      get_x ^^
       compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
       set_x ^^
       G.loop0 (
@@ -3630,14 +3630,14 @@ module Arr = struct
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
-    (* only sanity check already forwards an object on allocation *)
+    (* only the sanity check forwards an object at allocation time *)
     (if !Flags.sanity then Tagged.load_forwarding_pointer env else G.nop) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
     
     (* Upper pointer boundary, skewed *)
     get_array ^^ 
-    (* only sanity check already forwards an object on allocation *)
+    (* only the sanity check forwards an object at allocation time *)
     (if !Flags.sanity then Tagged.load_forwarding_pointer env else G.nop) ^^
     Heap.load_field len_field ^^
     compile_mul_const element_size ^^
@@ -5441,8 +5441,7 @@ module MakeSerialization (Strm : Stream) = struct
         E.trap_with env "serializing value of type None"
       | Mut t ->
         write_alias (fun () ->
-          get_x ^^ 
-          MutBox.load_field env ^^ write env t
+          get_x ^^ MutBox.load_field env ^^ write env t
         )
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
