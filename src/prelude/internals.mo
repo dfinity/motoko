@@ -25,9 +25,10 @@ func @reset_cycles() {
   @cycles := 0;
 };
 
-
 var @timers : ?Nat = null;
 
+// Function called by backend to run eligible timed actions.
+// DO NOT RENAME without modifying compilation.
 func @run_timers() {
 
 };
