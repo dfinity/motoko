@@ -1376,14 +1376,12 @@ module Tagged = struct
     get_object_ptr ^^ (* forwarding pointer *)
     Heap.store_field forwarding_pointer_field
 
-  let load_forwarding_pointer env activate =
+  let load_forwarding_pointer env =
     (* Heap.load_field forwarding_pointer_field *)
-    if activate then
     E.call_import env "rts" "check_forwarding_pointer"
-    else G.nop
-
+    
   let load_tag env =
-    load_forwarding_pointer env true ^^
+    load_forwarding_pointer env ^^
     Heap.load_field tag_field
     
   (* Branches based on the tag of the object pointed to,
@@ -1529,13 +1527,13 @@ module MutBox = struct
     ptr
     
   let load_field env =
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field field
 
   let store_field env =
     let (set_mutbox_value, get_mutbox_value) = new_local env "mutbox_value" in
     set_mutbox_value ^^
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     get_mutbox_value ^^
     Heap.store_field field
 end
@@ -1610,11 +1608,11 @@ module Opt = struct
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
   let inject_simple env e = 
-    e ^^ Tagged.load_forwarding_pointer env true
+    e ^^ Tagged.load_forwarding_pointer env
     
 
   let load_some_payload_field env =
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field some_payload_field
 
   let project env =
@@ -1656,11 +1654,11 @@ module Variant = struct
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
   let get_variant_tag env = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field variant_tag_field
 
   let project env = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field payload_field
 
   (* Test if the top of the stack points to a variant with this label *)
@@ -1690,18 +1688,18 @@ module Closure = struct
   let len_field = Int32.add 1l Tagged.header_size
 
   let load_data env i = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field (Int32.add header_size i)
 
   let store_data env i = 
     let (set_closure_data, get_closure_data) = new_local env "closure_data" in
     set_closure_data ^^
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     get_closure_data ^^
     Heap.store_field (Int32.add header_size i)
 
   let prepare_closure_call env =
-    Tagged.load_forwarding_pointer env true
+    Tagged.load_forwarding_pointer env
 
   (* Expect on the stack
      * the function closure (using prepare_closure_call)
@@ -1715,7 +1713,7 @@ module Closure = struct
       I32Type :: Lib.List.make n_args I32Type,
       FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
     (* get the table index *)
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field funptr_field ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
@@ -1781,7 +1779,7 @@ module BoxedWord64 = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         ( get_n ^^ BitTagged.untag env)
-        ( get_n ^^ Tagged.load_forwarding_pointer env true ^^ Heap.load_field64 payload_field)
+        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field64 payload_field)
     )
 end (* BoxedWord64 *)
 
@@ -1909,7 +1907,7 @@ module BoxedSmallWord = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         (get_n ^^ BitTagged.untag_i32)
-        (get_n ^^ Tagged.load_forwarding_pointer env true ^^ Heap.load_field payload_field)
+        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2146,7 +2144,7 @@ module Float = struct
     )
   )
 
-  let unbox env = Tagged.load_forwarding_pointer env true ^^ Heap.load_field_float64 payload_field
+  let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
 
 end (* Float *)
 
@@ -3206,7 +3204,7 @@ module Object = struct
       let set_x = G.setter_for get_x in
       let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
 
-      get_x ^^ Tagged.load_forwarding_pointer env true ^^ set_x ^^
+      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
 
       get_x ^^ Heap.load_field hash_ptr_field ^^
 
@@ -3237,7 +3235,7 @@ module Object = struct
       Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env low_bound ^^
-      load_ptr ^^ Tagged.load_forwarding_pointer env true ^^
+      load_ptr ^^ Tagged.load_forwarding_pointer env ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
     else idx_hash_raw env low_bound
@@ -3301,7 +3299,7 @@ module Blob = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let len env = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field len_field
 
   let vanilla_lit env s =
@@ -3321,7 +3319,7 @@ module Blob = struct
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   
   let payload_ptr_unskewed env = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     compile_add_const unskewed_payload_offset
 
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
@@ -3367,8 +3365,8 @@ module Blob = struct
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       let set_x = G.setter_for get_x in
       let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env true ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env true ^^ set_y ^^
+      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
 
       match op with
         (* Some operators can be reduced to the negation of other operators *)
@@ -3535,8 +3533,8 @@ module Text = struct
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       let set_x = G.setter_for get_x in
       let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env true ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env true ^^ set_y ^^
+      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
 
       get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0l ^^
@@ -3569,12 +3567,12 @@ module Arr = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let len env = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field len_field
 
   (* Static array access. No checking *)
   let load_field env n = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
@@ -3592,14 +3590,14 @@ module Arr = struct
       compile_add_const header_size ^^
       compile_mul_const element_size ^^
       get_array ^^
-      Tagged.load_forwarding_pointer env true ^^
+      Tagged.load_forwarding_pointer env ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
     Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      get_array ^^ Tagged.load_forwarding_pointer env true ^^
+      get_array ^^ Tagged.load_forwarding_pointer env ^^
       get_idx ^^
       Blob.lit env "Array index out of bounds" ^^
       BigNum.to_word32_with env ^^
@@ -3631,14 +3629,14 @@ module Arr = struct
     compile_mul_const element_size ^^
     get_array ^^
     (* only sanity check already forwards an object on allocation *)
-    (if !Flags.sanity then Tagged.load_forwarding_pointer env true else G.nop) ^^
+    (if !Flags.sanity then Tagged.load_forwarding_pointer env else G.nop) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
     
     (* Upper pointer boundary, skewed *)
     get_array ^^ 
     (* only sanity check already forwards an object on allocation *)
-    (if !Flags.sanity then Tagged.load_forwarding_pointer env true else G.nop) ^^
+    (if !Flags.sanity then Tagged.load_forwarding_pointer env else G.nop) ^^
     Heap.load_field len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
@@ -3775,7 +3773,7 @@ module Tuple = struct
 
   (* Expects on the stack the pointer to the array. *)
   let load_n env n = 
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field (Int32.add Arr.header_size n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
@@ -7132,7 +7130,7 @@ module FuncDec = struct
     let retty = Lib.List.make return_arity I32Type in
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
-      let get_closure = G.i (LocalGet (nr 0l)) ^^ Tagged.load_forwarding_pointer env true in
+      let get_closure = G.i (LocalGet (nr 0l)) ^^ Tagged.load_forwarding_pointer env in
 
       let ae1, closure_codeW = restore_env env ae0 get_closure in
 
@@ -8603,7 +8601,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
     (* Note: the below two lines compile to `i32.add; i32.load offset=13`,
        thus together also unskewing the pointer and skipping administrative
@@ -9317,7 +9315,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae p ^^
     compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     Tuple.from_stack env 2 ^^ set_meth_pair ^^
     compile_exp_vanilla env ae a ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
@@ -9471,7 +9469,7 @@ and compile_exp (env : E.t) ae exp =
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
-    Tagged.load_forwarding_pointer env true ^^
+    Tagged.load_forwarding_pointer env ^^
     set_future ^^
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^

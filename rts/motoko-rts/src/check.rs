@@ -139,7 +139,10 @@ impl MemoryChecker {
         assert!(pointer < self.heap_end);
         object.check_forwarding_pointer();
         if object.forward().get_ptr() != object.get_ptr() {
-            assert_eq!(object.forward().get_ptr(), object.forward().forward().get_ptr());
+            assert_eq!(
+                object.forward().get_ptr(),
+                object.forward().forward().get_ptr()
+            );
             self.check_object_header(object.forward());
         } else {
             let tag = object.tag();
