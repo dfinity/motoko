@@ -1377,8 +1377,10 @@ module Tagged = struct
     Heap.store_field forwarding_pointer_field
 
   let load_forwarding_pointer env =
-    (* Heap.load_field forwarding_pointer_field *)
-    E.call_import env "rts" "check_forwarding_pointer"
+    (if !Flags.sanity then
+      E.call_import env "rts" "check_forwarding_pointer"
+    else
+      Heap.load_field forwarding_pointer_field)
     
   let load_tag env =
     load_forwarding_pointer env ^^
