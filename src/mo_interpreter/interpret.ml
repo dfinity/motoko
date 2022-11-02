@@ -111,6 +111,7 @@ let print_exn flags exn =
 module Scheduler =
 struct
   let q : (unit -> unit) Queue.t = Queue.create ()
+  let tmp : (unit -> unit) Queue.t = Queue.create ()
 
   let queue work = Queue.add work q
   let yield () =
@@ -119,6 +120,25 @@ struct
       Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
+
+  let interval = 128
+  let count = ref interval
+
+  let bounce work =
+    Queue.transfer q tmp;
+    Queue.add work q;
+    Queue.transfer tmp q
+
+  let trampoline f x =
+    if !count <= 0 then begin
+      count := interval;
+      bounce (fun () -> f x);
+      true
+    end
+    else begin
+      count := (!count) - 1;
+      false
+    end
 end
 
 
@@ -363,6 +383,7 @@ let check_call_conv_arg env exp v call_conv =
     )
 
 let rec interpret_exp env exp (k : V.value V.cont) =
+  if Scheduler.trampoline (interpret_exp env exp) k then () else
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
 and interpret_exp_mut env exp (k : V.value V.cont) =
