@@ -41,3 +41,4 @@ let sanity = ref false
 let gc_strategy = ref Copying
 let force_gc = ref false
 let experimental_field_aliasing = ref false
+let ocaml_js = ref false

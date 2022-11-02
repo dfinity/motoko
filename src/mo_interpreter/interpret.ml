@@ -1,6 +1,7 @@
 open Mo_def
 open Mo_values
 open Mo_types
+open Mo_config
 
 open Syntax
 open Source
@@ -111,7 +112,6 @@ let print_exn flags exn =
 module Scheduler =
 struct
   let q : (unit -> unit) Queue.t = Queue.create ()
-  let tmp : (unit -> unit) Queue.t = Queue.create ()
 
   let queue work = Queue.add work q
   let yield () =
@@ -121,24 +121,26 @@ struct
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
 
-  let interval = 128
-  let count = ref interval
-
+  let tmp : (unit -> unit) Queue.t = Queue.create ()
   let bounce work =
+    (* add work to *front* of queue *)
     Queue.transfer q tmp;
     Queue.add work q;
     Queue.transfer tmp q
 
-  let trampoline f x =
-    if !count <= 0 then begin
-      count := interval;
-      bounce (fun () -> f x);
-      true
-    end
-    else begin
-      count := (!count) - 1;
-      false
-    end
+  let interval = 128
+  let count = ref interval
+  let trampoline3 f x y z =
+    if !Flags.ocaml_js then
+      if !count <= 0 then begin
+          count := interval;
+          bounce (fun () -> f x y z);
+        end
+      else begin
+          count := (!count) - 1;
+          f x y z
+        end
+    else f x y z
 end
 
 
@@ -383,8 +385,8 @@ let check_call_conv_arg env exp v call_conv =
     )
 
 let rec interpret_exp env exp (k : V.value V.cont) =
-  if Scheduler.trampoline (interpret_exp env exp) k then () else
-  interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
+  Scheduler.trampoline3
+    interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
