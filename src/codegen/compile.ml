@@ -1700,8 +1700,11 @@ module Closure = struct
     get_closure_data ^^
     Heap.store_field (Int32.add header_size i)
 
+  let prepare_closure_call env =
+    Tagged.load_forwarding_pointer env true
+
   (* Expect on the stack
-     * the function closure
+     * the function closure (using prepare_closure_call)
      * and arguments (n-ary!)
      * the function closure again!
   *)
@@ -3696,6 +3699,7 @@ module Arr = struct
       get_pointer ^^
       (* The closure *)
       get_f ^^
+      Closure.prepare_closure_call env ^^
       (* The arg *)
       get_i ^^
       BigNum.from_word32 env ^^
@@ -7255,8 +7259,14 @@ module FuncDec = struct
         Heap.store_field Closure.len_field ^^
 
         (* Store all captured values *)
-        store_env ^^
+        store_env
+      in
 
+      if is_local
+      then
+        SR.Vanilla,
+        code ^^
+        get_clos ^^
         (if !Flags.sanity then
           (* Sanity check: create artificial forwarding proxy *)
           get_clos ^^
@@ -7264,13 +7274,6 @@ module FuncDec = struct
         else 
           G.nop
         )
-      in
-
-      if is_local
-      then
-        SR.Vanilla,
-        code ^^
-        get_clos
       else assert false (* no first class shared functions *)
 
   let lit env ae name sort control free_vars args mk_body ret_tys at =
@@ -7328,6 +7331,7 @@ module FuncDec = struct
         Arr.load_field env 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
+        Closure.prepare_closure_call env ^^
 
         (* Deserialize/Blobify reply arguments  *)
         from_arg_data env ^^
@@ -7348,6 +7352,7 @@ module FuncDec = struct
         Arr.load_field env 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
+        Closure.prepare_closure_call env ^^
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
@@ -7508,7 +7513,10 @@ module FuncDec = struct
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
         ContinuationTable.peek_future env ^^
-        set_closure ^^ get_closure ^^ get_closure ^^
+        set_closure ^^ 
+        get_closure ^^ 
+        Closure.prepare_closure_call env ^^
+        get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
       );
@@ -8492,6 +8500,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          set_clos ^^
          get_clos ^^
+         Closure.prepare_closure_call env ^^
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
@@ -9461,6 +9470,7 @@ and compile_exp (env : E.t) ae exp =
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
+    Tagged.load_forwarding_pointer env true ^^
     set_future ^^
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
