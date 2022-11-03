@@ -24,7 +24,7 @@ pub unsafe fn test() {
     let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(60)) as usize);
 
     println!("  Testing stream filling (single bytes)");
-    for b in 36..92u8 {
+    for b in 36..96u8 {
         stream.as_stream().cache_byte(b);
     }
     assert_eq!(stream.as_blob().get(36), 36);
@@ -32,7 +32,7 @@ pub unsafe fn test() {
 
     println!("  Testing stream decay");
     let blob = stream.as_stream().split();
-    assert_eq!(blob.as_blob().len(), Bytes(56));
+    assert_eq!(blob.as_blob().len(), Bytes(60));
     assert_eq!(stream.as_blob().len(), Bytes(24));
 
     println!("  Testing stream filling (blocks)");
