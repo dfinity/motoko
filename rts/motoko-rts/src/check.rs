@@ -70,21 +70,27 @@ pub struct MemoryChecker {
     continuation_table_ptr_loc: *mut Value,
 }
 
+static mut MEMORY_CHECK_COUNTER: usize = 0;
+const MEMORY_CHECK_FREQUENCY: usize = 4;
+
 #[ic_mem_fn(ic_only)]
 pub unsafe fn check_memory<M: crate::memory::Memory>(_mem: &mut M) {
-    use crate::memory::ic;
-    let heap_base = if ic::ALIGN {
-        ic::get_aligned_heap_base()
-    } else {
-        ic::get_heap_base()
-    };
-    let checker = MemoryChecker {
-        heap_base: heap_base as usize,
-        heap_end: ic::HP as usize,
-        static_roots: ic::get_static_roots(),
-        continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
-    };
-    checker.check_memory();
+    if MEMORY_CHECK_COUNTER % MEMORY_CHECK_FREQUENCY == 0 {
+        use crate::memory::ic;
+        let heap_base = if ic::ALIGN {
+            ic::get_aligned_heap_base()
+        } else {
+            ic::get_heap_base()
+        };
+        let checker = MemoryChecker {
+            heap_base: heap_base as usize,
+            heap_end: ic::HP as usize,
+            static_roots: ic::get_static_roots(),
+            continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
+        };
+        checker.check_memory();
+    }
+    MEMORY_CHECK_COUNTER += 1;
 }
 
 impl MemoryChecker {
@@ -94,16 +100,11 @@ impl MemoryChecker {
         {
             crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
         }
-        // println!(100, "Memory check starts...");
-        // println!(100, " Checking static roots...");
         self.check_static_roots();
         if (*self.continuation_table_ptr_loc).is_ptr() {
-            // println!(100, " Checking continuation table...");
             self.check_object(*self.continuation_table_ptr_loc);
         }
-        // println!(100, " Checking heap...");
         self.check_heap();
-        // println!(100, "Memory check stops...");
         #[cfg(debug_assertions)]
         {
             crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
