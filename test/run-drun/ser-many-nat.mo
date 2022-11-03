@@ -12,7 +12,7 @@ public func go() : async () {
    if (n != deserNat(serNat(n))) {
      Prim.debugPrint(debug_show {failure = n});
    };
-   if (n > 179190) { n -= 179190; } else { return; };
+   if (n > 179190) { n -= 179190; } else { return; }; // Step increased due to the expensive forwarding sanity checks
    c -= 1;
    if (c % 1024 == 0) {
        await async (); // trigger gc
