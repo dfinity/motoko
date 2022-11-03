@@ -381,9 +381,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn thread_all_backward_pointers(&mut self) {
         let mut bitmap_iter = iter_bits();
-        if self.strategy == Strategy::Young {
-            bitmap_iter.advance(self.heap.limits.last_free as u32);
-        }
         let mut bit = bitmap_iter.next();
         while bit != BITMAP_ITER_END {
             let object = (bit * WORD_SIZE) as *mut Obj;
@@ -431,7 +428,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
         let mut bitmap_iter = iter_bits();
         if self.strategy == Strategy::Young {
-            bitmap_iter.advance(self.heap.limits.last_free as u32);
             free = self.heap.limits.last_free;
         }
         let mut bit = bitmap_iter.next();
