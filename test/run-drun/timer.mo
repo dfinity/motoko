@@ -1,3 +1,4 @@
+//MOC-ENV MOC_UNLOCK_PRIM=yesplease
 import {debugPrint; error} = "mo:⛔";
 
 actor {
@@ -14,6 +15,7 @@ actor {
   system func timer() : async () {
     if (count < max) {
       ignore inc();
+      await @run_timers();
     }
   };
 
