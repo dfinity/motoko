@@ -31,8 +31,7 @@ actor a {
 */
        assert (pre <= size);
        assert (preMutatorInstructions <= mutatorInstructions);
-       // GC disabled in artificial forwarding sanity tests
-       //assert (preCollectorInstructions <= collectorInstructions);
+       assert (preCollectorInstructions <= collectorInstructions);
        pre := size;
        preMutatorInstructions := mutatorInstructions;
        preCollectorInstructions := collectorInstructions;
