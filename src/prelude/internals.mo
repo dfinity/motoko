@@ -25,7 +25,7 @@ func @reset_cycles() {
   @cycles := 0;
 };
 
-var @timers : [() -> async ()] = null;
+var @timers : [() -> async ()] = [];
 
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
