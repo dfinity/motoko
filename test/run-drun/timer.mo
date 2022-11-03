@@ -21,6 +21,8 @@ actor {
 
   public shared func go() : async () {
      var attempts = 0;
+     let prev = (prim "global_timer_set" : Nat64 -> Nat64) 2;
+     assert prev == 0;
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;

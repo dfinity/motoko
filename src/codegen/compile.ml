@@ -3739,6 +3739,7 @@ module IC = struct
       E.add_func_import env "ic0" "stable64_size" [] [I64Type];
       E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
+      E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type];
       ()
 
   let system_imports env =
@@ -8823,6 +8824,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  (* Other prims, unary *)
+
+  | OtherPrim ("global_timer_set"), [e] ->
+    SR.UnboxedWord64,
+    compile_exp_as env ae SR.UnboxedWord64 e ^^
+    IC.system_call env "global_timer_set"
+
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
     compile_exp_vanilla env ae e ^^
@@ -8925,6 +8933,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Int8
+
+  (* Other prims, binary *)
 
   | OtherPrim ("stableMemoryStoreNat8"), [e1; e2] ->
     SR.unit,
