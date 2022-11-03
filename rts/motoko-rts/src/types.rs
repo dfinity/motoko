@@ -454,7 +454,7 @@ impl Array {
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
         self.check_dereferenced_forwarding();
-        debug_assert!((*self).len > idx);
+        debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *const Value)
     }
