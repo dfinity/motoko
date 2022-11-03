@@ -6908,7 +6908,6 @@ module Internals = struct
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
-  let run_timers env ae = call_prelude_function env ae "@run_timers"
 end
 
 (* This comes late because it also deals with messages *)
