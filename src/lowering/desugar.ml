@@ -327,6 +327,10 @@ and call_system_func_opt name es obj_typ =
           blockE
             [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
            (unitE ())
+        | "timer" ->
+          blockE
+            [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+           (unitE ())
         | "inspect" ->
           let _, tfs = T.as_obj obj_typ in
           let caller = fresh_var "caller" T.principal in
@@ -495,6 +499,10 @@ and build_actor at ts self_id es obj_typ =
           | None -> tupE []);
        heartbeat =
          (match call_system_func_opt "heartbeat" es obj_typ with
+          | Some call -> call
+          | None -> tupE []);
+       timer =
+         (match call_system_func_opt "timer" es obj_typ with
           | Some call -> call
           | None -> tupE []);
        inspect =
