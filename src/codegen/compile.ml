@@ -3599,7 +3599,7 @@ module Arr = struct
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
     Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      get_array ^^ Tagged.load_forwarding_pointer env ^^
+      get_array ^^
       get_idx ^^
       Blob.lit env "Array index out of bounds" ^^
       BigNum.to_word32_with env ^^
@@ -3625,18 +3625,19 @@ module Arr = struct
   let iterate env get_array body = 
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
+    let set_array = G.setter_for get_array in
+
+    get_array ^^ Tagged.load_forwarding_pointer env ^^ set_array ^^
 
     (* Initial element pointer, skewed *)
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
-    Tagged.load_forwarding_pointer env ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
     
     (* Upper pointer boundary, skewed *)
     get_array ^^ 
-    Tagged.load_forwarding_pointer env ^^
     Heap.load_field len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
