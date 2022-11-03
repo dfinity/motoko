@@ -153,7 +153,7 @@ unsafe fn evac<M: Memory>(
     debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
 
     // Update the field if the object is already evacuated
-    if (*obj).tag == TAG_FWD_PTR {
+    if obj.tag() == TAG_FWD_PTR {
         let fwd = (*(obj as *const FwdPtr)).fwd;
         *ptr_loc = fwd;
         return;
@@ -194,7 +194,7 @@ unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: 
     crate::visitor::visit_pointer_fields(
         mem,
         obj,
-        (*obj).tag,
+        obj.tag(),
         begin_from_space,
         |mem, field_addr| {
             evac(mem, begin_from_space, begin_to_space, field_addr as usize);

@@ -374,7 +374,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // only used in copying GC - not to be confused with forwarding pointer in header used for incremental GC
+pub const TAG_FWD_PTR: Tag = 19; // only used in copying GC - not to be confused with forwarding pointer in the header used for incremental GC
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -399,15 +399,18 @@ pub struct Obj {
 }
 
 impl Obj {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn tag(self: *const Self) -> Tag {
         self.check_dereferenced_forwarding();
         (*self).tag
-    }
-
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        debug_assert_eq!((*self).forward.get_ptr(), self as usize);
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
@@ -435,8 +438,9 @@ pub struct Array {
 }
 
 impl Array {
+    /// Check that the forwarding pointer has already been dereferenced
     #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
             debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
@@ -476,8 +480,9 @@ pub struct Object {
 }
 
 impl Object {
+    /// Check that the forwarding pointer has already been dereferenced
     #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
             debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
@@ -516,8 +521,9 @@ pub struct Closure {
 }
 
 impl Closure {
+    /// Check that the forwarding pointer has already been dereferenced
     #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
             debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
@@ -543,8 +549,9 @@ pub struct Blob {
 }
 
 impl Blob {
+    /// Check that the forwarding pointer has already been dereferenced
     #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
             debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
@@ -633,8 +640,9 @@ pub struct BigInt {
 }
 
 impl BigInt {
+    /// Check that the forwarding pointer has already been dereferenced
     #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
             debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
@@ -699,8 +707,9 @@ pub struct Concat {
 }
 
 impl Concat {
+    /// Check that the forwarding pointer has already been dereferenced
     #[inline]
-    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
             debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
@@ -733,8 +742,9 @@ pub struct Bits64 {
 }
 
 impl Bits64 {
+    /// Check that the forwarding pointer has already been dereferenced
     #[inline]
-    pub unsafe fn check_dereferenced_forwarding(&self) {
+    unsafe fn check_dereferenced_forwarding(&self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
             debug_assert_eq!(
@@ -781,7 +791,7 @@ impl FreeSpace {
 /// Returns object size in words
 pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
     let obj = obj as *mut Obj;
-    match (*obj).tag {
+    match obj.tag() {
         TAG_OBJECT => {
             let object = obj as *mut Object;
             let size = object.size();
