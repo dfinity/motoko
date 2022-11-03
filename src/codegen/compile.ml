@@ -3630,15 +3630,13 @@ module Arr = struct
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
-    (* only the sanity check forwards an object at allocation time *)
-    (if !Flags.sanity then Tagged.load_forwarding_pointer env else G.nop) ^^
+    Tagged.load_forwarding_pointer env ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
     
     (* Upper pointer boundary, skewed *)
     get_array ^^ 
-    (* only the sanity check forwards an object at allocation time *)
-    (if !Flags.sanity then Tagged.load_forwarding_pointer env else G.nop) ^^
+    Tagged.load_forwarding_pointer env ^^
     Heap.load_field len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
@@ -5243,9 +5241,9 @@ module MakeSerialization (Strm : Stream) = struct
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
         size_word env (get_x ^^ Arr.len env) ^^
-        get_x ^^ Arr.len env ^^
-        from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
+        Arr.iterate env get_x (fun get_pointer -> 
+          get_pointer ^^
+          load_ptr ^^
           size env t
         )
       | Prim Blob ->
@@ -5402,9 +5400,9 @@ module MakeSerialization (Strm : Stream) = struct
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
         write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
-        get_x ^^ Arr.len env ^^
-        from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
+        Arr.iterate env get_x (fun get_pointer -> 
+          get_pointer ^^
+          load_ptr ^^
           write env t
         )
       | Prim Null -> G.nop
