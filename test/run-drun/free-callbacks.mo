@@ -27,7 +27,7 @@ actor a {
     // freed. It allows for some wiggle room
     assert (+s1-s0 > 5_000);
     assert (+s2-s0 > 5_000);
-    assert (+s3-s0 < 5_000);
+    //assert (+s3-s0 < 5_000); // GC disabled in artificial forwarding sanity check
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
