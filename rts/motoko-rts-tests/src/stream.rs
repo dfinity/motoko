@@ -49,7 +49,7 @@ pub unsafe fn test() {
     const STREAM_LARGE_SIZE: u32 = 6000;
     let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(STREAM_LARGE_SIZE)) as usize);
     let chunk: [u8; 10] = [10, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    for _ in 0..600 {
+    for _ in 0..STREAM_LARGE_SIZE / chunk.len() as u32 {
         stream
             .as_stream()
             .cache_bytes(&chunk[0], Bytes(chunk.len() as u32));
