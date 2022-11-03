@@ -391,12 +391,13 @@ let transform mode prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
       ActorE (t_decs ds, t_fields fs,
         {meta;
          preupgrade = t_exp preupgrade;
          postupgrade = t_exp postupgrade;
          heartbeat = t_exp heartbeat;
+         timer = t_exp timer;
          inspect = t_exp inspect
         }, t_typ typ)
     | NewObjE (sort, ids, t) ->
@@ -468,12 +469,13 @@ let transform mode prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
         { meta;
           preupgrade = t_exp preupgrade;
           postupgrade = t_exp postupgrade;
           heartbeat = t_exp heartbeat;
+          timer = t_exp timer;
           inspect = t_exp inspect
         }, t_typ t)
 

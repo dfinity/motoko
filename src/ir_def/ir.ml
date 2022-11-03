@@ -81,6 +81,7 @@ and system = {
   preupgrade : exp;
   postupgrade : exp;
   heartbeat : exp;
+  timer : exp;
   inspect : exp
 }
 

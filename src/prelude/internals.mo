@@ -25,12 +25,14 @@ func @reset_cycles() {
   @cycles := 0;
 };
 
-var @timers : ?Nat = null;
+var @timers : [() -> async ()] = null;
 
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
-func @run_timers() {
-
+func @run_timers() : async () {
+    (prim "print" : Text -> ()) "PEEKABOO!"
+    //outstanding = foreach t in @timers { t() }
+    //push @timers { map await outstanding }
 };
 
 // The @ in the name ensures that this cannot be shadowed by user code, so
