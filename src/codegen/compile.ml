@@ -278,7 +278,7 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-    object_pool_strings : int32 StringEnv.t ref;
+    object_pool : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -322,7 +322,7 @@ module E = struct
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
-    object_pool_strings = ref StringEnv.empty;
+    object_pool = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -522,7 +522,7 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
-  let update_static_memory (env : t) ptr data =
+  let write_static_memory (env : t) ptr data =
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     ()
 
@@ -556,10 +556,10 @@ module E = struct
       ptr
 
   let object_pool_find (env: t) (key: string) : int32 option =
-    StringEnv.find_opt key !(env.object_pool_strings)
+    StringEnv.find_opt key !(env.object_pool)
     
   let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
-    env.object_pool_strings := StringEnv.add key ptr !(env.object_pool_strings);
+    env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
 
   let get_end_of_static_memory env : int32 =
@@ -1489,7 +1489,7 @@ module Tagged = struct
     let tag = bytes_of_int32 (int_of_tag tag) in
     let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
     let data = tag ^ forward ^ payload in
-    E.update_static_memory env unskewed_ptr data;
+    E.write_static_memory env unskewed_ptr data;
     skewed_ptr
 
   let shared_static_obj env tag payload =
