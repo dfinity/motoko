@@ -90,6 +90,10 @@ pub unsafe fn check_memory<M: crate::memory::Memory>(_mem: &mut M) {
 impl MemoryChecker {
     pub unsafe fn check_memory(&self) {
         assert!(!SERIALIZING);
+        #[cfg(debug_assertions)]
+        {
+            crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
+        }
         // println!(100, "Memory check starts...");
         // println!(100, " Checking static roots...");
         self.check_static_roots();
@@ -100,6 +104,10 @@ impl MemoryChecker {
         // println!(100, " Checking heap...");
         self.check_heap();
         // println!(100, "Memory check stops...");
+        #[cfg(debug_assertions)]
+        {
+            crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
+        }
     }
 
     unsafe fn check_static_roots(&self) {

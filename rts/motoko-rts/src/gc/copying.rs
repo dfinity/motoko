@@ -19,10 +19,13 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
+    #[cfg(debug_assertions)]
     if crate::check::ARTIFICIAL_FORWARDING {
         crate::check::check_memory(mem);
         return;
     }
+
+    assert!(!crate::check::ARTIFICIAL_FORWARDING);
 
     use crate::memory::ic;
 
@@ -60,6 +63,11 @@ pub unsafe fn copying_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
+    #[cfg(debug_assertions)]
+    {
+        crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
+    }
+
     let begin_from_space = heap_base as usize;
     let end_from_space = get_hp();
     let begin_to_space = end_from_space;
@@ -105,6 +113,11 @@ pub unsafe fn copying_gc_internal<
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     set_hp(new_hp as u32);
+
+    #[cfg(debug_assertions)]
+    {
+        crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
+    }
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
@@ -186,7 +199,7 @@ unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: 
         |mem, field_addr| {
             evac(mem, begin_from_space, begin_to_space, field_addr as usize);
         },
-        |_, _, arr| (*arr).len,
+        |_, _, arr| arr.len(),
     );
 }
 
@@ -200,8 +213,8 @@ unsafe fn evac_static_roots<M: Memory>(
 ) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
-    for i in 0..(*roots).len {
-        let obj = roots.get_unchecked(i);
+    for i in 0..roots.len() {
+        let obj = roots.get(i);
         scav(mem, begin_from_space, begin_to_space, obj.get_ptr());
     }
 }

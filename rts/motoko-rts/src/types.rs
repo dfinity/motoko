@@ -25,6 +25,9 @@ use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
 
+#[cfg(debug_assertions)]
+pub static mut STRICT_FORWARDING_POINTER_CHECKS: bool = true;
+
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
 }
@@ -434,26 +437,21 @@ pub struct Array {
 impl Array {
     #[inline]
     pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
         self.check_dereferenced_forwarding();
-        self.payload_addr_unchecked()
-    }
-
-    pub unsafe fn payload_addr_unchecked(self: *mut Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
         self.check_dereferenced_forwarding();
-        self.get_unchecked(idx)
-    }
-
-    pub unsafe fn get_unchecked(self: *mut Self, idx: u32) -> Value {
         debug_assert!((*self).len > idx);
-        let slot_addr = self.payload_addr_unchecked() as usize + (idx * WORD_SIZE) as usize;
+        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
         *(slot_addr as *const Value)
     }
 
@@ -480,7 +478,10 @@ pub struct Object {
 impl Object {
     #[inline]
     pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
@@ -515,8 +516,22 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub unsafe fn payload_addr_unchecked(self: *mut Self) -> *mut Value {
+    #[inline]
+    pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
+    }
+
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.check_dereferenced_forwarding();
         self.offset(1) as *mut Value // skip closure header
+    }
+
+    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+        self.check_dereferenced_forwarding();
+        (*self).size
     }
 }
 
@@ -530,7 +545,10 @@ pub struct Blob {
 impl Blob {
     #[inline]
     pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
@@ -617,7 +635,10 @@ pub struct BigInt {
 impl BigInt {
     #[inline]
     pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
     }
 
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
@@ -680,7 +701,10 @@ pub struct Concat {
 impl Concat {
     #[inline]
     pub unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
     }
 
     pub unsafe fn text1(self: *const Self) -> Value {
@@ -711,10 +735,13 @@ pub struct Bits64 {
 impl Bits64 {
     #[inline]
     pub unsafe fn check_dereferenced_forwarding(&self) {
-        debug_assert_eq!(
-            self.header.forward.get_ptr(),
-            (self as *const Self) as usize
-        );
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!(
+                self.header.forward.get_ptr(),
+                (self as *const Self) as usize
+            );
+        }
     }
 
     pub fn bits(&self) -> u64 {
@@ -765,7 +792,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_ARRAY => {
             let array = obj as *mut Array;
-            let size = (*array).len;
+            let size = array.len();
             size_of::<Array>() + Words(size)
         }
 
@@ -775,7 +802,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
-            let size = (*closure).size;
+            let size = closure.size();
             size_of::<Closure>() + Words(size)
         }
 

@@ -46,9 +46,9 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => {
             let slice_start = if tag >= TAG_ARRAY_SLICE_MIN { tag } else { 0 };
             let array = obj as *mut Array;
-            let array_payload = array.payload_addr_unchecked();
+            let array_payload = array.payload_addr();
             let stop = visit_field_range(ctx, slice_start, array);
-            debug_assert!(stop <= (*array).len);
+            debug_assert!(stop <= array.len());
             for i in slice_start..stop {
                 let field_addr = array_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
@@ -67,8 +67,8 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
-            let closure_payload = closure.payload_addr_unchecked();
-            for i in 0..(*closure).size {
+            let closure_payload = closure.payload_addr();
+            for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
                 if pointer_to_dynamic_heap(field_addr, heap_base) {
                     visit_ptr_field(ctx, field_addr);
