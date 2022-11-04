@@ -333,7 +333,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     fn is_compaction_beneficial(&self) -> bool {
         // Returns false if the survival rate is f64::INF for an empty generation.
-        self.survival_rate() < 0.95
+        const SURVIVAL_THRESHOLD: f64 = 0.95;
+        self.survival_rate() < SURVIVAL_THRESHOLD
     }
 
     fn generation_base(&self) -> usize {
