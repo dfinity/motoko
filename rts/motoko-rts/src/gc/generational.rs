@@ -137,7 +137,7 @@ unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
 unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     const GROWTH_RATE: f64 = 1.5;
     if strategy == Strategy::Full {
-        OLD_GENERATION_THRESHOLD = (limits.free as f64 * GROWTH_RATE) as usize;
+        OLD_GENERATION_THRESHOLD = ((limits.free - limits.base) as f64 * GROWTH_RATE) as usize;
         if limits.free < CRITICAL_MEMORY_LIMIT {
             PASSED_CRITICAL_LIMIT = false
         }
