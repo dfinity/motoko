@@ -1,5 +1,5 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
-import {debugPrint; error} = "mo:⛔";
+import {debugPrint; error; time} = "mo:⛔";
 
 actor {
 
@@ -18,7 +18,8 @@ actor {
 
   public shared func go() : async () {
      var attempts = 0;
-     let prev = (prim "global_timer_set" : Nat64 -> Nat64) 1;
+     let now = time() / 1_000_000_000;
+     let prev = (prim "global_timer_set" : Nat64 -> Nat64)(now + 1);
      assert prev == 0;
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
