@@ -16,6 +16,8 @@ func partition(a : [var Int], lo : Nat, hi : Nat) : Nat {
     while (a[j] > pivot) j -= 1;
     if (i >= j) return j;
     swap(a, i, j);
+    i += 1;
+    j -= 1;
   };
 };
 
@@ -27,5 +29,5 @@ func quicksort(a : [var Int], lo : Nat, hi : Nat) {
 	};
 } /*;*/
 
-let a : [var Int] = [var 8, 3, 9, 5, 2];
-quicksort(a, 0, 4);
+let a : [var Int] = [var 8, 8, 3, 9, 5, 2];
+quicksort(a, 0, a.size() - 1);

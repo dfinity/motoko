@@ -9,8 +9,8 @@ module T = Type
 module V = Value
 
 module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
-module TagSet = Set.Make(struct type t = string let compare = compare end)
-module LabMap = Map.Make(struct type t = string let compare = compare end)
+module TagSet = Set.Make(struct type t = string let compare = String.compare end)
+module LabMap = Map.Make(struct type t = string let compare = String.compare end)
 module AtSet = Set.Make(struct type t = Source.region let compare = compare end)
 
 type desc =
@@ -54,25 +54,18 @@ let make_sets () =
 
 let max_expand = 2
 
-let pick_nat (type t) (module Num : V.NumType with type t = t) to_val vs =
+let pick_nat (type t) (module Num : Numerics.NumType with type t = t) to_val vs =
   let x = ref Num.zero in
   while ValSet.mem (to_val !x) vs do
     x := Num.add (Num.of_int 1) !x
   done;
   Val (to_val !x)
 
-let pick_int (type t) (module Num : V.NumType with type t = t) to_val vs =
+let pick_int (type t) (module Num : Numerics.NumType with type t = t) to_val vs =
   let x = ref Num.zero in
   while ValSet.mem (to_val !x) vs do
     x := Num.neg !x;
     if Num.ge !x Num.zero then x := Num.add (Num.of_int 1) !x
-  done;
-  Val (to_val !x)
-
-let pick_word (type t) (module Word : V.WordType with type t = t) to_val vs =
-  let x = ref Word.zero in
-  while ValSet.mem (to_val !x) vs do
-    x := Word.add (Word.of_int_u 1) !x
   done;
   Val (to_val !x)
 
@@ -84,22 +77,18 @@ let pick_char vs =
   Val (V.Char !x)
 
 let pick_val vs = function
-  | T.Null -> assert false
+  | T.Null -> Val V.Null
   | T.Bool -> Val (V.Bool (ValSet.mem (V.Bool false) vs))
-  | T.Nat -> pick_nat (module V.Nat) (fun x -> V.Int x) vs
-  | T.Nat8 -> pick_nat (module V.Nat8) (fun x -> V.Nat8 x) vs
-  | T.Nat16 -> pick_nat (module V.Nat16) (fun x -> V.Nat16 x) vs
-  | T.Nat32 -> pick_nat (module V.Nat32) (fun x -> V.Nat32 x) vs
-  | T.Nat64 -> pick_nat (module V.Nat64) (fun x -> V.Nat64 x) vs
-  | T.Int -> pick_int (module V.Int) (fun x -> V.Int x) vs
-  | T.Int8 -> pick_int (module V.Int_8) (fun x -> V.Int8 x) vs
-  | T.Int16 -> pick_int (module V.Int_16) (fun x -> V.Int16 x) vs
-  | T.Int32 -> pick_int (module V.Int_32) (fun x -> V.Int32 x) vs
-  | T.Int64 -> pick_int (module V.Int_64) (fun x -> V.Int64 x) vs
-  | T.Word8 -> pick_word (module V.Word8) (fun x -> V.Word8 x) vs
-  | T.Word16 -> pick_word (module V.Word16) (fun x -> V.Word16 x) vs
-  | T.Word32 -> pick_word (module V.Word32) (fun x -> V.Word32 x) vs
-  | T.Word64 -> pick_word (module V.Word64) (fun x -> V.Word64 x) vs
+  | T.Nat -> pick_nat (module Numerics.Nat) (fun x -> V.Int x) vs
+  | T.Nat8 -> pick_nat (module Numerics.Nat8) (fun x -> V.Nat8 x) vs
+  | T.Nat16 -> pick_nat (module Numerics.Nat16) (fun x -> V.Nat16 x) vs
+  | T.Nat32 -> pick_nat (module Numerics.Nat32) (fun x -> V.Nat32 x) vs
+  | T.Nat64 -> pick_nat (module Numerics.Nat64) (fun x -> V.Nat64 x) vs
+  | T.Int -> pick_int (module Numerics.Int) (fun x -> V.Int x) vs
+  | T.Int8 -> pick_int (module Numerics.Int_8) (fun x -> V.Int8 x) vs
+  | T.Int16 -> pick_int (module Numerics.Int_16) (fun x -> V.Int16 x) vs
+  | T.Int32 -> pick_int (module Numerics.Int_32) (fun x -> V.Int32 x) vs
+  | T.Int64 -> pick_int (module Numerics.Int_64) (fun x -> V.Int64 x) vs
   | T.Char -> pick_char vs
   | T.Text
   | T.Blob
@@ -133,7 +122,7 @@ let rec expand_nottag tfs n ls : desc list =
   let l = pick_tag ls tfs in
   Tag (Any, l) :: expand_nottag tfs (n + 1) (TagSet.add l ls)
 
-
+(* TODO: pretty print *)
 let rec string_of_desc t = function
   | Any -> "_"
   | Val v -> V.string_of_val 100 v
@@ -144,7 +133,7 @@ let rec string_of_desc t = function
   | Obj ldescs ->
     let fields = LabMap.bindings ldescs in
     let _, tfs = T.as_obj_sub (List.map fst fields) t in
-    "{" ^ String.concat "; " (List.map (string_of_ldesc tfs) fields) ^ ")"
+    "{" ^ String.concat "; " (List.map (string_of_ldesc tfs) fields) ^ "}"
   | Opt desc ->
     let t' = T.as_opt_sub t in
     "?(" ^ string_of_desc t' desc ^ ")"
@@ -167,6 +156,10 @@ and string_of_descs t descs =
 
 (* Abstract interpretation *)
 
+let is_neg_int = function
+  | V.Int i -> Numerics.Int.(lt i zero)
+  | _ -> false
+
 let value_of_lit = function
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
@@ -180,35 +173,32 @@ let value_of_lit = function
   | Int16Lit w -> V.Int16 w
   | Int32Lit w -> V.Int32 w
   | Int64Lit w -> V.Int64 w
-  | Word8Lit w -> V.Word8 w
-  | Word16Lit w -> V.Word16 w
-  | Word32Lit w -> V.Word32 w
-  | Word64Lit w -> V.Word64 w
   | FloatLit z -> V.Float z
   | CharLit c -> V.Char c
   | TextLit t -> V.Text t
+  | BlobLit b -> V.Blob b
   | PreLit _ -> assert false
 
 
 let (&&&) = (&&) (* No short-cutting *)
 
-let skip_pat pat sets =
-  sets.alts <- AtSet.add pat.at sets.alts;
+let skip_pat at sets =
+  sets.alts <- AtSet.add at sets.alts;
   true
 
 let rec match_pat ctxt desc pat t sets =
-  T.span t = Some 0 && skip_pat pat sets ||
+  T.span t = Some 0 && skip_pat pat.at sets ||
   match pat.it with
   | WildP | VarP _ ->
     if T.inhabited t then
       succeed ctxt desc sets
     else
-      skip_pat pat sets
+      skip_pat pat.at sets
   | LitP lit ->
-    match_lit ctxt desc (value_of_lit !lit) t sets
+    match_lit ctxt desc pat.at (value_of_lit !lit) t sets
   | SignP (op, lit) ->
     let f = Operator.unop op (Operator.type_unop op pat.note) in
-    match_lit ctxt desc (f (value_of_lit !lit)) t sets
+    match_lit ctxt desc pat.at (f (value_of_lit !lit)) t sets
   | TupP pats ->
     let ts = T.as_tup (T.promote t) in
     let descs =
@@ -228,21 +218,28 @@ let rec match_pat ctxt desc pat t sets =
       | _ -> assert false
     in match_obj ctxt ldescs pat_fields tfs sets
   | OptP pat1 ->
-    let t' = T.as_opt (T.promote t) in
-    (match desc with
-    | Opt desc' ->
-      match_pat (InOpt ctxt) desc' pat1 t' sets
-    | Val V.Null ->
-      fail ctxt desc sets
-    | NotVal vs when ValSet.mem V.Null vs ->
-      match_pat (InOpt ctxt) Any pat1 t' sets
-    | Any ->
-      fail ctxt (Val V.Null) sets &&&
-      match_pat (InOpt ctxt) Any pat1 t' sets
-    | _ -> assert false
-    )
+    if T.is_prim T.Null (T.promote t) then  (* may occur through subtyping *)
+      skip_pat pat.at sets && fail ctxt (Val V.Null) sets
+    else
+      let t' = T.as_opt (T.promote t) in
+      (match desc with
+      | Opt desc' ->
+        match_pat (InOpt ctxt) desc' pat1 t' sets
+      | Val V.Null ->
+        fail ctxt desc sets
+      | NotVal vs when ValSet.mem V.Null vs ->
+        match_pat (InOpt ctxt) Any pat1 t' sets
+      | Any ->
+        fail ctxt (Val V.Null) sets &&&
+        match_pat (InOpt ctxt) Any pat1 t' sets
+      | _ -> assert false
+      )
   | TagP (id, pat1) ->
-    let t' = T.lookup_val_field id.it (T.as_variant (T.promote t)) in
+    let t', found =
+      match T.lookup_val_field_opt id.it (T.as_variant (T.promote t)) with
+      | None -> T.Non, false  (* may occur through subtyping *)
+      | Some t' -> t', true
+    in
     (match desc with
     | Tag (desc', l) ->
       if id.it = l then
@@ -252,6 +249,8 @@ let rec match_pat ctxt desc pat t sets =
     | NotTag ls ->
       if TagSet.mem id.it ls then
         fail ctxt desc sets
+      else if not found then
+        skip_pat pat.at sets && fail ctxt desc sets
       else if T.span t = Some (TagSet.cardinal ls + 1) then
         match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
       else
@@ -268,7 +267,7 @@ let rec match_pat ctxt desc pat t sets =
   | ParP pat1 ->
     match_pat ctxt desc pat1 t sets
 
-and match_lit ctxt desc v t sets =
+and match_lit ctxt desc at v t sets =
   match desc with
   | Val v' ->
     if V.equal v v' then
@@ -278,6 +277,8 @@ and match_lit ctxt desc v t sets =
   | NotVal vs ->
     if ValSet.mem v vs then
       fail ctxt desc sets
+    else if T.eq t T.nat && is_neg_int v then  (* may occur through subtyping *)
+      skip_pat at sets && fail ctxt desc sets
     else if T.span t = Some (ValSet.cardinal vs + 1) then
       succeed ctxt (Val v) sets
     else
@@ -286,7 +287,7 @@ and match_lit ctxt desc v t sets =
   | Opt _ ->
     fail ctxt desc sets
   | Any ->
-    match_lit ctxt (NotVal ValSet.empty) v t sets
+    match_lit ctxt (NotVal ValSet.empty) at v t sets
   | _ ->
     assert false
 
@@ -334,7 +335,7 @@ and skip cases sets : bool =
   | [] ->
     true
   | case::cases' ->
-    sets.cases <- AtSet.add case.at sets.cases;
+    sets.cases <- AtSet.add case.it.pat.at sets.cases;
     skip cases' sets
 
 and fail ctxt desc sets : bool =
@@ -356,25 +357,23 @@ and fail ctxt desc sets : bool =
     (sets.missing <- desc::sets.missing; false)
   | InCase (at, case::cases, t) ->
     T.span t = Some 0 && skip (case::cases) sets ||
-    match_pat (InCase (case.at, cases, t)) desc case.it.pat t sets
+    match_pat (InCase (case.it.pat.at, cases, t)) desc case.it.pat t sets
 
-let warn at fmt =
-	Printf.ksprintf (fun s ->
-    if at <> Source.no_region then
-      Printf.eprintf "%s: warning, %s\n%!" (Source.string_of_region at) s;
-  ) fmt
+
+type uncovered = string
+type unreached = Source.region
 
 let check_cases cases t =
   let sets = make_sets () in
   let _exhaustive = fail (InCase (Source.no_region, cases, t)) Any sets in
+  let uncovered = List.map (string_of_desc t) (List.rev sets.missing) in
   let unreached_cases = AtSet.diff sets.cases sets.reached_cases in
   let unreached_alts = AtSet.diff sets.alts sets.reached_alts in
-  AtSet.iter (fun at -> warn at "this case is never reached") unreached_cases;
-  AtSet.iter (fun at -> warn at "this pattern is never matched")
-    unreached_alts;
-  List.map (string_of_desc t) (List.rev sets.missing)
+  uncovered, AtSet.elements (AtSet.union unreached_cases unreached_alts)
 
 let (@?) it at = {it; at; note = empty_typ_note}
 
 let check_pat pat t =
-  check_cases [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t
+  let uncovered, unreached =
+    check_cases [{pat; exp = TupE [] @? Source.no_region} @@ Source.no_region] t
+  in uncovered, List.filter ((<>) pat.at) unreached

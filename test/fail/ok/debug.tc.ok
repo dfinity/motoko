@@ -1,4 +1,4 @@
-debug.mo:1.9-1.11: type error, literal of type
+debug.mo:1.9-1.11: type error [M0050], literal of type
   Nat
 does not have expected type
   ()

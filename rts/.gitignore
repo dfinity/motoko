@@ -1,5 +1,3 @@
 mo-rts.wasm
-test_rts
-test_leb128
-afl_leb128_out
+mo-rts-debug.wasm
 _build

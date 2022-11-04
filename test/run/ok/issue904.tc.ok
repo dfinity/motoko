@@ -1,0 +1,1 @@
+issue904.mo:2.6-2.15: warning [M0089], redundant ignore, operand already has type ()

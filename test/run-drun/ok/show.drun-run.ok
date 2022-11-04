@@ -1,3 +1,4 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 debug.print: true
 debug.print: false
 debug.print: -42_000_000_000_000
@@ -29,8 +30,7 @@ debug.print: #bar([])
 debug.print: #bar(42)
 debug.print: #bar(-42)
 debug.print: #foo(+42)
-debug.print: 0x2A
 debug.print: 42
 debug.print: +42
 debug.print: -42
-ingress System
+ingress Completed: Reply: 0x4449444c0000

@@ -1,9 +1,12 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
+
 let p = object {public let x = 3; let y = 2; public func get_y() : Int = y};
 assert(p.x == 3);
 assert(p.get_y() == 2);
 
-let o : {a : {}; b : Nat} = {a = {x = 0}; b = a.x};
+func nonrec(a : {x : Nat}) = ignore ({a = {}; b = a.x});
+
+let o : {a : {}; b : Nat} = object {public let a = {x = 0}; public let b = a.x};
 
 let oo = object {
   type T = Int;
@@ -42,7 +45,7 @@ assert (get_a () == -42);
 let row : (Nat, Int, {c : Char; d : Text}) = (100, -42, {c = 'C'; d = "D"});
 
 func foo () : Int = switch row {
-  case (a : Int, -42, {c} : {c : Char}) (Prim.word32ToNat(Prim.charToWord32 c))  // OK
+  case (a : Int, -42, {c} : {c : Char}) (Prim.nat32ToNat(Prim.charToNat32 c))  // OK
 };
 
 assert (foo () == 67);

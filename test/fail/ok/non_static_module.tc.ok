@@ -1,1 +1,12 @@
-non_static_module.mo:3.11-3.14: type error, non-static expression in library or module
+non_static_module.mo:20.12-20.15: type error [M0014], non-static expression in library or module
+non_static_module.mo:21.12-21.19: type error [M0014], non-static expression in library or module
+non_static_module.mo:22.4-22.13: type error [M0014], non-static expression in library or module
+non_static_module.mo:3.11-3.14: type error [M0014], non-static expression in library or module
+non_static_module.mo:4.11-4.18: type error [M0014], non-static expression in library or module
+non_static_module.mo:5.3-5.12: type error [M0014], non-static expression in library or module
+non_static_module.mo:9.12-9.15: type error [M0014], non-static expression in library or module
+non_static_module.mo:10.12-10.19: type error [M0014], non-static expression in library or module
+non_static_module.mo:11.4-11.13: type error [M0014], non-static expression in library or module
+non_static_module.mo:20.12-20.15: type error [M0014], non-static expression in library or module
+non_static_module.mo:21.12-21.19: type error [M0014], non-static expression in library or module
+non_static_module.mo:22.4-22.13: type error [M0014], non-static expression in library or module

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // This is like local-throw.as, just not local
 // (Using `await async { … }` around relevant parts
 
@@ -11,9 +11,10 @@ actor a {
       }
      } catch e {
           switch (Prim.errorCode(e),Prim.errorMessage(e)) {
-            case (#error, "t2") { };
-            case (#system, _ ) { assert false;};
-            case (#error, _) { assert false;};
+            case (#canister_reject, "t2") { };
+            case (#canister_reject, _) { assert false;};
+            case (sys, _ ) { assert false;};
+
        }
      }
   };
@@ -28,34 +29,35 @@ actor a {
           }
         } catch e1 {
           switch (Prim.errorCode(e1), Prim.errorMessage(e1)) {
-            case (#error, "t3") {
+            case (#canister_reject, "t3") {
               throw Prim.error("t31");
             };
-            case (#system, _) {
+            case (#canister_reject, _) {
               assert false;
             };
-            case (#error, _) {
+            case (sys, _) {
               assert false;
             };
+
           }
         }
       }
     }
     catch e2 {
       switch (Prim.errorCode(e2),Prim.errorMessage(e2)) {
-       case (#error, "t31") { };
-       case (#system, _) {
-         assert false;
-       };
-       case (#error, _) {
+       case (#canister_reject, "t31") { };
+       case (#canister_reject, _) {
          assert true;
+       };
+       case (sys, _) {
+         assert false;
        };
       }
     }
   };
 
 
-  public func go() {
+  public func go() : async () {
     try {
       await t2();
       Prim.debugPrint ("t2 ok");

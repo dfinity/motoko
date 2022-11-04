@@ -1,1 +1,1 @@
-TRAP-write-before-init.mo:1.1-1.7: definedness error, cannot use x before x has been defined
+TRAP-write-before-init.mo:1.1-1.7: definedness error [M0016], cannot use x before x has been defined

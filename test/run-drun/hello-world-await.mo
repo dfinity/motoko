@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 let a = actor {
   public func hello() : async Text {
     "Hello ";
@@ -6,7 +6,7 @@ let a = actor {
   public func world() : async Text {
     "World!"
   };
-  public func go() {
+  public func go() : async () {
     Prim.debugPrint((await hello()) # (await world()));
   };
 };

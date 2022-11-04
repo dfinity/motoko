@@ -1,55 +1,55 @@
 func magic() : None = magic();
 
 switch (magic () : Nat) {
-  case (-1) {};
+  case (-1) {};  // redundant
   case _ {};
 };
 switch (magic () : Nat) {
-  case (-1 : Int) {};
+  case (-1 : Int) {};  // redundant
   case _ {};
 };
 
 switch (magic () : (Nat, Nat)) {
-  case ((1, -2) : (Int, Int)) {};
+  case ((1, -2) : (Int, Int)) {};  // redundant
   case _ {};
 };
 switch (magic () : (Nat, Nat)) {
-  case (1 : Int, -2 : Int) {};
+  case (1 : Int, -2 : Int) {};  // redundant
   case _ {};
 };
 
 switch (magic () : {a : Nat; b : Nat}) {
-  case ({a = 1; b = -2} : {a : Int; b : Int}) {};
+  case ({a = 1; b = -2} : {a : Int; b : Int}) {};  // redundant
   case _ {};
 };
 switch (magic () : {a : Nat; b : Nat}) {
-  case {a = 1 : Int; b = -2 : Int} {};
+  case {a = 1 : Int; b = -2 : Int} {};  // redundant
   case _ {};
 };
 
 switch (magic () : ?Nat) {
-  case (? -1) {};
+  case (? -1) {};  // redundant
   case _ {};
 };
 switch (magic () : ?Nat) {
-  case (? -1 : ?Int) {};
+  case (? -1 : ?Int) {};  // redundant
   case _ {};
 };
 switch (magic () : ?Nat) {
-  case (?(-1 : Int)) {};
+  case (?(-1 : Int)) {};  // redundant
   case _ {};
 };
 
 switch (magic () : {#A : Nat; #B}) {
-  case (#A(-1)) {};
+  case (#A(-1)) {};  // redundant
   case _ {};
 };
 switch (magic () : {#A : Nat; #B}) {
-  case (#A(-1 : Int)) {};
+  case (#A(-1 : Int)) {};  // redundant
   case _ {};
 };
 switch (magic () : {#A : Nat; #B}) {
-  case (#A(-1) : {#A : Int; #B}) {};
+  case (#A(-1) : {#A : Int; #B}) {};  // redundant
   case _ {};
 };
 
@@ -122,4 +122,42 @@ switch (magic () : {#A : Nat; #B}) {
 switch (magic ()) {
   case true {};
   case 1 {};
+};
+
+
+do {
+  func f(x : Int : Nat) {};  // ok
+};
+do {
+  func f(x : Nat : Int) {};
+};
+do {
+  func f(x : Nat : Int : Nat) {};
+};
+do {
+  func f(x : Int : Nat : Int) {};
+};
+do {
+  ignore (func(x : Int) {}) : (Nat -> ());  // ok
+};
+do {
+  ignore (func(x : Nat) {}) : (Int -> ());
+};
+do {
+  ignore (func(x : Nat : Int) {}) : (Nat -> ());
+};
+do {
+  ignore (func(x : Int : Nat) {}) : (Int -> ());
+};
+do {
+  ignore (func f(x : Int) {}) : (Nat -> ());  // ok
+};
+do {
+  ignore (func f(x : Nat) {}) : (Int -> ());
+};
+do {
+  ignore (func f(x : Nat : Int) {}) : (Nat -> ());
+};
+do {
+  ignore (func f(x : Int : Nat) {}) : (Int -> ());
 };

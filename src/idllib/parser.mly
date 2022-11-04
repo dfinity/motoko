@@ -30,11 +30,8 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
                  "null", Null; "reserved", Reserved; "empty", Empty]
 let is_prim_typs t = List.assoc_opt t prim_typs
 
-let func_modes = ["oneway", Oneway; "query", Query]
-let get_func_mode m = List.assoc_opt m func_modes               
-
 let hash = IdlHash.idl_hash
-let record_fields fs =
+let record_fields get_label fs =
   let open Uint32 in
   let rec go start fs =
     match fs with
@@ -42,7 +39,7 @@ let record_fields fs =
     | hd :: tl ->
        let field = hd start in
        let next =
-         (match field.it.label.it with
+         (match (get_label field.it).it with
          | Id n -> succ n
          | Named name -> succ (hash name)
          | Unnamed n -> succ n) in
@@ -53,19 +50,26 @@ let record_fields fs =
 %token EOF
 
 %token LPAR RPAR LCURLY RCURLY
-%token ARROW
+%token ARROW MINUS
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
-%token SEMICOLON COMMA COLON EQ
-%token OPT VEC RECORD VARIANT BLOB
+%token SEMICOLON COMMA PERIOD COLON EQ
+%token NOTCOLON EQQ NOTEQ
+%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
 
 %start<string -> Syntax.prog> parse_prog
+%start<string -> Syntax.tests> parse_tests
+%start<Syntax.args> parse_args
 
 %%
 
 (* Helpers *)
+
+endlist(X, SEP) :
+  | (* empty *) { [] }
+  | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 seplist(X, SEP) :
   | (* empty *) { [] }
@@ -74,12 +78,18 @@ seplist(X, SEP) :
 
 (* Basics *)
 
+%inline text :
+ | s=TEXT
+   { try ignore (Wasm.Utf8.decode s); s
+     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
+   }
+
 %inline id :
   | id=ID { id @@ at $sloc }
 
 %inline name :
   | id=ID { id @@ at $sloc }
-  | text=TEXT { text @@ at $sloc }
+  | text=text { text @@ at $sloc }
 
 (* Types *)
 
@@ -114,7 +124,7 @@ variant_typ :
 
 record_typs :
   | LCURLY fs=seplist(record_typ, SEMICOLON) RCURLY
-    { record_fields fs }
+    { record_fields (fun f -> f.label) fs }
 
 variant_typs :
   | LCURLY fs=seplist(variant_typ, SEMICOLON) RCURLY { fs }
@@ -124,7 +134,7 @@ cons_typ :
   | VEC t=data_typ { VecT t @@ at $sloc }
   | RECORD fs=record_typs { RecordT fs @@ at $sloc }
   | VARIANT fs=variant_typs { VariantT fs @@ at $sloc }
-  | BLOB { VecT (PrimT Nat8 @@ no_region) @@ at $sloc }
+  | BLOB { BlobT @@ at $sloc }
 
 data_typ :
   | t=cons_typ { t }
@@ -140,11 +150,8 @@ param_typ :
   | name COLON t=data_typ { t }
 
 func_mode :
-  | m=id
-    { match get_func_mode m.it with
-        Some m -> m @@ at $sloc
-      | None -> $syntaxerror
-    }
+  | ONEWAY { Oneway @@ at $sloc }
+  | QUERY { Query @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
@@ -170,12 +177,18 @@ def :
   | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
   (* TODO enforce all imports to go first in the type definitions  *)
-  | IMPORT file=TEXT
+  | IMPORT file=text
     { ImportD (file, ref "") @@ at $sloc }
 
 id_opt :
   | (* empty *) { }
   | id { }
+
+actor_class_typ :
+  | args=param_typs ARROW tys=actor_typ
+    { ClassT (args, ServT tys @@ at $loc(tys)) @@ at $sloc }
+  | args=param_typs ARROW x=id
+    { ClassT (args, VarT x @@ x.at) @@ at $sloc }
 
 actor :
   | (* empty *) { None }
@@ -183,11 +196,93 @@ actor :
     { Some (ServT tys @@ at $loc(tys)) }
   | SERVICE id_opt COLON x=id
     { Some (VarT x @@ x.at) }
+  | SERVICE id_opt COLON t=actor_class_typ { Some t }
 
 (* Programs *)
 
 parse_prog :
   | ds=seplist(def, SEMICOLON) actor=actor EOF
     { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
+
+(* Values *)
+
+(* parses number literals as strings, syntax coincides with motoko’s *)
+(* very liberal parser, but we only care about good input  *)
+num :
+  | n=NAT PERIOD n2=num { n ^ "." ^ n2 }
+  | n=NAT PERIOD { n ^ "." }
+  | n=NAT { n }
+
+signed_num :
+  | MINUS n=num { "-" ^ n }
+  | n=num { n }
+
+value :
+  | n=signed_num { NumV n @@ at $sloc }
+  | OPT v=value { OptV v @@ at $sloc }
+  | VEC LCURLY vs=seplist(value, SEMICOLON) RCURLY
+    { VecV vs @@ at $sloc }
+  | BLOB text=TEXT { BlobV text @@ at $sloc }
+  | text=TEXT { TextV text @@ at $sloc }
+  | RECORD LCURLY fs=seplist(field_value, SEMICOLON) RCURLY
+    { RecordV (record_fields (fun f -> fst f) fs) @@ at $sloc }
+  | VARIANT LCURLY f=variant_value RCURLY
+    { VariantV f @@ at $sloc }
+  | SERVICE s=name { ServiceV s.it @@ at $sloc }
+  | FUNC s=name PERIOD m=name { FuncV (s.it, m.it) @@ at $sloc }
+  | PRINCIPAL s=name { PrincipalV s.it @@ at $sloc }
+  | b=id
+    { match b.it with
+      | "null" -> NullV @@ at $sloc
+      | "true" -> BoolV true @@ at $sloc
+      | "false" -> BoolV false @@ at $sloc
+      | _ -> raise (ParseError (at $loc(b), b.it))
+    }
+
+variant_value :
+  | n=NAT EQ v=value
+    { (Id (Uint32.of_string n) @@ at $loc(n), v ) @@ at $sloc }
+  | name=name EQ v=value
+    { (Named name.it @@ at $loc(name), v) @@ at $sloc }
+  | n=NAT
+    { (Id (Uint32.of_string n) @@ at $loc(n), NullV @@ no_region) @@ at $sloc }
+  | name=name
+    { (Named name.it @@ at $loc(name), NullV @@ no_region) @@ at $sloc }
+
+field_value :
+  | n=NAT EQ v=value
+    { fun _ -> (Id (Uint32.of_string n) @@ at $loc(n), v) @@ at $sloc }
+  | name=name EQ v=value
+    { fun _ -> (Named name.it @@ at $loc(name), v) @@ at $sloc } 
+  | v=value
+    { fun n -> (Unnamed n @@ no_region, v) @@ at $sloc } 
+
+annval :
+  | v=value { v }
+
+parse_args :
+  | LPAR vs=seplist(annval, COMMA) RPAR EOF { vs @@ at $sloc }
+
+
+(* Test suite *)
+
+input :
+  | text=text { TextualInput text }
+  | BLOB text=TEXT { BinaryInput text }
+
+assertion :
+  | input=input COLON    { ParsesAs (true,  input) }
+  | input=input NOTCOLON { ParsesAs (false, input) }
+  | i1=input EQQ   i2=input COLON { ParsesEqual (true,  i1, i2) }
+  | i1=input NOTEQ i2=input COLON { ParsesEqual (false, i1, i2) }
+
+test :
+  | id=id assertion=assertion tys=param_typs desc=text?
+    { if id.it <> "assert" then raise (ParseError (at $loc(id), id.it))
+      else { ttyp=tys; assertion; desc } @@ at $sloc }
+
+parse_tests :
+  | tdecs=endlist(def, SEMICOLON) tests=seplist(test, SEMICOLON) EOF
+    { fun filename -> { it = {tdecs; tests}; at = at $sloc; note = filename} }
 
 %%

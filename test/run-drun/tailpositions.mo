@@ -1,11 +1,11 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 /* test tail-position calculation; error would stack overflow in drun*/
 
 //SKIP comp-ref
 
 let bound:Int = 100000;
 
-{
+do {
     func Loop(n:Int){
 	if (n >= bound) {
             Prim.debugPrint "done 1";
@@ -16,7 +16,7 @@ let bound:Int = 100000;
     Loop(0);
 };
 
-{
+do {
     func Loop(n:Int){
 	if (n >= bound) {
             Prim.debugPrint "done 2";
@@ -31,7 +31,7 @@ let bound:Int = 100000;
 };
 
 
-{
+do {
     func Loop(n:Int){
 	if (n >= bound) {
             Prim.debugPrint "done 3";
@@ -47,13 +47,14 @@ let bound:Int = 100000;
     Loop(0);
 };
 
-{
+do {
     func Loop(n:Int){
 	if (n >= bound) {
             Prim.debugPrint "done 4";
             return;
 	};
-	{ let m = n;
+	do {
+      let m = n;
 	  Loop(m +1);
 	};
     };
@@ -61,7 +62,7 @@ let bound:Int = 100000;
 };
 
 
-{
+do {
     func Loop(n:Int){
 	if (n >= bound) {
             Prim.debugPrint "done 5";
@@ -73,7 +74,7 @@ let bound:Int = 100000;
 };
 
 
-{
+do {
     func Loop(n:Int):Bool{
 	if (n >= bound) {
             Prim.debugPrint "done 6";
@@ -84,7 +85,7 @@ let bound:Int = 100000;
     assert(Loop(0));
 };
 
-{
+do {
     func Loop(n:Int):Bool {
 	if (n >= bound) {
             Prim.debugPrint "done 7";

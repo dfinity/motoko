@@ -1,4 +1,4 @@
-/dev/fd/63:1.12-1.40: warning, the cases in this switch over type
+/dev/fd/63:1.12-1.40: warning [M0145], this switch of type
   Bool
-do not cover value
+does not cover value
   false

@@ -1,13 +1,14 @@
+type Result_1 = 
+ variant {
+   err;
+   ok: int;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok: nat;
+ };
 service : {
-  "f": (opt nat) -> (variant {
-                       "err": text;
-                       "ok": nat;
-                     });
-  "g": (variant {
-          "err": text;
-          "ok": nat;
-        }) -> (variant {
-                 "err": null;
-                 "ok": int;
-               });
+  f: (opt nat) -> (Result);
+  g: (Result) -> (Result_1);
 }

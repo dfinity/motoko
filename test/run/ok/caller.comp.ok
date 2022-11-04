@@ -1,2 +1,0 @@
-caller.mo:4.17-4.31: type error, shared function cannot take a context pattern
-  (This is a limitation of the current version and flag -wasi-system-api.)

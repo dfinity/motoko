@@ -1,6 +1,6 @@
 # This file generates the contents of nix/generated/. Use
 #
-#   cp -fv $(nix-build generate.nix --no-link)/ generated/
+#  nix-shell generate.nix
 #
 # to update
 
@@ -33,7 +33,7 @@ let
 
       '';
       inherit src_subst;
-      installPhase = oldAttrs.installPhase + ''
+      buildCommand = oldAttrs.buildCommand + ''
         sed -i "1i$message;s|src = .*|src = $src_subst;|" $out/default.nix
         # Accept `pkgs` as an argument in case the `src_subst` depends on it.
         sed -i "s|{ mkDerivation|{ mkDerivation, pkgs|" $out/default.nix
@@ -48,17 +48,47 @@ let
       src_subst = "import ../gitSource.nix \"${path}\"";
     };
 
-  random = localHaskellSrc2nixWithDoc "qc-motoko" "test/random" "";
-  lsp-int = localHaskellSrc2nixWithDoc "lsp-int" "test/lsp-int" "";
+  packages = {
+    # local packages
+    random = localHaskellSrc2nixWithDoc "qc-motoko" "test/random" "";
+    lsp-int = localHaskellSrc2nixWithDoc "lsp-int" "test/lsp-int" "";
+    # Packages on hackage that are newer than what's in nixpkgs
+    # See #2954 for what to do when a custom package should become necessary.
+  };
 
-  allGenerated = pkgs.runCommandNoCC "generated" {} ''
+  allGenerated = pkgs.runCommandNoCC "generated" {
+    buildInputs = [ pkgs.nixpkgs-fmt ];
+  } (
+    ''
     mkdir -p $out
-    cp ${random}/default.nix $out/random.nix
-    cp ${lsp-int}/default.nix $out/lsp-int.nix
-  '';
+    '' + builtins.concatStringsSep "" (
+      pkgs.lib.flip pkgs.lib.mapAttrsToList packages (
+        n: pkg: ''
+          cp ${pkg}/default.nix $out/${n}.nix
+        ''
+      )
+    ) + ''
+      chmod u+w $out/*.nix
+      nixpkgs-fmt $out/*.nix
+      echo <<__END__ > $out/README.md
+      The contents of this directory are automatically generated.
+      To update, please run nix-shell generate.nix
+      __END__
+    ''
+  );
+
 in
-allGenerated
+allGenerated.overrideAttrs (
+  old: {
+    shellHook = if pkgs.lib.inNixShell then
+      ''
+        dest=${toString ./generated}
 
+        rm -f $dest/*.nix $dest/README.md
+        cp -v -t $dest/ ${allGenerated}/*
+        chmod u-w -R $dest/*
 
-
-
+        exit 0
+      '' else null;
+  }
+)

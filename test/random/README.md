@@ -45,7 +45,7 @@ to WASM, and execute it in (e.g.) `wasm-interp`:
 
 ``` shell
 $ moc -no-system-api snippet.mo
-$ wasm-interp --enable-multi snippet.wasm
+$ wasm-interp snippet.wasm
 ```
 
 In tests under category *expected failures*, this should trap.
@@ -60,4 +60,4 @@ be deleted.
 
 ## 0 -- 2019-08-08
 
-* First version. Released on a suspecting world. See also [GitHub issue 609](https://github.com/dfinity-lab/motoko/pull/609).
+* First version. Released on a suspecting world. See also [GitHub issue 609](https://github.com/dfinity/motoko/pull/609).

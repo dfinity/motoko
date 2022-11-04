@@ -1,3 +1,4 @@
+
 ;; Motoko major mode for Emacs
 ;; initially based on Swift Mode.
 
@@ -21,10 +22,6 @@
                 "Nat16"
                 "Nat32"
                 "Nat64"
-                "Word8"
-                "Word16"
-                "Word32"
-                "Word64"
                 "Float"
                 "Char"
                 "Text"))
@@ -44,8 +41,10 @@
                  "catch"
                  "class"
                  "continue"
+                 "do"
                  "debug"
                  "else"
+                 "flexible"
                  "for"
                  "func"
                  "if"
@@ -62,9 +61,12 @@
                  "public"
                  "return"
                  "shared"
+                 "stable"
                  "switch"
+                 "system"
                  "try"
                  "throw"
+                 "with"
                  "query"
                  "type"
                  "var"
@@ -103,7 +105,6 @@
                   ;"\\^"
                   "<<"
                   ">>"
-                  "+>>"
                   "<<>"
                   "<>>"
                   "#"
@@ -123,7 +124,6 @@
                   "^="
                   "<<="
                   ">>="
-                  "+>>="
                   "<<>="
                   "<>>="
                   "#="

@@ -1,0 +1,9 @@
+// https://github.com/rust-analyzer/rust-analyzer/blob/master/editors/code/package.json
+{
+    "rust-analyzer.cargo.target": "wasm32-unknown-emscripten",
+
+    // This is required as `cargo check --all-targets` doesn't seem to work well
+    // on no-std crates, it generates false "duplicate lang item" errors.
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.cargo.features": ["ic"]
+}

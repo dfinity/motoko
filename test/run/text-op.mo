@@ -1,3 +1,5 @@
+import { textCompare } = "mo:⛔"
+
 assert (    ("" <= "a"));
 assert (    ("" <  "a"));
 assert (not ("" == "a"));
@@ -27,3 +29,10 @@ assert (    ("a" <  "ä"));
 assert (not ("a" == "ä"));
 assert (not ("a" >= "ä"));
 assert (not ("a" >  "ä"));
+
+assert textCompare("", "a") == -1;
+assert textCompare("b", "a") == 1;
+assert textCompare("a", "") == 1;
+assert textCompare("a", "b") == -1;
+assert textCompare("", "") == 0;
+assert textCompare("a", "a") == 0;

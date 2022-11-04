@@ -1,9 +1,9 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
   public func ping() : async () {
   };
 
-  public func go() {
+  public func go() : async () {
     let s0 = Prim.rts_heap_size();
     let a = Prim.Array_init<()>(2500, ());
     await ping();
@@ -25,9 +25,9 @@ actor a {
     );
     // This checks that the array (10_000 bytes) has been allocated, but then
     // freed. It allows for some wiggle room
-    assert (s1-s0 > 5_000);
-    assert (s2-s0 > 5_000);
-    assert (s3-s0 < 5_000);
+    assert (+s1-s0 > 5_000);
+    assert (+s2-s0 > 5_000);
+    assert (+s3-s0 < 5_000);
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

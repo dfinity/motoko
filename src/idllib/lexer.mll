@@ -2,8 +2,6 @@
 open Parser
 module Utf8 = Wasm.Utf8
 
-exception Error of Source.region * string
-
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
     Source.line = pos.Lexing.pos_lnum;
@@ -15,7 +13,7 @@ let region lexbuf =
   let right = convert_pos (Lexing.lexeme_end_p lexbuf) in
   {Source.left = left; Source.right = right}
 
-let error lexbuf msg = raise (Error (region lexbuf, msg))
+let error lexbuf msg = raise (Source.ParseError (region lexbuf, msg))
 let error_nest start lexbuf msg =
   lexbuf.Lexing.lex_start_p <- start;
   error lexbuf msg
@@ -28,35 +26,35 @@ let utf8 s i =
 
 let codepoint lexbuf s i =
   let u =
-    if s.[!i] >= '\x80' then utf8 s i else
-    if s.[!i] <> '\\' then Char.code s.[!i] else
+    if s.[!i] >= '\x80' then Utf8.encode [utf8 s i] else
+    if s.[!i] <> '\\' then Utf8.encode [Char.code s.[!i]] else
     match (incr i; s.[!i]) with
-    | 'n' -> Char.code '\n'
-    | 'r' -> Char.code '\r'
-    | 't' -> Char.code '\t'
-    | '\\' -> Char.code '\\'
-    | '\'' -> Char.code '\''
-    | '\"' -> Char.code '\"'
+    | 'n' -> Utf8.encode [Char.code '\n']
+    | 'r' -> Utf8.encode [Char.code '\r']
+    | 't' -> Utf8.encode [Char.code '\t']
+    | '\\' -> Utf8.encode [Char.code '\\']
+    | '\'' -> Utf8.encode [Char.code '\'']
+    | '\"' -> Utf8.encode [Char.code '\"']
     | 'u' ->
       let j = !i + 2 in
       i := String.index_from s j '}';
-      (try
-        let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
-        if 0 <= n && n < 0xD800 || 0xE000 <= n && n < 0x110000 then n else raise (Failure "")
-      with Failure _ -> error lexbuf "unicode escape out of range")
+      Utf8.encode [
+        try
+          let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
+          if 0 <= n && n < 0xD800 || 0xE000 <= n && n < 0x110000 then n else raise (Failure "")
+        with Failure _ -> error lexbuf "unicode escape out of range"
+      ]
     | h ->
       incr i;
-      int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i])
+      let b = int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i]) in
+      String.of_seq (Seq.return (Char.chr b))
   in incr i; u
-
-let _char lexbuf s =
-  codepoint lexbuf s (ref 1)
 
 let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
-    let bs = Utf8.encode [codepoint lexbuf s i] in
+    let bs = codepoint lexbuf s i in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
   Buffer.contents b
@@ -87,17 +85,18 @@ let utf8enc =
 let utf8 = ascii | utf8enc
 let utf8_no_nl = ascii_no_nl | utf8enc
 
+let byte = '\\'hexdigit hexdigit
 let escape = ['n''r''t''\\''\'''\"']
 let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
+  | byte
   | '\\'escape
-  | '\\'hexdigit hexdigit 
   | "\\u{" hexnum '}'
 
 let nat = num | "0x" hexnum
 let text = '"' character* '"'
-let id = letter ((letter | digit | '_')*)
+let id = (letter | '_') ((letter | digit | '_')*)
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
@@ -108,9 +107,14 @@ rule token = parse
   | "}" { RCURLY }
   | ";" { SEMICOLON }
   | "," { COMMA }
+  | "." { PERIOD }
   | ":" { COLON }
   | "=" { EQ }
+  | "==" { EQQ }
+  | "!:" { NOTCOLON }
+  | "!=" { NOTEQ }
   | "->" { ARROW }
+  | "-" { MINUS }
 
   | nat as s { NAT s }
   | text as s { TEXT (text lexbuf s) }
@@ -131,6 +135,8 @@ rule token = parse
   | "variant" { VARIANT }
   | "blob" { BLOB }
   | "principal" { PRINCIPAL }
+  | "oneway" { ONEWAY }
+  | "query" { QUERY }
 
   | id as s { ID s }
 

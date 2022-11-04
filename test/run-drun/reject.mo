@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
   public func reject1() : async () {
      Prim.debugPrint "1";

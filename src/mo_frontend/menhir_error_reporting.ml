@@ -156,7 +156,7 @@ module Make
 
   exception Error of (Lexing.position * Lexing.position) * explanation list
 
-  let entry (start : 'a I.checkpoint) lexer lexbuf =
+  let entry (start : 'a I.checkpoint) lexer =
     let fail (inputneeded : 'a I.checkpoint) (checkpoint : 'a I.checkpoint) =
       (* The parser signals a syntax error. Note the position of the
          problematic token, which is useful. Then, go back to the
@@ -168,11 +168,7 @@ module Make
       | _ ->
           assert false
     in
-    I.loop_handle_undo
-      (fun v -> v)
-      fail
-      (lexer_lexbuf_to_supplier lexer lexbuf)
-      start
+    I.loop_handle_undo Fun.id fail lexer start
 
   (* TEMPORARY could also publish a list of the terminal symbols that
      do not cause an error *)

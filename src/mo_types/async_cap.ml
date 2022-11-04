@@ -1,6 +1,4 @@
 (* Async capabilities *)
-open Mo_config
-
 module T = Type
 
 type async_cap =
@@ -10,6 +8,6 @@ type async_cap =
   | AwaitCap of T.con  (* can async, send, try, catch, await (i.e. in an async expression *)
   | NullCap            (* none of the above *)
 
-let top_cap = Con.fresh "$top-level" (T.Def([],T.Any))
+let top_cap = Cons.fresh "$top-level" (T.Def([],T.Any))
 
-let initial_cap () = if !Flags.compiled then NullCap else AsyncCap top_cap
+let initial_cap () = AwaitCap top_cap

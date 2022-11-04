@@ -1,7 +1,5 @@
-DESER ?= ../../src/deser 
-
 _out/%.done: %.bin | _out
-	$(DESER) < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
+	deser < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
 	@ cat $@
 
 all: quick
@@ -11,7 +9,7 @@ quick: $(patsubst %.bin, _out/%.done, $(wildcard *.bin))
 accept: $(wildcard *.bin)
 	mkdir -p ok
 	rm -f $(wildcard ok/*.ok)
-	echo $(foreach FILE,$^,"$(DESER) < $(FILE) > $(patsubst %.bin, ok/%.ok, $(FILE)) ;") \
+	echo $(foreach FILE,$^,"deser < $(FILE) > $(patsubst %.bin, ok/%.ok, $(FILE)) ;") \
 	| sh
 
 clean:

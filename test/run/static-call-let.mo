@@ -1,15 +1,17 @@
 func go () {
-  let foobar1 = func foobar1() = ();
+  let foobar1 = func foobar1() { assert true; };
   foobar1();
 };
+go();
 
-let foobar2 = func foobar2() = ();
+let foobar2 = func foobar2() { assert true; };
 foobar2();
 
-// CHECK: func $go
+// CHECK-LABEL: func $init
+// CHECK-NOT: call_indirect
+// CHECK: call $foobar2
+
+// CHECK-LABEL: func $go
 // CHECK-NOT: call_indirect
 // CHECK: call $foobar1
 
-// CHECK: func $start
-// CHECK-NOT: call_indirect
-// CHECK: call $foobar2

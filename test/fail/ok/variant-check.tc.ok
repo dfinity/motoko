@@ -1,0 +1,4 @@
+variant-check.mo:6.23-6.26: type error [M0096], expression of type
+  Nat
+cannot produce expected type
+  Nat8

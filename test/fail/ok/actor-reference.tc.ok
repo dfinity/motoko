@@ -1,13 +1,5 @@
-actor-reference.mo:3.9-3.17: type error, actor reference must have an actor type
-actor-reference.mo:5.9-5.19: type error, actor reference must have an actor type
-actor-reference.mo:7.9-7.32: type error, actor reference must have an actor type
-actor-reference.mo:9.9-9.20: type error, actor reference must have an actor type
-actor-reference.mo:11.9-11.32: type error, actor reference must have an actor type
-actor-reference.mo:13.9-13.28: type error, actor reference must have an actor type
-actor-reference.mo:15.9-15.31: type error, actor reference must have an actor type
-actor-reference.mo:17.9-17.32: type error, actor reference must have an actor type
-actor-reference.mo:19.9-19.32: type error, actor reference must have an actor type
-actor-reference.mo:21.16-21.18: type error, literal of type
+actor-reference.mo:3.9-3.37: type error [M0090], actor reference must have an actor type
+actor-reference.mo:4.16-4.18: type error [M0050], literal of type
   Nat
 does not have expected type
   Text

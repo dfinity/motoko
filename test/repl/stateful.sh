@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests that the repl preserves the state across
 # syntax and type errors
-${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -i <<__END__
+moc -i <<__END__
 let x = 42;
 let x = "foobar
 let x = 1 + true;

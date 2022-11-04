@@ -1,5 +1,9 @@
-Error: failed to process main module `_out/divInt64.wasm`
+Error: failed to run main module `_out/divInt64.wasm`
 
 Caused by:
-    0: Instantiation failed during setup
-    1: Trap occurred while invoking start function: wasm trap: integer overflow, source location: @___:
+    0: failed to invoke command default
+    1: wasm trap: integer overflow
+       wasm backtrace:
+         0: init
+         1: _start
+       

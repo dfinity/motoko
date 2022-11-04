@@ -5,7 +5,7 @@ export default ({ IDL }) => {
  const B =
   IDL.Variant({'': IDL.Null, '空的': IDL.Null, '  空的  ': IDL.Null,
    '1⃣️2⃣️3⃣️': IDL.Null})
- return new IDL.ActorInterface({'函数名': IDL.Func([A], [B], []),
+ return IDL.Service({'函数名': IDL.Func([A], [B], []),
   '': IDL.Func([IDL.Nat], [IDL.Nat], []),
   '👀': IDL.Func([IDL.Nat], [IDL.Nat], ['query']),
   '✈️  🚗 ⛱️ ': IDL.Func([], [], ['oneway'])});

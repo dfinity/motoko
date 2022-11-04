@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 // Branch warnings.
 
@@ -25,14 +25,14 @@ let _ = [true, [var 5]];
 // Local types (not) escaping.
 
 let x =
-{
+do {
   type T = {};
   let o : T = {};
   o;
 };
 
 let y =
-{
+do {
   class C() {};
   type T<A> = Int;
   let n : T<C> = 5;
@@ -41,7 +41,7 @@ let y =
 
 type T<A> = Int;
 let z =
-{
+do {
   class C() {};
   let n : T<C> = 5;
   n;
@@ -49,7 +49,7 @@ let z =
 
 class C() {};
 let a =
-{
+do {
   let n : T<C> = 5;
   n;
 };
@@ -69,7 +69,7 @@ func top(top : Top) {
 
 // Bottom Type
 
-{
+do {
 type Bot = None;
 func bot(bot : Bot) {
   //let a = bot.1;
@@ -86,9 +86,9 @@ func bot(bot : Bot) {
 // This was an error when classes were subtypes of their
 // representation, but with structural typing throughout it is
 // no longer one
-{
+do {
   let _ =
-  {
+  do {
     class C() {};
     type T = C;
     let o : T = C();
@@ -142,3 +142,48 @@ let _ = g(func<>(x : Int, y : Any) : Nat = Prim.abs x);
 let _ = g(func<>((x, _) : (Int, Any)) : Nat = Prim.abs x);
 let _ = k(func<>(#A or #B (_ : Any)) : Nat = 0);
 let _ = k(func<>((#A or #B _) : {#A; #B : Any}) : Nat = 0);
+
+
+// Subtraction warnings
+
+func sub() {
+  let n : Nat = 0;
+  let i : Int = 0;
+  func fn() : Nat { 0 };
+  func fi() : Int { 0 };
+
+  let _ = 2 * (n - 1);     // warn
+  let _ = n * (n - 1);     // warn
+  let _ = i * (n - 1);     // warn
+  let _ = fn() * (n - 1);  // warn
+  let _ = fi() * (n - 1);  // warn
+  let _ = 2 * (i - 1);     // don't warn
+
+  let _ : Nat = 2 * (n - 1);     // don't warn
+  let _ : Nat = n * (n - 1);     // don't warn
+  let _ : Nat = fn() * (n - 1);  // don't warn
+  let _ : Int = 2 * (n - 1);     // don't warn
+  let _ : Int = n * (n - 1);     // don't warn
+  let _ : Int = i * (n - 1);     // don't warn
+  let _ : Int = fn() * (n - 1);  // don't warn
+  let _ : Int = fi() * (n - 1);  // don't warn
+
+  let _ = 2 == n - 1;     // warn
+  let _ = n == n - 1;     // warn
+  let _ = i == n - 1;     // warn
+  let _ = fn() == n - 1;  // warn
+  let _ = fi() == n - 1;  // warn
+  let _ = 2 == i - 1;     // don't warn
+
+  let a = [1, 2];
+  let _ = a[n - 1];  // don't warn
+
+  func f(n : Nat) {};
+  func g<T>(x : T) {};
+
+  f(n - 1);       // don't warn
+  g<Nat>(n - 1);  // don't warn
+  g(n - 1);       // warn
+
+  func h() : Nat { n - 1 };  // don't warn
+};

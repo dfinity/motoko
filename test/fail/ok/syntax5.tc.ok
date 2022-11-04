@@ -1,7 +1,7 @@
-syntax5.mo:3.1: syntax error, unexpected token '', 
-expected one of token or <phrase> sequence:
+syntax5.mo:3.1: syntax error [M0001], unexpected end of input, expected one of token or <phrase> sequence:
   )
   .<nat>
+  !
   <exp_nullary(ob)>
   <binop> <exp(ob)>
   or <exp_bin(ob)>
@@ -9,7 +9,7 @@ expected one of token or <phrase> sequence:
   <relop> <exp_bin(ob)>
   . <id>
   , seplist(<exp(ob)>,,)
-  : <typ>
+  : <typ_nobin>
   <binop> <exp_bin(ob)>
   <binassign> <exp(ob)>
   and <exp_bin(ob)>

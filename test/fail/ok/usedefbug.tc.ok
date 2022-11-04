@@ -1,1 +1,1 @@
-usedefbug.mo:7.3-7.22: definedness error, cannot use g before g has been defined
+usedefbug.mo:7.3-7.22: definedness error [M0016], cannot use g before g has been defined

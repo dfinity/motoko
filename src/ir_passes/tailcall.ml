@@ -71,7 +71,7 @@ let bind_arg env a info = bind env a.it info
 let are_generic_insts (tbs : typ_bind list) insts =
   List.for_all2 (fun (tb : typ_bind) inst ->
       match inst with
-      | Con(c2,[]) -> Con.eq tb.it.con c2 (* conservative, but safe *)
+      | Con(c2,[]) -> Cons.eq tb.it.con c2 (* conservative, but safe *)
       |  _ -> false
       ) tbs insts
 
@@ -89,7 +89,7 @@ and assignEs vars exp : dec list =
   | _, _ ->
     let tup = fresh_var "tup" (typ exp) in
     letD tup exp ::
-    List.mapi (fun i v -> expD (assignE v (projE v i))) vars
+    List.mapi (fun i v -> expD (assignE v (projE (varE v) i))) vars
 
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
@@ -100,7 +100,7 @@ and exp' env e  : exp' = match e.it with
                  info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
-      (blockE (assignEs temps (exp env e2)) (breakE label unitE)).it
+      (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
     | _,_-> PrimE (CallPrim insts, [exp env e1; exp env e2])
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
@@ -127,7 +127,9 @@ and exp' env e  : exp' = match e.it with
     let exp2' = exp env exp2 in
     let exp3' = exp env exp3 in
     SelfCallE (ts, exp1', exp2', exp3')
-  | ActorE (ds, fs, t)  -> ActorE (ds, fs, t) (* TODO: descent into ds *)
+  | ActorE (ds, fs, u, t) ->
+    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
+    ActorE (snd (decs env ds), fs, u, t)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
 
@@ -145,7 +147,7 @@ and pat env p =
   let env = pat' env p.it in
   env
 
-and pat' env p = match p with
+and pat' env = function
   | WildP         ->  env
   | VarP i        ->
     let env1 = bind env i None in
@@ -155,8 +157,8 @@ and pat' env p = match p with
   | LitP l        -> env
   | OptP p
   | TagP (_, p)   -> pat env p
-  | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
-                     assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
+  | AltP (p1, p2) -> assert(Freevars.(M.is_empty (pat p1)));
+                     assert(Freevars.(M.is_empty (pat p2)));
                      env
 
 and pats env ps  =
@@ -209,15 +211,15 @@ and dec' env d =
         in
         let l_typ = Type.unit in
         let body =
-          blockE (List.map2 (fun t i -> varD (id_of_exp t) (typ i) i) temps ids) (
+          blockE (List.map2 (fun t i -> varD t (varE i)) temps ids) (
             loopE (
               labelE label l_typ (blockE
-                (List.map2 (fun a t -> letD (exp_of_arg a) (immuteE t)) as_ temps)
+                (List.map2 (fun a t -> letD (var_of_arg a) (immuteE (varE t))) as_ temps)
                 (retE exp0'))
             )
           )
         in
-        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, List.map arg_of_exp ids, typT, body)})
+        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, List.map arg_of_var ids, typT, body)})
       else
         LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, as_, typT, exp0')})
     end,
@@ -230,8 +232,12 @@ and dec' env d =
     let env = bind env i None in
     (fun env1 -> VarD(i, t, exp env1 e)),
     env
+  | RefD (i, t, e) ->
+    let env = bind env i None in
+    (fun env1 -> RefD(i, t, lexp env1 e)),
+    env
 
-and block env ds exp =
+and decs env ds =
   let rec decs_aux env ds =
     match ds with
     | [] -> ([],env)
@@ -241,15 +247,28 @@ and block env ds exp =
       (mk_d :: mk_ds,env2)
   in
   let mk_ds,env1 = decs_aux env ds in
-  ( List.map
-      (fun mk_d ->
-        let env2 = { env1 with tail_pos = false } in
-        { mk_d with it = mk_d.it env2 })
-      mk_ds
-  , tailexp env1 exp)
+  env1,
+  List.map
+    (fun mk_d ->
+      let env2 = { env1 with tail_pos = false } in
+      { mk_d with it = mk_d.it env2 })
+    mk_ds
 
-and prog ((ds, exp), flavor) = (block { tail_pos = false; info = None } ds exp, flavor)
+and block env ds exp =
+  let (env1, ds') = decs env ds in
+  ( ds', tailexp env1 exp)
+
+and comp_unit env = function
+  | LibU _ -> raise (Invalid_argument "cannot compile library")
+  | ProgU ds -> ProgU (snd (decs env ds))
+  | ActorU (as_opt, ds, fs, u, t)  ->
+    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
+    ActorU (as_opt, snd (decs env ds), fs, u, t)
+
+and prog (cu, flavor) =
+  let env = { tail_pos = false; info = None } in
+  (comp_unit env cu, flavor)
 
 (* validation *)
 
-let transform p = prog p
+let transform = prog

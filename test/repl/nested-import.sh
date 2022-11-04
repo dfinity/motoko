@@ -1,4 +1,4 @@
-#!/bin/bash
-${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -v -i <<__END__ | grep Parsing
-import "lib/nested";
+#!/usr/bin/env bash
+moc -v -i <<__END__ | grep Parsing
+import _ = "lib/nested";
 __END__

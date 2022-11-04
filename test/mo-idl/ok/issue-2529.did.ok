@@ -1,0 +1,18 @@
+type Version = variant {Version: nat;};
+type Mode = 
+ variant {
+   Alphanumeric;
+   EightBit;
+   Kanji;
+   Numeric;
+ };
+type ErrorCorrection = 
+ variant {
+   H;
+   L;
+   M;
+   Q;
+ };
+service : {
+  encode: (Version, ErrorCorrection, Mode, text) -> (text);
+}

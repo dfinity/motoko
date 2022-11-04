@@ -1,0 +1,10 @@
+pattern failed
+Error: failed to run main module `_out/refutable-pat-in-static-block.wasm`
+
+Caused by:
+    0: failed to invoke command default
+    1: wasm trap: unreachable
+       wasm backtrace:
+         0: init
+         1: _start
+       

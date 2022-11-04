@@ -3,7 +3,7 @@
 */
 
 actor a {
-  var x : Bool = false;
+  flexible var x : Bool = false;
 
   public func bump() { assert (x == false); x := true; assert (x == true); };
 

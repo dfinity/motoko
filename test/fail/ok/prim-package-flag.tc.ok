@@ -1,1 +1,1 @@
-(unknown location): package error, the "prim" package is built-in, and cannot be mapped to a directory
+(unknown location): package error [M0013], the "prim" package is built-in, and cannot be mapped to a directory

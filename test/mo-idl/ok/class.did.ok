@@ -1,0 +1,15 @@
+type List_1 = 
+ opt record {
+       int;
+       List_1;
+     };
+type List = 
+ opt record {
+       nat;
+       List;
+     };
+type A = 
+ service {
+   get: () -> (List_1);
+ };
+service : (List) -> A

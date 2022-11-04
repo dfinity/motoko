@@ -1,12 +1,12 @@
 //MOC-FLAG --actor-idl actor-import
-//MOC-FLAG --actor-alias self ic:2A012B
+//MOC-FLAG --actor-alias self lg264-qjkae
 
 // this imports our own IDL, stored in actor-import
 
 // currently hard-codes the ic-ref self id
 // once we have actor aliases we can let run.sh set an alias.
 
-import imported1 "ic:2A012B";
+import imported1 "ic:lg264-qjkae";
 import imported2 "canister:self";
 actor a {
   public func go() : async (actor {}) = async imported1;
@@ -21,4 +21,8 @@ actor a {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
+
+// Skip running on drun for now; hard to pass a `--actor-alias` that works for
+// both drun and ic-ref-run
+//SKIP comp
 

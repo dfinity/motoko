@@ -1,37 +1,70 @@
 open Mo_types
 open Type
 
+(* TODO: consider turning off show_stamps (but then do it elsewhere too)
 open MakePretty(struct let show_stamps = false end)
+*)
+
+let pp_rel ppf (t1, rel, t2) =
+  Format.fprintf ppf "@[<hv 2>%a  %s @ %a@]"
+    pp_typ t1
+    rel
+    pp_typ t2
+
+let pp_constraint ppf (lb, c, ub) =
+  Format.fprintf ppf "@[<hv 2>%a  <: @ @[<hv 2>%s  <: @ %a@]@]"
+    pp_typ lb
+    (Cons.name c)
+    pp_typ ub
+
+let display_constraint = Lib.Format.display pp_constraint
+let display_rel = Lib.Format.display pp_rel
 
 (* Bi-Matching *)
 
-module SS = Set.Make (struct type t = typ * typ let compare = compare end)
+exception Bimatch of string
+
+module SS = Set.Make (OrdPair)
 
 (* Types that are denotable (ranged over) by type variables *)
 let denotable t =
   let t' = normalize t in
   not (is_mut t' || is_typ t')
 
+let bound c = match Cons.kind c with
+  | Abs ([], t) -> t
+  | _ -> assert false
+
 (* Check instantiation `ts` satisfies bounds `tbs` and all the pairwise sub-typing relations in `subs`;
    used to sanity check inferred instantiations *)
 let verify_inst tbs subs ts =
   List.length tbs = List.length ts &&
   List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
-  List.for_all (fun (t1,t2) -> sub (open_ ts t1) (open_ ts t2)) subs
+  List.for_all (fun (t1, t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
-let bi_match_subs scope_opt tbs subs =
+let bi_match_subs scope_opt tbs subs typ_opt =
   let ts = open_binds tbs in
 
   let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
   let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
-  let cs = List.map (fun t -> match t with Con(c,_) -> c | _ -> assert false) ts in
+  let cs = List.map (fun t -> fst (as_con t)) ts in
 
-  let flexible =
-    let cons = ConSet.of_list cs in
-    fun c -> ConSet.mem c cons in
+  let cons = ConSet.of_list cs in
 
-  let mentions typ ce = not (ConSet.is_empty (ConSet.inter (cons typ) ce)) in
+  let flexible c = ConSet.mem c cons in
+
+  let variances =
+    match typ_opt with
+    | Some t ->
+      Variance.variances cons (open_ ts t)
+    | None ->
+      ConSet.fold (fun c ce -> ConEnv.add c Variance.Bivariant ce) cons ConEnv.empty
+  in
+
+  let variance c = ConEnv.find c variances in
+
+  let mentions typ ce = not (ConSet.is_empty (ConSet.inter (Type.cons typ) ce)) in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
@@ -43,7 +76,11 @@ let bi_match_subs scope_opt tbs subs =
     | _, _ -> None
   in
 
-  let rec bi_match_typ rel eq ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
+  let update binop c t ce =
+    ConEnv.add c (binop t (ConEnv.find c ce)) ce
+  in
+
+  let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =
     if t1 == t2 || SS.mem (t1, t2) !rel
     then Some inst
     else begin
@@ -63,49 +100,26 @@ let bi_match_subs scope_opt tbs subs =
       assert (ts2 = []);
       if mentions t1 any || not (denotable t1) then
         None
-      else
-        let l =
-          match ConEnv.find_opt con2 l with
-          | Some t1' ->
-            let lub = lub t1 t1' in
-            ConEnv.add con2 lub l
-          | None -> ConEnv.add con2 t1 l
-        in
-        let u = if rel != eq then u else
-         match ConEnv.find_opt con2 u with
-         | Some t1' ->
-           let glb = glb t1 t1' in
-           ConEnv.add con2 glb u
-         | None -> ConEnv.add con2 t1 u
-        in
-        Some (l,u)
+      else Some
+       (update lub con2 t1 l,
+        if rel != eq then u else update glb con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
         None
-      else
-        let l = if rel != eq then l else
-          match ConEnv.find_opt con1 l with
-          | Some t2' ->
-            let lub = lub t2 t2' in
-            ConEnv.add con1 lub l
-          | None -> ConEnv.add con1 t2 l
-        in
-        let u =
-          match ConEnv.find_opt con1 u with
-          | Some t2' ->
-            let glb = glb t2 t2' in
-            ConEnv.add con1 glb u
-          | None -> ConEnv.add con1 t2 u
-        in
-        Some (l,u)
+      else Some
+        ((if rel != eq then l else update lub con1 t2 l),
+         update glb con1 t2 u)
+    | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
+      (* Because we do matching, not unification, we never relate two flexible variables *)
+      assert false
     | Con (con1, ts1), Con (con2, ts2) ->
-      (match Con.kind con1, Con.kind con2 with
+      (match Cons.kind con1, Cons.kind con2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any t1 (open_ ts2 t)
-      | _ when Con.eq con1 con2 ->
+      | _ when Cons.eq con1 con2 ->
         assert (ts1 = []);
         assert (ts2 = []);
         Some inst
@@ -114,7 +128,7 @@ let bi_match_subs scope_opt tbs subs =
       | _ -> None
       )
     | Con (con1, ts1), t2 ->
-      (match Con.kind con1, t2 with
+      (match Cons.kind con1, t2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | Abs (tbs, t), _ when rel != eq ->
@@ -122,7 +136,7 @@ let bi_match_subs scope_opt tbs subs =
       | _ -> None
       )
     | t1, Con (con2, ts2) ->
-      (match Con.kind con2 with
+      (match Cons.kind con2 with
       | Def (tbs, t) -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any t1 (open_ ts2 t)
       | _ -> None
@@ -150,7 +164,7 @@ let bi_match_subs scope_opt tbs subs =
       (match bi_match_binds rel eq inst any tbs1 tbs2 with
        | Some (inst, ts) ->
          let any' = List.fold_right
-           (function Con(c,[]) -> ConSet.add c | _ -> assert false) ts any
+           (fun t -> ConSet.add (fst (as_con t))) ts any
          in
          (match
            bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
@@ -187,9 +201,9 @@ let bi_match_subs scope_opt tbs subs =
     | tf1::tfs1', tf2::tfs2' ->
       (match compare_field tf1 tf2 with
       | 0 ->
-       (match bi_match_typ rel eq inst any tf1.typ tf2.typ with
-        | Some inst -> bi_match_fields rel eq inst any tfs1' tfs2'
-        | None -> None)
+        (match bi_match_typ rel eq inst any tf1.typ tf2.typ with
+         | Some inst -> bi_match_fields rel eq inst any tfs1' tfs2'
+         | None -> None)
       | -1 when rel != eq ->
         bi_match_fields rel eq inst any tfs1' tfs2
       | _ -> None
@@ -224,58 +238,62 @@ let bi_match_subs scope_opt tbs subs =
   and bi_match_bind ts rel eq inst any tb1 tb2 =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-  and fail_under_constrained lb c ub =
-    let lb = string_of_typ lb in
-    let c = Con.name c in
-    let ub = string_of_typ ub in
-    failwith (Printf.sprintf
-      "under-constrained implicit instantiation %s <: %s <: %s, with %s =/= %s;\nexplicit type instantiation required"
-      lb c ub lb ub)
+  and choose_under_constrained lb c ub =
+    match variance c with
+    | Variance.Covariant -> lb
+    | Variance.Contravariant -> ub
+    | Variance.Bivariant -> lb
+    | Variance.Invariant ->
+      raise (Bimatch (Format.asprintf
+        "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+        (Cons.name c)
+        display_constraint (lb, c, ub)
+        display_rel (lb,"=/=",ub)))
 
   and fail_over_constrained lb c ub =
-    let lb = string_of_typ lb in
-    let c = Con.name c in
-    let ub = string_of_typ ub in
-    failwith (Printf.sprintf
-      "over-constrained implicit instantiation requires %s <: %s <: %s, but %s </: %s;\nno valid instantiation exists"
-      lb c ub lb ub)
+    raise (Bimatch (Format.asprintf
+      "implicit instantiation of type parameter %s is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
+      (Cons.name c)
+      display_constraint (lb, c, ub)
+      display_rel (lb, "</:", ub)))
 
   and fail_open_bound c bd =
-    let c = Con.name c in
-    let bd = string_of_typ bd in
-    failwith (Printf.sprintf
-      "type parameter %s has an open bound %s mentioning another type parameter;\nexplicit type instantiation required due to limitation of inference" c bd)
+    let c = Cons.name c in
+    raise (Bimatch (Format.asprintf
+      "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+      c (Lib.Format.display pp_typ) bd))
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
-    let ce = ConSet.of_list cs in
-    List.iter2 (fun c bd -> if mentions bd ce then fail_open_bound c bd) cs bds;
-    let add c b u = if eq b Any then u else ConEnv.add c b u in
-    let u = List.fold_right2 add cs bds ConEnv.empty in
-    let l,u = match scope_opt, tbs with
-      | Some c, {sort=Scope;_}::tbs ->
-        ConEnv.singleton (List.hd cs) c,
-        add (List.hd cs) (lub c (List.hd bds)) u
-      | None, {sort=Scope;_}::tbs ->
-         failwith "scope instantiation required but no scope available"
+    List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
+
+    let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
+    let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
+
+    let l, u = match scope_opt, tbs with
+      | Some c, {sort = Scope; _}::tbs ->
+        let c0 = List.hd cs in
+        ConEnv.add c0 c l,
+        ConEnv.add c0 c u
+      | None, {sort = Scope; _}::tbs ->
+        raise (Bimatch "scope instantiation required but no scope available")
       | _, _ ->
-        ConEnv.empty,
+        l,
         u
     in
-    match bi_match_list
-            bi_match_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2 with
-    | Some (l,u) ->
+    match
+      bi_match_list bi_match_typ
+        (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2
+    with
+    | Some (l, u) ->
       let us = List.map
         (fun c ->
-          match ConEnv.find_opt c l, ConEnv.find_opt c u with
-          | None, None -> Non
-          | None, Some ub -> ub
-          | Some lb, None -> lb
-          | Some lb, Some ub ->
+          match ConEnv.find c l, ConEnv.find c u with
+          | lb, ub ->
             if eq lb ub then
               ub
             else if sub lb ub then
-              fail_under_constrained lb c ub
+              choose_under_constrained lb c ub
             else
               fail_over_constrained lb c ub)
         cs
@@ -283,16 +301,31 @@ let bi_match_subs scope_opt tbs subs =
       if verify_inst tbs subs us then
         us
       else
-        failwith
+        raise (Bimatch
           (Printf.sprintf
-             "bug: inferred bad instantiation\n  <%s>;\nplease report this error message as a bug and, for now, supply an explicit instantiation instead"
-            (String.concat ", " (List.map string_of_typ us)))
-    | None -> failwith (Printf.sprintf
-       "no instantiation of %s makes %s"
-       (String.concat ", " (List.map string_of_con cs))
-       (String.concat " and "
-         (List.map2 (fun t1 t2 ->
-           Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
-           ts1 ts2)))
+             "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
+            (String.concat ", " (List.map string_of_typ us))))
+    | None ->
+      let tts =
+        List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2)
+      in
+      raise (Bimatch (Format.asprintf
+        "no instantiation of %s makes%s"
+        (String.concat ", " (List.map string_of_con cs))
+        (String.concat "\nand"
+          (List.map (fun (t1, t2) ->
+            Format.asprintf "%a" display_rel (t1, "<:", t2))
+            tts))))
 
-
+let bi_match_call scope_opt (tbs, dom_typ, rng_typ) arg_typ ret_typ_opt =
+  match ret_typ_opt with
+  | None ->
+    (* no ret_typ: use polarities of tbs in rng_typ to
+       choose principal instantiation, if any *)
+    bi_match_subs scope_opt tbs
+      [(arg_typ, dom_typ) (*; (rng_typ, Any) *)]
+      (Some rng_typ)
+  | Some ret_typ ->
+    bi_match_subs scope_opt tbs
+      [(arg_typ, dom_typ); (rng_typ, ret_typ)]
+      None

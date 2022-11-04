@@ -1,1 +1,1 @@
-asyncret1.mo:1.39-1.40: type error, shared function must have syntactic return type `()` or `async <typ>`
+asyncret1.mo:1.39-1.40: type error [M0035], shared function must have syntactic return type '()' or 'async <typ>'

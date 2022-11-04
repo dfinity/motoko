@@ -1,23 +1,42 @@
+## Nix setup
+
+The Motoko build system relies on [Nix](https://nixos.org/) to manage
+dependencies, drive the build and run the test suite. You should install nix by
+running, as a normal user with `sudo` permissions,
+```
+curl -L https://nixos.org/nix/install | sh
+```
+
+You should also enable a nix cache to get all dependencies pre-built.
+The `cachix` command also requires `sudo` permissions.
+```
+nix-env -iA cachix -f https://cachix.org/api/v1/install
+cachix use ic-hs-test
+```
+Technically, this is optional, but without this you will build lots of build
+dependencies manually, which takes several hours.
+
+_Note for M1 MacBook_: A Rosetta terminal is necessary to install and run Nix for Motoko. 
+If Nix or Rust have already been installed via a normal terminal (on ARM64), uninstall them first, 
+and then reinstall Nix under Rosetta (emulating x64).
+
 ## Installation using Nix
 
-To install the `moc` binary into your nix environment, use
-
+If you want just to _use_ `moc`, you can install the `moc` binary into your nix
+environment with
 ```
 $ nix-env -i -f . -A moc
 ```
 
 ## Development using Nix
 
-The command that should always pass on master is the following; it builds everything:
-```
-$ nix-build --no-out-link
-```
-
-To enter a shell with the necessary dependencies, you can use
+To enter a shell with the necessary dependencies available, use
 ```
 $ nix-shell
 ```
-within this shell you can run
+(The first shell start may take several minutes, afterwards being much faster.)
+
+Within this shell you can run
  * `make` in `src/` to build all binaries,
  * `make moc` in `src/` to build just the `moc` binary,
  * `make DUNE_OPTS=--watch moc` to keep rebuilding as source files are changing
@@ -25,49 +44,102 @@ within this shell you can run
  * `make` in `test/` to run the test suite.
 
 This invokes `dune` under the hood, which will, as a side effect, also create
-`.merlin` files for Merlin integration.
+`.merlin` files for integration with Merlin, the Ocaml Language Server
 
-## Development without Nix
+## Replicating CI locally
 
-You can get a development environment that is independent of nix (although
-installing all required tools without nix is out of scope).
+A good way to check that everything is fine, i.e. if this will pass CI, is to run
+```
+$ nix-build --no-out-link
+```
 
- * Use your system’s package manager to install `ocaml` (4.07) and
-   [`opam`](https://opam.ocaml.org/doc/Install.html)
- * Install the packages:
-   ```
-   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm
-   ```
- * Install various command line tools used by, in particular, the test suite:
-   ```
-   nix-env -i -f . -A wasmtime
-   nix-env -i -f . -A filecheck
-   nix-env -i -f . -A wabt
-   nix-env -i -f . -A drun
-   nix-env -i -f . -A ic-run
-   ```
- * Building the Motoko runtime without nix is tricky. But you can run
-   ```
-   nix-shell --run 'make -C rts'
-   ```
-   to get `rts/mo-rts.wasm`.
+For more details on our CI and CI setup, see `CI.md`.
 
 
-## Create a coverage report
+## Making releases
 
-The coverage report support got dropped when switching to `dune`. Please monitor
-https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable again.
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.7.1) are:
+
+ * Make sure that the top section of `Changelog.md` has a title like
+
+        ## 0.7.1 (2022-08-25)
+
+   with today’s date.
+
+ * Make sure the markdown doc for base is up-to-date:
+   For now, in a nix-shell:
+
+   ```bash
+      make -C doc base
+      git diff
+   ```
+
+   If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
+
+ * Define a shell variable `export MOC_MINOR=1`
+
+ * Look at `git log --first-parent 0.7.$(expr $MOC_MINOR - 1)..HEAD` and check
+   that everything relevant is mentioned in the changelog section, and possibly
+   clean it up a bit, curating the information for the target audience.
+
+ * `git commit -am "Releasing 0.7.$MOC_MINOR"`
+ * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
+   merge it into master without additional approval, within 2 or 3 minutes.
+ * `git switch master; git pull`. The release commit should be your `HEAD`
+ * `git tag 0.7.$MOC_MINOR -m "Motoko 0.7.$MOC_MINOR"`
+ * `git push origin 0.7.$MOC_MINOR`
+
+Pushing the tag should cause GitHub Actions to create a “Release” on the github
+project. This will fail if the changelog is not in order (in this case, fix and
+force-push the tag).  It will also fail if the nix cache did not yet contain
+the build artifacts for this revision. In this case, restart the GitHub Action
+on GitHub’s UI.
+
+After releasing the compiler you can update `motoko-base`'s `master`
+branch to the `next-moc` branch.
+
+* Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
+* Change into `motoko-base`
+* `git switch next-moc; git pull`
+* `git switch -c $USER/update-moc-0.7.$MOC_MINOR`
+* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
+  to the new released version:
+  `perl -pi -e "s/moc_version: \"0\.7\.\\d+\"/moc_version: \"0.7.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
+* `git add .github/ && git commit -m "Motoko 0.7.$MOC_MINOR"`
+* You can `git push` now
+
+Make a PR off of that branch and merge it using a _normal merge_ (not
+squash merge) once CI passes. It will eventually be imported into this
+repo by a scheduled `niv-updater-action`.
+
+## Coverage report
+
+To build with coverage enabled, compile the binaries in `src/` with
+
+    make DUNE_OPTS="--instrument-with bisect_ppx"`
+
+and then use `bisect-ppx-report html` to produce a report.
+
+The full report can be built with
+
+    nix-build -A tests.coverage
+
+and the report for latest `master` can be viewed at
+<https://dfinity.github.io/motoko/coverage/>.
 
 ## Profile the compiler
 
-1. Build with profiling (TODO: How to do with dune)
+(This section is currently defunct, and needs to be update to work with the dune
+build system.)
+
+1. Build with profiling within nix-shell (TODO: How to do with dune)
    ```
    make -C src clean
    make BUILD=p.native -C src moc
    ```
 2. Run `moc` as normal, e.g.
    ```
-   ./src/moc -c foo.mo -o foo.wasm
+   moc -g -c foo.mo -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using
@@ -78,14 +150,19 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
    _pass_ it the path to the binary.)
 
 
+## Benchmarking the RTS
+
+Specifically some advanced techniques to obtain performance deltas for the
+GC can be found in `rts/Benchmarking.md`.
+
 ## Updating Haskell Packages
 
 When the `.cabal` file of a Haskell package is changed you need to make sure the
-corresponding `default.nix` file (stored in `nix/generated/`) is kept in sync
-with it.
-
-As mentioned in the `nix/generate.nix` files, these files are automatically
-generated. See `nix/generate.nix` for the command to update them.
+corresponding `.nix` file (stored in `nix/generated/`) is kept in sync with it. These files are automatically generated; run
+```
+nix-shell nix/generate.nix
+```
+to update.
 
 Don't worry if you forget to update the `default.nix` file, the CI job
 `check-generated` checks if these files are in sync and fail with a diff if

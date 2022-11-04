@@ -27,7 +27,7 @@ class D<A, B>() : C<B> {
 
 type A = actor {m : () -> ()};
 
-actor class AA() : A {
+actor class AA() : async A {
   public func m() {};
 };
 
@@ -46,7 +46,7 @@ class D2() : {x : Nat} {
 };
 
 class D3() : actor {} = {};
-actor class D4() : {} = {};
+actor class D4() : actor {} = {};
 
 object x { public type T = Nat };
 class D5(x : {}) : {a : x.T} = {

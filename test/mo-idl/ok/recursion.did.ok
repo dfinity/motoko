@@ -1,14 +1,14 @@
-type List_2 = 
+type List_1 = 
  record {
-   "head": nat;
-   "tail": opt List_2;
+   head: nat;
+   tail: opt List_1;
  };
 type List = 
  record {
-   "head": int;
-   "tail": opt List;
+   head: int;
+   tail: opt List;
  };
 service : {
-  "f": (nat) -> (List_2);
-  "g": (int) -> (List);
+  f: (nat) -> (List_1);
+  g: (int) -> (List);
 }

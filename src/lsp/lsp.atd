@@ -37,10 +37,10 @@ type incoming_message = {
 <json adapter.ocaml="AtdAdapters.Message_adapter">
 <ocaml field_prefix="incoming_message_">
 
-(* All tags must also provide params, even if they are an `empty_record` *)
+(* All tags must also provide params *)
 type incoming_message_params = [
     Initialize <json name="initialize"> of initialize_params
-  | Initialized <json name="initialized"> of initialized_params
+  | Initialized <json name="initialized"> of json
   | TextDocumentDidOpen <json name="textDocument/didOpen"> of text_document_did_open_params
   | TextDocumentDidClose <json name="textDocument/didClose"> of text_document_did_close_params
   | TextDocumentDidChange <json name="textDocument/didChange"> of text_document_did_change_params
@@ -50,12 +50,11 @@ type incoming_message_params = [
   (* NOTE(Christoph) There are more parameters than just text_document_position on the completion request *)
   | CompletionRequest <json name="textDocument/completion"> of text_document_position_params
   | CancelRequest <json name="$/cancelRequest"> of cancel_request_params
-  | Shutdown <json name="shutdown"> of unit nullable
-  | Exit <json name="exit"> of unit nullable
+  | Shutdown <json name="shutdown"> of json
+  | Exit <json name="exit"> of json
 ]
 
 (* Common LSP data structures *)
-
 type text_edit = {
   range: range;
   newText: string;
@@ -80,11 +79,11 @@ type response_message = {
 <ocaml field_prefix="response_message_">
 
 type response_result = [
-    Initialize <json name="initialize"> of initialize_result
-  | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result nullable
-  | TextDocumentDefinitionResponse <json name="textDocument/definition"> of location list
-  | CompletionResponse <json name="textDocument/completion"> of completion_item list
-  | ShutdownResponse <json name="shutdown"> of unit nullable
+    Initialize of initialize_result
+  | TextDocumentHoverResponse of hover_result nullable
+  | TextDocumentDefinitionResponse of location list
+  | CompletionResponse of completion_item list
+  | ShutdownResponse of unit nullable
 ]
 
 type response_error = {
@@ -112,7 +111,7 @@ type completion_item = {
   ?insertTextFormat : int nullable;
   ?additionalTextEdits : text_edit list nullable;
   ?detail: string nullable;
-  ?documentation: string nullable;
+  ?documentation: markup_content nullable;
 }
 <ocaml field_prefix="completion_item_">
 
@@ -307,12 +306,6 @@ type server_capabilities = {
 (* TODO: see LSP spec for InitializeError *)
 (*type initialize_error = *)
 
-
-(* "initialized" notification *)
-
-type initialized_params = empty_record
-
-
 (* "publishDiagnostics" notification *)
 
 type publish_diagnostics_params = {
@@ -351,11 +344,4 @@ type message_type = int wrap <ocaml module="MessageType">
 
 
 (* Helpers *)
-
-(* Empty records aren't valid in OCaml but some notifications send them in the
-   `params` field. Work around that by defining a record with a field that is
-   never expected to be provided. *)
-type empty_record = {
-  ?omitted : int nullable
-}
-<ocaml field_prefix="empty_record_">
+type json <ocaml module="Yojson.Safe" t="t"> = abstract

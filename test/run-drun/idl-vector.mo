@@ -1,12 +1,12 @@
-import Prim "mo:prim";
-
-type Rose = [Rose];
-type MayRose = ?[MayRose];
-
-func may(r : Rose) : MayRose =
-  ?Prim.Array_tabulate<MayRose>(r.len(), func (i : Nat) = may(r[i]));
+import Prim "mo:⛔";
 
 actor {
+  public type Rose = [Rose];
+  public type MayRose = ?[MayRose];
+
+  func may(r : Rose) : MayRose =
+    ?Prim.Array_tabulate<MayRose>(r.size(), func (i : Nat) = may(r[i]));
+
   public query func rose(r : Rose) : async MayRose {
     may r
   }

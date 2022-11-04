@@ -1,7 +1,7 @@
-import Prim "mo:prim"
+import Prim "mo:⛔"
 
 let s = "hello " # "world!";
-assert(s.len() == 12);
+assert(s.size() == 12);
 
 Prim.debugPrint "via `debugPrint`:";
 Prim.debugPrint s;
@@ -27,7 +27,7 @@ for (a in s.chars()) {
 Prim.debugPrint "";
 
 let russian = "Приветствую," # " мир!\n";
-assert(russian.len() == 18);
+assert(russian.size() == 18);
 
 Prim.debugPrint "via iteration and `debugPrintChar` (Unicode): #3";
 x := 0;
@@ -44,7 +44,7 @@ Prim.debugPrint "";
 assert(x == 18);
 
 let emojis = "🙈🎸😋";
-assert(emojis.len() == 3);
+assert(emojis.size() == 3);
 
 Prim.debugPrint "via iteration and `debugPrintChar` (Unicode): #4";
 x := 0;

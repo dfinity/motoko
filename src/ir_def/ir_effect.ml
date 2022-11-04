@@ -9,16 +9,14 @@ module T = Mo_types.Type
 
 let max_eff e1 e2 =
   match e1,e2 with
-  | T.Triv,T.Triv -> T.Triv
+  | T.Triv, T.Triv -> T.Triv
   | _ , T.Await -> T.Await
-  | T.Await,_ -> T.Await
+  | T.Await, _ -> T.Await
 
-let typ phrase = phrase.note.note_typ
+let typ phrase = phrase.note.Note.typ
+let eff phrase = phrase.note.Note.eff
 
-let eff phrase = phrase.note.note_eff
-
-let is_triv phrase  =
-    eff phrase = T.Triv
+let is_triv phrase = eff phrase = T.Triv
 
 let effect_exp (exp: exp) : T.eff = eff exp
 
@@ -80,5 +78,11 @@ and effect_cases cases =
 
 and effect_dec dec = match dec.it with
   | LetD (_, e) | VarD (_, _, e) -> effect_exp e
+  | RefD (_, _, { it = DotLE (e, _); _ }) -> effect_exp e
+  | RefD (_, _, _) -> assert false
 
 let infer_effect_dec = effect_dec
+
+let infer_effect_decs ds =
+  let es = List.map effect_dec ds in
+  List.fold_left max_eff T.Triv es
