@@ -22,7 +22,6 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::gc::generational::write_barrier::write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::Value;
@@ -48,7 +47,7 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
 
     let table = TABLE.as_array();
     for i in 0..INITIAL_SIZE {
-        table.set(i, Value::from_scalar(i + 1));
+        table.set(i, Value::from_scalar(i + 1), false, mem);
     }
 }
 
@@ -64,11 +63,12 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {
-        new_array.set(i, old_array.get(i));
+        let old_value = old_array.get(i);
+        new_array.set(i, old_value, old_value.is_ptr(), mem);
     }
 
     for i in old_size..new_size {
-        new_array.set(i, Value::from_scalar(i + 1));
+        new_array.set(i, Value::from_scalar(i + 1), false, mem);
     }
 }
 
@@ -97,8 +97,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     FREE_SLOT = table.get(idx).get_scalar();
 
-    table.set(idx, ptr);
-    write_barrier(mem, table.payload_addr().add(idx as usize) as u32);
+    table.set(idx, ptr, true, mem);
 
     N_CONTINUATIONS += 1;
 
@@ -128,8 +127,8 @@ pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
     ptr.as_array().get(FUTURE_ARRAY_INDEX)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn recall_continuation(idx: u32) -> Value {
+#[ic_mem_fn]
+pub unsafe fn recall_continuation<M: Memory>(mem: &mut M, idx: u32) -> Value {
     if !table_initialized() {
         rts_trap_with("recall_continuation: Continuation table not allocated");
     }
@@ -142,7 +141,7 @@ pub unsafe extern "C" fn recall_continuation(idx: u32) -> Value {
 
     let ptr = table.get(idx);
 
-    table.set(idx, Value::from_scalar(FREE_SLOT));
+    table.set(idx, Value::from_scalar(FREE_SLOT), false, mem);
 
     FREE_SLOT = idx;
 

@@ -19,6 +19,8 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
+use crate::gc::generational::write_barrier::write_barrier;
+use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
@@ -425,10 +427,21 @@ impl Array {
         *(slot_addr as *const Value)
     }
 
-    pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
+    /// Set the array element, by deciding whether a post-update barrier is necessary.
+    pub unsafe fn set<M: Memory>(
+        self: *mut Self,
+        idx: u32,
+        value: Value,
+        use_barrier: bool,
+        mem: &mut M,
+    ) {
         debug_assert!(self.len() > idx);
         let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *mut Value) = ptr;
+        *(slot_addr as *mut Value) = value;
+        debug_assert_eq!(use_barrier, value.is_ptr());
+        if use_barrier {
+            write_barrier(mem, slot_addr as u32);
+        }
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {
