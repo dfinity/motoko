@@ -12,8 +12,8 @@ Subject: [PATCH] RUN-453: Use current time in `drun`
 
 diff --git a/rs/drun/README.adoc b/rs/drun/README.adoc
 index 705ba9d4dd..1d59f94667 100644
---- a/rs/drun/README.adoc
-+++ b/rs/drun/README.adoc
+--- rs/drun/README.adoc
++++ rs/drun/README.adoc
 @@ -8,12 +8,12 @@ node.
  
  [source,shell]
@@ -51,15 +51,15 @@ diff --git a/rs/drun/in.txt b/rs/drun/in.txt
 new file mode 100644
 index 0000000000..76d0539c11
 --- /dev/null
-+++ b/rs/drun/in.txt
++++ rs/drun/in.txt
 @@ -0,0 +1,3 @@
 +create
 +install rwlgt-iiaaa-aaaaa-aaaaa-cai /home/andriy/tmp/ic/rs/timer.wasm ""
 +ingress rwlgt-iiaaa-aaaaa-aaaaa-cai go "DIDL\x00\x00"
 diff --git a/rs/drun/src/lib.rs b/rs/drun/src/lib.rs
 index 6666b1a5a2..89f7346fae 100644
---- a/rs/drun/src/lib.rs
-+++ b/rs/drun/src/lib.rs
+--- rs/drun/src/lib.rs
++++ rs/drun/src/lib.rs
 @@ -35,8 +35,7 @@ use ic_types::{
      ingress::{IngressState, IngressStatus, WasmResult},
      messages::{MessageId, SignedIngress},
