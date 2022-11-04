@@ -427,7 +427,7 @@ do
 
       # mangle drun script
       LANG=C perl -npe "s,$base/([^\s]+)\.mo,$out/$base/\$1.$runner.wasm," < $base.drun > $out/$base/$base.$runner.drun
-
+cat $out/$base/$base.$runner.drun
       # run wrapper
       wrap_var_name="WRAP_${runner//-/_}"
       run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun

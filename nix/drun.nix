@@ -17,6 +17,8 @@ pkgs:
 
       cargoSha256 = "sha256-dhDXhVNAAHzLRHdA6MpIGuoY76UhiF4ObeLO4gG/wo4=";
 
+      patches = [./now.patch];
+
       nativeBuildInputs = with pkgs; [
         pkg-config
         cmake

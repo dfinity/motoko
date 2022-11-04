@@ -1,6 +1,7 @@
 {
+  verbose: true,
   metrics: {
-    exporter: { file: "/dev/fd/222" }
+    exporter: { file: "/dev/tty" }
   },
 }
 
