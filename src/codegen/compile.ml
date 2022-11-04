@@ -3897,7 +3897,6 @@ module IC = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let fi = E.add_fun env "canister_global_timer"
       (Func.of_body env [] [] (fun env ->
-        E.trap_with env "canister_global_timer" ^^
         G.i (Call (nr (E.built_in env "timer_exp"))) ^^
         GC.collect_garbage env))
     in
