@@ -1,4 +1,4 @@
-# Motoko compiler changelog
+ # Motoko compiler changelog
 
 ## 0.7.3 (2022-11-01)
 
