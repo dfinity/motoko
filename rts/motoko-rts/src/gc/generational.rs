@@ -209,8 +209,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn mark_root_set(&mut self) {
         self.mark_static_roots();
 
-        if (*self.heap.roots.continuation_table_ptr_loc).is_ptr() {
-            self.mark_object(*self.heap.roots.continuation_table_ptr_loc);
+        let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
+        if continuation_table.is_ptr() && continuation_table.get_ptr() >= self.generation_base() {
+            self.mark_object(continuation_table);
         }
 
         if self.strategy == Strategy::Young {
@@ -244,9 +245,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn mark_object(&mut self, object: Value) {
         let pointer = object.get_ptr() as u32;
-        if self.strategy == Strategy::Young && pointer < self.heap.limits.last_free as u32 {
-            return;
-        }
+        debug_assert!(pointer >= self.generation_base() as u32);
         debug_assert_eq!(pointer % WORD_SIZE, 0);
 
         let obj_idx = pointer / WORD_SIZE;
@@ -270,7 +269,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             self,
             object,
             object.tag(),
-            self.heap.limits.base,
+            self.generation_base(),
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
@@ -312,7 +311,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn mark_root_mutbox_fields(&mut self, mutbox: *mut MutBox) {
         let field_address = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field_address, self.heap.limits.base) {
+        if pointer_to_dynamic_heap(field_address, self.generation_base()) {
             self.mark_object(*field_address);
         }
     }
@@ -336,12 +335,15 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         self.survival_rate() < 0.95
     }
 
-    fn generation_size(&self) -> usize {
-        let base = match self.strategy {
+    fn generation_base(&self) -> usize {
+        match self.strategy {
             Strategy::Young => self.heap.limits.last_free,
             Strategy::Full => self.heap.limits.base,
-        };
-        self.heap.limits.free - base
+        }
+    }
+
+    fn generation_size(&self) -> usize {
+        self.heap.limits.free - self.generation_base()
     }
 
     fn survival_rate(&self) -> f64 {
@@ -355,7 +357,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         // Therefore, this must happen after the heap traversal for backwards pointer threading.
         self.thread_static_roots();
 
-        if (*self.heap.roots.continuation_table_ptr_loc).is_ptr() {
+        let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
+        if continuation_table.is_ptr() && continuation_table.get_ptr() >= self.generation_base() {
             self.thread(self.heap.roots.continuation_table_ptr_loc);
         }
 
@@ -377,7 +380,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn thread_root_mutbox_fields(&self, mutbox: *mut MutBox) {
         let field_addr = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field_addr, self.heap.limits.base) {
+        if pointer_to_dynamic_heap(field_addr, self.generation_base()) {
             self.thread(field_addr);
         }
     }
@@ -398,7 +401,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             &mut (),
             object,
             object.tag(),
-            self.heap.limits.base,
+            self.generation_base(),
             |_, field_address| {
                 let field_value = *field_address;
                 // Thread if backwards or self pointer
@@ -465,7 +468,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             &mut (),
             object,
             object.tag(),
-            self.heap.limits.base,
+            self.generation_base(),
             |_, field_address| {
                 if (*field_address).get_ptr() > object as usize {
                     (&self).thread(field_address)
@@ -477,11 +480,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn thread(&self, field: *mut Value) {
         let pointed = (*field).get_ptr() as *mut Obj;
-        if self.should_be_threaded(pointed) {
-            let pointed_header = pointed.tag();
-            *field = Value::from_raw(pointed_header);
-            (*pointed).tag = field as u32;
-        }
+        debug_assert!(self.should_be_threaded(pointed));
+        let pointed_header = pointed.tag();
+        *field = Value::from_raw(pointed_header);
+        (*pointed).tag = field as u32;
     }
 
     unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {
