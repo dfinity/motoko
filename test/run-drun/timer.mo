@@ -3,6 +3,18 @@ import {debugPrint; error; time} = "mo:⛔";
 
 actor {
 
+    // ad-hoc place for the Timer.mo API
+    type TimerId = Nat;
+    var lastId = 0;
+    func addTimer(delay : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
+        lastId += 1;
+        lastId
+    };
+    func cancelTimer(id : TimerId) {
+
+    };
+
+
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   var count = 0;
