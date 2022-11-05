@@ -2,12 +2,21 @@
 import {debugPrint; error; time} = "mo:⛔";
 
 actor {
-
+    // timer module implementation
+    type Node = { var expire : Nat64; delay : Nat64; recurring : Bool; job : () -> async (); var ante : ?Node; var dopo : ?Node };
+    var timers : ?Node = null;
+    var lastId = 0;
+    
     // ad-hoc place for the Timer.mo API
     type TimerId = Nat;
-    var lastId = 0;
     func addTimer(delay : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
         lastId += 1;
+        let now = time();
+        let expire = now + 1_000_000_000 * delay;
+        switch timers {
+          case null { timers := ?{ var expire; delay; recurring; job; var ante = null; var dopo = null } };
+        };
+        
         lastId
     };
     func cancelTimer(id : TimerId) {
