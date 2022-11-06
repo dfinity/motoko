@@ -1,4 +1,5 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
+//MOC-FLAG --experimental-field-aliasing
 import {debugPrint; error; time} = "mo:⛔";
 
 actor {
@@ -14,13 +15,16 @@ actor {
         let id = lastId;
         let now = time();
         let expire = now + 1_000_000_000 * delay;
-        switch timers {
-          case null { timers := ?{ var expire; id; delay; recurring; job; var ante = null; var dopo = null } };
-          case (?n) {
-              if (n.expire == 0) { timers := ?{ var expire; id; delay; recurring; job; var ante = null; var dopo = null } }
-               /*else if (n.expire <= expire){ insert(setter, { var expire; delay; recurring; job; var ante = null; var dopo = null } };*/
-               }
-        };
+        func insert(n : ?Node, put : Node -> ()) =
+            switch n {
+            case null { put { var expire; id; delay; recurring; job; var ante = null; var dopo = null } };
+            case (?n) {
+                     if (n.expire == 0) { put { var expire; id; delay; recurring; job; var ante = n.ante; var dopo = n.dopo } }
+                     else if (n.expire <= expire) { insert(n.dopo, func m = n.dopo := ?m) }
+                     else { insert(n.ante, func m = n.ante := ?m) }
+                 }
+            };
+        insert(timers, func n = timers := ?n);
         
         id
     };
@@ -37,7 +41,13 @@ actor {
   system func timer() : async () {
     let now = time();
 
-    debugPrint(debug_show {now; timers : ?{var expire : Nat64; delay : Nat64; recurring : Bool}});
+
+    type CNode = ?{var expire : Nat64; id : TimerId; delay : Nat64; recurring : Bool; ante : CNode; dopo : CNode };
+    func clean(n : ?Node) : CNode = switch n {
+                                        case null null;
+                                        case (?n) ?{n with ante = clean(n.ante); dopo = clean(n.dopo) }
+                                    };
+    debugPrint(debug_show {now; timers = clean timers});
     
     if (count < max) {
       count += 1;
@@ -56,6 +66,7 @@ actor {
      assert prev == 0;
 
      let id = addTimer(1, false, func () : async () { debugPrint "YEP!" });
+     let id2 = addTimer(2, false, func () : async () { debugPrint "DIM!" });
 
      
      while (count < max) {
