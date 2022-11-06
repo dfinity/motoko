@@ -3,7 +3,7 @@ import {debugPrint; error; time} = "mo:⛔";
 
 actor {
     // timer module implementation
-    type Node = { var expire : Nat64; delay : Nat64; recurring : Bool; job : () -> async (); var ante : ?Node; var dopo : ?Node };
+    type Node = { var expire : Nat64; id : TimerId; delay : Nat64; recurring : Bool; job : () -> async (); var ante : ?Node; var dopo : ?Node };
     var timers : ?Node = null;
     var lastId = 0;
     
@@ -11,13 +11,18 @@ actor {
     type TimerId = Nat;
     func addTimer(delay : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
         lastId += 1;
+        let id = lastId;
         let now = time();
         let expire = now + 1_000_000_000 * delay;
         switch timers {
-          case null { timers := ?{ var expire; delay; recurring; job; var ante = null; var dopo = null } };
+          case null { timers := ?{ var expire; id; delay; recurring; job; var ante = null; var dopo = null } };
+          case (?n) {
+              if (n.expire == 0) { timers := ?{ var expire; id; delay; recurring; job; var ante = null; var dopo = null } }
+               /*else if (n.expire <= expire){ insert(setter, { var expire; delay; recurring; job; var ante = null; var dopo = null } };*/
+               }
         };
         
-        lastId
+        id
     };
     func cancelTimer(id : TimerId) {
 
@@ -30,6 +35,10 @@ actor {
   var max = 5;
 
   system func timer() : async () {
+    let now = time();
+
+    debugPrint(debug_show {now; timers : ?{var expire : Nat64; delay : Nat64; recurring : Bool}});
+    
     if (count < max) {
       count += 1;
       await @run_timers();
@@ -45,6 +54,10 @@ actor {
      let now = time();
      let prev = (prim "global_timer_set" : Nat64 -> Nat64)(now + 100_000_000);
      assert prev == 0;
+
+     let id = addTimer(1, false, func () : async () { debugPrint "YEP!" });
+
+     
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
