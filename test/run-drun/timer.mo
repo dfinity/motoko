@@ -28,8 +28,18 @@ actor {
         
         id
     };
-    func cancelTimer(id : TimerId) {
 
+    func cancelTimer(id : TimerId) {
+        func hunt(n : ?Node) = switch n {
+          case null ();
+          case (?n) { if (n.id == id) {
+                          n.expire := 0
+                      };
+                      hunt(n.ante);
+                      hunt(n.dopo)
+               }
+        };
+        hunt timers
     };
 
 
@@ -72,6 +82,7 @@ actor {
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
+       if (count > 1) { cancelTimer id };
        if (attempts >= 50 and count == 0)
          throw error("he's dead Jim");
      };
