@@ -22,7 +22,7 @@ jobs:
 
     - name: Get the version
       id: get_version
-      run: echo version=${{ github.ref_name }} >> $GITHUB_OUTPUT
+      run: echo version=${{ github.ref_name }} >> "$GITHUB_OUTPUT"
 
     - name: Extract changelog
       id: read_changelog
@@ -33,7 +33,7 @@ jobs:
         cat changelog-extract.md
         # need to mangle to use with $GITHUB_OUTPUT (previously: set-output),
         # see https://github.com/svenstaro/upload-release-action/pull/49/files
-        echo "release_body=$(perl -0777 -p -e 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g' changelog-extract.md)" >> $GITHUB_OUTPUT
+        echo "release_body=$(perl -0777 -p -e 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g' changelog-extract.md)" >> "$GITHUB_OUTPUT"
 
     outputs:
       release_body: ${{ steps.read_changelog.outputs.release_body }}
