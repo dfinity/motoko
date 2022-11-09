@@ -1330,20 +1330,29 @@ module Tagged = struct
     | FreeSpace -> 31l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
-    | CoercionFailure -> 0xfffffffel
-    | StableSeen -> 0xffffffffl
+    | CoercionFailure -> 0x7ffffffel (* bit 31 is reserved mark bit *)
+    | StableSeen -> 0x7fffffffl (* bit 31 is reserved mark bit *)
 
   (* The tag *)
   let header_size = 1l
-  let tag_field = 0l
+  let raw_tag_field = 0l
+
+  let black_allocation = true
+  let mark_bit_mask = Int32.shift_left 1l 31
 
   (* Assumes a pointer to the object on the stack *)
-  let store tag =
+  let store_tag tag =
     compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field tag_field
+    (if black_allocation then
+      compile_bitor_const mark_bit_mask
+    else 
+      G.nop
+    ) ^^
+    Heap.store_field raw_tag_field
 
-  let load =
-    Heap.load_field tag_field
+  let load_tag =
+    Heap.load_field raw_tag_field ^^
+    compile_bitand_const (Int32.lognot mark_bit_mask)
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
@@ -1357,7 +1366,7 @@ module Tagged = struct
         compile_eq_const (int_of_tag tag) ^^
         E.if_ env retty code (go cases)
     in
-    load ^^
+    load_tag ^^
     set_tag ^^
     go cases
 
@@ -1626,7 +1635,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits64) ^^
+    get_i ^^ Tagged.(store_tag Bits64) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1744,7 +1753,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Heap.alloc env 2l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits32) ^^
+    get_i ^^ Tagged.(store_tag Bits32) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -1986,7 +1995,7 @@ module Float = struct
     let (set_i, get_i) = new_local env "boxed_f64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store Bits64) ^^
+    get_i ^^ Tagged.(store_tag Bits64) ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
@@ -3007,7 +3016,7 @@ module Object = struct
 
     (* Set tag *)
     get_ri ^^
-    Tagged.(store Object) ^^
+    Tagged.(store_tag Object) ^^
 
     (* Set size *)
     get_ri ^^
@@ -4987,7 +4996,7 @@ module MakeSerialization (Strm : Stream) = struct
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -5008,7 +5017,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.(store StableSeen) ^^
+          get_x ^^ Tagged.(store_tag StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -5118,14 +5127,19 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0
         begin
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
-          get_x ^^ Strm.absolute_offset env get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
+          let set_offset, get_offset = new_local env "offset" in
+          get_x ^^ Strm.absolute_offset env get_data_buf ^^ set_offset ^^ 
+          get_offset ^^ compile_bitand_const Tagged.mark_bit_mask ^^ 
+          compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          E.else_trap_with env "Too large offset, colliding with bit mark" ^^
+          get_offset ^^ Heap.store_field Tagged.raw_tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -7025,7 +7039,7 @@ module FuncDec = struct
 
         (* Store the tag *)
         get_clos ^^
-        Tagged.(store Closure) ^^
+        Tagged.(store_tag Closure) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^
