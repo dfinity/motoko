@@ -135,7 +135,7 @@ unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
 
 #[cfg(feature = "ic")]
 unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
-    const GROWTH_RATE: f64 = 1.67;
+    const GROWTH_RATE: f64 = 2.0;
     if strategy == Strategy::Full {
         OLD_GENERATION_THRESHOLD = ((limits.free - limits.base) as f64 * GROWTH_RATE) as usize;
         if limits.free < CRITICAL_MEMORY_LIMIT {
