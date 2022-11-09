@@ -16,12 +16,8 @@ pkgs:
       # the command therein manually.
 
       cargoSha256 = "sha256-dhDXhVNAAHzLRHdA6MpIGuoY76UhiF4ObeLO4gG/wo4=";
-      # sha256 = "ea803b02f2db51aaa6302492ab5fa1301e05c9def68b7eefedddad522814ed00";
 
-      # patches = [ ./rocks1.diff ];
       patchPhase = ''
-      pwd
-      ls ..
       cd ../drun-vendor.tar.gz
       ls -l librocksdb-sys/build.rs
       patch librocksdb-sys/build.rs << EOF
@@ -37,6 +33,7 @@ pkgs:
 EOF
 
       sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/b099df5e4401ea37f9c04060cfc19a9f2d78e8f3ff90ce80377ad6f0164532c1/g librocksdb-sys/.cargo-checksum.json
+
       cd -
       '';
 
