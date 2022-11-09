@@ -17,7 +17,7 @@ pkgs:
 
       cargoSha256 = "sha256-dhDXhVNAAHzLRHdA6MpIGuoY76UhiF4ObeLO4gG/wo4=";
 
-      patches = [ ./rocks.diff ];
+      patches = [ ./rocks1.diff ];
 
       nativeBuildInputs = with pkgs; [
         pkg-config

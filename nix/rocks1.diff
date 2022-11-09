@@ -1,0 +1,10 @@
+--- drun-vendor.tar.gz/librocksdb-sys/build.rs	2022-11-09 00:20:37.207477667 +0100
++++ drun-vendor.tar.gz/librocksdb-sys/build.rs	2022-11-09 12:14:40.144832181 +0100
+@@ -118,6 +118,7 @@
+         config.define("OS_MACOSX", Some("1"));
+         config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
+         config.define("ROCKSDB_LIB_IO_POSIX", Some("1"));
++        config.define("isSSE42()", Some("0"));
+     } else if target.contains("android") {
+         config.define("OS_ANDROID", Some("1"));
+         config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
