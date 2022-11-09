@@ -68,10 +68,7 @@ pub(crate) struct WriteBuf<'a> {
 
 impl<'a> WriteBuf<'a> {
     pub(crate) fn new(buf: &'a mut [u8]) -> Self {
-        Self {
-            buf: buf,
-            offset: 0,
-        }
+        Self { buf, offset: 0 }
     }
 
     pub(crate) fn reset(&mut self) {

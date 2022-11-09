@@ -32,7 +32,7 @@ public func test2b() : async () {
 };
 */
 
-public func f3<A<:Int>() : async () {};
+func f3<A<:Int>() : async () {};
 
 public func test3 () : async () {
  await f3<Int>();   // scope passed as implicit first argument

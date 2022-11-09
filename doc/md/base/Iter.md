@@ -179,3 +179,10 @@ func toList<A>(xs : Iter<A>) : List.List<A>
 ```
 
 Like `toArray` but for Lists.
+
+## Function `sort`
+``` motoko no-repl
+func sort<A>(xs : Iter<A>, compare : (A, A) -> Order.Order) : Iter<A>
+```
+
+Sorted iterator.  Will iterate over *all* elements to sort them, necessarily.
