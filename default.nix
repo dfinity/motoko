@@ -752,8 +752,8 @@ rec {
   };
 
   viperServer = builtins.fetchurl {
-    url = https://github.com/viperproject/viperserver/releases/download/v-2022-10-25-0730/viperserver.jar;
-    sha256 = "sha256:0w1s31c0lr2g60bjjpnz3hclwkgzz0vrywq9i2l4pw4y2cwl0plc";
+    url = https://github.com/viperproject/viperserver/releases/download/v-2022-11-09-0713/viperserver.jar;
+    sha256 = "sha256:0yqzmi7ci1zmdcsr4vkz05s5h9836vn4ap3hzj08y60rvgsab9k4";
   };
 
   shell = stdenv.mkDerivation {
