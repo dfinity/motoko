@@ -45,7 +45,7 @@ unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_blob: Text too large");
     }
-    alloc_blob(mem, size)
+    alloc_blob(mem, size, BLACK_ALLOCATION)
 }
 
 #[ic_mem_fn]

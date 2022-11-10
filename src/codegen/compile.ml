@@ -923,7 +923,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [I32Type] [];
-    E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_blob" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
@@ -986,6 +986,9 @@ module Heap = struct
 
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
+
+  (* Incremental GC allocation scheme *)
+  let black_allocation = true
 
   (* The heap base global can only be used late, see conclude_module
      and GHC.register *)
@@ -1337,13 +1340,12 @@ module Tagged = struct
   let header_size = 1l
   let raw_tag_field = 0l
 
-  let black_allocation = true
   let mark_bit_mask = Int32.shift_left 1l 31
 
   (* Assumes a pointer to the object on the stack *)
   let store_tag tag =
     compile_unboxed_const (int_of_tag tag) ^^
-    (if black_allocation then
+    (if Heap.black_allocation then
       compile_bitor_const mark_bit_mask
     else 
       G.nop
@@ -3154,7 +3156,12 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = E.call_import env "rts" "alloc_blob"
+  let alloc env = 
+    (if Heap.black_allocation then 
+      compile_unboxed_const 1l 
+    else 
+      compile_unboxed_const 0l) ^^
+    E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset

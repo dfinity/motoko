@@ -6,7 +6,6 @@ mod continuation_table;
 mod crc32;
 mod gc;
 mod leb128;
-mod mark_bit;
 mod mark_stack;
 mod memory;
 mod principal_id;
@@ -34,7 +33,6 @@ fn main() {
         stream::test();
         text::test();
         utf8::test();
-        mark_bit::test();
     }
 }
 

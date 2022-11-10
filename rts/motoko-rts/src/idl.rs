@@ -3,7 +3,7 @@
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob, Memory, BLACK_ALLOCATION};
 use crate::types::Words;
 use crate::utf8::utf8_validate;
 
@@ -72,7 +72,7 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
 
 // NB. This function assumes the allocation does not need to survive GC
 unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
-    alloc_blob(mem, size.to_bytes())
+    alloc_blob(mem, size.to_bytes(), BLACK_ALLOCATION)
         .as_blob_mut()
         .payload_addr()
 }
