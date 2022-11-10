@@ -19,7 +19,6 @@ pkgs:
 
       patchPhase = ''
       cd ../drun-vendor.tar.gz
-      ls -l librocksdb-sys/build.rs
       patch librocksdb-sys/build.rs << EOF
 @@ -118,6 +118,10 @@
          config.define("OS_MACOSX", Some("1"));
