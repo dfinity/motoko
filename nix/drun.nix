@@ -39,6 +39,9 @@ pkgs:
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";
 
+      # experiment on drun segfault issue...
+      RUST_MIN_STACK = 8192000;
+
       doCheck = false;
 
       buildAndTestSubdir = "drun";
