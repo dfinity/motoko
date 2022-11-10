@@ -236,7 +236,7 @@ and objblock s dec_fields =
 %token PRIM
 %token UNDERSCORE
 
-%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
+%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE LET_NO_ELSE
 %nonassoc ELSE WHILE
 
 %left COLON
@@ -830,7 +830,10 @@ dec_var :
     { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
-  | LET p=pat EQ e=exp(ob)
+  | LET p=pat EQ e=exp(ob) %prec LET_NO_ELSE
+    { let p', e' = normalize_let p e in
+      LetD (p', e') @? at $sloc }
+  | LET p=pat EQ e=exp(ob) ELSE fail=exp(bl)
     { let p', e' = normalize_let p e in
       LetD (p', e') @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
