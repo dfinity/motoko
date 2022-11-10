@@ -1,4 +1,5 @@
 //! Implements Motoko runtime system
+//! TEST
 
 #![no_std]
 #![feature(arbitrary_self_types, core_intrinsics, panic_info_message)]
