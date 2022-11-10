@@ -105,7 +105,7 @@ and pp_exp ppf exp =
   | BoolLitE b ->
      fprintf ppf "%s" (if b then "true" else "false")
   | IntLitE i ->
-     fprintf ppf "%s" (Mo_values.Numerics.Int.to_string i)
+     fprintf ppf "%s" String.(of_seq (Seq.filter (fun c -> c <> '_') (to_seq (Mo_values.Numerics.Int.to_string i))))
   | AddE (e1, e2) | SubE (e1, e2) | MulE (e1, e2) | DivE (e1, e2) | ModE (e1, e2)
   | EqCmpE (e1, e2) | NeCmpE (e1, e2) | GtCmpE (e1, e2) | GeCmpE (e1, e2) | LtCmpE (e1, e2) | LeCmpE (e1, e2)
   | Implies (e1, e2) | OrE (e1, e2) | AndE (e1, e2) ->
