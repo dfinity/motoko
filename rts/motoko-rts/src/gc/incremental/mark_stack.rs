@@ -1,7 +1,7 @@
 //! In-heap extendable mark stack for the incremental GC.
-//! 
-//! The mark stack cannot grow contiguously as new objects can be allocated 
-//! during the GC run and thus during the mark phase. This is why the stack 
+//!
+//! The mark stack cannot grow contiguously as new objects can be allocated
+//! during the GC run and thus during the mark phase. This is why the stack
 //! is represented as multiple tables.
 //!
 //! Doubly linked list of stack tables, each containing a series of entries.
