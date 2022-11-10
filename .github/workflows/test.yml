@@ -25,7 +25,7 @@ jobs:
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
-    - uses: cachix/cachix-action@v11
+    - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -89,7 +89,7 @@ jobs:
       with:
         extra_nix_config: |
           experimental-features = nix-command
-    - uses: cachix/cachix-action@v11
+    - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test
     - name: Fetch report
