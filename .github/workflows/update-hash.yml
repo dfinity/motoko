@@ -33,6 +33,3 @@ jobs:
         author_email: "<nobody@example.com>"
         github_token: ${{ secrets.HASH_UPDATE_TOKEN }}
         message: "Updating nix hashes"
-        # do not pull: if this branch is behind, then we might as well let
-        # the pushing fail
-        pull: "NO-PULL"
