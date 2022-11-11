@@ -100,6 +100,9 @@ The compiled Wasm module also includes these metadata in the custom sections.
 The compiler flag `--public-metadata <name>` controls if the custom section is publicly accessible.
 If `<name>` is in the `public-metadata` flag, the custom section name will be `icp:public <name>`.
 Otherwise, it will be `icp:private <name>`. The `--public-metadata` flag applies to the imported actor classes as well.
+In case the emission of a certain metadata section is not desired (e.g. to suppress discoverability, or to make the build
+product more reproducible), `--omit-metadata <name>` can be applied to refrain from emitting it. This option should  be
+used only in very specific cases.
 
 * Candid interface.
   + Compiler flag `--idl` generates the Candid interface for the entry actor. The main service

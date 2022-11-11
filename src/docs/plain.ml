@@ -2,6 +2,7 @@ open Extract
 open Mo_def
 open Source
 open Printf
+open Common
 
 type level = int
 
@@ -168,9 +169,16 @@ and plain_of_typ_binders :
 and plain_of_typ_field :
     Buffer.t -> render_functions -> Syntax.typ_field -> unit =
  fun buf rf field ->
-  plain_of_mut buf field.it.Syntax.mut;
-  bprintf buf "%s : " field.it.Syntax.id.it;
-  plain_of_typ buf rf field.it.Syntax.typ
+  match field.Source.it with
+  | Syntax.ValF (id, typ, mut) ->
+      plain_of_mut buf mut;
+      bprintf buf "%s : " id.it;
+      plain_of_typ buf rf typ
+  | Syntax.TypF (id, tbs, typ) ->
+      bprintf buf "type %s" id.it;
+      plain_of_typ_binders buf rf tbs;
+      bprintf buf " = ";
+      plain_of_typ buf rf typ
 
 and plain_of_typ_item : Buffer.t -> render_functions -> Syntax.typ_item -> unit
     =
@@ -194,29 +202,35 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
   Buffer.add_string buf arg.name;
   opt_typ buf arg.typ
 
+let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
+let end_block buf = bprintf buf "\n```\n\n"
+
 let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
  fun buf lvl -> function
   | Function function_doc ->
       title buf lvl (Printf.sprintf "Function `%s`" function_doc.name);
-      bprintf buf "\n`func %s" function_doc.name;
+      begin_block buf;
+      bprintf buf "func %s" function_doc.name;
       plain_of_typ_binders buf plain_render_functions function_doc.type_args;
       bprintf buf "(";
       sep_by buf ", " (function_arg buf) function_doc.args;
       bprintf buf ")";
       opt_typ buf function_doc.typ;
-      bprintf buf "`\n\n"
+      end_block buf
   | Value value_doc ->
       title buf lvl (Printf.sprintf "Value `%s`" value_doc.name);
-      bprintf buf "\n`let %s" value_doc.name;
+      begin_block buf;
+      bprintf buf "let %s" value_doc.name;
       opt_typ buf value_doc.typ;
-      bprintf buf "`\n\n"
+      end_block buf
   | Type type_doc ->
       title buf lvl (Printf.sprintf "Type `%s`" type_doc.name);
-      bprintf buf "\n`type %s" type_doc.name;
+      begin_block buf;
+      bprintf buf "type %s" type_doc.name;
       plain_of_typ_binders buf plain_render_functions type_doc.type_args;
       bprintf buf " = ";
       plain_of_doc_typ buf type_doc.typ;
-      bprintf buf "`\n\n"
+      end_block buf
   | Class class_doc ->
       title buf lvl "`";
       plain_of_obj_sort buf class_doc.sort;
@@ -237,4 +251,19 @@ let render_docs : Common.render_input -> string =
   bprintf buf "# %s\n" current_path;
   Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
+  Buffer.contents buf
+
+let make_index : Common.render_input list -> string =
+ fun (inputs : Common.render_input list) ->
+  let buf = Buffer.create 1024 in
+  bprintf buf "# Index\n\n";
+  List.iter
+    (fun (input : Common.render_input) ->
+      bprintf buf "* [%s](%s) %s\n" input.current_path
+        (input.current_path ^ ".md")
+        (match input.module_comment with
+        | None -> ""
+        | Some s -> (
+            match String.split_on_char '\n' s with [] -> "" | l :: _ -> l)))
+    inputs;
   Buffer.contents buf

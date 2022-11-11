@@ -1,1 +1,1 @@
-import "lib/not-static"
+import _ = "lib/not-static"

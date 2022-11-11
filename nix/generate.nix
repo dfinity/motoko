@@ -33,7 +33,7 @@ let
 
       '';
       inherit src_subst;
-      installPhase = oldAttrs.installPhase + ''
+      buildCommand = oldAttrs.buildCommand + ''
         sed -i "1i$message;s|src = .*|src = $src_subst;|" $out/default.nix
         # Accept `pkgs` as an argument in case the `src_subst` depends on it.
         sed -i "s|{ mkDerivation|{ mkDerivation, pkgs|" $out/default.nix

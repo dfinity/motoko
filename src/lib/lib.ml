@@ -163,6 +163,7 @@ struct
     for i = String.length s - 1 downto 0 do cs := s.[i] :: !cs done;
     !cs
 
+  (** Stack.fold (fun x y -> y ^ c ^ x) "" (String.split s c) == s *)
   let split s c =
     let len = String.length s in
     let rec loop i =
@@ -194,6 +195,11 @@ struct
       Some (String.sub s prefix_len (s_len - prefix_len))
     else
       None
+
+  let starts_with prefix s = (* in OCaml 4.13 *)
+    match chop_prefix prefix s with
+    | Some _ -> true
+    | _ -> false
 
   let chop_suffix suffix s =
     let suffix_len = String.length suffix in
@@ -526,26 +532,31 @@ end
 
 module FilePath =
 struct
+  let segments p = String.split p '/'
+
   let normalise file_path =
     if file_path = "" then "" else
     let has_trailing_slash =
       Stdlib.Option.is_some (String.chop_suffix "/" file_path) in
     let has_leading_slash = not (Filename.is_relative file_path) in
     let acc = Stack.create () in
-    String.split file_path '/'
-    |> Stdlib.List.iter
-         (function
-          | "" -> ()
-          | "." -> ()
-          | ".." ->
-             if Stack.is_empty acc || Stack.top acc = ".."
-             then Stack.push ".." acc
-             else ignore (Stack.pop acc)
-          | segment -> Stack.push segment acc);
+    segments file_path |> Stdlib.List.iter
+     (function
+      | "" -> ()
+      | "." -> ()
+      | ".." ->
+         if Stack.is_empty acc || Stack.top acc = ".."
+         then Stack.push ".." acc
+         else ignore (Stack.pop acc)
+      | segment -> Stack.push segment acc);
     let result = Stack.fold (fun x y -> y ^ "/" ^ x) "" acc in
-    let prefix = if has_leading_slash then "/" else "" in
-    prefix ^ (if has_trailing_slash
-      then result
+    if result = ""
+    then
+      (if has_leading_slash then "/" else
+      (if has_trailing_slash then "./" else "."))
+    else
+      (if has_leading_slash then "/" else "") ^
+      (if has_trailing_slash then result
       else Stdlib.Option.get (String.chop_suffix "/" result))
 
   let relative_to base path =
@@ -556,8 +567,6 @@ struct
     if not (Filename.is_relative path)
     then path
     else normalise (Filename.concat base path)
-
-  let segments p = String.split p '/'
 
   let is_subpath base path =
     if Filename.is_relative base || Filename.is_relative path
@@ -618,6 +627,12 @@ struct
   let%test "Base32.decode 000000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
   let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
+  let%test "String.split \"\"" = String.split "" '/' = [""]
+  let%test "String.split \"/\"" = String.split "/" '/' = ["";""]
+  let%test "String.split \"//\"" = String.split "//" '/' = ["";"";""]
+  let%test "String.split \"a/b/c\"" = String.split "a/b/c" '/' = ["a";"b";"c"]
+  let%test "String.split \"a/b//c\"" = String.split "a/b//c" '/' = ["a";"b";"";"c"]
+
   (* FilePath tests *)
   let normalise_test_case input expected =
     let actual = FilePath.normalise input in
@@ -652,6 +667,9 @@ struct
   let%test "it preserves trailing slashes" =
     normalise_test_case "lib/foo/" "lib/foo/"
 
+  let%test "it combines multiple trailing slashes" =
+    normalise_test_case "lib/foo//" "lib/foo/"
+
   let%test "it drops intermediate references to the `.` directory" =
     normalise_test_case "lib/./foo/" "lib/foo/"
 
@@ -672,6 +690,18 @@ struct
 
   let%test "it handles absolute directory paths" =
     normalise_test_case "/foo/./lib/" "/foo/lib/"
+
+  let%test "it handles ." =
+    normalise_test_case "." "."
+
+  let%test "it handles ./" =
+    normalise_test_case "./." "."
+
+  let%test "it handles ./" =
+    normalise_test_case "./" "./"
+
+  let%test "it handles .//" =
+    normalise_test_case ".//" "./"
 
   let%test "it makes one absolute path relative to another one" =
     relative_to_test_case

@@ -22,8 +22,8 @@ let normalize_name name =
     ) name
 
 let monomorphize_con vs c =
-  let name = normalize_name (Con.name c) in
-  match Con.kind c with
+  let name = normalize_name (Cons.name c) in
+  match Cons.kind c with
   | Def _ ->
     let id = (c, vs) in
     let (k, n) =
@@ -32,7 +32,7 @@ let monomorphize_con vs c =
         (match Stamp.find_opt c !stamp with
          | None ->
            let keys = Stamp.keys !stamp in
-           let k = List.length (List.filter (fun d -> Con.name c = Con.name d) keys) in
+           let k = List.length (List.filter (fun d -> Cons.name c = Cons.name d) keys) in
            stamp := Stamp.add c (k, 0) !stamp;
            type_map := TypeMap.add id (k, 0) !type_map;
            (k, 0)
@@ -80,7 +80,7 @@ let rec typ t =
   | Prim p -> prim p
   | Var (s, i) -> assert false
   | Con (c, ts) ->
-     (match Con.kind c with
+     (match Cons.kind c with
       | Def (_, t) ->
          (match (open_ ts t) with
           | Prim p -> prim p
@@ -161,7 +161,7 @@ and meths fs =
     ) fs []
 
 let is_actor_con c =
-  match Con.kind c with
+  match Cons.kind c with
   | Def ([], Obj (Actor, _)) -> true
   | _ -> false
 

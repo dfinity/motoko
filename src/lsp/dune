@@ -1,6 +1,7 @@
 (library
   (name lsp)
   (libraries atdgen)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )
 
 (rule

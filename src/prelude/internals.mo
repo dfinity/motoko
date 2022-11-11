@@ -9,14 +9,14 @@ code, and cannot be shadowed.
 
 type @Iter<T_> = {next : () -> ?T_};
 
-var @cycles : Nat64 = 0;
+var @cycles : Nat = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
 func @add_cycles() {
   let cycles = @cycles;
   @reset_cycles();
-  (prim "cyclesAdd" : (Nat64) -> ()) (cycles);
+  (prim "cyclesAdd" : (Nat) -> ()) (cycles);
 };
 
 // Function called by backend to zero cycles on context switch.
@@ -285,7 +285,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> ?(() -> ());
 
-type @Refund = Nat64;
+type @Refund = Nat;
 type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
 
 type @Waiter<T> = (@Refund,T) -> () ;
@@ -299,7 +299,7 @@ func @reset_refund() {
 };
 
 func @getSystemRefund() : @Refund {
-  return (prim "cyclesRefunded" : () -> Nat64) ();
+  return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
@@ -370,7 +370,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
 module @ManagementCanister = {
   public type wasm_module = Blob;
   public type canister_settings = {
-    controller : ?Principal;
+    controllers : ?[Principal];
     compute_allocation: ?Nat;
     memory_allocation: ?Nat;
     freezing_threshold: ?Nat;
@@ -390,11 +390,28 @@ let @ic00 = actor "aaaaa-aa" :
     } -> async ()
  };
 
+func @ic00_create_canister() : shared {
+      settings : ?@ManagementCanister.canister_settings
+    } -> async { canister_id : Principal } {
+  @ic00.create_canister
+};
+
+func @ic00_install_code() : shared {
+    mode : { #install; #reinstall; #upgrade };
+    canister_id : Principal;
+    wasm_module : @ManagementCanister.wasm_module;
+    arg : Blob;
+  } -> async () {
+  @ic00.install_code
+};
+
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
+// TODO: This helper is now only used by Prim.createActor and could be removed, except
+// that Prim.createActor was mentioned on the forum and might be in use. (#3420)
 func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
-  let available = (prim "cyclesAvailable" : () -> Nat64) ();
-  let accepted = (prim "cyclesAccept" : Nat64 -> Nat64) (available);
+  let available = (prim "cyclesAvailable" : () -> Nat) ();
+  let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
   @cycles += accepted;
   let { canister_id = canister_id_ } =
     await @ic00.create_canister({settings = null});
@@ -405,4 +422,9 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
     arg = arg_;
   });
   return canister_id_;
+};
+
+// raw calls
+func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
+  await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };

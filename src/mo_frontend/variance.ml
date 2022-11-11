@@ -34,7 +34,11 @@ let flip p =
 module PS = Set.Make
  (struct
     type pol = t (* rename to avoid capture below *)
-    type t = pol * typ let compare = compare
+    type t = pol * typ
+    let compare (p1, t1) (p2, t2) =
+      match compare p1 p2 with
+      | 0 -> Ord.compare t1 t2
+      | ord -> ord
   end)
 
 let variances cons t =
@@ -52,7 +56,7 @@ let variances cons t =
       | Con (c, []) when ConSet.mem c cons ->
         map := ConEnv.add c (join p (ConEnv.find c !map)) (!map)
       | Con (c, ts) ->
-        (match Con.kind c with
+        (match Cons.kind c with
         | Abs _ -> ()
         | Def (_, t) -> go p (open_ ts t)) (* TBR this may fail to terminate *)
       | Array t | Opt t -> go p t

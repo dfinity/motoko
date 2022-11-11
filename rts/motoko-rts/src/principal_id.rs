@@ -95,10 +95,10 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
-    let mut data = b.as_blob().payload_addr();
+    let mut data = b.as_blob().payload_const();
 
     let r = alloc_blob(mem, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
-    let blob = r.as_blob();
+    let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
     let mut pump = Pump {
@@ -181,11 +181,11 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
 
 pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let n = b.as_blob().len();
-    let mut data = b.as_blob().payload_addr();
+    let mut data = b.as_blob().payload_const();
 
     // Every group of 8 characters will yield 5 bytes
     let r = alloc_blob(mem, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
-    let blob = r.as_blob();
+    let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
     let mut pump = Pump {
@@ -220,11 +220,11 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
     let blob = b.as_blob();
 
     let n = blob.len();
-    let mut data = blob.payload_addr();
+    let mut data = blob.payload_const();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
     let r = alloc_blob(mem, Bytes(((n.as_u32() + 4) / 5) * 6));
-    let blob = r.as_blob();
+    let blob = r.as_blob_mut();
     let mut dest = blob.payload_addr();
 
     let mut n_written = 0;
@@ -269,8 +269,8 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
 
     let stripped = alloc_blob(mem, bytes_len - Bytes(4));
     memcpy_bytes(
-        stripped.as_blob().payload_addr() as usize,
-        bytes.as_blob().payload_addr().add(4) as usize,
+        stripped.as_blob_mut().payload_addr() as usize,
+        bytes.as_blob().payload_const().add(4) as usize,
         bytes_len - Bytes(4),
     );
 

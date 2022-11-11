@@ -33,7 +33,8 @@ let idl = ref false
 let valid_metadata_names =
     ["candid:args";
      "candid:service";
-     "motoko:stable-types"]
+     "motoko:stable-types";
+     "motoko:compiler"]
 
 let argspec = [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -59,7 +60,7 @@ let argspec = [
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, "<n>  set print depth";
   "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
-  "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as werrors";
+  "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as errors";
   ]
 
   @ Args.error_args
@@ -87,6 +88,12 @@ let argspec = [
     "<name>  emit icp custom section <name> (" ^
       String.concat " or " valid_metadata_names ^
       ") as `public` (default is `private`)";
+
+  "--omit-metadata",
+    Arg.String (fun n -> Flags.(omit_metadata_names := n :: !omit_metadata_names)),
+    "<name>  omit icp custom section <name> (" ^
+      String.concat " or " valid_metadata_names ^
+      ")";
 
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
@@ -142,7 +149,15 @@ let argspec = [
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
-    ]
+
+  "--max-stable-pages",
+  Arg.Set_int Flags.max_stable_pages,
+  "<n>  set maximum number of pages available for library `ExperimentalStableMemory.mo` (default " ^ (Int.to_string Flags.max_stable_pages_default) ^ ")";
+
+  "--experimental-field-aliasing",
+  Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
+  " enable experimental support for aliasing of var fields"
+  ]
 
   @  Args.inclusion_args
 
@@ -249,17 +264,17 @@ let process_profiler_flags () =
   ProfilerFlags.profile_field_names := !Flags.profile_field_names;
   ()
 
-let process_public_metadata_names () =
+let process_metadata_names kind =
   List.iter
     (fun s ->
       if not (List.mem s valid_metadata_names) then
         begin
-          eprintf "moc: --public-metadata argument %s must be one of %s"
+          eprintf "moc: --%s-metadata argument %s must be one of %s"
+            kind
             s
             (String.concat ", " valid_metadata_names);
           exit 1
         end)
-    (!Flags.public_metadata_names)
 
 let () =
   (*
@@ -277,7 +292,8 @@ let () =
   end;
 
   process_profiler_flags ();
-  process_public_metadata_names ();
+  process_metadata_names "public" !Flags.public_metadata_names;
+  process_metadata_names "omit" !Flags.omit_metadata_names;
   try
     process_files !args
   with

@@ -152,7 +152,7 @@ i(principal) = Principal
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
-if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
+if(<nat> : <datatype>) = escape_number(<nat>) : i(<datatype>) // also for implicit labels
 
 ivf : <fieldtype> -> <typ>
 ivf(<name> : null) = escape(<name>) : ()
@@ -170,11 +170,13 @@ ia(<argtype>,*) = ( i(<argtype>),* )  otherwise
 im : <methtype> -> <typ>
 im(<name> : <functype>) = escape_method(<name>) : ifn(<functype>)
 
+escape_number <nat> = "_" <nat> "_"
+
 escape : <name> -> <id>
 escape <name> = <name> "_"  if <name> is a reserved identifier in Motoko
-escape <name> = <name> "_"  if <name> ends with "_"
+escape <name> = <name> "_"  if <name> is a valid Motoko <id> ending in "_"
 escape <name> = <name>  if <name> is a valid Motoko <id> not ending in "_"
-escape <name> = "_" hash(<name>) "_"  otherwise
+escape <name> = escape_number(hash(<name>))  otherwise
 
 escape_method : <name> -> <id>
 escape_method <name> = <name> "_"  if <name> is a reserved identifier in Motoko
@@ -256,6 +258,9 @@ escape_method <name> = (* failure, unsupported *)
 
  * There is no way to produce `float32`.
    Importing interfaces that contain `float32` types fails.
+
+ * The functions `escape`/`unescape` ensure round-tripping of IDL field names
+   through Motoko types. See `IDL-Motoko.proofs.md` for details.
 
 ## The value mappings
 

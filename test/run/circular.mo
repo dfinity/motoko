@@ -1,0 +1,1 @@
+import _ = "circular/a"

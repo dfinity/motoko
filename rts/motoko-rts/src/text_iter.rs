@@ -119,7 +119,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
         }
     } else {
         // We are not at the end, read the next character from the blob
-        let blob_payload = blob.payload_addr();
+        let blob_payload = blob.payload_const();
         let mut step: u32 = 0;
         let char = decode_code_point(blob_payload.add(pos as usize), &mut step as *mut u32);
         iter_array.set(ITER_POS_IDX, Value::from_scalar(pos + step));

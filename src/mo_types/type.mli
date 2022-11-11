@@ -56,10 +56,22 @@ and bind = {var : var; sort: bind_sort; bound : typ}
 
 and field = {lab : lab; typ : typ; depr : string option}
 
-and con = kind Con.t
+and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
+
+(* Syntactic orderings *)
+
+module Ord : sig
+  type t = typ
+  val compare : t -> t -> int
+end
+
+module OrdPair : sig
+  type t = typ * typ
+  val compare : t -> t -> int
+end
 
 (* Function sorts *)
 
@@ -77,6 +89,9 @@ val blob : typ
 val error : typ
 val char : typ
 val principal : typ
+
+val sum : (lab * typ) list -> typ
+val obj : obj_sort -> (lab * typ) list -> typ
 
 val throwErrorCodes : field list
 val catchErrorCodes : field list
@@ -196,7 +211,6 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
-
 (* Equivalence and Subtyping *)
 
 val eq : typ -> typ -> bool
@@ -235,6 +249,21 @@ val scope_bind : bind
 
 val match_stab_sig : field list -> field list -> bool
 
+val string_of_stab_sig : field list -> string
+
+(* Well-known fields *)
+
+val motoko_async_helper_fld : field
+val motoko_stable_var_info_fld : field
+val get_candid_interface_fld : field
+
+val well_known_actor_fields : field list
+val decode_msg_typ : field list -> typ
+
+val canister_settings_typ : typ
+val install_arg_typ : typ
+val install_typ : typ list -> typ -> typ
+
 (* Pretty printing *)
 
 val string_of_prim : prim -> string
@@ -242,6 +271,7 @@ val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
 
 module type Pretty = sig
+  val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->
@@ -253,10 +283,20 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_stab_sig : field list -> string
 end
 
-module MakePretty(_ : sig val show_stamps : bool end) : Pretty
+module type PrettyConfig = sig
+  val show_stamps : bool
+  val con_sep : string
+  val par_sep : string
+end
+
+module ShowStamps : PrettyConfig
+
+module ElideStamps : PrettyConfig
+
+module ParseableStamps : PrettyConfig
+
+module MakePretty(_ : PrettyConfig) : Pretty
 
 include Pretty
-

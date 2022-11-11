@@ -66,7 +66,7 @@ and dec d = match d.it with
   | ImportD (f, fp) ->
      "ImportD" $$ [Atom (if !fp = "" then f else !fp)]
 
-and actor a = match a with
+and actor = function
   | None -> Atom "NoActor"
   | Some t -> 
      "Actor" $$ [typ t]

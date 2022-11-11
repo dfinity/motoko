@@ -98,7 +98,10 @@ let start : output_format -> string -> string -> unit =
       let inputs = make_render_inputs src out in
       List.iter
         (fun (out, input) -> write_file (out ^ ".md") (Plain.render_docs input))
-        inputs
+        inputs;
+      write_file
+        (Filename.concat out "index.md")
+        (Plain.make_index (List.map snd inputs))
   | Adoc ->
       let inputs = make_render_inputs src out in
       List.iter

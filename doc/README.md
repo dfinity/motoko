@@ -1,90 +1,45 @@
 # Building the documentation locally
 
-You can build the documentation locally as follows:
+You can build the basic documentation locally as follows:
 
 ```
 make
-python3 -m http.server --directory build/site/
-# now open http://0.0.0.0:8000/motoko/language-guide/motoko.html
+python3 -m http.server --directory html
+# now open http://0.0.0.0:8000/motoko.html
 ```
-
-This is somewhat hackish
-
- * Uses `antora-test-playbook.yml` instead of the official playbook in
-   `dfinity/dfinity-docs-playbook`
- * Uses a local copy `test-ui-bundle.zip` of the file from `dfinity/antora-sdk`
- * Uses the script `patch-antora-js.sh` to change some URLs in the JS of the
-   generated files to load `moc.js` and the base library sources from the
-   _current_ revision.
-
-This will likely easily break when things change in the official playbook and
-the official UI bundle.
 
 CI pushes these docs for latest master to
 <https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/overview-slides.html>.
 
+The local documentation is suboptimal and compiled with pandoc, not
+docusaurus so it doesn't understand or process remark-code-import file includes,
+docusaurus admonitions (`:: Tip` etc) nor enable the motoko interpreter.
 
-# Support interpreter in documentation
-
-## Page attributes
-
-The interpreter is controlled by the following page attributes:
- * `page-repl` controls if the page needs to load the interpreter (1.2M)
- * `page-moc-version` specifies the moc version
- * `page-moc-base-tag` specifies the base library version
-
-`page-moc-version` and `page-moc-base-tag` are set globally in [antora-playbook.yml](https://github.com/dfinity/dfinity-docs-playbook/blob/master/antora-playbook.yml), and `page-repl` is set in `antora.yml` in Motoko component, which means
-the interpreter is enabled for all pages in Motoko docs by default.
-If you want to disable the interpreter for a particular page, use `:!page-repl:` at the top of the page
-(syntax highlighting still works).
-
-After each release, remember to bump the version in [antora-playbook.yml](https://github.com/dfinity/dfinity-docs-playbook/blob/master/antora-playbook.yml).
-
-## Source flags
-
-In asciidoc, we support the following language sources:
-
-* `[source, motoko]` adds a run button
-* `[source.run, motoko]` adds a run button and displays the result.
-* `[source.no-repl, motoko]` syntax-highlight only. If you want to set `no-repl` for the whole page, you can disable the page attributes `:!page-repl:`, and use just `[source, motoko]`.
-* `[source#filename, motoko]` save the code as `filename.mo` so that it can be imported or referenced from another code block. An absent filename defaults to `stdin`.
-* `[source.include_f1_f2, motoko]` run `f1.mo`, `f2.mo` before running the current code, equivalent to `moc -i f1.mo f2.mo current_code.mo`. It will fetch the updated code each time we click run. Note that if the code `import "f1"` but doesn't use `include_f1`, the code won't be updated until we click the run button for `f1.mo`.
-* `[source, candid]` syntax-highlights a Candid block or file without a run button.
-
-The control flags can be used in any order with any combinations, e.g. `[source.run#main.include_f1_f2, motoko]`.
-
-## Customization
-
-If you have more advanced needs beyond what is provided, you can hook a JS function to the `Run` button.
-For example, the following code wraps the `include` code in an actor before running,
-and format the output.
+For a richer preview that supports these features,
+and auto-updates as you edit doc source, try:
 
 ```
-++++
-<script>
-function myRun(includes, current_code) {
-  const code = `
-    actor {
-      ${includes["f1.mo"]}
-      ${includes["f2.mo"]}
-    };
-    ${current_code}
-  `;
-  Motoko.saveFile("myMain.mo", code);
-  Motoko.saveFile("type.mo", 'type Num = Nat;');
-  const res = Motoko.run(["type.mo"], "myMain.mo");
-  if (res.stderr) {
-    res.stderr = "ERROR: " + res.stderr;
-  }
-  if (res.stdout) {
-    res.stdout = "RESULT: " + res.stdout;
-  }
-  return res;
-}
-</script>
-++++
-[source.include_f1_f2.hook_myRun, motoko]
-----
-code here
-----
+make preview
 ```
+
+This uses a small ./docusaurus project to build a reduced web site locally, opening it your browser. It should be a subset of the full portal documentation,
+complete with live code blocks.
+
+In order to preview the real portal documentation, open a PR
+https://github.com/dfinity/portal, edit the git "submodule"for
+Motoko to point at the PR branch and wait for CI to produce a build or
+follow the instructions to produce one locally.
+
+# Support the moc interpreter in documentation
+
+We wrap Docusaurus's module `CodeBlock/Content/String` to process Motoko code blocks with interpreter.
+To enable this feature, add the following flags for code blocks:
+
+* "```motoko" adds a Run button
+* "```motoko run" adds a Run button and display the result
+* "```motoko no-repl" syntax-highlighting only.
+* "```motoko name=filename" saves the code as filename.mo so that it can be imported or referenced from another code block. An absent filename defaults to stdin.
+* "```motoko include=f1,f2" run `f1.mo`, `f2.mo` before running the current code, equivalent to `moc -i f1.mo f2.mo current_code.mo`. It will fetch the updated code each time we click run. Note that if the code import "f1" but doesn't use include_f1, the code won't be updated until we click the run button for f1.mo.
+
+The config flags can be used in any order with any combinations, e.g.
+"```motoko run name=main include=f1,f2"

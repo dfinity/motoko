@@ -4,7 +4,7 @@ let format : Docs.output_format ref = ref Docs.Html
 
 let set_source s = source := s
 let set_output o = output := o
-let set_format f = match f with
+let set_format = function
   | "html" -> format := Docs.Html
   | "adoc" -> format := Docs.Adoc
   | "plain" -> format := Docs.Plain

@@ -1,7 +1,7 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-12
-WASM_CLANG ?= clang-12
+CLANG ?= clang-13
+WASM_CLANG ?= clang-13
 WASM_LD ?= wasm-ld-12
 
 #
@@ -237,7 +237,7 @@ $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_F
 .PHONY: test
 test: $(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 	cd motoko-rts-tests && cargo build --target=wasm32-wasi
-	wasmtime --disable-cache --cranelift motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+	wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 #
 # Putting it all together

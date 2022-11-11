@@ -1,5 +1,7 @@
 actor {
-    flexible func init() {};
+    flexible func init() {
+      assert false;
+    };
     public func reset() {
         init()
     };

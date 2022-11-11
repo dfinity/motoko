@@ -1,4 +1,5 @@
 (library
   (name linking)
   (libraries lib wasm_exts)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

@@ -75,9 +75,15 @@ let import_relative_to_project_root root module_path dependency =
         |> Lib.FilePath.normalise
         |> Option.some
 
+type header_part =
+  (* import <alias> "<path>" *)
+  | AliasImport of string * string
+  (* import { <alias> = <field> } "<path>" *)
+  | FieldImport of string * string * string
+
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules
-   filepaths relative to the project root *)
+   filepaths relative to the project root. *)
 let parse_module_header project_root current_file_path file =
   let lexbuf = Lexing.from_string file in
   let tokenizer, _ = Lexer.tokenizer Lexer.mode lexbuf in
@@ -85,7 +91,7 @@ let parse_module_header project_root current_file_path file =
     let t, _, _ = tokenizer () in
     t
   in
-  let res = ref [] in
+  let header_parts = ref [] in
   let rec loop = function
     | Parser.IMPORT -> (
         match next () with
@@ -97,35 +103,90 @@ let parse_module_header project_root current_file_path file =
                     path
                 in
                 (match path with
-                | Some path -> res := (alias, path) :: !res
+                | Some path ->
+                    header_parts := AliasImport (alias, path) :: !header_parts
                 | None -> ());
                 loop (next ())
             | tkn -> loop tkn)
+        | Parser.LCURLY -> loop_fields [] (next ())
         | tkn -> loop tkn)
-    | Parser.EOF -> List.rev !res
+    | Parser.EOF -> ()
     | tkn -> loop (next ())
+  (* Account for basic object pattern syntax *)
+  and loop_fields fields = function
+    (* Slightly lenient for new users *)
+    | Parser.SEMICOLON | Parser.COMMA | Parser.EQ ->
+        loop_fields fields (next ())
+    | Parser.ID field -> (
+        match next () with
+        | Parser.EQ -> (
+            match next () with
+            | Parser.ID alias ->
+                loop_fields ((field, alias) :: fields) (next ())
+            | tkn -> loop_fields ((field, field) :: fields) tkn)
+        | tkn -> loop_fields ((field, field) :: fields) tkn)
+    | Parser.RCURLY -> (
+        match next () with
+        | Parser.TEXT path ->
+            let path =
+              import_relative_to_project_root project_root current_file_path
+                path
+            in
+            fields
+            |> List.rev
+            |> List.iter (fun (field, alias) ->
+                   match path with
+                   | Some path ->
+                       header_parts :=
+                         FieldImport (field, alias, path) :: !header_parts
+                   | None -> ());
+            loop (next ())
+        | tkn -> loop tkn)
+    | tkn -> loop tkn
   in
-  try loop (next ()) with _ -> List.rev !res
+  (try loop (next ()) with _ -> ());
+  List.rev !header_parts
 
 type unresolved_target = { qualifier : string; ident : string }
-
 type resolved_target = { qualifier : string; ident : string; path : string }
 
 type identifier_target =
   | Ident of string
   | Alias of string * string
+  | Field of string * string
   | Unresolved of unresolved_target
   | Resolved of resolved_target
 
 let identifier_at_pos project_root file_path file_contents position =
-  let imported = parse_module_header project_root file_path file_contents in
+  let header_parts = parse_module_header project_root file_path file_contents in
   cursor_target_at_pos position file_contents
   |> Option.map (function
-       | CIdent s -> (
-           match List.find_opt (fun (alias, _) -> alias = s) imported with
-           | None -> Ident s
-           | Some (alias, path) -> Alias (alias, path))
+       | CIdent ident -> (
+           match
+             List.find_map
+               (function
+                 | AliasImport (alias, path) ->
+                     if alias = ident then Some (Alias (alias, path)) else None
+                 | FieldImport (field, alias, path) ->
+                     if alias = ident then Some (Field (field, path)) else None)
+               header_parts
+           with
+           | None -> Ident ident
+           | Some x -> x)
        | CQualified (qual, ident) -> (
-           match List.find_opt (fun (alias, _) -> alias = qual) imported with
+           match
+             List.find_map
+               (function
+                 | AliasImport (alias, path) ->
+                     if alias = qual then
+                       Some (Resolved { qualifier = qual; ident; path })
+                     else None
+                 | FieldImport (field, alias, path) ->
+                     if alias = qual then
+                       (* TODO: find the qualified record / object key definition when possible *)
+                       Some (Field (field, path))
+                     else None)
+               header_parts
+           with
            | None -> Unresolved { qualifier = qual; ident }
-           | Some (alias, path) -> Resolved { qualifier = qual; ident; path }))
+           | Some x -> x))

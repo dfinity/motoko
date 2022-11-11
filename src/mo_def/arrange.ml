@@ -18,13 +18,16 @@ let rec exp e = match e.it with
   | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
   | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
-  | TupE es             -> "TupE"      $$ List.map exp es
+  | ToCandidE es        -> "ToCandidE"   $$ exps es
+  | FromCandidE e       -> "FromCandidE" $$ [exp e]
+  | TupE es             -> "TupE"      $$ exps es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
   | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
-  | ObjE efs            -> "ObjE"      $$ List.map exp_field efs
+  | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
+  | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
-  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
+  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
   | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
   | FuncE (x, sp, tp, p, t, sugar, e') ->
     "FuncE" $$ [
@@ -57,7 +60,7 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
-  | DoOptE e            -> "DoOptE"    $$ [exp e]
+  | DoOptE e            -> "DoOptE"  $$ [exp e]
   | BangE e             -> "BangE"   $$ [exp e]
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
@@ -65,6 +68,8 @@ let rec exp e = match e.it with
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
   | IgnoreE e           -> "IgnoreE" $$ [exp e]
+
+and exps es = List.map exp es
 
 and inst inst = match inst.it with
   | None -> []
@@ -83,7 +88,7 @@ and pat p = match p.it with
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
   | ParP p          -> "ParP"       $$ [pat p]
 
-and lit (l:lit) = match l with
+and lit = function
   | NullLit       -> Atom "NullLit"
   | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
   | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
@@ -142,9 +147,10 @@ and stab s_opt = match s_opt with
     | Flexible -> Atom "Flexible"
     | Stable -> Atom "Stable")
 
-and typ_field (tf : typ_field)
-  = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
-
+and typ_field (tf : typ_field) = match tf.it with
+  | ValF (id, t, m) -> id.it $$ [typ t; mut m]
+  | TypF (id', tbs, t) ->
+      "TypF" $$ [id id'] @ List.map typ_bind tbs @ [typ t]
 and typ_item ((id, ty) : typ_item) =
   match id with
   | None -> [typ ty]

@@ -3,23 +3,23 @@ open Wasm.Sexpr
 
 let ($$) head inner = Node (head, inner)
 
-let control c = match c with
+let control = function
   | Returns -> "Returns"
   | Promises -> "Promises"
   | Replies -> "Replies"
 
-let obj_sort s = match s with
+let obj_sort = function
   | Object -> Atom "Object"
   | Actor -> Atom "Actor"
   | Module -> Atom "Module"
   | Memory -> Atom "Memory"
 
-let func_sort s = match s with
+let func_sort = function
   | Local -> "Local"
   | Shared Write -> "Shared"
   | Shared Query -> "Shared Query"
 
-let prim p = match p with
+let prim = function
   | Null -> Atom "Null"
   | Bool -> Atom "Bool"
   | Nat -> Atom "Nat"
@@ -39,9 +39,9 @@ let prim p = match p with
   | Error -> Atom "Error"
   | Principal -> Atom "Principal"
 
-let con c = Atom (Con.to_string c)
+let con c = Atom (Type.string_of_con c)
 
-let rec typ (t:Type.typ) = match t with
+let rec typ = function
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]
   | Con (c, ts)            -> "Con" $$ (con c::List.map typ ts)
   | Prim p                 -> "Prim" $$ [prim p]
