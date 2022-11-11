@@ -34,6 +34,11 @@ EXTRA_BATCHES=1
 # and this helps (default is 2MB)
 export RUST_MIN_STACK=$((10*1024*1024))
 
+export RUST_BACKTRACE=1
+
+ulimit -c unlimited
+#ulimit -c
+
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
 
@@ -51,4 +56,9 @@ else
       LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+fi
+
+if [ -e "/var/lib/apport/coredump" ]
+then
+  ls -la /var/lib/apport/coredump
 fi
