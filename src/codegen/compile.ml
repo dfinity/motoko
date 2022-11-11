@@ -749,6 +749,11 @@ module FakeMultiVal = struct
       G.i (GlobalGet (nr (global env (n - i))))
     ) tys
 
+  (* A drop-in replacement for E.if_ *)
+  let if_ env bt thn els =
+    E.if_ env (ty bt) (thn ^^ store env bt) (els ^^ store env bt) ^^
+    load env bt
+
 end (* FakeMultiVal *)
 
 module Func = struct
@@ -9148,13 +9153,12 @@ and compile_exp (env : E.t) ae exp =
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
     let sr = StackRep.join sr1 sr2 in
-    let bt = StackRep.to_block_type env sr in
     sr,
     code_scrut ^^
-    E.if_ env (FakeMultiVal.ty bt)
-      (code1 ^^ StackRep.adjust env sr1 sr ^^ FakeMultiVal.store env bt)
-      (code2 ^^ StackRep.adjust env sr2 sr ^^ FakeMultiVal.store env bt) ^^
-   FakeMultiVal.load env bt
+    FakeMultiVal.if_ env
+      (StackRep.to_block_type env sr)
+      (code1 ^^ StackRep.adjust env sr1 sr)
+      (code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
