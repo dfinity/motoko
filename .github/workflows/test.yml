@@ -38,6 +38,12 @@ jobs:
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
+    - name: "upload-core-dumps"
+      uses: actions/upload-artifact@master
+      with:
+        name: core-dump
+        path: /var/lib/apport/coredump
+
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
