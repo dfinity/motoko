@@ -37,7 +37,7 @@ export RUST_MIN_STACK=$((10*1024*1024))
 export RUST_BACKTRACE=1
 
 ulimit -c unlimited
-ulimit -c
+#ulimit -c
 
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
@@ -58,6 +58,7 @@ else
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
 
-if [-f "/var/lib/apport/coredump"]; then
+if [ -e "/var/lib/apport/coredump" ]
+then
   ls -la /var/lib/apport/coredump
 fi
