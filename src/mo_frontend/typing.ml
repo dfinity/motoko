@@ -782,7 +782,7 @@ let rec is_explicit_exp e =
 
 and is_explicit_dec d =
   match d.it with
-  | ExpD e | LetD (_, e) | VarD (_, e) -> is_explicit_exp e
+  | ExpD e | LetD (_, e, None) | VarD (_, e) -> is_explicit_exp e
   | TypD _ -> true
   | ClassD (_, _, _, p, _, _, _, dfs) ->
     is_explicit_pat p &&
@@ -2072,7 +2072,7 @@ and pub_field dec_field xs : visibility_env =
 and pub_dec depr dec xs : visibility_env =
   match dec.it with
   | ExpD _ -> xs
-  | LetD (pat, _) -> pub_pat depr pat xs
+  | LetD (pat, _, None) -> pub_pat depr pat xs
   | VarD (id, _) -> pub_val_id depr id xs
   | ClassD (_, id, _, _, _, _, _, _) ->
     pub_val_id depr {id with note = ()} (pub_typ_id depr id xs)
@@ -2136,7 +2136,7 @@ and object_of_scope env sort dec_fields scope at =
   T.Obj (sort, List.sort T.compare_field tfs')
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _); _}) ->
+  | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _); _}, None) ->
     T.is_shared_sort shared_pat.it
   | _ -> false
 
@@ -2192,7 +2192,8 @@ and check_system_fields env sort scope tfs dec_fields =
     match sort, df.it.vis.it, df.it.dec.it with
     | T.Actor, vis,
       LetD({ it = VarP id; _ },
-           { it = FuncE _; _ }) ->
+           { it = FuncE _; _ },
+           None) ->
       begin
         match List.assoc_opt id.it (system_funcs tfs) with
         | Some t ->
@@ -2245,11 +2246,11 @@ and check_stab env sort scope dec_fields =
     | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
-    | T.Actor, Some {it = Stable; _}, LetD (pat, _) when stable_pat pat ->
+    | T.Actor, Some {it = Stable; _}, LetD (pat, _, None) when stable_pat pat ->
       let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
-    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
+    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> [] (* FIXME This matches the Some _ case too. Check for other pattern matches that match LetD _ *)
     | T.Actor, Some stab, _ ->
       local_error env stab.at "M0133"
         "misplaced stability modifier: allowed on var or simple let declarations only";
@@ -2301,7 +2302,7 @@ and infer_dec env dec : T.typ =
   let t =
   match dec.it with
   | ExpD exp
-  | LetD (_, exp) ->
+  | LetD (_, exp, None) ->
     infer_exp env exp
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
@@ -2426,7 +2427,8 @@ and gather_dec env scope dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
-       {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
+       {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ }),
+       None
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
@@ -2441,7 +2443,7 @@ and gather_dec env scope dec : Scope.t =
       con_env = scope.con_env;
       obj_env = obj_env
     }
-  | LetD (pat, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
+  | LetD (pat, _, None) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
@@ -2508,7 +2510,8 @@ and infer_dec_typdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
+        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ }),
+        None
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
@@ -2521,7 +2524,7 @@ and infer_dec_typdecs env dec : Scope.t =
       obj_env = T.Env.singleton id.it obj_scope
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
-  | LetD ({it = VarP id; _}, exp) ->
+  | LetD ({it = VarP id; _}, exp, None) ->
     (match infer_val_path env exp with
      | None -> Scope.empty
      | Some t ->
@@ -2578,7 +2581,7 @@ and infer_block_valdecs env decs scope : Scope.t =
 
 and is_import d =
   match d.it with
-  | LetD (_, {it = ImportE _; _}) -> true
+  | LetD (_, {it = ImportE _; _}, None) -> true
   | _ -> false
 
 and infer_dec_valdecs env dec : Scope.t =
@@ -2589,7 +2592,8 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _} as pat,
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
+        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ }),
+        None
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
@@ -2601,7 +2605,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
-  | LetD (pat, exp) ->
+  | LetD (pat, exp, None) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive (if is_import dec then local_error else warn) env t pat in
     Scope.{empty with val_env = ve'}
@@ -2663,7 +2667,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
 let is_actor_dec d =
   match d.it with
   | ExpD e
-  | LetD (_, e) -> CompUnit.is_actor_def e
+  | LetD (_, e, None) -> CompUnit.is_actor_def e
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
     obj_sort.it = T.Actor
   | _ -> false

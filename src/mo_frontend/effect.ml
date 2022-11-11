@@ -117,7 +117,7 @@ and effect_dec dec =
 and infer_effect_dec dec =
   match dec.it with
   | ExpD e
-  | LetD (_,e)
+  | LetD (_, e, None)
   | VarD (_, e) ->
     effect_exp e
   | TypD _

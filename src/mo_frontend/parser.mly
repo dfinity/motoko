@@ -61,7 +61,7 @@ let name_exp e =
   | VarE x -> [], e, dup_var x
   | _ ->
     let x = anon_id "val" e.at @@ e.at in
-    [LetD (VarP x @! x.at, e) @? e.at], dup_var x, dup_var x
+    [LetD (VarP x @! x.at, e, None) @? e.at], dup_var x, dup_var x
 
 let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
@@ -101,13 +101,13 @@ let rec normalize_let p e =
 
 let let_or_exp named x e' at =
   if named
-  then LetD(VarP(x) @! at, e' @? at) @? at
+  then LetD(VarP(x) @! at, e' @? at, None) @? at
        (* If you change the above regions,
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
 let is_sugared_func_or_module dec = match dec.it with
-  | LetD({it = VarP _; _} as pat, exp) ->
+  | LetD({it = VarP _; _} as pat, exp, None) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
     | ObjBlockE (sort, _) ->
@@ -162,7 +162,8 @@ let share_exp e =
 
 let share_dec d =
   match d.it with
-  | LetD (p, e) -> LetD (p, share_exp e) @? d.at
+  | LetD (p, e, None) -> LetD (p, share_exp e, None) @? d.at
+  | LetD (p, e, Some _) -> assert false
   | _ -> d
 
 let share_stab stab_opt dec =
@@ -832,10 +833,10 @@ dec_var :
 dec_nonvar :
   | LET p=pat EQ e=exp(ob) %prec LET_NO_ELSE
     { let p', e' = normalize_let p e in
-      LetD (p', e') @? at $sloc }
+      LetD (p', e', None) @? at $sloc }
   | LET p=pat EQ e=exp(ob) ELSE fail=exp(bl)
     { let p', e' = normalize_let p e in
-      LetD (p', e') @? at $sloc }
+      LetD (p', e', Some fail) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
@@ -894,7 +895,7 @@ class_body :
 
 imp :
   | IMPORT p=pat_nullary EQ? f=TEXT
-    { LetD(p, ImportE(f, ref Unresolved) @? at $sloc) @? at $sloc }
+    { LetD(p, ImportE(f, ref Unresolved) @? at $sloc, None) @? at $sloc }
 
 start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
   | (* empty *) { () }

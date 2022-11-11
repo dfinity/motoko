@@ -170,7 +170,7 @@ and dec_fields msgs dfs =
 
 and dec msgs d = match d.it with
   | ExpD e -> (exp msgs e, S.empty)
-  | LetD (p, e) -> pat msgs p +++ exp msgs e
+  | LetD (p, e, None) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (csp, i, tp, p, t, s, i', dfs) ->

@@ -865,7 +865,7 @@ and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
   | TypD _ -> V.Env.empty
-  | LetD (pat, _) -> declare_pat pat
+  | LetD (pat, _, None) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
@@ -881,11 +881,12 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
-  | LetD (pat, exp) ->
+  | LetD (pat, exp, None) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
       k v
     )
+  | LetD (pat, exp, Some _) -> assert false
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
       define_id env id (V.Mut (ref v));

@@ -318,7 +318,7 @@ and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
-        S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
+        S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _, None); _ };
         _ }
       when id.it = name ->
       Some (
@@ -666,9 +666,9 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (decs prefix, exp e)
-  | false, S.LetD ({it = S.VarP x; _}, e) ->
+  | false, S.LetD ({it = S.VarP x; _}, e, None) ->
     (decs ds, varE (var x.it e.note.S.note_typ))
-  | false, S.LetD (p', e') ->
+  | false, S.LetD (p', e', None) ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
   | _, _ ->
@@ -683,7 +683,7 @@ and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
-  | S.LetD (p, e) ->
+  | S.LetD (p, e, None) ->
     let p' = pat p in
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)

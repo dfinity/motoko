@@ -191,7 +191,8 @@ and typ t = match t.it with
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
-  | LetD (p, e) -> "LetD" $$ [pat p; exp e]
+  | LetD (p, e, Some f) -> "LetD" $$ [pat p; exp e; exp f]
+  | LetD (p, e, None) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
