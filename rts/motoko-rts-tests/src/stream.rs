@@ -2,18 +2,8 @@
 
 use crate::memory::TestMemory;
 
-use motoko_rts::memory::Memory;
 use motoko_rts::stream::alloc_stream;
-use motoko_rts::text::{
-    blob_of_text, decode_code_point, text_compare, text_concat, text_len, text_of_str,
-    text_singleton, text_size,
-};
-use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{size_of, Blob, Bytes, Stream, Value, Words};
-
-use std::convert::TryFrom;
-
-use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
+use motoko_rts::types::{Bytes, Stream, Value, Words};
 
 pub unsafe fn test() {
     println!("Testing streaming ...");
@@ -70,11 +60,11 @@ pub unsafe fn test() {
     // TODO: cache_bytes more than STREAM_CHUNK_SIZE
 
     println!("  Testing stream flushing");
-    static mut written: Bytes<u32> = Bytes(0);
-    fn just_count(stream: *mut Stream, ptr: *const u8, n: Bytes<u32>) {
+    static mut WRITTEN: Bytes<u32> = Bytes(0);
+    fn just_count(_stream: *mut Stream, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             assert_eq!(*ptr, 'a' as u8);
-            written += n
+            WRITTEN += n
         }
     }
     let stream = alloc_stream(&mut mem, Bytes(STREAM_LARGE_SIZE));
@@ -83,17 +73,17 @@ pub unsafe fn test() {
     let place = stream.reserve(Bytes(STREAM_RESERVE_SIZE1));
     *place = 'a' as u8;
     *place.add(1) = 'b' as u8;
-    assert_eq!(written, Bytes(0)); // nothing written yet
+    assert_eq!(WRITTEN, Bytes(0)); // nothing written yet
     stream.shutdown();
-    assert_eq!(written, Bytes(STREAM_RESERVE_SIZE1)); // now!
+    assert_eq!(WRITTEN, Bytes(STREAM_RESERVE_SIZE1)); // now!
     const STREAM_RESERVE_SIZE2: u32 = 200;
     let place = stream.reserve(Bytes(STREAM_RESERVE_SIZE2));
     *place = 'a' as u8;
-    assert_eq!(written, Bytes(STREAM_RESERVE_SIZE1)); // nothing written yet
+    assert_eq!(WRITTEN, Bytes(STREAM_RESERVE_SIZE1)); // nothing written yet
     let place = stream.reserve(Bytes(STREAM_LARGE_SIZE - STREAM_RESERVE_SIZE2));
-    assert_eq!(written, Bytes(STREAM_RESERVE_SIZE1)); // nothing written yet
+    assert_eq!(WRITTEN, Bytes(STREAM_RESERVE_SIZE1)); // nothing written yet
     stream.cache_byte(97);
-    assert_eq!(written, Bytes(STREAM_LARGE_SIZE + STREAM_RESERVE_SIZE1)); // all at once
+    assert_eq!(WRITTEN, Bytes(STREAM_LARGE_SIZE + STREAM_RESERVE_SIZE1)); // all at once
     stream.shutdown();
-    assert_eq!(written, Bytes(STREAM_LARGE_SIZE + STREAM_RESERVE_SIZE1 + 1)); // u8 too
+    assert_eq!(WRITTEN, Bytes(STREAM_LARGE_SIZE + STREAM_RESERVE_SIZE1 + 1)); // u8 too
 }

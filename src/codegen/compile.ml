@@ -6760,21 +6760,16 @@ module StackRep = struct
     | _, _ when SR.eq sr1 sr2 -> sr1
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
-    | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
-    | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
+
+    | Const _, Const _ -> Vanilla
+    | Const _, sr2_ -> sr2
+    | sr1, Const _ -> sr1
+
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
-    | Const _, Const _ -> Vanilla
 
-    | Const _, UnboxedWord32 -> UnboxedWord32
-    | UnboxedWord32, Const _ -> UnboxedWord32
-    | Const _, UnboxedWord64 -> UnboxedWord64
-    | UnboxedWord64, Const _ -> UnboxedWord64
-    | Const _, UnboxedFloat64 -> UnboxedFloat64
-    | UnboxedFloat64, Const _ -> UnboxedFloat64
+    | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
 
-    | Const _, UnboxedTuple 0 -> UnboxedTuple 0
-    | UnboxedTuple 0, Const _-> UnboxedTuple 0
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
