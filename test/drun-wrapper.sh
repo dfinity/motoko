@@ -58,4 +58,6 @@ else
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
 
-ls -la /var/lib/apport/coredump
+if [-f "/var/lib/apport/coredump"]; then
+  ls -la /var/lib/apport/coredump
+fi
