@@ -62,8 +62,10 @@ pull_request_rules:
     conditions:
       - files=doc/docusaurus/package-lock.json
       - "#files=1"
-      - label=automerge-squash
     actions:
       review:
         type: APPROVE
         message: A change to `doc/docusaurus/package-lock.json`? I can handle that!
+      label:
+        add:
+        - automerge-squash
