@@ -1,5 +1,5 @@
-=> update create_canister(record {settings = null})
-<= replied: (record {hymijyo = principal "cvccv-qqaaq-aaaaa-aaaaa-c"})
+=> update provisional_create_canister_with_cycles(record {settings = null; amount = null})
+<= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
 => update go()
@@ -7,15 +7,15 @@ debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trappe
 debug.print: ok
 debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: cannot add more than 2^128 cycles"
 debug.print: canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: cycles out of bounds"
-debug.print: {balance = 0}
-debug.print: {topped_up_balance = 0}
+debug.print: {balance = 100_000_000_000_000}
+debug.print: {topped_up_balance = 100_000_000_000_000}
 debug.print: {added = 0}
 debug.print: {amount = 0; available = 0}
-debug.print: {balance = 0}
-debug.print: {topped_up_balance = 4_294_967_295}
+debug.print: {balance = 100_000_000_000_000}
+debug.print: {topped_up_balance = 100_000_000_000_000}
 debug.print: {added = 4_294_967_295}
 debug.print: {amount = 4_294_967_295; available = 4_294_967_295}
-debug.print: {balance = 4_294_967_295}
+debug.print: {balance = 100_000_000_000_000}
 debug.print: {topped_up_balance = 18_446_744_073_709_551_615}
 debug.print: {added = 18_446_744_073_709_551_615}
 debug.print: {amount = 18_446_744_073_709_551_615; available = 18_446_744_073_709_551_615}
