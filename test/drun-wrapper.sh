@@ -23,8 +23,6 @@ fi
 
 export LANG=C.UTF-8
 
-export RUST_MIN_STACK=1024
-
 # this could be used to delay drun to make it more deterministic, but
 # it doesn't work reliably and slows down the test significantly.
 # so until DFN-1269 fixes this properly, let's just not run
@@ -34,7 +32,8 @@ EXTRA_BATCHES=1
 # on darwin, I have seen
 #   thread 'MR Batch Processor' has overflowed its stack
 # and this helps (default is 2MB)
-export RUST_MIN_STACK=$((10*1024*1024))
+#export RUST_MIN_STACK=$((10*1024*1024))
+echo $RUST_MIN_STACK
 
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
