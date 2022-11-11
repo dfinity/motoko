@@ -31,5 +31,5 @@ jobs:
       with:
         author_name: Nix hash updater
         author_email: "<nobody@example.com>"
-        github_token: ${{ secrets.HASH_UPDATE_TOKEN }}
+        github_token: ${{ secrets.NIV_UPDATER_TOKEN }}
         message: "Updating nix hashes"
