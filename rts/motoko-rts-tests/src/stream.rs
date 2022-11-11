@@ -3,7 +3,7 @@
 use crate::memory::TestMemory;
 
 use motoko_rts::stream::alloc_stream;
-use motoko_rts::types::{Bytes, Stream, Value, Words};
+use motoko_rts::types::{size_of, Blob, Bytes, Stream, Value, Words};
 
 pub unsafe fn test() {
     println!("Testing streaming ...");
@@ -80,7 +80,7 @@ pub unsafe fn test() {
     let place = stream.reserve(Bytes(STREAM_RESERVE_SIZE2));
     *place = 'a' as u8;
     assert_eq!(WRITTEN, Bytes(STREAM_RESERVE_SIZE1)); // nothing written yet
-    let place = stream.reserve(Bytes(STREAM_LARGE_SIZE - STREAM_RESERVE_SIZE2));
+    stream.reserve(Bytes(STREAM_LARGE_SIZE - STREAM_RESERVE_SIZE2));
     assert_eq!(WRITTEN, Bytes(STREAM_RESERVE_SIZE1)); // nothing written yet
     stream.cache_byte(97);
     assert_eq!(WRITTEN, Bytes(STREAM_LARGE_SIZE + STREAM_RESERVE_SIZE1)); // all at once
