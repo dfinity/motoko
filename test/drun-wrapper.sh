@@ -32,8 +32,9 @@ EXTRA_BATCHES=1
 # on darwin, I have seen
 #   thread 'MR Batch Processor' has overflowed its stack
 # and this helps (default is 2MB)
-#export RUST_MIN_STACK=$((10*1024*1024))
-echo $RUST_MIN_STACK
+export RUST_MIN_STACK=$((10*1024*1024))
+
+export RUST_BACKTRACE=1
 
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
