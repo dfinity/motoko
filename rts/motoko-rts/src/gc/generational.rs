@@ -119,7 +119,9 @@ const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
 
+    debug_assert!(limits.base <= limits.last_free);
     let old_generation_size = limits.last_free - limits.base;
+    debug_assert!(limits.last_free <= limits.free);
     let young_generation_size = limits.free - limits.last_free;
 
     if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
