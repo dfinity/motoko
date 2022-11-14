@@ -436,7 +436,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let old_pointer = (bit * WORD_SIZE) as *mut Obj;
             let new_pointer = free;
 
-            // Update backwards references to the object's new location and restore object header
+            // Unthread backwards pointers of heap objects and forward pointers of static objects
             self.unthread(old_pointer, new_pointer);
 
             // Move the object
