@@ -184,9 +184,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn alloc_mark_structures(&mut self) {
-        const BITMAP_ALGNMENT: usize = 8 * WORD_SIZE as usize;
+        const BITMAP_ALIGNMENT: usize = 8 * WORD_SIZE as usize;
         let mark_offset = match self.strategy {
-            Strategy::Young => self.heap.limits.last_free / BITMAP_ALGNMENT * BITMAP_ALGNMENT,
+            Strategy::Young => self.heap.limits.last_free / BITMAP_ALIGNMENT * BITMAP_ALIGNMENT,
             Strategy::Full => self.heap.limits.base,
         };
         let mem_size = Bytes((self.heap.limits.free - mark_offset) as u32);
