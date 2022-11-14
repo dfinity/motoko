@@ -132,6 +132,7 @@ let parse_file' mode at filename : (Syntax.prog * rel_path) Diag.result =
   )
 
 let parse_file = parse_file' Lexer.mode
+let parse_verification_file = parse_file' Lexer.mode_verification
 
 (* Import file name resolution *)
 
@@ -236,7 +237,7 @@ let internals, initial_stat_env =
 
 let parse_stab_sig s name  =
   let open Diag.Syntax in
-  let mode = {Lexer.privileged = false} in
+  let mode = Lexer.{mode with privileged = false} in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_stab_sig in
   let* sig_ = generic_parse_with mode lexer parse name in
@@ -246,7 +247,7 @@ let parse_stab_sig_from_file filename : Syntax.stab_sig Diag.result =
   let ic = Stdlib.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
-    let mode = {Lexer.privileged = false} in
+    let mode = Lexer.{mode with privileged = false} in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_stab_sig in
     let* sig_ = generic_parse_with mode lexer parse filename in
@@ -489,7 +490,7 @@ type viper_result = (string * (Source.region -> Source.region option)) Diag.resu
 
 let viper_files' parsefn files : viper_result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
+  let* libs, progs, senv = load_progs parsefn files initial_stat_env in
   let* () = Typing.check_actors senv progs in
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
@@ -498,7 +499,7 @@ let viper_files' parsefn files : viper_result =
   Diag.return s
 
 let viper_files files : viper_result =
-  viper_files' parse_file files
+  viper_files' parse_verification_file files
 
 (* Generate IDL *)
 

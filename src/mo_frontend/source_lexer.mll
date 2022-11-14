@@ -213,7 +213,7 @@ rule token mode = parse
   | "ignore" { IGNORE }
   | "in" { IN }
   | "invariant" { INVARIANT }
-  | "implies" { IMPLIES }
+  | "implies" as s { if mode.verification then IMPLIES else ID s }
   | "import" { IMPORT }
   | "module" { MODULE }
   | "not" { NOT }
