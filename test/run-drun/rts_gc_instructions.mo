@@ -30,7 +30,7 @@ actor a {
        }));
 */
        assert (pre <= size);
-       assert (preMutatorInstructions <= mutatorInstructions);
+       //assert (preMutatorInstructions <= mutatorInstructions);
        assert (preCollectorInstructions <= collectorInstructions);
        pre := size;
        preMutatorInstructions := mutatorInstructions;
