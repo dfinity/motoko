@@ -25,17 +25,20 @@ pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
 /// No effect is the write barrier is deactivated.
 #[ic_mem_fn]
 pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
-    debug_assert_eq!(location & 0b1, 0); // must be unskewed address
-    match &mut REMEMBERED_SET {
-        None => return,
-        Some(remembered_set) => {
-            // Only record locations inside old generation, static roots are anyway marked by GC.
-            if location >= HEAP_BASE && location < LAST_HP {
-                let value = *(location as *mut Value);
-                if value.points_to_or_beyond(LAST_HP as usize) {
-                    // trap pointers that lead from old generation (or static roots) to young generation
-                    remembered_set.insert(mem, Value::from_raw(location));
-                }
+    // Must be an unskewed address.
+    debug_assert_eq!(location & 0b1, 0);
+    // Checks have been optimized according to the frequency of occurrence.
+    // Only record locations inside old generation. Static roots are anyway marked by GC.
+    if location < LAST_HP {
+        // Nested ifs are more efficient when counting instructions on IC (explicit return counts as an instruction).
+        let value = *(location as *mut Value);
+        if value.points_to_or_beyond(LAST_HP as usize) {
+            if location >= HEAP_BASE {
+                // Trap pointers that lead from old generation (or static roots) to young generation.
+                REMEMBERED_SET
+                    .as_mut()
+                    .unwrap()
+                    .insert(mem, Value::from_raw(location));
             }
         }
     }
