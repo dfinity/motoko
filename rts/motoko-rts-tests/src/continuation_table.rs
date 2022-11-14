@@ -26,7 +26,7 @@ pub unsafe fn test() {
     }
 
     for i in 0..N / 2 {
-        let c = recall_continuation(&mut heap, references[i]);
+        let c = recall_continuation(references[i]);
         assert_eq!(c.get_raw(), (i << 2).wrapping_sub(1) as u32);
         assert_eq!(continuation_count(), (N - i - 1) as u32);
     }
@@ -41,7 +41,7 @@ pub unsafe fn test() {
 
     for i in (0..N).rev() {
         assert_eq!(
-            recall_continuation(&mut heap, references[i]).get_raw(),
+            recall_continuation(references[i]).get_raw(),
             (i << 2).wrapping_sub(1) as u32,
         );
         assert_eq!(continuation_count(), i as u32);

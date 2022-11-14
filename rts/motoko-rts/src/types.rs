@@ -417,31 +417,34 @@ pub struct Array {
 }
 
 impl Array {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+    pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
-        debug_assert!(self.len() > idx);
-        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        let slot_addr = self.element_address(idx);
         *(slot_addr as *const Value)
     }
 
-    /// Set the array element, by deciding whether a post-update barrier is necessary.
-    pub unsafe fn set<M: Memory>(
-        self: *mut Self,
-        idx: u32,
-        value: Value,
-        use_barrier: bool,
-        mem: &mut M,
-    ) {
-        debug_assert!(self.len() > idx);
-        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
+    /// Write a pointer value to an array element. Uses a post-update barrier.
+    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+        debug_assert!(value.is_ptr());
+        let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
-        debug_assert_eq!(use_barrier, value.is_ptr());
-        if use_barrier {
-            write_barrier(mem, slot_addr as u32);
-        }
+        write_barrier(mem, slot_addr as u32);
+    }
+
+    /// Write a scalar value to an array element. No need for a write barrier.
+    pub unsafe fn set_scalar(self: *mut Self, idx: u32, value: Value) {
+        debug_assert!(value.is_scalar());
+        let slot_addr = self.element_address(idx);
+        *(slot_addr as *mut Value) = value;
+    }
+
+    #[inline]
+    unsafe fn element_address(self: *const Self, idx: u32) -> usize {
+        debug_assert!(self.len() > idx);
+        self.payload_addr() as usize + (idx * WORD_SIZE) as usize
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {

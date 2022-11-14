@@ -47,7 +47,7 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
 
     let table = TABLE.as_array();
     for i in 0..INITIAL_SIZE {
-        table.set(i, Value::from_scalar(i + 1), false, mem);
+        table.set_scalar(i, Value::from_scalar(i + 1));
     }
 }
 
@@ -64,11 +64,15 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     for i in 0..old_size {
         let old_value = old_array.get(i);
-        new_array.set(i, old_value, old_value.is_ptr(), mem);
+        if old_value.is_ptr() {
+            new_array.set_pointer(i, old_value, mem);
+        } else {
+            new_array.set_scalar(i, old_value);
+        }
     }
 
     for i in old_size..new_size {
-        new_array.set(i, Value::from_scalar(i + 1), false, mem);
+        new_array.set_scalar(i, Value::from_scalar(i + 1));
     }
 }
 
@@ -97,7 +101,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     FREE_SLOT = table.get(idx).get_scalar();
 
-    table.set(idx, ptr, true, mem);
+    table.set_pointer(idx, ptr, mem);
 
     N_CONTINUATIONS += 1;
 
@@ -127,8 +131,8 @@ pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
     ptr.as_array().get(FUTURE_ARRAY_INDEX)
 }
 
-#[ic_mem_fn]
-pub unsafe fn recall_continuation<M: Memory>(mem: &mut M, idx: u32) -> Value {
+#[no_mangle]
+pub unsafe fn recall_continuation(idx: u32) -> Value {
     if !table_initialized() {
         rts_trap_with("recall_continuation: Continuation table not allocated");
     }
@@ -141,7 +145,7 @@ pub unsafe fn recall_continuation<M: Memory>(mem: &mut M, idx: u32) -> Value {
 
     let ptr = table.get(idx);
 
-    table.set(idx, Value::from_scalar(FREE_SLOT), false, mem);
+    table.set_scalar(idx, Value::from_scalar(FREE_SLOT));
 
     FREE_SLOT = idx;
 
