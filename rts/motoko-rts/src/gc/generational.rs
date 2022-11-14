@@ -76,10 +76,11 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
+    debug_assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
     use crate::memory::ic;
     Limits {
         base: ic::get_aligned_heap_base() as usize,
-        last_free: core::cmp::max(ic::LAST_HP as usize, ic::get_aligned_heap_base() as usize), // max because of aligned heap base
+        last_free: ic::LAST_HP as usize,
         free: ic::HP as usize,
     }
 }
