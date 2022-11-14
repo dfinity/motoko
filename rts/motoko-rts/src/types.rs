@@ -38,6 +38,7 @@ pub struct Words<A>(pub A);
 
 impl Words<u32> {
     pub fn to_bytes(self) -> Bytes<u32> {
+        assert!(self.0 <= usize / WORD_SIZE);
         Bytes(self.0 * WORD_SIZE)
     }
 
