@@ -40,6 +40,9 @@ unsafe extern "C" fn init(align: bool) {
     } else {
         get_heap_base()
     };
+    if HP % 32 != 0 {
+        println!(100, "ALIGNMENT {}", HP % 32);
+    }
     LAST_HP = HP;
 }
 
