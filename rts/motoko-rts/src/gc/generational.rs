@@ -177,7 +177,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     pub unsafe fn run(&mut self) {
-        assert_eq!(self.heap.limits.base % 32, 0);
         self.alloc_mark_structures();
         self.mark_phase();
         self.compact_phase();
