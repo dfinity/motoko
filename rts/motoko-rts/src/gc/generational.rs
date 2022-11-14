@@ -76,10 +76,11 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
+    debug_assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
     use crate::memory::ic;
     Limits {
         base: ic::get_aligned_heap_base() as usize,
-        last_free: core::cmp::max(ic::LAST_HP as usize, ic::get_aligned_heap_base() as usize), // max because of aligned heap base
+        last_free: ic::LAST_HP as usize,
         free: ic::HP as usize,
     }
 }
@@ -177,7 +178,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     pub unsafe fn run(&mut self) {
-        assert_eq!(self.heap.limits.base % 32, 0);
         self.alloc_mark_structures();
         self.mark_phase();
         self.compact_phase();
@@ -185,9 +185,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn alloc_mark_structures(&mut self) {
-        const BITMAP_ALGNMENT: usize = 8 * WORD_SIZE as usize;
+        const BITMAP_ALIGNMENT: usize = 8 * WORD_SIZE as usize;
         let mark_offset = match self.strategy {
-            Strategy::Young => self.heap.limits.last_free / BITMAP_ALGNMENT * BITMAP_ALGNMENT,
+            Strategy::Young => self.heap.limits.last_free / BITMAP_ALIGNMENT * BITMAP_ALIGNMENT,
             Strategy::Full => self.heap.limits.base,
         };
         let mem_size = Bytes((self.heap.limits.free - mark_offset) as u32);
@@ -316,14 +316,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
     }
 
-    unsafe fn should_be_threaded(&self, object: *mut Obj) -> bool {
-        let address = object as usize;
-        match self.strategy {
-            Strategy::Young => address >= self.heap.limits.last_free,
-            Strategy::Full => address >= self.heap.limits.base,
-        }
-    }
-
     unsafe fn compact_phase(&mut self) {
         if self.is_compaction_beneficial() {
             self.thread_initial_phase();
@@ -444,7 +436,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let old_pointer = (bit * WORD_SIZE) as *mut Obj;
             let new_pointer = free;
 
-            // Update backwards references to the object's new location and restore object header
+            // Unthread backwards pointers of heap objects and forward pointers of static objects
             self.unthread(old_pointer, new_pointer);
 
             // Move the object
@@ -499,5 +491,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
         debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
         (*object).tag = header;
+    }
+
+    unsafe fn should_be_threaded(&self, object: *mut Obj) -> bool {
+        object as usize >= self.generation_base()
     }
 }

@@ -41,7 +41,7 @@ jobs:
     - name: "upload-core-dumps"
       uses: actions/upload-artifact@master
       with:
-        name: nix-build
+        name: core-dump
         path: /var/lib/apport/coredump
 
     - name: Calculate performance delta

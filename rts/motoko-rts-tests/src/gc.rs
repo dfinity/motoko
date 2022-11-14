@@ -12,9 +12,7 @@ mod utils;
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
-use utils::{
-    get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
-};
+use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
