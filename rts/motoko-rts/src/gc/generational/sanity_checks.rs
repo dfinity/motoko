@@ -22,7 +22,7 @@ pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
     SNAPSHOT = blob;
 }
 
-/// Verify write barrier coverag by comparing the memory against the previous snapshot.
+/// Verify write barrier coverage by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
 pub unsafe fn verify_snapshot<M: Memory>(heap: &Heap<M>, verify_roots: bool) {
     if SNAPSHOT.is_null() {
