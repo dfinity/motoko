@@ -5,7 +5,7 @@
 //! A write barrier catches all pointers leading from old to young generation.
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
-mod mark_stack;
+pub mod mark_stack;
 pub mod remembered_set;
 #[cfg(debug_assertions)]
 mod sanity_checks;
