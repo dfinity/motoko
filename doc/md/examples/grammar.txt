@@ -160,7 +160,7 @@
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
     <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
-    <exp_post> BANG
+    <exp_post> '!'
     '(' 'system' <exp_post> '.' <id> ')'
 
 <exp_un> ::= 
