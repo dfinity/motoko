@@ -40,9 +40,6 @@ unsafe extern "C" fn init(align: bool) {
     } else {
         get_heap_base()
     };
-    if HP % 32 != 0 {
-        println!(100, "ALIGNMENT {}", HP % 32);
-    }
     LAST_HP = HP;
 }
 
@@ -102,6 +99,7 @@ unsafe fn grow_memory(ptr: u64) {
     let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
+        *(ptr as *mut usize) = 0;
         #[allow(clippy::collapsible_if)] // faster by 1% if not colapsed with &&
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
             rts_trap_with("Cannot grow memory");
