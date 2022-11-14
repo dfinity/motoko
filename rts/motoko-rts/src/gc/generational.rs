@@ -418,10 +418,13 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
+            debug_assert!(
+                (location as usize) >= self.heap.limits.base
+                    && (location as usize) < self.heap.limits.last_free
+            );
             let value = *location;
             // value in the location may have changed since recording by the write barrer
             if value.points_to_or_beyond(self.heap.limits.last_free) {
-                debug_assert!((location as usize) >= self.heap.limits.base);
                 self.thread(location);
             }
             iterator.next();
