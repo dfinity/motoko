@@ -60,6 +60,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
+    assert!(HP >= get_aligned_heap_base());
     Bytes(HP - get_aligned_heap_base())
 }
 
@@ -79,10 +80,11 @@ impl Memory for IcMemory {
         let old_hp = u64::from(HP);
         let new_hp = old_hp + delta;
 
+        assert!(new_hp <= u64::from(core::u32::MAX));
+
         // Grow memory if needed
         grow_memory(new_hp);
 
-        debug_assert!(new_hp <= u64::from(core::u32::MAX));
         HP = new_hp as u32;
 
         Value::from_ptr(old_hp as usize)

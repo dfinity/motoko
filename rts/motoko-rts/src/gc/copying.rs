@@ -59,6 +59,8 @@ pub unsafe fn copying_gc_internal<
     let end_from_space = get_hp();
     let begin_to_space = end_from_space;
 
+    assert!(begin_from_space <= begin_to_space);
+
     let static_roots = static_roots.as_array();
 
     // Evacuate roots
@@ -89,6 +91,10 @@ pub unsafe fn copying_gc_internal<
 
     let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
     note_reclaimed(Bytes(reclaimed as u32));
+
+    assert!(begin_from_space <= end_from_space);
+    assert!(end_from_space <= begin_to_space);
+    assert!(begin_to_space <= end_to_space);
 
     // Copy to-space to the beginning of from-space
     memcpy_bytes(
@@ -145,6 +151,8 @@ unsafe fn evac<M: Memory>(
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();
+
+    assert!(obj_addr >= begin_to_space);
 
     // Copy object to to-space
     memcpy_words(obj_addr, obj as usize, obj_size);
