@@ -10,6 +10,9 @@ s/<id>/ID/g
 /^<parse_prog_interactive> ::=/,+3d
 /^<import_list> ::=/,+2d
 /^<parse_module_header> ::=/,+2d
+/^<stab_field> ::=/,+2d
+/^<typ_dec> ::=/,+2d
+/^<parse_stab_sig> ::=/,+2d
 /.*PRIM.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d
@@ -27,6 +30,14 @@ s/<semicolon>/\';\'/g
 s/<annot_opt>/(':' <typ>)?/g
 s/<pat_opt>/<pat_plain>?/g
 s/epsilon/<empty>/g
+s/WRAPADDASSIGN/\'+%=\'/g
+s/WRAPSUBASSIGN/\'-%=\'/g
+s/WRAPMULASSIGN/\'*%=\'/g
+s/WRAPPOWASSIGN/\'**%=\'/g
+s/WRAPADDOP/\'+%\'/g
+s/WRAPSUBOP/\'-%\'/g
+s/WRAPMULOP/\'*%\'/g
+s/WRAPPOWOP/\'**%\'/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
 s/IGNORE/\'ignore\'/g
@@ -35,8 +46,8 @@ s/XOROP/\'^\'/g
 s/XORASSIGN/\'^=\'/g
 s/WHILE/\'while\'/g
 s/VAR/\'var\'/g
-s/USHROP/\' >>\'/g
-s/USHRASSIGN/\'>>=\'/g
+s/SHROP/\' >>\'/g
+s/SHRASSIGN/\'>>=\'/g
 s/UNDERSCORE/\'_\'/g
 s/TYPE/\'type\'/g
 s/TRY/\'try\'/g
@@ -46,8 +57,6 @@ s/SWITCH/\'switch\'/g
 s/SUBOP/\'-\'/g
 s/SUB/\'<:\'/g
 s/STABLE/\'stable\'/g
-s/SSHROP/\'+>>\'/g
-s/SSHRASSIGN/\'+>>=\'/g
 s/SHLOP/\'<<\'/g
 s/SHLASSIGN/\'<<=\'/g
 s/SHARED/\'shared\'/g
@@ -92,6 +101,8 @@ s/LABEL/\'label\'/g
 s/CONTINUE/\'continue\'/g
 s/IN/\'in\'/g
 s/IF/\'if\'/g
+s/TO_CANDID/\'to_candid\'/g
+s/FROM_CANDID/\'from_candid\'/g
 s/ID/<id>/g
 s/HASH/\'#\'/g
 s/GTOP/\' > \'/g
@@ -132,10 +143,3 @@ s/OR/\'or\'/g
 s/AND/\'and\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/
-/    '{' <list(<dec_var>, ';')> '}'/d
-s/    '{' <deprecated_exp_field_list_unamb> '}'/    '{' <list(<exp_field>, ';')> '}'/
-s/    '{' <deprecated_dec_list_unamb> '}'/    '{' <list(<dec>, ';')> '}'/
-/    <deprecated_pat_opt>/d
-/^<deprecated_/,$d
-/<exp_field_nonvar>/,+2d
-s/^<exp_field> ::= /<exp_field> ::= \n    'var'? <id> '=' <exp>\n/

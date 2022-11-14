@@ -137,18 +137,6 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Int64) ->
     define_show t (invoke_prelude_show "@text_of_Int64" t (argE t)),
     []
-  | T.(Prim Word8) ->
-    define_show t (invoke_prelude_show "@text_of_Word8" t (argE t)),
-    []
-  | T.(Prim Word16) ->
-    define_show t (invoke_prelude_show "@text_of_Word16" t (argE t)),
-    []
-  | T.(Prim Word32) ->
-    define_show t (invoke_prelude_show "@text_of_Word32" t (argE t)),
-    []
-  | T.(Prim Word64) ->
-    define_show t (invoke_prelude_show "@text_of_Word64" t (argE t)),
-    []
   | T.(Prim Float) ->
     define_show t (invoke_prelude_show "@text_of_Float" t (argE t)),
     []
@@ -218,7 +206,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     define_show t (
       switch_variantE
         (argE t)
-        (List.map (fun {T.lab = l; typ = t'} ->
+        (List.map (fun {T.lab = l; typ = t'; _} ->
           let t' = T.normalize t' in
           l,
           (varP (argVar t')), (* Shadowing, but that's fine *)
@@ -228,7 +216,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
-    define_show t unreachableE,
+    define_show t (unreachableE ()),
     []
   | _ -> assert false (* Should be prevented by can_show *)
 
@@ -305,15 +293,23 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, {pre; post}, typ) ->
+  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
-    let pre' = t_exp env1 pre in
-    let post' = t_exp env1 post in
+    let preupgrade' = t_exp env1 preupgrade in
+    let postupgrade' = t_exp env1 postupgrade in
+    let heartbeat' = t_exp env1 heartbeat in
+    let inspect' = t_exp env1 inspect in
     let decls = show_decls !(env1.params) in
-    ActorE (decls @ ds', fields, {pre = pre'; post = post'}, typ)
+    ActorE (decls @ ds', fields,
+      { meta;
+        preupgrade = preupgrade';
+        postupgrade = postupgrade';
+        heartbeat = heartbeat';
+        inspect = inspect'
+      }, typ)
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function
@@ -329,6 +325,7 @@ and t_dec' env dec' =
   match dec' with
   | LetD (pat,exp) -> LetD (pat,t_exp env exp)
   | VarD (id, typ, exp) -> VarD (id, typ, t_exp env exp)
+  | RefD (id, typ, lexp) -> RefD (id, typ, t_lexp env lexp)
 
 and t_decs env decs = List.map (t_dec env) decs
 
@@ -341,15 +338,24 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = show_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {pre; post}, typ) ->
+  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
-    let pre' = t_exp env pre in
-    let post' = t_exp env post in
+    let preupgrade' = t_exp env preupgrade in
+    let postupgrade' = t_exp env postupgrade in
+    let heartbeat' = t_exp env heartbeat in
+    let inspect' = t_exp env inspect in
     let decls = show_decls !(env.params) in
-    ActorU (as_opt, decls @ ds', fields, {pre = pre'; post = post'}, typ)
+    ActorU (as_opt, decls @ ds', fields,
+      { meta;
+        preupgrade = preupgrade';
+        postupgrade = postupgrade';
+        heartbeat = heartbeat';
+        inspect = inspect';
+      }, typ)
 
 (* Entry point for the program transformation *)
 
 let transform (cu, flavor) =
+  assert (not flavor.has_typ_field); (* required for hash_typ *)
   (t_comp_unit cu, {flavor with has_show = false})

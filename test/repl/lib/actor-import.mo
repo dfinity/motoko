@@ -1,2 +1,2 @@
-import "ic:em77e-bvlzu-aq";
-import "canister:alias";
+import _ = "ic:em77e-bvlzu-aq";
+import _ = "canister:alias";

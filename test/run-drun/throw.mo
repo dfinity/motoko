@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // This is like local-throw.as, just not local
 // (Using `await async { … }` around relevant parts
 

@@ -1,1 +1,2 @@
-include!(concat!("../../_build/tommath_bindings.rs"));
+#![allow(unused, non_camel_case_types)]
+include!("../../_build/tommath_bindings.rs");

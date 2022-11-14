@@ -1,7 +1,7 @@
 open Mo_def
 open Ir_def
 
-(* These declaratoins are all internal, either from prelude (@-prefixed)
+(* These declarations are all internal, either from prelude (@-prefixed)
    or to bring libraries into scope *)
 type import_declaration = Ir.dec list
 

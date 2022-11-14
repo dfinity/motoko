@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
   public shared func id(i : Nat) : async Nat { i };
 

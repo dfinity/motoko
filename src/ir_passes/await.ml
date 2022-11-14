@@ -145,10 +145,14 @@ and t_exp' context exp' =
         let context' = LabelEnv.add Return (Cont (ContVar k_ret)) LabelEnv.empty in
         blockE [funcD k_ret v (varE v)]
           (c_exp context' exp1 (ContVar k_ret)))
-  | ActorE (ds, ids, { pre; post }, t) ->
+  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
     ActorE (t_decs context ds, ids,
-      { pre = t_exp LabelEnv.empty pre;
-        post = t_exp LabelEnv.empty post},
+      { meta;
+        preupgrade = t_exp LabelEnv.empty preupgrade;
+        postupgrade = t_exp LabelEnv.empty postupgrade;
+        heartbeat = t_exp LabelEnv.empty heartbeat;
+        inspect = t_exp LabelEnv.empty inspect
+      },
       t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
@@ -169,6 +173,7 @@ and t_dec' context dec' =
   match dec' with
   | LetD (pat, exp) -> LetD (pat, t_exp context exp)
   | VarD (id, t, exp) -> VarD (id, t, t_exp context exp)
+  | RefD (id, t, lexp) -> RefD (id, t, t_lexp context lexp)
 
 and t_decs context decs = List.map (t_dec context) decs
 
@@ -206,7 +211,7 @@ and nary context k naryE es =
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
       (* TBR: optimization - no need to name the last trivial argument *)
-      k -@- naryE (List.rev (e1 :: vs))
+      k -@- naryE (List.rev (t_exp context e1 :: vs))
     | e1 :: es ->
       match eff e1 with
       | T.Triv ->
@@ -244,7 +249,7 @@ and c_loop context k e1 =
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
-      (varE loop -*- unitE)
+      (varE loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
  match lexp1.it with
@@ -449,12 +454,13 @@ and c_dec context dec (k:kont) =
           (meta (typ exp)
             (fun v -> k -@- define_idE id Var (varE v)))
     end
-
+  | RefD (id, _typ, _lexp) -> assert false
+    (* TODO: unclear if this can arise at all, and if so, how to translate it with existing tools *)
 
 and c_decs context decs k =
   match decs with
   | [] ->
-    k -@- unitE
+    k -@- unitE ()
   | dec :: decs ->
     c_dec context dec (meta T.unit (fun v -> c_decs context decs k))
 
@@ -463,7 +469,8 @@ and c_decs context decs k =
 and declare_dec dec exp : exp =
   match dec.it with
   | LetD (pat, _) -> declare_pat pat exp
-  | VarD (id, typ, exp1) -> declare_id id (T.Mut typ) exp
+  | VarD (id, typ, _exp1) -> declare_id id (T.Mut typ) exp
+  | RefD (id, typ, _exp1) -> declare_id id typ exp
 
 and declare_decs decs exp : exp =
   match decs with
@@ -560,14 +567,18 @@ and t_comp_unit context = function
         let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
         let e = fresh_var "e" T.catch in
         ProgU [
-          funcD throw e (assertE falseE);
+          funcD throw e (assertE (falseE ()));
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { pre; post }, t) ->
+  | ActorU (as_opt, ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
     ActorU (as_opt, t_decs context ds, ids,
-      { pre = t_exp LabelEnv.empty pre;
-        post = t_exp LabelEnv.empty post},
+      { meta;
+        preupgrade = t_exp LabelEnv.empty preupgrade;
+        postupgrade = t_exp LabelEnv.empty postupgrade;
+        heartbeat = t_exp LabelEnv.empty heartbeat;
+        inspect = t_exp LabelEnv.empty inspect;
+      },
       t)
 
 and t_prog (prog, flavor) =

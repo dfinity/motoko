@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 type WithMut = { var x : Int; y : Text };
 

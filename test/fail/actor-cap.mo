@@ -1,4 +1,4 @@
-import Prim "mo:prim"
+import Prim "mo:⛔"
 
 actor class C () = self {
   return self;

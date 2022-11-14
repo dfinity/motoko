@@ -63,9 +63,14 @@ type env =
     rets : ret_env;
     async : T.con option;
     seen : con_env ref;
+    check_run : int;
   }
 
+let last_run : int ref = ref 0
+
 let initial_env flavor : env =
+  let check_run = !last_run + 1 in
+  last_run := check_run;
   { flavor;
     lvl = TopLvl;
     vals = T.Env.empty;
@@ -76,6 +81,7 @@ let initial_env flavor : env =
                        | (NullCap | ErrorCap) -> None
                        | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
     seen = ref T.ConSet.empty;
+    check_run;
   }
 
 
@@ -88,12 +94,9 @@ let type_error at : string -> Diag.message = Diag.error_message at "M0000" "IR t
 let error env at fmt =
     Printf.ksprintf (fun s -> raise (CheckFailed (Diag.string_of_message (type_error at s)))) fmt
 
-let check env at p fmt =
-  if p
-  then Printf.ikfprintf (fun () -> ()) () fmt
-  else error env at fmt
-
-
+let check env at p s =
+  if not p then
+    error env at "%s" s
 
 let add_lab c x t = {c with labs = T.Env.add x t c.labs}
 
@@ -122,16 +125,17 @@ let disjoint_union env at fmt env1 env2 =
 
 (* FIX ME: these error reporting functions are eager and will construct unnecessary type strings !*)
 let check_sub env at t1 t2 =
-  check env at (T.sub t1 t2) "subtype violation:\n  %s\n  %s\n"
-    (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
+  if not (T.sub t1 t2) then
+    error env at "subtype violation:\n  %s\n  %s\n"
+      (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
 
 let check_shared env at t =
-  check env at (T.shared t)
-    "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
+  if not (T.shared t) then
+    error env at "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
 
 let check_concrete env at t =
-  check env at (T.concrete t)
-    "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
+  if not (T.concrete t) then
+    error env at "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
 let has_prim_eq t =
   (* Which types have primitive equality implemented in the backend? *)
@@ -165,13 +169,13 @@ let rec check_typ env typ : unit =
   | T.Con (c, typs) ->
     List.iter (check_typ env) typs;
     begin
-      match Con.kind c with
+      match Cons.kind c with
       | T.Def (tbs,_) ->
         check_con env c;
         check_typ_bounds env tbs typs no_region
       | T.Abs (tbs, _) ->
-        check env no_region (T.ConSet.mem c env.cons) "free type constructor %s "
-          (T.string_of_typ typ);
+        if not (T.ConSet.mem c env.cons) then
+          error env no_region "free type constructor %s " (T.string_of_typ typ);
         check_typ_bounds env tbs typs no_region
     end
   | T.Any -> ()
@@ -195,28 +199,28 @@ let rec check_typ env typ : unit =
       | T.Returns ->
         check env no_region (sort = T.Shared T.Write)
           "one-shot query function pointless";
-        check env no_region (ts2 = [])
-          "one-shot function cannot have non-unit return types:\n  %s"
-          (T.string_of_typ_expand (T.seq ts2));
+        if not (ts2 = []) then
+          error env no_region "one-shot function cannot have non-unit return types:\n  %s"
+            (T.string_of_typ_expand (T.seq ts2));
       | T.Promises ->
         check env no_region (binds <> [])
           "promising function has no scope type argument";
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
-        check env no_region (sort <> T.Local)
-          "promising function cannot be local:\n  %s" (T.string_of_typ typ);
-        check env no_region (List.for_all T.shared ts2)
-          "message result is not sharable:\n  %s" (T.string_of_typ typ)
+        if not (sort <> T.Local) then
+          error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ typ);
+        if not (List.for_all T.shared ts2) then
+          error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
       | T.Replies ->
         check env no_region (not env.flavor.Ir.has_async_typ)
           "replying function in pre-async flavor";
-        check env no_region (sort <> T.Local)
-          "replying function cannot be local:\n  %s" (T.string_of_typ typ);
-        check env no_region (List.for_all T.shared ts2)
-          "message result is not sharable:\n  %s" (T.string_of_typ typ)
-    end else
-        check env no_region (control = T.Returns)
-          "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
+        if not (sort <> T.Local) then
+          error env no_region"replying function cannot be local:\n  %s" (T.string_of_typ typ);
+        if not (List.for_all T.shared ts2) then
+          error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
+      end else
+     if not (control = T.Returns) then
+       error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
   | T.Async (typ1, typ2) ->
@@ -250,7 +254,7 @@ and check_con env c =
   else
   begin
     env.seen := T.ConSet.add c !(env.seen);
-    let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    let T.Abs (binds,typ) | T.Def (binds, typ) = Cons.kind c in
     check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
     check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
@@ -262,7 +266,10 @@ and check_con env c =
 and check_typ_field env s tf : unit =
   match tf.T.typ, s with
   | T.Mut t, Some (T.Object | T.Memory) -> check_typ env t
-  | T.Typ c, Some _ -> check_con env c
+  | T.Typ c, Some _ ->
+    check env no_region env.flavor.Ir.has_typ_field
+     "typ field in non-typ_field flavor";
+    check_con env c
   | t, Some T.Actor when not (T.is_shared_func t) ->
     error env no_region "actor field %s must have shared function type" tf.T.lab
   | t, _ -> check_typ env t
@@ -332,10 +339,6 @@ let type_lit env lit at : T.prim =
   | Int16Lit _ -> T.Int16
   | Int32Lit _ -> T.Int32
   | Int64Lit _ -> T.Int64
-  | Word8Lit _ -> T.Word8
-  | Word16Lit _ -> T.Word16
-  | Word32Lit _ -> T.Word32
-  | Word64Lit _ -> T.Word64
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
@@ -362,6 +365,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
+  (* check for aliasing *)
+  if exp.note.Note.check_run = env.check_run
+  then
+    Printf.eprintf "IR has aliasing (or Check_ir visits nodes twice):\n%s"
+      (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+  exp.note <- { exp.note with Note.check_run = env.check_run };
   (* check type annotation *)
   let t = E.typ exp in
   check_typ env t;
@@ -434,7 +443,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | OptPrim, [exp1] ->
       T.Opt (typ exp1) <: t
     | TagPrim i, [exp1] ->
-      T.Variant [{T.lab = i; typ = typ exp1}] <: t
+      T.Variant [{T.lab = i; typ = typ exp1; depr = None}] <: t
     | ActorDotPrim n, [exp1]
     | DotPrim n, [exp1] ->
       begin
@@ -456,7 +465,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       List.iter (fun e -> typ e <: t0) exps;
       let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
       t1 <: t
-    | IdxPrim, [exp1; exp2] ->
+    | (IdxPrim | DerefArrayOffset), [exp1; exp2] ->
       let t1 = T.promote (typ exp1) in
       let t2 = try T.as_array_sub t1 with
                | Invalid_argument _ ->
@@ -465,6 +474,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | GetPastArrayOffset _, [exp1] ->
+      let t1 = T.promote (typ exp1) in
+      ignore
+        (try T.as_array_sub t1 with
+         | Invalid_argument _ ->
+           error env exp1.at "expected array type, but expression produces type\n  %s"
+             (T.string_of_typ_expand t1));
+      T.nat <: t
+    | NextArrayOffset _, [exp1] ->
+      typ exp1 <: T.nat;
+      T.nat <: t
+    | ValidArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.nat;
+      typ exp2 <: T.nat;
+      T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
         match T.Env.find_opt id env.labs with
@@ -506,13 +530,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       T.text <: t
     | SerializePrim ots, [exp1] ->
-      check (T.shared (T.seq ots)) "debug_serialize is not defined for operand type";
+      check (T.shared (T.seq ots)) "Serialize is not defined for operand type";
       typ exp1 <: T.seq ots;
       T.blob <: t
     | DeserializePrim ots, [exp1] ->
-      check (T.shared (T.seq ots)) "debug_deserialize is not defined for operand type";
+      check (T.shared (T.seq ots)) "Deserialize is not defined for operand type";
       typ exp1 <: T.blob;
       T.seq ots <: t
+    | DeserializeOptPrim ots, [exp1] ->
+      check (T.shared (T.seq ots)) "DeserializeOpt is not defined for operand type";
+      typ exp1 <: T.blob;
+      T.Opt (T.seq ots) <: t
     | CPSAwait cont_typ, [a; kr] ->
       let (_, t1) =
         try T.as_async_sub T.Non (T.normalize (typ a))
@@ -564,6 +592,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
       check_typ env t;
+    | ICArgDataPrim, [] ->
+      T.blob <: t
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
@@ -590,6 +620,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+      (* TODO: T.unit <: t ? *)
+    | ICCallRawPrim, [exp1; exp2; exp3; k; r] ->
+      typ exp1 <: T.principal;
+      typ exp2 <: T.text;
+      typ exp3 <: T.blob;
+      typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
+      typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+      T.unit <: t
+    | ICMethodNamePrim, [] ->
+      T.text <: t
     | ICStableRead t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
@@ -599,13 +639,23 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (store_typ t1) "Invalid type argument to ICStableWrite";
       typ exp1 <: t1;
       T.unit <: t
-    | NumConvPrim (p1, p2), [e] ->
-      (* we could check if this conversion is supported *)
+    | NumConvWrapPrim (p1, p2), [e] ->
+      (* we should check if this conversion is supported *)
+      typ e <: T.Prim p1;
+      T.Prim p2 <: t
+    | NumConvTrapPrim (p1, p2), [e] ->
+      (* we should check if this conversion is supported *)
       typ e <: T.Prim p1;
       T.Prim p2 <: t
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | EncodeUtf8, [e] ->
+      typ e <: T.text;
+      T.blob <: t
+    | DecodeUtf8, [e] ->
+      typ e <: T.blob;
+      T.(Opt text) <: t
     | BlobOfIcUrl, [e] ->
       typ e <: T.text;
       T.blob <: t
@@ -626,16 +676,27 @@ let rec check_exp env (exp:Ir.exp) : unit =
          the environment and see if this lines up. *)
       t1 <: t;
     | SystemTimePrim, [] ->
-      T.(Prim Nat64) <: t;
+      T.nat64 <: t;
     (* Cycles *)
     | (SystemCyclesBalancePrim | SystemCyclesAvailablePrim | SystemCyclesRefundedPrim), [] ->
-      T.nat64 <: t
+      T.nat <: t
     | SystemCyclesAcceptPrim, [e1] ->
-      typ e1 <: T.nat64;
-      T.nat64 <: t
+      typ e1 <: T.nat;
+      T.nat <: t
     | SystemCyclesAddPrim, [e1] ->
-      typ e1 <: T.nat64;
+      typ e1 <: T.nat;
       T.unit <: t
+    (* Certified Data *)
+    | SetCertifiedData, [e1] ->
+      typ e1 <: T.blob;
+      T.unit <: t
+    | GetCertificate, [] ->
+      T.Opt T.blob <: t
+    | ICPerformGC, [] ->
+      T.unit <: t
+    | ICStableSize t1, [e1] ->
+      typ e1 <: t1;
+      T.nat64 <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -765,15 +826,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (ds, fs, { pre; post}, t0) ->
+  | ActorE (ds, fs,
+      { preupgrade; postupgrade; meta; heartbeat; inspect }, t0) ->
+    (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
-    check_exp env'' pre;
-    check_exp env'' post;
-    typ pre <: T.unit;
-    typ post <: T.unit;
+    check_exp env'' preupgrade;
+    check_exp env'' postupgrade;
+    check_exp env'' heartbeat;
+    check_exp env'' inspect;
+    typ preupgrade <: T.unit;
+    typ postupgrade <: T.unit;
+    typ heartbeat <: T.unit;
+    typ inspect <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -795,7 +862,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* check const annotation *)
   (* see ir_passes/const.ml for an explanation *)
   let check_var ctxt v =
-    check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
+    if not (T.Env.find v env.vals).const then
+      error env exp.at "const %s with non-const variable %s" ctxt v in
   if exp.note.Note.const
   then begin
     match exp.it with
@@ -823,7 +891,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check e1.note.Note.const "constant ProjPrim on non-constant subexpression"
     | BlockE (ds, e) ->
       List.iter (fun d -> match d.it with
-        | VarD _ -> check false "VarD in constant BlockE"
+        | VarD _ | RefD _ -> check false "VarD/RefD in constant BlockE"
         | LetD (p, e1) ->
           check (Ir_utils.is_irrefutable p) "refutable pattern in constant BlockE";
           check e1.note.Note.const "non-constant RHS in constant BlockE"
@@ -895,8 +963,8 @@ and check_args env args =
   let rec go ve = function
     | [] -> ve
     | a::as_ ->
-      check env a.at (not (T.Env.mem a.it ve))
-        "duplicate binding for %s in argument list" a.it;
+      if (T.Env.mem a.it ve) then
+        error env a.at "duplicate binding for %s in argument list" a.it;
       check_typ env a.note;
       let val_info = {typ = a.note; const = false; loc_known = env.lvl = TopLvl } in
       let env' = T.Env.add a.it val_info ve in
@@ -912,8 +980,8 @@ and gather_pat env const ve0 pat : val_env =
     | LitP _ ->
       ve
     | VarP id ->
-      check env pat.at (not (T.Env.mem id ve0))
-        "duplicate binding for %s in block" id;
+      if T.Env.mem id ve0 then
+        error env pat.at "duplicate binding for %s in block" id;
       let val_info = {typ = pat.note; const; loc_known = env.lvl = TopLvl} in
       T.Env.add id val_info ve (*TBR*)
     | TupP pats ->
@@ -944,7 +1012,8 @@ and check_pat env pat : val_env =
     T.Env.empty
   | LitP lit ->
     let t1 = T.Prim (type_lit env lit pat.at) in
-    t <: t1;
+    let t1' = if T.eq t1 T.nat then T.int else t1 in  (* account for subtyping *)
+    t <: t1';
     T.Env.empty
   | TupP pats ->
     let ve = check_pats pat.at env pats T.Env.empty in
@@ -984,7 +1053,7 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
-  let tf = T.{lab; typ=pf.it.pat.note} in
+  let tf = T.{lab; typ = pf.it.pat.note; depr = None} in
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
@@ -993,7 +1062,9 @@ and check_pat_field env t (pf : pat_field) =
 
 and check_pat_tag env t l pat =
   let (<:) = check_sub env pat.at in
-  T.lookup_val_field l (T.as_variant_sub l t) <: pat.note
+  match T.lookup_val_field_opt l (T.as_variant_sub l t) with
+  | Some t -> t <: pat.note
+  | None -> ()
 
 (* Objects *)
 
@@ -1017,7 +1088,7 @@ and type_exp_field env s f : T.field =
     check env f.at ((s = T.Actor) ==> T.is_shared_func t)
       "public actor field must have shared function type";
   end;
-  T.{lab = name; typ = t}
+  T.{lab = name; typ = t; depr = None}
 
 (* Declarations *)
 
@@ -1034,7 +1105,7 @@ and check_open_typ_bind env typ_bind =
   | _ -> assert false
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; sort; bound} -> {Type.var = Con.name con; sort = sort; bound = Type.close cs bound}) tbs
+  List.map (fun {con; sort; bound} -> {Type.var = Cons.name con; sort = sort; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)
@@ -1047,6 +1118,9 @@ and check_dec env dec  =
   | VarD (id, t, exp) ->
     check_exp env exp;
     typ exp <: t
+  | RefD (id, t, lexp) ->
+    check_lexp env lexp;
+    lexp.note <: t
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;
@@ -1067,6 +1141,14 @@ and gather_dec env scope dec : scope =
     let val_info = {typ = T.Mut t; const = false; loc_known = env.lvl = TopLvl} in
     let ve = T.Env.add id val_info scope.val_env in
     { val_env = ve }
+  | RefD (id, t, lexp) ->
+    check_mut_typ env t;
+    check env dec.at
+      (not (T.Env.mem id scope.val_env))
+      "duplicate variable definition in block";
+    let val_info = {typ = t; const = false; loc_known = false} in
+    let ve = T.Env.add id val_info scope.val_env in
+    { val_env = ve }
 
 (* Programs *)
 
@@ -1080,7 +1162,8 @@ let check_comp_unit env = function
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
     check_decs env' ds
-  | ActorU (as_opt, ds, fs, { pre; post}, t0) ->
+  | ActorU (as_opt, ds, fs,
+      { preupgrade; postupgrade; meta; heartbeat; inspect }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1093,10 +1176,14 @@ let check_comp_unit env = function
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
-    check_exp env'' pre;
-    check_exp env'' post;
-    typ pre <: T.unit;
-    typ post <: T.unit;
+    check_exp env'' preupgrade;
+    check_exp env'' postupgrade;
+    check_exp env'' heartbeat;
+    check_exp env'' inspect;
+    typ preupgrade <: T.unit;
+    typ postupgrade <: T.unit;
+    typ heartbeat <: T.unit;
+    typ inspect <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in

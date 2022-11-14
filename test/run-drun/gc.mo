@@ -1,9 +1,9 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // check blob and text iterator objects survive gc correctly
 actor {
   public shared func testBytes() : async () {
     let blob = "\00\01\02\03" : Blob;
-    for (b in blob.bytes()) {
+    for (b in blob.vals()) {
       await async {};
       Prim.debugPrint(debug_show b);
     };

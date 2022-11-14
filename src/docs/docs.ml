@@ -23,20 +23,20 @@ let write_file : string -> string -> unit =
   flush oc;
   close_out oc
 
-let extract : string -> (string * doc list) option =
+let extract : string -> extracted option =
  fun in_file ->
-  let parse_result = Pipeline.parse_file_with_trivia Source.no_region in_file in
+  let parse_result = Pipeline.parse_file Source.no_region in_file in
   match parse_result with
   | Error err ->
       Printf.eprintf "Skipping %s:\n" in_file;
       Diag.print_messages err;
       None
-  | Ok ((prog, trivia_table), _) -> (
-      match extract_docs prog trivia_table with
+  | Ok ((prog, _), _) -> (
+      match extract_docs prog with
       | Error err ->
           Printf.eprintf "Skipping %s:\n%s\n" in_file err;
           None
-      | Ok (module_docs, imports, docs) -> Some (module_docs, docs) )
+      | Ok x -> Some x)
 
 let list_files_recursively : string -> string list =
  fun dir ->
@@ -77,10 +77,16 @@ let make_render_inputs : string -> string -> (string * Common.render_input) list
   List.filter_map
     (fun (input, output, current_path) ->
       Option.map
-        (fun (module_comment, declarations) ->
+        (fun { module_comment; docs; lookup_type } ->
           ( output,
-            Common.{ all_modules; current_path; module_comment; declarations }
-          ))
+            Common.
+              {
+                all_modules;
+                current_path;
+                lookup_type;
+                module_comment;
+                declarations = docs;
+              } ))
         (extract input))
     all_files
 
@@ -92,7 +98,10 @@ let start : output_format -> string -> string -> unit =
       let inputs = make_render_inputs src out in
       List.iter
         (fun (out, input) -> write_file (out ^ ".md") (Plain.render_docs input))
-        inputs
+        inputs;
+      write_file
+        (Filename.concat out "index.md")
+        (Plain.make_index (List.map snd inputs))
   | Adoc ->
       let inputs = make_render_inputs src out in
       List.iter

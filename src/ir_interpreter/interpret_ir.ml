@@ -89,7 +89,7 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor (initial_state ()) empty_scope)
+let last_env = ref (env_of_scope { trace = false; print_depth = 2} (Ir.full_flavor ()) (initial_state ()) empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
@@ -258,10 +258,6 @@ let interpret_lit env lit : V.value =
   | Int16Lit i -> V.Int16 i
   | Int32Lit i -> V.Int32 i
   | Int64Lit i -> V.Int64 i
-  | Word8Lit w -> V.Word8 w
-  | Word16Lit w -> V.Word16 w
-  | Word32Lit w -> V.Word32 w
-  | Word64Lit w -> V.Word64 w
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
@@ -355,9 +351,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | Var -> List.map (fun v -> V.Mut (ref v)) vs
           | Const -> vs
         in k (V.Array (Array.of_list vs'))
-      | IdxPrim, [v1; v2] ->
-        k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+      | (IdxPrim | DerefArrayOffset), [v1; v2] ->
+        k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
+      | NextArrayOffset _, [v1] ->
+        k (V.Int Numerics.Nat.(of_int ((to_int (V.as_int v1)) + 1)))
+      | ValidArrayOffset, [v1; v2] ->
+        k (V.Bool Numerics.Nat.(to_int (V.as_int v1) < to_int (V.as_int v2)))
+      | GetPastArrayOffset _, [v1] ->
+        k (V.Int Numerics.Nat.(of_int (Array.length (V.as_array v1))))
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
@@ -408,6 +410,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k v1
       | ActorOfIdBlob t, [v1] ->
         k v1
+      | DecodeUtf8, [v1] ->
+        let s = V.as_blob v1 in
+        begin match Wasm.Utf8.decode s with
+          | _ -> k (V.Opt (V.Text s))
+          | exception Wasm.Utf8.Utf8 -> k V.Null
+        end
+      | EncodeUtf8, [v1] ->
+        k (V.Blob (V.as_text v1))
       | BlobOfIcUrl, [v1] ->
         begin match Ic.Url.decode_principal (V.as_text v1) with
           | Ok bytes -> k (V.Blob bytes)
@@ -415,9 +425,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         end
       | IcUrlOfBlob, [v1] ->
         k (V.Text (Ic.Url.encode_principal (V.as_blob v1)))
-      | NumConvPrim (t1, t2), vs ->
+      | NumConvTrapPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        k (try Prim.num_conv_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
+        k (try Prim.num_conv_trap_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
+      | NumConvWrapPrim (t1, t2), vs ->
+        let arg = match vs with [v] -> v | _ -> V.Tup vs in
+        k (try Prim.num_conv_wrap_prim t1 t2 arg with Invalid_argument s -> trap exp.at "%s" s)
       | ICReplyPrim ts, [v1] ->
         assert (not env.flavor.has_async_typ);
         let reply = Option.get env.replies in
@@ -448,9 +461,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | SelfRef _, [] ->
         k (V.Text env.self)
       | SystemTimePrim, [] ->
-        k (V.Nat64 (Value.Nat64.of_int 42))
+        k (V.Nat64 (Numerics.Nat64.of_int 42))
       | SystemCyclesRefundedPrim, [] -> (* faking it *)
-        k (V.Nat64 (Value.Nat64.of_int 0))
+        k (V.Nat64 (Numerics.Nat64.of_int 0))
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -576,7 +589,7 @@ and interpret_lexp env lexp (k : (V.value ref) V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         k (V.as_mut
-          (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+          (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap lexp.at "%s" s))
       )
     )
@@ -693,20 +706,16 @@ and match_lit lit v : bool =
   match lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Int n' -> V.Int.eq n n'
-  | Nat8Lit n, V.Nat8 n' -> V.Nat8.eq n n'
-  | Nat16Lit n, V.Nat16 n' -> V.Nat16.eq n n'
-  | Nat32Lit n, V.Nat32 n' -> V.Nat32.eq n n'
-  | Nat64Lit n, V.Nat64 n' -> V.Nat64.eq n n'
-  | IntLit i, V.Int i' -> V.Int.eq i i'
-  | Int8Lit i, V.Int8 i' -> V.Int_8.eq i i'
-  | Int16Lit i, V.Int16 i' -> V.Int_16.eq i i'
-  | Int32Lit i, V.Int32 i' -> V.Int_32.eq i i'
-  | Int64Lit i, V.Int64 i' -> V.Int_64.eq i i'
-  | Word8Lit w, V.Word8 w' -> w = w'
-  | Word16Lit w, V.Word16 w' -> w = w'
-  | Word32Lit w, V.Word32 w' -> w = w'
-  | Word64Lit w, V.Word64 w' -> w = w'
+  | NatLit n, V.Int n' -> Numerics.Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> Numerics.Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> Numerics.Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> Numerics.Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> Numerics.Nat64.eq n n'
+  | IntLit i, V.Int i' -> Numerics.Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> Numerics.Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
@@ -776,7 +785,7 @@ and interpret_block env ro decs exp k =
 and declare_dec dec : val_env =
   match dec.it with
   | LetD (pat, _) -> declare_pat pat
-  | VarD (id, _,  _) -> declare_id id
+  | VarD (id, _,  _) | RefD (id, _,  _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -796,6 +805,11 @@ and interpret_dec env dec k =
   | VarD (id, _, exp) ->
     interpret_exp env exp (fun v ->
       define_id env id (V.Mut (ref v));
+      k ()
+    )
+  | RefD (id, _, lexp) ->
+    interpret_lexp env lexp (fun v ->
+      define_id env id (V.Mut v);
       k ()
     )
 

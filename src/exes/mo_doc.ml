@@ -4,24 +4,23 @@ let format : Docs.output_format ref = ref Docs.Html
 
 let set_source s = source := s
 let set_output o = output := o
-let set_format f = match f with
+let set_format = function
   | "html" -> format := Docs.Html
   | "adoc" -> format := Docs.Adoc
   | "plain" -> format := Docs.Plain
   | s -> Printf.eprintf "Unknown output format: %s" s
 let usage = "Documentation generator for Motoko"
 
-let argspec =
-  Arg.align
-    [ "--source",
+let argspec = [
+      "--source",
       Arg.String set_source,
-      " specifies what directory to search for source files. Defaults to `src`"
+      "<path>  specifies what directory to search for source files. Defaults to `src`"
     ; "--output",
       Arg.String set_output,
-      " specifies where the documentation will be generated. Defaults to `docs`"
+      "<path>  specifies where the documentation will be generated. Defaults to `docs`"
     ; "--format",
       Arg.String set_format,
-      " specifies the generated format. One of `html`, `adoc`, or `plain` Defaults to `html`"
+      "<format>  specifies the generated format. One of `html`, `adoc`, or `plain` Defaults to `html`"
     ]
 
 let () =

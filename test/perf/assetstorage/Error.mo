@@ -3,7 +3,7 @@
 /// The `Error` type is the argument to `throw`, parameter of `catch`.
 /// The `Error` type is opaque.
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 

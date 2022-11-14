@@ -3,4 +3,5 @@
   (libraries lib)
   (inline_tests)
   (preprocess (pps ppx_inline_test))
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

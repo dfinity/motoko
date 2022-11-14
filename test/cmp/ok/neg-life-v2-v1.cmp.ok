@@ -1,0 +1,5 @@
+(unknown location): Compatibility error [M0170], stable variable state of previous type
+  var {#v1 : [[Cell]]; #v2 : {bits : [Nat64]; size : Nat}}
+cannot be consumed at new type
+  var {#v1 : [[Cell/1]]}
+FALSE

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 /* test n-ary async/await */
 
 actor a {

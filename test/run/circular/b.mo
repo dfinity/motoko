@@ -1,0 +1,3 @@
+import _ = "a"
+
+module {}

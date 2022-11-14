@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 // Branch warnings.
 
@@ -142,3 +142,48 @@ let _ = g(func<>(x : Int, y : Any) : Nat = Prim.abs x);
 let _ = g(func<>((x, _) : (Int, Any)) : Nat = Prim.abs x);
 let _ = k(func<>(#A or #B (_ : Any)) : Nat = 0);
 let _ = k(func<>((#A or #B _) : {#A; #B : Any}) : Nat = 0);
+
+
+// Subtraction warnings
+
+func sub() {
+  let n : Nat = 0;
+  let i : Int = 0;
+  func fn() : Nat { 0 };
+  func fi() : Int { 0 };
+
+  let _ = 2 * (n - 1);     // warn
+  let _ = n * (n - 1);     // warn
+  let _ = i * (n - 1);     // warn
+  let _ = fn() * (n - 1);  // warn
+  let _ = fi() * (n - 1);  // warn
+  let _ = 2 * (i - 1);     // don't warn
+
+  let _ : Nat = 2 * (n - 1);     // don't warn
+  let _ : Nat = n * (n - 1);     // don't warn
+  let _ : Nat = fn() * (n - 1);  // don't warn
+  let _ : Int = 2 * (n - 1);     // don't warn
+  let _ : Int = n * (n - 1);     // don't warn
+  let _ : Int = i * (n - 1);     // don't warn
+  let _ : Int = fn() * (n - 1);  // don't warn
+  let _ : Int = fi() * (n - 1);  // don't warn
+
+  let _ = 2 == n - 1;     // warn
+  let _ = n == n - 1;     // warn
+  let _ = i == n - 1;     // warn
+  let _ = fn() == n - 1;  // warn
+  let _ = fi() == n - 1;  // warn
+  let _ = 2 == i - 1;     // don't warn
+
+  let a = [1, 2];
+  let _ = a[n - 1];  // don't warn
+
+  func f(n : Nat) {};
+  func g<T>(x : T) {};
+
+  f(n - 1);       // don't warn
+  g<Nat>(n - 1);  // don't warn
+  g(n - 1);       // warn
+
+  func h() : Nat { n - 1 };  // don't warn
+};

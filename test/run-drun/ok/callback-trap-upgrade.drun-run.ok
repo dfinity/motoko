@@ -1,0 +1,15 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: init'ed
+ingress Completed: Reply: 0x4449444c0000
+debug.print: In stats(), outstanding callbacks: 0
+ingress Completed: Reply: 0x4449444c0000
+debug.print: In go(), outstanding callbacks: 0
+debug.print: In ping(), outstanding callbacks: 1
+debug.print: In go() again, outstanding callbacks: 0
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at callback-trap-upgrade.mo:13.5-13.18
+debug.print: In stats(), outstanding callbacks: 0
+ingress Completed: Reply: 0x4449444c0000
+debug.print: init'ed
+ingress Completed: Reply: 0x4449444c0000
+debug.print: In stats(), outstanding callbacks: 0
+ingress Completed: Reply: 0x4449444c0000

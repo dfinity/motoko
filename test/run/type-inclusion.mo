@@ -65,8 +65,8 @@ func f(x : C) : D = x;
 // Function Types
 
 do {
-type A = (Int, Bool) -> (Word8, Nat);
-type B = (Nat, Bool) -> (Word8, Int);
+type A = (Int, Bool) -> (Nat8, Nat);
+type B = (Nat, Bool) -> (Nat8, Int);
 func f(x : A) : B = x;
 };
 

@@ -27,8 +27,8 @@ let hovered_identifier_test_case file expected =
   in
   Option.equal ( = ) actual expected
   ||
-  ( Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
-    false )
+  (Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
+   false)
 
 let%test "it finds an identifier" =
   hovered_identifier_test_case "f|ilter" (Some (Source_file.CIdent "filter"))

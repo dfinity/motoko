@@ -1,8 +1,8 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-10
-WASM_CLANG ?= clang-10
-WASM_LD ?= wasm-ld-10
+CLANG ?= clang-13
+WASM_CLANG ?= clang-13
+WASM_LD ?= wasm-ld-12
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -10,9 +10,10 @@ WASM_LD ?= wasm-ld-10
 #
 
 TOMMATHFILES = \
-   mp_init mp_add mp_sub mp_mul mp_zero mp_cmp \
+   mp_init mp_zero mp_add mp_sub mp_mul mp_cmp \
    mp_set_u32 mp_set_i32 mp_get_i32 mp_get_mag_u32 \
    mp_set_u64 mp_set_i64 mp_get_i64 mp_get_mag_u64 \
+   mp_set_double mp_get_double \
    mp_div mp_init_copy mp_neg mp_abs mp_2expt mp_expt_u32 mp_set mp_sqr \
    s_mp_add mp_cmp_mag s_mp_sub mp_grow mp_clamp \
    mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_rshd mp_mul_d mp_div_2d mp_mod_2d \
@@ -45,6 +46,10 @@ TOMMATH_FLAGS = \
   -DMP_MEMSET=0 \
   -DMP_FIXED_CUTOFFS \
   -DMP_NO_FILE \
+  -D__STDC_IEC_559__ \
+
+# Note: the above __STDC_IEC_559__ define is somewhat of a misnomer
+#       as only IEEE 754 features are used.
 
 #
 # Various musl flags, in particular telling it to not have long doubles
@@ -98,6 +103,7 @@ CLANG_FLAGS = \
    --target=wasm32-emscripten \
    -fno-builtin -ffreestanding \
    --optimize=s \
+   -resource-dir=$(wildcard $(WASM_CLANG_LIB)/lib/clang/*)
 
 #
 # Build targets
@@ -111,6 +117,9 @@ _build:
 	mkdir -p $@
 
 _build/wasm:
+	mkdir -p $@
+
+_build/i686:
 	mkdir -p $@
 
 #
@@ -127,10 +136,20 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLS
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_WASM_A=_build/libtommath.a
 
+TOMMATH_i686_O=$(TOMMATHFILES:%=_build/i686/tommath_%.o)
+TOMMATH_i686_A=_build/libtommath_i686.a
+
 _build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 $(TOMMATH_WASM_A): $(TOMMATH_WASM_O)
+	llvm-ar rcs $@ $^
+	llvm-ranlib $@
+
+_build/i686/tommath_%.o: bn_%.c | _build/i686
+	$(WASM_CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --target=i686-unknown-linux $< --output $@
+
+$(TOMMATH_i686_A): $(TOMMATH_i686_O)
 	llvm-ar rcs $@ $^
 	llvm-ranlib $@
 
@@ -156,17 +175,17 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
 RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
+# This relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
+RTS_RUST_FILES=$(shell ls **/*.rs)
+RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
+
 TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
-
-
 $(TOMMATH_BINDINGS_RS): | _build
-	# use bash explicitly (work around nixpkgs bug https://github.com/NixOS/nixpkgs/issues/110126)
-	bash $$(command -v bindgen) $(TOMMATHSRC)/tommath.h \
+	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
 	    --whitelist-function mp_init \
-	    --whitelist-function mp_zero \
 	    --whitelist-function mp_init_copy \
 	    --whitelist-function mp_set_u32 \
 	    --whitelist-function mp_set_i32 \
@@ -174,8 +193,9 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --whitelist-function mp_set_u64 \
 	    --whitelist-function mp_set_i64 \
 	    --whitelist-function mp_get_i64 \
+	    --whitelist-function mp_set_double \
+	    --whitelist-function mp_get_double \
 	    --whitelist-function mp_count_bits \
-	    --whitelist-function mp_get_mag_u64 \
 	    --whitelist-function mp_cmp \
 	    --whitelist-function mp_add \
 	    --whitelist-function mp_sub \
@@ -191,7 +211,8 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --blacklist-type __int32_t \
 	    --blacklist-type __int64_t \
 	    --blacklist-type __uint32_t \
-	    --blacklist-type __uint64_t
+	    --blacklist-type __uint64_t \
+            -- $(TOMMATH_FLAGS)
 
 	# Whitelist parameters used as libtommath.h has lots of definitions that we don't
 	# need. Blacklist parameters are used because bindgen still generates unused type
@@ -201,12 +222,12 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 
-$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
-	cd motoko-rts && xargo build --release --target=wasm32-unknown-emscripten
+$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
+	cd motoko-rts && cargo build --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
 
-$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
-	cd motoko-rts && xargo build --target=wasm32-unknown-emscripten
+$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
+	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 #
@@ -214,9 +235,9 @@ $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) | _build/wasm
 #
 
 .PHONY: test
-test: $(TOMMATH_WASM_A)
+test: $(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 	cd motoko-rts-tests && cargo build --target=wasm32-wasi
-	wasmtime --disable-cache --cranelift motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+	wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 #
 # Putting it all together
@@ -239,7 +260,7 @@ EXPORTED_SYMBOLS=\
   fmod \
   log \
 
-mo-rts.wasm: $(RTS_RUST_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
+mo-rts.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
                 $(EXPORTED_SYMBOLS:%=--export=%) \
@@ -253,6 +274,11 @@ mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 		--whole-archive \
 		$+
 
+
+format:
+	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
+	cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml
+
 clean:
 	rm -rf \
 	  _build \
@@ -260,5 +286,4 @@ clean:
 	  mo-rts-debug.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
-	  motoko-rts/xargo-home \
 	  motoko-rts/cargo-home

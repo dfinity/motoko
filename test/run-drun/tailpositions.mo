@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 /* test tail-position calculation; error would stack overflow in drun*/
 
 //SKIP comp-ref

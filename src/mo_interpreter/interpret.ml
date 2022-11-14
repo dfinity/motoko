@@ -233,10 +233,6 @@ let interpret_lit env lit : V.value =
   | Int16Lit i -> V.Int16 i
   | Int32Lit i -> V.Int32 i
   | Int64Lit i -> V.Int64 i
-  | Word8Lit w -> V.Word8 w
-  | Word16Lit w -> V.Word16 w
-  | Word32Lit w -> V.Word32 w
-  | Word64Lit w -> V.Word64 w
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
@@ -249,8 +245,8 @@ let interpret_lit env lit : V.value =
 let array_get a at =
   V.local_func 1 1 (fun c v k ->
     let n = V.as_int v in
-    if V.Nat.lt n (V.Nat.of_int (Array.length a))
-    then k (a.(V.Nat.to_int n))
+    if Numerics.Nat.lt n (Numerics.Nat.of_int (Array.length a))
+    then k (a.(Numerics.Nat.to_int n))
     else trap at "array index out of bounds"
   )
 
@@ -258,15 +254,15 @@ let array_put a at =
   V.local_func 2 0 (fun c v k ->
     let v1, v2 = V.as_pair v in
     let n = V.as_int v1 in
-    if V.Nat.lt n (V.Nat.of_int (Array.length a))
-    then k (a.(V.Nat.to_int n) <- v2; V.Tup [])
+    if Numerics.Nat.lt n (Numerics.Nat.of_int (Array.length a))
+    then k (a.(Numerics.Nat.to_int n) <- v2; V.Tup [])
     else trap at "array index out of bounds"
   )
 
 let array_size a at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (V.Nat.of_int (Array.length a)))
+    k (V.Int (Numerics.Nat.of_int (Array.length a)))
   )
 
 let array_keys a at =
@@ -277,7 +273,7 @@ let array_keys a at =
       V.local_func 0 1 (fun c v k' ->
         if !i = Array.length a
         then k' V.Null
-        else let v = V.Opt (V.Int (V.Nat.of_int !i)) in incr i; k' v
+        else let v = V.Opt (V.Int (Numerics.Nat.of_int !i)) in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -295,7 +291,7 @@ let array_vals a at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
-let blob_bytes t at =
+let blob_vals t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
@@ -303,7 +299,7 @@ let blob_bytes t at =
       V.local_func 0 1 (fun c v k' ->
         if !i = String.length t
         then k' V.Null
-        else let v = V.Opt V.(Word8 (Word8.of_int_u (Char.code (String.get t !i)))) in incr i; k' v
+        else let v = V.Opt V.(Nat8 (Numerics.Nat8.of_int (Char.code (String.get t !i)))) in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -311,7 +307,7 @@ let blob_bytes t at =
 let blob_size t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (V.Nat.of_int (String.length t)))
+    k (V.Int (Numerics.Nat.of_int (String.length t)))
   )
 
 let text_chars t at =
@@ -331,7 +327,7 @@ let text_chars t at =
 let text_len t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (V.Nat.of_int (List.length (Wasm.Utf8.decode t))))
+    k (V.Int (Numerics.Nat.of_int (List.length (Wasm.Utf8.decode t))))
   )
 
 (* Expressions *)
@@ -412,6 +408,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           trap exp.at "arithmetic overflow")
       )
     )
+  | ToCandidE _ -> invalid_arg "to do: ToCandidE"
+  | FromCandidE _ -> invalid_arg "to do: FromCandidE"
   | ShowE (ot, exp1) ->
     interpret_exp env exp1 (fun v ->
       if Show.can_show !ot
@@ -438,8 +436,25 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjE (obj_sort, fields) ->
-    interpret_obj env obj_sort.it fields k
+  | ObjBlockE (obj_sort, dec_fields) ->
+    interpret_obj env obj_sort.it dec_fields k
+  | ObjE (exp_bases, exp_fields) ->
+    let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
+    let open V.Env in
+    let merges =
+      List.fold_left
+        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> assert false))
+        empty in
+    (* remove dynamic fields not present in the type as well as overwritten fields *)
+    let labs = List.map (fun (f : Syntax.exp_field) -> f.it.id.it) exp_fields in
+    let tys = List.(map (fun b ->
+                         T.as_obj b.note.note_typ |>
+                         snd |>
+                         filter (fun f -> not (mem f.T.lab labs)))) exp_bases in
+    let strip vs =
+      let known fs k _ = List.exists (fun { T.lab; _ } -> k = lab) fs in
+      List.map2 (fun fs v -> filter (known fs) (V.as_obj v)) tys vs in
+    interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -465,7 +480,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b ->
         let f = match id.it with
           | "size" -> blob_size
-          | "bytes" -> blob_bytes
+          | "vals" -> blob_vals
           | _ -> assert false
         in k (f b exp.at)
       | _ -> assert false
@@ -487,7 +502,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+        k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
@@ -631,6 +646,19 @@ and interpret_exps env exps vs (k : V.value list V.cont) =
   | exp::exps' ->
     interpret_exp env exp (fun v -> interpret_exps env exps' (v::vs) k)
 
+(* Objects *)
+
+and interpret_exp_fields env exp_fields fld_env (k : V.value V.Env.t V.cont) =
+  match exp_fields with
+  | [] -> k fld_env
+  | exp_field::exp_fields' ->
+    interpret_exp env exp_field.it.exp (fun v ->
+      let fv = match exp_field.it.mut.it with
+          | Syntax.Var -> V.Mut (ref v)
+          | Syntax.Const -> v
+      in
+      interpret_exp_fields env exp_fields' (V.Env.add exp_field.it.id.it fv fld_env) k)
+
 (* Cases *)
 
 and interpret_cases env cases at v (k : V.value V.cont) =
@@ -726,20 +754,16 @@ and match_lit lit v : bool =
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Int n' -> V.Int.eq n n'
-  | Nat8Lit n, V.Nat8 n' -> V.Nat8.eq n n'
-  | Nat16Lit n, V.Nat16 n' -> V.Nat16.eq n n'
-  | Nat32Lit n, V.Nat32 n' -> V.Nat32.eq n n'
-  | Nat64Lit n, V.Nat64 n' -> V.Nat64.eq n n'
-  | IntLit i, V.Int i' -> V.Int.eq i i'
-  | Int8Lit i, V.Int8 i' -> V.Int_8.eq i i'
-  | Int16Lit i, V.Int16 i' -> V.Int_16.eq i i'
-  | Int32Lit i, V.Int32 i' -> V.Int_32.eq i i'
-  | Int64Lit i, V.Int64 i' -> V.Int_64.eq i i'
-  | Word8Lit w, V.Word8 w' -> w = w'
-  | Word16Lit w, V.Word16 w' -> w = w'
-  | Word32Lit w, V.Word32 w' -> w = w'
-  | Word64Lit w, V.Word64 w' -> w = w'
+  | NatLit n, V.Int n' -> Numerics.Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> Numerics.Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> Numerics.Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> Numerics.Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> Numerics.Nat64.eq n n'
+  | IntLit i, V.Int i' -> Numerics.Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> Numerics.Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
@@ -815,28 +839,28 @@ and match_shared_pat env shared_pat c =
 
 (* Objects *)
 
-and interpret_obj env obj_sort fields (k : V.value V.cont) =
+and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
   let self = if obj_sort = T.Actor then V.fresh_id() else env.self in
-  let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
+  let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
   let env' = adjoin_vals { env with self = self } ve_in in
-  interpret_exp_fields env' fields ve_ex k
+  interpret_dec_fields env' dec_fields ve_ex k
 
-and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
-  match fields with
+and declare_dec_fields dec_fields ve_ex ve_in : val_env * val_env =
+  match dec_fields with
   | [] -> ve_ex, ve_in
-  | {it = {dec; vis; _}; _}::fields' ->
+  | {it = {dec; vis; _}; _}::dec_fields' ->
     let ve' = declare_dec dec in
     let ve_ex' = if vis.it = Private then ve_ex else V.Env.adjoin ve_ex ve' in
     let ve_in' = V.Env.adjoin ve_in ve' in
-    declare_exp_fields fields' ve_ex' ve_in'
+    declare_dec_fields dec_fields' ve_ex' ve_in'
 
-and interpret_exp_fields env fields ve (k : V.value V.cont) =
-  match fields with
+and interpret_dec_fields env dec_fields ve (k : V.value V.cont) =
+  match dec_fields with
   | [] ->
     let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
     k obj
-  | {it = {dec; _}; _}::fields' ->
-    interpret_dec env dec (fun _v -> interpret_exp_fields env fields' ve k)
+  | {it = {dec; _}; _}::dec_fields' ->
+    interpret_dec env dec (fun _v -> interpret_dec_fields env dec_fields' ve k)
 
 
 (* Blocks and Declarations *)
@@ -879,11 +903,11 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', fields) ->
+  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', dec_fields) ->
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
-        interpret_obj env'' obj_sort.it fields (fun v' ->
+        interpret_obj env'' obj_sort.it dec_fields (fun v' ->
           define_id env'' id' v';
           k' v')
       else
@@ -895,7 +919,7 @@ and interpret_dec env dec (k : V.value V.cont) =
               rets = Some k'';
               throws = Some r }
             in
-            interpret_obj env''' obj_sort.it fields (fun v' ->
+            interpret_obj env''' obj_sort.it dec_fields (fun v' ->
               define_id env''' id' v';
               k'' v'))
           k')
@@ -963,12 +987,21 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Import a module unchanged, and a class constructor as an asynchronous function.
    The conversion will be unnecessary once we declare classes as asynchronous. *)
 let import_lib env lib =
-  let (_, cub) = lib.it in
+  let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
     fun v -> v
-  | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _fields) ->
-    fun v -> V.Obj (V.Env.singleton id.it v)
+  | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
+    fun v -> V.Obj (V.Env.from_list
+      [ (id.it, v);
+        ("system",
+         V.Obj (V.Env.singleton id.it (
+          V.local_func 1 1 (fun c w k ->
+            let tag, w1 = V.as_variant w in
+            let o = V.as_obj w1 in
+            if tag = "new" && V.Env.find "settings" o = V.Null
+            then k v
+            else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | _ -> assert false
 
 
@@ -984,4 +1017,4 @@ let interpret_lib flags scope lib : scope =
       vo := Some (import v))
   );
   Scheduler.run ();
-  lib_scope lib.note (Option.get !vo) scope
+  lib_scope lib.note.filename (Option.get !vo) scope

@@ -1,4 +1,4 @@
-import P = "mo:prim";
+import P = "mo:⛔";
 
 // TODO: test #system_fatal, #system_transient and #future somehow
 // (I don't know how to trigger the first two; and the third needs a future error code)

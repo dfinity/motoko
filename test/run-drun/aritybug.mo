@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 // fails in the interpreter at line * with  ../../src/moc -r  u.mo
 // fails in the interpreter at line * with  ../../src/moc -r -a u.mo

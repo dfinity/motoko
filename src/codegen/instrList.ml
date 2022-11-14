@@ -10,7 +10,6 @@ features are
 open Wasm_exts.Ast
 open Wasm.Source
 open Wasm.Values
-open Wasm.Types
 
 let combine_shifts const op = function
   | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->
@@ -53,30 +52,42 @@ let optimize : instr list -> instr list = fun is ->
     (* Eliminate LocalTee followed by Drop (good for confluence) *)
     | ({ it = LocalTee n; _} as i) :: l', { it = Drop; _ } :: r' ->
       go l' ({i with it = LocalSet n } :: r')
+    (* Eliminate Get followed by Set (typical artifact from the multi-value emulation) *)
+    | { it = LocalGet n1; _} :: l', ({ it = LocalSet n2; _ }) :: r' when n1 = n2 ->
+      go l' r'
+    | { it = GlobalGet n1; _} :: l', ({ it = GlobalSet n2; _ }) :: r' when n1 = n2 ->
+      go l' r'
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
       (* see Note [funneling DIEs through Wasm.Ast] *)
       List.(rev (i :: l) @ find_all (fun instr -> Wasm_exts.Ast.is_dwarf_like instr.it) t)
-    (* Equals zero has an dedicated operation (and works well with leg swapping) *)
+    (* Equals zero has a dedicated operation (and works well with leg swapping) *)
     | ({it = Compare (I32 I32Op.Eq); _} as i) :: {it = Const {it = I32 0l; _}; _} :: l', r' ->
-      go l' ({ i with it = Test (I32 I32Op.Eqz)}  :: r')
+      go l' ({ i with it = Test (I32 I32Op.Eqz)} :: r')
+    | ({it = Compare (I64 I64Op.Eq); _} as i) :: {it = Const {it = I64 0L; _}; _} :: l', r' ->
+      go l' ({ i with it = Test (I64 I64Op.Eqz)} :: r')
+    (* Constants before `Eqz` reduce trivially *)
+    | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Const {it = I32 n; _}; _} :: l', r' ->
+      go l' ({ i with it = Const {it = I32 (if n = 0l then 1l else 0l); at = i.at}} :: r')
+    | ({it = Test (I64 I64Op.Eqz); _} as i) :: {it = Const {it = I64 n; _}; _} :: l', r' ->
+      go l' ({ i with it = Const {it = I32 (if n = 0L then 1l else 0l); at = i.at}} :: r')
     (* eqz after eq/ne becomes ne/eq *)
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (I32 I32Op.Ne)}  :: r')
+      go l' ({ i with it = Compare (I32 I32Op.Ne)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I32 I32Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (I32 I32Op.Eq)}  :: r')
+      go l' ({ i with it = Compare (I32 I32Op.Eq)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I64 I64Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (I64 I64Op.Ne)}  :: r')
+      go l' ({ i with it = Compare (I64 I64Op.Ne)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (I64 I64Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (I64 I64Op.Eq)}  :: r')
+      go l' ({ i with it = Compare (I64 I64Op.Eq)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F32 F32Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (F32 F32Op.Ne)}  :: r')
+      go l' ({ i with it = Compare (F32 F32Op.Ne)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F32 F32Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (F32 F32Op.Eq)}  :: r')
+      go l' ({ i with it = Compare (F32 F32Op.Eq)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Eq); _} :: l', r' ->
-      go l' ({ i with it = Compare (F64 F64Op.Ne)}  :: r')
+      go l' ({ i with it = Compare (F64 F64Op.Ne)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Ne); _} :: l', r' ->
-      go l' ({ i with it = Compare (F64 F64Op.Eq)}  :: r')
+      go l' ({ i with it = Compare (F64 F64Op.Eq)} :: r')
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
@@ -119,14 +130,6 @@ let nop : t = fun _ _ rest -> rest
 (* The concatenation operator *)
 let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
 
-(* Forcing side effects to happen,
-   only for depth- and location-oblivious instructions
-   (TODO: to be refactored after merge, will go away)
- *)
-let effects t =
-  let instrs = t 0l Wasm.Source.no_region [] in
-  fun _ _ rest -> instrs @ rest
-
 (* Singletons *)
 let i (instr : instr') : t = fun _ pos rest -> (instr @@ pos) :: rest
 
@@ -154,22 +157,23 @@ let with_region (pos : Source.region) (body : t) : t =
 
 (* Depths-managing combinators *)
 
-let as_block_type : stack_type -> block_type = function
-  | [] -> ValBlockType None
-  | [t] -> ValBlockType (Some t)
-  | _ -> raise (Invalid_argument "instrList block combinators do not support multi-value yet")
-
-let if_ (ty : stack_type) (thn : t) (els : t) : t =
+let if_ (ty : block_type) (thn : t) (els : t) : t =
   fun d pos rest ->
-    (If (as_block_type ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
+    (If (ty, to_nested_list d pos thn, to_nested_list d pos els) @@ pos) :: rest
 
-let block_ (ty : stack_type) (body : t) : t =
-  fun d pos rest ->
-    (Block (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+(* Shortcuts for unary and nullary variants *)
+let if0 = if_ (ValBlockType None)
+let if1 ty = if_ (ValBlockType (Some ty))
 
-let loop_ (ty : stack_type) (body : t) : t =
+let block_ (ty : block_type) (body : t) : t =
   fun d pos rest ->
-    (Loop (as_block_type ty, to_nested_list d pos body) @@ pos) :: rest
+    (Block (ty, to_nested_list d pos body) @@ pos) :: rest
+let block0 = block_ (ValBlockType None)
+let block1 ty = block_ (ValBlockType (Some ty))
+
+let loop0 (body : t) : t =
+  fun d pos rest ->
+    (Loop (ValBlockType None, to_nested_list d pos body) @@ pos) :: rest
 
 (* Remember depth *)
 type depth = int32 Lib.Promise.t
@@ -194,8 +198,16 @@ let branch_to_ (p : depth) : t =
 
 (* Convenience combinators *)
 
-let labeled_block_ (ty : stack_type) depth (body : t) : t =
-  block_ ty (remember_depth depth body)
+let labeled_block1 ty depth (body : t) : t =
+  block1 ty (remember_depth depth body)
+
+(* Obtain the setter from a known variable's getter *)
+
+let setter_for (getter : t) =
+  match List.map (fun {it; _} -> it) (getter 0l Wasm.Source.no_region []) with
+  | [LocalGet v] -> i (LocalSet v)
+  | [GlobalGet v] -> i (GlobalSet v)
+  | _ -> failwith "input must be a getter"
 
 (* Intended to be used within assert *)
 

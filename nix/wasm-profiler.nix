@@ -1,6 +1,7 @@
 pkgs:
 let
-  wasm-profiler-src = pkgs.sources.wasm-profiler;
+  subpath = import ./gitSource.nix;
+  wasm-profiler-src = subpath ../wasm-profiler;
 in {
   wasm-profiler-instrument =
     pkgs.rustPlatform.buildRustPackage {
@@ -9,7 +10,7 @@ in {
       src = wasm-profiler-src;
 
       # update this after dependency changes
-      cargoSha256 = "0x7rg2w0vv9fx4mpbvgiwcmni2w71lrvi2i3019hrwlxn721pl47";
+      cargoSha256 = "1yr8dw3x0591w0h6576ya29n1qm8lgmww9w33znx10b4dwli0gkb";
     };
 
   wasm-profiler-postproc = pkgs.stdenv.mkDerivation rec {

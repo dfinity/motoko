@@ -5,8 +5,24 @@ _out-dbg
 _output
 _build
 target
+node_modules
+.docusaurus
 
 **/*~
 result*
 
 /samples/**/*.txt
+
+enable-internals
+
+# Editor configuration
+*.swp
+*.swo
+Session.vim
+*.iml
+.idea
+.vscode
+.project
+.cproject
+.favorites.json
+.settings/

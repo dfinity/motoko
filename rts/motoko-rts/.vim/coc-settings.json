@@ -5,5 +5,5 @@
     // This is required as `cargo check --all-targets` doesn't seem to work well
     // on no-std crates, it generates false "duplicate lang item" errors.
     "rust-analyzer.checkOnSave.allTargets": false,
-    "rust-analyzer.cargo.features": ["gc"]
+    "rust-analyzer.cargo.features": ["ic"]
 }

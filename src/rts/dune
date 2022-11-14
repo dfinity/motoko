@@ -1,1 +1,3 @@
-(library (name rts))
+(library (name rts)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
+)

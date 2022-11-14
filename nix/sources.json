@@ -6,17 +6,11 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "25fb8470f9ef6858f74479bfe60a7dc09c54ad19",
-        "sha256": "0j68xsjaiz7xrzghpwv6a4skm5f5zv36nmmnwxqqinqfcd5bzdv6",
+        "rev": "a555d77704d691bb8f34e21a049d44ba0acee3f8",
+        "sha256": "0vn171lcadpznrl5nq2mws2zjjqj9jxyvndb2is3dixbjqyvjssx",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/25fb8470f9ef6858f74479bfe60a7dc09c54ad19.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/a555d77704d691bb8f34e21a049d44ba0acee3f8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "dfinity": {
-        "branch": "master",
-        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "3ee00520a9c661e2d136b773895c0599ba4f5c90",
-        "type": "git"
     },
     "esm": {
         "builtin": false,
@@ -26,11 +20,31 @@
         "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
         "version": "3.2.25"
     },
-    "ic-ref": {
-        "branch": "release-0.15",
-        "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
-        "rev": "03d2f48e7ce8895f84e1b44fa32d81db79edf6c9",
-        "type": "git"
+    "ic": {
+        "branch": "master",
+        "builtin": false,
+        "description": "Internet Computer blockchain source: the client/replica software run by nodes",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "ic",
+        "rev": "b5fa78c590188b96f9635f4e82ed1e958884e19c",
+        "sha256": "1hzcm6v6yrfymg68af7byrxygs0ana22l41y83imkgdj9z0rhdgw",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/ic/archive/b5fa78c590188b96f9635f4e82ed1e958884e19c.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ic-hs": {
+        "branch": "master",
+        "builtin": false,
+        "description": "A haskell toolbox for the Internet Computer",
+        "homepage": "",
+        "owner": "dfinity",
+        "repo": "ic-hs",
+        "rev": "b26a79c1e9ddf974b551b239d5b0560cc4b1e24d",
+        "sha256": "1c5s57b7c0z37pzli78cb7by1q03476f5bsvf41wawxmldkgzzy6",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/ic-hs/archive/b26a79c1e9ddf974b551b239d5b0560cc4b1e24d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
         "builtin": false,
@@ -46,60 +60,53 @@
     },
     "motoko-base": {
         "branch": "next-moc",
-        "repo": "ssh://git@github.com/dfinity-lab/motoko-base",
-        "rev": "d3cbc7ae2e2901f1c2ecb7bd97c3012cd18b77c4",
-        "type": "git"
+        "description": "The Motoko base library",
+        "homepage": null,
+        "owner": "dfinity",
+        "repo": "motoko-base",
+        "rev": "56241d2f1146aeaf64469ea48c5279d2c3ebb8b2",
+        "sha256": "1m422l0078x4qhmcdxdf6v0zb2w6br3dkfhncar9ss24brxhlwl5",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/motoko-base/archive/56241d2f1146aeaf64469ea48c5279d2c3ebb8b2.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
-        "branch": "v1.0.0",
+        "branch": "v1.1.1",
         "builtin": false,
         "description": null,
         "homepage": "http://kritzcreek.github.io/motoko-matchers",
         "owner": "kritzcreek",
         "repo": "motoko-matchers",
-        "rev": "e2ecce289dd4c9a687486de387407bf34bf0d3d3",
-        "sha256": "0wlc3lpcmaygsaqb0cvm22az71b9agzrs2q7lhzjklfimsy12qp3",
+        "rev": "cb838c192df3328ff9ae172e2dc7338cf55e74bf",
+        "sha256": "0kcv1wqb7ljpb3yrzfv4r5x6sil095nwf01gzmdk105k21a5s63l",
         "type": "tarball",
-        "url": "https://github.com/kritzcreek/motoko-matchers/archive/e2ecce289dd4c9a687486de387407bf34bf0d3d3.tar.gz",
+        "url": "https://github.com/kritzcreek/motoko-matchers/archive/cb838c192df3328ff9ae172e2dc7338cf55e74bf.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "musl-wasi": {
-        "branch": "master",
+        "branch": "main",
         "builtin": false,
         "description": "WASI libc implementation for WebAssembly",
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "5ccfab77b097a5d0184f91184952158aa5904c8d",
-        "sha256": "1kxcy616vnqw4q2xkng9q67mgmq3gw2h4z6hkcwrqw1fjjp5qnbz",
+        "rev": "099caae3eb9111a67d2f0e1b4f9f5f98e682482a",
+        "sha256": "1rf2ck7x5hzycz8yhcbmn7whmmypw0fl8lm0rcnjapcnr0cgbckx",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/5ccfab77b097a5d0184f91184952158aa5904c8d.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "niv": {
-        "branch": "master",
-        "builtin": false,
-        "description": "Easy dependency management for Nix projects",
-        "homepage": "https://github.com/nmattia/niv",
-        "owner": "nmattia",
-        "repo": "niv",
-        "rev": "3cd7914b2c4cff48927e11c216dadfab7d903fe5",
-        "sha256": "1agq4nvbhrylf2s77kb4xhh9k7xcwdwggq764k4jgsbs70py8cw3",
-        "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/3cd7914b2c4cff48927e11c216dadfab7d903fe5.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/099caae3eb9111a67d2f0e1b4f9f5f98e682482a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-20.09",
+        "branch": "release-22.05",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "66cd39409e8ae1e2981edfb33bb06c164893d70d",
-        "sha256": "1c44akgqbqsm2b6k5b850lb0q7wq5l5p4hm6bqbaif1h05sc2bkx",
+        "rev": "0b20bf89e0035b6d62ad58f9db8fdbc99c2b01e8",
+        "sha256": "0dpg3xmmlmyacy17bnzjlpwbbfxmra7ja5wkib7ws0gqjqg9rsig",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/66cd39409e8ae1e2981edfb33bb06c164893d70d.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/0b20bf89e0035b6d62ad58f9db8fdbc99c2b01e8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
@@ -109,10 +116,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "8c007b60731c07dd7a052cce508de3bb1ae849b4",
-        "sha256": "1zybp62zz0h077zm2zmqs2wcg3whg6jqaah9hcl1gv4x8af4zhs6",
+        "rev": "80627b282705101e7b38e19ca6e8df105031b072",
+        "sha256": "11g9lppm53f5aq7a0fnwh5hivdhn2p1wmhwgmz1052x10hfqjrah",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/8c007b60731c07dd7a052cce508de3bb1ae849b4.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/80627b282705101e7b38e19ca6e8df105031b072.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
@@ -128,17 +135,5 @@
         "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "v0.2.0"
-    },
-    "wasm-profiler": {
-        "branch": "main",
-        "description": "A (hacky) wasm instruction profiler",
-        "homepage": null,
-        "owner": "dfinity",
-        "repo": "wasm-profiler",
-        "rev": "7cfb023e6f1d9a522fc56d24c35ace6d7f981f49",
-        "sha256": "1yzhafazry6v6pspc639xl2qrbi5cpqhnnyl4ngs9nk13z5yn7ln",
-        "type": "tarball",
-        "url": "https://github.com/dfinity/wasm-profiler/archive/7cfb023e6f1d9a522fc56d24c35ace6d7f981f49.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

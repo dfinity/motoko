@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor counter = {
   flexible var c = 1;
   public func inc() : async () {
@@ -54,7 +54,7 @@ counter.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
   {
 
-  // sugar, surpressing shared
+  // sugar, suppressing shared
 
   let _ : actor { read: query () -> async Nat } = counter;
 

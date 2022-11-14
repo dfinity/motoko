@@ -20,18 +20,20 @@ open Construct
      a manifest tuple argument extended with a final reply continuation.
  *)
 
-module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
+module ConRenaming = E.Make(struct type t = T.con let compare = Cons.compare end)
 
 (* Helpers *)
 
 let selfcallE ts e1 e2 e3 =
- { it = SelfCallE (ts, e1, e2, e3);
-  at = no_region;
-  note = Note.{ def with typ = T.unit }
-}
+  { it = SelfCallE (ts, e1, e2, e3);
+    at = no_region;
+    note = Note.{ def with typ = T.unit } }
 
 let error_ty =
-  T.(Tup [ Variant [{lab = "error"; typ = unit};{lab = "system"; typ = unit}]; text])
+  T.(Tup [ Variant [
+    {lab = "error"; typ = unit; depr = None};
+    {lab = "system"; typ = unit; depr = None}
+  ]; text])
 
 let errorMessageE e =
   projE (primE (CastPrim (T.error, error_ty)) [e]) 1
@@ -44,19 +46,19 @@ let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
 let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
-let t_async as_seq typ =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq typ; failT], [])
+let t_async as_seq t =
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
+     [T.Opt (T.Func(T.Local, T.Returns, [], [], []))])
 
 let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
 
 let new_asyncT =
   T.Func (
-      T.Local,
-      T.Returns,
-      [ { var = "T"; sort = T.Type; bound = T.Any } ],
-      [T.bool],
-      new_async_ret unary (T.Var ("T", 0))
-    )
+    T.Local,
+    T.Returns,
+    [ { var = "T"; sort = T.Type; bound = T.Any } ],
+    [T.bool],
+    new_async_ret unary (T.Var ("T", 0)))
 
 let new_asyncE () =
   varE (var "@new_async" new_asyncT)
@@ -205,6 +207,14 @@ let letSeq ts e d_of_vs =
     let p = tupP (List.map varP xs) in
     (letP p e)::d_of_vs (xs)
 
+(* name e in f unless named already *)
+let ensureNamed e f =
+  match e.it with
+  | VarE v -> f (var v (typ e))
+  | _ ->
+    let v = fresh_var "v" (typ e) in
+    blockE [letD v e] (f v)
+
 (* The actual transformation *)
 
 let transform mode prog =
@@ -234,7 +244,7 @@ let transform mode prog =
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
     | Func (s, c, tbs, ts1, ts2) ->
-      let c' =  match c with T.Promises -> T.Replies | _ -> c in
+      let c' = match c with T.Promises -> T.Replies | _ -> c in
       Func (s, c', List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
@@ -253,44 +263,28 @@ let transform mode prog =
 
   and t_kind k =
     match k with
-    | T.Abs(typ_binds,typ) ->
-      T.Abs(t_binds typ_binds, t_typ typ)
-    | T.Def(typ_binds,typ) ->
-      T.Def(t_binds typ_binds, t_typ typ)
+    | T.Abs (typ_binds,typ) ->
+      T.Abs (t_binds typ_binds, t_typ typ)
+    | T.Def (typ_binds,typ) ->
+      T.Def (t_binds typ_binds, t_typ typ)
 
   and t_con c =
-    match Con.kind c with
-    | T.Def([], T.Prim _) -> c
+    match Cons.kind c with
+    | T.Def ([], T.Prim _) -> c
     | _ ->
       match  ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
-        let clone = Con.clone c (Abs ([], Pre)) in
+        let clone = Cons.clone c (Abs ([], Pre)) in
         con_renaming := ConRenaming.add c clone (!con_renaming);
         (* Need to extend con_renaming before traversing the kind *)
-        Type.set_kind clone (t_kind (Con.kind c));
+        Type.set_kind clone (t_kind (Cons.kind c));
         clone
 
-  and prim = function
-    | CallPrim typs -> CallPrim (List.map t_typ typs)
-    | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
-    | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
-    | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
-    | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
-    | ShowPrim ot -> ShowPrim (t_typ ot)
-    | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
-    | CastPrim (t1,t2) -> CastPrim (t_typ t1,t_typ t2)
-    | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
-    | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
-    | SelfRef t -> SelfRef (t_typ t)
-    | ICStableRead t -> ICStableRead (t_typ t)
-    | ICStableWrite t -> ICStableWrite (t_typ t)
-    | SerializePrim ts -> SerializePrim (List.map t_typ ts)
-    | DeserializePrim ts ->  DeserializePrim (List.map t_typ ts)
-    | p -> p
+  and t_prim p = Ir.map_prim t_typ (fun id -> id) p
 
-  and t_field {lab; typ} =
-    { lab; typ = t_typ typ }
+  and t_field {lab; typ; depr} =
+    { lab; typ = t_typ typ; depr }
   in
 
   let rec t_exp (exp: exp) =
@@ -313,7 +307,16 @@ let transform mode prog =
         match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
-          ((t_exp a) -*- (t_exp kr)).it
+          (ensureNamed (t_exp kr) (fun vkr ->
+            let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
+            (switch_optE ((t_exp a) -*- varE vkr)
+               (unitE()) (* suspend *)
+               (*FIX ME *)
+               (varP resume) (* yield and resume *)
+                (* try await async (); resume() catch e -> r(e) *)
+                (selfcallE [] (ic_replyE [] (unitE())) (varE resume) (projE (varE vkr) 1))
+              T.unit
+           ))).it
         | Func(_, _, [], us, [T.Async(_, t2)]) ->
           (* async answer type, from await in `do async {}` *)
           (chainAsync (T.as_seq t2) us (t_exp a) (t_exp kr)).it
@@ -335,11 +338,11 @@ let transform mode prog =
          [e] -->* failed_asyncE nary (T.seq ts1) (varE e)
       in
       (callE (t_exp exp1) [t0] (tupE [k_ret; k_fail])).it
-    | PrimE (CPSAsync t, [exp1]) ->
-      let t0 = t_typ t in
+    | PrimE (CPSAsync t0, [exp1]) ->
+      let t0 = t_typ t0 in
       let tb, ts1 = match typ exp1 with
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
-          tb, List.map t_typ (List.map (T.open_ [t]) ts1)
+          tb, List.map t_typ (List.map (T.open_ [t0]) ts1)
         | t -> assert false in
       let ((nary_async, nary_reply, reject), def) =
         new_nary_async_reply ts1 true (* getSystemRefund *)
@@ -378,11 +381,28 @@ let transform mode prog =
             [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
             )
           )
-        )
-        (varE nary_async))
+         )
+         (varE nary_async))
+        .it
+    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->
+      let exp1' = t_exp exp1 in
+      let exp2' = t_exp exp2 in
+      let exp3' = t_exp exp3 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply [T.blob] true in
+      let _ = letEta in
+      (blockE (
+        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+          letEta exp1' (fun v1 ->
+          letEta exp2' (fun v2 ->
+          letEta exp3' (fun v3 ->
+            [ expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject)) ]
+            )
+          ))
+         )
+         (varE nary_async))
         .it
     | PrimE (p, exps) ->
-      PrimE (prim p, List.map t_exp exps)
+      PrimE (t_prim p, List.map t_exp exps)
     | BlockE b ->
       BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
@@ -420,10 +440,10 @@ let transform mode prog =
                 | PrimE (CPSAsync t0, [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
-                | Func(_,_,
-                       [tb],
-                       [Func(_, _, [], ts1, []) as contT; _],
-                       []) ->
+                | Func (_,_,
+                    [tb],
+                    [Func(_, _, [], ts1, []) as contT; _],
+                    []) ->
                   (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
               let k =
@@ -437,10 +457,10 @@ let transform mode prog =
             (* oneway, always with `ignore(async _)` body *)
             | Returns,
               { it = BlockE (
-                [{ it = LetD (
-                  { it = WildP; _},
-                  ({ it = PrimE (CPSAsync _, _); _} as exp)); _ }],
-                { it = PrimE (TupPrim, []); _});
+                  [ { it = LetD (
+                      { it = WildP; _},
+                      ({ it = PrimE (CPSAsync _, _); _} as exp)); _ }],
+                  { it = PrimE (TupPrim, []); _ } );
                 _ } ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
@@ -449,10 +469,10 @@ let transform mode prog =
                 | PrimE (CPSAsync t0, [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
-                | Func(_,_,
-                       [tb],
-                       [Func(_, _, [], ts1, []) as contT; _],
-                       []) ->
+                | Func (_, _,
+                    [tb],
+                    [Func(_, _, [], ts1, []) as contT; _],
+                    []) ->
                   (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
               let k =
@@ -468,8 +488,14 @@ let transform mode prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, {pre; post}, typ) ->
-      ActorE (t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ typ)
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
+      ActorE (t_decs ds, t_fields fs,
+        {meta;
+         preupgrade = t_exp preupgrade;
+         postupgrade = t_exp postupgrade;
+         heartbeat = t_exp heartbeat;
+         inspect = t_exp inspect
+        }, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
@@ -493,6 +519,7 @@ let transform mode prog =
     match dec' with
     | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
     | VarD (id, t, exp) -> VarD (id, t_typ t, t_exp exp)
+    | RefD (id, t, lexp) -> RefD (id, t_typ t, t_lexp lexp)
 
   and t_decs decs = List.map t_dec decs
 
@@ -513,8 +540,8 @@ let transform mode prog =
   and t_pat' pat =
     match pat with
     | WildP
-      | LitP _
-      | VarP _ ->
+    | LitP _
+    | VarP _ ->
       pat
     | TupP pats ->
       TupP (List.map t_pat pats)
@@ -538,8 +565,14 @@ let transform mode prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {pre; post}, t) ->
-      ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs, {pre = t_exp pre; post = t_exp post}, t_typ t)
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+      ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
+        { meta;
+          preupgrade = t_exp preupgrade;
+          postupgrade = t_exp postupgrade;
+          heartbeat = t_exp heartbeat;
+          inspect = t_exp inspect
+        }, t_typ t)
 
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in

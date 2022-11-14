@@ -3,7 +3,7 @@
 = `Prelude` -- General utilities
 */
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 /*

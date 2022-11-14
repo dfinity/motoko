@@ -1,6 +1,6 @@
 //! This module implements a simple buffer to be used by the compiler (in generated code)
 
-use crate::idl::idl_trap_with;
+use crate::idl_trap_with;
 
 #[repr(packed)]
 pub struct Buf {
@@ -11,6 +11,7 @@ pub struct Buf {
 }
 
 impl Buf {
+    #[cfg(feature = "ic")]
     pub(crate) unsafe fn advance(self: *mut Self, n: u32) {
         advance(self, n)
     }
@@ -28,6 +29,7 @@ pub(crate) unsafe fn read_byte(buf: *mut Buf) -> u8 {
     byte
 }
 
+#[cfg(feature = "ic")]
 /// Read a little-endian word
 pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
     if (*buf).ptr.add(3) >= (*buf).end {
@@ -42,6 +44,7 @@ pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
     word
 }
 
+#[cfg(feature = "ic")]
 unsafe fn advance(buf: *mut Buf, n: u32) {
     if (*buf).ptr.add(n as usize) > (*buf).end {
         idl_trap_with("advance out of buffer");
@@ -51,6 +54,7 @@ unsafe fn advance(buf: *mut Buf, n: u32) {
 }
 
 /// Can also be used for sleb
+#[cfg(feature = "ic")]
 #[no_mangle]
 pub(crate) unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
     loop {

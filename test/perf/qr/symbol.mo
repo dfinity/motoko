@@ -2,7 +2,6 @@
  * Module     : symbol.mo
  * Copyright  : 2020 DFINITY Stiftung
  * License    : Apache 2.0 with LLVM Exception
- * Maintainer : Enzo Haussecker <enzo@dfinity.org>
  * Stability  : stable
  */
 
@@ -92,7 +91,7 @@ module {
 
   func finderTLCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let v = w - 8;
+    let v : Nat = w - 8;
     var coords = List.nil<Coordinate>();
     for (i in Iter.range(v, w - 1)) {
       for (j in Iter.range(v, w - 1)) {
@@ -110,7 +109,7 @@ module {
 
   func finderTRCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let r = w - 8;
+    let r : Nat = w - 8;
     var coords = List.nil<Coordinate>();
     for (i in Iter.range(r, w - 1)) {
       for (j in Iter.range(0, 7)) {
@@ -128,7 +127,7 @@ module {
 
   func finderBLCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let c = w - 8;
+    let c : Nat = w - 8;
     var coords = List.nil<Coordinate>();
     for (i in Iter.range(0, 7)) {
       for (j in Iter.range(c, w - 1)) {
@@ -162,7 +161,7 @@ module {
 
   func timingHCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let r = w - 7;
+    let r : Nat = w - 7;
     var coords = List.nil<Coordinate>();
     for (j in Iter.range(8, w - 9)) {
       coords := List.push<Coordinate>((r, j), coords)
@@ -197,7 +196,7 @@ module {
 
   func hardcodeCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let c = w - 9;
+    let c : Nat = w - 9;
     List.singleton<Coordinate>((7, c))
   };
 
@@ -227,8 +226,8 @@ module {
 
   func formatHCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let r = w - 9;
-    let c = w - 8;
+    let r : Nat = w - 9;
+    let c : Nat = w - 8;
     var coords = List.nil<Coordinate>();
     for (j in Iter.range(0, 7)) {
       coords := List.push<Coordinate>((r, j), coords)
@@ -244,7 +243,7 @@ module {
 
   func formatVCoords(version : Version) : List<Coordinate> {
     let w = Common.width(version);
-    let c = w - 9;
+    let c : Nat = w - 9;
     var coords = List.nil<Coordinate>();
     for (i in Iter.range(0, 6)) {
       coords := List.push<Coordinate>((i, c), coords)
@@ -303,7 +302,7 @@ module {
 
   func alignment(version : Version) : List<(Coordinate, Bool)> {
     let n = Common.alignments(version).size() ** 2;
-    let m = if (n < 4) 0 else n - 3;
+    let m : Nat = if (n < 4) 0 else n - 3;
     let coords = alignmentCoords(version);
     let pattern = Nat.natToBits(33084991);
     let cycles = List.concat<Bool>(List.replicate<List<Bool>>(m, pattern));
@@ -381,7 +380,7 @@ module {
   func traceCoords(version : Version) : List<Coordinate> {
 
     let w = Common.width(version);
-    let t = w - 7;
+    let t : Nat = w - 7;
 
     let up = List.concat<Nat>(List.map<Nat, List<Nat>>(
       Iter.toList<Nat>(Iter.range(0, w - 1)),

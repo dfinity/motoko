@@ -13,8 +13,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_XORASSIGN -> XORASSIGN
       | T_WHILE -> WHILE
       | T_VAR -> VAR
-      | T_USHROP -> USHROP
-      | T_USHRASSIGN -> USHRASSIGN
+      | T_SHROP -> SHROP
+      | T_SHRASSIGN -> SHRASSIGN
       | T_UNDERSCORE -> UNDERSCORE
       | T_TYPE -> TYPE
       | T_TRY -> TRY
@@ -23,8 +23,6 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SWITCH -> SWITCH
       | T_SUBOP -> SUBOP
       | T_SUB -> SUB
-      | T_SSHROP -> SSHROP
-      | T_SSHRASSIGN -> SSHRASSIGN
       | T_SHLOP -> SHLOP
       | T_SHLASSIGN -> SHLASSIGN
       | T_SHARED -> SHARED
@@ -32,6 +30,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SEMICOLON -> SEMICOLON
       | T_STABLE -> STABLE
       | T_SYSTEM -> SYSTEM
+      | T_WITH -> WITH
       | T_RPAR -> RPAR
       | T_ROTROP -> ROTROP
       | T_ROTRASSIGN -> ROTRASSIGN
@@ -94,7 +93,10 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_DO -> DO
       | T_DIVOP -> DIVOP
       | T_DIVASSIGN -> DIVASSIGN
+      | T_DISALLOWED -> DISALLOWED
       | T_DEBUG_SHOW -> DEBUG_SHOW
+      | T_TO_CANDID -> TO_CANDID
+      | T_FROM_CANDID -> FROM_CANDID
       | T_DEBUG -> DEBUG
       | T_CONTINUE -> CONTINUE
       | T_COMMA -> COMMA
@@ -116,3 +118,11 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_AND -> AND
       | T_ADDOP -> ADDOP
       | T_ACTOR -> ACTOR
+      | T_WRAPADDOP -> WRAPADDOP
+      | T_WRAPSUBOP -> WRAPSUBOP
+      | T_WRAPMULOP -> WRAPMULOP
+      | T_WRAPPOWOP -> WRAPPOWOP
+      | T_WRAPADDASSIGN -> WRAPADDASSIGN
+      | T_WRAPSUBASSIGN -> WRAPSUBASSIGN
+      | T_WRAPMULASSIGN -> WRAPMULASSIGN
+      | T_WRAPPOWASSIGN -> WRAPPOWASSIGN

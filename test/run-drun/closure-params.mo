@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 let a = actor {
   flexible var c = 0;
   public func incn(n : Nat) : async () {

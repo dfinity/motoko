@@ -48,12 +48,16 @@ and typ' =
   | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of scope * typ                          (* future *)
+  | AndT of typ * typ                              (* intersection *)
+  | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
   | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
-and typ_field' = {id : id; typ : typ; mut : mut}
+and typ_field' =
+  | ValF of id * typ * mut
+  | TypF of typ_id * typ_bind list * typ
 
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}
@@ -70,21 +74,17 @@ and typ_item = id option * typ
 type lit =
   | NullLit
   | BoolLit of bool
-  | NatLit of Value.Nat.t
-  | Nat8Lit of Value.Nat8.t
-  | Nat16Lit of Value.Nat16.t
-  | Nat32Lit of Value.Nat32.t
-  | Nat64Lit of Value.Nat64.t
-  | IntLit of Value.Int.t
-  | Int8Lit of Value.Int_8.t
-  | Int16Lit of Value.Int_16.t
-  | Int32Lit of Value.Int_32.t
-  | Int64Lit of Value.Int_64.t
-  | Word8Lit of Value.Word8.t
-  | Word16Lit of Value.Word16.t
-  | Word32Lit of Value.Word32.t
-  | Word64Lit of Value.Word64.t
-  | FloatLit of Value.Float.t
+  | NatLit of Numerics.Nat.t
+  | Nat8Lit of Numerics.Nat8.t
+  | Nat16Lit of Numerics.Nat16.t
+  | Nat32Lit of Numerics.Nat32.t
+  | Nat64Lit of Numerics.Nat64.t
+  | IntLit of Numerics.Int.t
+  | Int8Lit of Numerics.Int_8.t
+  | Int16Lit of Numerics.Int_16.t
+  | Int32Lit of Numerics.Int_32.t
+  | Int64Lit of Numerics.Int_64.t
+  | FloatLit of Numerics.Float.t
   | CharLit of Value.unicode
   | TextLit of string
   | BlobLit of string
@@ -117,7 +117,12 @@ and pat_field' = {id : id; pat : pat}
 (* Expressions *)
 
 type vis = vis' Source.phrase
-and vis' = Public | Private | System
+and vis' =
+  | Public of string option
+  | Private
+  | System
+
+let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
@@ -148,12 +153,15 @@ and exp' =
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
   | ShowE of (op_typ * exp)                    (* debug show operator *)
+  | ToCandidE of exp list                      (* to_candid operator *)
+  | FromCandidE of exp                         (* from_candid operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
-  | ObjE of obj_sort * exp_field list          (* object *)
+  | ObjBlockE of obj_sort * dec_field list     (* object block *)
+  | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
@@ -188,8 +196,11 @@ and exp' =
   | AtomE of string                            (* atom *)
 *)
 
+and dec_field = dec_field' Source.phrase
+and dec_field' = {dec : dec; vis : vis; stab: stab option}
+
 and exp_field = exp_field' Source.phrase
-and exp_field' = {dec : dec; vis : vis; stab: stab option}
+and exp_field' = {mut : mut; id : id; exp : exp}
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
@@ -204,31 +215,38 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
 
 
 (* Program (pre unit detection) *)
 
-type prog = (prog', string) Source.annotated_phrase
+type prog_note = { filename : string; trivia : Trivia.triv_table }
+type prog = (prog', prog_note) Source.annotated_phrase
 and prog' = dec list
 
+(* Signatures (stable variables) *)
+
+type stab_sig = (stab_sig', prog_note) Source.annotated_phrase
+and stab_sig' = (dec list * typ_field list)      (* type declarations & stable actor fields *)
 
 (* Compilation units *)
 
 type import = (import', Type.typ) Source.annotated_phrase
-and import' = id * string * resolved_import ref
+and import' = pat * string * resolved_import ref
 
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
- | ActorU of id option * exp_field list      (* main IC actor *)
- | ModuleU of id option * exp_field list     (* module library *)
+ | ActorU of id option * dec_field list      (* main IC actor *)
+ | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * typ_id * typ_bind list * pat * typ option * id * exp_field list
+     sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
-
-type comp_unit = (comp_unit', string) Source.annotated_phrase
-and comp_unit' = import list * comp_unit_body
+type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
+and comp_unit' = {
+  imports : import list;
+  body : comp_unit_body;
+  }
 
 type lib = comp_unit
 
@@ -246,24 +264,20 @@ let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
   | IntLit n
-  | NatLit n      -> Value.Int.to_pretty_string n
-  | Int8Lit n     -> Value.Int_8.to_pretty_string n
-  | Int16Lit n    -> Value.Int_16.to_pretty_string n
-  | Int32Lit n    -> Value.Int_32.to_pretty_string n
-  | Int64Lit n    -> Value.Int_64.to_pretty_string n
-  | Nat8Lit n     -> Value.Nat8.to_pretty_string n
-  | Nat16Lit n    -> Value.Nat16.to_pretty_string n
-  | Nat32Lit n    -> Value.Nat32.to_pretty_string n
-  | Nat64Lit n    -> Value.Nat64.to_pretty_string n
-  | Word8Lit n    -> Value.Word8.to_pretty_string n
-  | Word16Lit n   -> Value.Word16.to_pretty_string n
-  | Word32Lit n   -> Value.Word32.to_pretty_string n
-  | Word64Lit n   -> Value.Word64.to_pretty_string n
+  | NatLit n      -> Numerics.Int.to_pretty_string n
+  | Int8Lit n     -> Numerics.Int_8.to_pretty_string n
+  | Int16Lit n    -> Numerics.Int_16.to_pretty_string n
+  | Int32Lit n    -> Numerics.Int_32.to_pretty_string n
+  | Int64Lit n    -> Numerics.Int_64.to_pretty_string n
+  | Nat8Lit n     -> Numerics.Nat8.to_pretty_string n
+  | Nat16Lit n    -> Numerics.Nat16.to_pretty_string n
+  | Nat32Lit n    -> Numerics.Nat32.to_pretty_string n
+  | Nat64Lit n    -> Numerics.Nat64.to_pretty_string n
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
   | BlobLit b     -> b
-  | FloatLit f    -> Value.Float.to_pretty_string f
+  | FloatLit f    -> Numerics.Float.to_pretty_string f
   | PreLit _      -> assert false
 
 
@@ -278,10 +292,6 @@ open Source
 
 let anon_id sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
 let is_anon_id id = Lib.String.chop_prefix "anon-" id.it <> None
-
-let field_id s = "." ^ s
-let as_field_id id = Lib.String.chop_prefix "." id.it
-
 
 (* Types & Scopes *)
 

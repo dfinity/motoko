@@ -5,7 +5,7 @@
 
 import Int "Int";
 import Order "Order";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 module {
 

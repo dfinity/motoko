@@ -228,6 +228,9 @@ value :
     { RecordV (record_fields (fun f -> fst f) fs) @@ at $sloc }
   | VARIANT LCURLY f=variant_value RCURLY
     { VariantV f @@ at $sloc }
+  | SERVICE s=name { ServiceV s.it @@ at $sloc }
+  | FUNC s=name PERIOD m=name { FuncV (s.it, m.it) @@ at $sloc }
+  | PRINCIPAL s=name { PrincipalV s.it @@ at $sloc }
   | b=id
     { match b.it with
       | "null" -> NullV @@ at $sloc

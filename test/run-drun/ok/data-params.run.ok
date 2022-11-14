@@ -20,8 +20,6 @@
 ("sendn", 10_000_000_000_000)
 ("sendi", +10_000_000_000_000)
 ("sendi", -20_000_000_000_000)
-("sendwords", 0x1, 0x2, 0x3, 0x4)
-("sendwords", 0xFF, 0xFFFE, 0xFFFF_FFFD, 0xFFFF_FFFF_FFFF_FFFC)
 ("sendnats", 1, 2, 3, 4)
 ("sendints", +1, +2, +3, +4)
 ("sendints", -1, -2, -3, -4)

@@ -18,12 +18,16 @@ let rec exp e = match e.it with
   | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
   | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
   | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
-  | TupE es             -> "TupE"      $$ List.map exp es
+  | ToCandidE es        -> "ToCandidE"   $$ exps es
+  | FromCandidE e       -> "FromCandidE" $$ [exp e]
+  | TupE es             -> "TupE"      $$ exps es
   | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs
+  | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
+  | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
+  | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
   | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
-  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
+  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
   | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
   | FuncE (x, sp, tp, p, t, sugar, e') ->
     "FuncE" $$ [
@@ -57,7 +61,7 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
-  | DoOptE e            -> "DoOptE"    $$ [exp e]
+  | DoOptE e            -> "DoOptE"  $$ [exp e]
   | BangE e             -> "BangE"   $$ [exp e]
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
@@ -65,6 +69,8 @@ let rec exp e = match e.it with
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
   | IgnoreE e           -> "IgnoreE" $$ [exp e]
+
+and exps es = List.map exp es
 
 and inst inst = match inst.it with
   | None -> []
@@ -83,25 +89,21 @@ and pat p = match p.it with
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
   | ParP p          -> "ParP"       $$ [pat p]
 
-and lit (l:lit) = match l with
+and lit = function
   | NullLit       -> Atom "NullLit"
   | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
   | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
-  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_pretty_string n) ]
-  | Nat8Lit n     -> "Nat8Lit"   $$ [ Atom (Value.Nat8.to_pretty_string n) ]
-  | Nat16Lit n    -> "Nat16Lit"  $$ [ Atom (Value.Nat16.to_pretty_string n) ]
-  | Nat32Lit n    -> "Nat32Lit"  $$ [ Atom (Value.Nat32.to_pretty_string n) ]
-  | Nat64Lit n    -> "Nat64Lit"  $$ [ Atom (Value.Nat64.to_pretty_string n) ]
-  | IntLit i      -> "IntLit"    $$ [ Atom (Value.Int.to_pretty_string i) ]
-  | Int8Lit i     -> "Int8Lit"   $$ [ Atom (Value.Int_8.to_pretty_string i) ]
-  | Int16Lit i    -> "Int16Lit"  $$ [ Atom (Value.Int_16.to_pretty_string i) ]
-  | Int32Lit i    -> "Int32Lit"  $$ [ Atom (Value.Int_32.to_pretty_string i) ]
-  | Int64Lit i    -> "Int64Lit"  $$ [ Atom (Value.Int_64.to_pretty_string i) ]
-  | Word8Lit w    -> "Word8Lit"  $$ [ Atom (Value.Word8.to_pretty_string w) ]
-  | Word16Lit w   -> "Word16Lit" $$ [ Atom (Value.Word16.to_pretty_string w) ]
-  | Word32Lit w   -> "Word32Lit" $$ [ Atom (Value.Word32.to_pretty_string w) ]
-  | Word64Lit w   -> "Word64Lit" $$ [ Atom (Value.Word64.to_pretty_string w) ]
-  | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_pretty_string f) ]
+  | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
+  | Nat8Lit n     -> "Nat8Lit"   $$ [ Atom (Numerics.Nat8.to_pretty_string n) ]
+  | Nat16Lit n    -> "Nat16Lit"  $$ [ Atom (Numerics.Nat16.to_pretty_string n) ]
+  | Nat32Lit n    -> "Nat32Lit"  $$ [ Atom (Numerics.Nat32.to_pretty_string n) ]
+  | Nat64Lit n    -> "Nat64Lit"  $$ [ Atom (Numerics.Nat64.to_pretty_string n) ]
+  | IntLit i      -> "IntLit"    $$ [ Atom (Numerics.Int.to_pretty_string i) ]
+  | Int8Lit i     -> "Int8Lit"   $$ [ Atom (Numerics.Int_8.to_pretty_string i) ]
+  | Int16Lit i    -> "Int16Lit"  $$ [ Atom (Numerics.Int_16.to_pretty_string i) ]
+  | Int32Lit i    -> "Int32Lit"  $$ [ Atom (Numerics.Int_32.to_pretty_string i) ]
+  | Int64Lit i    -> "Int64Lit"  $$ [ Atom (Numerics.Int_64.to_pretty_string i) ]
+  | FloatLit f    -> "FloatLit"  $$ [ Atom (Numerics.Float.to_pretty_string f) ]
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
   | BlobLit b     -> "BlobLit"   $$ [ Atom b ]
@@ -134,7 +136,8 @@ and mut m = match m.it with
   | Var   -> Atom "Var"
 
 and vis v = match v.it with
-  | Public  -> Atom "Public"
+  | Public None -> Atom "Public"
+  | Public (Some m) -> "Public" $$ [Atom m]
   | Private -> Atom "Private"
   | System -> Atom "System"
 
@@ -145,9 +148,10 @@ and stab s_opt = match s_opt with
     | Flexible -> Atom "Flexible"
     | Stable -> Atom "Stable")
 
-and typ_field (tf : typ_field)
-  = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
-
+and typ_field (tf : typ_field) = match tf.it with
+  | ValF (id, t, m) -> id.it $$ [typ t; mut m]
+  | TypF (id', tbs, t) ->
+      "TypF" $$ [id id'] @ List.map typ_bind tbs @ [typ t]
 and typ_item ((id, ty) : typ_item) =
   match id with
   | None -> [typ ty]
@@ -159,8 +163,11 @@ and typ_tag (tt : typ_tag)
 and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
 
+and dec_field (df : dec_field)
+  = "DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab]
+
 and exp_field (ef : exp_field)
-  = "Field" $$ [dec ef.it.dec; vis ef.it.vis; stab ef.it.stab]
+  = "ExpField" $$ [mut ef.it.mut; id ef.it.id; exp ef.it.exp]
 
 and operator_type t = Atom (Type.string_of_typ t)
 
@@ -178,6 +185,8 @@ and typ t = match t.it with
   | TupT ts -> "TupT" $$ List.concat_map typ_item ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
+  | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
   | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
 
@@ -187,11 +196,11 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (sp, x, tp, p, rt, s, i', efs) ->
+  | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
     "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
       pat p;
       (match rt with None -> Atom "_" | Some t -> typ t);
       obj_sort s; id i'
-    ] @ List.map exp_field efs
+    ] @ List.map dec_field dfs
 
 and prog prog = "Prog" $$ List.map dec prog.it

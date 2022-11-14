@@ -57,16 +57,18 @@ val cps_awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
+val ic_call_rawE : exp -> exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
 val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
+val natE : Mo_values.Numerics.Nat.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
 val ignoreE : exp -> exp
 
-val unitE : exp
+val unitE : unit -> exp
 val boolE : bool -> exp
 val nullE : unit -> exp
 
@@ -79,6 +81,7 @@ val ifE : exp -> exp -> exp -> exp
 val dotE : exp -> Type.lab -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
+val switch_textE : exp -> (string * exp) list -> (pat * exp) -> typ -> exp
 val tupE : exp list -> exp
 val breakE: id -> exp -> exp
 val retE: exp -> exp
@@ -90,8 +93,8 @@ val forE : pat -> exp -> exp -> exp
 val loopWhileE : exp -> exp -> exp
 val whileE : exp -> exp -> exp
 
-val falseE : exp
-val trueE : exp
+val falseE : unit -> exp
+val trueE : unit -> exp
 val notE : exp -> exp
 val andE : exp -> exp -> exp
 val orE : exp -> exp -> exp
@@ -101,13 +104,14 @@ val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
 val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
-val unreachableE : exp
+val unreachableE : unit -> exp
 
 (* Declarations *)
 
 val letP : pat -> exp -> dec
 val letD : var -> exp -> dec
-val varD : id -> typ -> exp -> dec
+val varD : var -> exp -> dec
+val refD : var -> lexp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var -> var list -> exp -> dec
@@ -132,3 +136,11 @@ val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
 val (-*-) : exp -> exp -> exp       (* application *)
+
+(* Objects *)
+
+val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
+
+(* Records *)
+
+val recordE : (lab * exp) list -> exp

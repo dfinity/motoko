@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor {
   Prim.debugPrint ("init'ed 0");
   stable var c = "a";

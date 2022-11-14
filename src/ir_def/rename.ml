@@ -19,21 +19,25 @@ let arg_bind rho a =
   let i' = fresh_id a.it in
   ({a with it = i'}, Renaming.add a.it i' rho)
 
-let rec prim rho = function
-  | BreakPrim i -> BreakPrim (id rho i)
-  | p -> p
+let rec prim rho p =
+  Ir.map_prim (fun t -> t) (id rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
-and exp' rho e  = match e with
+and exp' rho = function
   | VarE i              -> VarE (id rho i)
-  | LitE l              -> e
+  | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, { pre; post }, t) ->
+  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; inspect }, t) ->
     let ds', rho' = decs rho ds in
     ActorE
       (ds',
        fields rho' fs,
-       {pre = exp rho' pre; post = exp rho' post},
+       {meta;
+        preupgrade = exp rho' preupgrade;
+        postupgrade = exp rho' postupgrade;
+        heartbeat = exp rho' heartbeat;
+        inspect = exp rho' inspect;
+       },
        t)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
@@ -80,8 +84,8 @@ and pat rho p =
     let p',rho = pat' rho p.it in
     {p with it = p'}, rho
 
-and pat' rho p = match p with
-  | WildP         -> (p, rho)
+and pat' rho = function
+  | WildP as p    -> (p, rho)
   | VarP i        ->
     let i, rho' = id_bind rho i in
      (VarP i, rho')
@@ -90,7 +94,7 @@ and pat' rho p = match p with
   | ObjP pfs      ->
     let (pats, rho') = pats rho (pats_of_obj_pat pfs) in
     (ObjP (replace_obj_pat pfs pats), rho')
-  | LitP l        -> (p, rho)
+  | LitP _ as p   -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')
   | TagP (i, p)   -> let (p', rho') = pat rho p in
@@ -110,7 +114,7 @@ and pats rho ps  =
      (p'::ps', rho'')
 
 and case rho (c : case) =
-    {c with it = case' rho c.it}
+  {c with it = case' rho c.it}
 and case' rho { pat = p; exp = e} =
   let (p', rho') = pat rho p in
   let e' = exp rho' e in
@@ -122,7 +126,7 @@ and dec rho d =
   let (mk_d, rho') = dec' rho d.it in
   ({d with it = mk_d}, rho')
 
-and dec' rho d = match d with
+and dec' rho = function
   | LetD (p, e) ->
      let p', rho = pat rho p in
      (fun rho' -> LetD (p',exp rho' e)),
@@ -130,6 +134,10 @@ and dec' rho d = match d with
   | VarD (i, t, e) ->
      let i', rho = id_bind rho i in
      (fun rho' -> VarD (i', t, exp rho' e)),
+     rho
+  | RefD (i, t, le) ->
+     let i', rho = id_bind rho i in
+     (fun rho' -> RefD (i', t, lexp rho' le)),
      rho
 
 and decs rho ds =
@@ -152,7 +160,7 @@ let comp_unit rho cu = match cu with
   | LibU (ds, e) ->
     let ds', rho' = decs rho ds
     in LibU (ds', exp rho' e)
-  | ActorU (as_opt, ds, fs, { pre; post }, t) ->
+  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; inspect }, t) ->
     let as_opt', rho' = match as_opt with
       | None -> None, rho
       | Some as_ ->
@@ -161,4 +169,9 @@ let comp_unit rho cu = match cu with
     in
     let ds', rho'' = decs rho' ds in
     ActorU (as_opt', ds', fields rho'' fs,
-      { pre = exp rho'' pre; post = exp rho'' post }, t)
+      { meta;
+        preupgrade = exp rho'' preupgrade;
+        postupgrade = exp rho'' postupgrade;
+        heartbeat = exp rho'' heartbeat;
+        inspect = exp rho'' inspect;
+      }, t)

@@ -97,12 +97,14 @@ let rec exp msgs e : f = match e.it with
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
   | ShowE (_, e)        -> exp msgs e
+  | ToCandidE es        -> exps msgs es
+  | FromCandidE e       -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjE (s, efs)       ->
+  | ObjBlockE (s, dfs)       ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
-    (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
-    group msgs (exp_fields msgs efs)
+    group msgs (dec_fields msgs dfs)
+  | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
@@ -133,6 +135,9 @@ let rec exp msgs e : f = match e.it with
 
 and exps msgs es : f = unions (exp msgs) es
 
+and exp_fields msgs efs : f = unions (exp_field msgs) efs
+and exp_field msgs ef : f = exp msgs ef.it.exp
+
 and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
   | VarP i        -> (M.empty, S.singleton i.it)
@@ -161,17 +166,17 @@ and case msgs (c : case) = exp msgs c.it.exp /// pat msgs c.it.pat
 
 and cases msgs cs : f = unions (case msgs) cs
 
-and exp_fields msgs efs =
-  decs msgs (List.map (fun ef -> ef.it.dec) efs)
+and dec_fields msgs dfs =
+  decs msgs (List.map (fun df -> df.it.dec) dfs)
 
 and dec msgs d = match d.it with
   | ExpD e -> (exp msgs e, S.empty)
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (csp, i, tp, p, t, s, i', efs) ->
+  | ClassD (csp, i, tp, p, t, s, i', dfs) ->
     (M.empty, S.singleton i.it) +++ delayify (
-      group msgs (exp_fields msgs efs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
+      group msgs (dec_fields msgs dfs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
     )
 
 (* The class self binding is treated as defined at the very end of the group *)

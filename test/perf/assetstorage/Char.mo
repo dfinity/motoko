@@ -1,15 +1,6 @@
 /// Characters
-import Prim "mo:prim";
+import Prim "mo:⛔";
 module {
-
-  /// Convert character `c` to a word containing its Unicode scalar value.
-  public let toWord32 : (c : Char) -> Word32 = Prim.charToWord32;
-
-  /// Convert word `w` to a character.
-  /// Traps if `w` is not a valid Unicode scalar value.
-  /// Value `w` is valid if, and only if, `w < 0xD800 or (0xE000 <= w and w <= 0x10FFFF)`.
-  public let fromWord32 : (w : Word32) -> Char = Prim.word32ToChar;
-
   /// Convert character `c` to single character text.
   public let toText : (c : Char) -> Text = Prim.charToText;
 
@@ -18,11 +9,6 @@ module {
 
   // Not exposed pending multi-char implementation.
   private let toLower : (c : Char) -> Char = Prim.charToLower;
-
-  /// Returns `true` when `c` is a decimal digit between `0` and `9`, otherwise `false`.
-  public func isDigit(c : Char) : Bool {
-    Prim.charToWord32(c) - Prim.charToWord32('0') <= (9 : Word32)
-  };
 
   /// Returns the Unicode _White_Space_ property of `c`.
   public let isWhitespace : (c : Char) -> Bool = Prim.charIsWhitespace;

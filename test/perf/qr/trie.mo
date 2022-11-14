@@ -3,7 +3,7 @@
 = `Trie` -- Functional map
 */
 
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import P "prelude";
 import Option "option";
 import Hash "hash";
@@ -151,10 +151,10 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
                  ((k.hash & mask) == bits)
                  or
                  (do { Prim.debugPrint "\nmalformed hash!:\n";
-                   Prim.debugPrintInt (Prim.word32ToNat(k.hash));
+                   Prim.debugPrintInt (Prim.nat32ToNat(k.hash));
                    Prim.debugPrint "\n (key hash) != (path bits): \n";
-                   Prim.debugPrintInt (Prim.word32ToNat(bits));
-                   Prim.debugPrint "\nmask  : "; Prim.debugPrintInt (Prim.word32ToNat(mask));
+                   Prim.debugPrintInt (Prim.nat32ToNat(bits));
+                   Prim.debugPrint "\nmask  : "; Prim.debugPrintInt (Prim.nat32ToNat(mask));
                    Prim.debugPrint "\n";
                    false })
                }
@@ -164,11 +164,11 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
          };
     case (#branch b) {
            let bitpos1 = switch bitpos {
-           case null  (Prim.natToWord32(0));
-           case (?bp) (Prim.natToWord32(Prim.word32ToNat(bp) + 1))
+           case null  (Prim.natToNat32(0));
+           case (?bp) (Prim.natToNat32(Prim.nat32ToNat(bp) + 1))
            };
-           let mask1 = mask | (Prim.natToWord32(1) << bitpos1);
-           let bits1 = bits | (Prim.natToWord32(1) << bitpos1);
+           let mask1 = mask | (Prim.natToNat32(1) << bitpos1);
+           let bits1 = bits | (Prim.natToNat32(1) << bitpos1);
            let sum = count<K,V>(b.left) + count<K,V>(b.right);
            (b.count == sum or (do { Prim.debugPrint "malformed count"; false }))
            and
@@ -1181,8 +1181,8 @@ public func disj<K,V,W,X>(
 		         switch (isEmpty<K,V>(fl),
 			               isEmpty<K,V>(fr)) {
 		         case (true,  true)  #empty;
-		         case (false, true)  fr;
-		         case (true,  false) fl;
+		         case (false, true)  fl;
+		         case (true,  false) fr;
 		         case (false, false) branch<K,V>(fl, fr);
 		         };
 	         }
@@ -1220,8 +1220,8 @@ public func disj<K,V,W,X>(
 		         switch (isEmpty<K,W>(fl),
 			               isEmpty<K,W>(fr)) {
 		         case (true,  true)  #empty;
-		         case (false, true)  fr;
-		         case (true,  false) fl;
+		         case (false, true)  fl;
+		         case (true,  false) fr;
 		         case (false, false) branch<K,W>(fl, fr);
 		         };
 	         }
