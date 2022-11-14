@@ -5,7 +5,7 @@
 //! A write barrier catches all pointers leading from old to young generation.
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
-mod mark_stack;
+pub mod mark_stack;
 pub mod remembered_set;
 #[cfg(debug_assertions)]
 mod sanity_checks;
@@ -119,7 +119,9 @@ const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
 
+    debug_assert!(limits.base <= limits.last_free);
     let old_generation_size = limits.last_free - limits.base;
+    debug_assert!(limits.last_free <= limits.free);
     let young_generation_size = limits.free - limits.last_free;
 
     if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
@@ -154,11 +156,14 @@ pub struct Heap<'a, M: Memory> {
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table_ptr_loc: *mut Value,
+    // For possible future additional roots, please extend the functionality in:
+    // * `mark_root_set`
+    // * `thread_initial_phase`
 }
 
 pub struct Limits {
     pub base: usize,
-    pub last_free: usize,
+    pub last_free: usize, // this separates the old generation from the young generation
     pub free: usize,
 }
 
@@ -413,10 +418,13 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
+            debug_assert!(
+                (location as usize) >= self.heap.limits.base
+                    && (location as usize) < self.heap.limits.last_free
+            );
             let value = *location;
             // value in the location may have changed since recording by the write barrer
             if value.points_to_or_beyond(self.heap.limits.last_free) {
-                debug_assert!((location as usize) >= self.heap.limits.base);
                 self.thread(location);
             }
             iterator.next();

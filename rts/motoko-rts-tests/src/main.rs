@@ -6,7 +6,6 @@ mod continuation_table;
 mod crc32;
 mod gc;
 mod leb128;
-mod mark_stack;
 mod memory;
 mod principal_id;
 mod remembered_set;
@@ -29,7 +28,6 @@ fn main() {
         crc32::test();
         gc::test();
         leb128::test();
-        mark_stack::test();
         principal_id::test();
         stream::test();
         text::test();

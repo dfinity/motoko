@@ -5,6 +5,8 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
+mod compacting;
+mod generational;
 mod heap;
 mod random;
 mod utils;
@@ -39,6 +41,9 @@ pub fn test() {
         test_random_heap(seed, 180);
     }
     print!("\r");
+
+    compacting::test();
+    generational::test();
 }
 
 fn test_heaps() -> Vec<TestHeap> {
