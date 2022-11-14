@@ -1,6 +1,6 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 //MOC-FLAG --experimental-field-aliasing
-import {debugPrint; error; time} = "mo:⛔";
+import {Array_init; debugPrint; error; time} = "mo:⛔";
 
 actor {
     // timer module implementation
@@ -58,6 +58,29 @@ actor {
                                         case (?n) ?{n with ante = clean(n.ante); dopo = clean(n.dopo) }
                                     };
     debugPrint(debug_show {now; timers = clean timers});
+
+
+    var gathered = 0;
+    func gatherExpired(n : ?Node, arr : [var ?(() -> async ())]) : [var ?(() -> async ())] {
+    	 switch n {
+	     case null { arr};
+	     case (?n) {
+	     	  ignore gatherExpired(n.ante, arr);
+		  if (n.expire > 0 and n.expire <= now) {
+		     arr[gathered] := ?n.job;
+		     gathered += 1;
+		     ignore gatherExpired(n.dopo, arr);
+		  };
+		  arr
+	     }
+	 }
+    };
+
+    gathered := 0;
+    let arr = gatherExpired(timers, Array_init(10, null));
+    //assert gathered == 2;
+    debugPrint(debug_show {gathered});
+    
     
     if (count < max) {
       count += 1;
@@ -93,5 +116,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
+//SKIP ic-ref-run
 
 //CALL ingress go "DIDL\x00\x00"

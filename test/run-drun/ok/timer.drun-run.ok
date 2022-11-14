@@ -1,9 +1,19 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: {now = 1_668_434_514_153_243_000; timers = ?{ante = null; delay = 1; dopo = ?{ante = null; delay = 2; dopo = null; expire = 1_668_434_516_051_393_000; id = 2; recurring = false}; expire = 1_668_434_515_051_393_000; id = 1; recurring = false}}
+debug.print: {gathered = 0}
 debug.print: PEEKABOO!
+debug.print: {now = 1_668_434_514_159_515_000; timers = ?{ante = null; delay = 1; dopo = ?{ante = null; delay = 2; dopo = null; expire = 1_668_434_516_051_393_000; id = 2; recurring = false}; expire = 1_668_434_515_051_393_000; id = 1; recurring = false}}
+debug.print: {gathered = 0}
 debug.print: PEEKABOO!
+debug.print: {now = 1_668_434_514_165_784_000; timers = ?{ante = null; delay = 1; dopo = ?{ante = null; delay = 2; dopo = null; expire = 1_668_434_516_051_393_000; id = 2; recurring = false}; expire = 0; id = 1; recurring = false}}
+debug.print: {gathered = 0}
 debug.print: PEEKABOO!
+debug.print: {now = 1_668_434_514_172_046_000; timers = ?{ante = null; delay = 1; dopo = ?{ante = null; delay = 2; dopo = null; expire = 1_668_434_516_051_393_000; id = 2; recurring = false}; expire = 0; id = 1; recurring = false}}
+debug.print: {gathered = 0}
 debug.print: PEEKABOO!
+debug.print: {now = 1_668_434_514_178_310_000; timers = ?{ante = null; delay = 1; dopo = ?{ante = null; delay = 2; dopo = null; expire = 1_668_434_516_051_393_000; id = 2; recurring = false}; expire = 0; id = 1; recurring = false}}
+debug.print: {gathered = 0}
 debug.print: PEEKABOO!
 debug.print: {count = 5}
 ingress Completed: Reply: 0x4449444c0000
