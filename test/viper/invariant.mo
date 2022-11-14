@@ -1,5 +1,4 @@
 // @verify
-//MOC-ENV MOC_UNLOCK_VERIFICATION=viper
 
 actor {
 

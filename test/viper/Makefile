@@ -1,4 +1,5 @@
 RUNFLAGS = -v
+export MOC_UNLOCK_VERIFICATION = viper
 
 all:
 	../run.sh $(RUNFLAGS) *.mo

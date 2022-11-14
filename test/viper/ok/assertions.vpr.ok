@@ -1,7 +1,7 @@
 field $message_async: Int
 define $Perm($Self) ((((true && acc(($Self).u,write)) && acc(($Self).v,write)) && 
   acc(($Self).$message_async,write)))
-define $Inv($Self) ((invariant_12($Self) && (((0 <= ($Self).$message_async) && (
+define $Inv($Self) ((invariant_11($Self) && (((0 <= ($Self).$message_async) && (
   ($Self).$message_async <= 1)) && ((($Self).$message_async == 1) ==> true))))
 method __init__($Self: Ref)
     
@@ -15,7 +15,7 @@ method __init__($Self: Ref)
     }
 field u: Bool
 field v: Int
-define invariant_12($Self) (($Self).u)
+define invariant_11($Self) (($Self).u)
 method claim($Self: Ref)
     
     requires $Perm($Self)
