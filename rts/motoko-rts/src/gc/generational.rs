@@ -156,11 +156,14 @@ pub struct Heap<'a, M: Memory> {
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table_ptr_loc: *mut Value,
+    // For possible future additional roots, please extend the functionality in:
+    // * `mark_root_set`
+    // * `thread_initial_phase`
 }
 
 pub struct Limits {
     pub base: usize,
-    pub last_free: usize,
+    pub last_free: usize, // this separates the old generation from the young generation
     pub free: usize,
 }
 
