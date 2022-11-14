@@ -70,6 +70,7 @@ s/RETURN/\'return\'/g
 s/RCURLY/\'}\'/g
 s/RBRACKET/\']\'/g
 s/QUEST/\'?\'/g
+s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
