@@ -38,8 +38,6 @@ EOF
       cd -
       '';
 
-      patches = [./now.patch];
-
       nativeBuildInputs = with pkgs; [
         pkg-config
         cmake
