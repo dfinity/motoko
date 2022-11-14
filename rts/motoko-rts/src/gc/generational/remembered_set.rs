@@ -254,13 +254,7 @@ unsafe fn table_get(table: *mut Blob, index: u32) -> *mut HashEntry {
 }
 
 unsafe fn table_set(table: *mut Blob, index: u32, value: Value) {
-    debug_assert!(table != null_mut());
-    let entry =
-        (table.payload_addr() as u32 + index * size_of::<HashEntry>() as u32) as *mut HashEntry;
-    debug_assert!(
-        entry as u32 + size_of::<HashEntry>() as u32
-            <= table as u32 + object_size(table as usize).to_bytes().as_u32()
-    );
+    let entry = table_get(table, index);
     (*entry).value = value;
     (*entry).next_collision_ptr = null_mut();
 }
