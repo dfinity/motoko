@@ -316,14 +316,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
     }
 
-    unsafe fn should_be_threaded(&self, object: *mut Obj) -> bool {
-        let address = object as usize;
-        match self.strategy {
-            Strategy::Young => address >= self.heap.limits.last_free,
-            Strategy::Full => address >= self.heap.limits.base,
-        }
-    }
-
     unsafe fn compact_phase(&mut self) {
         if self.is_compaction_beneficial() {
             self.thread_initial_phase();
@@ -499,5 +491,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
         debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
         (*object).tag = header;
+    }
+
+    unsafe fn should_be_threaded(&self, object: *mut Obj) -> bool {
+        object as usize >= self.generation_base()
     }
 }
