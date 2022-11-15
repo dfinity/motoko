@@ -609,7 +609,7 @@ rec {
     buildInputs = [ nixpkgs.cargo-nightly ];
     src = subpath ./crash;
     doCheck = false;
-    phases = "runPhase";
+    phases = "unpackPhase runPhase";
     runPhase = ''
       ./run.sh
     '';
