@@ -10,6 +10,8 @@ grouping. Every module has a high-level prose comment explaining the concept;
 this keeps documentation close to the code (a lesson learned from Simon PJ).
 *)
 
+(*TEST*)
+
 open Ir_def
 open Mo_values
 open Mo_types
