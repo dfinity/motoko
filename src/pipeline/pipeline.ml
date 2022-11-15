@@ -237,7 +237,7 @@ let internals, initial_stat_env =
 
 let parse_stab_sig s name  =
   let open Diag.Syntax in
-  let mode = Lexer.{mode with privileged = false} in
+  let mode = Lexer.{privileged = false; verification = false} in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_stab_sig in
   let* sig_ = generic_parse_with mode lexer parse name in
@@ -247,7 +247,7 @@ let parse_stab_sig_from_file filename : Syntax.stab_sig Diag.result =
   let ic = Stdlib.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
-    let mode = Lexer.{mode with privileged = false} in
+    let mode = Lexer.{privileged = false; verification = false} in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_stab_sig in
     let* sig_ = generic_parse_with mode lexer parse filename in
