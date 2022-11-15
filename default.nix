@@ -611,7 +611,7 @@ rec {
     doCheck = false;
     phases = "unpackPhase runPhase";
     runPhase = ''
-      ./run.sh
+      crash/run.sh
     '';
   };
 

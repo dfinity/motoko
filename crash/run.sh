@@ -2,3 +2,4 @@
 
 ulimit -c unlimited
 cargo run
+find / -name core.*
