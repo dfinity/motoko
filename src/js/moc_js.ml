@@ -12,6 +12,7 @@ let () =
   Flags.actor_idl_path := Some "idl/";
   Js.export "Motoko"
     (object%js
+      val version = js_version
       method saveFile name content = js_save_file name content
       method removeFile name = js_remove_file name
       method renameFile oldpath newpath = js_rename_file oldpath newpath
@@ -19,6 +20,7 @@ let () =
       method readDir path = js_read_dir path
       method addPackage package dir = add_package package dir
       method clearPackage () = clear_package ()
+      method setCandidPath path = set_candid_path path
       method setActorAliases entries = set_actor_aliases entries
       method setPublicMetadata entries = set_public_metadata entries
       method gcFlags option = gc_flags option
@@ -28,6 +30,7 @@ let () =
       method candid s = Flags.compiled := true; js_candid s
       method stableCompatible pre post = js_stable_compatible pre post
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
-      method parseMotoko s = js_parse_motoko s
       method parseCandid s = js_parse_candid s
+      method parseMotoko s = js_parse_motoko s
+      method parseMotokoTyped paths = js_parse_motoko_typed paths
      end);
