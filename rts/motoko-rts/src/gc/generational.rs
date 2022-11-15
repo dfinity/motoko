@@ -76,7 +76,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
-    debug_assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
+    assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
     use crate::memory::ic;
     Limits {
         base: ic::get_aligned_heap_base() as usize,
@@ -119,9 +119,9 @@ const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
 
-    debug_assert!(limits.base <= limits.last_free);
+    assert!(limits.base <= limits.last_free);
     let old_generation_size = limits.last_free - limits.base;
-    debug_assert!(limits.last_free <= limits.free);
+    assert!(limits.last_free <= limits.free);
     let young_generation_size = limits.free - limits.last_free;
 
     if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
@@ -228,8 +228,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let root_array = self.heap.roots.static_roots.as_array();
         for i in 0..root_array.len() {
             let object = root_array.get(i).as_obj();
-            debug_assert_eq!(object.tag(), TAG_MUTBOX);
-            debug_assert!((object as usize) < self.heap.limits.base);
+            assert_eq!(object.tag(), TAG_MUTBOX);
+            assert!((object as usize) < self.heap.limits.base);
             self.mark_root_mutbox_fields(object as *mut MutBox);
         }
     }
@@ -250,8 +250,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn mark_object(&mut self, object: Value) {
         let pointer = object.get_ptr() as u32;
-        debug_assert!(pointer >= self.generation_base() as u32);
-        debug_assert_eq!(pointer % WORD_SIZE, 0);
+        assert!(pointer >= self.generation_base() as u32);
+        assert_eq!(pointer % WORD_SIZE, 0);
 
         let obj_idx = pointer / WORD_SIZE;
         if get_bit(obj_idx) {
@@ -279,7 +279,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
 
-                #[cfg(debug_assertions)]
+                // Should become a debug assertion in future.
                 gc.barrier_coverage_check(field_address);
             },
             |gc, slice_start, array| {
@@ -300,7 +300,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         );
     }
 
-    #[cfg(debug_assertions)]
     unsafe fn barrier_coverage_check(&self, field_address: *mut Value) {
         if self.strategy == Strategy::Full
             && (field_address as usize) >= self.heap.limits.base
@@ -372,8 +371,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let root_array = self.heap.roots.static_roots.as_array();
         for i in 0..root_array.len() {
             let object = root_array.get(i).as_obj();
-            debug_assert_eq!(object.tag(), TAG_MUTBOX);
-            debug_assert!((object as usize) < self.heap.limits.base);
+            assert_eq!(object.tag(), TAG_MUTBOX);
+            assert!((object as usize) < self.heap.limits.base);
             self.thread_root_mutbox_fields(object as *mut MutBox);
         }
     }
@@ -418,7 +417,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let mut iterator = REMEMBERED_SET.as_ref().unwrap().iterate();
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
-            debug_assert!(
+            assert!(
                 (location as usize) >= self.heap.limits.base
                     && (location as usize) < self.heap.limits.last_free
             );
@@ -484,21 +483,21 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn thread(&self, field: *mut Value) {
         let pointed = (*field).get_ptr() as *mut Obj;
-        debug_assert!(self.should_be_threaded(pointed));
+        assert!(self.should_be_threaded(pointed));
         let pointed_header = pointed.tag();
         *field = Value::from_raw(pointed_header);
         (*pointed).tag = field as u32;
     }
 
     unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {
-        debug_assert!(self.should_be_threaded(object));
+        assert!(self.should_be_threaded(object));
         let mut header = object.tag();
         while header & 0b1 == 0 {
             let tmp = (header as *const Obj).tag();
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
-        debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+        assert!(header >= TAG_OBJECT && header <= TAG_NULL);
         (*object).tag = header;
     }
 

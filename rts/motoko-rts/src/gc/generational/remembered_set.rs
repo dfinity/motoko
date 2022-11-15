@@ -107,7 +107,7 @@ impl RememberedSet {
         }
     }
 
-    #[cfg(debug_assertions)]
+    // Will only be used for debug assertions in future (barrier coverage check).
     pub unsafe fn contains(&self, value: Value) -> bool {
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);
@@ -155,7 +155,7 @@ impl RememberedSet {
             self.insert(mem, value);
             iterator.next();
         }
-        debug_assert_eq!(self.count, old_count);
+        assert_eq!(self.count, old_count);
     }
 }
 
