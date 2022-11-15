@@ -58,7 +58,7 @@ else
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
 
-if [ -e "/var/lib/apport/coredump" ]
+if [ -e "/var/crash" ]
 then
-  ls -la /var/lib/apport/coredump
+  ls -la /var/crash
 fi
