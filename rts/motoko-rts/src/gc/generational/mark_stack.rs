@@ -23,7 +23,7 @@ pub static mut STACK_PTR: *mut usize = null_mut();
 
 /// Allocate the mark stack at the start of each GC run
 pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
-    debug_assert!(STACK_BLOB_PTR.is_null());
+    assert!(STACK_BLOB_PTR.is_null());
 
     // Allocating an actual object here to not break dump_heap
     STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).get_ptr() as *mut Blob;
@@ -46,7 +46,7 @@ pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
     let p = mem.alloc_words(stack_cap).get_ptr() as *mut usize;
 
     // Make sure nothing was allocated after the stack
-    debug_assert_eq!(STACK_TOP, p);
+    assert_eq!(STACK_TOP, p);
 
     let new_cap: Words<u32> = stack_cap * 2;
     (*STACK_BLOB_PTR).len = new_cap.to_bytes();
