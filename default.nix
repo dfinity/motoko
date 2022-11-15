@@ -604,6 +604,17 @@ rec {
     installPhase = "touch $out";
   };
 
+  crash-test = stdenv.mkDerivation {
+    name = "crash-test";
+    buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rust ];
+    src = subpath ./crash;
+    doCheck = false;
+    phases = "runPhase";
+    runPhase = ''
+      ./run.sh
+    '';
+  };
+
   base-src = stdenv.mkDerivation {
     name = "base-src";
     phases = "unpackPhase installPhase";
@@ -726,28 +737,8 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
-      ic-ref-run
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
-    builtins.attrValues tests ++
-    builtins.attrValues js;
+      crash-test
+    ];
   };
 
   shell = stdenv.mkDerivation {
