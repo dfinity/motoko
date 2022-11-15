@@ -606,7 +606,7 @@ rec {
 
   crash-test = stdenv.mkDerivation {
     name = "crash-test";
-    buildInputs = [ nixpkgs.cargo-nightly nixpkgs.rust ];
+    buildInputs = [ nixpkgs.cargo-nightly ];
     src = subpath ./crash;
     doCheck = false;
     phases = "runPhase";
