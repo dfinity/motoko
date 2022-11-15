@@ -1529,13 +1529,15 @@ and pp_typ_pre vs ppf t =
   match t with
   (* No case for grammar production `PRIM s` *)
   | Async (t1, t2) ->
-    (match t1 with
-     | Var(_, n) when fst (List.nth vs n) = "" ->
-       fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) t2
-     | _ ->
-       fprintf ppf "@[<2>async<%a>@ %a@]"
-         (pp_typ' vs) t1
-         (pp_typ_pre vs) t2)
+    if Cfg.show_stamps then
+      match t1 with
+      | Var(_, n) when fst (List.nth vs n) = "" ->
+        fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) t2
+      | _ ->
+        fprintf ppf "@[<2>async<%a>@ %a@]"
+          (pp_typ' vs) t1
+          (pp_typ_pre vs) t2
+    else fprintf ppf "@[<2>async@ %a@]" (pp_typ_pre vs) t2
   | Obj ((Module | Actor | Memory) as os, fs) ->
     pp_typ_obj vs ppf (os, fs)
   | t ->
