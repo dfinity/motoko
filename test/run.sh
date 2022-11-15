@@ -531,6 +531,10 @@ do
   popd >/dev/null
 done
 
+find -name core.*
+mkdir -p /build/dumps
+mv core.* /build/dumps
+
 if [ ${#failures[@]} -gt 0  ]
 then
   echo "Some tests failed:"
