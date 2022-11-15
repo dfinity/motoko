@@ -417,6 +417,16 @@ rec {
       '';
     };
 
+    crash = stdenv.mkDerivation {
+      src = subpath ./crash;
+      buildInputs = commonBuildInputs staticpkgs;
+      checkPhase = ''
+        pwd
+        ./run.sh
+      '';
+      installPhase = "touch $out";
+    };
+
     candid = testDerivation {
       buildInputs = [ moc wasmtime candid-tests ];
       checkPhase = ''
@@ -490,7 +500,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
-      inherit qc lsp unit candid profiling-graphs coverage;
+      inherit qc lsp unit crash candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
