@@ -533,6 +533,7 @@ done
 
 find -name core.*
 mkdir -p /build/dumps
+gzip core.*
 mv core.* /build/dumps
 
 if [ ${#failures[@]} -gt 0  ]
