@@ -532,8 +532,8 @@ do
 done
 
 find -name core.*
-mkdir -p /dumps
-mv core.* /dumps
+mkdir -p /build/dumps
+mv core.* /build/dumps
 
 if [ ${#failures[@]} -gt 0  ]
 then
