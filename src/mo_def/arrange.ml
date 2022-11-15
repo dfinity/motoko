@@ -17,6 +17,8 @@ module Default = struct
   let main_file = None
 end
 
+module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
+
 module Make (Cfg : Config) = struct
   let ($$) head inner = Node (head, inner)
 
