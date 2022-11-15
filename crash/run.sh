@@ -2,6 +2,6 @@
 
 ulimit -c unlimited
 cargo run
-find . -name core.*
+find -name core.*
 mkdir dumps
 mv core.* dumps/
