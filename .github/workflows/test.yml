@@ -33,18 +33,4 @@ jobs:
           uses: actions/upload-artifact@master
           with:
             name: core-dump
-            path: /var/lib/apport/coredump
-
-        - name: Upload core dumps 2
-          if: failure() && steps.nix-build.outcome != 'success'
-          uses: actions/upload-artifact@master
-          with:
-            name: core-dump
-            path: /var/crash
-
-        - name: Upload core dumps 3
-          if: failure() && steps.nix-build.outcome != 'success'
-          uses: actions/upload-artifact@master
-          with:
-            name: core-dump
-            path: /var/lib/systemd/coredump
+            path: dumps
