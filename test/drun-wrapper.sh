@@ -58,7 +58,7 @@ else
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
 
-if [ -e "/var/crash" ]
+if [ -e "/var/lib/systemd/coredump" ]
 then
-  ls -la /var/crash
+  ls -la /var/lib/systemd/coredump
 fi

@@ -53,6 +53,13 @@ jobs:
         name: core-dump
         path: /var/crash
 
+    - name: Upload core dumps 3
+      if: failure() && steps.nix-build.outcome != 'success'
+      uses: actions/upload-artifact@master
+      with:
+        name: core-dump
+        path: /var/lib/systemd/coredump
+
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
