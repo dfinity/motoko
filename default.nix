@@ -417,16 +417,6 @@ rec {
       '';
     };
 
-    crash = stdenv.mkDerivation {
-      src = subpath ./crash;
-      buildInputs = commonBuildInputs staticpkgs;
-      checkPhase = ''
-        pwd
-        ./run.sh
-      '';
-      installPhase = "touch $out";
-    };
-
     candid = testDerivation {
       buildInputs = [ moc wasmtime candid-tests ];
       checkPhase = ''
@@ -484,7 +474,23 @@ rec {
     };
 
   in fix_names ({
-      inherit crash;
+      run        = test_subdir "run"        [ moc ] ;
+      run-dbg    = snty_subdir "run"        [ moc ] ;
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      fail       = test_subdir "fail"       [ moc ];
+      repl       = test_subdir "repl"       [ moc ];
+      ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
+      idl        = test_subdir "idl"        [ didc ];
+      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      trap       = test_subdir "trap"       [ moc ];
+      run-deser  = test_subdir "run-deser"  [ deser ];
+      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -594,19 +600,6 @@ rec {
       echo "If this fails, run `make -C rts format`"
       cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
       cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
-    '';
-    installPhase = "touch $out";
-  };
-
-  crash-test = stdenv.mkDerivation {
-    name = "crash-test";
-    buildInputs = [ nixpkgs.cargo-nightly ];
-    src = subpath ./crash;
-    doCheck = false;
-    phases = "unpackPhase checkPhase installPhase";
-    checkPhase = ''
-      pwd
-      ./run.sh
     '';
     installPhase = "touch $out";
   };
@@ -733,8 +726,28 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      crash-test
-    ];
+      moc
+      mo-ide
+      mo-doc
+      didc
+      deser
+      samples
+      rts
+      base-src
+      base-tests
+      base-doc
+      docs
+      report-site
+      ic-ref-run
+      shell
+      check-formatting
+      check-rts-formatting
+      check-generated
+      check-grammar
+      check-error-codes
+    ] ++
+    builtins.attrValues tests ++
+    builtins.attrValues js;
   };
 
   shell = stdenv.mkDerivation {
