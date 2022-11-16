@@ -1,5 +1,8 @@
 ulimit -c unlimited
-cargo run
+cargo build
+target/debug/crash
+ls -la core.*
+echo "List all files"
 find /*
 if [ -e core.* ]
 then
