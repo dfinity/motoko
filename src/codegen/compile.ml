@@ -6794,8 +6794,7 @@ module Var = struct
          compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
-        else G.nop
-       )
+        else G.nop)
     | Some (HeapStatic ptr) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
@@ -6806,8 +6805,7 @@ module Var = struct
          compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
-        else G.nop
-       )
+        else G.nop)
     | Some (Const _) -> fatal "set_val: %s is const" var
 
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
@@ -8212,8 +8210,6 @@ let rec compile_lexp (env : E.t) ae lexp =
   | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
     let (set_field, get_field) = new_local env "field" in
-    
-   ( 
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
     Arr.idx_bigint env ^^
@@ -8226,26 +8222,21 @@ let rec compile_lexp (env : E.t) ae lexp =
       get_field ^^
       compile_add_const ptr_unskew ^^
       E.call_import env "rts" "write_barrier"
-     else G.nop
-    )
-   )
+     else G.nop)
   | DotLE (e, n) ->
     let (set_field, get_field) = new_local env "field" in
-   ( 
-     compile_exp_vanilla env ae e ^^
-     Object.idx env e.note.Note.typ n ^^
-     set_field ^^
-     get_field,
-     SR.Vanilla,
-     store_ptr ^^
-     (if !Flags.gc_strategy = Mo_config.Flags.Generational
-      then  
-        get_field ^^
-        compile_add_const ptr_unskew ^^
-        E.call_import env "rts" "write_barrier"
-      else G.nop
-     )
-   )
+    compile_exp_vanilla env ae e ^^
+    Object.idx env e.note.Note.typ n ^^
+    set_field ^^
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    (if !Flags.gc_strategy = Mo_config.Flags.Generational
+    then  
+      get_field ^^
+      compile_add_const ptr_unskew ^^
+      E.call_import env "rts" "write_barrier"
+    else G.nop)
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
   let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
@@ -9912,8 +9903,7 @@ and conclude_module env start_fi_o =
      then
       E.call_import env "rts" "init_write_barrier"
      else 
-      G.nop 
-    ) ^^
+      G.nop) ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
