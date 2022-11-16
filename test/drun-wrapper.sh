@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-/build/crash/run.sh
-
 CONFIG=$(realpath $(dirname $0)/drun.json5)
 
 #
