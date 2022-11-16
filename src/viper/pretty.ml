@@ -179,6 +179,8 @@ and pp_stmt' ppf = function
     fprintf ppf "@[<v 2>/*concurrency max %s, cond: s %a*/@]"
       max
       pp_exp exp
+  | MethodCallS (_, _, _)
+  | LabelS (_, _) -> failwith "MethodCallS or LabelS?"
 
 and pp_fldacc ppf fldacc =
   match fldacc with
