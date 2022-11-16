@@ -426,7 +426,7 @@ rec {
 
     crash-test = testDerivation {
       src = subpath ./crash;
-      buildInputs = [];
+      buildInputs = rtsBuildInputs;
       checkPhase = ''
         echo "Crash test core dump"
         pwd
