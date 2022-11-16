@@ -783,6 +783,7 @@ let rec is_explicit_exp e =
 and is_explicit_dec d =
   match d.it with
   | ExpD e | LetD (_, e, None) | VarD (_, e) -> is_explicit_exp e
+  | LetD (_, e, Some f) -> is_explicit_exp e || is_explicit_exp f
   | TypD _ -> true
   | ClassD (_, _, _, p, _, _, _, dfs) ->
     is_explicit_pat p &&
@@ -2072,7 +2073,7 @@ and pub_field dec_field xs : visibility_env =
 and pub_dec depr dec xs : visibility_env =
   match dec.it with
   | ExpD _ -> xs
-  | LetD (pat, _, None) -> pub_pat depr pat xs
+  | LetD (pat, _, _) -> pub_pat depr pat xs
   | VarD (id, _) -> pub_val_id depr id xs
   | ClassD (_, id, _, _, _, _, _, _) ->
     pub_val_id depr {id with note = ()} (pub_typ_id depr id xs)
@@ -2302,8 +2303,7 @@ and infer_dec env dec : T.typ =
   let t =
   match dec.it with
   | ExpD exp
-  | LetD (_, exp, None) ->
-    infer_exp env exp
+  | LetD (_, exp, _) -> infer_exp env exp
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
@@ -2381,6 +2381,8 @@ and check_dec env t dec =
   | ExpD exp ->
     check_exp env t exp;
     dec.note <- exp.note
+  | LetD (pat, exp, Some fail) -> 
+    check_exp env T.Non fail (* TODO FIX THIS not being triggered *)
   | _ ->
     let t' = infer_dec env dec in
     if not (T.eq t T.unit || T.sub t' t) then
@@ -2443,7 +2445,7 @@ and gather_dec env scope dec : Scope.t =
       con_env = scope.con_env;
       obj_env = obj_env
     }
-  | LetD (pat, _, None) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
+  | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
@@ -2605,7 +2607,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
-  | LetD (pat, exp, None) ->
+  | LetD (pat, exp, _) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive (if is_import dec then local_error else warn) env t pat in
     Scope.{empty with val_env = ve'}

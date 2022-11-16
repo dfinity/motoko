@@ -707,6 +707,9 @@ and define_id env id v =
 
 and define_pat env pat v =
   let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
+  define_pat' env err pat v
+
+and define_pat' env err pat v =
   match pat.it with
   | WildP -> ()
   | LitP _ | SignP _ | AltP _ ->
@@ -866,6 +869,7 @@ and declare_dec dec : val_env =
   | ExpD _
   | TypD _ -> V.Env.empty
   | LetD (pat, _, None) -> declare_pat pat
+  | LetD (pat, _, Some _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
@@ -886,7 +890,11 @@ and interpret_dec env dec (k : V.value V.cont) =
       define_pat env pat v;
       k v
     )
-  | LetD (pat, exp, Some _) -> assert false
+  | LetD (pat, exp, Some fail) -> 
+    interpret_exp env exp (fun v ->
+      define_pat env pat v;
+      k v
+    ) (* TODO make sure to catch failure and call define_pat' *)
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
       define_id env id (V.Mut (ref v));

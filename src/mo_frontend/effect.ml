@@ -116,6 +116,8 @@ and effect_dec dec =
 
 and infer_effect_dec dec =
   match dec.it with
+  | LetD (_, e, Some f) ->
+    max_eff (effect_exp e) (effect_exp f)
   | ExpD e
   | LetD (_, e, None)
   | VarD (_, e) ->
