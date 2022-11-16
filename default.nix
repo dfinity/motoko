@@ -11,7 +11,6 @@ let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit off
 let stdenv = nixpkgs.stdenv;      
     # enable core dumps
     systemd.coredump.enable = true;
-    systemd.extraConfig = "DefaultLimitCORE=1000000";
     in
 
 let subpath = import ./nix/gitSource.nix; in
