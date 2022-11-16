@@ -19,6 +19,7 @@ function realpath() {
     [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
 }
 
+pwd
 cd ../../crash
 cargo build
 target/debug/crash
