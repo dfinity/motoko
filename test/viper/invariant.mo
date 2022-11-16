@@ -16,4 +16,11 @@ actor {
       assert:return count >= 0;
   };
 
+  public shared func loops(/*j : Int*/) : async () {
+      //var i = j;
+      while (/*i > 0*/false) {
+          //i -= 1
+      }
+  }
+
 }

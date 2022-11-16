@@ -145,6 +145,10 @@ and pp_stmt' ppf = function
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
+  | WhileS (exp, _, s) -> (* TODO: Invariant *)
+    fprintf ppf "@[<v 2>while (%a) {@ %a}@]"
+      pp_exp exp
+      pp_seqn s
   | VarAssignS (id, exp) ->
     fprintf ppf "@[<v 2>%s := %a@]"
       id.it

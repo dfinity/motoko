@@ -25,3 +25,15 @@ method claim($Self: Ref)
     { 
       assume (($Self).claimed ==> (($Self).count > 0)) 
     }
+method loops($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      while (false) {
+         { 
+            
+         }} 
+    }
