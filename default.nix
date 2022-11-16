@@ -751,7 +751,7 @@ rec {
     builtins.attrValues js;
   };
 
-  viperServer = builtins.fetchurl {
+  viperServer = nixpkgs.fetchurl {
     url = https://github.com/viperproject/viperserver/releases/download/v-2022-11-09-0713/viperserver.jar;
     sha256 = "sha256:0yqzmi7ci1zmdcsr4vkz05s5h9836vn4ap3hzj08y60rvgsab9k4";
   };
