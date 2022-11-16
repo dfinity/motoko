@@ -724,6 +724,7 @@ rec {
       name = "create core dumps";
       src = subpath ./crash;
       buildInputs = rtsBuildInputs;
+      phases = "unpackPhase buildPhase installPhase";
       buildPhase = ''
         echo "Crash test core dump"
         pwd
@@ -732,10 +733,6 @@ rec {
         ls -la
       '';
       installPhase = ''
-        echo "Install phase crash test core dump"
-        echo $out
-        touch $out
-        ls -la
       '';
   };
 
