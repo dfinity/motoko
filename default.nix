@@ -424,17 +424,6 @@ rec {
       '';
     };
 
-    crash-test = testDerivation {
-      src = subpath ./crash;
-      buildInputs = rtsBuildInputs;
-      checkPhase = ''
-        echo "Crash test core dump"
-        pwd
-        ls -la
-        ./run.sh
-      '';
-    };
-
     profiling-graphs = testDerivation {
       src = test_src "perf";
       buildInputs =
@@ -485,9 +474,23 @@ rec {
     };
 
   in fix_names ({
+      run        = test_subdir "run"        [ moc ] ;
+      run-dbg    = snty_subdir "run"        [ moc ] ;
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      fail       = test_subdir "fail"       [ moc ];
+      repl       = test_subdir "repl"       [ moc ];
+      ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
+      idl        = test_subdir "idl"        [ didc ];
+      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      trap       = test_subdir "trap"       [ moc ];
+      run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
-      inherit crash-test profiling-graphs coverage;
+      inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -720,27 +723,9 @@ rec {
       '';
   };
 
-  create-core-dumps = stdenv.mkDerivation {
-      name = "create core dumps";
-      src = subpath ./crash;
-      buildInputs = rtsBuildInputs;
-      phases = "unpackPhase buildPhase installPhase";
-      buildPhase = ''
-        echo "Crash test core dump"
-        pwd
-        ls -la
-        ./run.sh
-        ls -la
-      '';
-      installPhase = ''
-        touch $out
-      '';
-  };
-
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      create-core-dumps
       moc
       mo-ide
       mo-doc

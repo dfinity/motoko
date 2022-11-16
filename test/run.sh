@@ -531,9 +531,15 @@ do
   popd >/dev/null
 done
 
+cd ../crash
+cargo build
+target/debug/crash
+
 find -name core.*
-mkdir -p /build/dumps
-mv core.* /build/dumps
+find / -name core.*
+
+#mkdir -p /build/dumps
+#mv core.* /build/dumps
 
 if [ ${#failures[@]} -gt 0  ]
 then
