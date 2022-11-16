@@ -13,7 +13,7 @@ let stdenv =
     nixpkgs.stdenv
   else 
     nixpkgs.stdenv;
-    systemd.coredump.enable = true
+    systemd.coredump.enable = true;
   in
 
 let subpath = import ./nix/gitSource.nix; in
