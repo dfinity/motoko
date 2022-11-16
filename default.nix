@@ -736,6 +736,7 @@ rec {
         ls -la
       '';
       installPhase = ''
+        touch $out
       '';
   };
 
