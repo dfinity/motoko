@@ -8,10 +8,7 @@ let nixpkgs = import ./nix { inherit system; }; in
 
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
-let stdenv = nixpkgs.stdenv;      
-    # enable core dumps
-    systemd.coredump.enable = true;
-    in
+let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
@@ -430,6 +427,8 @@ rec {
     crash-test = testDerivation {
       src = subpath ./crash;
       buildInputs = rtsBuildInputs;
+      # enable core dumps
+      systemd.coredump.enable = true;
       checkPhase = ''
         echo "Crash test core dump"
         pwd
@@ -727,6 +726,8 @@ rec {
       name = "create core dumps";
       src = subpath ./crash;
       buildInputs = rtsBuildInputs;
+      # enable core dumps
+      systemd.coredump.enable = true;
       phases = "unpackPhase buildPhase installPhase";
       buildPhase = ''
         echo "Crash test core dump"
@@ -736,7 +737,6 @@ rec {
         ls -la
       '';
       installPhase = ''
-        touch $out
       '';
   };
 
