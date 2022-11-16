@@ -717,31 +717,31 @@ and define_pat' env err pat v =
     then err ()
     else ()
   | VarP id -> define_id env id v
-  | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
+  | TupP pats -> define_pats env err pats (V.as_tup v)
+  | ObjP pfs -> define_pat_fields env err pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
-    | V.Opt v1 -> define_pat env pat1 v1
+    | V.Opt v1 -> define_pat' env err pat1 v1
     | V.Null -> err ()
     | _ -> assert false
     )
   | TagP (i, pat1) ->
     let lab, v1 = V.as_variant v in
     if lab = i.it
-    then define_pat env pat1 v1
+    then define_pat' env err pat1 v1
     else err ()
   | AnnotP (pat1, _)
-  | ParP pat1 -> define_pat env pat1 v
+  | ParP pat1 -> define_pat' env err pat1 v
 
-and define_pats env pats vs =
-  List.iter2 (define_pat env) pats vs
+and define_pats env err pats vs =
+  List.iter2 (define_pat' env err) pats vs
 
-and define_pat_fields env pfs vs =
-  List.iter (define_pat_field env vs) pfs
+and define_pat_fields env err pfs vs =
+  List.iter (define_pat_field env err vs) pfs
 
-and define_pat_field env vs pf =
+and define_pat_field env err vs pf =
   let v = V.Env.find pf.it.id.it vs in
-  define_pat env pf.it.pat v
+  define_pat' env err pf.it.pat v
 
 and match_lit lit v : bool =
   match !lit, v with
@@ -892,9 +892,10 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | LetD (pat, exp, Some fail) -> 
     interpret_exp env exp (fun v ->
-      define_pat env pat v;
+      let err () = interpret_exp env fail (fun _ -> assert false) in
+      define_pat' env err pat v;
       k v
-    ) (* TODO make sure to catch failure and call define_pat' *)
+    )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
       define_id env id (V.Mut (ref v));
