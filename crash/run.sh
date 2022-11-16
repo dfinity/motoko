@@ -1,4 +1,4 @@
-ulimit -c 1000000
+ulimit -c unlimited
 cargo build
 pwd
 target/debug/crash
