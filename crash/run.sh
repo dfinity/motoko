@@ -1,4 +1,4 @@
-#ulimit -c unlimited
+ulimit -c 1000000
 cargo build
 target/debug/crash
 if [ -e core.* ]
