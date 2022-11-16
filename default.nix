@@ -811,6 +811,10 @@ rec {
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
+    
+    # enable core dumps
+    systemd.coredump.enable = true;
+    systemd.extraConfig = "DefaultLimitCORE=1000000";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
@@ -827,9 +831,5 @@ rec {
     '';
     preferLocalBuild = true;
     allowSubstitutes = true;
-
-    # enable core dumps
-    systemd.coredump.enable = true;
-    systemd.extraConfig = "DefaultLimitCORE=1000000";
   };
 }
