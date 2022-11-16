@@ -1,21 +1,6 @@
-ls -lar /*
 ulimit -c unlimited
 cargo run
-ls -la /
-echo "search in local directory"
-pwd
-ls -lar /*
-find -name core.*
-echo "search in /var/lib/systemd/coredump"
-ls -la /var/lib/systemd/coredump
-echo "search in /var/crash"
-ls -la /var/lib/systemd/coredump
-echo "search in /var/lib/apport/coredump"
-ls -la /var/lib/apport/coredump
-echo "search in /var"
-ls -la /var
-echo "search in /cores"
-ls -la /cores
+find /*
 if [ -e core.* ]
 then
     gzip core.*
