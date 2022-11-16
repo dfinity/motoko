@@ -428,9 +428,7 @@ rec {
       src = subpath ./crash;
       buildInputs = rtsBuildInputs;
       checkPhase = ''
-        cargo run
-        find -name core.*
-        find / -name core.*
+        ./run.sh
       '';
     };
 
