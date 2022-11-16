@@ -740,7 +740,7 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      create-core-dumps
+      #create-core-dumps
       moc
       mo-ide
       mo-doc
