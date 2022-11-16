@@ -720,9 +720,24 @@ rec {
       '';
   };
 
+  create-core-dumps = stdenv.mkDerivation {
+      name = "create core dumps";
+      src = subpath ./crash;
+      buildInputs = rtsBuildInputs;
+      buildPhase = ''
+        echo "Crash test core dump"
+        pwd
+        ls -la
+        ./run.sh
+      '';
+      installPhase = ''
+      '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
+      create-core-dumps
       moc
       mo-ide
       mo-doc

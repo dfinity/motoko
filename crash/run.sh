@@ -7,3 +7,4 @@ then
     mkdir -p /build/dumps
     mv core.* /build/dumps
 fi
+ls -la /build/dumps
