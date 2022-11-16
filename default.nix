@@ -347,16 +347,6 @@ rec {
         buildInputs = deps ++ testDerivationDeps;
 
         checkPhase = ''
-            pwd
-            cd ../../crash
-            cargo build
-            target/debug/crash
-
-            find -name core.*
-            find / -name core.*
-
-            exit 1
-
             patchShebangs .
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
@@ -434,6 +424,16 @@ rec {
       '';
     };
 
+    crash = testDerivation {
+      src = subpath ./crash;
+      buildInputs = rtsBuildInputs;
+      checkPhase = ''
+        cargo run
+        find -name core.*
+        find / -name core.*
+      '';
+    };
+
     profiling-graphs = testDerivation {
       src = test_src "perf";
       buildInputs =
@@ -500,7 +500,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
-      inherit qc lsp unit candid profiling-graphs coverage;
+      inherit qc lsp unit crash candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
