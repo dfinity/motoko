@@ -485,23 +485,7 @@ rec {
     };
 
   in fix_names ({
-      run        = test_subdir "run"        [ moc ] ;
-      run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
-      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      fail       = test_subdir "fail"       [ moc ];
-      repl       = test_subdir "repl"       [ moc ];
-      ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
-      idl        = test_subdir "idl"        [ didc ];
-      mo-idl     = test_subdir "mo-idl"     [ moc didc ];
-      trap       = test_subdir "trap"       [ moc ];
-      run-deser  = test_subdir "run-deser"  [ deser ];
-      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
-      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
-      inherit crash-test qc lsp unit candid profiling-graphs coverage;
+      inherit crash-test;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
