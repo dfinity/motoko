@@ -4,7 +4,7 @@ import {Array_init; debugPrint; error; time} = "mo:⛔";
 
 actor {
     // timer module implementation
-    type Node = { var expire : Nat64; id : TimerId; delay : Nat64; recurring : Bool; job : () -> async (); var ante : ?Node; var dopo : ?Node };
+    type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); var ante : ?Node; var dopo : ?Node };
     var timers : ?Node = null;
     var lastId = 0;
     
@@ -17,9 +17,9 @@ actor {
         let expire = now + 1_000_000_000 * delay;
         func insert(n : ?Node, put : Node -> ()) =
             switch n {
-            case null { put { var expire; id; delay; recurring; job; var ante = null; var dopo = null } };
+            case null { put { var expire; id; delay = if recurring ?delay else null; job; var ante = null; var dopo = null } };
             case (?n) {
-                     if (n.expire == 0) { put { var expire; id; delay; recurring; job; var ante = n.ante; var dopo = n.dopo } }
+                     if (n.expire == 0) { put { var expire; id; delay = if recurring ?delay else null; job; var ante = n.ante; var dopo = n.dopo } }
                      else if (n.expire <= expire) { insert(n.dopo, func m = n.dopo := ?m) }
                      else { insert(n.ante, func m = n.ante := ?m) }
                  }
@@ -52,7 +52,7 @@ actor {
     let now = time();
 
 
-    type CNode = ?{var expire : Nat64; id : TimerId; delay : Nat64; recurring : Bool; ante : CNode; dopo : CNode };
+    type CNode = ?{var expire : Nat64; id : TimerId; delay : ?Nat64; ante : CNode; dopo : CNode };
     func clean(n : ?Node) : CNode = switch n {
                                         case null null;
                                         case (?n) ?{n with ante = clean(n.ante); dopo = clean(n.dopo) }
@@ -61,12 +61,13 @@ actor {
 
 
     var gathered = 0;
+    let next = now + 1_000_000_000;
     func gatherExpired(n : ?Node, arr : [var ?(() -> async ())]) : [var ?(() -> async ())] {
     	 switch n {
-	     case null { arr};
+	     case null arr;
 	     case (?n) {
 	     	  ignore gatherExpired(n.ante, arr);
-		  if (n.expire > 0 and n.expire <= now) {
+		  if (n.expire > 0 and n.expire <= next) {
 		     arr[gathered] := ?n.job;
 		     gathered += 1;
 		     ignore gatherExpired(n.dopo, arr);
@@ -76,11 +77,26 @@ actor {
 	 }
     };
 
+    func nextExpiration(n : ?Node) : Nat64 {
+    	 switch n {
+	     case null 0;
+	     case (?n) {
+	     	  var exp = nextExpiration(n.ante);
+		  if (exp == 0) {
+		     exp := n.expire;
+		     if (exp == 0) {
+		         exp := nextExpiration(n.dopo)
+		     }
+		  };
+		  exp
+	     }
+	 }
+    };
+
     gathered := 0;
     let arr = gatherExpired(timers, Array_init(10, null));
     //assert gathered == 2;
-    debugPrint(debug_show {gathered});
-    
+    debug { debugPrint(debug_show { gathered; next = nextExpiration timers }) };
     
     if (count < max) {
       count += 1;
