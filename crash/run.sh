@@ -1,9 +1,8 @@
 ulimit -c unlimited
 cargo build
 target/debug/crash
-ls -la core.*
-echo "List all files"
-find /*
+find *
+find /var/*
 if [ -e core.* ]
 then
     gzip core.*
