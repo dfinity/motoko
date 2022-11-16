@@ -8,7 +8,11 @@ let nixpkgs = import ./nix { inherit system; }; in
 
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
-let stdenv = nixpkgs.stdenv; in
+let stdenv = nixpkgs.stdenv;      
+    # enable core dumps
+    systemd.coredump.enable = true;
+    systemd.extraConfig = "DefaultLimitCORE=1000000";
+    in
 
 let subpath = import ./nix/gitSource.nix; in
 
@@ -811,10 +815,6 @@ rec {
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
-    
-    # enable core dumps
-    systemd.coredump.enable = true;
-    systemd.extraConfig = "DefaultLimitCORE=1000000";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
