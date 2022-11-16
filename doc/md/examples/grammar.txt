@@ -282,7 +282,7 @@
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
-    'let' <pat> '=' <exp> 'else' <exp>
+    'let' <pat> '=' <exp> 'else' <exp_nest>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>

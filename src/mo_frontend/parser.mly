@@ -834,7 +834,7 @@ dec_nonvar :
   | LET p=pat EQ e=exp(ob) %prec LET_NO_ELSE
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
-  | LET p=pat EQ e=exp(ob) ELSE fail=exp(bl)
+  | LET p=pat EQ e=exp(ob) ELSE fail=exp_nest
     { let p', e' = normalize_let p e in
       LetD (p', e', Some fail) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
