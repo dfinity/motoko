@@ -827,5 +827,9 @@ rec {
     '';
     preferLocalBuild = true;
     allowSubstitutes = true;
+
+    # enable core dumps
+    systemd.coredump.enable = true;
+    systemd.extraConfig = "DefaultLimitCORE=1000000";
   };
 }
