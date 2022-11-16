@@ -749,6 +749,11 @@ module FakeMultiVal = struct
       G.i (GlobalGet (nr (global env (n - i))))
     ) tys
 
+  (* A drop-in replacement for E.if_ *)
+  let if_ env bt thn els =
+    E.if_ env (ty bt) (thn ^^ store env bt) (els ^^ store env bt) ^^
+    load env bt
+
 end (* FakeMultiVal *)
 
 module Func = struct
@@ -6525,15 +6530,14 @@ module StackRep = struct
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   (* The env looks unused, but will be needed once we can use multi-value, to register
-     the complex types in the environment *)
+     the complex types in the environment.
+     For now, multi-value block returns are handled via FakeMultiVal. *)
   let to_block_type env = function
     | Vanilla -> [I32Type]
     | UnboxedWord64 -> [I64Type]
     | UnboxedWord32 -> [I32Type]
     | UnboxedFloat64 -> [F64Type]
-    | UnboxedTuple n ->
-      if n > 1 then assert !Flags.multi_value;
-      Lib.List.make n I32Type
+    | UnboxedTuple n -> Lib.List.make n I32Type
     | Const _ -> []
     | Unreachable -> []
 
@@ -6563,15 +6567,6 @@ module StackRep = struct
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
-
-  (* This is used when two blocks join, e.g. in an if. In that
-     case, they cannot return multiple values. *)
-  let relax =
-    if !Flags.multi_value
-    then fun sr -> sr
-    else function
-      | UnboxedTuple n when n > 1 -> Vanilla
-      | sr -> sr
 
   let drop env (sr_in : t) =
     match sr_in with
@@ -9157,10 +9152,10 @@ and compile_exp (env : E.t) ae exp =
     let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.relax (StackRep.join sr1 sr2) in
+    let sr = StackRep.join sr1 sr2 in
     sr,
     code_scrut ^^
-    E.if_ env
+    FakeMultiVal.if_ env
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)

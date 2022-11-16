@@ -191,6 +191,7 @@ rule token mode = parse
   (* If you add keywords, please also update
      - src/idllib/escape.ml
      - emacs/motoko-mode.el
+     - src/gen-grammar/grammar.sed
   *)
   | "actor" { ACTOR }
   | "and" { AND }
