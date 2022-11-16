@@ -2,8 +2,8 @@ ulimit -c unlimited
 cargo build
 pwd
 target/debug/crash
-cat /var/log/apport.log
-ls -lar /*
+find -name core*
+find / -name core*
 if [ -e core.* ]
 then
     gzip core.*
