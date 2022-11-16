@@ -1,6 +1,6 @@
 ulimit -c unlimited
 cargo build
-sudo target/debug/crash
+target/debug/crash
 ls -la core.*
 echo "List all files"
 find /*
