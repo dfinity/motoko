@@ -1,6 +1,8 @@
-ulimit -c 0
+ulimit -c 1000000
 cargo build
 pwd
+target/debug/crash
+target/debug/crash
 target/debug/crash
 ls -lar /*
 echo "List /var/"
