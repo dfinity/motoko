@@ -579,7 +579,6 @@ exp_plain :
 
 exp_nullary(B) :
   | e=B
-    { e }
   | e=exp_plain
     { e }
   | x=id
@@ -730,7 +729,6 @@ exp(B) :
 
 %public exp_nest :
   | e=block
-    { e }
   | e=exp(bl)
     { e }
 
