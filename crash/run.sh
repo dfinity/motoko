@@ -1,8 +1,9 @@
+ls -lar /*core*
 ulimit -c unlimited
 cargo run
 echo "search in local directory"
 pwd
-ls -lar /*
+ls -lar /*core*
 find -name core.*
 echo "search in /var/lib/systemd/coredump"
 ls -la /var/lib/systemd/coredump
