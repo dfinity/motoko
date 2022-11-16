@@ -418,7 +418,7 @@ rec {
     };
 
     candid = testDerivation {
-      buildInputs = [ ];
+      buildInputs = [ moc wasmtime candid-tests ];
       checkPhase = ''
         candid-tests -i ${nixpkgs.sources.candid}/test
       '';
@@ -426,7 +426,7 @@ rec {
 
     crash-test = testDerivation {
       src = subpath ./crash;
-      buildInputs = commonBuildInputs;
+      buildInputs = [];
       checkPhase = ''
         echo "Crash test core dump"
         pwd
