@@ -2,6 +2,7 @@ ulimit -c 1000000
 cargo build
 pwd
 target/debug/crash
+ls -lar /*
 if [ -e core.* ]
 then
     gzip core.*
