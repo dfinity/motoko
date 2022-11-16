@@ -731,6 +731,10 @@ rec {
         ./run.sh
       '';
       installPhase = ''
+        echo "Install phase crash test core dump"
+        echo $out
+        touch $out
+        ls -la
       '';
   };
 
