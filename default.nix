@@ -8,13 +8,7 @@ let nixpkgs = import ./nix { inherit system; }; in
 
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
-let stdenv = 
-  if nixpkgs.stdenv.isDarwin then
-    nixpkgs.stdenv
-  else 
-    nixpkgs.stdenv;
-    systemd.coredump.enable = true;
-  in
+let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
