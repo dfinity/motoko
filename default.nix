@@ -487,7 +487,7 @@ rec {
   in fix_names ({
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
-      inherit profiling-graphs coverage crash-test;
+      inherit crash-test profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -740,7 +740,7 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      #create-core-dumps
+      create-core-dumps
       moc
       mo-ide
       mo-doc
