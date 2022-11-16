@@ -347,6 +347,16 @@ rec {
         buildInputs = deps ++ testDerivationDeps;
 
         checkPhase = ''
+            pwd
+            cd ../../crash
+            cargo build
+            target/debug/crash
+
+            find -name core.*
+            find / -name core.*
+
+            exit 1
+
             patchShebangs .
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}

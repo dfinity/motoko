@@ -19,16 +19,6 @@ function realpath() {
     [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
 }
 
-pwd
-cd ../../crash
-cargo build
-target/debug/crash
-
-find -name core.*
-find / -name core.*
-
-exit 1
-
 ACCEPT=no
 DTESTS=no
 IDL=no
