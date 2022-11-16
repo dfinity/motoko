@@ -729,6 +729,7 @@ rec {
         pwd
         ls -la
         ./run.sh
+        ls -la
       '';
       installPhase = ''
         echo "Install phase crash test core dump"

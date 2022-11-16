@@ -1,8 +1,6 @@
-ulimit -c unlimited
+#ulimit -c unlimited
 cargo build
 target/debug/crash
-find *
-find /var/*
 if [ -e core.* ]
 then
     gzip core.*
