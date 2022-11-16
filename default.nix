@@ -10,10 +10,10 @@ let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit off
 
 let stdenv = 
   if nixpkgs.stdenv.isDarwin then
-    nixpkgs.stdenv;
+    nixpkgs.stdenv
   else 
     nixpkgs.stdenv;
-    systemd.coredump.enable = true;
+    systemd.coredump.enable = true
   in
 
 let subpath = import ./nix/gitSource.nix; in
