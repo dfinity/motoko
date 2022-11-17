@@ -17,6 +17,9 @@ let
     };
 in
 linux // {
+  systemd.coredump.enable = true;
+  systemd.coredump.extraConfig = ''
+    '';
   darwin = darwin.all-systems-go;
   all-systems-go = inject-rev all-systems-go;
 }
