@@ -363,6 +363,8 @@ rec {
                 echo "Output core dumps"
                 mkdir -p $out/dumps
                 cp $CORE_DUMP_FILES $out/dumps
+                echo "Exit on core dump"
+                exit 0
               fi
             fi
           '';
