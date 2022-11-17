@@ -36,10 +36,16 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "core dump test"
+      id: core-dump
       run: |
         echo "Test core dump"
         cd /home/runner/work/motoko/motoko/crash/
         cargo run
+
+    - name: "list core dumps"
+      if: failure() && steps.core-dump.outcome != 'success'
+      run: |
+        echo "List core dump"
         find -name core.*
         find / -name core.*
 
