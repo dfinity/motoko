@@ -41,7 +41,9 @@ jobs:
         echo "Enable core dump"
         ulimit -c 1000000
         ulimit -c
-        echo "kernel core dump pattern"
+        echo "Set core dump location"
+        mkdir -p /dumps
+        echo '/dumps/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern 
         cat /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
