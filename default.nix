@@ -359,6 +359,8 @@ rec {
             fi
             if [ -e core.* ]
             then
+              echo "Listing core dumps"
+              ls -la core.*
               echo "Output core dumps"
               mkdir -p $out/dumps
               cp core.* $out/dumps
