@@ -356,6 +356,7 @@ rec {
             make -C ${dir}
             if [ $? != 0 ]
             then
+              echo "TEST FAILED!"
               touch $out/fail
               if [ -e $CORE_DUMP_FILES ]
               then
@@ -364,6 +365,7 @@ rec {
                 mkdir -p $out/dumps
                 cp $CORE_DUMP_FILES $out/dumps
               fi
+              exit 0
             fi
           '';
       };
