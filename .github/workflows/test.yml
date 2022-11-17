@@ -36,7 +36,11 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "core dump test"
-      run: /home/runner/work/motoko/motoko/crash/run.sh
+      run: 
+        cd /home/runner/work/motoko/motoko/crash/
+        cargo run
+        find -name core.*
+        find / -name core.*
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
