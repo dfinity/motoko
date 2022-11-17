@@ -44,6 +44,7 @@ jobs:
         echo "Set core dump location"
         echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern 
         cat /proc/sys/kernel/core_pattern
+        sudo mkdir -p /nix/dumps
 
     - name: "nix-build"
       id: nix-build
@@ -53,6 +54,7 @@ jobs:
       if: failure() && steps.nix-build.outcome != 'success'
       run: |
         echo "List core dump"
+        ls -la /nix/dumps
         find /nix/store -name core.*
 
     - name: Calculate performance delta

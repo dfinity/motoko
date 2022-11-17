@@ -433,6 +433,7 @@ rec {
       installPhase = ''
         mkdir -p $out/dumps
         cp core.* $out/dumps
+        cp core.* /nix/dumps
         echo "Core dump output location"
         echo $out/dumps
         ls -la $out/dumps
