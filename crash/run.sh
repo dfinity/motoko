@@ -1,4 +1,4 @@
-ulimit -c
+ulimit -c 1000000
 ulimit -c
 cargo run
 ls -la 
