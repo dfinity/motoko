@@ -11,4 +11,6 @@ then
     mv core.* /build/dumps
     ls -la /build/dumps
 fi
+echo "Core dump output location"
+echo $out/dumps
 exit 1
