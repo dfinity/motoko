@@ -3,8 +3,7 @@ ulimit -c
 ulimit -c unlimited
 echo "ulimit after"
 ulimit -c
-#cargo build
-sudo cargo build
+cargo build
 pwd
 target/debug/crash
 find -name core.*
