@@ -98,7 +98,7 @@ actor {
     var gathered = 0;
     let thunks : [var ?(() -> async ())] = Array_init(10/*FIXME*/, null);
     
-    func gatherExpired(n : ?Node) : () {
+    func gatherExpired(n : ?Node) =
         switch n {
         case null ();
         case (?n) {
@@ -110,8 +110,7 @@ actor {
                  };
                  gatherExpired(n.dopo);
              }
-        }
-    };
+        };
 
     gatherExpired(timers);
 
