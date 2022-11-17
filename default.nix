@@ -347,26 +347,11 @@ rec {
         buildInputs = deps ++ testDerivationDeps;
 
         checkPhase = ''
-            CORE_DUMP_FILES=core.*
-            mkdir -p $out
             patchShebangs .
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             make -C ${dir}
-            if [ $? != 0 ]
-            then
-              touch $out/fail
-              if [ -e $CORE_DUMP_FILES ]
-              then
-                ls -la $CORE_DUMP_FILES
-                echo "Output core dumps"
-                mkdir -p $out/dumps
-                cp $CORE_DUMP_FILES $out/dumps
-                echo "Exit on core dump"
-                exit 0
-              fi
-            fi
           '';
       };
 
