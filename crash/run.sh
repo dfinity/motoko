@@ -1,5 +1,6 @@
 ulimit -c unlimited
 ulimit -c
+mkdir -p /dumps
 echo "kernel core dump pattern"
 cat /proc/sys/kernel/core_pattern
 cargo run
