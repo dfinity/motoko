@@ -49,7 +49,7 @@ jobs:
     - name: "list core dumps"
       run: |
         echo "List core dump"
-        ls -la /build-output/dumps
+        ls -la build-output/dumps
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
