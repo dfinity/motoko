@@ -35,23 +35,22 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "core dump test"
+    - name: "enable core dump"
       id: core-dump
       run: |
-        echo "Test core dump"
+        echo "Enable core dump"
         ulimit -c 1000000
         ulimit -c
-        cd /home/runner/work/motoko/motoko/crash/
-        cargo run
+
+    - name: "nix-build"
+      id: nix-build
+      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: "list core dumps"
-      if: failure() && steps.core-dump.outcome != 'success'
+      if: failure() && steps.nix-build.outcome != 'success'
       run: |
         echo "List core dump"
         ls -la /var/lib/apport/coredump
-
-    - name: "nix-build"
-      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
