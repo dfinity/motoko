@@ -51,6 +51,14 @@ jobs:
         echo "List core dump"
         ls -la build-output/dumps
 
+    - name: "run status"
+      run: |
+        if [ ! -e build-output/ok ]
+        then
+          echo "previous nix build failed"
+          exit 1
+        fi
+
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
