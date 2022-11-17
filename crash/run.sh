@@ -3,7 +3,7 @@ ulimit -c
 ulimit -c unlimited
 echo "ulimit after"
 ulimit -c
-cargo build
+#cargo build
 sudo cargo build
 pwd
 target/debug/crash
