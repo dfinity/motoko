@@ -1,4 +1,8 @@
+echo "ulimit before"
+ulimit -c
 ulimit -c 1000000
+echo "ulimit after"
+ulimit -c
 cargo build
 pwd
 target/debug/crash
