@@ -1,11 +1,11 @@
-echo "ulimit before"
 ulimit -c
-ulimit -c 1000000
-echo "ulimit after"
 ulimit -c
 cargo run
-find -name core.*
-find / -name core.*
+ls -la 
+ls -la target/debug
+ls -la /var/lib/systemd/coredump
+ls -la /var/crash
+ls -la /var/lib/apport/coredump
 if [ -e core.* ]
 then
     gzip core.*
