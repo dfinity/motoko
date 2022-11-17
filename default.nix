@@ -433,7 +433,6 @@ rec {
       installPhase = ''
         mkdir -p $out/dumps
         cp core.* $out/dumps
-        cp core.* /build/dumps
       '';
     };
 
