@@ -323,11 +323,9 @@ and call_system_func_opt name es obj_typ =
       when id.it = name ->
       Some (
         match name with
+        | "timer" when not !Mo_config.Flags.global_timer -> assert false;
+        | "timer"
         | "heartbeat" ->
-          blockE
-            [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
-           (unitE ())
-        | "timer" ->
           blockE
             [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
            (unitE ())
