@@ -41,6 +41,8 @@ jobs:
         echo "Enable core dump"
         ulimit -c 1000000
         ulimit -c
+        echo "kernel core dump pattern"
+        cat /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
       id: nix-build
