@@ -1,0 +1,2 @@
+issue-2319.mo:5.1-5.34: import error [M0153], file issue-2319/lg264-qjkae.did uses Candid types without corresponding Motoko type
+lg264-qjkae.did:1.11-3.2: import error [M0163], cannot import a Candid service constructor

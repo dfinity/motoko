@@ -529,6 +529,13 @@ do
     done
   fi
   popd >/dev/null
+
+
+  if [ -e core.* ]
+  then
+    echo "Core dump created, exit with success to extract core dump"
+    exit 0
+  fi
 done
 
 if [ ${#failures[@]} -gt 0  ]

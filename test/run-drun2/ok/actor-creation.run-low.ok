@@ -1,0 +1,8 @@
+main actor creating a
+a created
+a.foo() called
+a creating b
+b created
+a calling b.foo()
+a.foo() done
+b.foo() called

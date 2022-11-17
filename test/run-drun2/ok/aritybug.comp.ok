@@ -1,0 +1,2 @@
+aritybug.mo:13.41-15.2: type error [M0077], a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version.)

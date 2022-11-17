@@ -1,0 +1,22 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: g
+debug.print:   e-while
+
+debug.print: g-label
+
+debug.print:   e cnt: 0 i: 5
+debug.print: g cnt: 1 i: 10
+debug.print:   e cnt: 2 i: 6
+debug.print: g cnt: 3 i: 11
+debug.print:   e cnt: 4 i: 7
+debug.print: g cnt: 5 i: 12
+debug.print:   e cnt: 6 i: 8
+debug.print: g cnt: 7 i: 13
+debug.print:   e cnt: 8 i: 9
+debug.print: g cnt: 9 i: 14
+debug.print:   e-exit
+
+debug.print: g-exit
+
+ingress Completed: Reply: 0x4449444c0000

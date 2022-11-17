@@ -1,0 +1,2 @@
+issue-1938-d.mo:2.1-2.19: type error [M0141], an actor or actor class must be the only non-imported declaration in a program
+  (This is a limitation of the current version.)

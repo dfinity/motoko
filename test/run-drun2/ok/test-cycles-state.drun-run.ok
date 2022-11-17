@@ -1,0 +1,12 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: wallet: {cycles = "<not_shown>"}
+debug.print: setting cycles
+debug.print: wallet: {cycles = "<not_shown>"}
+debug.print: debit
+debug.print: available: 1_000_000
+debug.print: available: 0
+debug.print: available: 3_000_000
+debug.print: available: 5_000
+debug.print: available: 0
+ingress Completed: Reply: 0x4449444c0000

@@ -353,19 +353,16 @@ rec {
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
+            echo "LUC RUNNING TEST"
             make -C ${dir}
-            if [ $? != 0 ]
+            # Handle core dumps
+            if [ -e $CORE_DUMP_FILES ]
             then
-              echo "TEST FAILED!"
               touch $out/fail
-              if [ -e $CORE_DUMP_FILES ]
-              then
-                ls -la $CORE_DUMP_FILES
-                echo "Output core dumps"
-                mkdir -p $out/dumps
-                cp $CORE_DUMP_FILES $out/dumps
-              fi
-              exit 0
+              ls -la $CORE_DUMP_FILES
+              echo "Output core dumps"
+              mkdir -p $out/dumps
+              cp $CORE_DUMP_FILES $out/dumps
             fi
           '';
       };

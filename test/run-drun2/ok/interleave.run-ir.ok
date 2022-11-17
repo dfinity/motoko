@@ -1,0 +1,19 @@
+g
+  e-while
+
+g-label
+
+  e cnt: 0 i: 5
+g cnt: 1 i: 10
+  e cnt: 2 i: 6
+g cnt: 3 i: 11
+  e cnt: 4 i: 7
+g cnt: 5 i: 12
+  e cnt: 6 i: 8
+g cnt: 7 i: 13
+  e cnt: 8 i: 9
+g cnt: 9 i: 14
+  e-exit
+
+g-exit
+

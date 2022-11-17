@@ -1,0 +1,3 @@
+unavailable-constructor.mo:1.36-1.37: type error [M0056], variable C is in scope but not available in compiled code
+unavailable-constructor.mo:5.17-5.18: type error [M0056], variable C is in scope but not available in compiled code
+unavailable-constructor.mo:8.31-8.32: type error [M0056], variable C is in scope but not available in compiled code
