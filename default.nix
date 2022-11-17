@@ -347,7 +347,7 @@ rec {
         buildInputs = deps ++ testDerivationDeps;
 
         checkPhase = ''
-            CORE_DUMP_FILES=crash_dump*
+            CORE_DUMP_FILES=core.*
             mkdir -p $out
             patchShebangs .
             ${llvmEnv}
@@ -356,17 +356,14 @@ rec {
             make -C ${dir}
             if [ $? != 0 ]
             then
-              echo "Writing error"
               touch $out/fail
-            fi
-            if [ -e $CORE_DUMP_FILES ]
-            then
-              echo "Listing $CORE_DUMP_FILES"
-              ls -la $CORE_DUMP_FILES
-              echo "Output core dumps"
-              mkdir -p $out/dumps
-              cp $CORE_DUMP_FILES $out/dumps
-              ls -la $out/dumps
+              if [ -e $CORE_DUMP_FILES ]
+              then
+                ls -la $CORE_DUMP_FILES
+                echo "Output core dumps"
+                mkdir -p $out/dumps
+                cp $CORE_DUMP_FILES $out/dumps
+              fi
             fi
           '';
       };
