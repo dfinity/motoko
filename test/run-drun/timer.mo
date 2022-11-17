@@ -43,7 +43,18 @@ actor {
                  }
             };
         insert(timers, func n = timers := ?n);
-        
+
+
+        let exp = nextExpiration timers;
+        let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
+        /*FIXME: this is expensive*/
+        if (prev != 0 and prev != 0 and exp > prev) {
+            // reinstall
+            ignore (prim "global_timer_set" : Nat64 -> Nat64) prev;
+        };
+
+        debug { debugPrint(debug_show {now; exp; prev; id }) };
+
         id
     };
 
@@ -78,17 +89,25 @@ actor {
     debugPrint(debug_show {now; timers = clean timers});
 
 
-    var gathered = 0;
-    let arr : [var ?(() -> async ())] = Array_init(10, null);
-    let next = now + 1_000_000_000;
+    let exp = nextExpiration timers;
+    let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
+    if (exp == 0) {
+        return
+    };
+
+    var gathered = 0;
+    let thunks : [var ?(() -> async ())] = Array_init(10, null);
+    let next = now + 1_000_000_000;
+    
     func gatherExpired(n : ?Node) : () {
         switch n {
         case null ();
         case (?n) {
                  gatherExpired(n.ante);
                  if (n.expire > 0 and n.expire <= next) {
-                     arr[gathered] := ?(n.job);
+                     thunks[gathered] := ?(n.job);
+                     n.expire := 0;
                      gathered += 1;
                      gatherExpired(n.dopo);
                  };
@@ -96,19 +115,20 @@ actor {
         }
     };
 
-    gathered := 0;
+    //gathered := 0;
     gatherExpired(timers);
 
-    let futures : [var ?(async ())] = Array_init(10, null);
-    for (k in arr.keys()) {
-        futures[k] := switch (arr[k]) { case (?thunk) ?(thunk()); case null null };
+    let futures : [var ?(async ())] = Array_init(thunks.size(), null);
+    for (k in thunks.keys()) {
+        futures[k] := switch (thunks[k]) { case (?thunk) ?(thunk()); case _ null };
     };
 
-    
-    
-    //assert gathered == 2;
-    debug { debugPrint(debug_show { gathered; next = nextExpiration timers }) };
-    
+    debug { debugPrint(debug_show { gathered; exp }) };
+
+    for (f in futures.vals()) {
+        switch f { case (?f) { await f }; case _ () }
+    };
+    /*
     if (count < max) {
       count += 1;
       await @run_timers();
@@ -116,24 +136,24 @@ actor {
         let prev = (prim "global_timer_set" : Nat64 -> Nat64) 0;
         assert prev != 0;
       }
-    }
+    }*/
   };
 
   public shared func go() : async () {
      var attempts = 0;
      let now = time();
-     let prev = (prim "global_timer_set" : Nat64 -> Nat64)(now + 100_000_000);
-     assert prev == 0;
+     //let prev = (prim "global_timer_set" : Nat64 -> Nat64)(now + 100_000_000);
+     //assert prev == 0;
 
-     let id = addTimer(1, false, func () : async () { debugPrint "YEP!" });
-     let id2 = addTimer(2, false, func () : async () { debugPrint "DIM!" });
+     let id1 = addTimer(1, false, func () : async () { count += 1; debugPrint "YEP!" });
+     let id2 = addTimer(2, false, func () : async () { count := max; debugPrint "DIM!" });
+     //let id3 = addTimer(3, false, func () : async () { count := max; debugPrint "ROOK!" });
 
-     
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
-       if (count > 1) { cancelTimer id };
-       if (attempts >= 50 and count == 0)
+       //if (count > 1) { cancelTimer id };
+       if (attempts >= 100 and count == 0)
          throw error("he's dead Jim");
      };
      debugPrint(debug_show {count});
