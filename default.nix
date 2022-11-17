@@ -347,7 +347,7 @@ rec {
         buildInputs = deps ++ testDerivationDeps;
 
         checkPhase = ''
-            CORE_DUMP_FILES=core.*
+            CORE_DUMP_FILES=test_test_test
             mkdir -p $out
             patchShebangs .
             ${llvmEnv}
