@@ -1,7 +1,5 @@
 # Motoko compiler changelog
 
-## 0.7.4 (tbd)
-
 * Add a new _generational_ GC, enabled with new moc flag `--generational-gc`.
   The generational garbage collector optimizes for fast reclamation of short-lived objects.
   New objects are allocated in a young generation that is more frequently collected than the older objects 
