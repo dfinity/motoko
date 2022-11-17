@@ -44,7 +44,7 @@ jobs:
 
     - name: "nix-build"
       id: nix-build
-      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
+      run: nix-build-uncached --max-jobs 4 -A tests.crash -build-flags -L
 
     - name: "list core dumps"
       if: failure() && steps.nix-build.outcome != 'success'
