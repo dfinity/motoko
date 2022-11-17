@@ -37,6 +37,10 @@ export RUST_MIN_STACK=$((10*1024*1024))
 export RUST_BACKTRACE=1
 
 ulimit -c unlimited
+echo "core dump size limit:"
+ulimit -c
+echo "core dump location:"
+cat /proc/sys/kernel/core_pattern
 
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai

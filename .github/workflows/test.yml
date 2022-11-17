@@ -33,18 +33,27 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
-    - run: nix-env -iA nix-build-uncached -f nix/
+    - name: Enable core dump
+      run: echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
-      id: nix-build
-      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
+      run: nix-build --max-jobs 4 -A all-systems-go -o build-output
+
+    - name: Build status
+      id: build-status
+      run: |
+        if [ -e build-output/fail ]
+        then
+          echo "previous nix build failed"
+          exit 1
+        fi
 
     - name: Upload core dumps
-      if: failure() && steps.nix-build.outcome != 'success'
+      if: failure() && steps.build-status.outcome != 'success'
       uses: actions/upload-artifact@master
       with:
-        name: core-dump
-        path: /build/dumps
+        name: core-dumps
+        path: build-output/dumps
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'

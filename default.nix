@@ -352,6 +352,16 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             make -C ${dir}
+            mkdir -p $out
+            if [ $? != 0 ]
+            then
+              touch $out/fail
+            fi
+            if [ -e core.* ]
+            then 
+              mkdir -p $out/dumps
+              cp core.* $out/dumps
+            fi
           '';
       };
 
