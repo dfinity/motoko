@@ -6,5 +6,3 @@ cargo run
 ls -la
 mkdir -p $out/dumps
 cp core.* $out/dumps
-echo "Done"
-#exit 1

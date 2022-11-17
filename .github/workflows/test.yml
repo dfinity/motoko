@@ -44,7 +44,7 @@ jobs:
         echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
-      run: nix-build-uncached --max-jobs 4 -A tests.crash -build-flags -L -o build-output
+      run: nix-build --max-jobs 4 -A tests.crash -o build-output
 
     - name: "list core dumps"
       run: |
