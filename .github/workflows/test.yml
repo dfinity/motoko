@@ -54,7 +54,7 @@ jobs:
       if: failure() && steps.nix-build.outcome != 'success'
       run: |
         echo "List core dump"
-        ls -la /nix/dumps
+        ls -la /build/dumps/*
         find /nix/store -name core.*
 
     - name: Calculate performance delta

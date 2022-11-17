@@ -436,8 +436,8 @@ rec {
         cp core.* /build/dumps
         echo "Core dump output location"
         echo $out/dumps
-        ls -la $out/dumps
-        ls -la build/dumps
+        ls -la $out/dumps/*
+        ls -la build/dumps/*
       '';
     };
 
