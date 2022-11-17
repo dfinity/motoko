@@ -355,15 +355,17 @@ rec {
             make -C ${dir}
             if [ $? != 0 ]
             then
+              echo "Writing error"
               touch $out/fail
             fi
-            if [ -e core.* ]
+            if [ -e ./core.* ]
             then
               echo "Listing core dumps"
-              ls -la core.*
+              ls -la ./core.*
               echo "Output core dumps"
               mkdir -p $out/dumps
               cp core.* $out/dumps
+              ls -la $out/dumps
             fi
           '';
       };
