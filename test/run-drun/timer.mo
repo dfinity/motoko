@@ -80,14 +80,13 @@ actor {
   system func timer() : async () {
     let now = time();
 
-
     type CNode = ?{var expire : Nat64; id : TimerId; delay : ?Nat64; ante : CNode; dopo : CNode };
-    func clean(n : ?Node) : CNode = switch n {
-                                        case null null;
-                                        case (?n) ?{n with ante = clean(n.ante); dopo = clean(n.dopo) }
-                                    };
-    debugPrint(debug_show {now; timers = clean timers});
-
+    func clean(n : ?Node) : CNode =
+      switch n {
+          case null null;
+          case (?n) ?{n with ante = clean(n.ante); dopo = clean(n.dopo) }
+      };
+    //debugPrint(debug_show {now; timers = clean timers});
 
     let exp = nextExpiration timers;
     let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
@@ -97,25 +96,24 @@ actor {
     };
 
     var gathered = 0;
-    let thunks : [var ?(() -> async ())] = Array_init(10, null);
-    let next = now + 1_000_000_000;
+    let thunks : [var ?(() -> async ())] = Array_init(10/*FIXME*/, null);
+    //let next = now + 1_000_000_000;
     
     func gatherExpired(n : ?Node) : () {
         switch n {
         case null ();
         case (?n) {
                  gatherExpired(n.ante);
-                 if (n.expire > 0 and n.expire <= next) {
+                 if (n.expire > 0 and n.expire <= now) {
                      thunks[gathered] := ?(n.job);
                      n.expire := 0;
                      gathered += 1;
-                     gatherExpired(n.dopo);
                  };
+                 gatherExpired(n.dopo);
              }
         }
     };
 
-    //gathered := 0;
     gatherExpired(timers);
 
     let futures : [var ?(async ())] = Array_init(thunks.size(), null);
@@ -128,22 +126,11 @@ actor {
     for (f in futures.vals()) {
         switch f { case (?f) { await f }; case _ () }
     };
-    /*
-    if (count < max) {
-      count += 1;
-      await @run_timers();
-      if (count == max) {
-        let prev = (prim "global_timer_set" : Nat64 -> Nat64) 0;
-        assert prev != 0;
-      }
-    }*/
   };
 
   public shared func go() : async () {
      var attempts = 0;
      let now = time();
-     //let prev = (prim "global_timer_set" : Nat64 -> Nat64)(now + 100_000_000);
-     //assert prev == 0;
 
      let id1 = addTimer(1, false, func () : async () { count += 1; debugPrint "YEP!" });
      let id2 = addTimer(2, false, func () : async () { count := max; debugPrint "DIM!" });

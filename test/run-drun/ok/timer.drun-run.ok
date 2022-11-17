@@ -1,11 +1,11 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-debug.print: {exp = 1_668_699_798_778_863_000; id = 1; now = 1_668_699_797_778_863_000; prev = 0}
-debug.print: {exp = 1_668_699_798_778_863_000; id = 2; now = 1_668_699_797_778_863_000; prev = 1_668_699_798_778_863_000}
-debug.print: {now = 1_668_699_798_783_548_000; timers = ?{ante = null; delay = null; dopo = ?{ante = null; delay = null; dopo = null; expire = 1_668_699_799_778_863_000; id = 2}; expire = 1_668_699_798_778_863_000; id = 1}}
-debug.print: {exp = 1_668_699_798_778_863_000; gathered = 2}
+debug.print: {exp = 1_668_700_620_228_382_000; id = 1; now = 1_668_700_619_228_382_000; prev = 0}
+debug.print: {exp = 1_668_700_620_228_382_000; id = 2; now = 1_668_700_619_228_382_000; prev = 1_668_700_620_228_382_000}
+debug.print: {exp = 1_668_700_620_228_382_000; gathered = 1}
 debug.print: YEP!
+debug.print: {exp = 1_668_700_621_228_382_000; gathered = 0}
+debug.print: {exp = 1_668_700_621_228_382_000; gathered = 1}
 debug.print: DIM!
 debug.print: {count = 5}
-debug.print: {now = 1_668_699_798_789_818_000; timers = ?{ante = null; delay = null; dopo = ?{ante = null; delay = null; dopo = null; expire = 0; id = 2}; expire = 0; id = 1}}
 ingress Completed: Reply: 0x4449444c0000
