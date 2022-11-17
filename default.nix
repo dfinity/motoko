@@ -353,6 +353,14 @@ rec {
             type -p moc && moc --version
             echo "LUC RUNNING TEST"
             make -C ${dir}
+            if [ -e core.* ]
+            then
+              echo "Collect core dump"
+              mkdir -p $out/dumps
+              cp core.* $out/dumps
+              ls -la $out/dumps
+              touch $out/fail
+            fi
           '';
       };
 

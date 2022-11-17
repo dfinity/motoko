@@ -534,12 +534,7 @@ do
 
   if [ -e core.* ]
   then
-    echo "Collect core dump"
-    mkdir -p $out/dumps
-    cp core.* $out/dumps
-    ls -la $out/dumps
     echo "Exit with success to extract core dump"
-    touch $out/fail
     exit 0
   fi
 done
