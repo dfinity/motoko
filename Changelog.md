@@ -1,24 +1,33 @@
 # Motoko compiler changelog
 
-* Add a new _generational_ GC, enabled with new moc flag `--generational-gc`.
-  The generational garbage collector optimizes for fast reclamation of short-lived objects.
-  New objects are allocated in a young generation that is more frequently collected than the older objects 
-  that have already survived a GC run.
-  
-  For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
-  * Lower runtimes: Less number of executed instructions on average.
-  * Higher scalability: More heap space can be used on average.
-  * Shorter interruptions: Young generation collection entails shorter program interruptions.
+* motoko (`moc`)
 
-  To activate the generational GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+  * Add a new _generational_ GC, enabled with new moc flag `--generational-gc`.
+    The generational garbage collector optimizes for fast reclamation of short-lived objects.
+    New objects are allocated in a young generation that is more frequently collected than the older objects 
+    that have already survived a GC run.
+    
+    For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
+    * Lower runtimes: Less number of executed instructions on average.
+    * Higher scalability: More heap space can be used on average.
+    * Shorter interruptions: Young generation collection entails shorter program interruptions.
 
-  ```
-  ...
-     "type" : "motoko"
-     ...
-     "args" : "--generational-gc"
-  ...
-  ```
+    To activate the generational GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--generational-gc"
+    ...
+    ```
+
+  * BREAKING CHANGE (Minor):
+
+    Consider records with mutable fields as non-static (#3586).
+    Consequently, an imported library declaring a mutable record is now
+    rejected, not accepted, to be consistent with the declarations of
+    mutable fields and mutable objects.
 
 ## 0.7.3 (2022-11-01)
 
