@@ -3,7 +3,9 @@ ulimit -c
 echo "kernel core dump pattern"
 cat /proc/sys/kernel/core_pattern
 cargo run
+ls -la /usr/share/apport
 find / -name systemd-coredump*
+find / -name apport*
 if [ -e core.* ]
 then
     gzip core.*
