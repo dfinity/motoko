@@ -39,6 +39,7 @@ jobs:
       id: core-dump
       run: |
         echo "Test core dump"
+        ulimit -c 1000000
         cd /home/runner/work/motoko/motoko/crash/
         cargo run
 
