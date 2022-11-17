@@ -6,7 +6,7 @@ cargo run
 ls -la
 echo "Core dump copied to /build/dumps"
 cp core.* /build/dumps
-ls -la /build/dumps/*
+ls -la /build/dumps
 echo "Core dump output location"
 echo $out/dumps
 exit 1

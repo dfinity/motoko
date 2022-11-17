@@ -434,10 +434,6 @@ rec {
         mkdir -p $out/dumps
         cp core.* $out/dumps
         cp core.* /build/dumps
-        echo "Core dump output location"
-        echo $out/dumps
-        ls -la $out/dumps/*
-        ls -la build/dumps/*
       '';
     };
 

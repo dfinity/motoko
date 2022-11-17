@@ -38,13 +38,14 @@ jobs:
     - name: "enable core dump"
       id: core-dump
       run: |
+        sudo mkdir -p /build/dumps
+        ls -la /build/dumps
         echo "Enable core dump"
         ulimit -c 1000000
         ulimit -c
         echo "Set core dump location"
         echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern 
         cat /proc/sys/kernel/core_pattern
-        sudo mkdir -p /build/dumps
 
     - name: "nix-build"
       id: nix-build
@@ -54,8 +55,8 @@ jobs:
       if: failure() && steps.nix-build.outcome != 'success'
       run: |
         echo "List core dump"
-        ls -la /build/dumps/*
-        find /nix/store -name core.*
+        ls -la /build/dumps
+        find /nix/store -name *-test-crash*
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
