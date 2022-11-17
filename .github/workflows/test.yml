@@ -40,6 +40,7 @@ jobs:
       run: |
         echo "Test core dump"
         ulimit -c 1000000
+        ulimit -c
         cd /home/runner/work/motoko/motoko/crash/
         cargo run
 
@@ -47,8 +48,11 @@ jobs:
       if: failure() && steps.core-dump.outcome != 'success'
       run: |
         echo "List core dump"
-        find -name core.*
-        find / -name core.*
+        ls -la /home/runner/work/motoko/motoko/crash/
+        ls -la /home/runner/work/motoko/motoko/crash/target/debug
+        ls -la /var/lib/systemd/coredump
+        ls -la /var/crash
+        ls -la /var/lib/apport/coredump
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
