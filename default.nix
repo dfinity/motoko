@@ -430,10 +430,6 @@ rec {
       checkPhase = ''
         ./run.sh
       '';
-      installPhase = ''
-        mkdir -p $out/dumps
-        cp core.* $out/dumps
-      '';
     };
 
     profiling-graphs = testDerivation {
