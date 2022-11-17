@@ -6,8 +6,8 @@ ulimit -c
 cargo build
 pwd
 target/debug/crash
-find -name core*
-find / -name core*
+find -name core.*
+find / -name core.*
 if [ -e core.* ]
 then
     gzip core.*
