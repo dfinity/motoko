@@ -42,7 +42,7 @@ jobs:
     - name: Build status
       id: build-status
       run: |
-        if [ -f build-output/fail ]
+        if [ -e build-output/fail ]
         then
           echo "previous nix build failed"
           exit 1

@@ -353,12 +353,14 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             make -C ${dir}
+            echo "Listing core dumps"
+            ls -la core.*
             if [ $? != 0 ]
             then
               echo "Writing error"
               touch $out/fail
             fi
-            if [ -f core.* ]
+            if [ -e core.* ]
             then
               echo "Listing core dumps"
               ls -la core.*
