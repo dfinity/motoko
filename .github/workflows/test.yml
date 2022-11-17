@@ -34,6 +34,7 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: Enable core dump
+      if: runner.os == 'Linux' 
       run: echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
