@@ -430,6 +430,13 @@ rec {
       checkPhase = ''
         ./run.sh
       '';
+      installPhase = ''
+        mkdir -p $out/dumps
+        cp core.* $out/dumps
+        echo "Core dump output location"
+        echo $out/dumps
+        ls -la $out/dumps
+      '';
     };
 
     profiling-graphs = testDerivation {
