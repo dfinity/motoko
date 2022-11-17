@@ -529,15 +529,15 @@ do
     done
   fi
   popd >/dev/null
-
+  
   if [ -e core.* ]
   then
-    echo "Collect core dump"
-    mkdir -p $out/dumps
-    cp core.* $out/dumps
-    ls -la $out/dumps
+    echo "Collect core dump to $NIX_OUTPUT/dumps"
+    mkdir -p $NIX_OUTPUT/dumps
+    cp core.* $NIX_OUTPUT/dumps
+    ls -la $NIX_OUTPUT/dumps
+    touch $NIX_OUTPUT/fail
     echo "Exit with success to extract core dump"
-    touch $out/fail
     exit 0
   fi
 done
