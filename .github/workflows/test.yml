@@ -33,10 +33,28 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
-    - run: nix-env -iA nix-build-uncached -f nix/
+    - name: Enable core dump
+      if: runner.os == 'Linux' 
+      run: echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
-      run: nix-build-uncached --max-jobs 1 -A all-systems-go -build-flags -L
+      run: nix-build --max-jobs 4 -A all-systems-go -o build-output
+
+    - name: Build status
+      id: build-status
+      run: |
+        if [ -e build-output/fail ]
+        then
+          echo "previous nix build failed"
+          exit 1
+        fi
+
+    - name: Upload core dumps
+      if: failure() && steps.build-status.outcome != 'success'
+      uses: actions/upload-artifact@master
+      with:
+        name: core-dumps
+        path: build-output/dumps
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
@@ -58,7 +76,7 @@ jobs:
 
     - name: Find performance comment
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
-      uses: peter-evans/find-comment@v2
+      uses: peter-evans/find-comment@v2.0.1
       id: fc
       with:
         issue-number: ${{ github.event.pull_request.number }}
@@ -69,7 +87,7 @@ jobs:
     # motoko#2864.
     - name: Create or update performance comment
       if: runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-      uses: peter-evans/create-or-update-comment@v2
+      uses: peter-evans/create-or-update-comment@v2.1.0
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}

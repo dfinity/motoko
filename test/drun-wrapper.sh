@@ -34,6 +34,10 @@ EXTRA_BATCHES=1
 # and this helps (default is 2MB)
 export RUST_MIN_STACK=$((10*1024*1024))
 
+export RUST_BACKTRACE=1
+
+ulimit -c unlimited
+
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
 
