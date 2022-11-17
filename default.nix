@@ -351,6 +351,7 @@ rec {
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
+            export NIX_OUTPUT=$out
             make -C ${dir}
           '';
       };
