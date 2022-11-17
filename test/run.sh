@@ -534,6 +534,11 @@ do
 
   if [ -e core.* ]
   then
+    echo "Collect core dump to $NIX_OUTPUT/dumps"
+    mkdir -p $NIX_OUTPUT/dumps
+    cp core.* $NIX_OUTPUT/dumps
+    ls -la $NIX_OUTPUT/dumps
+    touch $NIX_OUTPUT/fail
     echo "Exit with success to extract core dump"
     exit 0
   fi
