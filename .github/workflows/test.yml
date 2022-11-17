@@ -44,7 +44,7 @@ jobs:
         echo "Set core dump location"
         echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern 
         cat /proc/sys/kernel/core_pattern
-        sudo mkdir -p /nix/dumps
+        sudo mkdir -p /build/dumps
 
     - name: "nix-build"
       id: nix-build
