@@ -36,7 +36,8 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "core dump test"
-      run: 
+      run: |
+        echo "Test core dump"
         cd /home/runner/work/motoko/motoko/crash/
         cargo run
         find -name core.*
