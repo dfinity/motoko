@@ -347,7 +347,6 @@ rec {
         buildInputs = deps ++ testDerivationDeps;
 
         checkPhase = ''
-            mkdir -p $out
             patchShebangs .
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
