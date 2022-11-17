@@ -36,7 +36,6 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "enable core dump"
-      id: core-dump
       run: |
         echo "Enable core dump"
         ulimit -c 1000000
@@ -45,11 +44,9 @@ jobs:
         echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
-      id: nix-build
       run: nix-build-uncached --max-jobs 4 -A tests.crash -build-flags -L -o build-output
 
     - name: "list core dumps"
-      if: failure() && steps.nix-build.outcome != 'success'
       run: |
         echo "List core dump"
         ls -la /build-output/dumps
