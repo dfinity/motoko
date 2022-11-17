@@ -36,15 +36,7 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build"
-      id: nix-build
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
-
-    - name: Upload core dumps
-      if: failure() && steps.nix-build.outcome != 'success'
-      uses: actions/upload-artifact@master
-      with:
-        name: core-dump
-        path: /build/dumps
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'

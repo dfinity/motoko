@@ -1,5 +1,27 @@
 # Motoko compiler changelog
 
+## 0.7.4 (tbd)
+
+* Add a new _generational_ GC, enabled with new moc flag `--generational-gc`.
+  The generational garbage collector optimizes for fast reclamation of short-lived objects.
+  New objects are allocated in a young generation that is more frequently collected than the older objects 
+  that have already survived a GC run.
+  
+  For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
+  * Lower runtimes: Less number of executed instructions on average.
+  * Higher scalability: More heap space can be used on average.
+  * Shorter interruptions: Young generation collection entails shorter program interruptions.
+
+  To activate the generational GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+  ```
+  ...
+     "type" : "motoko"
+     ...
+     "args" : "--generational-gc"
+  ...
+  ```
+
 ## 0.7.3 (2022-11-01)
 
 * motoko (`moc`)
