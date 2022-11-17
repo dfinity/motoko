@@ -358,10 +358,10 @@ rec {
               echo "Writing error"
               touch $out/fail
             fi
-            if [ -e ./core.* ]
+            if [ -e core_dump.* ]
             then
               echo "Listing core dumps"
-              ls -la ./core.*
+              ls -la core_dump.*
               echo "Output core dumps"
               mkdir -p $out/dumps
               cp core.* $out/dumps
