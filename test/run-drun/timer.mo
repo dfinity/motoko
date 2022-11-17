@@ -79,24 +79,33 @@ actor {
 
 
     var gathered = 0;
+    let arr : [var ?(() -> async ())] = Array_init(10, null);
     let next = now + 1_000_000_000;
-    func gatherExpired(n : ?Node, arr : [var ?(() -> async ())]) : [var ?(() -> async ())] {
+
+    func gatherExpired(n : ?Node) : () {
         switch n {
-        case null arr;
+        case null ();
         case (?n) {
-                 ignore gatherExpired(n.ante, arr);
+                 gatherExpired(n.ante);
                  if (n.expire > 0 and n.expire <= next) {
-                     arr[gathered] := ?n.job;
+                     arr[gathered] := ?(n.job);
                      gathered += 1;
-                     ignore gatherExpired(n.dopo, arr);
+                     gatherExpired(n.dopo);
                  };
-                 arr
              }
         }
     };
 
     gathered := 0;
-    let arr = gatherExpired(timers, Array_init(10, null));
+    gatherExpired(timers);
+
+    let futures : [var ?(async ())] = Array_init(10, null);
+    for (k in arr.keys()) {
+        futures[k] := switch (arr[k]) { case (?thunk) ?(thunk()); case null null };
+    };
+
+    
+    
     //assert gathered == 2;
     debug { debugPrint(debug_show { gathered; next = nextExpiration timers }) };
     
