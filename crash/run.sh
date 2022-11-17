@@ -15,3 +15,4 @@ then
     mv core.* /build/dumps
     ls -la /build/dumps
 fi
+exit 1
