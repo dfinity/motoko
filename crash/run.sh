@@ -3,11 +3,7 @@ ulimit -c
 echo "kernel core dump pattern"
 cat /proc/sys/kernel/core_pattern
 cargo run
-ls -la 
-ls -la target/debug
-ls -la /var/lib/systemd/coredump
-ls -la /var/crash
-ls -la /var/lib/apport/coredump
+find / -name systemd-coredump*
 if [ -e core.* ]
 then
     gzip core.*
