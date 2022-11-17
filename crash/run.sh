@@ -1,9 +1,10 @@
 echo "ulimit before"
 ulimit -c
-ulimit -c 1000000
+ulimit -c unlimited
 echo "ulimit after"
 ulimit -c
 cargo build
+sudo cargo build
 pwd
 target/debug/crash
 find -name core.*
