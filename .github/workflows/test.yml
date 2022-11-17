@@ -34,7 +34,7 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - name: Enable core dump
-      run: echo 'core_dump.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+      run: echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
       run: nix-build --max-jobs 4 -A all-systems-go -o build-output
@@ -42,7 +42,7 @@ jobs:
     - name: Build status
       id: build-status
       run: |
-        if [ -e build-output/fail ]
+        if [ -f build-output/fail ]
         then
           echo "previous nix build failed"
           exit 1
