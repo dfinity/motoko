@@ -35,6 +35,9 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
+    - name: "core dump test"
+      run: ./crash/run.sh
+
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
