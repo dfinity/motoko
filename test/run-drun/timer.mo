@@ -7,7 +7,25 @@ actor {
     type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); var ante : ?Node; var dopo : ?Node };
     var timers : ?Node = null;
     var lastId = 0;
-    
+
+
+    func nextExpiration(n : ?Node) : Nat64 {
+        switch n {
+        case null 0;
+        case (?n) {
+                 var exp = nextExpiration(n.ante);
+                 if (exp == 0) {
+                     exp := n.expire;
+                     if (exp == 0) {
+                         exp := nextExpiration(n.dopo)
+                     }
+                 };
+                 exp
+             }
+        }
+    };
+
+
     // ad-hoc place for the Timer.mo API
     type TimerId = Nat;
     func addTimer(delay : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
@@ -63,34 +81,18 @@ actor {
     var gathered = 0;
     let next = now + 1_000_000_000;
     func gatherExpired(n : ?Node, arr : [var ?(() -> async ())]) : [var ?(() -> async ())] {
-    	 switch n {
-	     case null arr;
-	     case (?n) {
-	     	  ignore gatherExpired(n.ante, arr);
-		  if (n.expire > 0 and n.expire <= next) {
-		     arr[gathered] := ?n.job;
-		     gathered += 1;
-		     ignore gatherExpired(n.dopo, arr);
-		  };
-		  arr
-	     }
-	 }
-    };
-
-    func nextExpiration(n : ?Node) : Nat64 {
-    	 switch n {
-	     case null 0;
-	     case (?n) {
-	     	  var exp = nextExpiration(n.ante);
-		  if (exp == 0) {
-		     exp := n.expire;
-		     if (exp == 0) {
-		         exp := nextExpiration(n.dopo)
-		     }
-		  };
-		  exp
-	     }
-	 }
+        switch n {
+        case null arr;
+        case (?n) {
+                 ignore gatherExpired(n.ante, arr);
+                 if (n.expire > 0 and n.expire <= next) {
+                     arr[gathered] := ?n.job;
+                     gathered += 1;
+                     ignore gatherExpired(n.dopo, arr);
+                 };
+                 arr
+             }
+        }
     };
 
     gathered := 0;
