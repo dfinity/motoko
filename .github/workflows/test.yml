@@ -48,10 +48,6 @@ jobs:
       if: failure() && steps.core-dump.outcome != 'success'
       run: |
         echo "List core dump"
-        ls -la /home/runner/work/motoko/motoko/crash/
-        ls -la /home/runner/work/motoko/motoko/crash/target/debug
-        ls -la /var/lib/systemd/coredump
-        ls -la /var/crash
         ls -la /var/lib/apport/coredump
 
     - name: "nix-build"
