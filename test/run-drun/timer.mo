@@ -53,7 +53,7 @@ actor {
             ignore (prim "global_timer_set" : Nat64 -> Nat64) prev;
         };
 
-        debug { debugPrint(debug_show {now; exp; prev; id }) };
+        //debug { debugPrint(debug_show {now; exp; prev; id }) };
 
         id
     };
@@ -97,7 +97,6 @@ actor {
 
     var gathered = 0;
     let thunks : [var ?(() -> async ())] = Array_init(10/*FIXME*/, null);
-    //let next = now + 1_000_000_000;
     
     func gatherExpired(n : ?Node) : () {
         switch n {
@@ -121,7 +120,7 @@ actor {
         futures[k] := switch (thunks[k]) { case (?thunk) ?(thunk()); case _ null };
     };
 
-    debug { debugPrint(debug_show { gathered; exp }) };
+    //debug { debugPrint(debug_show { gathered; exp }) };
 
     for (f in futures.vals()) {
         switch f { case (?f) { await f }; case _ () }
