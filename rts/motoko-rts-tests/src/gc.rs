@@ -6,6 +6,7 @@
 // To convert an offset into an address, add heap array's address to the offset.
 
 mod heap;
+mod incremental;
 mod random;
 mod remembered_set;
 mod utils;
@@ -22,6 +23,10 @@ use std::fmt::Write;
 use fxhash::{FxHashMap, FxHashSet};
 
 pub fn test() {
+    unsafe {
+        incremental::test();
+    }
+
     println!("Testing garbage collection ...");
 
     println!("  Testing pre-defined heaps...");

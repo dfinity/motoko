@@ -26,7 +26,7 @@
 // size of the text.
 
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob, Memory, BLACK_ALLOCATION};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
 
@@ -45,7 +45,7 @@ unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_blob: Text too large");
     }
-    alloc_blob(mem, size)
+    alloc_blob(mem, size, BLACK_ALLOCATION)
 }
 
 #[ic_mem_fn]
@@ -106,7 +106,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     // Create concat node
     let r = mem.alloc_words(size_of::<Concat>());
     let r_concat = r.get_ptr() as *mut Concat;
-    (*r_concat).header.tag = TAG_CONCAT;
+    (*r_concat).header.set_tag(TAG_CONCAT, BLACK_ALLOCATION);
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1;
     (*r_concat).text2 = s2;

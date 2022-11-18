@@ -164,7 +164,7 @@ unsafe fn evac<M: Memory>(
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
-    (*fwd).header.tag = TAG_FWD_PTR;
+    (*fwd).header.set_tag(TAG_FWD_PTR, false);
     (*fwd).fwd = Value::from_ptr(obj_loc);
 
     // Update evacuated field

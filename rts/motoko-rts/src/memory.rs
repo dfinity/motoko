@@ -7,6 +7,8 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+pub static mut BLACK_ALLOCATION: bool = true;
+
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
 /// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
@@ -31,11 +33,11 @@ pub trait Memory {
 
 /// Helper for allocating blobs
 #[ic_mem_fn]
-pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>, marked: bool) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
-    (*blob).header.tag = TAG_BLOB;
+    (*blob).header.set_tag(TAG_BLOB, marked);
     (*blob).len = size;
     ptr
 }
@@ -51,7 +53,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
-    (*ptr).header.tag = TAG_ARRAY;
+    (*ptr).header.set_tag(TAG_ARRAY, BLACK_ALLOCATION);
     (*ptr).len = len;
 
     skewed_ptr

@@ -31,7 +31,7 @@
 
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob, Memory, BLACK_ALLOCATION};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
 use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
@@ -51,7 +51,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
     }
-    let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
+    let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED, BLACK_ALLOCATION).as_stream();
     (*stream).ptr64 = 0;
     (*stream).start64 = 0;
     (*stream).limit64 = 0;
@@ -194,7 +194,7 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        (*blob).header.tag = TAG_BLOB;
+        (*blob).header.set_tag(TAG_BLOB, BLACK_ALLOCATION);
         debug_assert_eq!(blob.len(), (*self).filled);
         Value::from_ptr(blob as usize)
     }
