@@ -68,7 +68,14 @@ actor {
                       hunt(n.dopo)
                }
         };
-        hunt timers
+
+        hunt timers;
+
+        if (nextExpiration timers == 0) {
+            // no more expirations ahead
+            ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
+            timers := null
+        }
     };
 
 
