@@ -1,3 +1,5 @@
+#TEST2
+
 QUICK_DIRS = fail idl ld mo-idl repl run
 OTHER_DIRS = bench perf run-deser run-drun trap
 TEST_DIRS = $(QUICK_DIRS) $(OTHER_DIRS)
