@@ -1,4 +1,5 @@
-(* viper only tokens and productions *)
+(* Viper only tokens and productions *)
+
 %token INVARIANT
 %token IMPLIES
 (*
