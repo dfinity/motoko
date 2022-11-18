@@ -17,8 +17,8 @@ actor {
   };
 
   public shared func loops(/*j : Int*/) : async () {
-      //var i = j;
-      while (/*i > 0*/false) {
+      var i : Int = 0;
+      while (i > 0) {
           //i -= 1
       }
   }
