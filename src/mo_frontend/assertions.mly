@@ -1,11 +1,10 @@
+(* viper only tokens and productions *)
 %token INVARIANT
-(* I get
-> Error: 54 states have shift/reduce conflicts.
-when I write this here (instead of in parser.mly)
-
 %token IMPLIES
-%nonassoc IMPLIES
+(*
+%nonassoc IMPLIES  (* see parser.mly *)
 *)
+
 %%
 
 %public exp_bin(B) :
