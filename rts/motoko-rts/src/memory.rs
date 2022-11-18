@@ -7,6 +7,9 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+/// Incremental GC allocation scheme:
+/// New allocated objects are initially marked for the snapshot-at-the-beginning incremental marking.
+/// This is necessary because the incremental GC does neither scan nor use write barriers on the call stack.
 pub static mut BLACK_ALLOCATION: bool = true;
 
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
@@ -31,9 +34,19 @@ pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
 }
 
-/// Helper for allocating blobs
+/// Allocate a new blob for the mutator with the default incremental mark allocation scheme.
 #[ic_mem_fn]
-pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>, marked: bool) -> Value {
+pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+    alloc_blob_internal(mem, size, BLACK_ALLOCATION)
+}
+
+/// RTS-internal allocation of blobs for the GC that can be collected during the next GC run.
+pub unsafe fn alloc_collectable_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+    alloc_blob_internal(mem, size, false)
+}
+
+#[inline]
+unsafe fn alloc_blob_internal<M: Memory>(mem: &mut M, size: Bytes<u32>, marked: bool) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
@@ -42,7 +55,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>, marked: bool)
     ptr
 }
 
-/// Helper for allocating arrays
+/// Allocate an array for the mutator with the default incremental mark allocation scheme.
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     // Array payload should not be larger than half of the memory

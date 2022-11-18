@@ -928,7 +928,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [I32Type] [];
-    E.add_func_import env "rts" "alloc_blob" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
@@ -3167,12 +3167,7 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = 
-    (if Heap.black_allocation then 
-      compile_unboxed_const 1l 
-    else 
-      compile_unboxed_const 0l) ^^
-    E.call_import env "rts" "alloc_blob"
+  let alloc env = E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset

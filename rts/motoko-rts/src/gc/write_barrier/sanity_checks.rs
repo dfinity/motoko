@@ -4,7 +4,7 @@
 use core::ptr::null_mut;
 
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_collectable_blob, Memory};
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
@@ -52,7 +52,7 @@ pub unsafe fn record_write<M: Memory>(mem: &mut M, object: Value) {
 pub unsafe fn take_snapshot<M: Memory>(mem: &mut M, heap_free: usize) {
     if COUNTER % SNAPSHOT_FREQUENCY == 0 {
         let length = Bytes(heap_free as u32);
-        let blob = alloc_blob(mem, length, false).get_ptr() as *mut Blob;
+        let blob = alloc_collectable_blob(mem, length).get_ptr() as *mut Blob;
         memcpy_bytes(blob.payload_addr() as usize, 0, length);
         SNAPSHOT = blob;
         init_write_barrier(mem);

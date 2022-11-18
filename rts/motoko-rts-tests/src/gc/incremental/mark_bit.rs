@@ -1,5 +1,5 @@
 use motoko_rts::{
-    memory::{alloc_array, alloc_blob, BLACK_ALLOCATION},
+    memory::{alloc_array, alloc_blob},
     stream::alloc_stream,
     types::{Bytes, Obj, Words},
 };
@@ -14,7 +14,7 @@ pub unsafe fn test() {
     let array = alloc_array(&mut mem, 64).as_array();
     test_mark_bit(array as *mut Obj);
 
-    let blob = alloc_blob(&mut mem, Bytes(64), BLACK_ALLOCATION).as_blob_mut();
+    let blob = alloc_blob(&mut mem, Bytes(64)).as_blob_mut();
     test_mark_bit(blob as *mut Obj);
 
     let stream = alloc_stream(&mut mem, Bytes(64));
