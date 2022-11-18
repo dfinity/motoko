@@ -4,7 +4,7 @@ import {Array_init; debugPrint; error; time} = "mo:⛔";
 
 actor {
     // timer module implementation
-    type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); var ante : ?Node; var dopo : ?Node };
+    type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
     var timers : ?Node = null;
     var lastId = 0;
 
@@ -32,21 +32,23 @@ actor {
         lastId += 1;
         let id = lastId;
         let now = time();
-        let delay = 1_000_000_000 * delaySecs;
-        let expire = now + delay;
-        func insert(n : ?Node, put : Node -> ()) =
+        let delayNanos = 1_000_000_000 * delaySecs;
+        let expire = now + delayNanos;
+        let delay = if recurring ?delayNanos else null
+        func insert(n : ?Node) : Node =
             switch n {
-            case null { put { var expire; id; delay = if recurring ?delay else null; job; var ante = null; var dopo = null } };
+            case null { var expire; id; delay; job; ante = null; dopo = null };
             case (?n) {
-                     if (n.expire == 0) { put { var expire; id; delay = if recurring ?delay else null; job; var ante = n.ante; var dopo = n.dopo } }
+                     if (n.expire == 0) { put { var expire; id; delay = if recurring ?delay else null; job; ante = n.ante; var dopo = n.dopo } }
                      else if (n.expire <= expire) { insert(n.dopo, func m = n.dopo := ?m) }
                      else { insert(n.ante, func m = n.ante := ?m) }
                  }
             };
-        insert(timers, func n = timers := ?n);
+        timers := insert(timers);
 
 
         let exp = nextExpiration timers;
+        if (exp == 0) timers := null;
         let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
         /*FIXME: this is expensive*/
         if (prev != 0 and prev != 0 and exp > prev) {
