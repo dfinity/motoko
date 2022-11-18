@@ -10,7 +10,7 @@ use motoko_rts_macros::ic_mem_fn;
 /// Incremental GC allocation scheme:
 /// New allocated objects are initially marked for the snapshot-at-the-beginning incremental marking.
 /// This is necessary because the incremental GC does neither scan nor use write barriers on the call stack.
-pub static mut BLACK_ALLOCATION: bool = true;
+pub const BLACK_ALLOCATION: bool = true;
 
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
