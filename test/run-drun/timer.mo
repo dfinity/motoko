@@ -28,11 +28,12 @@ actor {
 
     // ad-hoc place for the Timer.mo API
     type TimerId = Nat;
-    func addTimer(delay : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
+    func addTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
         lastId += 1;
         let id = lastId;
         let now = time();
-        let expire = now + 1_000_000_000 * delay;
+        let delay = 1_000_000_000 * delaySecs;
+        let expire = now + delay;
         func insert(n : ?Node, put : Node -> ()) =
             switch n {
             case null { put { var expire; id; delay = if recurring ?delay else null; job; var ante = null; var dopo = null } };
