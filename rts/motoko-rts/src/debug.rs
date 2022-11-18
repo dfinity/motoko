@@ -8,7 +8,7 @@ use core::fmt::Write;
 /// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn print_value(value: Value) {
+pub unsafe extern "C" fn print_value(value: Value) {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
@@ -31,21 +31,21 @@ pub unsafe fn dump_heap(
     print_heap(heap_base, hp);
 }
 
-pub(crate) unsafe fn print_continuation_table(closure_tbl_loc: *mut Value) {
+pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) {
     if !crate::continuation_table::table_initialized() {
         println!(100, "Continuation table not initialized");
         return;
     }
 
-    let arr = (*closure_tbl_loc).as_array() as *mut Array;
+    let arr = (*continuation_tbl_loc).as_array();
     let len = (*arr).len;
 
     if len == 0 {
-        println!(50, "Closure table empty");
+        println!(50, "Continuation table empty");
         return;
     }
 
-    println!(50, "Closure table: {}", len);
+    println!(50, "Continuation table: {}", len);
 
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
@@ -59,7 +59,7 @@ pub(crate) unsafe fn print_continuation_table(closure_tbl_loc: *mut Value) {
             write_buf.reset();
         }
     }
-    println!(50, "End of closure table");
+    println!(50, "End of continuation table");
 }
 
 pub(crate) unsafe fn print_static_roots(static_roots: Value) {
@@ -199,8 +199,8 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             );
         }
         TAG_BLOB => {
-            let blob = obj as *const Blob;
-            let _ = write!(buf, "<Blob len={:#x}>", (*blob).len.as_u32());
+            let blob = obj.as_blob();
+            let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_u32());
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
@@ -215,7 +215,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<BigInt>");
         }
         TAG_CONCAT => {
-            let concat = obj as *const Concat;
+            let concat = obj.as_concat();
             let _ = write!(
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",

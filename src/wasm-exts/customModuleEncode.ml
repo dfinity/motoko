@@ -827,13 +827,32 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
+    let icp_custom_section name f opt =
+      match opt with
+      | None -> ()
+      | Some (is_public, x) ->
+        section 0 (fun x ->
+          string ("icp:"^ (if is_public then "public " else "private ") ^ name);
+          f x
+        ) x true
+
     (* Motoko custom section *)
 
     let motoko_section_body labels =
       section 0 (vec string) labels (labels <> [])
 
+    let utf8 bs =
+      ignore (Wasm.Utf8.decode bs);  (* assert well-formedness *)
+      put_string s bs
+
     let motoko_sections motoko =
-      custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> [])
+      icp_custom_section "motoko:stable-types" utf8 motoko.stable_types;
+      icp_custom_section "motoko:compiler" utf8 motoko.compiler;
+      custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> []) (* TODO: make an icp_section *)
+
+    let candid_sections candid =
+      icp_custom_section "candid:service" utf8 candid.service;
+      icp_custom_section "candid:args" utf8 candid.args
 
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
@@ -1201,6 +1220,7 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      candid_sections em.candid;
       motoko_sections em.motoko;
       source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then

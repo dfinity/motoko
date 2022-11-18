@@ -15,7 +15,7 @@ let hover_detail = function
       let doc_comment =
         match ty.doc_comment with None -> "" | Some c -> "\n\n---\n\n" ^ c
       in
-      let _, params, _ = Type.strings_of_kind (Con.kind ty.typ) in
+      let _, params, _ = Type.strings_of_kind (Cons.kind ty.typ) in
       Printf.sprintf "```motoko\ntype %s%s\n```%s" ty.name params doc_comment
 
 let markup_content (msg : string) : Lsp.markup_content =
@@ -39,6 +39,9 @@ let hover_handler (index : DI.t) (position : Lsp.position)
     in
     match ident_target with
     | Source_file.Alias (_, path) ->
+        Some Lsp.{ hover_result_contents = markup_content path }
+    | Source_file.Field (_, path) ->
+        (* TODO: add field-specific information *)
         Some Lsp.{ hover_result_contents = markup_content path }
     | Source_file.Resolved resolved ->
         let* _, decls =

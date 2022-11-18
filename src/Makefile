@@ -115,8 +115,8 @@ test-parallel:
 	make -C ../test parallel
 	make -C ../samples all
 
-grammar: ../doc/modules/language-guide/examples/grammar.txt
+grammar: ../doc/md/examples/grammar.txt
 
-../doc/modules/language-guide/examples/grammar.txt: mo_frontend/parser.mly gen-grammar/gen-grammar.sh gen-grammar/grammar.sed
+../doc/md/examples/grammar.txt: mo_frontend/parser.mly gen-grammar/gen-grammar.sh gen-grammar/grammar.sed
 	./gen-grammar/gen-grammar.sh $< > $@.tmp
 	mv $@.tmp $@

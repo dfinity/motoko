@@ -1,6 +1,6 @@
 func go () {
   let foobaz1 = do {
-    func fuzz1() = ();
+    func fuzz1() { assert true; };
     func foobar1() = fuzz1();
     let fooquux1 = foobar1;
     fooquux1;
@@ -10,7 +10,7 @@ func go () {
 go();
 
 let foobaz2 = do {
-  func fuzz2() = ();
+  func fuzz2() { assert true; };
   func foobar2() = fuzz2();
   let fooquux2 = foobar2;
   fooquux2;

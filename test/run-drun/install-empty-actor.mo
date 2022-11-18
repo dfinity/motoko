@@ -7,7 +7,7 @@ actor a {
 
   public func go() : async() {
     // To get lots of cycles in both drun and ic-ref-run
-    if (Cycles.balance() == (0 : Nat64))
+    if (Cycles.balance() == 0)
       await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
 
     try {

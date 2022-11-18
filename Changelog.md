@@ -1,5 +1,316 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+
+    Consider records with mutable fields as non-static (#3586).
+    Consequently, an imported library declaring a mutable record is now
+    rejected, not accepted, to be consistent with the declarations of
+    mutable fields and mutable objects.
+
+## 0.7.3 (2022-11-01)
+
+* motoko (`moc`)
+
+ * Statically reject shared functions and function types with type parameters (#3519, #3522).
+
+ * Performance improvement: `Array.init` and `Array.tabulate` (#3526).
+
+* motoko-base
+
+  * Add some examples to `Buffer` library documentation (dfinity/motoko-base#420).
+
+  * Fix another bug in `Buffer` library affecting `filterEntries` (dfinity/motoko-base#422).
+
+## 0.7.2 (2022-10-25)
+
+* motoko-base
+
+  * Fix bugs in `Buffer` library affecting `remove` and `filterEntries` (dfinity/motoko-base#419).
+
+## 0.7.1 (2022-10-24)
+
+* motoko (`moc`)
+
+    * Halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
+
+    * Add support for type components in object type syntax (#3457, also fixes #3449)
+    ``` motoko
+      type Record = { type T = Nat; x : Nat};
+    ```
+    is now legal.
+    Note the definition of `T` is neither recursive, nor bound in `x : Nat`,
+    but can refer to an existing recursive type declared in an outer scope.
+
+* motoko-base
+
+  * Optimized and extended `Buffer` library (dfinity/motoko-base#417).
+
+## 0.7.0 (2022-08-25)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+    Adds new syntax for merging records (objects) and
+    adding/overwriting fields. The expression
+    ``` motoko
+    { baseA and baseB with field1 = val1; field2 = val2 }
+    ```
+    creates a new record by joining all (statically known) fields from
+    `baseA/B` and the explicitly specified `field1/2`.
+    This is a _breaking change_, as a new keyword `with` has been added.
+    Restrictions for ambiguous and `var` fields from bases apply. (#3084)
+
+  * Add new support for installing actor class instances on the IC,
+    enabling specification of canister settings, install, upgrade and
+    reinstall. (#3386)
+
+    A new expression
+
+    ``` bnf
+      (system <exp> . <id>)
+    ```
+    where `<exp>` is an imported library and `<id>` is the name of
+    an actor class, accesses a secondary constructor of the class
+    that takes an additional argument controlling the installation.
+
+    For example,
+    ``` motoko
+      await (system Lib.Node)(#upgrade a)(i);
+    ```
+    upgrades actor `a` with the code for a new instance of class `Lib.Node`,
+    passing constructor argument `(i)`.
+
+  * Performance improvements for assigment-heavy code (thanks to nomeata) (#3406)
+
+## 0.6.30 (2022-08-11)
+
+* motoko (`moc`)
+
+  * add primitives
+    ```motoko
+    shiftLeft : (Nat, Nat32) -> Nat
+    shiftRight : (Nat, Nat32) -> Nat
+    ```
+    for efficiently multiplying/dividing a `Nat` by a power of 2
+    (#3112)
+
+  * add primitives
+    ```motoko
+    rts_mutator_instructions : () -> Nat
+    rts_collector_instructions : () -> Nat
+    ```
+    to report approximate IC instruction costs of the last message
+    due to mutation (computation) and collection (GC), respectively (#3381)
+
+* motoko-base
+
+  * Add
+    ```motoko
+    Buffer.fromArray
+    Buffer.fromVarArray
+    ```
+    for efficiently adding an array to a `Buffer`
+    (dfinity/motoko-base#389)
+
+  * Add
+    ```motoko
+    Iter.sort : (xs : Iter<A>, compare : (A, A) -> Order) : Iter<A>
+    ```
+    for sorting an `Iter` given a comparison function
+    (dfinity/motoko-base#406)
+
+  * Performance: `HashMap` now avoids re-computing hashes on `resize`
+    (dfinity/motoko-base#394)
+
+## 0.6.29 (2022-06-10)
+
+* motoko (`moc`)
+
+  * The language server now supports explicit symbol imports (thanks
+    to rvanasa) (#3282)
+  * The language server now has improved support for navigating to
+    definitions in external modules (thanks to rvanasa)  (#3263)
+  * Added a primitive `textCompare` allowing more efficient three-way
+    `Text` comparisons (#3298)
+  * Fixed a typing bug with annotated, recursive records (#3268)
+
+* motoko-base
+
+  * Add
+    ```motoko
+    ExperimentalInternetComputer.countInstruction : (comp : () -> ()) -> Nat64
+    ```
+    to count the Wasm instructions performed during execution of `comp()` (dfinity/motoko-base#381)
+
+  * Add
+    ```motoko
+    ExperimentalStableMemory.stableVarQuery : () -> (shared query () -> async {size : Nat64})
+    ```
+    for estimating stable variable storage requirements during upgrade
+    (dfinity/motoko-base#365)
+  * Performance improvement to `Text.compare` (dfinity/motoko-base#382)
+
+## 0.6.28 (2022-05-19)
+
+* motoko (`moc`)
+
+  * Add `to_candid`, `from_candid` language constructs for Candid serialization to/from Blobs (#3155)
+  * New `system` field 'inspect' for accepting/declining canister ingress messages (see doc) (#3210)
+
+## 0.6.27 (2022-05-04)
+
+* motoko (`moc`)
+
+  * Importing modules by relative path is now more robust (#3215).
+  * Performance: persisting stable variables to stable memory is now
+    performed in streaming fashion, reducing heap consumption and
+    copying during an upgrade (#3149).
+  * Performance: local 32- and 64-bit numeric values are now stored in
+    using unboxed form when possible (thanks to nomeata) (#3207).
+
+* motoko-base
+
+  * Fixed a bug in `Trie.filter` (and `Trie.mapFilter`) which could
+    lead to missing matches in some cases (dfinity/motoko-base#371).
+
+## 0.6.26 (2022-04-20)
+
+* motoko (`moc`)
+
+  * Performance: inline prim-wrapping functions (thanks to nomeata) (#3159)
+  * Improve type pretty printer to mirror type parser (avoids producing unparseable stable variable signatures) (#3190)
+  * Adds new flag `--omit-metadata` to omit certain metadata sections from `actor` (and `actor class`) Wasm (#3164)
+  * Performance: avoid redundant heap allocation when deserializing compact Candid `int` and  `nat` values (#3173)
+  * Added a primitive to obtain stable variable memory footprint (#3049)
+
+* motoko-base
+
+  * Fixed the 32-bit range limitation of `Hash.hash: Nat -> Nat32` and
+    deprecate most functions in `Hash` (dfinity/motoko-base#366).
+  * Add `List.toIter` (thanks to hoosan) (dfinity/motoko-base#336).
+
+## 0.6.25 (2022-03-07)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus elision of type constructors sharing names with primitive types in `--stable-types` section and `.most` file (#3140)
+
+## 0.6.24 (2022-03-06)
+
+* motoko (`moc`)
+
+  * bugfix: fix bogus identification of distinct type constructors
+    in --stable-types section and .most file (#3140)
+
+## 0.6.23 (2022-03-05)
+
+* motoko (`moc`)
+
+  * bugfix: fix pretty printing of (stable) types and #3128 (#3130)
+
+    * Collect constructors  *transitively* before emitting a .most file.
+    * Modifies type pretty printer to produce well-formed types and stable type signatures.
+
+## 0.6.22 (2022-02-24)
+
+* motoko (`moc`)
+
+  * Fix: remove bogus error when transitively importing module with
+    selective field imports (#3121)
+  * Fix: Treating eponymous types from separate candid files (#3103)
+
+* Various reports from CI are now pushed to
+  https://dfinity.github.io/motoko (#3113)
+
+## 0.6.21 (2022-01-31)
+
+* motoko (`moc`)
+
+  * Emit new ICP metadata custom section 'motoko:compiler' with compiler release or revision in UTF8 (e.g. "0.6.21"). Default is `icp:private` (#3091).
+  * Generalized `import` supporting pattern matching and selective field imports (#3076).
+  * Fix: insert critical overflow checks preventing rare heap corruptions
+    in out-of-memory allocation and stable variable serialization (#3077).
+  * Implement support for 128-bit Cycles-API (#3042).
+
+* motoko-base
+
+  * `ExperimentalInternetComputer` library, exposing low-level, binary `call` function (a.k.a. "raw calls") (dfinity/motoko-base#334, Motoko #3806).
+  * `Principal.fromBlob` added (dfinity/motoko-base#331).
+
+## 0.6.20 (2022-01-11)
+
+* motoko
+
+  * Implement support for `heartbeat` system methods (thanks to ninegua) (#2971)
+
+* motoko-base
+
+  * Add `Iter.filter : <A>(Iter<A>, A -> Bool) -> Iter<A>` (thanks to jzxchiang1) (dfinity/motoko-base#328).
+
+## 0.6.19 (2022-01-05)
+
+* motoko-base
+
+  * Fixed a bug in the `RBTree.size()` method.
+
+## 0.6.18 (2021-12-20)
+
+* moc
+
+  * Add runtime support for low-level, direct access to 64-bit IC stable memory, including documentation.
+  * Add compiler flag `--max-stable-pages <n>` to cap any use of `ExperimentalStableMemory.mo` (see below), while reserving space for stable variables.
+  Defaults to 65536 (4GiB).
+
+* motoko-base
+
+  * (Officially) add `ExperimentalStableMemory.mo` library, exposing 64-bit IC stable memory
+
+* BREAKING CHANGE (Minor):
+  The previously available (but unadvertised) `ExperimentalStableMemory.mo` used
+  `Nat32` offsets. This one uses `Nat64` offsets to (eventually) provide access to more address space.
+
+## 0.6.17 (2021-12-10)
+
+* Improved handling of one-shot messages facilitating zero-downtime
+  upgrades (#2938).
+* Further performance improvements to the mark-compact garbage
+  collector (#2952, #2973).
+* Stable variable checking for `moc.js` (#2969).
+* A bug was fixed in the scoping checker  (#2977).
+
+## 0.6.16 (2021-12-03)
+
+* Minor performance improvement to the mark-compact garbage collector
+
+
+## 0.6.15 (2021-11-26)
+
+* Fixes crash when (ill-typed) `switch` expression on non-variant
+  value has variant alternatives (#2934)
+
+## 0.6.14 (2021-11-19)
+
+* The compiler now embeds the existing Candid interface  and  new
+  _stable signature_ of a canister in additional Wasm custom sections,
+  to be selectively exposed by the IC, and to be used by tools such as `dfx`
+  to verify upgrade compatibility (see extended documentation).
+
+  New compiler options:
+
+    * `--public-metadata <name>`: emit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types`) as `public` (default is `private`)
+    * `--stable-types`: emit signature of stable types to `.most` file
+    * `--stable-compatible <pre> <post>`: test upgrade compatibility between stable-type signatures  `<pre>` and `<post>`
+
+  A Motoko canister upgrade is safe provided:
+
+    * the canister's Candid interface evolves to a Candid subtype; and
+    * the canister's Motoko stable signature evolves to a _stable-compatible_ one.
+
+  (Candid subtyping can be verified using tool `didc` available at:
+   https://github.com/dfinity/candid.)
+
 * BREAKING CHANGE (Minor):
   Tightened typing for type-annotated patterns (including function parameters)
   to prevent some cases of unintended and counter-intuitive type propagation.
@@ -18,6 +329,16 @@
   This no longer works, `i` has to be declared as `Nat` (or the type omitted).
 
   If you encounter such cases, please adjust the type annotation.
+
+* Improved garbage collection scheduling
+
+* Miscellaneous performance improvements
+  - code generation for `for`-loops over arrays has improved
+  - slightly sped up `Int` equality comparisons
+
+## 0.6.13 (2021-11-19)
+
+*Pulled*
 
 ## 0.6.12 (2021-10-22)
 
@@ -69,7 +390,7 @@
 
 * motoko-base
 
-  * add Debug.trap : Text -> None (#288)
+  * add Debug.trap : Text -> None (dfinity/motoko-base#288)
 
 ## 0.6.8 (2021-09-06)
 
@@ -88,7 +409,7 @@
 
 * motoko-base:
 
-  * Fix bug in `AssocList.diff` (#277)
+  * Fix bug in `AssocList.diff` (dfinity/motoko-base#277)
   * Deprecate unsafe or redundant functions in library `Option` ( `unwrap`, `assertSome`, `assertNull`) (#275)
 
 ## 0.6.6 (2021-07-30)

@@ -45,7 +45,7 @@ let rec exp m e = match e.it with
       | Var -> err m e.at
     end
   | ObjBlockE (_, dfs) -> dec_fields m dfs
-  | ObjE efs -> exp_fields m efs
+  | ObjE (bases, efs) -> List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()
@@ -56,12 +56,14 @@ let rec exp m e = match e.it with
   | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
-  | AnnotE (exp1, _) | IgnoreE exp1   | DoOptE exp1 -> exp m exp1
+  | AnnotE (exp1, _) | IgnoreE exp1 | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
 
   (* Clearly non-static *)
   | UnE _
   | ShowE _
+  | ToCandidE _
+  | FromCandidE _
   | NotE _
   | AssertE _
   | LabelE _
@@ -88,25 +90,28 @@ let rec exp m e = match e.it with
 
 and dec_fields m dfs = List.iter (fun df -> dec m df.it.dec) dfs
 
-and exp_fields m efs = List.iter (fun (ef : exp_field) -> exp m ef.it.exp) efs
+and exp_fields m efs = List.iter (fun (ef : exp_field) ->
+  if ef.it.mut.it = Var then err m ef.at;
+  exp m ef.it.exp) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
   | ExpD e -> exp m e
-  | LetD (p, e) -> triv m p; exp m e
+  | LetD (p, e) -> pat m p; exp m e
   | VarD _ -> err m d.at
 
-and triv m p = match p.it with
+and pat m p = match p.it with
   | (WildP | VarP _) -> ()
 
   (*
   If we allow projections above, then we should allow irrefutable
   patterns here.
   *)
-  | TupP ps -> List.iter (triv m) ps
+  | TupP ps -> List.iter (pat m) ps
+  | ObjP fs -> List.iter (fun (f : pat_field) -> pat m f.it.pat) fs
 
   (* TODO:
-    claudio: what about record patterns, singleton variant patterns? These are irrefutable too.
+    claudio: what about singleton variant patterns? These are irrefutable too.
     Andreas suggests simply allowing all patterns: "The worst that can happen is that the program
     is immediately terminated, but that doesn't break anything semantically."
   *)

@@ -1,6 +1,6 @@
 pkgs:
 { drun =
-    pkgs.rustPlatform.buildRustPackage {
+    pkgs.rustPlatform_moz_stable.buildRustPackage {
       name = "drun";
 
       src = pkgs.sources.ic + "/rs";
@@ -10,11 +10,33 @@ pkgs:
       # 2. run nix-build -A drun nix/
       # 3. copy the “expected” hash from the output into this file
       # 4. commit and push
+      #
+      # To automate this, .github/workflows/update-hash.yml has been
+      # installed. You will normally not be bothered to perform
+      # the command therein manually.
 
-      # To automate this, try running the following in the nix/ directory
-      # nix run -f https://github.com/Mic92/nix-update/archive/master.tar.gz -c nix-update --version=skip drun
+      cargoSha256 = "sha256-8hvK4zMO3eybRb266IjNB+a38tTzobJYSMwG9VNGLy8=";
 
-      cargoSha256 = "0656lxdlr05cjkla1blvpqlxywk7shasiwmycz10nqykdrs4gfgf";
+      patchPhase = ''
+      cd ../drun-vendor.tar.gz
+      patch librocksdb-sys/build.rs << EOF
+@@ -118,6 +118,10 @@
+         config.define("OS_MACOSX", Some("1"));
+         config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
+         config.define("ROCKSDB_LIB_IO_POSIX", Some("1"));
++        if target.contains("aarch64") {
++            config.define("isSSE42()", Some("0"));
++            config.define("isPCLMULQDQ()", Some("0"));
++        }
+     } else if target.contains("android") {
+         config.define("OS_ANDROID", Some("1"));
+         config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
+EOF
+
+      sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
+
+      cd -
+      '';
 
       nativeBuildInputs = with pkgs; [
         pkg-config
@@ -23,16 +45,17 @@ pkgs:
 
       buildInputs = with pkgs; [
         openssl
-        llvm_10
-        llvmPackages_10.libclang
+        llvm_13
+        llvmPackages_13.libclang
         lmdb
+        libunwind
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_10.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_10.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_13.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";

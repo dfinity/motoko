@@ -4,4 +4,5 @@
   (inline_tests)
   (preprocess (pps ppx_inline_test))
   (flags (:standard -w -48))
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

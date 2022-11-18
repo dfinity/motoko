@@ -1,0 +1,3 @@
+actor {
+  stable var state : Int
+};

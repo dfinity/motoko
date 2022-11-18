@@ -10,6 +10,9 @@ s/<id>/ID/g
 /^<parse_prog_interactive> ::=/,+3d
 /^<import_list> ::=/,+2d
 /^<parse_module_header> ::=/,+2d
+/^<stab_field> ::=/,+2d
+/^<typ_dec> ::=/,+2d
+/^<parse_stab_sig> ::=/,+2d
 /.*PRIM.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d
@@ -67,6 +70,7 @@ s/RETURN/\'return\'/g
 s/RCURLY/\'}\'/g
 s/RBRACKET/\']\'/g
 s/QUEST/\'?\'/g
+s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
@@ -98,6 +102,8 @@ s/LABEL/\'label\'/g
 s/CONTINUE/\'continue\'/g
 s/IN/\'in\'/g
 s/IF/\'if\'/g
+s/TO_CANDID/\'to_candid\'/g
+s/FROM_CANDID/\'from_candid\'/g
 s/ID/<id>/g
 s/HASH/\'#\'/g
 s/GTOP/\' > \'/g
@@ -136,5 +142,6 @@ s/ASSIGN/\':=\'/g
 s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
+s/WITH/\'with\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/

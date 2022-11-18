@@ -8,7 +8,7 @@ nonproductive.mo:44.15-44.26: type error [M0045], wrong number of type arguments
 nonproductive.mo:50.6-52.4: type error [M0157], block contains non-productive definition D
 nonproductive.mo:65.17-65.28: type error [M0045], wrong number of type arguments: expected 2 but got 3
 nonproductive.mo:96.4-107.2: type error [M0157], block contains non-productive definitions C, D, E, F, G
-nonproductive.mo:110.18-110.28: type error [M0137], type D = A/10 references type parameter A/10 from an outer scope
+nonproductive.mo:110.18-110.28: type error [M0137], type D = A__10 references type parameter A__10 from an outer scope
 nonproductive.mo:113.4-115.2: type error [M0157], block contains non-productive definition A
 nonproductive.mo:117.4-119.2: type error [M0157], block contains non-productive definition A
 nonproductive.mo:121.4-124.2: type error [M0157], block contains non-productive definitions A, B

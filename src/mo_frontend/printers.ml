@@ -14,8 +14,7 @@ let unop = abstract "<unop>"
 let unassign = abstract "<unassign>"
 
 
-let string_of_symbol symbol : string =
-  match symbol with
+let string_of_symbol = function
   | X (T T_error) -> "error"
   | X (T T_XOROP) -> unop "^"
   | X (T T_XORASSIGN) -> unassign "^="
@@ -38,6 +37,7 @@ let string_of_symbol symbol : string =
   | X (T T_SEMICOLON_EOL) -> ";" (* suppress the \n *)
   | X (T T_SEMICOLON) -> ";"
   | X (T T_SYSTEM) -> "system"
+  | X (T T_WITH) -> "with"
   | X (T T_RPAR) -> ")"
   | X (T T_ROTROP) -> binop "<>>"
   | X (T T_ROTRASSIGN) -> binassign "<>>="
@@ -110,6 +110,8 @@ let string_of_symbol symbol : string =
   | X (T T_DIVASSIGN) -> binassign "/="
   | X (T T_DISALLOWED) -> "<disallowed>"
   | X (T T_DEBUG_SHOW) -> "debug_show"
+  | X (T T_TO_CANDID) -> "to_candid"
+  | X (T T_FROM_CANDID) -> "from_candid"
   | X (T T_DEBUG) -> "debug"
   | X (T T_CONTINUE) -> "continue"
   | X (T T_COMMA) -> ","
@@ -172,6 +174,7 @@ let string_of_symbol symbol : string =
   | X (N N_parse_module_header) -> "<parse_module_header>"
   | X (N N_parse_prog) -> "<parse_prog>"
   | X (N N_parse_prog_interactive) -> "<parse_prog_interactive>"
+  | X (N N_parse_stab_sig) -> "<parse_stab_sig>"
   | X (N N_pat) -> "<pat>"
   | X (N N_pat_bin) -> "<pat_bin>"
   | X (N N_pat_field) -> "<pat_field>"
@@ -183,9 +186,12 @@ let string_of_symbol symbol : string =
   | X (N N_seplist_case_semicolon_) ->  "seplist(<case>,<semicolon>)"
   | X (N N_seplist_dec_SEMICOLON_) -> "seplist(<dec>,;)"
   | X (N N_seplist_dec_semicolon_) -> "seplist(<dec>,<semicolon>)"
+  | X (N N_seplist_typ_dec_semicolon_) -> "seplist(<typ_dec>,<semicolon>)"
   | X (N N_seplist_dec_field_semicolon_) -> "seplist(<dec_field>,<semicolon>)"
   | X (N N_seplist_exp_ob__COMMA_) -> "seplist(<exp(ob)>,,)"
   | X (N N_seplist_exp_field_semicolon_) -> "seplist(<exp_field>,<semicolon>)"
+  | X (N N_seplist1_exp_field_semicolon_) -> "seplist1(<exp_field>,<semicolon>)"
+  | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)"
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> "seplist(<exp_nonvar(ob)>,,)"
   | X (N N_seplist_imp_SEMICOLON_) -> "seplist(<imp>,;)"
   | X (N N_seplist_imp_semicolon_) -> "seplist(<imp>,<semicolon>)"
@@ -194,11 +200,13 @@ let string_of_symbol symbol : string =
   | X (N N_seplist_typ_COMMA_) -> "seplist(<typ>,,)"
   | X (N N_seplist_typ_bind_COMMA_) -> "seplist(<typ_bind>,,)"
   | X (N N_seplist_typ_field_semicolon_) -> "seplist(<typ_field>,<semicolon>)"
+  | X (N N_seplist_stab_field_semicolon_) -> "seplist(<stab_field>,<semicolon>)"
   | X (N N_seplist_typ_item_COMMA_) -> "seplist(<typ_item>,,)"
   | X (N N_seplist_typ_tag_semicolon_) -> "seplist(<typ_tag>,<semicolon>)"
   | X (N N_seplist1_typ_tag_semicolon_) -> "seplist1(<typ_tag>,<semicolon>)"
   | X (N N_pat_opt) -> "<pat_opt>"
   | X (N N_typ) -> "<typ>"
+  | X (N N_typ_dec) -> "<typ_dec>"
   | X (N N_typ_args) -> "<typ_args>"
   | X (N N_typ_bind) -> "<typ_bind>"
   | X (N N_typ_field) -> "<typ_field>"
@@ -212,6 +220,7 @@ let string_of_symbol symbol : string =
   | X (N N_typ_variant) -> "<typ_variant>"
   | X (N N_vis) -> "<vis>"
   | X (N N_stab) -> "<stab>"
+  | X (N N_stab_field) -> "<stab_field>"
   | X (N N_start) -> "<start>" (* dummy non-terminal, don't display *)
 
 (* In order to print a view of the stack that includes semantic values,

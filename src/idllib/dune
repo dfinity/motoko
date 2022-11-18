@@ -1,11 +1,12 @@
 (library
   (name idllib)
   (libraries lib wasm lang_utils)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )
 
 (menhir
   (modules parser)
   (flags -v --strict)
-  (infer false)
+  (infer true)
 )
 (ocamllex lexer)

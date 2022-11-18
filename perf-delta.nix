@@ -32,13 +32,14 @@ let
       src = test-data;
       buildInputs = [ moc ];
       buildPhase = ''
+        moc --version
         for file in */*.mo
         do
           # ignore all errors
           echo -n $file
-          if timeout 10s moc $file -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
-          then echo " failed (ignored)"
-          else echo " ok"
+          if timeout 10s moc $file --omit-metadata motoko:compiler --force-gc --compacting-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
+          then echo " ok"
+          else echo " failed (ignored)"
           fi
         done
 

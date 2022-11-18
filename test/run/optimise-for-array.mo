@@ -9,9 +9,8 @@ import Prim "mo:⛔";
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
 // CHECK-NEXT: i32.load offset=9
-// CHECK-NEXT: local.set $check0
-// CHECK:      local.get $check0
-// CHECK-NEXT: call $debugPrint
+// CHECK-NEXT: local.tee $check0
+// CHECK-NEXT: call $print_text
 // CHECK:      i32.const 4
 // CHECK-NEXT: i32.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
@@ -23,9 +22,8 @@ for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
 // CHECK-NEXT: i32.load offset=9
-// CHECK-NEXT: local.set $check1
-// CHECK:      local.get $check1
-// CHECK-NEXT: call $debugPrint
+// CHECK-NEXT: local.tee $check1
+// CHECK-NEXT: call $print_text
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
 
 let array = [var "hello", "remutable", "world"];
@@ -48,7 +46,7 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
 // CHECK-NEXT: i32.load offset=9
-// CHECK-NEXT: local.set $check3
+// CHECK-NEXT: local.tee $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 
@@ -112,4 +110,9 @@ for (check8 in ["hello", "keyed", "world"].keys()) { ignore (check8 + num8) };
 // polymorphic arrays should still work
 func f9<A>(array : [A]) {
   for (check9 in array.keys()) { }
-}
+};
+
+// make sure that one-byte-sized elements still work
+var sum10 : Nat8 = 0;
+for (check10 in ([3, 5, 7, 11] : [Nat8]).vals()) { sum10 += check10 };
+assert sum10 == 26

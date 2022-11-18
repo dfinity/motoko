@@ -85,3 +85,9 @@ for (n in b.vals()) {
   i += 1;
 };
 assert(i == b.size());
+
+let heterogeneous : Any = [1, 2 : Int8, 3 : Nat16, false, true];
+let homogeneous = [true, false, true];
+
+assert not homogeneous[1];
+assert homogeneous[2]

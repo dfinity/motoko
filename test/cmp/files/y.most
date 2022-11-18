@@ -1,0 +1,3 @@
+actor {
+  stable y : Int;
+}

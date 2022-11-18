@@ -2,6 +2,8 @@
 
 module Embedder (Embedder(..), WasmAPI(..), embedder, isHealthy, embedderCommand, addCompilerArgs, addEmbedderArgs, invokeEmbedder) where
 
+import Prelude hiding (unwords)
+
 import Test.QuickCheck
 
 import Turtle
@@ -34,7 +36,7 @@ addCompilerArgs (WasmTime _) = ("-wasi-system-api" :)
 addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
-addEmbedderArgs (WasmTime _) = ("--disable-cache" :) . ("--cranelift" :)
+addEmbedderArgs (WasmTime _) = ("--disable-cache" :)
 addEmbedderArgs Drun = ("--extra-batches" :) . ("10" :)
 
 embedderInvocation :: Embedder -> [Text] -> [Text]
@@ -60,7 +62,7 @@ invokeEmbedder embedder wasm = go embedder
             rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> pure () -- rm -f
             let Right c = toText control
             procs "mkfifo" [c] empty
-            consumer <- forkShell $ inshell (Data.Text.unwords $ embedderInvocation embedder [c]) empty
+            consumer <- forkShell $ inshell (unwords $ embedderInvocation embedder [c]) empty
             let create = unsafeTextToLine $ format "create"
             let install = unsafeTextToLine $ format ("install rwlgt-iiaaa-aaaaa-aaaaa-cai "%s%" 0x") w
 

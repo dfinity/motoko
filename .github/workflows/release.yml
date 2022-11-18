@@ -1,11 +1,16 @@
 name: release
 
-# We trigger this on all tags. The job will fail for tags that don’t have a
-# changelog entry, so that seems good enough
+# We trigger this on all tags and on the `master` branch. The job
+# `changelog` will fail for tags that don’t have a
+# changelog entry, so that seems good enough.
+# For `master` this check is skipped as well as uploads.
+
 on:
   push:
     tags:
     - '*'
+    branches:
+    - 'master'
 
 jobs:
   # first check that the changelog is in good order and extract the changelog
@@ -13,31 +18,27 @@ jobs:
   changelog:
     runs-on: 'ubuntu-latest'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    # from https://github.community/t/how-to-get-just-the-tag-name/16241/7
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+      run: echo version=${{ github.ref_name }} >> "$GITHUB_OUTPUT"
 
     - name: Extract changelog
       id: read_changelog
+      if: startsWith(github.ref, 'refs/tags/')
       run: |
-        export VERSION='${{ steps.get_version.outputs.VERSION }}'
+        export VERSION='${{ steps.get_version.outputs.version }}'
         perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
         cat changelog-extract.md
-        # need to mangle to use with set-output, see https://github.com/svenstaro/upload-release-action/pull/49/files
-        r="$(cat changelog-extract.md)"
-        r="${r//'%'/'%25'}"
-        r="${r//$'\n'/'%0A'}"
-        r="${r//$'\r'/'%0D'}"
-        echo "::set-output name=release_body::$r"
+        # need to mangle to use with $GITHUB_OUTPUT (previously: set-output),
+        # see https://github.com/svenstaro/upload-release-action/pull/49/files
+        echo "release_body=$(perl -0777 -p -e 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g' changelog-extract.md)" >> "$GITHUB_OUTPUT"
 
     outputs:
-      version: ${{ steps.get_version.outputs.version }}
       release_body: ${{ steps.read_changelog.outputs.release_body }}
 
-  # Now build the release on both linux and darwin, with the version number set
+  # Now build the release on both linux and darwin
   build:
     strategy:
       matrix:
@@ -45,12 +46,18 @@ jobs:
     needs: changelog
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v14.1
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v18
       with:
         extra_nix_config: |
           experimental-features = nix-command
-    - uses: cachix/cachix-action@v10
+    - uses: cachix/cachix-action@v12
+      if: startsWith(github.ref, 'refs/heads/')
+      with:
+        name: ic-hs-test
+        # NB: No auth token, we don’t want to push new stuff here
+    - uses: cachix/cachix-action@v12
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -58,26 +65,24 @@ jobs:
     - name: "nix-build"
       # these are the dependencies listed in release-files. Sorry for the duplication
       run: |
-        nix-build --max-jobs 1 --argstr releaseVersion ${{needs.changelog.outputs.version}} \
-          -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
+        nix-build --max-jobs 1 --arg officialRelease true -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
 
   # Finally do the upload. Hopefully the previous job has uploaded the
-  # build product to the nix cache, as we cannot build the darwin products on
+  # build product to the cachix cache, as we cannot build the darwin products on
   # linux
   release:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: 'ubuntu-latest'
-    needs:
-    - changelog
-    - build
+    needs: [ changelog, build ]
     steps:
-    - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v12
-    - uses: cachix/cachix-action@v10
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v18
+    - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
 
-    - run: nix-build --max-jobs 1 release-files.nix --argstr releaseVersion '${{ needs.changelog.outputs.version }}'
+    - run: nix-build --max-jobs 1 --arg officialRelease true release-files.nix
 
     - name: Upload Release Assets
       uses: svenstaro/upload-release-action@v2

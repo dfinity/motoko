@@ -1,0 +1,3 @@
+array.mo:89.27-89.64: warning [M0074], this array has type
+  [Any]
+because elements have inconsistent types

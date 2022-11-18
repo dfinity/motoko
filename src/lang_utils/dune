@@ -5,4 +5,5 @@
 
   (preprocess (pps ppx_blob))
   (preprocessor_deps (glob_files error_codes/*.adoc))
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

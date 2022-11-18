@@ -17,6 +17,9 @@ let max_eff e1 e2 =
   | _ , T.Await -> T.Await
   | T.Await,_ -> T.Await
 
+let max_effs = List.fold_left max_eff T.Triv
+let map_max_effs f l = max_effs (List.map f l)
+
 let typ phrase = phrase.note.note_typ
 
 let eff phrase = phrase.note.note_eff
@@ -38,6 +41,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     T.Triv
   | UnE (_, _, exp1)
   | ShowE (_, exp1)
+  | FromCandidE exp1
   | ProjE (exp1, _)
   | OptE exp1
   | DoOptE exp1
@@ -68,22 +72,20 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     max_eff t1 t2
   | DebugE exp1 ->
     effect_exp exp1
+  | ToCandidE exps
   | TupE exps
   | ArrayE (_, exps) ->
-    let es = List.map effect_exp exps in
-    List.fold_left max_eff T.Triv es
+    map_max_effs effect_exp exps
   | BlockE decs ->
-    let es = List.map effect_dec decs in
-    List.fold_left max_eff T.Triv es
+    map_max_effs effect_dec decs
   | ObjBlockE (sort, dfs) ->
     infer_effect_dec_fields dfs
-  | ObjE efs ->
-    infer_effect_exp_fields efs
+  | ObjE (bases, efs) ->
+    let bases = map_max_effs effect_exp bases in
+    let fields = infer_effect_exp_fields efs in
+    max_eff fields bases
   | IfE (exp1, exp2, exp3) ->
-    let e1 = effect_exp exp1 in
-    let e2 = effect_exp exp2 in
-    let e3 = effect_exp exp3 in
-    max_eff e1 (max_eff e2 e3)
+    map_max_effs effect_exp [exp1; exp2; exp3]
   | SwitchE (exp1, cases) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in

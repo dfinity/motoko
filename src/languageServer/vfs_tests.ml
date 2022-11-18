@@ -60,5 +60,4 @@ let%test "it applies a two-line change" =
   apply_change_test_case "1\n|2|\n3" "4\n5" "1\n4\n5\n3"
 
 let%test "it removes a line" = apply_change_test_case "a\n|b\n|c" "" "a\nc"
-
 let%test "it inserts a newline" = apply_change_test_case "a\n||b" "\n" "a\n\nb"

@@ -71,7 +71,7 @@ let bind_arg env a info = bind env a.it info
 let are_generic_insts (tbs : typ_bind list) insts =
   List.for_all2 (fun (tb : typ_bind) inst ->
       match inst with
-      | Con(c2,[]) -> Con.eq tb.it.con c2 (* conservative, but safe *)
+      | Con(c2,[]) -> Cons.eq tb.it.con c2 (* conservative, but safe *)
       |  _ -> false
       ) tbs insts
 
@@ -128,7 +128,7 @@ and exp' env e  : exp' = match e.it with
     let exp3' = exp env exp3 in
     SelfCallE (ts, exp1', exp2', exp3')
   | ActorE (ds, fs, u, t) ->
-    let u = { u with pre = exp env u.pre; post = exp env u.post } in
+    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
     ActorE (snd (decs env ds), fs, u, t)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
@@ -147,7 +147,7 @@ and pat env p =
   let env = pat' env p.it in
   env
 
-and pat' env p = match p with
+and pat' env = function
   | WildP         ->  env
   | VarP i        ->
     let env1 = bind env i None in
@@ -232,6 +232,10 @@ and dec' env d =
     let env = bind env i None in
     (fun env1 -> VarD(i, t, exp env1 e)),
     env
+  | RefD (i, t, e) ->
+    let env = bind env i None in
+    (fun env1 -> RefD(i, t, lexp env1 e)),
+    env
 
 and decs env ds =
   let rec decs_aux env ds =
@@ -258,7 +262,7 @@ and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
   | ActorU (as_opt, ds, fs, u, t)  ->
-    let u = { u with pre = exp env u.pre; post = exp env u.post } in
+    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
     ActorU (as_opt, snd (decs env ds), fs, u, t)
 
 and prog (cu, flavor) =

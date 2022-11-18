@@ -29,12 +29,17 @@ let rec exp e = match e.it with
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
-  | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
-and upgrade { pre; post } =
-  "Upgrade" $$ ["Pre" $$ [exp pre]; "Post" $$ [exp post]]
+and system { meta; preupgrade; postupgrade; heartbeat; inspect} = (* TODO: show meta? *)
+  "System" $$ [
+      "Pre" $$ [exp preupgrade];
+      "Post" $$ [exp postupgrade];
+      "Heartbeat" $$ [exp heartbeat];
+      "Inspect" $$ [exp inspect];
+    ]
 
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]
@@ -74,6 +79,7 @@ and prim = function
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
   | SerializePrim t   -> "SerializePrim" $$ List.map typ t
   | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
+  | DeserializeOptPrim t -> "DeserializeOptPrim" $$ List.map typ t
   | NumConvWrapPrim (t1, t2) -> "NumConvWrapPrim" $$ [prim_ty t1; prim_ty t2]
   | NumConvTrapPrim (t1, t2) -> "NumConvTrapPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
@@ -94,10 +100,15 @@ and prim = function
   | OtherPrim s       -> Atom s
   | CPSAwait t        -> "CPSAwait" $$ [typ t]
   | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | ICArgDataPrim     -> Atom "ICArgDataPrim"
+  | ICStableSize t    -> "ICStableSize" $$ [typ t]
+  | ICPerformGC       -> Atom "ICPerformGC"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"
   | ICCallPrim        -> Atom "ICCallPrim"
+  | ICCallRawPrim     -> Atom "ICCallRawPrim"
+  | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
 
@@ -115,10 +126,9 @@ and pat p = match p.it with
   | TagP (i, p)     -> "TagP"       $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
 
-and lit (l:lit) = match l with
+and lit = function
   | NullLit       -> Atom "NullLit"
-  | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
-  | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
+  | BoolLit b     -> "BoolLit"   $$ [ Atom (if b then "true" else "false") ]
   | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
   | Nat8Lit w     -> "Nat8Lit"   $$ [ Atom (Numerics.Nat8.to_pretty_string w) ]
   | Nat16Lit w    -> "Nat16Lit"  $$ [ Atom (Numerics.Nat16.to_pretty_string w) ]
@@ -145,14 +155,15 @@ and control s = Atom (Arrange_type.control s)
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, t, e) -> "VarD" $$ [id i; typ t; exp e]
+  | RefD (i, t, e) -> "RefD" $$ [id i; typ t; lexp e]
 
 and typ_bind (tb : typ_bind) =
-  Con.to_string tb.it.con $$ [typ tb.it.bound]
+  Type.string_of_con tb.it.con $$ [typ tb.it.bound]
 
 and comp_unit = function
   | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]
   | ProgU ds -> "ProgU" $$ List.map dec ds
-  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
-  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t]
+  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t]
 
 and prog (cu, _flavor) = comp_unit cu

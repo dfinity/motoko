@@ -55,7 +55,9 @@ and typ' =
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
-and typ_field' = {id : id; typ : typ; mut : mut}
+and typ_field' =
+  | ValF of id * typ * mut
+  | TypF of typ_id * typ_bind list * typ
 
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}
@@ -151,13 +153,15 @@ and exp' =
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
   | ShowE of (op_typ * exp)                    (* debug show operator *)
+  | ToCandidE of exp list                      (* to_candid operator *)
+  | FromCandidE of exp                         (* from_candid operator *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
   | ObjBlockE of obj_sort * dec_field list     (* object block *)
-  | ObjE of exp_field list                     (* record literal *)
+  | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
@@ -219,11 +223,15 @@ type prog_note = { filename : string; trivia : Trivia.triv_table }
 type prog = (prog', prog_note) Source.annotated_phrase
 and prog' = dec list
 
+(* Signatures (stable variables) *)
+
+type stab_sig = (stab_sig', prog_note) Source.annotated_phrase
+and stab_sig' = (dec list * typ_field list)      (* type declarations & stable actor fields *)
 
 (* Compilation units *)
 
 type import = (import', Type.typ) Source.annotated_phrase
-and import' = id * string * resolved_import ref
+and import' = pat * string * resolved_import ref
 
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =

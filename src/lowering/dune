@@ -1,4 +1,5 @@
 (library
   (name lowering)
   (libraries lib mo_config mo_def ir_def mo_idl idllib)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )
