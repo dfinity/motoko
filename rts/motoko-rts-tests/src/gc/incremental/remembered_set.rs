@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::memory::TestMemory;
-use motoko_rts::gc::write_barrier::remembered_set::{
+use motoko_rts::gc::incremental::remembered_set::{
     RememberedSet, INITIAL_TABLE_LENGTH, OCCUPATION_THRESHOLD_PERCENT,
 };
 use motoko_rts::types::{Value, Words};
@@ -9,7 +9,7 @@ use motoko_rts::types::{Value, Words};
 const GROW_LIMIT: u32 = INITIAL_TABLE_LENGTH * OCCUPATION_THRESHOLD_PERCENT / 100;
 
 pub fn test() {
-    println!("Testing remembered set ...");
+    println!("  Testing remembered set ...");
     unsafe {
         test_remembered_set(0);
         test_remembered_set(1);

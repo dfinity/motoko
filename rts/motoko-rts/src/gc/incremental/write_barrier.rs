@@ -1,10 +1,6 @@
 //! Write barrier
 //! Pre-update, field-level barrier for incremental snapshot-at-the-beginning marking.
 
-pub mod remembered_set;
-#[cfg(debug_assertions)]
-pub mod sanity_checks;
-
 use crate::{memory::Memory, types::Value};
 
 use motoko_rts_macros::ic_mem_fn;
@@ -13,7 +9,7 @@ use motoko_rts_macros::ic_mem_fn;
 #[ic_mem_fn(ic_only)]
 pub unsafe fn init_write_barrier<M: Memory>(_mem: &mut M) {
     #[cfg(debug_assertions)]
-    sanity_checks::init_write_barrier(_mem);
+    super::sanity_checks::init_write_barrier(_mem);
 }
 
 /// Write barrier to be called BEFORE a pointer store.
@@ -33,5 +29,5 @@ pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, _location: *mut Value) {
         }
     }
     #[cfg(debug_assertions)]
-    sanity_checks::record_write(_mem, Value::from_raw(_location as u32));
+    super::sanity_checks::record_write(_mem, Value::from_raw(_location as u32));
 }

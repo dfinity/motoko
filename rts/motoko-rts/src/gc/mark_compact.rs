@@ -37,7 +37,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
     #[cfg(debug_assertions)]
-    super::write_barrier::sanity_checks::verify_snapshot(
+    super::incremental::sanity_checks::verify_snapshot(
         ic::get_aligned_heap_base() as usize,
         ic::HP as usize,
         ic::get_static_roots(),
@@ -61,7 +61,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     ic::LAST_HP = ic::HP;
 
     #[cfg(debug_assertions)]
-    super::write_barrier::sanity_checks::take_snapshot(mem, ic::HP as usize);
+    super::incremental::sanity_checks::take_snapshot(mem, ic::HP as usize);
 }
 
 pub unsafe fn compacting_gc_internal<

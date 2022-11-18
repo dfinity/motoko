@@ -8,7 +8,6 @@
 mod heap;
 mod incremental;
 mod random;
-mod remembered_set;
 mod utils;
 
 use heap::MotokoHeap;
@@ -42,7 +41,6 @@ pub fn test() {
         test_random_heap(seed, 180);
     }
     print!("\r");
-    remembered_set::test();
 }
 
 fn test_heaps() -> Vec<TestHeap> {

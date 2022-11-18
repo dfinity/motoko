@@ -1,7 +1,6 @@
 pub mod copying;
 pub mod incremental;
 pub mod mark_compact;
-pub mod write_barrier;
 
 #[cfg(feature = "ic")]
 use crate::types::Bytes;
