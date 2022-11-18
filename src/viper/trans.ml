@@ -228,16 +228,6 @@ and dec_field' ctxt d =
         (InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "$Self" }  e), NoInfo)
   | _ ->
      unsupported d.M.dec.at (Arrange.dec d.M.dec)
-(*
-  | TypD (x, tp, t) ->
-    "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
-    "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
-      pat p;
-      (match rt with None -> Atom "_" | Some t -> typ t);
-      obj_sort s; id i'
-    ] @ List.map dec_field dfs
-*)
 
 and args p = match p.it with
   | M.TupP ps ->
@@ -444,66 +434,6 @@ and exp ctxt e =
      !!(Implies (exp ctxt e1, exp ctxt e2))
   | _ ->
      unsupported e.at (Arrange.exp e)
-(*           
-  | VarE x              -> 
-  | LitE l              -> "LitE"      $$ [lit !l]
-  | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
-  | UnE (ot, uo, e)     -> "UnE"       $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
-  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
-  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
-  | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
-  | ToCandidE es        -> "ToCandidE"   $$ exps es
-  | FromCandidE e       -> "FromCandidE" $$ [exp e]
-  | TupE es             -> "TupE"      $$ exps es
-  | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-  | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
-  | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
-  | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-  | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
-  | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
-  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
-  | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
-  | FuncE (x, sp, tp, p, t, sugar, e') ->
-    "FuncE" $$ [
-      Atom (Type.string_of_typ e.note.note_typ);
-      shared_pat sp;
-      Atom x] @
-      List.map typ_bind tp @ [
-      pat p;
-      (match t with None -> Atom "_" | Some t -> typ t);
-      Atom (if sugar then "" else "=");
-      exp e'
-    ]
-  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
-  | BlockE ds           -> "BlockE"  $$ List.map dec ds
-  | NotE e              -> "NotE"    $$ [exp e]
-  | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
-  | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
-  | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
-  | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
-  | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
-  | LoopE (e1, None)    -> "LoopE"   $$ [exp e1]
-  | LoopE (e1, Some e2) -> "LoopE"   $$ [exp e1; exp e2]
-  | ForE (p, e1, e2)    -> "ForE"    $$ [pat p; exp e1; exp e2]
-  | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | DebugE e            -> "DebugE"  $$ [exp e]
-  | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
-  | RetE e              -> "RetE"    $$ [exp e]
-  | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
-  | AwaitE e            -> "AwaitE"  $$ [exp e]
-  | AssertE e           -> "AssertE" $$ [exp e]
-  | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
-  | OptE e              -> "OptE"    $$ [exp e]
-  | DoOptE e            -> "DoOptE"  $$ [exp e]
-  | BangE e             -> "BangE"   $$ [exp e]
-  | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
-  | PrimE p             -> "PrimE"   $$ [Atom p]
-  | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
-  | ThrowE e            -> "ThrowE"  $$ [exp e]
-  | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
-  | IgnoreE e           -> "IgnoreE" $$ [exp e]
-*)
-
 
 and rets t_opt =
   match t_opt with
