@@ -268,6 +268,12 @@ impl Value {
         self.get_ptr() as *mut Obj
     }
 
+    /// Get the pointer as `MutBox`. In debug mode panics if the value is not a pointer.
+    pub unsafe fn as_mutbox(self) -> *mut MutBox {
+        debug_assert_eq!(self.tag(), TAG_MUTBOX);
+        self.get_ptr() as *mut MutBox
+    }
+
     /// Get the pointer as `Array`. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {

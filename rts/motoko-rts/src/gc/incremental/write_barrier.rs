@@ -1,7 +1,7 @@
 //! Write barrier for the incremental GC.
 //! Pre-update, field-level barrier used for snapshot-at-the-beginning marking.
 
-use crate::{memory::Memory, types::Value};
+use crate::{memory::Memory, types::Value, gc::incremental::{increment, MARK_STACK, mark_potential_object}};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -9,16 +9,12 @@ use motoko_rts_macros::ic_mem_fn;
 /// `location` (unskewed) denotes the field or array element that will be written.
 /// The barrier is conservatively called even if the stored value might not be a pointer.
 #[ic_mem_fn]
-pub unsafe fn write_barrier<M: Memory>(_mem: &mut M, _location: *mut Value) {
-    debug_assert!(_location as usize & 0b1 == 0);
-    debug_assert!(_location != core::ptr::null_mut());
-    #[cfg(debug_assertions)]
-    {
-        let value = *_location;
-        if value.is_ptr() && (value.get_ptr() as *mut Value) != core::ptr::null_mut() {
-            debug_assert!(
-                value.tag() >= crate::types::TAG_OBJECT && value.tag() <= crate::types::TAG_NULL
-            );
-        }
+pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
+    debug_assert!(location as usize & 0b1 == 0);
+    debug_assert!(location != core::ptr::null_mut());
+    // TODO: Optimize to exclude irrelevant values as fast as possible
+    if MARK_STACK.is_some() {
+        mark_potential_object(mem, *location);
     }
+    increment(mem);
 }

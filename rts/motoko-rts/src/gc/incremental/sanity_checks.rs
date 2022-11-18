@@ -1,26 +1,48 @@
 //! Memory sanity checker
 #![allow(dead_code)]
 
+use motoko_rts_macros::ic_mem_fn;
+
+use crate::memory::Memory;
 use crate::visitor::visit_pointer_fields;
 use crate::{types::*, visitor::pointer_to_dynamic_heap};
 
-use super::{Limits, Roots};
+#[ic_mem_fn(ic_only)]
+pub unsafe fn check_memory<M: Memory>(_mem: &mut M) {
+    use crate::memory::ic;
 
-pub unsafe fn check_memory(limits: &Limits, roots: &Roots) {
+    let limits = Limits {
+        base: ic::get_aligned_heap_base() as usize,
+        free: ic::HP as usize,
+    };
+    let roots = Roots {
+        static_roots: ic::get_static_roots(),
+        continuation_table: *crate::continuation_table::continuation_table_loc(),
+    };
     let checker = MemoryChecker { limits, roots };
     checker.check_memory();
 }
 
-pub struct MemoryChecker<'a> {
-    limits: &'a Limits,
-    roots: &'a Roots,
+struct Limits {
+    pub base: usize,
+    pub free: usize,
 }
 
-impl<'a> MemoryChecker<'a> {
+struct Roots {
+    pub static_roots: Value,
+    pub continuation_table: Value,
+}
+
+struct MemoryChecker {
+    limits: Limits,
+    roots: Roots,
+}
+
+impl MemoryChecker {
     unsafe fn check_memory(&self) {
         self.check_static_roots();
-        if (*self.roots.continuation_table_ptr_loc).is_ptr() {
-            self.check_object(*self.roots.continuation_table_ptr_loc);
+        if self.roots.continuation_table.is_ptr() {
+            self.check_object(self.roots.continuation_table);
         }
         self.check_heap();
     }
@@ -28,12 +50,10 @@ impl<'a> MemoryChecker<'a> {
     unsafe fn check_static_roots(&self) {
         let root_array = self.roots.static_roots.as_array();
         for i in 0..root_array.len() {
-            let obj = root_array.get(i).as_obj();
-            assert_eq!(obj.tag(), TAG_MUTBOX);
-            assert!((obj as usize) < self.limits.base);
-            let mutbox = obj as *mut MutBox;
+            let mutbox = root_array.get(i).as_mutbox();
+            assert!((mutbox as usize) < self.limits.base);
             let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(field_addr, self.limits.base as usize) {
+            if pointer_to_dynamic_heap(field_addr, self.limits.base) {
                 let object = *field_addr;
                 self.check_object(object);
             }
