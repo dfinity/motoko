@@ -358,12 +358,12 @@ rec {
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--sanity-checks";
+          EXTRA_MOC_ARGS = "--sanity-checks --write-barrier";
       });
 
     compacting_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+          EXTRA_MOC_ARGS = "--sanity-checks --write-barrier --compacting-gc";
       });
 
     perf_subdir = dir: deps:

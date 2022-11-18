@@ -10,6 +10,7 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
+use crate::gc::write_barrier::write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
@@ -29,6 +30,7 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
         // Add right node to TODOs
         let new_todo = alloc_array(mem, 2);
         let new_todo_array = new_todo.as_array();
+        // no write barrier for object initialization
         new_todo_array.set(TODO_TEXT_IDX, (*concat).text2);
         new_todo_array.set(TODO_LINK_IDX, *todo);
         *todo = new_todo;
@@ -58,7 +60,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     // Initialize position field
     array.set(ITER_POS_IDX, Value::from_scalar(0));
 
-    // Initialize blob field
+    // Initialize blob field, no write barrier for object initialization
     array.set(ITER_BLOB_IDX, find_leaf(mem, text, todo_addr as *mut _));
 
     iter
@@ -104,17 +106,39 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             // If next one is a concat node re-use both the iterator and the todo objects (avoids
             // allocation)
             let concat = text.as_concat();
+
+            write_barrier(
+                mem,
+                todo_array.payload_addr().add(TODO_TEXT_IDX as usize) as *mut Value,
+            );
             todo_array.set(TODO_TEXT_IDX, (*concat).text2);
             iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
+
+            write_barrier(
+                mem,
+                iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as *mut Value,
+            );
             iter_array.set(ITER_BLOB_IDX, find_leaf(mem, (*concat).text1, todo_addr));
+
             text_iter_next(mem, iter)
         } else {
             // Otherwise remove the entry from the chain
             debug_assert_eq!(text.tag(), TAG_BLOB);
+
+            write_barrier(
+                mem,
+                iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as *mut Value,
+            );
             iter_array.set(ITER_BLOB_IDX, text);
             iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
+
+            write_barrier(
+                mem,
+                iter_array.payload_addr().add(TODO_LINK_IDX as usize) as *mut Value,
+            );
             iter_array.set(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX));
+
             text_iter_next(mem, iter)
         }
     } else {

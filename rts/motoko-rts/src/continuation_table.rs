@@ -22,6 +22,7 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
+use crate::gc::write_barrier::write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::Value;
@@ -92,8 +93,13 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     let idx = FREE_SLOT;
 
-    FREE_SLOT = TABLE.as_array().get(idx).get_scalar();
-    TABLE.as_array().set(idx, ptr);
+    let table = TABLE.as_array();
+
+    FREE_SLOT = table.get(idx).get_scalar();
+
+    write_barrier(mem, table.payload_addr().add(idx as usize) as *mut Value);
+    table.set(idx, ptr);
+
     N_CONTINUATIONS += 1;
 
     idx
@@ -132,9 +138,12 @@ pub unsafe extern "C" fn recall_continuation(idx: u32) -> Value {
         rts_trap_with("recall_continuation: Continuation index out of range");
     }
 
-    let ptr = TABLE.as_array().get(idx);
+    let table = TABLE.as_array();
 
-    TABLE.as_array().set(idx, Value::from_scalar(FREE_SLOT));
+    let ptr = table.get(idx);
+
+    table.set(idx, Value::from_scalar(FREE_SLOT));
+
     FREE_SLOT = idx;
 
     N_CONTINUATIONS -= 1;
