@@ -1,6 +1,5 @@
 use crate::rts_trap_with;
 use crate::types::*;
-// Test
 
 /// A visitor that passes field addresses of fields with pointers to dynamic heap to the given
 /// callback
