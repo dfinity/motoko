@@ -138,6 +138,10 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
+  "--incremental-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
+  " use incremental GC";
+    
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
   " use compacting GC";
@@ -149,10 +153,6 @@ let argspec = [
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
-
-  "--write-barrier",
-  Arg.Unit (fun () -> Flags.write_barrier := true),
-  " activate write barrier";
 
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,

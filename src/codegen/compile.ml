@@ -6822,7 +6822,7 @@ module Var = struct
       G.i (LocalSet (nr i))
 
     | Some ((HeapInd i), typ) ->
-      (if !Flags.write_barrier && (potential_pointer typ)
+      (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer typ)
        then
         G.i (LocalGet (nr i)) ^^
         compile_add_const ptr_unskew ^^
@@ -6835,7 +6835,7 @@ module Var = struct
       Heap.store_field MutBox.field
 
     | Some ((HeapStatic ptr), typ) ->
-      (if !Flags.write_barrier && (potential_pointer typ)
+      (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer typ)
        then 
         compile_unboxed_const ptr ^^
         compile_add_const ptr_unskew ^^
@@ -8259,7 +8259,7 @@ let rec compile_lexp (env : E.t) ae lexp =
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      Arr.idx_bigint env ^^
-     (if !Flags.write_barrier && (potential_pointer (Arr.element_type env e1.note.Note.typ))
+     (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer (Arr.element_type env e1.note.Note.typ))
       then
         set_field ^^
         get_field ^^
@@ -8279,7 +8279,7 @@ let rec compile_lexp (env : E.t) ae lexp =
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.Note.typ n ^^
-     (if !Flags.write_barrier && (potential_pointer (Object.field_type env e.note.Note.typ n))
+     (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer (Object.field_type env e.note.Note.typ n))
       then  
         set_field ^^
         get_field ^^
@@ -9955,7 +9955,7 @@ and conclude_module env start_fi_o =
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
     E.call_import env "rts" "init" ^^
-    (if !Flags.write_barrier
+    (if !Flags.gc_strategy = Mo_config.Flags.Incremental
      then
       E.call_import env "rts" "init_write_barrier"
      else 
