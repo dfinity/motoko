@@ -570,6 +570,7 @@ module E = struct
     let gc_fn = match !Flags.gc_strategy with
     | Mo_config.Flags.MarkCompact -> "compacting"
     | Mo_config.Flags.Copying -> "copying"
+    | Mo_config.Flags.Incremental -> "incremental"
     in
     let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
     call_import env "rts" (gc_fn ^ "_gc")
@@ -922,8 +923,10 @@ module RTS = struct
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
+    E.add_func_import env "rts" "incremental_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
+    E.add_func_import env "rts" "schedule_incremental_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
@@ -938,7 +941,6 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "init_write_barrier" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
@@ -9953,14 +9955,8 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Incremental) ^^
     E.call_import env "rts" "init" ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Incremental
-     then
-      E.call_import env "rts" "init_write_barrier"
-     else 
-      G.nop 
-    ) ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
