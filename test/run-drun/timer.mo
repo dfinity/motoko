@@ -4,6 +4,8 @@ import {Array_init; debugPrint; error; time} = "mo:⛔";
 
 actor {
     // timer module implementation
+    // node invariant max_exp ante <= expire <= min_exp dopo
+    // corollary: if expire == 0 then the ante is completely expired
     type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
     var timers : ?Node = null;
     var lastId = 0;
@@ -13,7 +15,7 @@ actor {
         switch n {
         case null 0;
         case (?n) {
-                 var exp = nextExpiration(n.ante);
+                 var exp = nextExpiration(n.ante); // TODO: use the invariant for expire == 0
                  if (exp == 0) {
                      exp := n.expire;
                      if (exp == 0) {
@@ -25,6 +27,15 @@ actor {
         }
     };
 
+    func prune(n : ?Node) : ?Node = switch n {
+       case null null;
+       case (?n) {
+                if (n.expire == 0)
+                { prune(n.dopo) } // by corollary
+                else
+                { ?{ n with ante = prune(n.ante); dopo = prune(n.dopo) } }
+            }
+    };
 
     // ad-hoc place for the Timer.mo API
     type TimerId = Nat;
@@ -34,18 +45,18 @@ actor {
         let now = time();
         let delayNanos = 1_000_000_000 * delaySecs;
         let expire = now + delayNanos;
-        let delay = if recurring ?delayNanos else null
+        let delay = if recurring ?delayNanos else null;
+        // only works on pruned nodes
         func insert(n : ?Node) : Node =
             switch n {
-            case null { var expire; id; delay; job; ante = null; dopo = null };
-            case (?n) {
-                     if (n.expire == 0) { put { var expire; id; delay = if recurring ?delay else null; job; ante = n.ante; var dopo = n.dopo } }
-                     else if (n.expire <= expire) { insert(n.dopo, func m = n.dopo := ?m) }
-                     else { insert(n.ante, func m = n.ante := ?m) }
-                 }
+              case null ({ var expire; id; delay; job; ante = null; dopo = null });
+              case (?n) {
+                 assert n.expire != 0;
+                 if (expire < n.expire) ({ n with ante = ?(insert(n.ante)) })
+                 else ({ n with dopo = ?(insert(n.dopo)) })
+               }
             };
-        timers := insert(timers);
-
+        timers := ?insert(prune(timers));
 
         let exp = nextExpiration timers;
         if (exp == 0) timers := null;
@@ -141,8 +152,8 @@ actor {
      let now = time();
 
      let id1 = addTimer(1, false, func () : async () { count += 1; debugPrint "YEP!" });
-     let id2 = addTimer(2, false, func () : async () { count := max; debugPrint "DIM!" });
-     //let id3 = addTimer(3, false, func () : async () { count := max; debugPrint "ROOK!" });
+     let id2 = addTimer(2, false, func () : async () { count += 1; debugPrint "DIM!" });
+     let id3 = addTimer(3, false, func () : async () { count := max; debugPrint "ROOK!" });
 
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
