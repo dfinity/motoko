@@ -127,22 +127,22 @@ actor {
                  if (n.expire > 0 and n.expire <= now) {
                      thunks[gathered] := ?(n.job);
                      switch (n.delay) {
-                     case (?delay) {
+                       case (?delay) {
                          // re-add the node
                          let expire = n.expire + delay;
                          // N.B. insert only works on pruned nodes
-                         func insert(n : ?Node) : Node =
-                           switch n {
+                         func insert(m : ?Node) : Node =
+                           switch m {
                              case null ({ n with var expire; ante = null; dopo = null });
-                             case (?n) {
-                                      assert n.expire != 0;
-                                      if (expire < n.expire) ({ n with ante = ?(insert(n.ante)) })
-                                      else ({ n with dopo = ?(insert(n.dopo)) })
+                             case (?m) {
+                                      assert m.expire != 0;
+                                      if (expire < m.expire) ({ m with ante = ?(insert(m.ante)) })
+                                      else ({ m with dopo = ?(insert(m.dopo)) })
                                   }
                          };
                          timers := ?insert(prune(timers));
-                     };
-                     case _ ()
+                       };
+                       case _ ()
                      };
                      n.expire := 0;
                      gathered += 1;
@@ -170,8 +170,8 @@ actor {
      let now = time();
 
      let id1 = addTimer(1, false, func () : async () { count += 1; debugPrint "YEP!" });
-     let id2 = addTimer(2, false, func () : async () { count += 1; debugPrint "DIM!" });
-     let id3 = addTimer(3, false, func () : async () { count := max; debugPrint "ROOK!" });
+     let id2 = addTimer(2, true, func () : async () { count += 1; debugPrint "DIM!" });
+     let id3 = addTimer(3, false, func () : async () { count += 1; debugPrint "ROOK!" });
 
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
