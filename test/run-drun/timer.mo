@@ -126,6 +126,24 @@ actor {
                  gatherExpired(n.ante);
                  if (n.expire > 0 and n.expire <= now) {
                      thunks[gathered] := ?(n.job);
+                     switch (n.delay) {
+                     case (?delay) {
+                         // re-add the node
+                         let expire = n.expire + delay;
+                         // N.B. insert only works on pruned nodes
+                         func insert(n : ?Node) : Node =
+                           switch n {
+                             case null ({ n with var expire; ante = null; dopo = null });
+                             case (?n) {
+                                      assert n.expire != 0;
+                                      if (expire < n.expire) ({ n with ante = ?(insert(n.ante)) })
+                                      else ({ n with dopo = ?(insert(n.dopo)) })
+                                  }
+                         };
+                         timers := ?insert(prune(timers));
+                     };
+                     case _ ()
+                     };
                      n.expire := 0;
                      gathered += 1;
                  };
