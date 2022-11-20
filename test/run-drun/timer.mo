@@ -11,19 +11,17 @@ actor {
     var lastId = 0;
 
 
-    func nextExpiration(n : ?Node) : Nat64 {
-        switch n {
+    func nextExpiration(n : ?Node) : Nat64 = switch n {
         case null 0;
         case (?n) {
-                 var exp = nextExpiration(n.ante); // TODO: use the invariant for expire == 0
-                 if (exp == 0) {
-                     exp := n.expire;
-                     if (exp == 0) {
-                         exp := nextExpiration(n.dopo)
-                     }
-                 };
-                 exp
-             }
+            var exp = nextExpiration(n.ante); // TODO: use the corollary for expire == 0
+            if (exp == 0) {
+                exp := n.expire;
+                if (exp == 0) {
+                    exp := nextExpiration(n.dopo)
+                }
+            };
+            exp
         }
     };
 
