@@ -88,6 +88,8 @@ actor {
             ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
             timers := null
         }
+
+        // FIXME: hunt breaks the corollary, need to compact timers...
     };
 
 
