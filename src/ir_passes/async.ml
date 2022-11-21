@@ -48,11 +48,11 @@ let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
 let t_async as_seq t =
   T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
-          [T.sum [("suspend", T.unit);
-                  ("resume", T.Func(T.Local, T.Returns, [], [], []));
-                  ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
+    [T.sum [
+      ("suspend", T.unit);
+      ("resume", T.Func(T.Local, T.Returns, [], [], []));
+      ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
 
- 
 let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
 
 let new_asyncT =
@@ -117,7 +117,6 @@ let new_nary_async_reply ts getSystemRefund =
    Most of the compexity due to use of n-ary asyncs.
  *)
 
-  
 (* Return a fulfilled async (as_seq t) from value v : T
 
   fulfilled_async as_seq t v : async (as_seq t) ::=
@@ -155,8 +154,20 @@ let failed_asyncE as_seq typ e =
   chain_async ts us (aus : async us) kr : async ts ::=
     let (k,r) = kr;
     let (ats, fulfill, fail) = @new_async ts (false);
-    func fulfill_us(us : us) { k(us) (fulfill, fail) };
-    func fail_us(e : Error) { f(e) (fulfill, fail) };
+    func fulfill_us(us : us) {
+      switch (k(us) (fulfill, fail)) {
+        case #suspend { };
+        case #resume resume { resume() };
+        case #schedule schedule { try await async (); schedule() catch e1 -> fail(e1) };
+      }
+    };
+    func fail_us(e : Error) {
+      switch (r(e) (fulfill, fail)) {
+        case #suspend { };
+        case #resume resume { resume() };
+        case #schedule schedule { try await async (); schedule() catch e1 -> fail(e1) };
+      }
+    };
     au (fulfill_us, fail_us);
     ats
  *)
@@ -177,7 +188,9 @@ let chainAsync ts us aus kr =
         us -->*
           let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
           let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
-           (switch_variantE (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail])         [ ("suspend", wildP,
+          (switch_variantE
+             (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail])
+             [ ("suspend", wildP,
                  unitE()); (* suspend *)
                ("resume", varP resume, (* resume now *)
                  varE resume -*- unitE());
@@ -191,15 +204,16 @@ let chainAsync ts us aus kr =
         [e] -->*
           let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
           let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
-            (switch_variantE (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail])
-               [ ("suspend", wildP,
-                   unitE()); (* suspend *)
-                 ("resume", varP resume, (* resume now *)
-                   varE resume -*- unitE());
-                 ("schedule", varP schedule, (* resume later *)
-                  (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (varE fail)))
-               ]
-              T.unit)
+          (switch_variantE
+             (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail])
+             [ ("suspend", wildP,
+                 unitE()); (* suspend *)
+               ("resume", varP resume, (* resume now *)
+                 varE resume -*- unitE());
+               ("schedule", varP schedule, (* resume later *)
+                 (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (varE fail)))
+             ]
+             T.unit)
       in
       expD (aus -*- seqE [fulfill_us; fail_us ])
      ]
@@ -345,6 +359,7 @@ let transform mode prog =
                 ("resume", varP resume, (* resume now *)
                    varE resume -*- unitE());
                 ("schedule", varP schedule, (* resume later *)
+                  (* try await async (); schedule() catch e -> r(e) *)
                   (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))) ]
               T.unit
           )).it
