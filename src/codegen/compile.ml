@@ -1428,7 +1428,8 @@ module Tagged = struct
 
   let obj env tag element_instructions : G.t =
     Heap.obj env @@
-      compile_unboxed_const (int_of_tag tag) ::
+      (compile_unboxed_const (int_of_tag tag) ^^
+      E.call_import env "rts" "mark_on_allocation") ::
       element_instructions
 
 end (* Tagged *)
