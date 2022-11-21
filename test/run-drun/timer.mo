@@ -102,7 +102,7 @@ actor {
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   var count = 0;
-  var max = 5;
+  var max = 10;
 
   system func timer() : async () {
     let now = time();
@@ -173,16 +173,19 @@ actor {
 
   public shared func go() : async () {
      var attempts = 0;
-     let now = time();
 
      let id1 = addTimer(1, false, func () : async () { count += 1; debugPrint "YEP!" });
      let id2 = addTimer(2, true, func () : async () { count += 1; debugPrint "DIM!" });
-     let id3 = addTimer(3, false, func () : async () { count += 1; debugPrint "ROOK!" });
+     let id3 = addTimer(3, false, func () : async () {
+         count += 1;
+         debugPrint "ROOK!";
+         ignore addTimer(1, true, func () : async () { count += 1; debugPrint "BATT!" })
+     });
 
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
-       //if (count > 1) { cancelTimer id };
+       if (count > 5) { cancelTimer id2 };
        if (attempts >= 100 and count == 0)
          throw error("he's dead Jim");
      };

@@ -4,6 +4,11 @@ debug.print: YEP!
 debug.print: DIM!
 debug.print: ROOK!
 debug.print: DIM!
-debug.print: DIM!
-debug.print: {count = 5}
+debug.print: BATT!
+debug.print: BATT!
+debug.print: BATT!
+debug.print: BATT!
+debug.print: BATT!
+debug.print: BATT!
+debug.print: {count = 10}
 ingress Completed: Reply: 0x4449444c0000
