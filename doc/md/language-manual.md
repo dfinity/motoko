@@ -378,7 +378,7 @@ Libraries stored in `.mo` files may be referenced by `import` declarations.
 
 In a module library, the optional name `<id>?` is only significant within the library and does not determine the name of the library when imported. Instead, the imported name of a library is determined by the `import` declaration, giving clients of the library the freedom to choose library names (e.g. to avoid clashes).
 
-An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`. The name `<id>` is mandatory and cannot be omitted. An actor class constructor is always asynchronous, with return type `async T` where `T` is the inferred type of the class body. Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
+An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`. The name `<id>` is mandatory and cannot be omitted. An actor class constructor is always asynchronous, with return type `async T` where `T` is the inferred type of the class body. Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, asynchronous function, `async` expression or `do async` block).
 
 ### Declaration syntax
 
@@ -499,6 +499,7 @@ The syntax of an *expression* is as follows:
   ignore <block-or-exp>                          ignore value
   do <block>                                     block as expression
   do ? <block>                                   option block
+  do async <block>                               do-async block
   <exp> !                                        null break
   debug <block-or-exp>                           debug expression
   actor <exp>                                    actor reference
@@ -1498,7 +1499,7 @@ Note that requirement 1. imposes further constraints on the field types of `T`. 
 
 -   all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions);
 
-Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
+Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, `async` expression or `do async` block).
 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
 
@@ -1981,6 +1982,50 @@ Within `<block>` the null break expression `<exp1> !` exits the nearest enclosin
 
 Option blocks nest with the target of a null break determined by the nearest enclosing option block.
 
+### Do-async block
+
+The do-async block, `do async <block>,` returns a future containing the result of `<block>`.
+Unlike an `async` expression, `do async <block>` evaluates `<block>` __synchronously__ at first,  switching to asynchronous computation _only_ at the first await of a _pending_ future within `<block>`.
+
+The expression `do async <block>` has type `async T` provided
+
+* `<block>` has type `T`;
+* the expression occurs in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, asynchronous function, `async` expression or another `do async` block).
+
+Do-async blocks can be nested, with the exit of a `return` or `throw` determined by lexical scoping.
+
+It is a compile-time error for `<block>` to contain a `break` to a label declared outside the do-async block.
+
+The expression `do async <block>` evaluates by entering the evaluation of `<block>`, executing synchronously  --  just like a `do <block>` --
+until the first await of a pending future, if any.
+Unless evaluation traps, it returns a future holding the actual or eventual result of `<block>`.
+
+During the synchronous execution of `<block>`:
+
+* a `return` expression exits the block with a completed future, storing the returned value;
+* a `throw` expression resumes execution from the nearest enclosing `try ... catch ...` handler within `<block>` or, if there is none, exits the do-async block
+  with a failed future storing the error;
+* a trap causes `do async <block>` to trap;
+* an `await` expression of
+** a successfully completed future continues execution with the contents of that future, or
+** a failed, completed future propagates the error contents of the future as if thrown (see above), or
+** a pending future exits the do-async block with a new, pending future whose completion with the result of `<block>` is suspended, waiting on the result of the awaited future.
+
+
+:::note
+
+Evaluation of a do-async block is synchronous while possible, switching to asynchronous when necessary.
+By contrast, evaluation of the similar `async <block-or-exp>` (without `do`) immediately returns a pending future and always computes the result of `<block-or-exp>` _asynchronously_,
+never blocking evaluation of the enclosing expression.
+
+:::
+
+:::note
+
+Do-async blocks are useful for abstracting asynchronous code into re-useable functions, without introducing redundant and expensive `async` expressions just to satisfy the type checker.
+
+:::
+
 ### Null break
 
 The null break expression `<exp> !` invokes scoped handling of null values and returns the contents of an option value or changes control-flow when the value is `null`.
@@ -2152,7 +2197,7 @@ The expression `return <exp>` has type `None` provided:
 
 -   `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
 
-The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `<exp>`.
+The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic `async` or `do async` expression with the result of `<exp>`.
 
 ### Async
 
@@ -2196,7 +2241,7 @@ The `throw` expression `throw <exp>` has type `None` provided:
 
 -   the `throw` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <block-or-exp1> catch <pat> <block-or-exp2>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invocation.
+Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <block-or-exp1> catch <pat> <block-or-exp2>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async`, `do async` expression or `shared` function invocation.
 
 ### Try
 
