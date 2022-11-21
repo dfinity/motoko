@@ -657,6 +657,21 @@ and text_dotE proj e =
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
+and let_else_switch p e f = 
+  let e' = exp e in
+  let p' = pat p in
+  let f' = exp f in
+  I.{ 
+    it = I.SwitchE(
+      exp e,
+      [
+        { it = { pat = p'; exp = e' }; at = e'.at; note = () };
+        { it = { pat = { it = WildP; at = f'.at; note = p'.note }; exp = f' }; at = f'.at ; note = () }
+      ]);
+    at = e'.at;
+    note = e'.note
+    }
+
 and block force_unit ds =
   match ds with
   | [] -> ([], tupE [])
@@ -673,21 +688,7 @@ and block force_unit ds =
     (decs prefix @ [letD x (exp e); letP (pat p) (varE x)], varE x)
   | false, S.LetD (p, e, Some f) ->
     let x = fresh_var "x" (e.note.S.note_typ) in
-    let p' = pat p in
-    let e' = exp e in
-    let f' = exp f in
-    let switchE = 
-      I.{ 
-        it = I.SwitchE(
-          exp e,
-          [
-            { it = { pat = pat p; exp = exp e }; at = (exp e).at; note = () };
-            { it = { pat = { it = WildP; at = (exp f).at; note = (pat p).note }; exp = exp f }; at = (exp f).at ; note = () }
-          ]);
-        at = (exp e).at;
-        note = (exp e).note
-        } in
-    (decs prefix @ [letD x switchE; letP (pat p) (varE x)], varE x)
+    (decs prefix @ [letD x (let_else_switch p e f); letP (pat p) (varE x)], varE x)
   | _, _ ->
     (decs ds, tupE [])
 
@@ -710,21 +711,8 @@ and dec' at n = function
     | _ -> I.LetD (p', e')
     end
   | S.LetD (p, e, Some f) ->
-    let p' = pat p in
-    let e' = exp e in
-    let f' = exp f in
-    let switchE = 
-      I.{ 
-        it = I.SwitchE(
-          exp e,
-          [
-            { it = { pat = pat p; exp = exp e }; at = (exp e).at; note = () };
-            { it = { pat = { it = WildP; at = (exp f).at; note = (pat p).note }; exp = exp f }; at = (exp f).at ; note = () }
-          ]);
-        at = (exp e).at;
-        note = (exp e).note
-        } in
-    I.LetD (pat p, switchE)
+    (* FIXME check for recursive actors here too? *)
+    I.LetD (pat p, let_else_switch p e f)
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
   | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
