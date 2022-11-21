@@ -205,7 +205,10 @@ let (&&&) cond action =
   if not cond then syntax_error action.at "M0181" "verification assertions not permitted in normal mode";
   action
 
-let is_verification = Lexer_lib.(mode.verification)
+let is_verification () =
+  match !Parser_lib.mode with
+  | None -> assert false
+  | Some mode -> mode.Lexer_lib.verification
 
 %}
 

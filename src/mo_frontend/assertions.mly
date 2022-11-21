@@ -14,14 +14,14 @@
 
 %public exp_nondec(B) :
   | ASSERT COLON SYSTEM e=exp_nest
-    { is_verification &&& AssertE(Static, e) @? at $sloc }
+    { is_verification () &&& AssertE(Static, e) @? at $sloc }
   | ASSERT COLON INVARIANT e=exp_nest
-    { is_verification &&& AssertE(Invariant, e) @? at $sloc }
+    { is_verification () &&& AssertE(Invariant, e) @? at $sloc }
   | ASSERT COLON FUNC e=exp_nest
-    { is_verification &&& AssertE(Precondition, e) @? at $sloc }
+    { is_verification () &&& AssertE(Precondition, e) @? at $sloc }
   | ASSERT COLON RETURN e=exp_nest
-    { is_verification &&& AssertE(Postcondition, e) @? at $sloc }
+    { is_verification () &&& AssertE(Postcondition, e) @? at $sloc }
   | ASSERT COLON s=NAT COLON ASYNC e=exp_nest
-    { is_verification &&& AssertE(Concurrency s, e) @? at $sloc }
+    { is_verification () &&& AssertE(Concurrency s, e) @? at $sloc }
 
 %%
