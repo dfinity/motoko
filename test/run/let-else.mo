@@ -1,0 +1,1 @@
+func foo(i : Int) = let (5, 3) = (i, i) else { return };
