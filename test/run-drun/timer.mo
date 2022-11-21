@@ -37,7 +37,7 @@ actor {
 
     // ad-hoc place for the Timer.mo API
     type TimerId = Nat;
-    func addTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
+    func setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
         lastId += 1;
         let id = lastId;
         let now = time();
@@ -174,12 +174,12 @@ actor {
   public shared func go() : async () {
      var attempts = 0;
 
-     let id1 = addTimer(1, false, func () : async () { count += 1; debugPrint "YEP!" });
-     let id2 = addTimer(2, true, func () : async () { count += 1; debugPrint "DIM!" });
-     let id3 = addTimer(3, false, func () : async () {
+     let id1 = setTimer(1, false, func () : async () { count += 1; debugPrint "YEP!" });
+     let id2 = setTimer(2, true, func () : async () { count += 1; debugPrint "DIM!" });
+     let id3 = setTimer(3, false, func () : async () {
          count += 1;
          debugPrint "ROOK!";
-         ignore addTimer(1, true, func () : async () { count += 1; debugPrint "BATT!" })
+         ignore setTimer(1, true, func () : async () { count += 1; debugPrint "BATT!" })
      });
 
      while (count < max) {
