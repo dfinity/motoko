@@ -35,29 +35,33 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "enable core dump"
-      run: |
-        echo "Enable core dump"
-        ulimit -c 1000000
-        ulimit -c
-        echo "Set core dump location"
-        echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+    # - name: "enable core dump"
+    #   run: |
+    #     echo "Enable core dump"
+    #     ulimit -c 1000000
+    #     ulimit -c
+    #     echo "Set core dump location"
+    #     echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+
+
+    # - name: "nix-build"
+    #   run: nix-build --max-jobs 4 -A tests.crash -o build-output
 
     - name: "nix-build"
-      run: nix-build --max-jobs 4 -A tests.crash -o build-output
+      run: nix-build-uncached --max-jobs 4 -A tests.crash -build-flags -L -o build-output
 
-    - name: "list core dumps"
-      run: |
-        echo "List core dump"
-        ls -la build-output/dumps
+    # - name: "list core dumps"
+    #   run: |
+    #     echo "List core dump"
+    #     ls -la build-output/dumps
 
-    - name: "run status"
-      run: |
-        if [ ! -e build-output/ok ]
-        then
-          echo "previous nix build failed"
-          exit 1
-        fi
+    # - name: "run status"
+    #   run: |
+    #     if [ ! -e build-output/ok ]
+    #     then
+    #       echo "previous nix build failed"
+    #       exit 1
+    #     fi
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'

@@ -15,6 +15,10 @@
 #        only compiles and runs drun, writes stats to $PERF_OUT
 #
 
+echo "Panic test"
+pwd
+cargo run
+
 echo "Searching for core dump files..."
 find -name core.*
 find / -name core.*
