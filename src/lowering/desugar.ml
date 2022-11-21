@@ -666,15 +666,28 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (decs prefix, exp e)
-  | false, S.LetD ({it = S.VarP x; _}, e, None) ->
+  | false, S.LetD ({it = S.VarP x; _}, e, None) -> (* FIXME need this case for Some fail? *)
     (decs ds, varE (var x.it e.note.S.note_typ))
-  | false, S.LetD (p', e', None) ->
-    let x = fresh_var "x" (e'.note.S.note_typ) in
-    (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
-  | false, S.LetD (p', e', Some fail) ->
-    let x = fresh_var "x" (e'.note.S.note_typ) in
-    let e'' = S.{it = SwitchE(e', [{it = {pat = p'; exp = e'}; at = p'.at; note = ()}; {it = {pat = { it = WildP; at = fail.at; note = fail.note.note_typ }; exp = fail}; at = fail.at ; note = ()}]); at = e'.at; note = e'.note } in
-    (decs prefix @ [letD x (exp e''); letP (pat p') (varE x)], varE x)
+  | false, S.LetD (p, e, None) ->
+    let x = fresh_var "x" (e.note.S.note_typ) in
+    (decs prefix @ [letD x (exp e); letP (pat p) (varE x)], varE x)
+  | false, S.LetD (p, e, Some f) ->
+    let x = fresh_var "x" (e.note.S.note_typ) in
+    let p' = pat p in
+    let e' = exp e in
+    let f' = exp f in
+    let switchE = 
+      I.{ 
+        it = I.SwitchE(
+          exp e,
+          [
+            { it = { pat = pat p; exp = exp e }; at = (exp e).at; note = () };
+            { it = { pat = { it = WildP; at = (exp f).at; note = (pat p).note }; exp = exp f }; at = (exp f).at ; note = () }
+          ]);
+        at = (exp e).at;
+        note = (exp e).note
+        } in
+    (decs prefix @ [letD x switchE; letP (pat p) (varE x)], varE x)
   | _, _ ->
     (decs ds, tupE [])
 
@@ -696,10 +709,22 @@ and dec' at n = function
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
     | _ -> I.LetD (p', e')
     end
-  | S.LetD (p, e, Some fail) ->
+  | S.LetD (p, e, Some f) ->
     let p' = pat p in
-    let e' = S.{it = SwitchE(e, [{it = {pat = p; exp = e}; at = p.at; note = ()}; {it = {pat = { it = WildP; at = fail.at; note = fail.note.note_typ }; exp = fail}; at = fail.at ; note = ()}]); at = e.at; note = e.note } in
-    I.LetD(p', exp e')
+    let e' = exp e in
+    let f' = exp f in
+    let switchE = 
+      I.{ 
+        it = I.SwitchE(
+          exp e,
+          [
+            { it = { pat = pat p; exp = exp e }; at = (exp e).at; note = () };
+            { it = { pat = { it = WildP; at = (exp f).at; note = (pat p).note }; exp = exp f }; at = (exp f).at ; note = () }
+          ]);
+        at = (exp e).at;
+        note = (exp e).note
+        } in
+    I.LetD (pat p, switchE)
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
   | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
