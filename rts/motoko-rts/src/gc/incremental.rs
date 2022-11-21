@@ -1,7 +1,6 @@
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
-    continuation_table,
     memory::{Memory, MARK_ON_ALLOCATION},
     types::{Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN},
     visitor::visit_pointer_fields,
@@ -22,18 +21,16 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-
-    #[cfg(debug_assertions)]
-    sanity_checks::check_memory();
-
+    const ALLOCATION_THRESHOLD: usize = 32 * 1024 * 1024; // pause GC until this heap growth
     let limits = Limits {
         base: ic::get_aligned_heap_base() as usize,
         last_free: ic::LAST_HP as usize,
         free: ic::HP as usize,
+        allocation_threshold: ALLOCATION_THRESHOLD,
     };
     let roots = Roots {
         static_roots: ic::get_static_roots(),
-        continuation_table: *continuation_table::continuation_table_loc(),
+        continuation_table: *crate::continuation_table::continuation_table_loc(),
     };
     IncrementalGC::empty_call_stack_increment(mem, limits, roots);
 }
@@ -50,27 +47,33 @@ struct MarkState {
 
 static mut PHASE: Phase = Phase::Pause;
 
-struct Limits {
+/// Heap limits
+pub struct Limits {
     pub base: usize,
     pub last_free: usize,
     pub free: usize,
+    pub allocation_threshold: usize,
 }
 
-struct Roots {
+/// GC Root set
+pub struct Roots {
     pub static_roots: Value,
     pub continuation_table: Value,
     // If new roots are added in future, extend `mark_roots()`.
 }
 
-const INCREMENT_LIMIT: usize = 1024; // soft limit on marked fields per GC run
-const START_THRESHOLD: usize = 32 * 1024 * 1024; // new allocation since last GC run
-
-struct IncrementalGC<'a, M: Memory> {
+/// Incremental GC.
+/// Each increment call can have its new instance that shares the common GC state `PHASE`.
+pub struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
+    pub unsafe fn reset_for_testing() {
+        PHASE = Phase::Pause;
+    }
+
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
     /// * The mark phase is only started on an empty call stack.
@@ -78,6 +81,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     pub unsafe fn empty_call_stack_increment(mem: &'a mut M, limits: Limits, roots: Roots) {
         let mut gc = Self::instance(mem);
         if Self::pausing() && Self::should_start_gc(&limits) {
+            #[cfg(debug_assertions)]
+            #[cfg(feature = "ic")]
+            sanity_checks::check_memory();
             gc.start_run(limits.base, roots);
         }
         gc.increment();
@@ -101,7 +107,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     fn should_start_gc(limits: &Limits) -> bool {
         assert!(limits.last_free <= limits.free);
-        limits.free - limits.last_free >= START_THRESHOLD
+        limits.free - limits.last_free >= limits.allocation_threshold
     }
 
     fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
@@ -126,6 +132,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             _ => false,
         }
     }
+
+    const INCREMENT_LIMIT: usize = 1024; // soft limit on marked fields per GC run
 
     unsafe fn increment(&mut self) {
         self.steps = 0;
@@ -162,13 +170,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if let Phase::Mark(state) = &mut PHASE {
             assert!((value.get_ptr() >= state.heap_base));
             let object = value.as_obj();
-            assert!(
-                object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
-            );
             if object.is_marked() {
                 return;
             }
             object.mark();
+            assert!(
+                object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
+            );
             state.mark_stack.push(self.mem, value);
         } else {
             panic!("Invalid phase");
@@ -178,9 +186,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn mark_phase_increment(&mut self) {
         if let Phase::Mark(state) = &mut PHASE {
             while let Some(value) = state.mark_stack.pop() {
+                assert!(value.is_ptr());
+                assert!(value.as_obj().is_marked());
+
                 self.mark_fields(value.as_obj());
                 self.steps += 1;
-                if self.steps > INCREMENT_LIMIT {
+                if self.steps > Self::INCREMENT_LIMIT {
                     return;
                 }
             }

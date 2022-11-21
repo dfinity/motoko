@@ -14,13 +14,14 @@ pub const MAX_MARK_STACK_SIZE: usize = 100;
 
 /// Enum for the GC implementations. GC functions are generic so we can't put them into arrays or
 /// other data types, we use this type instead.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GC {
     Copying,
     MarkCompact,
+    Incremental,
 }
 
-pub static GC_IMPLS: [GC; 2] = [GC::Copying, GC::MarkCompact];
+pub static GC_IMPLS: [GC; 3] = [GC::Copying, GC::MarkCompact, GC::Incremental];
 
 /// Read a little-endian (Wasm) word from given offset
 pub fn read_word(heap: &[u8], offset: usize) -> u32 {

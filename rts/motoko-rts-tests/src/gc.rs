@@ -14,6 +14,7 @@ use heap::MotokoHeap;
 use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
+use motoko_rts::gc::incremental::{IncrementalGC, Limits, Roots};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
@@ -122,6 +123,7 @@ fn test_gc(
         heap.heap_base_offset(),
         heap.heap_ptr_offset(),
         heap.continuation_table_ptr_offset(),
+        false,
     );
 
     for _ in 0..3 {
@@ -131,7 +133,7 @@ fn test_gc(
         let heap_ptr_offset = heap.heap_ptr_offset();
         let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
         check_dynamic_heap(
-            true, // after gc
+            gc != GC::Incremental, // check for unreachable objects
             refs,
             roots,
             continuation_table,
@@ -139,6 +141,7 @@ fn test_gc(
             heap_base_offset,
             heap_ptr_offset,
             continuation_table_ptr_offset,
+            gc == GC::Incremental,
         );
     }
 }
@@ -161,6 +164,7 @@ fn check_dynamic_heap(
     heap_base_offset: usize,
     heap_ptr_offset: usize,
     continuation_table_ptr_offset: usize,
+    allow_blobs: bool,
 ) {
     let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
         .iter()
@@ -190,49 +194,54 @@ fn check_dynamic_heap(
             continue;
         }
 
-        let tag = read_word(heap, offset);
+        let tag = unmark(read_word(heap, offset));
         offset += WORD_SIZE;
 
-        assert_eq!(tag, TAG_ARRAY);
+        if allow_blobs && tag == TAG_BLOB {
+            let length = read_word(heap, offset);
+            offset += WORD_SIZE + length as usize;
+        } else {
+            assert_eq!(tag, TAG_ARRAY);
 
-        let n_fields = read_word(heap, offset);
-        offset += WORD_SIZE;
-
-        // There should be at least one field for the index
-        assert!(n_fields >= 1);
-
-        let object_idx = get_scalar_value(read_word(heap, offset));
-        offset += WORD_SIZE;
-        let old = seen.insert(object_idx, address);
-        if let Some(old) = old {
-            panic!(
-                "Object with index {} seen multiple times: {:#x}, {:#x}",
-                object_idx, old, address
-            );
-        }
-
-        let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
-            panic!("Object with index {} is not in the objects map", object_idx)
-        });
-
-        for field_idx in 1..n_fields {
-            let field = read_word(heap, offset);
+            let n_fields = read_word(heap, offset);
             offset += WORD_SIZE;
-            // Get index of the object pointed by the field
-            let pointee_address = field.wrapping_add(1); // unskew
-            let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
-            let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-            let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
-            let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
-            assert_eq!(
-                pointee_idx,
-                expected_pointee_idx,
-                "Object with index {} points to {} in field {}, but expected to point to {}",
-                object_idx,
-                pointee_idx,
-                field_idx - 1,
-                expected_pointee_idx,
-            );
+
+            // There should be at least one field for the index
+            assert!(n_fields >= 1);
+
+            let object_idx = get_scalar_value(read_word(heap, offset));
+            offset += WORD_SIZE;
+            let old = seen.insert(object_idx, address);
+            if let Some(old) = old {
+                panic!(
+                    "Object with index {} seen multiple times: {:#x}, {:#x}",
+                    object_idx, old, address
+                );
+            }
+
+            let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
+                panic!("Object with index {} is not in the objects map", object_idx)
+            });
+
+            for field_idx in 1..n_fields {
+                let field = read_word(heap, offset);
+                offset += WORD_SIZE;
+                // Get index of the object pointed by the field
+                let pointee_address = field.wrapping_add(1); // unskew
+                let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
+                let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
+                let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
+                let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
+                assert_eq!(
+                    pointee_idx,
+                    expected_pointee_idx,
+                    "Object with index {} points to {} in field {}, but expected to point to {}",
+                    object_idx,
+                    pointee_idx,
+                    field_idx - 1,
+                    expected_pointee_idx,
+                );
+            }
         }
     }
 
@@ -314,7 +323,7 @@ fn compute_reachable_objects(
 }
 
 fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
-    assert_eq!(read_word(heap, offset), TAG_ARRAY);
+    assert_eq!(unmark(read_word(heap, offset)), TAG_ARRAY);
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
@@ -379,6 +388,24 @@ impl GC {
                     );
                 }
             }
+
+            GC::Incremental => unsafe {
+                IncrementalGC::<MotokoHeap>::reset_for_testing();
+                const INCREMENTS_UNTIL_COMPLETION: usize = 16;
+                for _ in 0..INCREMENTS_UNTIL_COMPLETION {
+                    let limits = Limits {
+                        base: heap_base as usize,
+                        last_free: heap_1.heap_ptr_address(),
+                        free: heap_1.heap_ptr_address(),
+                        allocation_threshold: 0,
+                    };
+                    let roots = Roots {
+                        static_roots,
+                        continuation_table: *continuation_table_ptr_address,
+                    };
+                    IncrementalGC::empty_call_stack_increment(&mut heap, limits, roots);
+                }
+            },
         }
     }
 }
