@@ -48,8 +48,11 @@ let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
 let t_async as_seq t =
   T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
-     [T.Opt (T.Func(T.Local, T.Returns, [], [], []))])
+          [T.sum [("suspend", T.unit);
+                  ("resume", T.Func(T.Local, T.Returns, [], [], []));
+                  ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
 
+ 
 let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
 
 let new_asyncT =
@@ -127,13 +130,8 @@ let fulfilled_asyncE as_seq typ v =
   let fail = fresh_var "r" failT in
   [fulfill; fail] -->*
     let u = fresh_var "r" T.unit in
-    letE u (varE fulfill -*- v) (optE ([] -->* varE u))
-(*      
-    blockE [
-        expD (varE fulfill -*- v)
-     ]
-     (nullE())
- *)
+    letE u (varE fulfill -*- v) (tagE "resume" ([] -->* varE u))
+
 (* Construct a failed async (as_seq t) from error e:
 
   failed_async as_seq t (e : Error) : async (as_seq t) ::=
@@ -146,12 +144,7 @@ let failed_asyncE as_seq typ e =
   let fail = fresh_var "r" failT in
   [fulfill; fail] -->*
     let u = fresh_var "r" T.unit in
-    letE u (varE fail -*- e) (optE ([] -->* varE u))
-(*
-      blockE [
-        varP (varE fail -*- e)
-     ]
-     (optE ([] -> e)) *)
+    letE u (varE fail -*- e) (tagE "resume" ([] -->* varE u))
 
 (* Construct an async ts from an async us, given success/fail continuation pair kr,
    where
@@ -167,7 +160,6 @@ let failed_asyncE as_seq typ e =
     au (fulfill_us, fail_us);
     ats
  *)
-(*
 let chainAsync ts us aus kr =
   let k,r = match typ kr with
     | T.Tup [t_k; t_r] ->
@@ -183,65 +175,30 @@ let chainAsync ts us aus kr =
       let fulfill_us =
         let us = fresh_vars "u" us in
         us -->*
-           let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
-           (switch_optE (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail])
-               (unitE()) (* suspend *)
-               (varP resume) (* yield and resume *)
-                (* try await async (); resume() catch e -> r(e) *)
-                (varE resume -*- unitE())
-              T.unit)
-      in
-      let fail_us =
-        let e = fresh_var "e" T.catch in
-        [e] -->*
-            let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
-            (switch_optE (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail])
-               (unitE()) (* suspend *)
-               (varP resume) (* yield and resume *)
-                (* try await async (); resume() catch e -> r(e) *)
-                (varE resume -*- unitE())
-              T.unit)
-      in
-      expD (aus -*- seqE [fulfill_us; fail_us]);
-    ]
-    (varE ats)
- *)
-let chainAsync ts us aus kr =
-  let k,r = match typ kr with
-    | T.Tup [t_k; t_r] ->
-      fresh_var "k" t_k,
-      fresh_var "r" t_r
-    | _ -> assert false
-  in
-  let ((ats, fulfill, fail), def) = new_nary_async_reply ts false (* getSystemRefund *)
-  in
-   blockE [
-      letP (tupP [varP k; varP r]) kr;
-      letP (tupP [varP ats; varP fulfill; varP fail]) def;
-      let fulfill_us =
-        let us = fresh_vars "u" us in
-        us -->*
-          (*          (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail]) *)
-        let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
-           (switch_optE (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail])
-               (unitE()) (* suspend *)
-               (varP resume) (* yield and resume *)
-                (* try await async (); resume() catch e -> r(e) *)
-                (varE resume -*- unitE())
-              T.unit)
-
-      in
-      let fail_us =
-        let e = fresh_var "e" T.catch in
-        [e] -->*
-          (*          (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail]) *)
-
           let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
-            (switch_optE (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail])
-               (unitE()) (* suspend *)
-               (varP resume) (* yield and resume *)
-                (* try await async (); resume() catch e -> r(e) *)
-                (varE resume -*- unitE())
+          let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
+           (switch_variantE (((varE k) -*- seqE (List.map varE us)) -*- seqE [varE fulfill; varE fail])         [ ("suspend", wildP,
+                 unitE()); (* suspend *)
+               ("resume", varP resume, (* resume now *)
+                 varE resume -*- unitE());
+               ("schedule", varP schedule, (* resume later *)
+                (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (varE fail)))
+              ]
+              T.unit)
+      in
+      let fail_us =
+        let e = fresh_var "e" T.catch in
+        [e] -->*
+          let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
+          let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
+            (switch_variantE (((varE r) -*- varE e) -*- seqE [varE fulfill; varE fail])
+               [ ("suspend", wildP,
+                   unitE()); (* suspend *)
+                 ("resume", varP resume, (* resume now *)
+                   varE resume -*- unitE());
+                 ("schedule", varP schedule, (* resume later *)
+                  (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (varE fail)))
+               ]
               T.unit)
       in
       expD (aus -*- seqE [fulfill_us; fail_us ])
@@ -251,8 +208,9 @@ let chainAsync ts us aus kr =
 let letEta e scope =
   match e.it with
   | VarE _ -> scope e (* pure, so reduce *)
-  | _  -> let f = fresh_var "x" (typ e) in
-          letD f e :: (scope (varE f)) (* maybe impure; sequence *)
+  | _  ->
+    let f = fresh_var "x" (typ e) in
+    letD f e :: (scope (varE f)) (* maybe impure; sequence *)
 
 let isAwaitableFunc exp =
   match typ exp with
@@ -380,16 +338,16 @@ let transform mode prog =
           (* unit answer type, from await in `async {}` *)
           (ensureNamed (t_exp kr) (fun vkr ->
             let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
-            (switch_optE ((t_exp a) -*- varE vkr)
-               (unitE()) (* suspend *)
-               (*FIX ME *)
-               (varP resume) (* yield and resume *)
-                (* try await async (); resume() catch e -> r(e) *)
-                 (selfcallE [] (ic_replyE [] (unitE())) (varE resume) (projE (varE vkr) 1)) 
-                 (*                 ((varE resume) -*- (tupE[])) *)
-               
+            let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
+            switch_variantE ((t_exp a) -*- varE vkr)
+              [ ("suspend", wildP,
+                  unitE()); (* suspend *)
+                ("resume", varP resume, (* resume now *)
+                   varE resume -*- unitE());
+                ("schedule", varP schedule, (* resume later *)
+                  (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))) ]
               T.unit
-           ))).it
+          )).it
         | Func(_, _, [], us, [T.Async(_, t2)]) ->
           (* async answer type, from await in `do async {}` *)
           (chainAsync (T.as_seq t2) us (t_exp a) (t_exp kr)).it
