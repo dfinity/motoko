@@ -3,7 +3,8 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     continuation_table,
     memory::{Memory, MARK_ON_ALLOCATION},
-    types::Value,
+    types::{Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN},
+    visitor::visit_pointer_fields,
 };
 
 use self::mark_stack::MarkStack;
@@ -51,8 +52,11 @@ struct Roots {
     // If new roots are added in future, extend `mark_roots()`.
 }
 
+const INCREMENT_LIMIT: usize = 128;
+
 struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
+    steps: usize,
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
@@ -60,27 +64,32 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
     /// * The mark phase is only started on an empty call stack.
     /// * The moving phase can only be completed on an empty call stack.
-    pub unsafe fn empty_call_stack_increment(mem: &mut M, heap_base: usize, roots: Roots) {
-        let mut gc = IncrementalGC { mem };
+    pub unsafe fn empty_call_stack_increment(mem: &'a mut M, heap_base: usize, roots: Roots) {
+        let mut gc = Self::instance(mem);
         if Self::pausing() {
             gc.start_run(heap_base, roots);
         }
         gc.increment();
     }
 
-    /// Pre-update field-level write-barrier peforming snapshot-at-the-beginning marking.
-    /// Only effective while the GC is in the mark phase.
+    /// Pre-update field-level write barrier peforming snapshot-at-the-beginning marking.
+    /// The barrier is only effective while the GC is in the mark phase.
+    /// A GC increment is implicitly combined with the write barrier.
     #[inline]
-    pub unsafe fn write_barrier(mem: &mut M, value: Value) {
+    pub unsafe fn write_barrier(mem: &'a mut M, value: Value) {
         if value.is_ptr() {
             if let Phase::Mark(state) = &PHASE {
                 if value.get_ptr() >= state.heap_base {
-                    let mut gc = IncrementalGC { mem };
+                    let mut gc = Self::instance(mem);
                     gc.mark_object(value);
                     gc.increment();
                 }
             }
         }
+    }
+
+    fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
+        IncrementalGC { mem, steps: 0 }
     }
 
     unsafe fn start_run(&mut self, heap_base: usize, roots: Roots) {
@@ -103,7 +112,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn increment(&mut self) {
-        println!(100, "GC increment");
+        self.steps = 0;
+        match &mut PHASE {
+            Phase::Pause => {}
+            Phase::Mark(_) => self.mark_phase_increment(),
+        }
     }
 
     unsafe fn mark_roots(&mut self, roots: Roots) {
@@ -128,22 +141,78 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn mark_object(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
-            println!(100, "Mark object {:#x}", value.get_ptr());
             assert!((value.get_ptr() >= state.heap_base));
             let object = value.as_obj();
             assert!(
                 object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
             );
+            if object.is_marked() {
+                return;
+            }
+            object.mark();
             state.mark_stack.push(self.mem, value);
         } else {
-            panic!("Invalid state");
+            panic!("Invalid phase");
         }
+    }
+
+    unsafe fn mark_phase_increment(&mut self) {
+        if let Phase::Mark(state) = &mut PHASE {
+            while let Some(value) = state.mark_stack.pop() {
+                self.mark_fields(value.as_obj());
+                self.steps += 1;
+                if self.steps > INCREMENT_LIMIT {
+                    return;
+                }
+            }
+            self.mark_complete();
+        } else {
+            panic!("Invalid phase")
+        }
+    }
+
+    unsafe fn mark_complete(&mut self) {
+        println!(100, "Mark complete");
+    }
+
+    unsafe fn mark_fields(&mut self, object: *mut Obj) {
+        assert!(object.is_marked());
+        visit_pointer_fields(
+            self,
+            object,
+            object.tag(),
+            Self::heap_base(),
+            |gc, field_address| {
+                let field_value = *field_address;
+                gc.mark_object(field_value);
+                gc.steps += 1;
+            },
+            |gc, slice_start, array| {
+                const SLICE_INCREMENT: u32 = 127;
+                assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
+                if array.len() - slice_start > SLICE_INCREMENT {
+                    let new_start = slice_start + SLICE_INCREMENT;
+                    (*array).header.set_tag(new_start, true);
+                    if let Phase::Mark(state) = &mut PHASE {
+                        state
+                            .mark_stack
+                            .push(gc.mem, Value::from_ptr(array as usize));
+                    } else {
+                        panic!("Invalid phase");
+                    }
+                    new_start
+                } else {
+                    (*array).header.set_tag(TAG_ARRAY, true);
+                    array.len()
+                }
+            },
+        );
     }
 
     unsafe fn heap_base() -> usize {
         match &PHASE {
             Phase::Mark(state) => state.heap_base,
-            _ => panic!("Undefined heap base"),
+            _ => panic!("Invalid phase"),
         }
     }
 }

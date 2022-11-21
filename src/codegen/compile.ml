@@ -1311,11 +1311,12 @@ module Tagged = struct
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
     | Null (* For opt. Static singleton! *)
-    | StableSeen (* Marker that we have seen this thing before *)
-    | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
-
+    | ArraySliceMinimum (* Used by the GC for incremental array marking *)
+    | StableSeen (* Marker that we have seen this thing before *)
+    | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
+    
   (* Tags needs to have the lowest bit set, to allow distinguishing object
      headers from heap locations (object or field addresses).
 
@@ -1338,6 +1339,7 @@ module Tagged = struct
     | Null -> 27l
     | OneWordFiller -> 29l
     | FreeSpace -> 31l
+    | ArraySliceMinimum -> 32l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0x7ffffffel (* bit 31 is reserved mark bit *)
@@ -5005,11 +5007,32 @@ module MakeSerialization (Strm : Stream) = struct
         get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
         set_inc ^^ inc_data_size get_inc
       in
+      
+      (* the incremental GC leaves array slice information in tag,
+         the slice information can be removed and the tag reset to array
+         as the GC can resume marking from the array beginning *)
+      let clear_array_slicing =
+        let (set_temp, get_temp) = new_local env "temp" in
+        set_temp ^^ 
+        get_temp ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+        get_temp ^^ compile_eq_const Tagged.(int_of_tag CoercionFailure) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+        get_temp ^^ compile_eq_const Tagged.(int_of_tag ArraySliceMinimum) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+        G.if0 begin
+          (compile_eq_const Tagged.(int_of_tag Array))
+        end begin
+          get_temp
+        end
+      in
 
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag ^^ clear_array_slicing ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
