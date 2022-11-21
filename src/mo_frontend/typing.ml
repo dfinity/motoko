@@ -1400,7 +1400,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | DoAsyncE (typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0149" "`do async { ... }` expressions are not supported";
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0181" "`do async { ... }` expressions are not supported";
     let t1, next_cap = check_AsyncCap env "`do async { ... }` expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
