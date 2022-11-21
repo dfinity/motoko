@@ -671,6 +671,10 @@ and block force_unit ds =
   | false, S.LetD (p', e', None) ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
+  | false, S.LetD (p', e', Some fail) ->
+    let x = fresh_var "x" (e'.note.S.note_typ) in
+    let e'' = S.{it = SwitchE(e', [{it = {pat = p'; exp = e'}; at = p'.at; note = ()}; {it = {pat = { it = WildP; at = fail.at; note = fail.note.note_typ }; exp = fail}; at = fail.at ; note = ()}]); at = e'.at; note = e'.note } in
+    (decs prefix @ [letD x (exp e''); letP (pat p') (varE x)], varE x)
   | _, _ ->
     (decs ds, tupE [])
 
@@ -692,6 +696,10 @@ and dec' at n = function
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
     | _ -> I.LetD (p', e')
     end
+  | S.LetD (p, e, Some fail) ->
+    let p' = pat p in
+    let e' = S.{it = SwitchE(e, [{it = {pat = p; exp = e}; at = p.at; note = ()}; {it = {pat = { it = WildP; at = fail.at; note = fail.note.note_typ }; exp = fail}; at = fail.at ; note = ()}]); at = e.at; note = e.note } in
+    I.LetD(p', exp e')
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
   | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
