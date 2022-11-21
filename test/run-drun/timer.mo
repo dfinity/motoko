@@ -70,26 +70,32 @@ actor {
         id
     };
 
+    func graft(onto : ?Node, branch : ?Node) : ?Node = switch (onto, branch) {
+    case (null, null) null;
+    case (null, _) branch;
+    case (_, null) onto;
+    case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
+    };
+
     func cancelTimer(id : TimerId) {
-        func hunt(n : ?Node) = switch n {
-          case null ();
+        func hunt(n : ?Node) : ?Node = switch n {
+          case null n;
           case (?n) { if (n.id == id) {
-                          n.expire := 0
-                      };
-                      hunt(n.ante);
-                      hunt(n.dopo)
+                          n.expire := 0;
+                          graft(n.ante, n.dopo)
+                      } else {
+                          ?{ n with ante = hunt(n.ante); dopo = hunt(n.dopo) }
+                      }
                }
         };
 
-        hunt timers;
+        timers := hunt timers;
 
         if (nextExpiration timers == 0) {
             // no more expirations ahead
             ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
             timers := null
         }
-
-        // FIXME: hunt breaks the corollary, need to compact timers...
     };
 
 
