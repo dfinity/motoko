@@ -887,8 +887,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     interpret_exp env exp k
   | LetD (pat, exp, fail) -> 
     interpret_exp env exp (fun v -> 
-      let err () = 
-        match fail with
+      let err () = match fail with
         | Some fail -> interpret_exp env fail (fun _ -> assert false)
         | None -> trap pat.at "value %s does not match pattern" (string_of_val env v)
       in

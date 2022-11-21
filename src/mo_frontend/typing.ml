@@ -2307,7 +2307,7 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp, Some fail) -> 
     let fail_type = infer_exp env fail in
     if not T.(sub fail_type Non) then 
-      local_error env fail.at "M0500"
+      local_error env fail.at "M0159"
         "pattern binding failure handler of type%a\ndoes not match expected type None"
         display_typ_expand fail_type;
     (* check_exp env T.Non fail; *)
