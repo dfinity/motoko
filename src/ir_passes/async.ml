@@ -48,7 +48,7 @@ let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
 let t_async as_seq t =
   T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
-     [T.variant (T.Opt (T.Func(T.Local, T.Returns, [], [], []))])
+     [T.Opt (T.Func(T.Local, T.Returns, [], [], []))])
 
 let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
 
