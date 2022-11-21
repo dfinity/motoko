@@ -71,21 +71,21 @@ actor {
     };
 
     func graft(onto : ?Node, branch : ?Node) : ?Node = switch (onto, branch) {
-    case (null, null) null;
-    case (null, _) branch;
-    case (_, null) onto;
-    case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
+        case (null, null) null;
+        case (null, _) branch;
+        case (_, null) onto;
+        case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
     };
 
     func cancelTimer(id : TimerId) {
         func hunt(n : ?Node) : ?Node = switch n {
           case null n;
-          case (?n) { if (n.id == id) {
-                          n.expire := 0;
-                          graft(n.ante, n.dopo)
-                      } else {
-                          ?{ n with ante = hunt(n.ante); dopo = hunt(n.dopo) }
-                      }
+          case (?{ id = node; ante; dopo }) {
+                   if (node == id) {
+                       graft(ante, dopo)
+                   } else do? {
+                       { n! with ante = hunt ante; dopo = hunt dopo }
+                   }
                }
         };
 
