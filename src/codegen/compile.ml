@@ -5015,16 +5015,16 @@ module MakeSerialization (Strm : Stream) = struct
       let clear_array_slicing =
         let (set_temp, get_temp) = new_local env "temp" in
         set_temp ^^ 
-        get_temp ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag StableSeen) ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
-        get_temp ^^ compile_eq_const Tagged.(int_of_tag CoercionFailure) ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag CoercionFailure) ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-        get_temp ^^ compile_eq_const Tagged.(int_of_tag ArraySliceMinimum) ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-        G.if0 begin
-          (compile_eq_const Tagged.(int_of_tag Array))
+        G.if1 I32Type begin
+          (compile_unboxed_const Tagged.(int_of_tag Array))
         end begin
           get_temp
         end
