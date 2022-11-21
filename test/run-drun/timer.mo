@@ -98,12 +98,6 @@ actor {
         }
     };
 
-
-  let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
-
-  var count = 0;
-  var max = 10;
-
   system func timer() : async () {
     let now = time();
 
@@ -123,14 +117,14 @@ actor {
     };
 
     var gathered = 0;
-    let thunks : [var ?(() -> async ())] = Array_init(10/*FIXME*/, null);
+    let thunks : [var ?(() -> async ())] = Array_init(10, null); // we want max 10
     
     func gatherExpired(n : ?Node) =
         switch n {
         case null ();
         case (?n) {
                  gatherExpired(n.ante);
-                 if (n.expire > 0 and n.expire <= now) {
+                 if (n.expire > 0 and n.expire <= now and gathered < thunks.size()) {
                      thunks[gathered] := ?(n.job);
                      switch (n.delay) {
                        case (?delay) {
@@ -164,12 +158,14 @@ actor {
         futures[k] := switch (thunks[k]) { case (?thunk) ?(thunk()); case _ null };
     };
 
-    //debug { debugPrint(debug_show { gathered; exp }) };
-
     for (f in futures.vals()) {
         switch f { case (?f) { await f }; case _ () }
     };
   };
+
+  var count = 0;
+  var max = 10;
+  let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   public shared func go() : async () {
      var attempts = 0;
