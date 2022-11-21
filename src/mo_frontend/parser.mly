@@ -419,6 +419,8 @@ typ_pre :
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
     { AsyncT(scopeT (at $sloc), t) @! at $sloc }
+  | AWAIT t=typ_pre
+    { AsyncT(scopeT (at $sloc), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -655,6 +657,8 @@ exp_nondec(B) :
     { AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(e) @? at $sloc }
+  | AWAIT IN e=exp_nest
+    { AwaitE(e) @? at $sloc }
   | ASSERT e=exp_nest
     { AssertE(e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
@@ -704,6 +708,7 @@ exp_nondec(B) :
     { e }
   | DO QUEST e=block
     { DoOptE(e) @? at $sloc }
+  | DO AWAIT e=block
   | DO ASYNC e=block
     { DoAsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
 

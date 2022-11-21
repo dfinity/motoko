@@ -38,15 +38,15 @@ actor a {
     }
   };
 
-  // Use `do async {}` to avoid context switch at each recursive call
+  // Use `do await {}` to avoid context switch at each recursive call
   // Could also just do outermost return instead of in each branch.
-  func evalDoAsync(exp : Expression) : async Int = do async {
+  func evalDoAsync(exp : Expression) : await Int = do await {
     switch (exp) {
       case (#const(n)) n;
-      case (#add(e1, e2)) (await evalDoAsync(e1)) + (await evalDoAsync(e2));
-      case (#mul(e1, e2)) (await evalDoAsync(e1)) * (await evalDoAsync(e2));
-      case (#sub(e1, e2)) (await evalDoAsync(e1)) - (await evalDoAsync(e2));
-      case (#pow(e1, e2)) await pow(await (evalDoAsync e1), await (evalDoAsync e2));
+      case (#add(e1, e2)) (await in evalDoAsync(e1)) + (await in evalDoAsync(e2));
+      case (#mul(e1, e2)) (await in evalDoAsync(e1)) * (await in evalDoAsync(e2));
+      case (#sub(e1, e2)) (await in evalDoAsync(e1)) - (await in evalDoAsync(e2));
+      case (#pow(e1, e2)) await pow(await in (evalDoAsync e1), await in (evalDoAsync e2));
                               // ^^^ only real context switch on call to asynchronous `pow` query
     }
   };
@@ -71,8 +71,8 @@ actor a {
 
   public func evaluateDoAsync() : async () {
     P.debugPrint "DoAsync";
-    P.debugPrint (debug_show(await(evalDoAsync(sum(32)))));
-    P.debugPrint (debug_show(await(evalDoAsync(#pow(#const 2,#const 10)))));
+    P.debugPrint (debug_show(await in (evalDoAsync(sum(32)))));
+    P.debugPrint (debug_show(await in (evalDoAsync(#pow(#const 2,#const 10)))));
   };
 };
 
