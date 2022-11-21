@@ -33,7 +33,7 @@ This scheme makes the following assumptions:
 
 use crate::buf::{read_byte, Buf};
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{Memory, BLACK_ALLOCATION};
+use crate::memory::{Memory, MARK_ON_ALLOCATION};
 use crate::tommath_bindings::*;
 use crate::types::{size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
 
@@ -43,7 +43,7 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
-    (*blob).header.set_tag(TAG_BIGINT, BLACK_ALLOCATION);
+    (*blob).header.set_tag(TAG_BIGINT, MARK_ON_ALLOCATION);
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);

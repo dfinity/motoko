@@ -941,6 +941,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "mark_on_allocation" [I32Type] [I32Type];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
@@ -995,9 +996,6 @@ module Heap = struct
 
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
-
-  (* Incremental GC allocation scheme *)
-  let black_allocation = true
 
   (* The heap base global can only be used late, see conclude_module
      and GHC.register *)
@@ -1350,15 +1348,11 @@ module Tagged = struct
   let raw_tag_field = 0l
 
   let mark_bit_mask = Int32.shift_left 1l 31
-
+  
   (* Assumes a pointer to the object on the stack *)
-  let store_tag tag =
+  let store_tag env tag =
     compile_unboxed_const (int_of_tag tag) ^^
-    (if Heap.black_allocation then
-      compile_bitor_const mark_bit_mask
-    else 
-      G.nop
-    ) ^^
+    E.call_import env "rts" "mark_on_allocation" ^^
     Heap.store_field raw_tag_field
 
   let load_tag =
@@ -1646,7 +1640,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag Bits64) ^^
+    get_i ^^ Tagged.(store_tag env Bits64) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1764,7 +1758,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Heap.alloc env 2l ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag Bits32) ^^
+    get_i ^^ Tagged.(store_tag env Bits32) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -2006,7 +2000,7 @@ module Float = struct
     let (set_i, get_i) = new_local env "boxed_f64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag Bits64) ^^
+    get_i ^^ Tagged.(store_tag env Bits64) ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
@@ -3027,7 +3021,7 @@ module Object = struct
 
     (* Set tag *)
     get_ri ^^
-    Tagged.(store_tag Object) ^^
+    Tagged.(store_tag env Object) ^^
 
     (* Set size *)
     get_ri ^^
@@ -5036,7 +5030,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.(store_tag StableSeen) ^^
+          get_x ^^ Tagged.(store_tag env StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -7086,7 +7080,7 @@ module FuncDec = struct
 
         (* Store the tag *)
         get_clos ^^
-        Tagged.(store_tag Closure) ^^
+        Tagged.(store_tag env Closure) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^

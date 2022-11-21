@@ -1,13 +1,15 @@
 use motoko_rts::{
     memory::{alloc_array, alloc_blob},
     stream::alloc_stream,
-    types::{Bytes, Obj, Words},
+    types::{is_marked, mark, unmark, Bytes, Obj, Words},
 };
 
 use crate::memory::TestMemory;
 
 pub unsafe fn test() {
     println!("  Testing mark bit...");
+
+    test_mark_functions();
 
     let mut mem = TestMemory::new(Words(256));
 
@@ -19,6 +21,14 @@ pub unsafe fn test() {
 
     let stream = alloc_stream(&mut mem, Bytes(64));
     test_mark_bit(stream as *mut Obj);
+}
+
+fn test_mark_functions() {
+    let unmarked_tag = 0x12345678;
+    assert!(!is_marked(unmarked_tag));
+    let marked_tag = mark(unmarked_tag);
+    assert!(is_marked(marked_tag));
+    assert_eq!(unmark(marked_tag), unmarked_tag);
 }
 
 unsafe fn test_mark_bit(object: *mut Obj) {

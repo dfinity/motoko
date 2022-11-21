@@ -1,6 +1,10 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{continuation_table, memory::Memory, types::Value};
+use crate::{
+    continuation_table,
+    memory::{Memory, MARK_ON_ALLOCATION},
+    types::Value,
+};
 
 use self::mark_stack::MarkStack;
 
@@ -79,6 +83,7 @@ impl<'a, M: Memory> IncrementalGC<'a, M> {
             heap_base,
             mark_stack,
         });
+        MARK_ON_ALLOCATION = true;
         self.mark_roots(roots);
     }
 

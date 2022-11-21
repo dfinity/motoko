@@ -380,6 +380,21 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 
 const MARK_BIT_MASK: u32 = 1 << 31;
 
+#[inline]
+pub fn is_marked(tag: Tag) -> bool {
+    tag & MARK_BIT_MASK != 0
+}
+
+#[inline]
+pub fn mark(tag: Tag) -> Tag {
+    tag | MARK_BIT_MASK
+}
+
+#[inline]
+pub fn unmark(tag: Tag) -> Tag {
+    tag & !MARK_BIT_MASK
+}
+
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
@@ -388,24 +403,24 @@ pub struct Obj {
 
 impl Obj {
     pub unsafe fn set_tag(&mut self, tag: Tag, marked: bool) {
-        debug_assert!(tag & MARK_BIT_MASK == 0);
-        self.raw_tag = if marked { tag | MARK_BIT_MASK } else { tag }
+        debug_assert!(!is_marked(tag));
+        self.raw_tag = if marked { mark(tag) } else { tag }
     }
 
     pub unsafe fn is_marked(self: *const Self) -> bool {
-        (*self).raw_tag & MARK_BIT_MASK != 0
+        is_marked((*self).raw_tag)
     }
 
     pub unsafe fn mark(self: *mut Self) {
-        (*self).raw_tag |= MARK_BIT_MASK;
+        (*self).raw_tag = mark((*self).raw_tag);
     }
 
     pub unsafe fn unmark(self: *mut Self) {
-        (*self).raw_tag &= !MARK_BIT_MASK;
+        (*self).raw_tag = unmark((*self).raw_tag);
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {
-        (*self).raw_tag & !MARK_BIT_MASK
+        unmark((*self).raw_tag)
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {

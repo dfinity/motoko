@@ -1,5 +1,5 @@
 use crate::{
-    memory::BLACK_ALLOCATION,
+    memory::MARK_ON_ALLOCATION,
     types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
 };
 
@@ -16,7 +16,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
 
     // NB. cannot use as_array() here as we didn't write the header yet
     let iter_array = iter_ptr.get_ptr() as *mut Array;
-    (*iter_array).header.set_tag(TAG_ARRAY, BLACK_ALLOCATION);
+    (*iter_array).header.set_tag(TAG_ARRAY, MARK_ON_ALLOCATION);
     (*iter_array).len = 2;
 
     iter_array.set(ITER_BLOB_IDX, blob);

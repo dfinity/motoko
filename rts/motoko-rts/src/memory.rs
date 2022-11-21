@@ -8,9 +8,21 @@ use crate::types::*;
 use motoko_rts_macros::ic_mem_fn;
 
 /// Incremental GC allocation scheme:
-/// New allocated objects are initially marked for the snapshot-at-the-beginning incremental marking.
+/// While the incremental GC is in the marking phase, new allocated objects are initially marked.
 /// This is necessary because the incremental GC does neither scan nor use write barriers on the call stack.
-pub const BLACK_ALLOCATION: bool = true;
+/// Hence, new allocated objects are conservatively retained during an active GC mark phase.
+pub static mut MARK_ON_ALLOCATION: bool = false;
+
+/// Import for compiler-generated code to situatively set the mark bit for new heap allocations.
+#[no_mangle]
+pub unsafe fn mark_on_allocation(tag: Tag) -> Tag {
+    debug_assert!(!is_marked(tag));
+    if MARK_ON_ALLOCATION {
+        mark(tag)
+    } else {
+        tag
+    }
+}
 
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
@@ -37,7 +49,7 @@ pub trait Memory {
 /// Allocate a new blob for the mutator with the default incremental mark allocation scheme.
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    alloc_blob_internal(mem, size, BLACK_ALLOCATION)
+    alloc_blob_internal(mem, size, MARK_ON_ALLOCATION)
 }
 
 /// RTS-internal allocation of blobs for the GC that can be collected during the next GC run.
@@ -66,7 +78,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
-    (*ptr).header.set_tag(TAG_ARRAY, BLACK_ALLOCATION);
+    (*ptr).header.set_tag(TAG_ARRAY, MARK_ON_ALLOCATION);
     (*ptr).len = len;
 
     skewed_ptr
