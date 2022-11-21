@@ -38,7 +38,7 @@ jobs:
       run: echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
     - name: "nix-build"
-      run: nix-build --max-jobs 4 -A all-systems-go -o build-output
+      run: nix-build --max-jobs 64 -A all-systems-go -o build-output
 
     - name: Build status
       id: build-status
