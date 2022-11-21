@@ -128,7 +128,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn increment(&mut self) {
-        println!(100, "GC increment");
         self.steps = 0;
         match &mut PHASE {
             Phase::Pause => {}
@@ -192,7 +191,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn mark_complete(&mut self) {
-        println!(100, "Mark complete");
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
         sanity_checks::check_mark_completeness(self.mem);
