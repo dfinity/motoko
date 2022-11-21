@@ -26,12 +26,16 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     #[cfg(debug_assertions)]
     sanity_checks::check_memory(mem);
 
-    let heap_base = ic::get_aligned_heap_base() as usize;
+    let limits = Limits {
+        base: ic::get_aligned_heap_base() as usize,
+        last_free: ic::LAST_HP as usize,
+        free: ic::HP as usize,
+    };
     let roots = Roots {
         static_roots: ic::get_static_roots(),
         continuation_table: *continuation_table::continuation_table_loc(),
     };
-    IncrementalGC::empty_call_stack_increment(mem, heap_base, roots);
+    IncrementalGC::empty_call_stack_increment(mem, limits, roots);
 }
 
 enum Phase {
@@ -46,13 +50,19 @@ struct MarkState {
 
 static mut PHASE: Phase = Phase::Pause;
 
+struct Limits {
+    pub base: usize,
+    pub last_free: usize,
+    pub free: usize,
+}
+
 struct Roots {
     pub static_roots: Value,
     pub continuation_table: Value,
     // If new roots are added in future, extend `mark_roots()`.
 }
 
-const INCREMENT_LIMIT: usize = 128;
+const INCREMENT_LIMIT: usize = 1024;
 
 struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
@@ -64,10 +74,10 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
     /// * The mark phase is only started on an empty call stack.
     /// * The moving phase can only be completed on an empty call stack.
-    pub unsafe fn empty_call_stack_increment(mem: &'a mut M, heap_base: usize, roots: Roots) {
+    pub unsafe fn empty_call_stack_increment(mem: &'a mut M, limits: Limits, roots: Roots) {
         let mut gc = Self::instance(mem);
-        if Self::pausing() {
-            gc.start_run(heap_base, roots);
+        if Self::pausing() && Self::should_start_gc(&limits) {
+            gc.start_run(limits.base, roots);
         }
         gc.increment();
     }
@@ -86,6 +96,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 }
             }
         }
+    }
+
+    fn should_start_gc(limits: &Limits) -> bool {
+        const GC_START_THRESHOLD: usize = 32 * 1024 * 1024;
+        assert!(limits.last_free <= limits.free);
+        limits.free - limits.last_free >= GC_START_THRESHOLD
     }
 
     fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
@@ -112,6 +128,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn increment(&mut self) {
+        println!(100, "GC increment");
         self.steps = 0;
         match &mut PHASE {
             Phase::Pause => {}
