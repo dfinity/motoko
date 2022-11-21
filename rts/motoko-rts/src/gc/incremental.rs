@@ -24,7 +24,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
     #[cfg(debug_assertions)]
-    sanity_checks::check_memory(mem);
+    sanity_checks::check_memory();
 
     let limits = Limits {
         base: ic::get_aligned_heap_base() as usize,
@@ -62,7 +62,8 @@ struct Roots {
     // If new roots are added in future, extend `mark_roots()`.
 }
 
-const INCREMENT_LIMIT: usize = 1024;
+const INCREMENT_LIMIT: usize = 1024; // soft limit on marked fields per GC run
+const START_THRESHOLD: usize = 32 * 1024 * 1024; // new allocation since last GC run
 
 struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
@@ -99,9 +100,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     fn should_start_gc(limits: &Limits) -> bool {
-        const GC_START_THRESHOLD: usize = 32 * 1024 * 1024;
         assert!(limits.last_free <= limits.free);
-        limits.free - limits.last_free >= GC_START_THRESHOLD
+        limits.free - limits.last_free >= START_THRESHOLD
     }
 
     fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
@@ -138,7 +138,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
-        self.mark_potential_object(roots.continuation_table);
+        self.mark_continuation_table(roots.continuation_table);
     }
 
     unsafe fn mark_static_roots(&mut self, static_roots: Value) {
@@ -146,13 +146,16 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
             assert!((mutbox as usize) < Self::heap_base());
-            self.mark_potential_object((*mutbox).field);
+            let value = (*mutbox).field;
+            if value.is_ptr() && value.get_ptr() >= Self::heap_base() {
+                self.mark_object(value);
+            }
         }
     }
 
-    unsafe fn mark_potential_object(&mut self, value: Value) {
-        if value.is_ptr() && value.get_ptr() >= Self::heap_base() {
-            self.mark_object(value)
+    unsafe fn mark_continuation_table(&mut self, continuation_table: Value) {
+        if continuation_table.is_ptr() {
+            self.mark_object(continuation_table);
         }
     }
 
@@ -190,6 +193,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn mark_complete(&mut self) {
         println!(100, "Mark complete");
+        #[cfg(debug_assertions)]
+        #[cfg(feature = "ic")]
+        sanity_checks::check_mark_completeness(self.mem);
     }
 
     unsafe fn mark_fields(&mut self, object: *mut Obj) {
