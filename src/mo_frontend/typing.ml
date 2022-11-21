@@ -760,7 +760,7 @@ let rec is_explicit_exp e =
   | AnnotE _ | ImportE _ ->
     true
   | LitE l -> is_explicit_lit !l
-  | UnE (_, _, e1) | OptE e1 | DoOptE e1
+  | UnE (_, _, e1) | OptE e1 | DoAsyncE (_, e1) | DoOptE e1
   | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
   | LabelE (_, _, e1) | AsyncE (_, e1) | AwaitE e1 ->
     is_explicit_exp e1
