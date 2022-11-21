@@ -33,12 +33,17 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     IncrementalGC::empty_call_stack_increment(mem, heap_base, roots);
 }
 
-struct State {
+enum Phase {
+    Pause,
+    Mark(MarkState),
+}
+
+struct MarkState {
     pub heap_base: usize,
     pub mark_stack: MarkStack,
 }
 
-static mut STATE: Option<State> = None;
+static mut PHASE: Phase = Phase::Pause;
 
 struct Roots {
     pub static_roots: Value,
@@ -50,23 +55,25 @@ struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
 }
 
-impl<'a, M: Memory> IncrementalGC<'a, M> {
+impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
     /// * The mark phase is only started on an empty call stack.
     /// * The moving phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(mem: &mut M, heap_base: usize, roots: Roots) {
         let mut gc = IncrementalGC { mem };
-        if STATE.is_none() {
+        if Self::pausing() {
             gc.start_run(heap_base, roots);
         }
         gc.increment();
     }
 
+    /// Pre-update field-level write-barrier peforming snapshot-at-the-beginning marking.
+    /// Only effective while the GC is in the mark phase.
     #[inline]
     pub unsafe fn write_barrier(mem: &mut M, value: Value) {
         if value.is_ptr() {
-            if let Some(state) = &STATE {
+            if let Phase::Mark(state) = &PHASE {
                 if value.get_ptr() >= state.heap_base {
                     let mut gc = IncrementalGC { mem };
                     gc.mark_object(value);
@@ -77,14 +84,22 @@ impl<'a, M: Memory> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_run(&mut self, heap_base: usize, roots: Roots) {
-        assert!(STATE.is_none());
+        assert!(Self::pausing());
         let mark_stack = MarkStack::new(self.mem);
-        STATE = Some(State {
+        let state = MarkState {
             heap_base,
             mark_stack,
-        });
+        };
+        PHASE = Phase::Mark(state);
         MARK_ON_ALLOCATION = true;
         self.mark_roots(roots);
+    }
+
+    unsafe fn pausing() -> bool {
+        match &PHASE {
+            Phase::Pause => true,
+            _ => false,
+        }
     }
 
     unsafe fn increment(&mut self) {
@@ -112,7 +127,7 @@ impl<'a, M: Memory> IncrementalGC<'a, M> {
     }
 
     unsafe fn mark_object(&mut self, value: Value) {
-        if let Some(state) = &mut STATE {
+        if let Phase::Mark(state) = &mut PHASE {
             println!(100, "Mark object {:#x}", value.get_ptr());
             assert!((value.get_ptr() >= state.heap_base));
             let object = value.as_obj();
@@ -126,6 +141,9 @@ impl<'a, M: Memory> IncrementalGC<'a, M> {
     }
 
     unsafe fn heap_base() -> usize {
-        STATE.as_ref().unwrap().heap_base
+        match &PHASE {
+            Phase::Mark(state) => state.heap_base,
+            _ => panic!("Undefined heap base"),
+        }
     }
 }
