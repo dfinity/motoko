@@ -50,7 +50,7 @@
 //! Free blocks are never visited by the GC mark phase.
 //!
 
-use core::ptr::null_mut;
+use core::{cmp::max, ptr::null_mut};
 
 use crate::{
     constants::WORD_SIZE,
@@ -67,7 +67,7 @@ pub struct FreeBlock {
 
 impl FreeBlock {
     pub unsafe fn initialize(self: *mut Self, size: Bytes<u32>) {
-        assert!(size.as_u32() >= size_of::<Self>().to_bytes().as_u32());
+        assert!(size >= Self::min_size());
         assert_eq!(size.as_u32() % WORD_SIZE, 0);
         let words = size.to_words();
         #[cfg(debug_assertions)]
@@ -89,14 +89,13 @@ impl FreeBlock {
 
     // Remainder block is returned unless it is too small (internal fragmentation)
     pub unsafe fn split(self: *mut Self, size: Bytes<u32>) -> *mut FreeBlock {
-        let min_size = size_of::<Self>().to_bytes();
-        assert!(size >= min_size);
+        assert!(size >= Self::min_size());
         assert!(size <= self.size());
         self.initialize(size);
         let remainder_address = self as usize + size.as_usize();
         let remainder_size = self.size() - size;
         assert_eq!(remainder_size.as_u32() % WORD_SIZE, 0);
-        if remainder_size < min_size {
+        if remainder_size < Self::min_size() {
             for word in 0..remainder_size.as_u32() / WORD_SIZE {
                 let address = remainder_address as u32 + word * WORD_SIZE;
                 *(address as *mut u32) = TAG_ONE_WORD_FILLER;
@@ -107,6 +106,10 @@ impl FreeBlock {
             remainder.initialize(remainder_size);
             remainder
         }
+    }
+
+    pub fn min_size() -> Bytes<u32> {
+        size_of::<Self>().to_bytes()
     }
 }
 
@@ -232,7 +235,7 @@ pub struct SegregatedFreeList {
 }
 
 impl SegregatedFreeList {
-    pub fn initialize() -> SegregatedFreeList {
+    pub fn new() -> SegregatedFreeList {
         let lists = [
             Self::free_list(0),
             Self::free_list(1),
@@ -260,7 +263,7 @@ impl SegregatedFreeList {
     fn allocation_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
         for index in 0..self.lists.len() {
             let list = &self.lists[index];
-            if size.as_usize() >= list.size_class().lower() && !list.is_empty() {
+            if size.as_usize() <= list.size_class().lower() && !list.is_empty() {
                 return &mut self.lists[index];
             }
         }
@@ -279,6 +282,7 @@ impl SegregatedFreeList {
 
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
         let list = self.allocation_list(size);
+        assert!(size.as_usize() <= list.size_class.lower());
         let mut block = if list.is_overflow_list() {
             list.remove_first_fit(size)
         } else {
@@ -290,7 +294,9 @@ impl SegregatedFreeList {
         assert!(block != null_mut());
         if block.size() > size {
             let remainder = block.split(size);
-            self.free(remainder);
+            if remainder != null_mut() {
+                self.free(remainder);
+            }
         }
         assert_eq!(block.size(), size);
         assert_eq!((*block).next, null_mut());
@@ -299,11 +305,15 @@ impl SegregatedFreeList {
     }
 
     pub unsafe fn free(&mut self, block: *mut FreeBlock) {
+        assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
+        assert!(list.size_class.includes(block.size().as_usize()));
         list.insert(block);
     }
 
     pub unsafe fn merge(&mut self, left: *mut FreeBlock, right: *mut FreeBlock) {
+        assert_ne!(left, null_mut());
+        assert_ne!(right, null_mut());
         assert_eq!(left as usize + left.size().as_usize(), right as usize);
         let left_list = self.insertion_list(left.size());
         left_list.remove(left);
@@ -316,6 +326,7 @@ impl SegregatedFreeList {
     }
 
     unsafe fn grow_memory<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
+        let size = max(size, FreeBlock::min_size());
         assert_eq!(size.as_u32() % WORD_SIZE, 0);
         let value = mem.alloc_words(size.to_words());
         let block = value.get_ptr() as *mut FreeBlock;
