@@ -1,2 +1,4 @@
-let-else.mo:1.16-1.17: syntax error [M0001], unexpected token '{', expected one of token or <phrase> sequence:
-  <exp(bl)>
+let-else.mo:1.18-1.19: type error [M0050], literal of type
+  Nat
+does not have expected type
+  None
