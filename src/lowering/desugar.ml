@@ -658,14 +658,13 @@ and text_dotE proj e =
     |  _ -> assert false
 
 and let_else_switch p e f =
-  let e', p', f' = exp e, pat p, exp f in
   {
-    e' with
-    it = I.SwitchE(
-      exp e,
-      I.[
-        { it = { pat = p'; exp = e' }; at = e'.at; note = () };
-        { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
+    e with
+    it = S.SwitchE(
+      e,
+      S.[
+        { it = { pat = p; exp = e }; at = e.at; note = () };
+        { it = { pat = { it = WildP; at = f.at; note = p.note }; exp = f }; at = f.at ; note = () }
       ]
     )
   }
@@ -686,7 +685,7 @@ and block force_unit ds =
     (decs prefix @ [letD x (exp e); letP (pat p) (varE x)], varE x)
   | false, S.LetD (p, e, Some f) ->
     let x = fresh_var "x" (e.note.S.note_typ) in
-    (decs prefix @ [letD x (let_else_switch p e f); letP (pat p) (varE x)], varE x)
+    (decs prefix @ [letD x (exp (let_else_switch p e f)); letP (pat p) (varE x)], varE x)
   | _, _ ->
     (decs ds, tupE [])
 
@@ -710,7 +709,7 @@ and dec' at n = function
     end
   | S.LetD (p, e, Some f) ->
     (* FIXME check for recursive actors here too? *)
-    I.LetD (pat p, let_else_switch p e f)
+    I.LetD (pat p, exp (let_else_switch p e f))
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
   | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
