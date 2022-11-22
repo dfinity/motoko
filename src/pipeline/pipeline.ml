@@ -96,7 +96,7 @@ let generic_parse_with mode lexer parser name : _ Diag.result =
   let* mk_syntax =
     try
       Parser_lib.triv_table := triv_table;
-      Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
+      Parsing.parse mode (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
     with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
   let phrase = mk_syntax name in
