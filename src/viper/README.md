@@ -2,8 +2,8 @@
 
 **Disclaimer** — this is an _early prototype_; in particular: 
 1. This project comes with no guarantees whatsoever. 
-2. The currently supported subset of Motoko is insufficient for most real-world applications
-3. DFINITY currently has no plans to continue the development of Formal Motoko
+2. The currently supported subset of Motoko is insufficient for most real-world applications.
+3. DFINITY currently has no plans to continue the development of Formal Motoko.
 
 Formal Motoko is a prototype code-level verifier for Motoko. The project started at the DFINITY Foundation as a way to demonstrate that Motoko (and the Internet Computer in general) are well-suited for developing formally verified Web3 software.
 
@@ -45,11 +45,11 @@ Formal code specifications are written as part of the Motoko source code. These 
   * specify that the property `exp` is _intended_ to hold when this block execution begins. 
   * require that the tool actually _checks_ whether this assumption holds (given this actor's entire source code)
 * `assert:system (exp : Bool);` — a _static assertion_ that asks the verifier to prove that the property `exp` holds. Useful while designing code-level canister specifications.
-
+Note: the above syntax is provisional. It has been used so far to avoid introducing breaking changes to the Motoko grammar. In the future, Formal Motoko may switch to bespoke syntax for code specifications.
 **Static vs. dynamic assertions**
 <a name="statVsDyn"></a>
 
-The keyword `assert (exp : Bool);` (which is already available in Motoko proper) means a _dynamic assertion_, i.e., a runtime check of the condition `exp`. Note, however, that adding an `assert exp;` statement (for some Boolean expression `exp`) affects the static verification of the canister. Concretely, the verifier will _take for granted_ that `exp` holds after this statement (since any execution violating this assumption would trap).
+The expression `assert <exp>` (which is already available in Motoko proper) means a _dynamic assertion_, i.e., a runtime check of the Boolean condition `<exp>`. Note, however, that adding an `assert <exp>` expression (for some Boolean expression `<exp>`) affects the static verification of the canister. Concretely, the verifier will _take for granted_ that `<exp>` holds after this statement (since any execution violating this assumption would trap).
 
 **Testing vs. formal verification**
 <a name="testsVsVerif"></a>
@@ -59,7 +59,7 @@ Dynamic assertions can also be used for testing. Of course, the downside of test
 **Precondition of public functions**
 <a name="publicFuncPreconds"></a>
 
-In particular, dynamic assertions are very useful for specifying _preconditions_ of an actor's public functions (i.e., functions exposed in the Candid API configuration). Since such functions can be invoked by anyone; the identity of the caller is statically unknown. It is thus necessary to check all of the assumptions at runtime, by writing `assert P` (here, `P` denotes some Boolean expression representing a function's precondition). Conversely, writing `assert:system P` at the top of a public function will never verify because Formal Motoko has zero knowledge about the caller.
+In particular, dynamic assertions are very useful for specifying _preconditions_ of an actor's public functions (i.e., functions exposed in the Candid API configuration). Since such functions can be invoked by anyone; the identity of the caller is statically unknown. It is thus necessary to check all of the assumptions at runtime, by writing `assert <exp>`(here, `<exp>` denotes some `Bool` expression representing a function's precondition). Conversely, writing `assert:system <exp>` at the top of a public function will never verify because Formal Motoko has zero knowledge about the caller.
 
 **Examples**
 <a name="Examples"></a>
@@ -103,7 +103,7 @@ To get a better idea about how code-level specifications help formalize what a M
 [nix-shell:motoko] moc -viper input.mo > output.vpr
 ```
 
-You may then verify the `output.vpr` file using [Viper](https://viper.ethz.ch/). Soon, there will be an interactive IDE integration for VS Code, s.t. the outputs do not need to be verified my manually invoking Viper. 
+You may then verify the `output.vpr` file using [Viper](https://viper.ethz.ch/). Soon, there will be an interactive IDE integration for VS Code, s.t. the outputs do not need to be verified by manually invoking Viper.
 
 **Testing Formal Motoko**
 <a name="Testing"></a>
