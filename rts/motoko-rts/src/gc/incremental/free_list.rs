@@ -54,6 +54,7 @@ use core::ptr::null_mut;
 
 use crate::{
     constants::WORD_SIZE,
+    memory::Memory,
     types::{is_marked, size_of, Bytes, Obj, Words, TAG_FREE_BLOCK_MIN, TAG_ONE_WORD_FILLER},
 };
 
@@ -276,7 +277,7 @@ impl SegregatedFreeList {
         panic!("No matching free list");
     }
 
-    pub unsafe fn allocate(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
+    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
         let list = self.allocation_list(size);
         let mut block = if list.is_overflow_list() {
             list.remove_first_fit(size)
@@ -284,7 +285,7 @@ impl SegregatedFreeList {
             list.remove_first()
         };
         if block == null_mut() {
-            block = Self::grow_memory(size);
+            block = Self::grow_memory(mem, size);
         }
         assert!(block != null_mut());
         if block.size() > size {
@@ -314,7 +315,11 @@ impl SegregatedFreeList {
         self.free(merged_block);
     }
 
-    fn grow_memory(_size: Bytes<u32>) -> *mut FreeBlock {
-        panic!("Not yet implemented");
+    unsafe fn grow_memory<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
+        assert_eq!(size.as_u32() % WORD_SIZE, 0);
+        let value = mem.alloc_words(size.to_words());
+        let block = value.get_ptr() as *mut FreeBlock;
+        block.initialize(size);
+        block
     }
 }
