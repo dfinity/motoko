@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Tests that `moc` can output Viper code
-(cat  <<__END__
+(cat <<__END__
 actor {
 
   var claimed = false;
