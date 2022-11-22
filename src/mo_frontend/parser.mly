@@ -199,17 +199,6 @@ and objblock s dec_fields =
     | _ -> ()) dec_fields;
   ObjBlockE(s, dec_fields)
 
-(* Verification mode only *)
-
-let (&&&) cond action =
-  if not cond then syntax_error action.at "M0181" "verification assertions not permitted in normal mode";
-  action
-
-let is_verification () =
-  match !Parser_lib.mode with
-  | None -> assert false
-  | Some mode -> mode.Lexer_lib.verification
-
 %}
 
 %token EOF DISALLOWED

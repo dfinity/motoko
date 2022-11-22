@@ -1,4 +1,26 @@
-(* Viper only tokens and productions *)
+%{
+
+let verification_syntax_error at code msg =
+  Diag.add_msg (Option.get !Parser_lib.msg_store)
+    (Diag.error_message at code "verification syntax" msg)
+
+(* Verification mode only *)
+
+let (&&&) cond (action : Mo_def.Syntax.exp) =
+  if not cond then
+    verification_syntax_error
+      action.Source.at
+      "M0181" "verification assertions not permitted in normal mode";
+  action
+
+let is_verification () =
+  match !Parser_lib.mode with
+  | None -> assert false
+  | Some mode -> mode.Lexer_lib.verification
+
+%}
+
+(* Viper-only tokens and productions *)
 
 %token INVARIANT
 %token IMPLIES
