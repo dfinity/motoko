@@ -657,18 +657,18 @@ and text_dotE proj e =
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
-and let_else_switch p e f = 
+and let_else_switch p e f =
   let e', p', f' = exp e, pat p, exp f in
-  { 
-    e' with 
+  {
+    e' with
     it = I.SwitchE(
       exp e,
-      [
+      I.[
         { it = { pat = p'; exp = e' }; at = e'.at; note = () };
         { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
       ]
-    )  
-  } 
+    )
+  }
 
 and block force_unit ds =
   match ds with
