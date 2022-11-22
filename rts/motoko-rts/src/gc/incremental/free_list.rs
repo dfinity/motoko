@@ -72,8 +72,6 @@ impl FreeBlock {
         let words = size.to_words();
         #[cfg(debug_assertions)]
         crate::mem_utils::memzero(self as usize, words);
-        #[cfg(debug_assertions)]
-        println!(100, "ZERO MEMORY {}", words.to_bytes().as_usize());
         assert!(words.as_u32() <= u32::MAX - TAG_FREE_BLOCK_MIN);
         (*self).header.raw_tag = TAG_FREE_BLOCK_MIN + words.as_u32();
         assert!(!is_marked((*self).header.raw_tag));
@@ -93,10 +91,10 @@ impl FreeBlock {
     pub unsafe fn split(self: *mut Self, size: Bytes<u32>) -> *mut FreeBlock {
         assert!(size >= Self::min_size());
         assert!(size <= self.size());
-        self.initialize(size);
         let remainder_address = self as usize + size.as_usize();
         let remainder_size = self.size() - size;
         assert_eq!(remainder_size.as_u32() % WORD_SIZE, 0);
+        self.initialize(size);
         if remainder_size < Self::min_size() {
             for word in 0..remainder_size.as_u32() / WORD_SIZE {
                 let address = remainder_address as u32 + word * WORD_SIZE;
@@ -104,7 +102,6 @@ impl FreeBlock {
             }
             null_mut()
         } else {
-            println!(100, "SPLIT REMAINDER {}", remainder_size.as_usize());
             let remainder = remainder_address as *mut FreeBlock;
             remainder.initialize(remainder_size);
             remainder
