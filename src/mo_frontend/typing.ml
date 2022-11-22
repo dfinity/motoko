@@ -2613,7 +2613,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let consequence = match fail with
       | None when is_import dec -> local_error
       | None -> warn
-      | Some _ -> fun _ _ _ -> Format.kasprintf (fun _ -> ()) in
+      | Some _ -> fun _ _ _ -> Format.kasprintf ignore in
     let ve' = check_pat_exhaustive consequence env t pat in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
