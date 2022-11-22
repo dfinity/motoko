@@ -2608,9 +2608,13 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
-  | LetD (pat, exp, _) ->
+  | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true} exp in
-    let ve' = check_pat_exhaustive (if is_import dec then local_error else warn) env t pat in
+    let consequence = match fail with
+      | None when is_import dec -> local_error
+      | None -> warn
+      | Some _ -> fun _ _ _ -> Format.kasprintf (fun _ -> ()) in
+    let ve' = check_pat_exhaustive consequence env t pat in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in

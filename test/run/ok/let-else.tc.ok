@@ -1,5 +1,0 @@
-let-else.mo:1.25-1.31: warning [M0145], this pattern of type
-  (Int, Int)
-does not cover value
-  (5, 0 or 1 or _) or
-  (0 or 1 or _, _)
