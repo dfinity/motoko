@@ -95,7 +95,7 @@ and exp_fields m efs = List.iter (fun (ef : exp_field) -> exp m ef.it.exp) efs
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
   | ExpD e -> exp m e
-  | LetD (p, e, None) -> pat m p; exp m e
+  | LetD (p, e, fail) -> pat m p; exp m e; Option.iter (exp m) fail
   | VarD _ -> err m d.at
 
 and pat m p = match p.it with
