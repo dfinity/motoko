@@ -26,6 +26,9 @@ func @reset_cycles() {
 };
 
 
+// timer module implementation
+// fundamental node invariant: max_exp ante <= expire <= min_exp dopo
+// corollary: if expire == 0 then the ante is completely expired
 type TimerId = Nat;
 type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
 var @timers : ?Node = null;
@@ -51,7 +54,7 @@ func @nextExpiration(n : ?Node) : Nat64 = switch n {
             }
         };
         exp
-         }
+    }
 };
 
 // Function called by backend to run eligible timed actions.

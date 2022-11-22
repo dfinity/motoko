@@ -3,12 +3,6 @@
 import { debugPrint; error; time } = "mo:⛔";
 
 actor {
-    // timer module implementation
-    // node invariant max_exp ante <= expire <= min_exp dopo
-    // corollary: if expire == 0 then the ante is completely expired
-    //type TimerId = Nat;
-    //type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
-    //var timers : ?Node = null;
     var lastId = 0;
 
     // ad-hoc place for the Timer.mo API
@@ -39,8 +33,6 @@ actor {
             // reinstall
             ignore (prim "global_timer_set" : Nat64 -> Nat64) prev;
         };
-
-        //debug { debugPrint(debug_show {now; exp; prev; id }) };
 
         id
     };
@@ -74,70 +66,6 @@ actor {
 
   system func timer() : async () {
       await @run_timers();
-/*
-    let now = time();
-
-    type CNode = ?{var expire : Nat64; id : TimerId; delay : ?Nat64; ante : CNode; dopo : CNode };
-    func clean(n : ?Node) : CNode =
-      switch n {
-          case null null;
-          case (?n) ?{n with ante = clean(n.ante); dopo = clean(n.dopo) }
-      };
-    //debugPrint(debug_show {now; timers = clean timers});
-
-    let exp = nextExpiration timers;
-    let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
-
-    if (exp == 0) {
-        return
-    };
-
-    var gathered = 0;
-    let thunks : [var ?(() -> async ())] = Array_init(10, null); // we want max 10
-    
-    func gatherExpired(n : ?Node) =
-        switch n {
-        case null ();
-        case (?n) {
-                 gatherExpired(n.ante);
-                 if (n.expire > 0 and n.expire <= now and gathered < thunks.size()) {
-                     thunks[gathered] := ?(n.job);
-                     switch (n.delay) {
-                       case (?delay) {
-                         // re-add the node
-                         let expire = n.expire + delay;
-                         // N.B. insert only works on pruned nodes
-                         func insert(m : ?Node) : Node =
-                           switch m {
-                             case null ({ n with var expire; ante = null; dopo = null });
-                             case (?m) {
-                                      assert m.expire != 0;
-                                      if (expire < m.expire) ({ m with ante = ?(insert(m.ante)) })
-                                      else ({ m with dopo = ?(insert(m.dopo)) })
-                                  }
-                         };
-                         timers := ?insert(prune(timers));
-                       };
-                       case _ ()
-                     };
-                     n.expire := 0;
-                     gathered += 1;
-                 };
-                 gatherExpired(n.dopo);
-             }
-        };
-
-    gatherExpired(timers);
-
-    let futures : [var ?(async ())] = Array_init(thunks.size(), null);
-    for (k in thunks.keys()) {
-        futures[k] := switch (thunks[k]) { case (?thunk) ?(thunk()); case _ null };
-    };
-
-    for (f in futures.vals()) {
-        switch f { case (?f) { await f }; case _ () }
-    };
-*/
   };
 
   var count = 0;
