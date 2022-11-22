@@ -72,6 +72,8 @@ impl FreeBlock {
         let words = size.to_words();
         #[cfg(debug_assertions)]
         crate::mem_utils::memzero(self as usize, words);
+        #[cfg(debug_assertions)]
+        println!(100, "ZERO MEMORY {}", words.to_bytes().as_usize());
         assert!(words.as_u32() <= u32::MAX - TAG_FREE_BLOCK_MIN);
         (*self).header.raw_tag = TAG_FREE_BLOCK_MIN + words.as_u32();
         assert!(!is_marked((*self).header.raw_tag));
@@ -102,6 +104,7 @@ impl FreeBlock {
             }
             null_mut()
         } else {
+            println!(100, "SPLIT REMAINDER {}", remainder_size.as_usize());
             let remainder = remainder_address as *mut FreeBlock;
             remainder.initialize(remainder_size);
             remainder
@@ -174,12 +177,14 @@ impl FreeList {
             (*self.first).previous = block;
         }
         self.first = block;
+        assert!(self.fits(block));
     }
 
     /// returns null if empty
     pub unsafe fn remove_first(&mut self) -> *mut FreeBlock {
         let block = self.first;
         if block != null_mut() {
+            assert!(self.fits(block));
             assert!((*block).previous == null_mut());
             let next = (*block).next;
             if next != null_mut() {
@@ -301,6 +306,8 @@ impl SegregatedFreeList {
         assert_eq!(block.size(), size);
         assert_eq!((*block).next, null_mut());
         assert_eq!((*block).previous, null_mut());
+        #[cfg(debug_assertions)]
+        self.sanity_check();
         block
     }
 
@@ -309,6 +316,8 @@ impl SegregatedFreeList {
         let list = self.insertion_list(block.size());
         assert!(list.size_class.includes(block.size().as_usize()));
         list.insert(block);
+        #[cfg(debug_assertions)]
+        self.sanity_check();
     }
 
     pub unsafe fn merge(&mut self, left: *mut FreeBlock, right: *mut FreeBlock) {
@@ -323,6 +332,8 @@ impl SegregatedFreeList {
         let merged_block = left;
         merged_block.initialize(merged_size);
         self.free(merged_block);
+        #[cfg(debug_assertions)]
+        self.sanity_check();
     }
 
     unsafe fn grow_memory<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
@@ -332,5 +343,19 @@ impl SegregatedFreeList {
         let block = value.get_ptr() as *mut FreeBlock;
         block.initialize(size);
         block
+    }
+
+    #[cfg(debug_assertions)]
+    pub unsafe fn sanity_check(&self) {
+        for list in &self.lists {
+            let mut previous: *mut FreeBlock = null_mut();
+            let mut block = list.first;
+            while block != null_mut() {
+                assert!(list.fits(block));
+                assert_eq!((*block).previous, previous);
+                previous = block;
+                block = (*block).next;
+            }
+        }
     }
 }
