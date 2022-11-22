@@ -45,7 +45,9 @@ Formal code specifications are written as part of the Motoko source code. These 
   * specify that the property `exp` is _intended_ to hold when this block execution begins. 
   * require that the tool actually _checks_ whether this assumption holds (given this actor's entire source code)
 * `assert:system (exp : Bool);` — a _static assertion_ that asks the verifier to prove that the property `exp` holds. Useful while designing code-level canister specifications.
+
 Note: the above syntax is provisional. It has been used so far to avoid introducing breaking changes to the Motoko grammar. In the future, Formal Motoko may switch to bespoke syntax for code specifications.
+
 **Static vs. dynamic assertions**
 <a name="statVsDyn"></a>
 
