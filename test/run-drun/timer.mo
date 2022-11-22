@@ -6,25 +6,10 @@ actor {
     // timer module implementation
     // node invariant max_exp ante <= expire <= min_exp dopo
     // corollary: if expire == 0 then the ante is completely expired
-    type TimerId = Nat;
-    type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
+    //type TimerId = Nat;
+    //type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
     //var timers : ?Node = null;
     var lastId = 0;
-
-
-    func nextExpiration(n : ?Node) : Nat64 = switch n {
-        case null 0;
-        case (?n) {
-            var exp = nextExpiration(n.ante); // TODO: use the corollary for expire == 0
-            if (exp == 0) {
-                exp := n.expire;
-                if (exp == 0) {
-                    exp := nextExpiration(n.dopo)
-                }
-            };
-            exp
-        }
-    };
 
     // ad-hoc place for the Timer.mo API
     func setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
@@ -46,7 +31,7 @@ actor {
             };
         @timers := ?insert(@prune(@timers));
 
-        let exp = nextExpiration @timers;
+        let exp = @nextExpiration @timers;
         if (exp == 0) @timers := null;
         let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
         /*FIXME: this is expensive*/
@@ -60,14 +45,13 @@ actor {
         id
     };
 
-    func graft(onto : ?Node, branch : ?Node) : ?Node = switch (onto, branch) {
-        case (null, null) null;
-        case (null, _) branch;
-        case (_, null) onto;
-        case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
-    };
-
     func cancelTimer(id : TimerId) {
+        func graft(onto : ?Node, branch : ?Node) : ?Node = switch (onto, branch) {
+            case (null, null) null;
+            case (null, _) branch;
+            case (_, null) onto;
+            case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
+        };
         func hunt(n : ?Node) : ?Node = switch n {
           case null n;
           case (?{ id = node; ante; dopo }) {
@@ -81,7 +65,7 @@ actor {
 
         @timers := hunt @timers;
 
-        if (nextExpiration @timers == 0) {
+        if (@nextExpiration @timers == 0) {
             // no more expirations ahead
             ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
             @timers := null
@@ -89,7 +73,7 @@ actor {
     };
 
   system func timer() : async () {
-      await @run_timers(nextExpiration);
+      await @run_timers();
 /*
     let now = time();
 

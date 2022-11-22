@@ -25,6 +25,7 @@ func @reset_cycles() {
   @cycles := 0;
 };
 
+
 type TimerId = Nat;
 type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
 var @timers : ?Node = null;
@@ -39,15 +40,28 @@ func @prune(n : ?Node) : ?Node = switch n {
     }
 };
 
+func @nextExpiration(n : ?Node) : Nat64 = switch n {
+    case null 0;
+    case (?n) {
+        var exp = @nextExpiration(n.ante); // TODO: use the corollary for expire == 0
+        if (exp == 0) {
+            exp := n.expire;
+            if (exp == 0) {
+                exp := @nextExpiration(n.dopo)
+            }
+        };
+        exp
+         }
+};
 
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
-func @run_timers(nextExpiration : ?Node -> Nat64) : async () {
+func @run_timers() : async () {
     func Array_init<T>(len : Nat,  x : T) : [var T] {
         (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
     };
     let now = (prim "time" : () -> Nat64)();
-    let exp = nextExpiration @timers;
+    let exp = @nextExpiration @timers;
     let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
     if (exp == 0) {
