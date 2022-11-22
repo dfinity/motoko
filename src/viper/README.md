@@ -22,7 +22,7 @@ Formal Motoko is a prototype code-level verifier for Motoko. The project started
     [Building](#Building)
   | [Running](#Running)
   | [Testing](#Testing)
-  | [File structure](#Structure)
+  | [File structure](#Struct)
   | [Further information](#Further)
 
 ---
