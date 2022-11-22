@@ -10,9 +10,9 @@ use self::mark_stack::MarkStack;
 
 pub mod free_list;
 pub mod mark_stack;
-pub mod write_barrier;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
+pub mod write_barrier;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {

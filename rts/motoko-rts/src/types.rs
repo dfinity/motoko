@@ -366,14 +366,14 @@ pub const TAG_FREE_SPACE: Tag = 31; // Not to be confused with the free blocks o
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 
-// Special value denoting a free block in the segregated 
-// free list. The size of the is added the tag value. 
-// As neither the mutator nor the GC mark phase see these 
-// free blocks, the same tag values can be used like 
+// Special value denoting a free block in the segregated
+// free list. The size of the is added the tag value.
+// As neither the mutator nor the GC mark phase see these
+// free blocks, the same tag values can be used like
 // `TAG_ARRAY_SLICE_MIN`.
-// Invariant: the value of this tag must be higher than 
+// Invariant: the value of this tag must be higher than
 //            all other tags except `TAG_ARRAY_SLICE_MIN`.
-pub const TAG_FREE_BLOCK_MIN: Tag = 32; 
+pub const TAG_FREE_BLOCK_MIN: Tag = 32;
 
 // Incremental GC Mark Bit
 // Stored in the most significant bit 31 of the raw tag:
