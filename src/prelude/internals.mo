@@ -25,14 +25,78 @@ func @reset_cycles() {
   @cycles := 0;
 };
 
-var @timers : [() -> async ()] = [];
+type TimerId = Nat;
+type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
+var timers : ?Node = null;
+func @prune(n : ?Node) : ?Node = switch n {
+    case null null;
+    case (?n) {
+        if (n.expire == 0) {
+            @prune(n.dopo) // by corollary
+        } else {
+            ?{ n with ante = @prune(n.ante); dopo = @prune(n.dopo) }
+        }
+    }
+};
+
 
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
-func @run_timers() : async () {
-    (prim "print" : Text -> ()) "PEEKABOO!"
-    //outstanding = foreach t in @timers { t() }
-    //push @timers { map await outstanding }
+func @run_timers(time : () -> Nat64, nextExpiration : ?Node -> Nat64) : async () {
+    func Array_init<T>(len : Nat,  x : T) : [var T] {
+        (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
+    };
+    let now = time();
+    let exp = nextExpiration timers;
+    let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
+
+    if (exp == 0) {
+        return
+    };
+
+    var gathered = 0;
+    let thunks : [var ?(() -> async ())] = Array_init(10, null); // we want max 10
+    
+    func gatherExpired(n : ?Node) = switch n {
+        case null ();
+        case (?n) {
+            gatherExpired(n.ante);
+            if (n.expire > 0 and n.expire <= now and gathered < thunks.size()) {
+                thunks[gathered] := ?(n.job);
+                switch (n.delay) {
+                    case (?delay) {
+                        // re-add the node
+                        let expire = n.expire + delay;
+                        // N.B. insert only works on pruned nodes
+                        func insert(m : ?Node) : Node = switch m {
+                            case null ({ n with var expire; ante = null; dopo = null });
+                            case (?m) {
+                                assert m.expire != 0;
+                                if (expire < m.expire) ({ m with ante = ?(insert(m.ante)) })
+                                else ({ m with dopo = ?(insert(m.dopo)) })
+                            }
+                        };
+                        timers := ?insert(@prune(timers));
+                    };
+                    case _ ()
+                };
+                n.expire := 0;
+                gathered += 1;
+            };
+            gatherExpired(n.dopo);
+        }
+    };
+
+    gatherExpired(timers);
+
+    let futures : [var ?(async ())] = Array_init(thunks.size(), null);
+    for (k in thunks.keys()) {
+        futures[k] := switch (thunks[k]) { case (?thunk) ?(thunk()); case _ null };
+    };
+
+    for (f in futures.vals()) {
+        switch f { case (?f) { await f }; case _ () }
+    };
 };
 
 // The @ in the name ensures that this cannot be shadowed by user code, so

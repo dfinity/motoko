@@ -229,7 +229,11 @@ let check_builtin what src senv0 : Syntax.prog * stat_env =
 let prelude, initial_stat_env0 =
   check_builtin "prelude" Prelude.prelude Typing.initial_scope
 let internals, initial_stat_env =
-  check_builtin "internals" Prelude.internals initial_stat_env0
+  let aliasing = !Flags.experimental_field_aliasing in
+  Flags.experimental_field_aliasing := true;
+  let checked = check_builtin "internals" Prelude.internals initial_stat_env0 in
+  Flags.experimental_field_aliasing := aliasing;
+  checked
 
 (* Stable compatibility *)
 

@@ -6,8 +6,9 @@ actor {
     // timer module implementation
     // node invariant max_exp ante <= expire <= min_exp dopo
     // corollary: if expire == 0 then the ante is completely expired
+    type TimerId = Nat;
     type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
-    var timers : ?Node = null;
+    //var timers : ?Node = null;
     var lastId = 0;
 
 
@@ -36,7 +37,6 @@ actor {
     };
 
     // ad-hoc place for the Timer.mo API
-    type TimerId = Nat;
     func setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
         lastId += 1;
         let id = lastId;
@@ -99,6 +99,8 @@ actor {
     };
 
   system func timer() : async () {
+      await @run_timers(time, nextExpiration);
+/*
     let now = time();
 
     type CNode = ?{var expire : Nat64; id : TimerId; delay : ?Nat64; ante : CNode; dopo : CNode };
@@ -161,6 +163,7 @@ actor {
     for (f in futures.vals()) {
         switch f { case (?f) { await f }; case _ () }
     };
+*/
   };
 
   var count = 0;
