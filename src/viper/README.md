@@ -10,12 +10,19 @@ Formal Motoko is a prototype code-level verifier for Motoko. The project started
 ---
 **Jump to:**
 
-**[Introduction](#Introduction) —** [Overview](#Overview) | [Formal specification](#FormalSpecs) | [Static vs. dynamic assertions](#statVsDyn) | [Testing vs. formal verification](#testsVsVerif) | [Precondition of public functions](#publicFuncPreconds) | [Examples](#Examples)
+**[Introduction](#Introduction) —**
+  [Overview](#Overview)
+  | [Formal specification](#FormalSpecs)
+  | [Static vs. dynamic assertions](#statVsDyn)
+  | [Testing vs. formal verification](#testsVsVerif)
+  | [Precondition of public functions](#publicFuncPreconds)
+  | [Examples](#Examples)
 
-**[Contributing](#Contrib) —** [Building the Motoko compiler](#Building)
-  | [Building](#Building)
+**[Contributing](#Contrib) —**
+    [Building](#Building)
   | [Running](#Running)
   | [Testing](#Testing)
+  | [File structure](#Structure)
   | [Further information](#Further)
 
 ---
@@ -108,15 +115,24 @@ After modifying the code and recompiling `moc`, don't forget to test the changes
 
 Each test case consists of a (formally specified) Motoko source file, say, `$TEST` (e.g., `invariant.mo`) and the expected test results, represented via a triplet of files:
 * `test/viper/ok/$TEST.vpr.ok` — what the Motoko compiler is expected to generate; this should be a Viper program.
-* `ok/$TEST.silicon.ok` — verification errors reported by the Viper tool. For example:
+* `test/viper/ok/$TEST.silicon.ok` — verification errors reported by the Viper tool. For example:
     ```
     [0] Postcondition of __init__ might not hold. Assertion $Self.count > 0 might not hold. (invariant.vpr@7.13--7.24)
     ```
-    Note: `silicon` is the name of one of the backends supported by Viper.
-* `ok/$TEST.silicon.ret.ok` — the return code from running Viper on this input. For example:
+    Note: Silicon is the name of one of the backends supported by Viper.
+* `test/viper/ok/$TEST.silicon.ret.ok` — the return code from running Viper on this input. For example:
     ```
     Return code 1
     ```
+
+**File structure**
+<a name="Struct"></a>
+
+The implementation of Formal Motoko consists of the following source files:
+
+* `src/viper/syntax.ml` — the Viper AST implementation.
+* `src/viper/pretty.ml` — the Viper pretty printer. Used for serializing Viper AST into text.
+* `src/viper/trans.ml` — the Motoko-to-Viper translation. Implements the logic of Formal Motoko.
 
 **Further information**
 <a name="Further"></a>
