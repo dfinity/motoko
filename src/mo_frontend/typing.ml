@@ -2305,16 +2305,8 @@ and infer_dec env dec : T.typ =
   | ExpD exp 
   | LetD (_, exp, None) -> infer_exp env exp
   | LetD (_, exp, Some fail) -> 
-    let fail_type = infer_exp env fail in
-    if not T.(sub fail_type Non) then 
-      local_error env fail.at "M0181"
-        "pattern binding failure handler of type%a\ndoes not match expected type None"
-        display_typ_expand fail_type;
-    (* check_exp env T.Non fail; *)
-    assert (fail.note.note_typ <> T.Pre);
-    let binding_type = infer_exp env exp in
-    assert (exp.note.note_typ <> T.Pre);
-    binding_type
+    check_exp env T.Non fail;
+    infer_exp env exp
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
