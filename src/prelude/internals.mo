@@ -27,7 +27,7 @@ func @reset_cycles() {
 
 type TimerId = Nat;
 type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
-var timers : ?Node = null;
+var @timers : ?Node = null;
 func @prune(n : ?Node) : ?Node = switch n {
     case null null;
     case (?n) {
@@ -42,12 +42,12 @@ func @prune(n : ?Node) : ?Node = switch n {
 
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
-func @run_timers(time : () -> Nat64, nextExpiration : ?Node -> Nat64) : async () {
+func @run_timers(nextExpiration : ?Node -> Nat64) : async () {
     func Array_init<T>(len : Nat,  x : T) : [var T] {
         (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
     };
-    let now = time();
-    let exp = nextExpiration timers;
+    let now = (prim "time" : () -> Nat64)();
+    let exp = nextExpiration @timers;
     let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
     if (exp == 0) {
@@ -76,7 +76,7 @@ func @run_timers(time : () -> Nat64, nextExpiration : ?Node -> Nat64) : async ()
                                 else ({ m with dopo = ?(insert(m.dopo)) })
                             }
                         };
-                        timers := ?insert(@prune(timers));
+                        @timers := ?insert(@prune(@timers));
                     };
                     case _ ()
                 };
@@ -87,7 +87,7 @@ func @run_timers(time : () -> Nat64, nextExpiration : ?Node -> Nat64) : async ()
         }
     };
 
-    gatherExpired(timers);
+    gatherExpired(@timers);
 
     let futures : [var ?(async ())] = Array_init(thunks.size(), null);
     for (k in thunks.keys()) {

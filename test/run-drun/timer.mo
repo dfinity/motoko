@@ -1,6 +1,6 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 //MOC-FLAG --experimental-field-aliasing
-import {Array_init; debugPrint; error; time} = "mo:⛔";
+import { debugPrint; error; time } = "mo:⛔";
 
 actor {
     // timer module implementation
@@ -26,16 +26,6 @@ actor {
         }
     };
 
-    func prune(n : ?Node) : ?Node = switch n {
-       case null null;
-       case (?n) {
-                if (n.expire == 0)
-                { prune(n.dopo) } // by corollary
-                else
-                { ?{ n with ante = prune(n.ante); dopo = prune(n.dopo) } }
-            }
-    };
-
     // ad-hoc place for the Timer.mo API
     func setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
         lastId += 1;
@@ -54,10 +44,10 @@ actor {
                  else ({ n with dopo = ?(insert(n.dopo)) })
                }
             };
-        timers := ?insert(prune(timers));
+        @timers := ?insert(@prune(@timers));
 
-        let exp = nextExpiration timers;
-        if (exp == 0) timers := null;
+        let exp = nextExpiration @timers;
+        if (exp == 0) @timers := null;
         let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
         /*FIXME: this is expensive*/
         if (prev != 0 and prev != 0 and exp > prev) {
@@ -89,17 +79,17 @@ actor {
                }
         };
 
-        timers := hunt timers;
+        @timers := hunt @timers;
 
-        if (nextExpiration timers == 0) {
+        if (nextExpiration @timers == 0) {
             // no more expirations ahead
             ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
-            timers := null
+            @timers := null
         }
     };
 
   system func timer() : async () {
-      await @run_timers(time, nextExpiration);
+      await @run_timers(nextExpiration);
 /*
     let now = time();
 
