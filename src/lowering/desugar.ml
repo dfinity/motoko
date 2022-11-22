@@ -658,19 +658,17 @@ and text_dotE proj e =
     |  _ -> assert false
 
 and let_else_switch p e f = 
-  let e' = exp e in
-  let p' = pat p in
-  let f' = exp f in
-  I.{ 
+  let e', p', f' = exp e, pat p, exp f in
+  { 
+    e' with 
     it = I.SwitchE(
       exp e,
       [
         { it = { pat = p'; exp = e' }; at = e'.at; note = () };
-        { it = { pat = { it = WildP; at = f'.at; note = p'.note }; exp = f' }; at = f'.at ; note = () }
-      ]);
-    at = e'.at;
-    note = e'.note
-    }
+        { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
+      ]
+    )  
+  } 
 
 and block force_unit ds =
   match ds with

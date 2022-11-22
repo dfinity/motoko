@@ -2384,21 +2384,6 @@ and check_dec env t dec =
   | ExpD exp ->
     check_exp env t exp;
     dec.note <- exp.note
-  (* | LetD (pat, exp, Some fail) -> 
-    check_exp env T.Non fail;
-    check_exp env 
-    print_endline "Kento for some reason check_dec was called. Failling";
-    assert false;
-    (* check_exp env T.Non fail;
-    let t' = exp.note; in
-    dec.note <- t'
-    (* if (T.eq t T.unit || T.sub t' t) then *)
-      (* check_exp env t' exp *)
-    (* else 
-      local_error env dec.at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
-        display_typ_expand t'
-        display_typ_expand t *) *) *)
   | _ ->
     let t' = infer_dec env dec in
     if not (T.eq t T.unit || T.sub t' t) then
