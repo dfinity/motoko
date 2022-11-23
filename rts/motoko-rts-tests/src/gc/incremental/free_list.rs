@@ -1,9 +1,9 @@
 use std::{collections::HashSet, mem::size_of};
 
 use motoko_rts::{
-    gc::incremental::free_list::SegregatedFreeList,
+    gc::incremental::free_list::{Heap, SegregatedFreeList},
     memory::Memory,
-    types::{unmark, Blob, Bytes, Obj, TAG_BLOB},
+    types::{unmark, Blob, Bytes, Obj, Value, Words, TAG_BLOB},
 };
 
 use crate::memory::TestMemory;
@@ -50,6 +50,12 @@ unsafe fn test_split_merge() {
 
 const ROUNDS: usize = 8;
 
+impl Heap for TestMemory {
+    unsafe fn grow_heap(&mut self, size: Words<u32>) -> Value {
+        self.alloc_words(size)
+    }
+}
+
 unsafe fn allocate_free(allocation_sizes: &Vec<u32>, total_size: u32) {
     let mut mem = TestMemory::new(Bytes(total_size).to_words());
     let mut list = SegregatedFreeList::new();
@@ -66,9 +72,9 @@ unsafe fn allocate_free(allocation_sizes: &Vec<u32>, total_size: u32) {
     }
 }
 
-unsafe fn allocate<M: Memory>(list: &mut SegregatedFreeList, mem: &mut M, size: u32) -> *mut Blob {
+unsafe fn allocate<H: Heap>(list: &mut SegregatedFreeList, heap: &mut H, size: u32) -> *mut Blob {
     assert!(size as usize >= size_of::<Blob>());
-    let value = list.allocate(mem, Bytes(size));
+    let value = list.allocate(heap, Bytes(size));
     let blob = value.get_ptr() as *mut Blob;
     (*blob).header.raw_tag = unmark(TAG_BLOB);
     (*blob).len = Bytes(size - size_of::<Blob>() as u32);

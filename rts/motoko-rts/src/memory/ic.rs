@@ -2,6 +2,8 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
+use crate::gc::incremental::free_list::Heap;
+use crate::gc::incremental::free_list::SegregatedFreeList;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -33,14 +35,19 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
+static mut FREE_LIST: Option<SegregatedFreeList> = None;
+
 #[no_mangle]
-unsafe extern "C" fn init(align: bool) {
+unsafe extern "C" fn init(align: bool, use_free_list: bool) {
     HP = if align {
         get_aligned_heap_base()
     } else {
         get_heap_base()
     };
     LAST_HP = HP;
+    if use_free_list {
+        FREE_LIST = Some(SegregatedFreeList::new());
+    }
 }
 
 #[no_mangle]
@@ -69,24 +76,43 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
-        // Update ALLOCATED
-        let delta = u64::from(bytes.as_u32());
-        ALLOCATED += Bytes(delta);
-
-        // Update heap pointer
-        let old_hp = u64::from(HP);
-        let new_hp = old_hp + delta;
-
-        // Grow memory if needed
-        grow_memory(new_hp);
-
-        debug_assert!(new_hp <= u64::from(core::u32::MAX));
-        HP = new_hp as u32;
-
-        Value::from_ptr(old_hp as usize)
+    unsafe fn alloc_words(&mut self, amount: Words<u32>) -> Value {
+        match &mut FREE_LIST {
+            Some(free_list) => free_list.allocate(&mut IC_HEAP, amount.to_bytes()),
+            None => allocate_at_heap_end(amount),
+        }
     }
+}
+
+static mut IC_HEAP: IcHeap = IcHeap {};
+
+struct IcHeap;
+
+impl Heap for IcHeap {
+    #[inline]
+    unsafe fn grow_heap(&mut self, n: Words<u32>) -> Value {
+        allocate_at_heap_end(n)
+    }
+}
+
+#[inline]
+unsafe fn allocate_at_heap_end(n: Words<u32>) -> Value {
+    let bytes = n.to_bytes();
+    // Update ALLOCATED
+    let delta = u64::from(bytes.as_u32());
+    ALLOCATED += Bytes(delta);
+
+    // Update heap pointer
+    let old_hp = u64::from(HP);
+    let new_hp = old_hp + delta;
+
+    // Grow memory if needed
+    grow_memory(new_hp);
+
+    debug_assert!(new_hp <= u64::from(core::u32::MAX));
+    HP = new_hp as u32;
+
+    Value::from_ptr(old_hp as usize)
 }
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
