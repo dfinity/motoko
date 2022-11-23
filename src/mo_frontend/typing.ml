@@ -207,8 +207,9 @@ let infer_mut mut : T.typ -> T.typ =
 
 (* System method types *)
 
+let heartbeat_type = T.(Func (Local, Returns, [scope_bind], [], [Async (Var (default_scope_var, 0), unit)]))
+
 let system_funcs tfs =
-  let heartbeat_type = T.(Func (Local, Returns, [scope_bind], [], [Async (Var (default_scope_var, 0), unit)])) in
   [
     ("heartbeat", heartbeat_type);
     ("timer", heartbeat_type);

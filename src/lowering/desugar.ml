@@ -318,7 +318,7 @@ and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
-        S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
+        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _); _ };
         _ }
       when id.it = name ->
       Some (
@@ -327,7 +327,7 @@ and call_system_func_opt name es obj_typ =
         | "timer"
         | "heartbeat" ->
           blockE
-            [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+            [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
            (unitE ())
         | "inspect" ->
           let _, tfs = T.as_obj obj_typ in
@@ -374,14 +374,14 @@ and call_system_func_opt name es obj_typ =
                     {it = I.{name = "arg"; var = id_of_var arg}; at = no_region; note = typ_of_var arg };
                     {it = I.{name = "msg"; var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
                     record_typ));
-                letD accept (callE (varE (var id.it p.note)) [] (varE record))]
+                letD accept (callE (varE (var id.it note)) [] (varE record))]
               (ifE (varE accept)
                 (unitE ())
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"])
                 T.unit)
         | _name ->
-          callE (varE (var id.it p.note)) [] (tupE []))
+          callE (varE (var id.it note)) [] (tupE []))
     | _ -> None) es
 and build_candid ts obj_typ =
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
