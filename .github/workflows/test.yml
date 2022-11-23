@@ -37,25 +37,11 @@ jobs:
       if: runner.os == 'Linux' 
       run: echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 
+    - run: nix-env -iA nix-build-uncached -f nix/
+
     - name: "nix-build"
-      run: nix-build --max-jobs 64 -A all-systems-go -o build-output
-
-    - name: Build status
-      id: build-status
-      run: |
-        if [ -e build-output/fail ]
-        then
-          echo "previous nix build failed"
-          exit 1
-        fi
-
-    - name: Upload core dumps
-      if: failure() && steps.build-status.outcome != 'success'
-      uses: actions/upload-artifact@master
-      with:
-        name: core-dumps
-        path: build-output/dumps
-
+      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
+    
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
