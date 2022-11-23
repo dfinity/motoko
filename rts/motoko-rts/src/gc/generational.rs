@@ -50,8 +50,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
         roots,
     };
     let strategy = decide_strategy(&heap.limits);
+
     #[cfg(debug_assertions)]
     let forced_gc = strategy.is_none();
+
     let strategy = strategy.unwrap_or(Strategy::Young);
     let mut gc = GenerationalGC::new(heap, strategy);
 
