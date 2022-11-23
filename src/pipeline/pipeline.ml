@@ -231,6 +231,7 @@ let prelude, initial_stat_env0 =
 let internals, initial_stat_env =
   let aliasing = !Flags.experimental_field_aliasing in
   Flags.experimental_field_aliasing := true;
+  (* FIXME: the use of Flags.global_timer below is accessing the init value, i.e. true *)
   let checked = check_builtin "internals" (Prelude.internals !Flags.global_timer) initial_stat_env0 in
   Flags.experimental_field_aliasing := aliasing;
   checked
@@ -284,7 +285,7 @@ let prim_error phase (msgs : Diag.messages) =
   exit 1
 
 let check_prim () : Syntax.lib * stat_env =
-  let lexer = Lexing.from_string Prelude.prim_module in
+  let lexer = Lexing.from_string (Prelude.prim_module !Flags.global_timer) in
   let parse = Parser.Incremental.parse_prog in
 
   match parse_with Lexer.mode_priv lexer parse prim_name with

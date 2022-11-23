@@ -374,8 +374,3 @@ let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 =
   (prim "performanceCounter" : (Nat32) -> Nat64) counter;
-
-// Timer-related
-
-let setTimer = @setTimer;
-let cancelTimer = @cancelTimer;
