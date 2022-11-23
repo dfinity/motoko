@@ -284,7 +284,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             heap_end,
         };
         PHASE = Phase::Sweep(state);
-        
+
         #[cfg(debug_assertions)]
         FREE_LIST.as_ref().unwrap().sanity_check();
     }
@@ -324,7 +324,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if let Phase::Sweep(_) = &mut PHASE {
             PHASE = Phase::Pause;
             MARK_ON_ALLOCATION = false;
-            
+
             #[cfg(debug_assertions)]
             FREE_LIST.as_ref().unwrap().sanity_check();
 
