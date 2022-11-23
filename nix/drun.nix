@@ -15,7 +15,28 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-ZMAXHaaEgUA+scPYppFq1W01ZCRhiqKqOKq243qQYgU=";
+      cargoSha256 = "sha256-8hvK4zMO3eybRb266IjNB+a38tTzobJYSMwG9VNGLy8=";
+
+      patchPhase = ''
+      cd ../drun-vendor.tar.gz
+      patch librocksdb-sys/build.rs << EOF
+@@ -118,6 +118,10 @@
+         config.define("OS_MACOSX", Some("1"));
+         config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
+         config.define("ROCKSDB_LIB_IO_POSIX", Some("1"));
++        if target.contains("aarch64") {
++            config.define("isSSE42()", Some("0"));
++            config.define("isPCLMULQDQ()", Some("0"));
++        }
+     } else if target.contains("android") {
+         config.define("OS_ANDROID", Some("1"));
+         config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
+EOF
+
+      sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
+
+      cd -
+      '';
 
       nativeBuildInputs = with pkgs; [
         pkg-config
