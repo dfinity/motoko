@@ -377,4 +377,5 @@ func performanceCounter(counter : Nat32) : Nat64 =
 
 // Timer-related
 
+let setTimer = @setTimer;
 let cancelTimer = @cancelTimer;

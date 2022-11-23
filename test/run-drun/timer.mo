@@ -1,42 +1,8 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 //MOC-FLAG --experimental-field-aliasing
-import { debugPrint; error; time; cancelTimer } = "mo:⛔";
+import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
 
 actor {
-    var lastId = 0;
-
-    // ad-hoc place for the Timer.mo API
-    func setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : @TimerId {
-        lastId += 1;
-        let id = lastId;
-        let now = time();
-        let delayNanos = 1_000_000_000 * delaySecs;
-        let expire = now + delayNanos;
-        let delay = if recurring ?delayNanos else null;
-        // only works on pruned nodes
-        func insert(n : ?@Node) : @Node =
-            switch n {
-              case null ({ var expire; id; delay; job; ante = null; dopo = null });
-              case (?n) {
-                 assert n.expire != 0;
-                 if (expire < n.expire) ({ n with ante = ?insert(n.ante) })
-                 else ({ n with dopo = ?insert(n.dopo) })
-               }
-            };
-        @timers := ?insert(@prune(@timers));
-
-        let exp = @nextExpiration @timers;
-        if (exp == 0) @timers := null;
-        let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
-        /*FIXME: this is expensive*/
-        if (prev != 0 and prev != 0 and exp > prev) {
-            // reinstall
-            ignore (prim "global_timer_set" : Nat64 -> Nat64) prev;
-        };
-
-        id
-    };
-
 
   system func timer() : async () {
       await @run_timers();
