@@ -1,16 +1,6 @@
 # Motoko compiler changelog
 
 * motoko (`moc`)
-  * Add a new _generational_ GC, enabled with new moc flag `--generational-gc`.
-    The generational garbage collector optimizes for fast reclamation of short-lived objects.
-    New objects are allocated in a young generation that is more frequently collected than the older objects 
-    that have already survived a GC run.
-    
-    For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
-    * Lower runtimes: Less number of executed instructions on average.
-    * Higher scalability: More heap space can be used on average.
-    * Shorter interruptions: Young generation collection entails shorter program interruptions.
-
   * Add a new _generational_ GC, enabled with new moc flag `--generational-gc` (#3495).
     The generational garbage collector optimizes for fast reclamation of short-lived objects.
     New objects are allocated in a young generation that is more frequently collected than the older objects 
@@ -30,6 +20,7 @@
       "args" : "--generational-gc"
     ...
     ```
+    
   * BREAKING CHANGE (Minor):
 
     Consider records with mutable fields as non-static (#3586).

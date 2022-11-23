@@ -25,5 +25,3 @@ public func go() : async () {
 //SKIP run-low
 //SKIP comp-ref
 //CALL ingress go "DIDL\x00\x00"
-//SKIP drun-run
-//SKIP ic-ref-run
