@@ -3744,7 +3744,8 @@ module IC = struct
       E.add_func_import env "ic0" "stable64_size" [] [I64Type];
       E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
-      E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type];
+      if !Flags.global_timer then
+        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type];
       ()
 
   let system_imports env =
