@@ -40,11 +40,11 @@ unsafe fn test_split_merge() {
     println!("    Testing split/merge ...");
 
     println!("      Uniform sizes ...");
-    // same sized free blocks
-    split_merge(1024, &[48]);
+    // same sized free blocks, fits a size class to avoid fragmentation
+    split_merge(1024, &[32]);
 
     println!("      Mixed sizes ...");
-    // mixed free fillers and free blocks, of same size class to avoid external fragmentation
+    // mixed free fillers and free blocks, of same size class to avoid fragmentation
     split_merge(1024, &[8, 12]);
 }
 

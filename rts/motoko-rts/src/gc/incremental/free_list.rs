@@ -262,8 +262,21 @@ pub trait Heap {
 
 const KB: usize = 1024;
 const MB: usize = 1024 * KB;
-const LIST_COUNT: usize = 8;
-const SIZE_CLASSES: [usize; LIST_COUNT] = [12, 48, 128, 512, 4 * KB, MB, 32 * MB, 256 * MB];
+const LIST_COUNT: usize = 12;
+const SIZE_CLASSES: [usize; LIST_COUNT] = [
+    12,
+    32,
+    64,
+    128,
+    256,
+    512,
+    KB,
+    4 * KB,
+    64 * KB,
+    MB,
+    32 * MB,
+    256 * MB,
+];
 
 pub struct SegregatedFreeList {
     lists: [FreeList; LIST_COUNT],
