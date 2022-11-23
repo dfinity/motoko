@@ -8,6 +8,15 @@ func equal<A>(a : [A], b : [A], eq : (A, A) -> Bool) : Bool
 
 Test if two arrays contain equal values
 
+#### example:
+
+``` motoko
+let array1 = ["a", "b", "c"];
+let array2 = ["1", "2", "3"];
+
+let isEqual = Array.equal<Text>(array1, array2, Text.equal); // false
+```
+
 ## Function `append`
 ``` motoko no-repl
 func append<A>(xs : [A], ys : [A]) : [A]
