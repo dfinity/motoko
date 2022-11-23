@@ -58,7 +58,7 @@
 //! Free blocks are never visited by the GC mark phase.
 //!
 
-use core::{cmp::max, ptr::null_mut};
+use core::{array::from_fn, cmp::max, ptr::null_mut};
 
 use crate::{
     constants::WORD_SIZE,
@@ -271,16 +271,7 @@ pub struct SegregatedFreeList {
 
 impl SegregatedFreeList {
     pub fn new() -> SegregatedFreeList {
-        let lists = [
-            Self::free_list(0),
-            Self::free_list(1),
-            Self::free_list(2),
-            Self::free_list(3),
-            Self::free_list(4),
-            Self::free_list(5),
-            Self::free_list(6),
-            Self::free_list(7),
-        ];
+        let lists = from_fn(|index| Self::free_list(index));
         assert!(lists[lists.len() - 1].is_overflow_list());
         SegregatedFreeList { lists }
     }
