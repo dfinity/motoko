@@ -532,13 +532,13 @@ do
   
   if [ -e core.* ]
   then
-    echo "Collect core dump to $NIX_OUTPUT/dumps"
-    mkdir -p $NIX_OUTPUT/dumps
-    cp core.* $NIX_OUTPUT/dumps
-    ls -la $NIX_OUTPUT/dumps
-    touch $NIX_OUTPUT/fail
-    echo "Exit with success to extract core dump"
-    exit 0
+    echo "Print core dump"
+    ls -la core.*
+    for core_dump_file in $(find ./ -name core.\*)
+    do
+      echo "Core dump of $core_dump_file"
+      hexdump $core_dump_file
+    done
   fi
 done
 
