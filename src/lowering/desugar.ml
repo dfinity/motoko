@@ -502,6 +502,9 @@ and build_actor at ts self_id es obj_typ =
        timer =
          (match call_system_func_opt "timer" es obj_typ with
           | Some call -> call
+          | None when !Mo_config.Flags.global_timer ->
+            let heartbeat_type = T.(Func (Local, Returns, [scope_bind], [], [Async (Var (default_scope_var, 0), unit)])) in
+            varE (var "@run_timers" heartbeat_type)
           | None -> tupE []);
        inspect =
          (match call_system_func_opt "inspect" es obj_typ with
