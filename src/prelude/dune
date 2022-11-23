@@ -1,5 +1,6 @@
 (library
   (name prelude)
+  (libraries mo_config)
   (wrapped false)
   (preprocess (pps ppx_blob))
   (preprocessor_deps (glob_files *.mo))
