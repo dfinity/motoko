@@ -3900,6 +3900,7 @@ module IC = struct
     })
 
   let export_timer env =
+    assert !Flags.global_timer;
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let fi = E.add_fun env "canister_global_timer"
       (Func.of_body env [] [] (fun env ->
