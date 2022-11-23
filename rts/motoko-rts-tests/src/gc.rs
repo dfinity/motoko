@@ -202,7 +202,7 @@ fn check_dynamic_heap(
             offset += WORD_SIZE + length as usize;
         } else if incremental && tag > TAG_FREE_BLOCK_MIN {
             let size = Words(tag - TAG_FREE_BLOCK_MIN);
-            offset += size.to_bytes().as_usize();
+            offset += size.to_bytes().as_usize() - WORD_SIZE;
         } else {
             assert_eq!(tag, TAG_ARRAY);
 
