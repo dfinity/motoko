@@ -1,5 +1,5 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
-//MOC-FLAG --experimental-field-aliasing
+
 import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
 
 actor {
