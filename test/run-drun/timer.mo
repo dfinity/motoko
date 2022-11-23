@@ -1,6 +1,6 @@
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 //MOC-FLAG --experimental-field-aliasing
-import { debugPrint; error; time } = "mo:⛔";
+import { debugPrint; error; time; cancelTimer } = "mo:⛔";
 
 actor {
     var lastId = 0;
@@ -37,32 +37,6 @@ actor {
         id
     };
 
-    func cancelTimer(id : @TimerId) {
-        func graft(onto : ?@Node, branch : ?@Node) : ?@Node = switch (onto, branch) {
-            case (null, null) null;
-            case (null, _) branch;
-            case (_, null) onto;
-            case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
-        };
-        func hunt(n : ?@Node) : ?@Node = switch n {
-          case null n;
-          case (?{ id = node; ante; dopo }) {
-                   if (node == id) {
-                       graft(ante, dopo)
-                   } else do? {
-                       { n! with ante = hunt ante; dopo = hunt dopo }
-                   }
-               }
-        };
-
-        @timers := hunt @timers;
-
-        if (@nextExpiration @timers == 0) {
-            // no more expirations ahead
-            ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
-            @timers := null
-        }
-    };
 
   system func timer() : async () {
       await @run_timers();

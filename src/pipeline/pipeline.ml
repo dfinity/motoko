@@ -231,7 +231,7 @@ let prelude, initial_stat_env0 =
 let internals, initial_stat_env =
   let aliasing = !Flags.experimental_field_aliasing in
   Flags.experimental_field_aliasing := true;
-  let checked = check_builtin "internals" Prelude.internals initial_stat_env0 in
+  let checked = check_builtin "internals" Prelude.(internals ^ timers) initial_stat_env0 in
   Flags.experimental_field_aliasing := aliasing;
   checked
 
