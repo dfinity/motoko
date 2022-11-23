@@ -285,6 +285,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         };
         PHASE = Phase::Sweep(state);
         MARK_ON_ALLOCATION = false;
+        
+        #[cfg(debug_assertions)]
+        FREE_LIST.as_ref().unwrap().sanity_check();
     }
 
     unsafe fn sweep_phase_increment(&mut self) {
@@ -299,17 +302,18 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                     state.current_address += free_space;
                 } else {
                     let object = state.current_address as *mut Obj;
+                    assert!(object.tag() >= TAG_OBJECT && object.tag() <= TAG_NULL);
                     assert!(object.is_marked());
                     object.unmark();
                     state.current_address +=
                         object_size(state.current_address).to_bytes().as_usize();
                 }
+                assert!(state.current_address <= state.heap_end);
 
                 self.steps += 1;
                 if self.steps > Self::INCREMENT_LIMIT {
                     return;
                 }
-                assert!(state.current_address <= state.heap_end);
             }
             self.complete_sweeping();
         } else {
@@ -320,6 +324,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn complete_sweeping(&mut self) {
         if let Phase::Sweep(_) = &mut PHASE {
             PHASE = Phase::Pause;
+
+            #[cfg(debug_assertions)]
+            FREE_LIST.as_ref().unwrap().sanity_check();
+
+            #[cfg(debug_assertions)]
+            #[cfg(feature = "ic")]
+            sanity_checks::check_memory();
         } else {
             panic!("Invalid phase");
         }
