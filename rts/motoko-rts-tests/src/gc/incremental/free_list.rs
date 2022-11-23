@@ -1,67 +1,102 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, mem::size_of};
 
 use motoko_rts::{
-    gc::incremental::free_list::{FreeBlock, SegregatedFreeList},
-    types::Bytes,
+    gc::incremental::free_list::SegregatedFreeList,
+    memory::Memory,
+    types::{unmark, Blob, Bytes, Obj, TAG_BLOB},
 };
 
 use crate::memory::TestMemory;
 
 pub unsafe fn test() {
     println!("  Testing free list...");
+    test_allocate_free();
+    test_split_merge();
+}
 
+unsafe fn test_allocate_free() {
+    println!("    Testing allocate/free ...");
+
+    println!("      Uniform sizes ...");
+    // uniform sizes, no splitting, no fragmentation issues due to same sized blocks
     let allocation_sizes = vec![128];
     let memory_size = allocation_sizes.iter().sum();
-    test_allocate_free(&allocation_sizes, 12, memory_size);
+    allocate_free(&allocation_sizes, memory_size);
 
+    println!("      Mixed sizes ...");
+    // different sizes, external fragmentation
     let allocation_sizes = vec![12, 4096, 12, 16, 124, 128, 132, 16];
-    let memory_size = allocation_sizes.iter().sum::<u32>() * 2; // due to fragmentation
-    test_allocate_free(&allocation_sizes, 8, memory_size);
+    let memory_size = allocation_sizes.iter().sum::<u32>() * 2;
+    allocate_free(&allocation_sizes, memory_size);
 
-    const TOTAL_SIZE: u32 = 32 * 1024;
-    const SMALL_SIZE: u32 = 48;
-    test_split_blocks(TOTAL_SIZE, SMALL_SIZE, TOTAL_SIZE / SMALL_SIZE);
+    println!("      Small sizes ...");
+    // sizes below minimum free block size, internal fragmentation
+    let allocation_sizes = vec![12, 8, 12, 8, 4096, 12, 8, 8, 16, 124, 128, 132, 16];
+    let memory_size = allocation_sizes.iter().sum::<u32>() * 2;
+    allocate_free(&allocation_sizes, memory_size);
 }
 
-unsafe fn test_allocate_free(allocation_sizes: &Vec<u32>, rounds: usize, total_size: u32) {
-    println!("    Testing allocate/free {} ...", allocation_sizes.len());
+unsafe fn test_split_merge() {
+    println!("    Testing split/merge ...");
+
+    println!("      Uniform sizes ...");
+    // same sized free blocks
+    split_merge(1024, &[48]);
+
+    println!("      Mixed sizes ...");
+    // mixed free fillers and free blocks, of same size class to avoid external fragmentation
+    split_merge(1024, &[8, 12]);
+}
+
+const ROUNDS: usize = 8;
+
+unsafe fn allocate_free(allocation_sizes: &Vec<u32>, total_size: u32) {
     let mut mem = TestMemory::new(Bytes(total_size).to_words());
     let mut list = SegregatedFreeList::new();
-    list.sanity_check();
-    for _ in 0..rounds {
-        let mut allocations: HashSet<*mut FreeBlock> = HashSet::new();
+    for _ in 0..ROUNDS {
+        let mut allocations: HashSet<*mut Blob> = HashSet::new();
         for size in allocation_sizes.iter() {
-            let block = list.allocate(&mut mem, Bytes(*size));
-            assert_eq!(block.size().as_u32(), *size);
-            let new_insertion = allocations.insert(block);
+            let blob = allocate(&mut list, &mut mem, *size);
+            let new_insertion = allocations.insert(blob);
             assert!(new_insertion);
-            list.sanity_check();
         }
-        for block in allocations.iter() {
-            list.free(*block);
-            list.sanity_check();
+        for blob in allocations.iter() {
+            free(&mut list, *blob);
         }
     }
 }
 
-unsafe fn test_split_blocks(total_size: u32, small_size: u32, amount: u32) {
-    println!("    Testing split blocks {amount} ...");
+unsafe fn allocate<M: Memory>(list: &mut SegregatedFreeList, mem: &mut M, size: u32) -> *mut Blob {
+    assert!(size as usize >= size_of::<Blob>());
+    let value = list.allocate(mem, Bytes(size));
+    let blob = value.get_ptr() as *mut Blob;
+    (*blob).header.raw_tag = unmark(TAG_BLOB);
+    (*blob).len = Bytes(size - size_of::<Blob>() as u32);
+    list.sanity_check();
+    blob
+}
+
+unsafe fn free(list: &mut SegregatedFreeList, blob: *mut Blob) {
+    assert!(!(blob as *mut Obj).is_marked());
+    let address = blob as usize;
+    let length = (*blob).len + Bytes(size_of::<Blob>() as u32);
+    list.free_space(address, length);
+    list.sanity_check();
+}
+
+unsafe fn split_merge(amount: u32, small_sizes: &[u32]) {
+    let total_size = amount * small_sizes.iter().sum::<u32>();
     let mut mem = TestMemory::new(Bytes(total_size).to_words());
     let mut list = SegregatedFreeList::new();
-    list.sanity_check();
-    let large = list.allocate(&mut mem, Bytes(total_size));
-    assert_eq!(large.size().as_u32(), total_size);
-    list.free(large);
-    let mut allocations: HashSet<*mut FreeBlock> = HashSet::new();
-    for _ in 0..amount {
-        let block = list.allocate(&mut mem, Bytes(small_size));
-        assert_eq!(block.size().as_u32(), small_size);
-        let new_insertion = allocations.insert(block);
-        assert!(new_insertion);
-        list.sanity_check();
-    }
-    for block in allocations.iter() {
-        list.free(*block);
+    let large = allocate(&mut list, &mut mem, total_size);
+    free(&mut list, large);
+    for _ in 0..ROUNDS {
+        for _ in 0..amount {
+            for size in small_sizes {
+                allocate(&mut list, &mut mem, *size);
+            }
+        }
+        list.free_space(large as usize, Bytes(total_size));
         list.sanity_check();
     }
 }
