@@ -43,7 +43,7 @@ module Make (Cfg : Config) = struct
   let id i = Atom i.it
   let tag i = Atom ("#" ^ i.it)
 
-  let rec exp e = match e.it with
+  let rec exp e = source e.at (annot e.note (match e.it with
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
@@ -109,7 +109,7 @@ module Make (Cfg : Config) = struct
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
     | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
-    | IgnoreE e           -> "IgnoreE" $$ [exp e]
+    | IgnoreE e           -> "IgnoreE" $$ [exp e]))
 
   and exps es = List.map exp es
 
