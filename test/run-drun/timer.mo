@@ -6,7 +6,7 @@ actor {
     var lastId = 0;
 
     // ad-hoc place for the Timer.mo API
-    func setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : TimerId {
+    func setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : @TimerId {
         lastId += 1;
         let id = lastId;
         let now = time();
@@ -14,13 +14,13 @@ actor {
         let expire = now + delayNanos;
         let delay = if recurring ?delayNanos else null;
         // only works on pruned nodes
-        func insert(n : ?Node) : Node =
+        func insert(n : ?@Node) : @Node =
             switch n {
               case null ({ var expire; id; delay; job; ante = null; dopo = null });
               case (?n) {
                  assert n.expire != 0;
-                 if (expire < n.expire) ({ n with ante = ?(insert(n.ante)) })
-                 else ({ n with dopo = ?(insert(n.dopo)) })
+                 if (expire < n.expire) ({ n with ante = ?insert(n.ante) })
+                 else ({ n with dopo = ?insert(n.dopo) })
                }
             };
         @timers := ?insert(@prune(@timers));
@@ -37,14 +37,14 @@ actor {
         id
     };
 
-    func cancelTimer(id : TimerId) {
-        func graft(onto : ?Node, branch : ?Node) : ?Node = switch (onto, branch) {
+    func cancelTimer(id : @TimerId) {
+        func graft(onto : ?@Node, branch : ?@Node) : ?@Node = switch (onto, branch) {
             case (null, null) null;
             case (null, _) branch;
             case (_, null) onto;
             case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
         };
-        func hunt(n : ?Node) : ?Node = switch n {
+        func hunt(n : ?@Node) : ?@Node = switch n {
           case null n;
           case (?{ id = node; ante; dopo }) {
                    if (node == id) {

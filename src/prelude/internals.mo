@@ -29,10 +29,10 @@ func @reset_cycles() {
 // timer module implementation
 // fundamental node invariant: max_exp ante <= expire <= min_exp dopo
 // corollary: if expire == 0 then the ante is completely expired
-type TimerId = Nat;
-type Node = { var expire : Nat64; id : TimerId; delay : ?Nat64; job : () -> async (); ante : ?Node; dopo : ?Node };
-var @timers : ?Node = null;
-func @prune(n : ?Node) : ?Node = switch n {
+type @TimerId = Nat;
+type @Node = { var expire : Nat64; id : @TimerId; delay : ?Nat64; job : () -> async (); ante : ?@Node; dopo : ?@Node };
+var @timers : ?@Node = null;
+func @prune(n : ?@Node) : ?@Node = switch n {
     case null null;
     case (?n) {
         if (n.expire == 0) {
@@ -43,7 +43,7 @@ func @prune(n : ?Node) : ?Node = switch n {
     }
 };
 
-func @nextExpiration(n : ?Node) : Nat64 = switch n {
+func @nextExpiration(n : ?@Node) : Nat64 = switch n {
     case null 0;
     case (?n) {
         var exp = @nextExpiration(n.ante); // TODO: use the corollary for expire == 0
@@ -73,8 +73,8 @@ func @run_timers() : async () {
 
     var gathered = 0;
     let thunks : [var ?(() -> async ())] = Array_init(10, null); // we want max 10
-    
-    func gatherExpired(n : ?Node) = switch n {
+
+    func gatherExpired(n : ?@Node) = switch n {
         case null ();
         case (?n) {
             gatherExpired(n.ante);
@@ -85,15 +85,15 @@ func @run_timers() : async () {
                         // re-add the node
                         let expire = n.expire + delay;
                         // N.B. insert only works on pruned nodes
-                        func insert(m : ?Node) : Node = switch m {
+                        func reinsert(m : ?@Node) : @Node = switch m {
                             case null ({ n with var expire; ante = null; dopo = null });
                             case (?m) {
                                 assert m.expire != 0;
-                                if (expire < m.expire) ({ m with ante = ?(insert(m.ante)) })
-                                else ({ m with dopo = ?(insert(m.dopo)) })
+                                if (expire < m.expire) ({ m with ante = ?reinsert(m.ante) })
+                                else ({ m with dopo = ?reinsert(m.dopo) })
                             }
                         };
-                        @timers := ?insert(@prune(@timers));
+                        @timers := ?reinsert(@prune(@timers));
                     };
                     case _ ()
                 };
@@ -108,7 +108,7 @@ func @run_timers() : async () {
 
     let futures : [var ?(async ())] = Array_init(thunks.size(), null);
     for (k in thunks.keys()) {
-        futures[k] := switch (thunks[k]) { case (?thunk) ?(thunk()); case _ null };
+        futures[k] := switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
     };
 
     for (f in futures.vals()) {
