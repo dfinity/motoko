@@ -4,6 +4,7 @@ use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::gc::incremental::free_list::Heap;
 use crate::gc::incremental::free_list::SegregatedFreeList;
+use crate::gc::incremental::FREE_LIST;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -34,8 +35,6 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     // align to 32 bytes
     ((get_heap_base() + 31) / 32) * 32
 }
-
-static mut FREE_LIST: Option<SegregatedFreeList> = None;
 
 #[no_mangle]
 unsafe extern "C" fn init(align: bool, use_free_list: bool) {

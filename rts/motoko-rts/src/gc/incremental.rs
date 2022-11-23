@@ -2,11 +2,17 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     memory::{Memory, MARK_ON_ALLOCATION},
-    types::{Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN},
+    types::{
+        object_size, Bytes, Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_FREE_BLOCK_MIN,
+        TAG_NULL, TAG_OBJECT,
+    },
     visitor::visit_pointer_fields,
 };
 
-use self::mark_stack::MarkStack;
+use self::{
+    free_list::{FreeBlock, SegregatedFreeList},
+    mark_stack::MarkStack,
+};
 
 pub mod free_list;
 pub mod mark_stack;
@@ -39,11 +45,18 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 enum Phase {
     Pause,
     Mark(MarkState),
+    Sweep(SweepState),
 }
 
 struct MarkState {
     pub heap_base: usize,
     pub mark_stack: MarkStack,
+    pub complete: bool,
+}
+
+struct SweepState {
+    pub current_address: usize,
+    pub heap_end: usize,
 }
 
 static mut PHASE: Phase = Phase::Pause;
@@ -63,6 +76,8 @@ pub struct Roots {
     // If new roots are added in future, extend `mark_roots()`.
 }
 
+pub(crate) static mut FREE_LIST: Option<SegregatedFreeList> = None;
+
 /// Incremental GC.
 /// Each increment call can have its new instance that shares the common GC state `PHASE`.
 pub struct IncrementalGC<'a, M: Memory> {
@@ -73,6 +88,7 @@ pub struct IncrementalGC<'a, M: Memory> {
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     pub unsafe fn reset_for_testing() {
         PHASE = Phase::Pause;
+        FREE_LIST = Some(SegregatedFreeList::new());
     }
 
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
@@ -85,7 +101,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             #[cfg(debug_assertions)]
             #[cfg(feature = "ic")]
             sanity_checks::check_memory();
-            gc.start_run(limits.base, roots);
+
+            gc.start_marking(limits.base, roots);
+        }
+        if Self::mark_completed() {
+            gc.start_sweeping(limits.base, limits.free);
         }
         gc.increment();
     }
@@ -106,6 +126,20 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
+    unsafe fn pausing() -> bool {
+        match &PHASE {
+            Phase::Pause => true,
+            _ => false,
+        }
+    }
+
+    unsafe fn mark_completed() -> bool {
+        match &PHASE {
+            Phase::Mark(state) => state.complete,
+            _ => false,
+        }
+    }
+
     fn should_start_gc(limits: &Limits) -> bool {
         assert!(limits.last_free <= limits.free);
         limits.free - limits.last_free >= limits.allocation_threshold
@@ -115,25 +149,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         IncrementalGC { mem, steps: 0 }
     }
 
-    unsafe fn start_run(&mut self, heap_base: usize, roots: Roots) {
-        assert!(Self::pausing());
-        let mark_stack = MarkStack::new(self.mem);
-        let state = MarkState {
-            heap_base,
-            mark_stack,
-        };
-        PHASE = Phase::Mark(state);
-        MARK_ON_ALLOCATION = true;
-        self.mark_roots(roots);
-    }
-
-    unsafe fn pausing() -> bool {
-        match &PHASE {
-            Phase::Pause => true,
-            _ => false,
-        }
-    }
-
     const INCREMENT_LIMIT: usize = 1024; // soft limit on marked fields per GC run
 
     unsafe fn increment(&mut self) {
@@ -141,7 +156,21 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         match &mut PHASE {
             Phase::Pause => {}
             Phase::Mark(_) => self.mark_phase_increment(),
+            Phase::Sweep(_) => self.sweep_phase_increment(),
         }
+    }
+
+    unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
+        assert!(Self::pausing());
+        let mark_stack = MarkStack::new(self.mem);
+        let state = MarkState {
+            heap_base,
+            mark_stack,
+            complete: false,
+        };
+        PHASE = Phase::Mark(state);
+        MARK_ON_ALLOCATION = true;
+        self.mark_roots(roots);
     }
 
     unsafe fn mark_roots(&mut self, roots: Roots) {
@@ -189,23 +218,29 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             while let Some(value) = state.mark_stack.pop() {
                 assert!(value.is_ptr());
                 assert!(value.as_obj().is_marked());
-
                 self.mark_fields(value.as_obj());
+
                 self.steps += 1;
                 if self.steps > Self::INCREMENT_LIMIT {
                     return;
                 }
             }
-            self.mark_complete();
+            self.complete_marking();
         } else {
-            panic!("Invalid phase")
+            panic!("Invalid phase");
         }
     }
 
-    unsafe fn mark_complete(&mut self) {
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "ic")]
-        sanity_checks::check_mark_completeness(self.mem);
+    unsafe fn complete_marking(&mut self) {
+        if let Phase::Mark(state) = &mut PHASE {
+            state.complete = true;
+
+            #[cfg(debug_assertions)]
+            #[cfg(feature = "ic")]
+            sanity_checks::check_mark_completeness(self.mem);
+        } else {
+            panic!("Invalid phase");
+        }
     }
 
     unsafe fn mark_fields(&mut self, object: *mut Obj) {
@@ -240,6 +275,70 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 }
             },
         );
+    }
+
+    unsafe fn start_sweeping(&mut self, heap_base: usize, heap_end: usize) {
+        assert!(Self::mark_completed());
+        let state = SweepState {
+            current_address: heap_base,
+            heap_end,
+        };
+        PHASE = Phase::Sweep(state);
+        MARK_ON_ALLOCATION = false;
+    }
+
+    unsafe fn sweep_phase_increment(&mut self) {
+        if let Phase::Sweep(state) = &mut PHASE {
+            while state.current_address < state.heap_end {
+                let free_space = Self::contiguous_free_space(state.current_address, state.heap_end);
+                if free_space > 0 {
+                    FREE_LIST
+                        .as_mut()
+                        .unwrap()
+                        .free_space(state.current_address, Bytes(free_space as u32));
+                    state.current_address += free_space;
+                } else {
+                    let object = state.current_address as *mut Obj;
+                    assert!(object.is_marked());
+                    object.unmark();
+                    state.current_address +=
+                        object_size(state.current_address).to_bytes().as_usize();
+                }
+
+                self.steps += 1;
+                if self.steps > Self::INCREMENT_LIMIT {
+                    return;
+                }
+                assert!(state.current_address <= state.heap_end);
+            }
+            self.complete_sweeping();
+        } else {
+            panic!("Invalid phase");
+        }
+    }
+
+    unsafe fn complete_sweeping(&mut self) {
+        if let Phase::Sweep(_) = &mut PHASE {
+            PHASE = Phase::Pause;
+        } else {
+            panic!("Invalid phase");
+        }
+    }
+
+    unsafe fn contiguous_free_space(start_address: usize, end_address: usize) -> usize {
+        let mut address = start_address;
+        while address < end_address && !(address as *mut Obj).is_marked() {
+            let tag = (address as *mut Obj).tag();
+            if tag > TAG_FREE_BLOCK_MIN {
+                let block = address as *mut FreeBlock;
+                address += block.size().as_usize();
+            } else {
+                assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+                address += object_size(address).to_bytes().as_usize();
+            }
+            assert!(address <= end_address);
+        }
+        return address - start_address;
     }
 
     unsafe fn heap_base() -> usize {

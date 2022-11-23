@@ -164,7 +164,7 @@ fn check_dynamic_heap(
     heap_base_offset: usize,
     heap_ptr_offset: usize,
     continuation_table_ptr_offset: usize,
-    allow_blobs: bool,
+    incremental: bool,
 ) {
     let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
         .iter()
@@ -197,9 +197,12 @@ fn check_dynamic_heap(
         let tag = unmark(read_word(heap, offset));
         offset += WORD_SIZE;
 
-        if allow_blobs && tag == TAG_BLOB {
+        if incremental && tag == TAG_BLOB {
             let length = read_word(heap, offset);
             offset += WORD_SIZE + length as usize;
+        } else if incremental && tag > TAG_FREE_BLOCK_MIN {
+            let size = Words(tag - TAG_FREE_BLOCK_MIN);
+            offset += size.to_bytes().as_usize();
         } else {
             assert_eq!(tag, TAG_ARRAY);
 
