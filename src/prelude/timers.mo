@@ -2,8 +2,7 @@
 // fundamental node invariant: max_exp ante <= expire <= min_exp dopo
 // corollary: if expire == 0 then the ante is completely expired
 //
-type @TimerId = Nat;
-type @Node = { var expire : Nat64; id : @TimerId; delay : ?Nat64; job : () -> async (); ante : ?@Node; dopo : ?@Node };
+type @Node = { var expire : Nat64; id : Nat; delay : ?Nat64; job : () -> async (); ante : ?@Node; dopo : ?@Node };
 var @timers : ?@Node = null;
 func @prune(n : ?@Node) : ?@Node = switch n {
     case null null;
@@ -91,7 +90,7 @@ func @timer_helper() : async () {
 
 var @lastId = 0;
 
-func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : @TimerId {
+func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
     @lastId += 1;
     let id = @lastId;
     let now = (prim "time" : () -> Nat64) ();
@@ -122,7 +121,7 @@ func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : @Tim
     id
 };
 
-func @cancelTimer(id : @TimerId) {
+func @cancelTimer(id : Nat) {
     func graft(onto : ?@Node, branch : ?@Node) : ?@Node = switch (onto, branch) {
         case (null, null) null;
         case (null, _) branch;
