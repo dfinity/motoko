@@ -262,7 +262,7 @@ pub trait Heap {
 
 const KB: usize = 1024;
 const MB: usize = 1024 * KB;
-const LIST_COUNT: usize = 12;
+const LIST_COUNT: usize = 16;
 const SIZE_CLASSES: [usize; LIST_COUNT] = [
     12,
     32,
@@ -272,9 +272,13 @@ const SIZE_CLASSES: [usize; LIST_COUNT] = [
     512,
     KB,
     4 * KB,
+    16 * KB,
     64 * KB,
+    256 * KB,
     MB,
-    32 * MB,
+    4 * MB,
+    16 * MB,
+    64 * MB,
     256 * MB,
 ];
 
@@ -284,15 +288,19 @@ pub struct SegregatedFreeList {
 
 impl SegregatedFreeList {
     pub fn new() -> SegregatedFreeList {
-        let lists = from_fn(|index| Self::free_list(index));
+        Self::new_specific(&SIZE_CLASSES)
+    }
+
+    pub fn new_specific(size_classes: &[usize]) -> SegregatedFreeList {
+        let lists = from_fn(|index| Self::free_list(size_classes, index));
         assert!(lists[lists.len() - 1].is_overflow_list());
         SegregatedFreeList { lists }
     }
 
-    fn free_list(index: usize) -> FreeList {
-        let lower = SIZE_CLASSES[index];
-        let upper = if index + 1 < SIZE_CLASSES.len() {
-            SIZE_CLASSES[index + 1]
+    fn free_list(size_classes: &[usize], index: usize) -> FreeList {
+        let lower = size_classes[index];
+        let upper = if index + 1 < size_classes.len() {
+            size_classes[index + 1]
         } else {
             usize::MAX
         };
@@ -306,7 +314,7 @@ impl SegregatedFreeList {
                 return &mut self.lists[index];
             }
         }
-        return &mut self.lists[self.lists.len() - 1]; // empty overflow list
+        return &mut self.lists[self.lists.len() - 1]; // overflow list
     }
 
     fn insertion_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
@@ -322,10 +330,11 @@ impl SegregatedFreeList {
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
     pub unsafe fn allocate<H: Heap>(&mut self, heap: &mut H, size: Bytes<u32>) -> Value {
         let list = self.allocation_list(size);
-        assert!(size.as_usize() <= list.size_class.lower());
+        assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
         let mut block = if list.is_overflow_list() {
             list.remove_first_fit(size)
         } else {
+            assert!(size.as_usize() <= list.size_class.lower());
             list.remove_first()
         };
         if block == null_mut() {

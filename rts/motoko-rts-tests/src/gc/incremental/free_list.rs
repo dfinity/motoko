@@ -8,6 +8,10 @@ use motoko_rts::{
 
 use crate::memory::TestMemory;
 
+const SIZE_CLASSES: [usize; 16] = [
+    12, 16, 20, 24, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 512,
+];
+
 pub unsafe fn test() {
     println!("  Testing free list...");
     test_allocate_free();
@@ -34,6 +38,12 @@ unsafe fn test_allocate_free() {
     let allocation_sizes = vec![12, 8, 12, 8, 4096, 12, 8, 8, 16, 124, 128, 132, 16];
     let memory_size = allocation_sizes.iter().sum::<u32>() * 2;
     allocate_free(&allocation_sizes, memory_size);
+
+    println!("      Overflow sizes ...");
+    // overflow sizes, external fragmentation
+    let allocation_sizes = vec![260, 512, 700, 516, 704, 600, 300, 520, 1024];
+    let memory_size = allocation_sizes.iter().sum::<u32>() * 3;
+    allocate_free(&allocation_sizes, memory_size);
 }
 
 unsafe fn test_split_merge() {
@@ -58,7 +68,7 @@ impl Heap for TestMemory {
 
 unsafe fn allocate_free(allocation_sizes: &Vec<u32>, total_size: u32) {
     let mut mem = TestMemory::new(Bytes(total_size).to_words());
-    let mut list = SegregatedFreeList::new();
+    let mut list = SegregatedFreeList::new_specific(&SIZE_CLASSES);
     for _ in 0..ROUNDS {
         let mut allocations: HashSet<*mut Blob> = HashSet::new();
         for size in allocation_sizes.iter() {
