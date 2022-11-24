@@ -34,16 +34,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
-        "branch": "master",
+        "branch": "mraszyk/periodic-system-tasks",
         "builtin": false,
         "description": "A haskell toolbox for the Internet Computer",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "c863b6efec3acff2ce97b5b0fd203c944fe5bf94",
-        "sha256": "1y89qnvvyhgpscw2xdswqkjdz5r9m0xd5n25c2siphrm2r4a7zmh",
+        "rev": "0fd8a412cafa809790b1035a0c5c6f7eda00106e",
+        "sha256": "10mpbr1h97p8b739wndykri6s9dzps4g0jsspi6h1j9c52di3xxq",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/c863b6efec3acff2ce97b5b0fd203c944fe5bf94.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/0fd8a412cafa809790b1035a0c5c6f7eda00106e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
