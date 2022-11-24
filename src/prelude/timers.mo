@@ -84,7 +84,7 @@ func @timer_helper() : async () {
     };
 
     for (f in futures.vals()) {
-        switch f { case (?f) { await f }; case _ () }
+        switch f { case (?f) try await f catch _ { }; case _ () }
     };
 };
 
