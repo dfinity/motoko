@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "0fd8a412cafa809790b1035a0c5c6f7eda00106e",
-        "sha256": "10mpbr1h97p8b739wndykri6s9dzps4g0jsspi6h1j9c52di3xxq",
+        "rev": "92bca0782fae41404bf4694b44390f14b33da3be",
+        "sha256": "0sfks5va59n5xl5qdpa7snv7816vdxfr8h126azj6g8zkvfr9lq9",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/0fd8a412cafa809790b1035a0c5c6f7eda00106e.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/92bca0782fae41404bf4694b44390f14b33da3be.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -103,10 +103,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "0b20bf89e0035b6d62ad58f9db8fdbc99c2b01e8",
-        "sha256": "0dpg3xmmlmyacy17bnzjlpwbbfxmra7ja5wkib7ws0gqjqg9rsig",
+        "rev": "68ba2f40991e79a2e4e5c5b242e175a1ad270ab9",
+        "sha256": "1rj54dsa1qliiwsk0jjcc0i8szm6fc6zm6lpbsr65hk0abs8fsr1",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/0b20bf89e0035b6d62ad58f9db8fdbc99c2b01e8.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/68ba2f40991e79a2e4e5c5b242e175a1ad270ab9.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
