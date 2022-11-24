@@ -27,7 +27,7 @@ actor {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
        if (count > 5) { cancelTimer id2 };
-       if (attempts >= 100 and count == 0)
+       if (attempts >= 200 and count == 0)
          throw error("he's dead Jim");
      };
      debugPrint(debug_show {count});
