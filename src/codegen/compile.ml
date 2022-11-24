@@ -8209,34 +8209,50 @@ let rec compile_lexp (env : E.t) ae lexp =
   match lexp.it with
   | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) ->
-    let (set_field, get_field) = new_local env "field" in
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
-    set_field ^^
-    get_field,
-    SR.Vanilla,
-    store_ptr ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Generational
-     then
-      get_field ^^
-      compile_add_const ptr_unskew ^^
-      E.call_import env "rts" "write_barrier"
-     else G.nop)
+      let store_no_barrier = 
+        compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+        compile_exp_vanilla env ae e2 ^^ (* idx *)
+        Arr.idx_bigint env,
+        SR.Vanilla,
+        store_ptr
+      and store_with_barrier =
+        let (set_field, get_field) = new_local env "field" in
+        compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+        compile_exp_vanilla env ae e2 ^^ (* idx *)
+        Arr.idx_bigint env ^^
+        set_field ^^
+        get_field,
+        SR.Vanilla,
+        store_ptr ^^
+        get_field ^^
+        compile_add_const ptr_unskew ^^
+        E.call_import env "rts" "write_barrier"
+      in 
+        (match !Flags.gc_strategy with
+        | Mo_config.Flags.Generational -> store_with_barrier
+        | Mo_config.Flags.MarkCompact | Mo_config.Flags.Copying -> store_no_barrier)
   | DotLE (e, n) ->
-    let (set_field, get_field) = new_local env "field" in
-    compile_exp_vanilla env ae e ^^
-    Object.idx env e.note.Note.typ n ^^
-    set_field ^^
-    get_field,
-    SR.Vanilla,
-    store_ptr ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Generational
-    then  
-      get_field ^^
-      compile_add_const ptr_unskew ^^
-      E.call_import env "rts" "write_barrier"
-    else G.nop)
+      let store_no_barrier = 
+        compile_exp_vanilla env ae e ^^
+        (* Only real objects have mutable fields, no need to branch on the tag *)
+        Object.idx env e.note.Note.typ n,
+        SR.Vanilla,
+        store_ptr
+      and store_with_barrier =
+        let (set_field, get_field) = new_local env "field" in
+        compile_exp_vanilla env ae e ^^
+        Object.idx env e.note.Note.typ n ^^
+        set_field ^^
+        get_field,
+        SR.Vanilla,
+        store_ptr ^^
+        get_field ^^
+        compile_add_const ptr_unskew ^^
+        E.call_import env "rts" "write_barrier"
+      in
+        (match !Flags.gc_strategy with
+        | Mo_config.Flags.Generational -> store_with_barrier
+        | Mo_config.Flags.MarkCompact | Mo_config.Flags.Copying -> store_no_barrier)
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
   let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
