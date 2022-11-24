@@ -8202,45 +8202,44 @@ let compile_load_field env typ name =
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
-  let no_barrier = !Flags.gc_strategy <> Flags.Generational in
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
-  match lexp.it with
-  | VarLE var -> Var.set_val env ae var
-  | IdxLE (e1, e2) when no_barrier ->
+  match lexp.it, !Flags.gc_strategy with
+  | VarLE var, _ -> Var.set_val env ae var
+  | IdxLE (e1, e2), Flags.Generational ->
+    let (set_field, get_field) = new_local env "field" in
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    set_field ^^ (* peepholes to tee *)
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "write_barrier"
+  | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
     Arr.idx_bigint env,
     SR.Vanilla,
     store_ptr
-  | IdxLE (e1, e2) ->
+  | DotLE (e, n), Flags.Generational ->
     let (set_field, get_field) = new_local env "field" in
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
-    set_field ^^
+    compile_exp_vanilla env ae e ^^
+    Object.idx env e.note.Note.typ n ^^
+    set_field ^^ (* peepholes to tee *)
     get_field,
     SR.Vanilla,
     store_ptr ^^
     get_field ^^
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "write_barrier"
-  | DotLE (e, n) when no_barrier ->
+  | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
     Object.idx env e.note.Note.typ n,
     SR.Vanilla,
     store_ptr
-  | DotLE (e, n) ->
-    let (set_field, get_field) = new_local env "field" in
-    compile_exp_vanilla env ae e ^^
-    Object.idx env e.note.Note.typ n ^^
-    set_field ^^
-    get_field,
-    SR.Vanilla,
-    store_ptr ^^
-    get_field ^^
-    compile_add_const ptr_unskew ^^
-    E.call_import env "rts" "write_barrier"
 
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
