@@ -32,7 +32,7 @@ func @nextExpiration(n : ?@Node) : Nat64 = switch n {
 
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
-func @run_timers() : async () {
+func @timer_helper() : async () {
     func Array_init<T>(len : Nat,  x : T) : [var T] {
         (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
     };

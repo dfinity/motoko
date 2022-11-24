@@ -5,7 +5,7 @@ import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
 actor {
 
   system func timer() : async () {
-      await @run_timers();
+      await @timer_helper();
   };
 
   var count = 0;

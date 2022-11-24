@@ -504,7 +504,7 @@ and build_actor at ts self_id es obj_typ =
           | Some call -> call
           | None when !Mo_config.Flags.global_timer ->
             blockE
-              [ expD T.(callE (varE (var "@run_timers" Mo_frontend.Typing.heartbeat_type)) [unit] (unitE())) ]
+              [ expD T.(callE (varE (var "@timer_helper" Mo_frontend.Typing.heartbeat_type)) [unit] (unitE())) ]
               (unitE ())
           | None -> tupE []);
        inspect =
