@@ -568,9 +568,9 @@ module E = struct
   let collect_garbage env =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational") "_gc" *)
     let gc_fn = match !Flags.gc_strategy with
-    | Mo_config.Flags.Generational -> "generational"
-    | Mo_config.Flags.MarkCompact -> "compacting"
-    | Mo_config.Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
     in
     let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
     call_import env "rts" (gc_fn ^ "_gc")
@@ -6787,7 +6787,7 @@ module Var = struct
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Mo_config.Flags.Generational
+      (if !Flags.gc_strategy = Flags.Generational
         then
          G.i (LocalGet (nr i)) ^^
          compile_add_const ptr_unskew ^^
@@ -6798,7 +6798,7 @@ module Var = struct
       compile_unboxed_const ptr,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Mo_config.Flags.Generational
+      (if !Flags.gc_strategy = Flags.Generational
         then
          compile_unboxed_const ptr ^^
          compile_add_const ptr_unskew ^^
@@ -9902,9 +9902,9 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Generational) ^^
+    Bool.lit (!Flags.gc_strategy = Flags.MarkCompact || !Flags.gc_strategy = Flags.Generational) ^^
     E.call_import env "rts" "init" ^^
-    (if !Flags.gc_strategy = Mo_config.Flags.Generational
+    (if !Flags.gc_strategy = Flags.Generational
      then
       E.call_import env "rts" "init_write_barrier"
      else
