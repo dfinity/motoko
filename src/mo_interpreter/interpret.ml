@@ -1,6 +1,7 @@
 open Mo_def
 open Mo_values
 open Mo_types
+open Mo_config
 
 open Syntax
 open Source
@@ -119,6 +120,27 @@ struct
       Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
+
+  let tmp : (unit -> unit) Queue.t = Queue.create ()
+  let bounce work =
+    (* add work to *front* of queue *)
+    Queue.transfer q tmp;
+    Queue.add work q;
+    Queue.transfer tmp q
+
+  let interval = 128
+  let count = ref interval
+  let trampoline3 f x y z =
+    if !Flags.ocaml_js then
+      if !count <= 0 then begin
+          count := interval;
+          bounce (fun () -> f x y z);
+        end
+      else begin
+          count := (!count) - 1;
+          f x y z
+        end
+    else f x y z
 end
 
 
@@ -363,7 +385,8 @@ let check_call_conv_arg env exp v call_conv =
     )
 
 let rec interpret_exp env exp (k : V.value V.cont) =
-  interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
+  Scheduler.trampoline3
+    interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
@@ -371,9 +394,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
-    k (V.Func (CC.call_conv_of_typ exp.note.note_typ, fun env v k ->
-      try Prim.prim s env v k
-      with Invalid_argument s -> trap exp.at "%s" s
+    k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
+       Prim.prim { Prim.trap = trap exp.at "%s" } s
     ))
   | VarE id ->
     begin match Lib.Promise.value_opt (find id.it env.vals) with
