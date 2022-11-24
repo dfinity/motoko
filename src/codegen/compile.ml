@@ -1436,10 +1436,13 @@ module Tagged = struct
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
   let obj env tag element_instructions : G.t =
-    Heap.obj env @@
-      (compile_unboxed_const (int_of_tag tag) ^^
-      E.call_import env "rts" "mark_on_allocation") ::
-      element_instructions
+    let (set_object, get_object) = new_local env "new_object" in
+    (Heap.obj env @@
+      compile_unboxed_const (int_of_tag tag) ::
+      element_instructions) ^^
+      set_object ^^ get_object ^^
+      E.call_import env "rts" "mark_new_allocation" ^^
+      get_object
 
 end (* Tagged *)
 
