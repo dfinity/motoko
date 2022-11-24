@@ -3437,17 +3437,17 @@ module Arr = struct
   (* Does not initialize the fields! *)
   let alloc env = E.call_import env "rts" "alloc_array"
 
-  let iterate env get_array body = 
+  let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
-    
+
     (* Initial element pointer, skewed *)
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
-    
+
     (* Upper pointer boundary, skewed *)
     get_array ^^ Heap.load_field len_field ^^
     compile_mul_const element_size ^^
@@ -3461,7 +3461,7 @@ module Arr = struct
       get_boundary ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU))
     ) (
-      body get_pointer ^^      
+      body get_pointer ^^
 
       (* Next element pointer, skewed *)
       get_pointer ^^
@@ -3475,14 +3475,14 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
     set_r ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer -> 
+    iterate env get_r (fun get_pointer ->
       get_pointer ^^
       get_x ^^
       store_ptr
@@ -3494,7 +3494,7 @@ module Arr = struct
     let (set_r, get_r) = new_local env "r" in
     let (set_i, get_i) = new_local env "i" in
     set_f ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
@@ -3505,7 +3505,7 @@ module Arr = struct
     set_i ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer -> 
+    iterate env get_r (fun get_pointer ->
       get_pointer ^^
       (* The closure *)
       get_f ^^
@@ -6219,8 +6219,8 @@ module Stabilization = struct
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       compile_add64_const 4L ^^ (* `N` is now on the stack *)
-      set_dst ^^ 
-      
+      set_dst ^^
+
       get_dst ^^
       extend64 get_len ^^
       StableMem.ensure env ^^
@@ -6783,7 +6783,6 @@ module Var = struct
       G.nop,
       sr,
       G.i (LocalSet (nr i))
-
     | Some (HeapInd i) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
@@ -6800,16 +6799,14 @@ module Var = struct
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
       (if !Flags.gc_strategy = Mo_config.Flags.Generational
-        then 
+        then
          compile_unboxed_const ptr ^^
          compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
         else G.nop)
     | Some (Const _) -> fatal "set_val: %s is const" var
-
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
-
     | None   -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
@@ -8205,54 +8202,46 @@ let compile_load_field env typ name =
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
+  let no_barrier = !Flags.gc_strategy <> Flags.Generational in
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it with
   | VarLE var -> Var.set_val env ae var
+  | IdxLE (e1, e2) when no_barrier ->
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env,
+    SR.Vanilla,
+    store_ptr
   | IdxLE (e1, e2) ->
-      let store_no_barrier = 
-        compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-        compile_exp_vanilla env ae e2 ^^ (* idx *)
-        Arr.idx_bigint env,
-        SR.Vanilla,
-        store_ptr
-      and store_with_barrier =
-        let (set_field, get_field) = new_local env "field" in
-        compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-        compile_exp_vanilla env ae e2 ^^ (* idx *)
-        Arr.idx_bigint env ^^
-        set_field ^^
-        get_field,
-        SR.Vanilla,
-        store_ptr ^^
-        get_field ^^
-        compile_add_const ptr_unskew ^^
-        E.call_import env "rts" "write_barrier"
-      in 
-        (match !Flags.gc_strategy with
-        | Mo_config.Flags.Generational -> store_with_barrier
-        | Mo_config.Flags.MarkCompact | Mo_config.Flags.Copying -> store_no_barrier)
+    let (set_field, get_field) = new_local env "field" in
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    set_field ^^
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "write_barrier"
+  | DotLE (e, n) when no_barrier ->
+    compile_exp_vanilla env ae e ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    Object.idx env e.note.Note.typ n,
+    SR.Vanilla,
+    store_ptr
   | DotLE (e, n) ->
-      let store_no_barrier = 
-        compile_exp_vanilla env ae e ^^
-        (* Only real objects have mutable fields, no need to branch on the tag *)
-        Object.idx env e.note.Note.typ n,
-        SR.Vanilla,
-        store_ptr
-      and store_with_barrier =
-        let (set_field, get_field) = new_local env "field" in
-        compile_exp_vanilla env ae e ^^
-        Object.idx env e.note.Note.typ n ^^
-        set_field ^^
-        get_field,
-        SR.Vanilla,
-        store_ptr ^^
-        get_field ^^
-        compile_add_const ptr_unskew ^^
-        E.call_import env "rts" "write_barrier"
-      in
-        (match !Flags.gc_strategy with
-        | Mo_config.Flags.Generational -> store_with_barrier
-        | Mo_config.Flags.MarkCompact | Mo_config.Flags.Copying -> store_no_barrier)
+    let (set_field, get_field) = new_local env "field" in
+    compile_exp_vanilla env ae e ^^
+    Object.idx env e.note.Note.typ n ^^
+    set_field ^^
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "write_barrier"
+
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
   let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
@@ -9918,7 +9907,7 @@ and conclude_module env start_fi_o =
     (if !Flags.gc_strategy = Mo_config.Flags.Generational
      then
       E.call_import env "rts" "init_write_barrier"
-     else 
+     else
       G.nop) ^^
     match start_fi_o with
     | Some fi ->
