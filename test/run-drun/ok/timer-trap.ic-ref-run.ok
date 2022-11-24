@@ -3,4 +3,9 @@
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
 => update go()
-<= rejected (RC_CANISTER_REJECT): he's dead Jim
+debug.print: YEP!
+debug.print: EEK!
+debug.print: BEAM!
+debug.print: YEP!
+debug.print: {count = 3}
+<= replied: ()
