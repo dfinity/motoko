@@ -393,7 +393,6 @@ impl GC {
             }
 
             GC::Incremental => unsafe {
-                IncrementalGC::<MotokoHeap>::reset_for_testing();
                 const INCREMENTS_UNTIL_COMPLETION: usize = 16;
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
                     let limits = Limits {

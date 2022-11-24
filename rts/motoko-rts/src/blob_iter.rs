@@ -1,7 +1,4 @@
-use crate::{
-    memory::MARK_ON_ALLOCATION,
-    types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
-};
+use crate::types::{size_of, Array, Bytes, Obj, Value, Words, TAG_ARRAY};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -16,7 +13,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
 
     // NB. cannot use as_array() here as we didn't write the header yet
     let iter_array = iter_ptr.get_ptr() as *mut Array;
-    (*iter_array).header.set_tag(TAG_ARRAY, MARK_ON_ALLOCATION);
+    (iter_array as *mut Obj).initialize_tag(TAG_ARRAY);
     (*iter_array).len = 2;
 
     iter_array.set(ITER_BLOB_IDX, blob);

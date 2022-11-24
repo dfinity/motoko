@@ -7,23 +7,6 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
-/// Incremental GC allocation scheme:
-/// While the incremental GC is in the marking phase, new allocated objects are initially marked.
-/// This is necessary because the incremental GC does neither scan nor use write barriers on the call stack.
-/// Hence, new allocated objects are conservatively retained during an active GC mark phase.
-pub static mut MARK_ON_ALLOCATION: bool = false;
-
-/// Import for compiler-generated code to situatively set the mark bit for new heap allocations.
-#[no_mangle]
-pub unsafe fn mark_on_allocation(tag: Tag) -> Tag {
-    debug_assert!(!is_marked(tag));
-    if MARK_ON_ALLOCATION {
-        mark(tag)
-    } else {
-        tag
-    }
-}
-
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
 /// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
@@ -49,21 +32,19 @@ pub trait Memory {
 /// Allocate a new blob for the mutator with the default incremental mark allocation scheme.
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    alloc_blob_internal(mem, size, MARK_ON_ALLOCATION)
-}
-
-/// RTS-internal allocation of blobs for the GC that can be collected during the next GC run.
-pub unsafe fn alloc_collectable_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    alloc_blob_internal(mem, size, false)
-}
-
-#[inline]
-unsafe fn alloc_blob_internal<M: Memory>(mem: &mut M, size: Bytes<u32>, marked: bool) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
-    (*blob).header.set_tag(TAG_BLOB, marked);
+    (blob as *mut Obj).initialize_tag(TAG_BLOB);
     (*blob).len = size;
+    ptr
+}
+
+/// RTS-internal allocation of blobs for the GC that can be collected during the next GC run.
+pub(crate) unsafe fn alloc_collectable_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+    let ptr = alloc_blob(mem, size);
+    let object = ptr.get_ptr() as *mut Obj;
+    object.unmark();
     ptr
 }
 
@@ -78,7 +59,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
-    (*ptr).header.set_tag(TAG_ARRAY, MARK_ON_ALLOCATION);
+    (ptr as *mut Obj).initialize_tag(TAG_ARRAY);
     (*ptr).len = len;
 
     skewed_ptr

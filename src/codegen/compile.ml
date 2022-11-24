@@ -941,7 +941,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "mark_on_allocation" [I32Type] [I32Type];
+    E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
@@ -1351,10 +1351,19 @@ module Tagged = struct
 
   let mark_bit_mask = Int32.shift_left 1l 31
   
-  (* Assumes a pointer to the object on the stack *)
-  let store_tag env tag =
+  let alloc env size tag =
+    let (set_object, get_object) = new_local env "new_object" in
+    Heap.alloc env size ^^
+    set_object ^^ get_object ^^
     compile_unboxed_const (int_of_tag tag) ^^
-    E.call_import env "rts" "mark_on_allocation" ^^
+    Heap.store_field raw_tag_field ^^
+    get_object ^^
+    E.call_import env "rts" "mark_new_allocation" ^^
+    get_object
+
+  (* Assumes a pointer to the object on the stack *)
+  let store_unmarked_tag env tag =
+    compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field raw_tag_field
 
   let load_tag =
@@ -1641,9 +1650,8 @@ module BoxedWord64 = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Heap.alloc env 3l ^^
+    Tagged.(alloc env 3l Bits64) ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag env Bits64) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1759,9 +1767,8 @@ module BoxedSmallWord = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Heap.alloc env 2l ^^
+    Tagged.(alloc env 2l Bits32) ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag env Bits32) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -2001,9 +2008,8 @@ module Float = struct
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Heap.alloc env 3l ^^
+    Tagged.(alloc env 3l Bits64) ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag env Bits64) ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
     )
@@ -3019,12 +3025,8 @@ module Object = struct
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
-    Heap.alloc env (Int32.add header_size sz) ^^
+    Tagged.(alloc env (Int32.add header_size sz) Object) ^^
     set_ri ^^
-
-    (* Set tag *)
-    get_ri ^^
-    Tagged.(store_tag env Object) ^^
 
     (* Set size *)
     get_ri ^^
@@ -5054,7 +5056,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.(store_tag env StableSeen) ^^
+          get_x ^^ Tagged.(store_unmarked_tag env StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -7099,12 +7101,8 @@ module FuncDec = struct
 
       let code =
         (* Allocate a heap object for the closure *)
-        Heap.alloc env (Int32.add Closure.header_size len) ^^
+        Tagged.(alloc env (Int32.add Closure.header_size len) Closure) ^^
         set_clos ^^
-
-        (* Store the tag *)
-        get_clos ^^
-        Tagged.(store_tag env Closure) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^

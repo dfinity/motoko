@@ -19,6 +19,7 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
+use crate::gc::incremental::mark_new_allocation;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
@@ -411,9 +412,11 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub unsafe fn set_tag(&mut self, tag: Tag, marked: bool) {
+    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
         debug_assert!(!is_marked(tag));
-        self.raw_tag = if marked { mark(tag) } else { tag }
+        (*self).raw_tag = tag;
+        mark_new_allocation(self);
+        debug_assert_eq!(self.tag(), tag);
     }
 
     pub unsafe fn is_marked(self: *const Self) -> bool {
@@ -562,11 +565,11 @@ impl Blob {
         if slop == Words(1) {
             let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
                 as *mut OneWordFiller;
-            (*filler).header.set_tag(TAG_ONE_WORD_FILLER, false);
+            (*filler).header.raw_tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
-            (*filler).header.set_tag(TAG_FREE_SPACE, false);
+            (*filler).header.raw_tag = TAG_FREE_SPACE;
             (*filler).words = slop - Words(1);
         }
 
