@@ -405,9 +405,7 @@ impl GC {
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
                     let limits = Limits {
                         base: heap_base as usize,
-                        last_free: heap_1.heap_ptr_address(),
                         free: heap_1.heap_ptr_address(),
-                        allocation_threshold: 0,
                     };
                     let roots = Roots {
                         static_roots,

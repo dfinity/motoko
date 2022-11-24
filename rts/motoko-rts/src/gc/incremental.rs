@@ -20,20 +20,31 @@ pub mod mark_stack;
 pub mod sanity_checks;
 pub mod write_barrier;
 
+#[cfg(feature = "ic")]
+static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    incremental_gc(mem)
+    use crate::memory::ic;
+    assert!(ic::ALLOCATED >= LAST_ALLOCATED);
+    const THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
+    let should_start = ic::ALLOCATED - LAST_ALLOCATED >= THRESHOLD;
+
+    if !IncrementalGC::<M>::pausing() || should_start {
+        incremental_gc(mem);
+
+        if IncrementalGC::<M>::pausing() {
+            LAST_ALLOCATED = ic::ALLOCATED;
+        }
+    }
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    const ALLOCATION_THRESHOLD: usize = 32 * 1024 * 1024; // pause GC until this heap growth
     let limits = Limits {
         base: ic::get_aligned_heap_base() as usize,
-        last_free: ic::LAST_HP as usize,
         free: ic::HP as usize,
-        allocation_threshold: ALLOCATION_THRESHOLD,
     };
     let roots = Roots {
         static_roots: ic::get_static_roots(),
@@ -64,9 +75,7 @@ static mut PHASE: Phase = Phase::Pause;
 /// Heap limits
 pub struct Limits {
     pub base: usize,
-    pub last_free: usize,
     pub free: usize,
-    pub allocation_threshold: usize,
 }
 
 /// GC Root set
@@ -97,7 +106,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The moving phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(mem: &'a mut M, limits: Limits, roots: Roots) {
         let mut gc = Self::instance(mem);
-        if Self::pausing() && Self::should_start_gc(&limits) {
+        if Self::pausing() {
             #[cfg(debug_assertions)]
             #[cfg(feature = "ic")]
             sanity_checks::check_memory(false);
@@ -143,11 +152,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             }
             _ => false,
         }
-    }
-
-    fn should_start_gc(limits: &Limits) -> bool {
-        assert!(limits.last_free <= limits.free);
-        limits.free - limits.last_free >= limits.allocation_threshold
     }
 
     fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
