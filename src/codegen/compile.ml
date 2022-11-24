@@ -1653,7 +1653,7 @@ module BoxedWord64 = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Tagged.(alloc env 3l Bits64) ^^
+    Tagged.alloc env 3l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
@@ -1770,7 +1770,7 @@ module BoxedSmallWord = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Tagged.(alloc env 2l Bits32) ^^
+    Tagged.alloc env 2l Tagged.Bits32 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
@@ -2011,7 +2011,7 @@ module Float = struct
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Tagged.(alloc env 3l Bits64) ^^
+    Tagged.alloc env 3l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
@@ -3028,7 +3028,7 @@ module Object = struct
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
-    Tagged.(alloc env (Int32.add header_size sz) Object) ^^
+    Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
     set_ri ^^
 
     (* Set size *)
@@ -7104,7 +7104,7 @@ module FuncDec = struct
 
       let code =
         (* Allocate a heap object for the closure *)
-        Tagged.(alloc env (Int32.add Closure.header_size len) Closure) ^^
+        Tagged.alloc env (Int32.add Closure.header_size len) Tagged.Closure ^^
         set_clos ^^
 
         (* Store the function pointer number: *)
