@@ -18,9 +18,12 @@ pub unsafe fn check_mark_completeness<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-pub unsafe fn check_memory() {
+pub unsafe fn check_memory(allow_marked_objects: bool) {
     let heap = get_heap();
-    let checker = MemoryChecker { heap };
+    let checker = MemoryChecker {
+        heap,
+        allow_marked_objects,
+    };
     checker.check_memory();
 }
 
@@ -145,6 +148,7 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
 
 struct MemoryChecker {
     heap: Heap,
+    allow_marked_objects: bool,
 }
 
 impl MemoryChecker {
@@ -194,6 +198,9 @@ impl MemoryChecker {
         assert!(pointer < self.heap.limits.free);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+        if !self.allow_marked_objects {
+            assert!(!(pointer as *mut Obj).is_marked());
+        }
     }
 
     unsafe fn check_heap(&self) {

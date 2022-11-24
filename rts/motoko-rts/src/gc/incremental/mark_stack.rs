@@ -85,6 +85,11 @@ impl MarkStack {
         Some((*self.last).entries[self.top])
     }
 
+    pub unsafe fn is_empty(&self) -> bool {
+        debug_assert!(self.last != null_mut());
+        self.top == 0 && (*self.last).previous == null_mut()
+    }
+
     unsafe fn new_table<M: Memory>(mem: &mut M, previous: *mut StackTable) -> *mut StackTable {
         let table = alloc_collectable_blob(mem, size_of::<StackTable>().to_bytes()).as_blob_mut()
             as *mut StackTable;

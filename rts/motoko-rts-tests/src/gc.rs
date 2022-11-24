@@ -194,56 +194,64 @@ fn check_dynamic_heap(
             continue;
         }
 
-        let tag = unmark(read_word(heap, offset));
-        offset += WORD_SIZE;
-
-        if incremental && tag == TAG_BLOB {
-            let length = read_word(heap, offset);
-            offset += WORD_SIZE + length as usize;
-        } else if incremental && tag > TAG_FREE_BLOCK_MIN {
-            let size = Words(tag - TAG_FREE_BLOCK_MIN);
-            offset += size.to_bytes().as_usize() - WORD_SIZE;
+        let raw_tag = read_word(heap, offset);
+        if incremental && !is_marked(raw_tag) && raw_tag > TAG_FREE_BLOCK_MIN {
+            // skip free block
+            let size = Words(raw_tag - TAG_FREE_BLOCK_MIN);
+            offset += size.to_bytes().as_usize();
         } else {
-            assert_eq!(tag, TAG_ARRAY);
-
-            let n_fields = read_word(heap, offset);
+            let tag = unmark(raw_tag);
             offset += WORD_SIZE;
+            if incremental && tag == TAG_BLOB {
+                // in-heap mark stack blobs
+                let length = read_word(heap, offset);
+                offset += WORD_SIZE + length as usize;
+            } else {
+                if incremental {
+                    assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
+                } else {
+                    assert_eq!(tag, TAG_ARRAY);
+                }
 
-            // There should be at least one field for the index
-            assert!(n_fields >= 1);
-
-            let object_idx = get_scalar_value(read_word(heap, offset));
-            offset += WORD_SIZE;
-            let old = seen.insert(object_idx, address);
-            if let Some(old) = old {
-                panic!(
-                    "Object with index {} seen multiple times: {:#x}, {:#x}",
-                    object_idx, old, address
-                );
-            }
-
-            let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
-                panic!("Object with index {} is not in the objects map", object_idx)
-            });
-
-            for field_idx in 1..n_fields {
-                let field = read_word(heap, offset);
+                let n_fields = read_word(heap, offset);
                 offset += WORD_SIZE;
-                // Get index of the object pointed by the field
-                let pointee_address = field.wrapping_add(1); // unskew
-                let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
-                let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-                let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
-                let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
-                assert_eq!(
-                    pointee_idx,
-                    expected_pointee_idx,
-                    "Object with index {} points to {} in field {}, but expected to point to {}",
-                    object_idx,
-                    pointee_idx,
-                    field_idx - 1,
-                    expected_pointee_idx,
-                );
+
+                // There should be at least one field for the index
+                assert!(n_fields >= 1);
+
+                let object_idx = get_scalar_value(read_word(heap, offset));
+                offset += WORD_SIZE;
+                let old = seen.insert(object_idx, address);
+                if let Some(old) = old {
+                    panic!(
+                        "Object with index {} seen multiple times: {:#x}, {:#x}",
+                        object_idx, old, address
+                    );
+                }
+
+                let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
+                    panic!("Object with index {} is not in the objects map", object_idx)
+                });
+
+                for field_idx in 1..n_fields {
+                    let field = read_word(heap, offset);
+                    offset += WORD_SIZE;
+                    // Get index of the object pointed by the field
+                    let pointee_address = field.wrapping_add(1); // unskew
+                    let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
+                    let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
+                    let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
+                    let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
+                    assert_eq!(
+                        pointee_idx,
+                        expected_pointee_idx,
+                        "Object with index {} points to {} in field {}, but expected to point to {}",
+                        object_idx,
+                        pointee_idx,
+                        field_idx - 1,
+                        expected_pointee_idx,
+                    );
+                }
             }
         }
     }
