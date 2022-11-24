@@ -23,6 +23,7 @@ Formal Motoko is a prototype code-level verifier for Motoko. The project started
   | [Running](#Running)
   | [Testing](#Testing)
   | [File structure](#Struct)
+  | [Currently supported features](#Subset)
   | [Further information](#Further)
 
 ---
@@ -135,6 +136,103 @@ The implementation of Formal Motoko consists of the following source files:
 * `src/viper/syntax.ml` — the Viper AST implementation.
 * `src/viper/pretty.ml` — the Viper pretty printer. Used for serializing Viper AST into text.
 * `src/viper/trans.ml` — the Motoko-to-Viper translation. Implements the logic of Formal Motoko.
+
+
+**Currently supported language features**
+<a name="Subset"></a>
+
+Formal Motoko is an early prototype. The tool supports only a modest subset of [_Motoko proper_](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/about-this-guide), which is not sufficient for most real-world applications. However, we hope that Formal Motoko will enable the community to build more sophisticated Motoko code-level verifiers, simply by extending this prototype.
+
+Below, we summarize the language features that Formal Motoko currently supports. For each feature, we try to estimate the complexity of its natural generalization. For that purpose, we use the terms _trivial_ (e.g., extending code by analogy), _simple_ (we already know how to do it), 
+_hard_ (more discussions would be needed to figure out the exact approach or feasible level of generality).
+
+* **Literal actor declarations** — The only supported top-level entity is actor literal:
+
+    `actor ClaimReward { ... }` and `actor { ... }`
+  
+    Extending to actor classes and modules is _simple_.
+
+* **Primitive types** — Only integer and Boolean types are supported (including literals of these types):
+  
+  * `Bool`: `not`, `or`, `and`, `implies` (short circuiting semantics)
+
+  * `Int`: `+`, `/`, `*`, `-`, `%`
+
+  * Relations: `==`, `!=`, `<`, `>`, `>=`, `<=`
+
+  Supporting `Text`, `Nat`, `Int32`, tuples, record and generic types is _easy_.
+
+    Supporting `Option<T>` types is _trivial_.
+
+    Supporting `async` types is _easy_.
+
+    Supporting `Float`, function types, sub-typing is _hard_.
+
+    Supporting container types, e.g., `Array<T>` and `HashMap<K, V>`, is _hard_.
+
+* **Declarations**
+  
+    * **Actor fields**
+        * Mutable: `var x = ...`
+        * Immutable: `let y = ...`
+        * Fields may _not_ be initialized via block expressions: `let z = { ... };`
+
+    * **Public functions** — Only functions of `async ()` type with no arguments are supported:
+
+        `public func claim() : async () = { ... };`
+
+        Supporting function arguments and return values is _easy_.
+
+    * **Private functions** — Currently not supported (extension is _easy_).
+
+    * **Local declarations** — Only local variable declarations with trivial left-hand side are supported:
+
+        `var x = ...;` and `let y = ...;`
+
+        Extending to support tupled declarations (`let (a, b) = ...;`) is _simple_.
+
+* **Statements**
+
+    * `()`-typed block statements and sequential composition:
+
+        `{ var x = 0 : Int; x := x + 1; }`
+
+        Supporting `{ var x = 0 : Int; x := x + 1 }` is _easy_.
+
+    * Runtime assertions: `assert <exp : Bool>`
+
+    * Assignments (to local variables and actor fields): `x := x + 1`
+    
+    * `if-[else]` statements
+  
+        Supporting pattern-matching is conceptually _easy_
+    
+    * `while` loops (loop invariants are not currently supported)
+
+        Supporting `for` loops is _easy_.
+    
+    * `await async { ... }` — Asynchronous code blocks.
+
+        Supporting async function calls is _easy_.
+
+* **Static code specifications**
+    * `assert:invariant` — Canister-level invariants
+    
+    * `assert:1:async` — Async constraints (at block entry)
+
+        Extending to support non-unique constraints is _easy_.
+
+        Extending to support async constraints at block exit is _trivial_.
+    
+    * `assert:func` — Function preconditions
+    
+    * `assert:return` — Function postconditions
+    
+    * `assert:system` — Compile-time assertions
+    
+    **Loop invariants** — Extension is _easy_.
+    
+    **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`. This feature requires private functions.
 
 **Further information**
 <a name="Further"></a>
