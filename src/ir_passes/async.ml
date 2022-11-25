@@ -260,11 +260,6 @@ let transform mode prog =
                   (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))) ]
               T.unit
           )).it
-(*          
-        | Func(_, _, [], us, [T.Async(_, t2)]) ->
-          (* async answer type, from await in `do async {}` *)
-          (chainAsync (T.as_seq t2) us (t_exp a) (t_exp kr)).it
- *)
         | _ -> assert false
       end
     | PrimE (CPSAwait (Cmp, cont_typ), [a; kr]) ->
@@ -273,24 +268,6 @@ let transform mode prog =
          ((t_exp a) -*- (t_exp kr)).it
       | _ -> assert false
       end
-(*      
-    | PrimE (CPSDoAsync (s, t), [exp1]) ->
-      let t0 = t_typ t in
-      let tb, ts1, t2 = match typ exp1 with
-        | Func(_,_, [tb], [Func(_, _, [], ts1, [T.Async(_, t2)]); _], _ ) ->
-          tb, List.map t_typ (List.map (T.open_ [t]) ts1), t_typ (T.open_ [t] t2)
-        | t -> assert false
-      in
-      let k_ret = (* flatten v, here and below? *)
-         let v = fresh_var "v" (T.seq ts1) in
-         v --> fulfilled_asyncE nary (T.seq ts1) (varE v)
-      in
-      let k_fail =
-         let e = fresh_var "e" T.catch in
-         [e] -->* failed_asyncE nary (T.seq ts1) (varE e)
-      in
-      (callE (t_exp exp1) [t0] (tupE [k_ret; k_fail])).it
- *)
     | PrimE (CPSAsync (Fut, t), [exp1]) ->
       let t0 = t_typ t in
       let tb, ts1 = match typ exp1 with
