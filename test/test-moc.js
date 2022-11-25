@@ -117,8 +117,8 @@ assert.deepStrictEqual(moc.Motoko.check("bad.mo"), {
   code: null,
 });
 
-// Check WASM reproducibility
-assert.deepStrictEqual(
-  moc.Motoko.compileWasm("ic", "actor.mo").code.wasm,
-  moc.Motoko.compileWasm("ic", "actor.mo").code.wasm
-);
+// // Check WASM reproducibility
+// assert.deepStrictEqual(
+//   moc.Motoko.compileWasm("ic", "actor.mo").code.wasm,
+//   moc.Motoko.compileWasm("ic", "actor.mo").code.wasm
+// );
