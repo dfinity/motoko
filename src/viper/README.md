@@ -1,13 +1,15 @@
-# Formal Motoko
+_Motoko-san_
+============
 
-**Disclaimer** — this is an _early prototype_; in particular: 
-1. This project comes with no guarantees whatsoever. 
-2. The currently supported subset of Motoko is insufficient for most real-world applications.
-3. DFINITY currently has no plans to continue the development of Formal Motoko.
+> Disclaimer — this is an _early prototype_; in particular:
+> * This project comes with no guarantees whatsoever.
+> * The [currently supported subset of Motoko](#Subset) is insufficient for most real-world applications.
+> *  DFINITY currently has no plans to continue the development of _Motoko-san_.
 
-Formal Motoko is a prototype code-level verifier for Motoko. The project started at the DFINITY Foundation as a way to demonstrate that Motoko (and the Internet Computer in general) are well-suited for developing formally verified Web3 software.
 
----
+_Motoko-san_ is a prototype code-level verifier for Motoko. The project started at the DFINITY Foundation as a way to demonstrate that Motoko (and the Internet Computer in general) are well-suited for developing formally verified Web3 software.
+
+--------------------------------------------------------------------------------
 **Jump to:**
 
 **[Introduction](#Introduction) —**
@@ -23,12 +25,16 @@ Formal Motoko is a prototype code-level verifier for Motoko. The project started
   | [Running](#Running)
   | [Testing](#Testing)
   | [File structure](#Struct)
-  | [Currently supported features](#Subset)
-  | [Further information](#Further)
 
----
+**[Currently supported features](#Subset)**
 
-## Introduction
+**[Further information](#Further)**
+
+--------------------------------------------------------------------------------
+
+
+Introduction
+------------
 <a name="Intro"></a>
 
 **Overview**
@@ -47,7 +53,7 @@ Formal code specifications are written as part of the Motoko source code. These 
   * require that the tool actually _checks_ whether this assumption holds (given this actor's entire source code)
 * `assert:system (exp : Bool);` — a _static assertion_ that asks the verifier to prove that the property `exp` holds. Useful while designing code-level canister specifications.
 
-Note: the above syntax is provisional. It has been used so far to avoid introducing breaking changes to the Motoko grammar. In the future, Formal Motoko may switch to bespoke syntax for code specifications.
+Note: the above syntax is provisional. It has been used so far to avoid introducing breaking changes to the Motoko grammar. In the future, _Motoko-san_ may switch to bespoke syntax for code specifications.
 
 **Static vs. dynamic assertions**
 <a name="statVsDyn"></a>
@@ -62,14 +68,15 @@ Dynamic assertions can also be used for testing. Of course, the downside of test
 **Precondition of public functions**
 <a name="publicFuncPreconds"></a>
 
-In particular, dynamic assertions are very useful for specifying _preconditions_ of an actor's public functions (i.e., functions exposed in the Candid API configuration). Since such functions can be invoked by anyone; the identity of the caller is statically unknown. It is thus necessary to check all of the assumptions at runtime, by writing `assert <exp>`(here, `<exp>` denotes some `Bool` expression representing a function's precondition). Conversely, writing `assert:system <exp>` at the top of a public function will never verify because Formal Motoko has zero knowledge about the caller.
+In particular, dynamic assertions are very useful for specifying _preconditions_ of an actor's public functions (i.e., functions exposed in the Candid API configuration). Since such functions can be invoked by anyone; the identity of the caller is statically unknown. It is thus necessary to check all of the assumptions at runtime, by writing `assert <exp>`(here, `<exp>` denotes some `Bool` expression representing a function's precondition). Conversely, writing `assert:system <exp>` at the top of a public function will never verify because _Motoko-san_ has zero knowledge about the caller.
 
 **Examples**
 <a name="Examples"></a>
 
 To get a better idea about how code-level specifications help formalize what a Motoko canister is intended to do, please refer to the examples in `moc/test/viper`.
 
-## Contributing to Formal Motoko
+Contributing to _Motoko-san_
+----------------------------
 <a name="Contrib"></a>
 
 **Building the Motoko compiler**
@@ -99,7 +106,7 @@ To get a better idea about how code-level specifications help formalize what a M
     ```
 
 
-**Running Formal Motoko**
+**Running _Motoko-san_**
 <a name="Running"></a>
 
 ```bash
@@ -108,7 +115,7 @@ To get a better idea about how code-level specifications help formalize what a M
 
 You may then verify the `output.vpr` file using [Viper](https://viper.ethz.ch/). Soon, there will be an interactive IDE integration for VS Code, s.t. the outputs do not need to be verified by manually invoking Viper.
 
-**Testing Formal Motoko**
+**Testing _Motoko-san_**
 <a name="Testing"></a>
 
 After modifying the code and recompiling `moc`, don't forget to test the changes by running 
@@ -131,20 +138,20 @@ Each test case consists of a (formally specified) Motoko source file, say, `$TES
 **File structure**
 <a name="Struct"></a>
 
-The implementation of Formal Motoko consists of the following source files:
+The implementation of _Motoko-san_ consists of the following source files:
 
 * `src/viper/syntax.ml` — the Viper AST implementation.
 * `src/viper/pretty.ml` — the Viper pretty printer. Used for serializing Viper AST into text.
-* `src/viper/trans.ml` — the Motoko-to-Viper translation. Implements the logic of Formal Motoko.
+* `src/viper/trans.ml` — the Motoko-to-Viper translation. Implements the logic of _Motoko-san_.
 
 
-**Currently supported language features**
+Currently supported language features
+-------------------------------------
 <a name="Subset"></a>
 
-Formal Motoko is an early prototype. The tool supports only a modest subset of [_Motoko proper_](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/about-this-guide), which is not sufficient for most real-world applications. However, we hope that Formal Motoko will enable the community to build more sophisticated Motoko code-level verifiers, simply by extending this prototype.
+_Motoko-san_ is an early prototype. The tool supports only a modest subset of [_Motoko proper_](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/about-this-guide), which is not sufficient for most real-world applications. However, we hope that _Motoko-san_ will enable the community to build more sophisticated Motoko code-level verifiers, simply by extending this prototype. In particular, the tool enables verifying _reentrancy safety_ in simple (asynchronous) smart contracts (e.g., `test/viper/claim.mo`).
 
-Below, we summarize the language features that Formal Motoko currently supports. For each feature, we try to estimate the complexity of its natural generalization. For that purpose, we use the terms _trivial_ (e.g., extending code by analogy), _simple_ (we already know how to do it), 
-_hard_ (more discussions would be needed to figure out the exact approach or feasible level of generality).
+Below, we summarize the language features that _Motoko-san_ currently supports. For each feature, we try to estimate the complexity of its natural generalization. For that purpose, we use the terms _trivial_ (e.g., extending code by analogy), _simple_ (we already know how to do it), _hard_ (more discussions would be needed to figure out the exact approach or feasible level of generality).
 
 * **Literal actor declarations** — The only supported top-level entity is actor literal:
 
@@ -234,7 +241,8 @@ _hard_ (more discussions would be needed to figure out the exact approach or fea
     
     **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`. This feature requires private functions.
 
-**Further information**
+Further information
+-------------------
 <a name="Further"></a>
 
 If you have questions, please contact the Motoko compiler developers. You may do that, e.g., by filing a ticket via https://github.com/dfinity/motoko/issues/new
