@@ -49,6 +49,7 @@ Formal code specifications are written as part of the Motoko source code. These 
 
 * `assert:invariant (exp : Bool);` — actor-level invariant; must be ensured right after canister initialization and after every _atomic block_ execution. May appear only at the level of actor members. 
 * `assert:1:async (exp : Bool);` — an `await async { ... }` block may include this as the first statement; the intention is two-fold:
+  * at most _one_ instance of this code block can be pending execution.
   * specify that the property `exp` is _intended_ to hold when this block execution begins. 
   * require that the tool actually _checks_ whether this assumption holds (given this actor's entire source code)
 * `assert:system (exp : Bool);` — a _static assertion_ that asks the verifier to prove that the property `exp` holds. Useful while designing code-level canister specifications.
@@ -153,7 +154,7 @@ _Motoko-san_ is an early prototype. The tool supports only a modest subset of [_
 
 Below, we summarize the language features that _Motoko-san_ currently supports. For each feature, we try to estimate the complexity of its natural generalization. For that purpose, we use the terms _trivial_ (e.g., extending code by analogy), _simple_ (we already know how to do it), _hard_ (more discussions would be needed to figure out the exact approach or feasible level of generality).
 
-* **Literal actor declarations** — The only supported top-level entity is actor literal:
+* **Literal actor declarations** — The only supported top-level entity is an actor literal:
 
     `actor ClaimReward { ... }` and `actor { ... }`
   
@@ -167,15 +168,15 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
 
   * Relations: `==`, `!=`, `<`, `>`, `>=`, `<=`
 
-  Supporting `Text`, `Nat`, `Int32`, tuples, record and generic types is _easy_.
+  Supporting `Text`, `Nat`, `Int32`, tuples, record, and variants is _simple_.
 
     Supporting `Option<T>` types is _trivial_.
 
-    Supporting `async` types is _easy_.
+    Supporting `async` types is _hard_.
 
-    Supporting `Float`, function types, sub-typing is _hard_.
+    Supporting `Float`, function types, co-inductive, mutually recursive, and sub-typing is _hard_.
 
-    Supporting container types, e.g., `Array<T>` and `HashMap<K, V>`, is _hard_.
+    Supporting container types and generic types, e.g., arrays (`[var T]`) and `HashMap<K, V>`, is _hard_.
 
 * **Declarations**
   
@@ -188,15 +189,15 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
 
         `public func claim() : async () = { ... };`
 
-        Supporting function arguments and return values is _easy_.
+        Supporting function arguments and return values is _simple_.
 
-    * **Private functions** — Currently not supported (extension is _easy_).
+    * **Private functions** — Currently not supported (extension is _simple_).
 
     * **Local declarations** — Only local variable declarations with trivial left-hand side are supported:
 
         `var x = ...;` and `let y = ...;`
 
-        Supporting patterned declarations (e.g., `let (a, b) = ...;`) is _simple_.
+        Supporting pattern matching declarations (e.g., `let (a, b) = ...;`) is _simple_.
 
 * **Statements**
 
@@ -204,30 +205,35 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
 
         `{ var x = 0 : Int; x := x + 1; }`
 
-        Supporting `{ var x = 0 : Int; x := x + 1 }` is _easy_.
+        Supporting `let y = do { let y = 1 : Int; y + y };` is _simple_.
 
-    * Runtime assertions: `assert <exp : Bool>`
+    * Runtime assertions: `assert i <= MAX;`
 
     * Assignments (to local variables and actor fields): `x := x + 1`
     
     * `if-[else]` statements
   
-        Supporting pattern-matching is conceptually _easy_.
+        Supporting pattern-matching is conceptually _simple_.
     
     * `while` loops (loop invariants are not currently supported)
 
-        Supporting `for` loops is _easy_.
+        Supporting `for` loops is _simple_.
+
+        Supporting `break` and `continue` is _simple_.
     
-    * `await async { ... }` — Asynchronous code blocks.
+    * `await async { ... }` — Asynchronous code blocks that are immediately awaited on.
 
-        Supporting async function calls is _easy_.
+        Supporting general `await`s and `async`s is _hard_.
 
-* **Static code specifications**
+        Supporting async function calls is _simple_.
+
+* **Static code specifications** — Note that the syntax is provisional:
+
     * `assert:invariant` — Canister-level invariants
     
     * `assert:1:async` — Async constraints (at block entry)
 
-        Extending to support non-unique constraints is _easy_.
+        Extending to support, e.g., `assert:`_`N`_`:async` constraints (for _`N`_ > 1) is _simple_.
 
         Extending to support async constraints at block exit is _trivial_.
     
@@ -237,7 +243,7 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
     
     * `assert:system` — Compile-time assertions
     
-    **Loop invariants** — Extension is _easy_.
+    **Loop invariants** — Extension is _simple_.
     
     **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`. This feature requires private functions.
 
