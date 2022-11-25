@@ -5,16 +5,6 @@ open Mo_config
 module Js = Js_of_ocaml.Js
 module Sys_js = Js_of_ocaml.Sys_js
 
-module Arrange_sources = Mo_def.Arrange.Make (struct
-  let sources = true
-  let types = false
-end)
-
-module Arrange_sources_types = Mo_def.Arrange.Make (struct
-  let sources = true
-  let types = true
-end)
-
 let position_of_pos pos =
   object%js
     (* The LSP spec requires zero-based positions *)
