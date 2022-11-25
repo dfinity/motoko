@@ -62,12 +62,30 @@ let js_run list source =
   let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
   ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
+let js_viper filenames =
+  let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
+  js_result result (fun (viper, lookup) ->
+    let js_viper = Js.string viper in
+    let js_lookup = Js.wrap_callback (fun js_file js_region ->
+      let file = Js.to_string js_file in
+      let viper_region = match js_region |> Js.to_array |> Array.to_list with
+      | [a; b; c; d] ->
+        lookup { left = { file; line = a + 1; column = b }; right = { file; line = c + 1; column = d } }
+      | _ -> None in
+      match viper_region with
+      | Some region ->
+        Js.some (range_of_region region)
+      | None -> Js.null) in
+    Js.some (object%js
+      val viper = js_viper
+      val lookup = js_lookup
+    end))
+
 let js_candid source =
   js_result (Pipeline.generate_idl [Js.to_string source])
     (fun prog ->
       let code = Idllib.Arrange_idl.string_of_prog prog in
-      Js.some (Js.string code)
-    )
+      Js.some (Js.string code))
 
 let js_stable_compatible pre post =
   js_result (Pipeline.stable_compatible (Js.to_string pre) (Js.to_string post)) (fun _ -> Js.null)
@@ -96,8 +114,7 @@ let js_compile_wasm mode source =
         val wasm = code
         val candid = Js.string candid
         val stable = sig_
-      end)
-    )
+      end))
 
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in

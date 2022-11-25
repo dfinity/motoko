@@ -8,7 +8,8 @@ type error_detail = int  (* TODO: make this a datatype! *)
 
 exception Error of string * Lexing.position * Lexing.position
 
-val parse : error_detail ->
+val parse : Lexer_lib.mode ->
+            error_detail ->
             'a Parser.MenhirInterpreter.checkpoint ->
             Parser.MenhirInterpreter.supplier ->
             Lexing.lexbuf ->

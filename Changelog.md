@@ -28,6 +28,10 @@
     rejected, not accepted, to be consistent with the declarations of
     mutable fields and mutable objects.
 
+  * Experimental Viper integration by compiling a very narrow subset of
+    Motoko to the verification intermediate language. See `src/viper/README.md`
+    and the PR for details. (#3477).
+
 ## 0.7.3 (2022-11-01)
 
 * motoko (`moc`)
