@@ -1,3 +1,4 @@
+# TEST
 RUNFLAGS = -d
 
 all:
