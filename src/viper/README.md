@@ -189,7 +189,7 @@ _hard_ (more discussions would be needed to figure out the exact approach or fea
 
         `var x = ...;` and `let y = ...;`
 
-        Extending to support tupled declarations (`let (a, b) = ...;`) is _simple_.
+        Supporting patterned declarations (e.g., `let (a, b) = ...;`) is _simple_.
 
 * **Statements**
 
@@ -205,7 +205,7 @@ _hard_ (more discussions would be needed to figure out the exact approach or fea
     
     * `if-[else]` statements
   
-        Supporting pattern-matching is conceptually _easy_
+        Supporting pattern-matching is conceptually _easy_.
     
     * `while` loops (loop invariants are not currently supported)
 
