@@ -183,4 +183,6 @@ let error_codes : (string * string option) list =
     "M0177", None; (* Bases of record extensions must not have common fields that are not overwritten *)
     "M0178", None; (* Bases of record extensions must be either objects or modules *)
     "M0179", None; (* Mutable (var) fields from bases must be overwritten explicitly *)
+    "M0180", None; (* Shared function has unexpected type parameters *)
+    "M0181", None; (* Verification mode assertions not allowed *)
   ]

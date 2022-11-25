@@ -2,14 +2,54 @@
 
 * motoko (`moc`)
 
-    * halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
+  * BREAKING CHANGE (Minor):
+
+    Consider records with mutable fields as non-static (#3586).
+    Consequently, an imported library declaring a mutable record is now
+    rejected, not accepted, to be consistent with the declarations of
+    mutable fields and mutable objects.
+
+  * Experimental Viper integration by compiling a very narrow subset of
+    Motoko to the verification intermediate language. See `src/viper/README.md`
+    and the PR for details. (#3477).
+
+## 0.7.3 (2022-11-01)
+
+* motoko (`moc`)
+
+  * Statically reject shared functions and function types with type parameters (#3519, #3522).
+
+  * Performance improvement: `Array.init` and `Array.tabulate` (#3526).
+
+* motoko-base
+
+  * Add some examples to `Buffer` library documentation (dfinity/motoko-base#420).
+
+  * Fix another bug in `Buffer` library affecting `filterEntries` (dfinity/motoko-base#422).
+
+## 0.7.2 (2022-10-25)
+
+* motoko-base
+
+  * Fix bugs in `Buffer` library affecting `remove` and `filterEntries` (dfinity/motoko-base#419).
+
+## 0.7.1 (2022-10-24)
+
+* motoko (`moc`)
+
+    * Halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
 
     * Add support for type components in object type syntax (#3457, also fixes #3449)
     ``` motoko
       type Record = { type T = Nat; x : Nat};
     ```
-    is now legal. Note the definition of `T` is neither recursive, nor bound in `x : Nat`, but can refer to an existing recursive type declared in an outer scope.
+    is now legal.
+    Note the definition of `T` is neither recursive, nor bound in `x : Nat`,
+    but can refer to an existing recursive type declared in an outer scope.
 
+* motoko-base
+
+  * Optimized and extended `Buffer` library (dfinity/motoko-base#417).
 
 ## 0.7.0 (2022-08-25)
 

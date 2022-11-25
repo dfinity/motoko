@@ -749,6 +749,11 @@ module FakeMultiVal = struct
       G.i (GlobalGet (nr (global env (n - i))))
     ) tys
 
+  (* A drop-in replacement for E.if_ *)
+  let if_ env bt thn els =
+    E.if_ env (ty bt) (thn ^^ store env bt) (els ^^ store env bt) ^^
+    load env bt
+
 end (* FakeMultiVal *)
 
 module Func = struct
@@ -3411,7 +3416,6 @@ module Arr = struct
       idx env
   )
 
-
   let vanilla_lit env ptrs =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Array);
@@ -3428,50 +3432,76 @@ module Arr = struct
   (* Does not initialize the fields! *)
   let alloc env = E.call_import env "rts" "alloc_array"
 
+  let iterate env get_array body = 
+    let (set_boundary, get_boundary) = new_local env "boundary" in
+    let (set_pointer, get_pointer) = new_local env "pointer" in
+    
+    (* Initial element pointer, skewed *)
+    compile_unboxed_const header_size ^^
+    compile_mul_const element_size ^^
+    get_array ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_pointer ^^
+    
+    (* Upper pointer boundary, skewed *)
+    get_array ^^ Heap.load_field len_field ^^
+    compile_mul_const element_size ^^
+    get_pointer ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_boundary ^^
+
+    (* Loop through all elements *)
+    compile_while env
+    ( get_pointer ^^
+      get_boundary ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+    ) (
+      body get_pointer ^^      
+
+      (* Next element pointer, skewed *)
+      get_pointer ^^
+      compile_add_const element_size ^^
+      set_pointer
+    )
+
   (* The primitive operations *)
   (* No need to wrap them in RTS functions: They occur only once, in the prelude. *)
   let init env =
-    let (set_len, get_len) = new_local env "len" in
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    BigNum.to_word32 env ^^
-    set_len ^^
-
+    
     (* Allocate *)
-    get_len ^^
+    BigNum.to_word32 env ^^
     alloc env ^^
     set_r ^^
 
-    (* Write fields *)
-    get_len ^^
-    from_0_to_n env (fun get_i ->
-      get_r ^^
-      get_i ^^
-      idx env ^^
+    (* Write elements *)
+    iterate env get_r (fun get_pointer -> 
+      get_pointer ^^
       get_x ^^
       store_ptr
     ) ^^
     get_r
 
   let tabulate env =
-    let (set_len, get_len) = new_local env "len" in
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
+    let (set_i, get_i) = new_local env "i" in
     set_f ^^
-    BigNum.to_word32 env ^^
-    set_len ^^
-
+    
     (* Allocate *)
-    get_len ^^
+    BigNum.to_word32 env ^^
     alloc env ^^
     set_r ^^
 
-    (* Write fields *)
-    get_len ^^
-    from_0_to_n env (fun get_i ->
-      (* Where to store *)
-      get_r ^^ get_i ^^ idx env ^^
+    (* Initial index *)
+    compile_unboxed_const 0l ^^
+    set_i ^^
+
+    (* Write elements *)
+    iterate env get_r (fun get_pointer -> 
+      get_pointer ^^
       (* The closure *)
       get_f ^^
       (* The arg *)
@@ -3481,7 +3511,12 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
-      store_ptr
+      store_ptr ^^
+
+      (* Increment index *)
+      get_i ^^
+      compile_add_const 1l ^^
+      set_i
     ) ^^
     get_r
 
@@ -6495,15 +6530,14 @@ module StackRep = struct
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   (* The env looks unused, but will be needed once we can use multi-value, to register
-     the complex types in the environment *)
+     the complex types in the environment.
+     For now, multi-value block returns are handled via FakeMultiVal. *)
   let to_block_type env = function
     | Vanilla -> [I32Type]
     | UnboxedWord64 -> [I64Type]
     | UnboxedWord32 -> [I32Type]
     | UnboxedFloat64 -> [F64Type]
-    | UnboxedTuple n ->
-      if n > 1 then assert !Flags.multi_value;
-      Lib.List.make n I32Type
+    | UnboxedTuple n -> Lib.List.make n I32Type
     | Const _ -> []
     | Unreachable -> []
 
@@ -6520,33 +6554,19 @@ module StackRep = struct
     | _, _ when SR.eq sr1 sr2 -> sr1
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
-    | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
-    | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
+
+    | Const _, Const _ -> Vanilla
+    | Const _, sr2_ -> sr2
+    | sr1, Const _ -> sr1
+
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
-    | Const _, Const _ -> Vanilla
 
-    | Const _, UnboxedWord32 -> UnboxedWord32
-    | UnboxedWord32, Const _ -> UnboxedWord32
-    | Const _, UnboxedWord64 -> UnboxedWord64
-    | UnboxedWord64, Const _ -> UnboxedWord64
-    | Const _, UnboxedFloat64 -> UnboxedFloat64
-    | UnboxedFloat64, Const _ -> UnboxedFloat64
+    | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
 
-    | Const _, UnboxedTuple 0 -> UnboxedTuple 0
-    | UnboxedTuple 0, Const _-> UnboxedTuple 0
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
-
-  (* This is used when two blocks join, e.g. in an if. In that
-     case, they cannot return multiple values. *)
-  let relax =
-    if !Flags.multi_value
-    then fun sr -> sr
-    else function
-      | UnboxedTuple n when n > 1 -> Vanilla
-      | sr -> sr
 
   let drop env (sr_in : t) =
     match sr_in with
@@ -9132,10 +9152,10 @@ and compile_exp (env : E.t) ae exp =
     let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp env ae e1 in
     let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.relax (StackRep.join sr1 sr2) in
+    let sr = StackRep.join sr1 sr2 in
     sr,
     code_scrut ^^
-    E.if_ env
+    FakeMultiVal.if_ env
       (StackRep.to_block_type env sr)
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)

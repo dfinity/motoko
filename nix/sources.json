@@ -27,10 +27,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "0a620a8bcf8267266d83dd1a3bafd0cf745edfc0",
-        "sha256": "0ibjz8svcm4xg9sbr7z1n9dgbwg9dixzbv7w0f226f8yqswkmb8i",
+        "rev": "b5fa78c590188b96f9635f4e82ed1e958884e19c",
+        "sha256": "1hzcm6v6yrfymg68af7byrxygs0ana22l41y83imkgdj9z0rhdgw",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/0a620a8bcf8267266d83dd1a3bafd0cf745edfc0.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/b5fa78c590188b96f9635f4e82ed1e958884e19c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "934699aa59c3c2954cbf8992f33ef2c71624c036",
-        "sha256": "0jxrkplwrkfn8f8prsa2aivgbjkpkv4xmc58b9pl6fs64j6pjydh",
+        "rev": "0f87c27013c46454b4d8898e5893a8d64a01627d",
+        "sha256": "0vn6w86fgmy40nyf9zpn97xfhxnkifhfsa4hb6pshvyw3i3j8r3f",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/934699aa59c3c2954cbf8992f33ef2c71624c036.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/0f87c27013c46454b4d8898e5893a8d64a01627d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "58b81f62eaaf6e5a1afbc39abe27855467fb49b3",
-        "sha256": "0ns15g605fw9p8bi89h41hlw3q7qbj29362yhn8ccpy1bngah207",
+        "rev": "27051ff968f251bb462180331f804467ae349d1a",
+        "sha256": "1h7fi7gp2xmc0f3rzyjmscdyypbvv1d70y695ihija0738547133",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/58b81f62eaaf6e5a1afbc39abe27855467fb49b3.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/27051ff968f251bb462180331f804467ae349d1a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -103,10 +103,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "70b6236f3cbc815f2cae8d597418c714cf83d1c8",
-        "sha256": "1lzznzqxf2af85353qs202j1x3iqx3n85hilr066q5hqargizfba",
+        "rev": "0b20bf89e0035b6d62ad58f9db8fdbc99c2b01e8",
+        "sha256": "0dpg3xmmlmyacy17bnzjlpwbbfxmra7ja5wkib7ws0gqjqg9rsig",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/70b6236f3cbc815f2cae8d597418c714cf83d1c8.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/0b20bf89e0035b6d62ad58f9db8fdbc99c2b01e8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

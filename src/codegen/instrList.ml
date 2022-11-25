@@ -52,6 +52,11 @@ let optimize : instr list -> instr list = fun is ->
     (* Eliminate LocalTee followed by Drop (good for confluence) *)
     | ({ it = LocalTee n; _} as i) :: l', { it = Drop; _ } :: r' ->
       go l' ({i with it = LocalSet n } :: r')
+    (* Eliminate Get followed by Set (typical artifact from the multi-value emulation) *)
+    | { it = LocalGet n1; _} :: l', ({ it = LocalSet n2; _ }) :: r' when n1 = n2 ->
+      go l' r'
+    | { it = GlobalGet n1; _} :: l', ({ it = GlobalSet n2; _ }) :: r' when n1 = n2 ->
+      go l' r'
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
       (* see Note [funneling DIEs through Wasm.Ast] *)

@@ -8,6 +8,15 @@ func equal<A>(a : [A], b : [A], eq : (A, A) -> Bool) : Bool
 
 Test if two arrays contain equal values
 
+#### example:
+
+``` motoko
+let array1 = ["a", "b", "c"];
+let array2 = ["1", "2", "3"];
+
+let isEqual = Array.equal<Text>(array1, array2, Text.equal); // false
+```
+
 ## Function `append`
 ``` motoko no-repl
 func append<A>(xs : [A], ys : [A]) : [A]
@@ -18,10 +27,10 @@ Append the values of two input arrays
 
 ## Function `sort`
 ``` motoko no-repl
-func sort<A>(xs : [A], cmp : (A, A) -> Order.Order) : [A]
+func sort<A>(xs : [A], compare : (A, A) -> Order.Order) : [A]
 ```
 
-Sorts the given array according to the `cmp` function.
+Sorts the given array, in ascending order, according to the `compare` function.
 This is a _stable_ sort.
 
 ```motoko
@@ -33,10 +42,10 @@ assert(Array.sort(xs, Nat.compare) == [2, 4, 6])
 
 ## Function `sortInPlace`
 ``` motoko no-repl
-func sortInPlace<A>(xs : [var A], cmp : (A, A) -> Order.Order)
+func sortInPlace<A>(xs : [var A], compare : (A, A) -> Order.Order)
 ```
 
-Sorts the given array in place according to the `cmp` function.
+Sorts the given array, in ascending order, in place, according to the `compare` function.
 This is a _stable_ sort.
 
 ```motoko

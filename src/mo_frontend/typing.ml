@@ -340,6 +340,15 @@ let as_codomT sort t =
     T.Promises, as_domT t1
   | _ -> T.Returns, as_domT t
 
+let check_shared_binds env at tbs =
+  (* should be ensured by desugaring parser *)
+  assert (List.length tbs > 0 &&
+            (List.hd(tbs)).T.sort = T.Scope);
+  (* shared functions can't have user declared type parameters *)
+  if List.length tbs > 1 then
+    error env at "M0180"
+      "shared function has unexpected type parameters"
+
 let check_shared_return env at sort c ts =
   match sort, c, ts with
   | T.Shared _, T.Promises,  _ -> ()
@@ -466,8 +475,8 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
-    if Type.is_shared_sort sort.it then
-    if not env.pre then begin
+    if not env.pre && Type.is_shared_sort sort.it then begin
+      check_shared_binds env typ.at tbs;
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
         error_shared env t1 typ1.at "M0031" "shared function has non-shared parameter type%a"
@@ -745,7 +754,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -1236,6 +1245,7 @@ and infer_exp'' env exp : T.typ =
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
+    typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
       let env'' =
@@ -1246,6 +1256,7 @@ and infer_exp'' env exp : T.typ =
       in
       check_exp_strong (adjoin_vals env'' ve2) codom exp1;
       if Type.is_shared_sort sort then begin
+        check_shared_binds env exp.at tbs;
         if not (T.shared t1) then
           error_shared env t1 pat.at "M0031"
             "shared function has non-shared parameter type%a"
@@ -1287,6 +1298,12 @@ and infer_exp'' env exp : T.typ =
     end;
     T.bool
   | OrE (exp1, exp2) ->
+    if not env.pre then begin
+      check_exp_strong env T.bool exp1;
+      check_exp_strong env T.bool exp2
+    end;
+    T.bool
+  | ImpliesE (exp1, exp2) ->
     if not env.pre then begin
       check_exp_strong env T.bool exp1;
       check_exp_strong env T.bool exp2
@@ -1428,7 +1445,7 @@ and infer_exp'' env exp : T.typ =
         "expected async type, but expression has type%a"
         display_typ_expand t1
     )
-  | AssertE exp1 ->
+  | AssertE (_, exp1) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     T.unit
   | AnnotE (exp1, typ) ->

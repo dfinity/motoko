@@ -5,23 +5,31 @@ open Source
 open Syntax
 open Wasm.Sexpr
 
-type config = {
-  sources: bool;
-  types: bool;
-}
+module type Config = sig
+  val include_sources : bool
+  val include_types : bool
+  val main_file : string option
+end
 
-let default_config : config = {sources = false; types = false}
+module Default = struct
+  let include_sources = false
+  let include_types = false
+  let main_file = None
+end
 
-module Pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
+module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
 
-module Make (Config : sig val sources : bool val types : bool end) = struct
+module Make (Cfg : Config) = struct
   let ($$) head inner = Node (head, inner)
 
-  let pos p = "Pos" $$ [Atom p.file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
+  let pos p =
+    let file = match Cfg.main_file with
+    | Some f when f <> p.file -> p.file
+    | _ -> ""
+    in "Pos" $$ [Atom file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
+  let source at it = if Cfg.include_sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
-  let source at it = if Config.sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
-
-  let typ typ = Atom (Pretty.string_of_typ typ)
+  let typ typ = Atom (Type_pretty.string_of_typ typ)
   (* let typ typ = Atom (Type.string_of_typ typ) *)
   (* let typ = Mo_types.Arrange_type.typ *)
   
@@ -29,7 +37,8 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot note it = if Config.types then ":" $$ [typ note.note_typ; it] else it
+  let annot_typ t it = if Cfg.include_types then ":" $$ [it; typ t] else it
+  let annot note = annot_typ note.note_typ
 
   let id i = Atom i.it
   let tag i = Atom ("#" ^ i.it)
@@ -69,6 +78,7 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
     | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
+    | ImpliesE (e1, e2)   -> "ImpliesE"$$ [exp e1; exp e2]
     | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
     | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
     | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
@@ -81,7 +91,15 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | RetE e              -> "RetE"    $$ [exp e]
     | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
     | AwaitE e            -> "AwaitE"  $$ [exp e]
-    | AssertE e           -> "AssertE" $$ [exp e]
+    | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
+    | AssertE (Static, e)        -> "Static_AssertE" $$ [exp e]
+    | AssertE (Invariant, e)     -> "Invariant" $$ [exp e]
+    | AssertE (Precondition, e)  -> "Precondition" $$ [exp e]
+    | AssertE (Postcondition, e) -> "Postcondition" $$ [exp e]
+    | AssertE (Loop_entry, e)    -> "Loop_entry" $$ [exp e]
+    | AssertE (Loop_continue, e) -> "Loop_continue" $$ [exp e]
+    | AssertE (Loop_exit, e)     -> "Loop_exit" $$ [exp e]
+    | AssertE (Concurrency s, e) -> "Concurrency"^s $$ [exp e]
     | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
     | OptE e              -> "OptE"    $$ [exp e]
     | DoOptE e            -> "DoOptE"  $$ [exp e]
@@ -99,7 +117,7 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | None -> []
     | Some ts -> List.map typ ts
 
-  and pat p = source p.at (match p.it with
+  and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"
     | VarP x          -> "VarP"       $$ [id x]
     | TupP ps         -> "TupP"       $$ List.map pat ps
@@ -109,8 +127,8 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | SignP (uo, l)   -> "SignP"      $$ [Arrange_ops.unop uo ; lit !l]
     | OptP p          -> "OptP"       $$ [pat p]
     | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
-    | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
-    | ParP p          -> "ParP"       $$ [pat p])
+    | AltP (p1, p2)    -> "AltP"       $$ [pat p1; pat p2]
+    | ParP p          -> "ParP"       $$ [pat p]))
 
   and lit = function
     | NullLit       -> Atom "NullLit"
@@ -130,7 +148,7 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
     | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
     | TextLit t     -> "TextLit"   $$ [ Atom t ]
     | BlobLit b     -> "BlobLit"   $$ [ Atom b ]
-    | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
+    | PreLit (s, p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
   and case c = source c.at ("case" $$ [pat c.it.pat; exp c.it.exp])
 
@@ -196,22 +214,22 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
 
   and path p = match p.it with
     | IdH i -> "IdH" $$ [id i]
-    | DotH (p,i) -> "DotH" $$ [path p; id i]
+    | DotH (p, i) -> "DotH" $$ [path p; id i]
 
-  and typ t = source t.at (match t.it with
-    | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
-    | PrimT p -> "PrimT" $$ [Atom p]
-    | ObjT (s, ts) -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
-    | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
-    | OptT t -> "OptT" $$ [typ t]
-    | VariantT cts -> "VariantT" $$ List.map typ_tag cts
-    | TupT ts -> "TupT" $$ List.concat_map typ_item ts
-    | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-    | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
-    | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
-    | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
-    | ParT t -> "ParT" $$ [typ t]
-    | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t])
+  and typ t = source t.at (annot_typ t.note (match t.it with
+  | PathT (p, ts) -> "PathT" $$ [path p] @ List.map typ ts
+  | PrimT p -> "PrimT" $$ [Atom p]
+  | ObjT (s, ts) -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
+  | ArrayT (m, t) -> "ArrayT" $$ [mut m; typ t]
+  | OptT t -> "OptT" $$ [typ t]
+  | VariantT cts -> "VariantT" $$ List.map typ_tag cts
+  | TupT ts -> "TupT" $$ List.concat_map typ_item ts
+  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
+  | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
+  | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
+  | ParT t -> "ParT" $$ [typ t]
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
 
   and dec d = source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e ]
@@ -230,7 +248,4 @@ module Make (Config : sig val sources : bool val types : bool end) = struct
 end
 
 (* Defaults *)
-include Make (struct
-  let sources = false
-  let types = false
-end)
+include Make (Default)
