@@ -208,6 +208,7 @@
     'ignore' <exp_nest>
     'do' <block>
     'do' '?' <block>
+    'do' 'async' <block>
 
 <exp_nonvar> ::= 
     <exp_nondec>

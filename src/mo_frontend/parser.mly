@@ -121,6 +121,7 @@ let is_sugared_func_or_module dec = match dec.it with
 
 let func_exp f s tbs p t_opt is_sugar e =
   match s.it, t_opt, e with
+  | Type.Local, Some {it = AsyncT _; _}, {it = DoAsyncE _; _}
   | Type.Local, Some {it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
     FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, e)
@@ -703,7 +704,8 @@ exp_nondec(B) :
     { e }
   | DO QUEST e=block
     { DoOptE(e) @? at $sloc }
-
+  | DO ASYNC e=block
+    { DoAsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
 
 exp_nonvar(B) :
   | e=exp_nondec(B)

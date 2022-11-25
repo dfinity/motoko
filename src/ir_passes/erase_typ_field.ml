@@ -118,6 +118,8 @@ let transform prog =
       LabelE (id, t_typ typ, t_exp exp1)
     | AsyncE (tb, exp1, typ) ->
       AsyncE (t_typ_bind tb, t_exp exp1, t_typ typ)
+    | DoAsyncE (tb, exp1, typ) ->
+      DoAsyncE (t_typ_bind tb, t_exp exp1, t_typ typ)
     | TryE (exp1, cases) ->
       TryE (t_exp exp1, List.map t_case cases)
     | DeclareE (id, typ, exp1) ->

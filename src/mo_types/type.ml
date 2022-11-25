@@ -277,6 +277,7 @@ let set_kind c k =
   | _ -> raise (Invalid_argument "set_kind")
 
 module ConEnv = Env.Make(struct type t = con let compare = Cons.compare end)
+
 module ConSet = ConEnv.Dom
 
 
@@ -1448,7 +1449,7 @@ let string_of_con c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)
   | Func((Shared _ as s), Returns, tbs, ts1, ([] as ts2))
-  | Func(s, Returns, tbs, ts1, ([Async (Var(_, 0),_)] as ts2)) ->
+  | Func(s, Returns, (_::_ as tbs), ts1, ([Async (Var(_, 0),_)] as ts2)) ->
     List.for_all (fun tb -> can_omit 0 tb.bound) tbs &&
     List.for_all (can_omit 0) ts1 &&
     List.for_all (can_omit 0) ts2

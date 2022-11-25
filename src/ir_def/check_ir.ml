@@ -123,6 +123,7 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
+(* FIX ME: these error reporting functions are eager and will construct unnecessary type strings !*)
 let check_sub env at t1 t2 =
   if not (T.sub t1 t2) then
     error env at "subtype violation:\n  %s\n  %s\n"
@@ -541,8 +542,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: T.blob;
       T.Opt (T.seq ots) <: t
     | CPSAwait cont_typ, [a; kr] ->
-      check (not (env.flavor.has_await)) "CPSAwait await flavor";
-      check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
       let (_, t1) =
         try T.as_async_sub T.Non (T.normalize (typ a))
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
@@ -552,25 +551,47 @@ let rec check_exp env (exp:Ir.exp) : unit =
          begin
            (match ts2 with
             | [] -> ()
+            | [T.Async (_, _)] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
            typ kr <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2)];
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
-       | _ -> error env exp.at "CPSAwait bad cont")
-    | CPSAsync t0, [exp] ->
-      check (not (env.flavor.has_await)) "CPSAsync await flavor";
-      check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
-      check_typ env t0;
+       | _ -> error env exp.at "CPSAwait bad cont");
+      check (not (env.flavor.has_await)) "CPSAwait await flavor";
+      check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
+    | CPSDoAsync t0, [exp] ->
       (match typ exp with
         T.Func(T.Local,T.Returns, [tb],
-          [ T.Func(T.Local, T.Returns, [], ts1, []);
-            T.Func(T.Local, T.Returns, [], [t_error], []) ],
-          []) ->
+               [ T.Func(T.Local, T.Returns, [], ts1, ts21);
+                 T.Func(T.Local, T.Returns, [], [t_error], ts22)],
+               [T.Async(T.Var(_,0), t2) as t_async]) ->
+         let ts =  Type.open_binds [tb] in
+         let ts1' = List.map (T.open_ ts) ts1 in
+         let ts21' = List.map (T.open_ ts) ts21 in
+         let ts22' = List.map (T.open_ ts) ts22 in
+         let t_async'  = T.open_ ts t_async in
+         T.seq ts1' <: t2;
+         T.catch <: t_error;
+         T.seq ts21' <: t_async';
+         T.seq ts22' <: t_async';
+         T.open_ [t0] t_async <: t
+       | _ -> error env exp.at "CPSDoAsync unexpected typ");
+      check (not (env.flavor.has_await)) "CPSDoAsync await flavor";
+      check (env.flavor.has_async_typ) "CPSDoAsync in post-async flavor";
+      check_typ env t0;
+    | CPSAsync t0, [exp] ->
+      (match typ exp with
+        T.Func(T.Local,T.Returns, [tb],
+               [ T.Func(T.Local, T.Returns, [], ts1, []);
+                 T.Func(T.Local, T.Returns, [], [t_error], [])],
+               []) ->
          T.catch <: t_error;
          T.Async(t0, Type.open_ [t0] (T.seq ts1)) <: t
-       | _ -> error env exp.at "CPSAsync unexpected typ")
-      (* TODO: We can check more here, can we *)
+       | _ -> error env exp.at "CPSAsync unexpected typ");
+      check (not (env.flavor.has_await)) "CPSAsync await flavor";
+      check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      check_typ env t;
     | ICArgDataPrim, [] ->
       T.blob <: t
     | ICReplyPrim ts, [exp1] ->
@@ -726,6 +747,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
+  | DoAsyncE (tb, exp1, t0) -> (* merge with AsyncE *)
+    check env.flavor.has_await "do async expression in non-await flavor";
+    check_typ env t0;
+    let c, tb, ce = check_open_typ_bind env tb in
+    let t1 = typ exp1 in
+    let env' =
+      {(adjoin_cons env ce)
+       with labs = T.Env.empty; rets = Some t1; async = Some c; lvl = NotTopLvl} in
+    check_exp env' exp1;
+    let t1' = T.open_ [t0] (T.close [c] t1)  in
+    t1' <: T.Any; (* vacuous *)
+    T.Async (t0, t1') <: t
   | AsyncE (tb, exp1, t0) ->
     check env.flavor.has_await "async expression in non-await flavor";
     check_typ env t0;

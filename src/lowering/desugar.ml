@@ -216,11 +216,16 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
+  | S.DoAsyncE (tb, e) ->
+    I.DoAsyncE (typ_bind tb, exp e,
+      match note.Note.typ with
+      | T.Async (t, _) -> t
+      | _ -> assert false)
   | S.AsyncE (tb, e) ->
     I.AsyncE (typ_bind tb, exp e,
-              match note.Note.typ with
-              | T.Async (t, _) -> t
-              | _ -> assert false)
+      match note.Note.typ with
+      | T.Async (t, _) -> t
+      | _ -> assert false)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
   | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
@@ -376,8 +381,7 @@ and call_system_func_opt name es obj_typ =
               (ifE (varE accept)
                 (unitE ())
                 (primE (Ir.OtherPrim "trap")
-                  [textE "canister_inspect_message explicitly refused message"])
-                T.unit)
+                  [textE "canister_inspect_message explicitly refused message"]))
         | _name ->
           callE (varE (var id.it p.note)) [] (tupE []))
     | _ -> None) es
@@ -1166,8 +1170,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
                  tagE "new" (recordE ["settings", nullE()]) ])
              installBody
              (primE (Ir.OtherPrim "trap")
-               [textE "actor class configuration not supported in interpreter"])
-             installBody.note.Note.typ)
+               [textE "actor class configuration not supported in interpreter"]))
       in
       actor_class_mod_exp id class_typ install
     | I.ProgU ds ->

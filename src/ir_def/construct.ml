@@ -144,6 +144,12 @@ let awaitE e =
     note = Note.{ def with typ = snd (T.as_async (T.normalize (typ e))) ; eff = T.Await }
   }
 
+let cps_do_asyncE typ1 typ2 e =
+  { it = PrimE (CPSDoAsync typ1, [e]);
+    at = no_region;
+    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
+  }
+
 let cps_asyncE typ1 typ2 e =
   { it = PrimE (CPSAsync typ1, [e]);
     at = no_region;
@@ -306,11 +312,11 @@ let callE exp1 typs exp2 =
     }
   }
 
-let ifE exp1 exp2 exp3 typ =
+let ifE exp1 exp2 exp3 =
   { it = IfE (exp1, exp2, exp3);
     at = no_region;
     note = Note.{ def with
-      typ = typ;
+      typ = T.lub (typ exp2) (typ exp3);
       eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
     }
   }
@@ -319,8 +325,11 @@ let falseE () = boolE false
 let trueE () = boolE true
 let notE : Ir.exp -> Ir.exp = fun e ->
   primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE ()]
-let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 e2 (falseE ()) T.bool
-let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 -> ifE e1 (trueE ()) e2 T.bool
+let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
+  ifE e1 e2 (falseE ())
+let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
+  ifE e1 (trueE ()) e2
+
 let rec conjE : Ir.exp list -> Ir.exp = function
   | [] -> trueE ()
   | [x] -> x
@@ -569,15 +578,18 @@ let funcD ((id, typ) as f) x exp =
 let nary_funcD ((id, typ) as f) xs exp =
   letD f (nary_funcE id typ xs exp)
 
-(* Continuation types *)
+(* Continuation types with explicit answer typ *)
 
-let answerT = T.unit
+let contT typ ans_typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, T.as_seq ans_typ)
 
-let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
+let err_contT ans_typ =  T.Func (T.Local, T.Returns, [], [T.catch], T.as_seq ans_typ)
 
-let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
+let answerT typ : T.typ =
+  match typ with
+  | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
+  | _ -> assert false
 
-let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
+let cpsT typ ans_typ = T.Func (T.Local, T.Returns, [], [contT typ ans_typ; err_contT ans_typ], T.as_seq ans_typ)
 
 (* Sequence expressions *)
 
@@ -634,13 +646,12 @@ let whileE exp1 exp2 =
   *)
   let lab = fresh_id "done" () in
   labelE lab T.unit (
-      loopE (
-          ifE exp1
-            exp2
-            (breakE lab (unitE ()))
-            T.unit
-        )
+    loopE (
+      ifE exp1
+        exp2
+        (breakE lab (tupE []))
     )
+  )
 
 let loopWhileE exp1 exp2 =
   (* loop e1 while e2
@@ -651,15 +662,14 @@ let loopWhileE exp1 exp2 =
    *)
   let lab = fresh_id "done" () in
   labelE lab T.unit (
-      loopE (
-          thenE exp1
-            ( ifE exp2
-               (unitE ())
-               (breakE lab (unitE ()))
-               T.unit
-            )
-        )
+    loopE (
+      thenE exp1 (
+        ifE exp2
+          (tupE [])
+          (breakE lab (tupE []))
+      )
     )
+  )
 
 let forE pat exp1 exp2 =
   (* for (p in e1) e2

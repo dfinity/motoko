@@ -19,6 +19,7 @@ end
 
 module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
 
+
 module Make (Cfg : Config) = struct
   let ($$) head inner = Node (head, inner)
 
@@ -88,6 +89,7 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
+    | DoAsyncE (tb, e)    -> "DoAsyncE"  $$ [typ_bind tb; exp e]
     | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
     | AwaitE e            -> "AwaitE"  $$ [exp e]
     | AssertE e           -> "AssertE" $$ [exp e]

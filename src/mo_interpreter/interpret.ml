@@ -115,6 +115,7 @@ struct
 
   let queue work = Queue.add work q
   let yield () =
+    (*    Printf.printf "!"; (* TODO: delete me *) *)
     trace_depth := 0;
     try Queue.take q () with Trap (at, msg) ->
       Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
@@ -631,6 +632,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
+  | DoAsyncE (_, exp1) ->
+    let ret = fun v -> k (V.Async
+      { V.result = Lib.Promise.make_fulfilled (V.Ok v); V.waiters = [] })
+    in
+    let throw = fun e -> k (V.Async
+      { V.result = Lib.Promise.make_fulfilled (V.Error e); V.waiters = [] })
+    in
+    let env' = {env with labs = V.Env.empty; rets = Some ret; throws = Some throw} in
+    interpret_exp env' exp1 ret
   | AsyncE (_, exp1) ->
     async env
       exp.at

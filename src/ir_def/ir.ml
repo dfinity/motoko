@@ -66,6 +66,7 @@ and exp' =
   | SwitchE of exp * case list                 (* switch *)
   | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
+  | DoAsyncE of typ_bind * exp * Type.typ      (* do async *)
   | AsyncE of typ_bind * exp * Type.typ        (* async *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
@@ -159,7 +160,8 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait of Type.typ
+  | CPSAwait of Type.typ              (* typ is the current continuation type of cps translation *)
+  | CPSDoAsync of Type.typ
   | CPSAsync of Type.typ
   | ICPerformGC
   | ICReplyPrim of Type.typ list
@@ -301,6 +303,7 @@ let map_prim t_typ t_id p =
   | OtherPrim _ -> p
   | CPSAwait t -> CPSAwait (t_typ t)
   | CPSAsync t -> CPSAsync (t_typ t)
+  | CPSDoAsync t -> CPSDoAsync (t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICArgDataPrim
   | ICPerformGC

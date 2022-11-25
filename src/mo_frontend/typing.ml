@@ -760,7 +760,7 @@ let rec is_explicit_exp e =
   | AnnotE _ | ImportE _ ->
     true
   | LitE l -> is_explicit_lit !l
-  | UnE (_, _, e1) | OptE e1 | DoOptE e1
+  | UnE (_, _, e1) | OptE e1 | DoAsyncE (_, e1) | DoOptE e1
   | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
   | LabelE (_, _, e1) | AsyncE (_, e1) | AwaitE e1 ->
     is_explicit_exp e1
@@ -1399,6 +1399,22 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.throw exp1
     end;
     T.Non
+  | DoAsyncE (typ_bind, exp1) ->
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0181" "`do async { ... }` expressions are not supported";
+    let t1, next_cap = check_AsyncCap env "`do async { ... }` expression" exp.at in
+    let c, tb, ce, cs = check_typ_bind env typ_bind in
+    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
+    let env' =
+      {(adjoin_typs env ce_scope cs) with
+        labs = T.Env.empty;
+        rets = Some T.Pre;
+        async = next_cap c;
+        scopes = T.ConEnv.add c exp.at env.scopes } in
+    let t2 = infer_exp env' exp1 in
+    if not (T.shared t2) then
+      error_shared env t2 exp1.at "M0033" "async type has non-shared content type\n  %s"
+        (T.string_of_typ_expand t2);
+    T.Async (t1, t2)
   | AsyncE (typ_bind, exp1) ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
@@ -1567,6 +1583,29 @@ and check_exp' env0 t exp : T.typ =
         (if mut.it = Const then "im" else "")
         display_typ_expand (T.Array t');
     List.iter (check_exp env (T.as_immut t')) exps;
+    t
+  | DoAsyncE (tb, exp1), T.Async (t1', t') ->
+    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0149" "`do async { ... }` expressions are not supported";
+    let t1, next_cap = check_AsyncCap env "`do async { ... }` expression" exp.at in
+    if not (T.eq t1 t1') then begin
+      local_error env exp.at "M0092" "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
+        (T.string_of_typ_expand t1)
+        (T.string_of_typ_expand t1')
+        (associated_region env t1 exp.at)
+        (associated_region env t1' exp.at);
+      scope_info env t1 exp.at;
+      scope_info env t1' exp.at
+    end;
+    let c, tb, ce, cs = check_typ_bind env tb in
+    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
+    let env' =
+      {(adjoin_typs env ce_scope cs) with
+        labs = T.Env.empty;
+        rets = Some t';
+        async = next_cap c;
+        scopes = T.ConEnv.add c exp.at env.scopes;
+      } in
+    check_exp env' t' exp1;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
