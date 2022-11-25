@@ -77,9 +77,7 @@ impl RememberedSet {
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        if is_null_ptr_value(value) {
-            return;
-        }
+        debug_assert!(!is_null_ptr_value(value));
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);
         if is_null_ptr_value((*entry).value) {
@@ -109,6 +107,7 @@ impl RememberedSet {
 
     // Will only be used for debug assertions in future (barrier coverage check).
     pub unsafe fn contains(&self, value: Value) -> bool {
+        debug_assert!(is_null_ptr_value(value));
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);
         if !is_null_ptr_value((*entry).value) {
