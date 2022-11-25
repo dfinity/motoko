@@ -196,8 +196,10 @@ rule token mode = parse
   | "actor" { ACTOR }
   | "and" { AND }
   | "async" { ASYNC }
+  | "async*" { ASYNCSTAR }
   | "assert" { ASSERT }
   | "await" { AWAIT }
+  | "await*" { AWAITSTAR }
   | "break" { BREAK }
   | "case" { CASE }
   | "catch" { CATCH }

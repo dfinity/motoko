@@ -22,7 +22,7 @@ let effect_exp (exp: exp) : T.eff = eff exp
 
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
 let rec infer_effect_prim = function
-  | ThrowPrim | AwaitPrim -> T.Await
+  | ThrowPrim | AwaitPrim _ -> T.Await
   | _ -> T.Triv
 
  and infer_effect_exp (exp: exp) : T.eff =
@@ -49,8 +49,6 @@ let rec infer_effect_prim = function
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | DoAsyncE (_, e1, _) ->
-    effect_exp e1
   | AsyncE _ ->
     T.Triv
   | TryE _ ->

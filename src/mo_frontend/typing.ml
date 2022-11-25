@@ -209,7 +209,8 @@ let infer_mut mut : T.typ -> T.typ =
 
 let system_funcs tfs =
   [
-    ("heartbeat", T.Func (T.Local, T.Returns, [T.scope_bind], [], [T.Async (T.Var (T.default_scope_var, 0), T.unit)]));
+    ("heartbeat", T.Func (T.Local, T.Returns, [T.scope_bind], [],
+      [T.Async (T.Fut, T.Var (T.default_scope_var, 0), T.unit)]));
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("inspect",
@@ -336,7 +337,7 @@ let as_domT t =
 
 let as_codomT sort t =
   match sort, t.Source.it with
-  | T.Shared _,  AsyncT (_, t1) ->
+  | T.Shared _,  AsyncT (_, _, t1) ->
     T.Promises, as_domT t1
   | _ -> T.Returns, as_domT t
 
@@ -503,14 +504,14 @@ and check_typ' env typ : T.typ =
       (List.map (fun (tag : typ_tag) -> tag.it.tag) tags);
     let fs = List.map (check_typ_tag env) tags in
     T.Variant (List.sort T.compare_field fs)
-  | AsyncT (typ0, typ) ->
+  | AsyncT (s, typ0, typ) ->
     let t0 = check_typ env typ0 in
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
       error_shared env t typ.at
         "M0033" "async has non-shared content type%a"
         display_typ_expand t;
-    T.Async (t0, t)
+    T.Async (s, t0, t)
   | ObjT (sort, fields) ->
     check_ids env "object type" "field"
       (List.filter_map (fun (field : typ_field) ->
@@ -760,9 +761,9 @@ let rec is_explicit_exp e =
   | AnnotE _ | ImportE _ ->
     true
   | LitE l -> is_explicit_lit !l
-  | UnE (_, _, e1) | OptE e1 | DoAsyncE (_, e1) | DoOptE e1
+  | UnE (_, _, e1) | OptE e1 | DoOptE e1
   | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
-  | LabelE (_, _, e1) | AsyncE (_, e1) | AwaitE e1 ->
+  | LabelE (_, _, e1) | AsyncE (_, _, e1) | AwaitE (_, e1) ->
     is_explicit_exp e1
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
     is_explicit_exp e1 || is_explicit_exp e2
@@ -1399,23 +1400,7 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.throw exp1
     end;
     T.Non
-  | DoAsyncE (typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0181" "`do async { ... }` expressions are not supported";
-    let t1, next_cap = check_AsyncCap env "`do async { ... }` expression" exp.at in
-    let c, tb, ce, cs = check_typ_bind env typ_bind in
-    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
-    let env' =
-      {(adjoin_typs env ce_scope cs) with
-        labs = T.Env.empty;
-        rets = Some T.Pre;
-        async = next_cap c;
-        scopes = T.ConEnv.add c exp.at env.scopes } in
-    let t2 = infer_exp env' exp1 in
-    if not (T.shared t2) then
-      error_shared env t2 exp1.at "M0033" "async type has non-shared content type\n  %s"
-        (T.string_of_typ_expand t2);
-    T.Async (t1, t2)
-  | AsyncE (typ_bind, exp1) ->
+  | AsyncE (s, typ_bind, exp1) ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
@@ -1429,15 +1414,21 @@ and infer_exp'' env exp : T.typ =
         scopes = T.ConEnv.add c exp.at env.scopes } in
     let t = infer_exp env' exp1 in
     let t' = T.open_ [t1] (T.close [c] t)  in
-    if not (T.shared t') then
+    if s = Type.Fut && not (T.shared t') then
       error_shared env t' exp1.at "M0033" "async type has non-shared content type%a"
         display_typ_expand t';
-    T.Async (t1, t')
-  | AwaitE exp1 ->
+    T.Async (s, t1, t')
+  | AwaitE (s, exp1) ->
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
     (try
-       let (t2, t3) = T.as_async_sub t0 t1 in
+       let (t2, t3) = T.as_async_sub s t0 t1 in
+       (* if s1 <> s2 then begin
+           local_error env exp.at "M0XXX" (* check number! *)
+             "incompatible async sorts%a\nexpected %a" (* TBR *)
+             display_typ_expand t1
+             display_typ_expand t1'
+         end; *)
        if not (T.eq t0 t2) then begin
           local_error env exp1.at "M0087"
             "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
@@ -1584,33 +1575,16 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand (T.Array t');
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | DoAsyncE (tb, exp1), T.Async (t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0149" "`do async { ... }` expressions are not supported";
-    let t1, next_cap = check_AsyncCap env "`do async { ... }` expression" exp.at in
-    if not (T.eq t1 t1') then begin
-      local_error env exp.at "M0092" "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
-        (T.string_of_typ_expand t1)
-        (T.string_of_typ_expand t1')
-        (associated_region env t1 exp.at)
-        (associated_region env t1' exp.at);
-      scope_info env t1 exp.at;
-      scope_info env t1' exp.at
-    end;
-    let c, tb, ce, cs = check_typ_bind env tb in
-    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
-    let env' =
-      {(adjoin_typs env ce_scope cs) with
-        labs = T.Env.empty;
-        rets = Some t';
-        async = next_cap c;
-        scopes = T.ConEnv.add c exp.at env.scopes;
-      } in
-    check_exp env' t' exp1;
-    t
-  | AsyncE (tb, exp1), T.Async (t1', t') ->
+  | AsyncE (s1, tb, exp1), T.Async (s2, t1', t') ->
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
+    if s1 <> s2 then begin
+      local_error env exp.at "M0XXX" (* check number! *)
+        "incompatible async sorts%a\nexpected %a" (* TBR *)
+        display_typ_expand t1
+        display_typ_expand t1'
+    end;
     if not (T.eq t1 t1') then begin
       local_error env exp.at "M0092"
         "async at scope%a\ncannot produce expected scope%a%s%s"
@@ -2373,7 +2347,7 @@ and infer_dec env dec : T.typ =
       let t' = infer_obj env''' obj_sort.it dec_fields dec.at in
       match typ_opt, obj_sort.it with
       | None, _ -> ()
-      | Some { it = AsyncT (_, typ); at; _ }, T.Actor
+      | Some { it = AsyncT (T.Fut, _, typ); at; _ }, T.Actor
       | Some ({ at; _ } as typ), (T.Module | T.Object) ->
         if at = Source.no_region then
           warn env dec.at "M0135"
@@ -2465,7 +2439,7 @@ and gather_dec env scope dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
-       {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
+       {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ })
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
@@ -2547,7 +2521,7 @@ and infer_dec_typdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
+        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ })
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
@@ -2628,7 +2602,7 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _} as pat,
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE { it = AsyncE (_, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }; _ })
+        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _ }); _ })
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
@@ -2670,7 +2644,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 =
       if obj_sort.it = T.Actor then
-        T.Async (T.Con (List.hd cs, []),
+        T.Async (T.Fut, T.Con (List.hd cs, []),
           T.Con (c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
       else
         T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
@@ -2758,7 +2732,7 @@ let check_lib scope lib : Scope.t Diag.result =
                 | T.Func (sort, control, _, ts1, [t2]) ->
                   let t2 = T.normalize (T.open_ ts t2) in
                   (match t2 with
-                   | T.Async (_ , class_typ) -> List.map (T.open_ ts) ts1, class_typ
+                   | T.Async (_, _, class_typ) -> List.map (T.open_ ts) ts1, class_typ
                    | _ -> assert false)
                 | _ -> assert false
               in

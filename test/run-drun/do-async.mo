@@ -10,45 +10,47 @@ actor a {
      "hello"
   };
 
-  private func doInt() : async Int = do async {
+  private func doInt() : async* Int = async* {
     return await int();
   };
 
 
-  private func doText() : async Int = do async {
+  private func doText() : async* Int = async* {
     let t = await text(); // await at different type
     return t.size();
   };
 
-  private func doReturn() : async Int = do async {
+  private func doReturn() : async* Int = async* {
     return 666;
   };
 
 
-  private func doExit() : async Int = do async {
+  private func doExit() : async* Int = async* {
     666;
   };
 
-  private func doThrow() : async Int = do async {
+  private func doThrow() : async* Int = async* {
     throw P.error("oops");
   };
 
 
   public func go() : async () {
-    let i = await doInt();
+    let i = await* doInt();
     assert i == 666;
-    let s = await doText();
+    let s = await* doText();
     assert s == 5;
-    let r = await doReturn();
+    let r = await* doReturn();
     assert r == 666;
-    let e = await doExit();
+    let e = await* doExit();
     assert e == 666;
     try {
-      let _ = await doThrow();
+      let _ = await* doThrow();
       assert(false);
     } catch (e) { assert P.errorMessage(e) == "oops";};
   }
 };
 
-
+//SKIP run
+//SKIP run-low
+//SKIP run-ir
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

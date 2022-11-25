@@ -112,8 +112,7 @@ let rec exp e : f = match e.it with
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | LoopE e1            -> exp e1
   | LabelE (i, t, e)    -> exp e
-  | DoAsyncE (_, e, _)    -> exp e
-  | AsyncE (_, e, _)    -> exp e
+  | AsyncE (_, _, e, _) -> exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)

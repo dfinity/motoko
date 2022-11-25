@@ -38,16 +38,16 @@ actor a {
     }
   };
 
-  // Use `do async {}` to avoid context switch at each recursive call
+  // Use `await*/async* {}` to avoid context switch at each recursive call
   // Could also just do outermost return instead of in each branch.
-  func evalDoAsync(exp : Expression) : async Int = do async {
+  func evalAsyncStar(exp : Expression) : async* Int {
     switch (exp) {
       case (#const(n)) n;
-      case (#add(e1, e2)) (await evalDoAsync(e1)) + (await evalDoAsync(e2));
-      case (#mul(e1, e2)) (await evalDoAsync(e1)) * (await evalDoAsync(e2));
-      case (#sub(e1, e2)) (await evalDoAsync(e1)) - (await evalDoAsync(e2));
-      case (#pow(e1, e2)) await pow(await (evalDoAsync e1), await (evalDoAsync e2));
-                              // ^^^ only real context switch on call to asynchronous `pow` query
+      case (#add(e1, e2)) (await* evalAsyncStar(e1)) + (await* evalAsyncStar(e2));
+      case (#mul(e1, e2)) (await* evalAsyncStar(e1)) * (await* evalAsyncStar(e2));
+      case (#sub(e1, e2)) (await* evalAsyncStar(e1)) - (await* evalAsyncStar(e2));
+      case (#pow(e1, e2)) await pow(await* (evalAsyncStar e1), await* (evalAsyncStar e2));
+                       // ^^^^^ only real context switch on call to asynchronous `pow` query
     }
   };
 
@@ -65,17 +65,17 @@ actor a {
 
   public func evaluateAsync() : async () {
     P.debugPrint "Async";
-    P.debugPrint (debug_show(await(evalAsync(sum(32)))));
-    P.debugPrint (debug_show(await(evalAsync(#pow(#const 2,#const 10)))));
+    P.debugPrint (debug_show(await (evalAsync(sum(32)))));
+    P.debugPrint (debug_show(await (evalAsync(#pow(#const 2,#const 10)))));
   };
 
-  public func evaluateDoAsync() : async () {
-    P.debugPrint "DoAsync";
-    P.debugPrint (debug_show(await(evalDoAsync(sum(32)))));
-    P.debugPrint (debug_show(await(evalDoAsync(#pow(#const 2,#const 10)))));
+  public func evaluateAsyncStar() : async () {
+    P.debugPrint "AsyncStar";
+    P.debugPrint (debug_show(await* (evalAsyncStar(sum(32)))));
+    P.debugPrint (debug_show(await* (evalAsyncStar(#pow(#const 2,#const 10)))));
   };
 };
 
 await a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
 await a.evaluateAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
-await a.evaluateDoAsync(); //OR-CALL ingress evaluateDoAsync "DIDL\x00\x00"
+await a.evaluateAsyncStar(); //OR-CALL ingress evaluateAsyncStar "DIDL\x00\x00"

@@ -363,7 +363,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
-      | AwaitPrim, [v1] ->
+      | AwaitPrim Type.Fut, [v1] ->
         assert env.flavor.has_await;
         await env exp.at (V.as_async v1) k (Option.get env.throws)
       | AssertPrim, [v1] ->
@@ -495,16 +495,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id k env.labs} in
     interpret_exp env' exp1 k
-  | DoAsyncE (_, exp1, _) ->
-    let ret = fun v -> k (V.Async
-      { V.result = Lib.Promise.make_fulfilled (V.Ok v); V.waiters = [] })
-    in
-    let throw = fun e -> k (V.Async
-      { V.result = Lib.Promise.make_fulfilled (V.Error e); V.waiters = [] })
-    in
-    let env' = {env with labs = V.Env.empty; rets = Some ret; throws = Some throw} in
-    interpret_exp env' exp1 ret
-  | AsyncE (_, exp1, _) ->
+  | AsyncE (Type.Fut, _, exp1, _) ->
     assert env.flavor.has_await;
     async env
       exp.at

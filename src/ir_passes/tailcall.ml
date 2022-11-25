@@ -111,9 +111,7 @@ and exp' env e  : exp' = match e.it with
   | LabelE (i, t, e)    -> let env1 = bind env i None in
                            LabelE(i, t, exp env1 e)
   | PrimE (RetPrim, [e])-> PrimE (RetPrim, [tailexp { env with tail_pos = true } e])
-  (* NB:^ e is always in tailposition, regardless of fst env *)
-  | DoAsyncE (tb, e, typ) -> DoAsyncE (tb, exp { tail_pos = true; info = None } e, typ) (* TBR *)
-  | AsyncE (tb, e, typ) -> AsyncE (tb, exp { tail_pos = true; info = None } e, typ)
+  | AsyncE (s, tb, e, typ) -> AsyncE (s, tb, exp { tail_pos = true; info = None } e, typ)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)

@@ -89,9 +89,10 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
-    | DoAsyncE (tb, e)    -> "DoAsyncE"  $$ [typ_bind tb; exp e]
-    | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
-    | AwaitE e            -> "AwaitE"  $$ [exp e]
+    | AsyncE (Type.Fut, tb, e) -> "AsyncE"  $$ [typ_bind tb; exp e]
+    | AsyncE (Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
+    | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
+    | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
     | AssertE e           -> "AssertE" $$ [exp e]
     | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
     | OptE e              -> "OptE"    $$ [exp e]
@@ -218,7 +219,8 @@ module Make (Cfg : Config) = struct
   | VariantT cts -> "VariantT" $$ List.map typ_tag cts
   | TupT ts -> "TupT" $$ List.concat_map typ_item ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | AsyncT (Type.Fut, t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | AsyncT (Type.Cmp, t1, t2) -> "AsyncT*" $$ [typ t1; typ t2]
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
   | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]

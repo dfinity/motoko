@@ -632,23 +632,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | DoAsyncE (_, exp1) ->
-    let ret = fun v -> k (V.Async
-      { V.result = Lib.Promise.make_fulfilled (V.Ok v); V.waiters = [] })
-    in
-    let throw = fun e -> k (V.Async
-      { V.result = Lib.Promise.make_fulfilled (V.Error e); V.waiters = [] })
-    in
-    let env' = {env with labs = V.Env.empty; rets = Some ret; throws = Some throw} in
-    interpret_exp env' exp1 ret
-  | AsyncE (_, exp1) ->
+  | AsyncE (T.Fut, _, exp1) ->
     async env
       exp.at
       (fun k' r ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
         in interpret_exp env' exp1 k')
       k
-  | AwaitE exp1 ->
+  | AwaitE (T.Fut, exp1) ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)
   | AssertE exp1 ->

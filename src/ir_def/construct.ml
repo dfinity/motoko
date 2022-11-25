@@ -132,34 +132,29 @@ let assertE e =
   }
 
 
-let asyncE typ_bind e typ1 =
-  { it = AsyncE (typ_bind, e, typ1);
+let asyncE s typ_bind e typ1 =
+  { it = AsyncE (s, typ_bind, e, typ1);
     at = no_region;
-    note = Note.{ def with typ = T.Async (typ1, typ e); eff = T.Triv }
+    note = Note.{ def with typ = T.Async (s, typ1, typ e); eff = T.Triv }
   }
 
-let awaitE e =
-  { it = PrimE (AwaitPrim, [e]);
+let awaitE s e =
+  let (s, _ , typ) = T.as_async (T.normalize (typ e)) in
+  { it = PrimE (AwaitPrim s, [e]);
     at = no_region;
-    note = Note.{ def with typ = snd (T.as_async (T.normalize (typ e))) ; eff = T.Await }
+    note = Note.{ def with typ = typ; eff = T.Await }
   }
 
-let cps_do_asyncE typ1 typ2 e =
-  { it = PrimE (CPSDoAsync typ1, [e]);
+let cps_asyncE s typ1 typ2 e =
+  { it = PrimE (CPSAsync (s, typ1), [e]);
     at = no_region;
-    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
+    note = Note.{ def with typ = T.Async (s, typ1, typ2); eff = eff e }
   }
 
-let cps_asyncE typ1 typ2 e =
-  { it = PrimE (CPSAsync typ1, [e]);
-    at = no_region;
-    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
-  }
-
-let cps_awaitE cont_typ e1 e2 =
+let cps_awaitE s cont_typ e1 e2 =
   match cont_typ with
   | T.Func(T.Local, T.Returns, [], _, ts2) ->
-    { it = PrimE (CPSAwait cont_typ, [e1; e2]);
+    { it = PrimE (CPSAwait (s, cont_typ), [e1; e2]);
       at = no_region;
       note = Note.{ def with typ = T.seq ts2; eff = max_eff (eff e1) (eff e2) }
     }
