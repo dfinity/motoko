@@ -13,7 +13,6 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 * [Documentation sources](doc/md/).
 * [Base library documentation](doc/md/base/index.md).
 * [_Motoko-san_: a prototypical deductive verifier](src/viper/README.md).
-* 
 ## Introduction
 
 ### Motivation and Goals
