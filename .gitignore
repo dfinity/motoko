@@ -26,3 +26,5 @@ Session.vim
 .cproject
 .favorites.json
 .settings/
+test/run-drun/core-dump
+test/run-drun/tool/Cargo.lock
