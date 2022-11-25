@@ -8,7 +8,6 @@
     
     For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
     * Lower runtimes: Less number of executed instructions on average.
-    * Higher scalability: More heap space can be used on average.
     * Shorter interruptions: Young generation collection entails shorter program interruptions.
 
     To activate the generational GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
