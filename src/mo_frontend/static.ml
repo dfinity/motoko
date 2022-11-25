@@ -91,7 +91,9 @@ let rec exp m e = match e.it with
 
 and dec_fields m dfs = List.iter (fun df -> dec m df.it.dec) dfs
 
-and exp_fields m efs = List.iter (fun (ef : exp_field) -> exp m ef.it.exp) efs
+and exp_fields m efs = List.iter (fun (ef : exp_field) ->
+  if ef.it.mut.it = Var then err m ef.at;
+  exp m ef.it.exp) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
