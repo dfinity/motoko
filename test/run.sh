@@ -532,13 +532,14 @@ do
   
   if [ -e core.* ]
   then
-    echo "Print core dump"
+    echo "Printing core dumps"
     ls -la core.*
-    for core_dump_file in $(find ./ -name core.\*)
-    do
-      echo "Core dump of $core_dump_file"
-      hexdump $core_dump_file
-    done
+    cd tool
+    cargo build --release
+    cd ..
+    cp tool/target/release/core-dump .
+    ./core-dump
+    exit 1
   fi
 done
 
