@@ -7,6 +7,7 @@ module Sys_js = Js_of_ocaml.Sys_js
 let () =
   Sys_js.set_channel_flusher stdout (Buffer.add_string stdout_buffer);
   Sys_js.set_channel_flusher stderr (Buffer.add_string stderr_buffer);
+  Flags.ocaml_js := true;
   Flags.check_ir := false;
   Flags.debug_info := false;
   Flags.actor_idl_path := Some "idl/";
