@@ -18,7 +18,10 @@ type actor_id = string
 type context = value
 
 and func =
-   context -> value -> value cont -> unit
+  context -> value -> value cont -> unit
+
+and comp =
+  value cont -> value cont -> unit
 
 and value =
   | Null
@@ -43,6 +46,7 @@ and value =
   | Obj of value Env.t
   | Func of Call_conv.t * func
   | Async of async
+  | Comp of comp
   | Mut of value ref
   | Iter of value Seq.t ref (* internal to {b.vals(), t.chars()} iterator *)
 
@@ -96,6 +100,7 @@ val as_obj : value -> value Env.t
 val as_variant : value -> string * value
 val as_func : value -> Call_conv.t * func
 val as_async : value -> async
+val as_comp : value -> comp
 val as_mut : value -> value ref
 
 

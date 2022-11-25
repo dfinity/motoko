@@ -1,21 +1,20 @@
-import P "mo:prim";
-// test lexically nested do async expressions
+// test lexically nested async* expressions
 actor a {
 
   public func bar() : async Int {
      666
   };
 
-  private func foo(n : Nat) : async Int = do async {
-     let _ = await do async { "hello" };
+  private func foo(n : Nat) : async* Int {
+     let _ = await async* { "hello" };
      if (n == 0) {
-       await do async { await bar(); }
+       await async* { await bar(); }
      }
-     else await { do async { await foo(n-1); }; }
+     else await { async* { await foo(n-1); }; }
   };
 
   public func go() : async () {
-     assert 666 == (await foo(100));
+     assert 666 == (await* foo(100));
   };
 
 };

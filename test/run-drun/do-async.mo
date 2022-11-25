@@ -50,7 +50,4 @@ actor a {
   }
 };
 
-//SKIP run
-//SKIP run-low
-//SKIP run-ir
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
