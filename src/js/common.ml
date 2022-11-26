@@ -53,6 +53,8 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
        val code = Js.null
      end
 
+let js_version = Js.string Source_id.id
+
 let js_check source =
   js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null)
 
@@ -60,12 +62,30 @@ let js_run list source =
   let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
   ignore (Pipeline.run_stdin_from_file list (Js.to_string source))
 
+let js_viper filenames =
+  let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
+  js_result result (fun (viper, lookup) ->
+    let js_viper = Js.string viper in
+    let js_lookup = Js.wrap_callback (fun js_file js_region ->
+      let file = Js.to_string js_file in
+      let viper_region = match js_region |> Js.to_array |> Array.to_list with
+      | [a; b; c; d] ->
+        lookup { left = { file; line = a + 1; column = b }; right = { file; line = c + 1; column = d } }
+      | _ -> None in
+      match viper_region with
+      | Some region ->
+        Js.some (range_of_region region)
+      | None -> Js.null) in
+    Js.some (object%js
+      val viper = js_viper
+      val lookup = js_lookup
+    end))
+
 let js_candid source =
   js_result (Pipeline.generate_idl [Js.to_string source])
     (fun prog ->
       let code = Idllib.Arrange_idl.string_of_prog prog in
-      Js.some (Js.string code)
-    )
+      Js.some (Js.string code))
 
 let js_stable_compatible pre post =
   js_result (Pipeline.stable_compatible (Js.to_string pre) (Js.to_string post)) (fun _ -> Js.null)
@@ -94,23 +114,40 @@ let js_compile_wasm mode source =
         val wasm = code
         val candid = Js.string candid
         val stable = sig_
-      end)
-    )
-
-let js_parse_motoko s =
-  let parse_result = Pipeline.parse_string "main" (Js.to_string s) in
-  js_result parse_result (fun (prog, _) ->
-    (* let _ = Pipeline.infer_prog *)
-    let ast = Mo_def.Arrange.prog prog in
-    Js.some (js_of_sexpr ast)
-  )
+      end))
 
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    let ast = Idllib.Arrange_idl.prog prog in
-    Js.some (js_of_sexpr ast)
-  )
+    Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog)))
+
+let js_parse_motoko s =
+  let main_file = "" in
+  let parse_result = Pipeline.parse_string main_file (Js.to_string s) in
+  js_result parse_result (fun (prog, _) ->
+    let module Arrange = Mo_def.Arrange.Make (struct
+      let include_sources = true
+      let include_types = false
+      let main_file = Some main_file
+    end)
+    in Js.some (js_of_sexpr (Arrange.prog prog)))
+
+let js_parse_motoko_typed paths =
+  let paths = paths |> Js.to_array |> Array.to_list in
+  let
+    load_result = Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env
+  in
+  js_result load_result (fun (libs, progs, senv) ->
+  progs |> List.map (fun prog ->
+    let module Arrange_sources_types = Mo_def.Arrange.Make (struct
+      let include_sources = true
+      let include_types = true
+      let main_file = Some prog.at.left.file
+    end)
+    in object%js
+      val ast = js_of_sexpr (Arrange_sources_types.prog prog)
+      (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
+    end) |> Array.of_list |> Js.array |> Js.some)
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
@@ -140,13 +177,18 @@ let wrap_output f =
 let add_package package dir =
   let libs = Flags.package_urls in
   libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
+
 let clear_package () = Flags.package_urls := Flags.M.empty
+
+let set_candid_path path = Flags.actor_idl_path := Some (Js.to_string path)
+
 let set_actor_aliases entries =
   let entries = Array.map (fun kv ->
                     let kv = Js.to_array kv in
                     Js.to_string (Array.get kv 0), Js.to_string (Array.get kv 1)) (Js.to_array entries) in
   let aliases = Flags.actor_aliases in
   aliases := Flags.M.of_seq (Array.to_seq entries)
+
 let set_public_metadata entries =
   let entries = Array.map Js.to_string (Js.to_array entries) in
   Flags.public_metadata_names := Array.to_list entries

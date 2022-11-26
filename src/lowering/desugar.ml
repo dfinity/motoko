@@ -201,6 +201,7 @@ and exp' at note = function
   | S.NotE e -> (notE (exp e)).it
   | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
   | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
+  | S.ImpliesE (e1, e2) -> (impliesE (exp e1) (exp e2)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
@@ -222,7 +223,8 @@ and exp' at note = function
               | T.Async (t, _) -> t
               | _ -> assert false)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
-  | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
+  | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
+  | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))

@@ -16,10 +16,6 @@ cachix use ic-hs-test
 Technically, this is optional, but without this you will build lots of build
 dependencies manually, which takes several hours.
 
-_Note for M1 MacBook_: A Rosetta terminal is necessary to install and run Nix for Motoko. 
-If Nix or Rust have already been installed via a normal terminal (on ARM64), uninstall them first, 
-and then reinstall Nix under Rosetta (emulating x64).
-
 ## Installation using Nix
 
 If you want just to _use_ `moc`, you can install the `moc` binary into your nix

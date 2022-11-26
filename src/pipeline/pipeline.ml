@@ -96,7 +96,7 @@ let generic_parse_with mode lexer parser name : _ Diag.result =
   let* mk_syntax =
     try
       Parser_lib.triv_table := triv_table;
-      Parsing.parse (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
+      Parsing.parse mode (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
     with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
   let phrase = mk_syntax name in
@@ -132,6 +132,7 @@ let parse_file' mode at filename : (Syntax.prog * rel_path) Diag.result =
   )
 
 let parse_file = parse_file' Lexer.mode
+let parse_verification_file = parse_file' Lexer.mode_verification
 
 (* Import file name resolution *)
 
@@ -241,7 +242,7 @@ let internals, initial_stat_env =
 
 let parse_stab_sig s name  =
   let open Diag.Syntax in
-  let mode = {Lexer.privileged = false} in
+  let mode = Lexer.{privileged = false; verification = false} in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_stab_sig in
   let* sig_ = generic_parse_with mode lexer parse name in
@@ -251,7 +252,7 @@ let parse_stab_sig_from_file filename : Syntax.stab_sig Diag.result =
   let ic = Stdlib.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
-    let mode = {Lexer.privileged = false} in
+    let mode = Lexer.{privileged = false; verification = false} in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_stab_sig in
     let* sig_ = generic_parse_with mode lexer parse filename in
@@ -487,6 +488,23 @@ let check_files' parsefn files : check_result =
 
 let check_files files : check_result =
   check_files' parse_file files
+
+(* Generate Viper *)
+
+type viper_result = (string * (Source.region -> Source.region option)) Diag.result
+
+let viper_files' parsefn files : viper_result =
+  let open Diag.Syntax in
+  let* libs, progs, senv = load_progs parsefn files initial_stat_env in
+  let* () = Typing.check_actors senv progs in
+  let prog = CompUnit.combine_progs progs in
+  let u = CompUnit.comp_unit_of_prog false prog in
+  let* v = Viper.Trans.unit u in
+  let s = Viper.Pretty.prog_mapped "" v in
+  Diag.return s
+
+let viper_files files : viper_result =
+  viper_files' parse_verification_file files
 
 (* Generate IDL *)
 

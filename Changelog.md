@@ -1,12 +1,25 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+
+    Consider records with mutable fields as non-static (#3586).
+    Consequently, an imported library declaring a mutable record is now
+    rejected, not accepted, to be consistent with the declarations of
+    mutable fields and mutable objects.
+
+  * Experimental Viper integration by compiling a very narrow subset of
+    Motoko to the verification intermediate language. See `src/viper/README.md`
+    and the PR for details. (#3477).
+
 ## 0.7.3 (2022-11-01)
 
 * motoko (`moc`)
 
- * Statically reject shared functions and function types with type parameters (#3519, #3522).
+  * Statically reject shared functions and function types with type parameters (#3519, #3522).
 
- * Performance improvement: `Array.init` and `Array.tabulate` (#3526).
+  * Performance improvement: `Array.init` and `Array.tabulate` (#3526).
 
 * motoko-base
 
