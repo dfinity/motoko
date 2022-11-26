@@ -17,7 +17,7 @@ actor {
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
-       if (attempts >= 800 and count == 0)
+       if (attempts >= 8000 and count == 0)
          throw error("he's dead Jim");
      };
      debugPrint(debug_show {count});
