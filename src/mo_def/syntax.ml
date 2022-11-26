@@ -49,7 +49,7 @@ and typ' =
   | VariantT of typ_tag list                       (* variant *)
   | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
-  | AsyncT of async_sort * scope * typ                    (* future / computation *)
+  | AsyncT of async_sort * scope * typ             (* future / computation *)
   | AndT of typ * typ                              (* intersection *)
   | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
