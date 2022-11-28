@@ -1369,12 +1369,12 @@ All bindings declared by a `let` (if any) are *immutable*.
 
 #### Handling pattern match failures
 
-In the presence of of refutable patterns a `let` declaration may fail to bind the expression. The default consequence of such failure is a trap. The compiler will additionally emit a warning if a pattern match failure is possible.
+In the presence of of refutable patterns a `let` declaration may fail to bind the expression. The default consequence of such a failure is trapping. The compiler will additionally emit a warning if a pattern match failure is a possibility.
 
-There are cases, however, when the user wants to explicitly handle such pattern match failures. For thesesuch cases
+There are cases, however, when the user wants to explicitly handle such pattern match failures. For such cases
 the let declaration `let <pat> = <exp> else <fail-expr>` is provided, and has identical static and dynamic semantics with
 the difference that instead of trapping the canister evaluates the `<fail-expr>` to redirect the program's control flow.
-Thus `<fail-expr>` must have type `Non` (i.e. being non-returning), and as such `return` or other jumps are permitted besides aborting calls.
+Thus `<fail-expr>` must have type `Non` (i.e. being non-returning), and as such `return` or other jumps are permitted besides (eventually) aborting calls. The compilation warning is suppressed when the user chooses to handle the pattern-match failure.
 
 ### Var declaration
 
