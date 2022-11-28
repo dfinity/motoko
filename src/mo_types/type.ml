@@ -130,6 +130,13 @@ let compare_control c1 c2 =
   let d = tag_control c1 - tag_control c2 in
   if d > 0 then 1 else if d < 0 then -1 else 0
 
+let compare_async_sort s1 s2 =
+  match s1, s2 with
+  | Fut, Fut
+  | Cmp, Cmp -> 0
+  | Fut, Cmp -> -1
+  | Cmp, Fut -> 1
+
 let compare_obj_sort s1 s2 =
   let d = tag_obj_sort s1 - tag_obj_sort s2 in
   if d > 0 then 1 else if d < 0 then -1 else 0
@@ -185,7 +192,7 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
      | ord -> ord)
   | Opt t1, Opt t2 -> compare_typ t1 t2
   | Async (s1, t11, t12) , Async (s2, t21, t22) ->
-    (match compare s1 s2 with
+    (match compare_async_sort s1 s2 with
      | 0 -> (match compare_typ t11 t21 with
              | 0 -> compare_typ t12 t22
              | ord -> ord)
