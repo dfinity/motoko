@@ -1,5 +1,6 @@
 pub mod copying;
 pub mod incremental;
+pub mod generational;
 pub mod mark_compact;
 
 #[cfg(feature = "ic")]

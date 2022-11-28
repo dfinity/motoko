@@ -5,16 +5,21 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
+mod compacting;
+mod generational;
 mod heap;
 mod incremental;
 mod random;
 mod utils;
 
 use heap::MotokoHeap;
+use motoko_rts::gc::generational::remembered_set::RememberedSet;
+use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::incremental::{IncrementalGC, Limits, Roots};
+use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
@@ -42,6 +47,9 @@ pub fn test() {
         test_random_heap(seed, 180);
     }
     print!("\r");
+
+    compacting::test();
+    generational::test();
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -111,7 +119,7 @@ fn test_gc(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+    let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
@@ -126,8 +134,8 @@ fn test_gc(
         false,
     );
 
-    for _ in 0..3 {
-        gc.run(heap.clone());
+    for round in 0..3 {
+        let check_all_reclaimed = gc.run(&mut heap, round);
 
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
@@ -353,7 +361,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 }
 
 impl GC {
-    fn run(&self, mut heap: MotokoHeap) {
+    fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
         let heap_base = heap.heap_base_address() as u32;
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
@@ -365,7 +373,7 @@ impl GC {
             GC::Copying => {
                 unsafe {
                     copying_gc_internal(
-                        &mut heap,
+                        heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
@@ -379,12 +387,13 @@ impl GC {
                         |_reclaimed| {},
                     );
                 }
+                true
             }
 
             GC::MarkCompact => {
                 unsafe {
                     compacting_gc_internal(
-                        &mut heap,
+                        heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
@@ -398,6 +407,39 @@ impl GC {
                         |_reclaimed| {},
                     );
                 }
+                true
+            }
+
+            GC::Generational => {
+                let strategy = match round {
+                    0 => Strategy::Young,
+                    _ => Strategy::Full,
+                };
+                unsafe {
+                    REMEMBERED_SET = Some(RememberedSet::new(heap));
+                    LAST_HP = heap_1.last_ptr_address() as u32;
+
+                    let limits = Limits {
+                        base: heap_base as usize,
+                        last_free: heap_1.last_ptr_address(),
+                        free: heap_1.heap_ptr_address(),
+                    };
+                    let roots = Roots {
+                        static_roots,
+                        continuation_table_ptr_loc: continuation_table_ptr_address,
+                    };
+                    let gc_heap = motoko_rts::gc::generational::Heap {
+                        mem: heap,
+                        limits,
+                        roots,
+                    };
+                    let mut gc = GenerationalGC::new(gc_heap, strategy);
+                    gc.run();
+                    let free = gc.heap.limits.free;
+                    heap.set_last_ptr_address(free);
+                    heap.set_heap_ptr_address(free);
+                }
+                round >= 2
             }
 
             GC::Incremental => unsafe {
@@ -413,6 +455,7 @@ impl GC {
                     };
                     IncrementalGC::empty_call_stack_increment(&mut heap, limits, roots);
                 }
+                false
             },
         }
     }

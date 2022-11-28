@@ -15,7 +15,7 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | TagE (x, exp1) -> f { exp with it = TagE (x, over_exp f exp1) }
   | DotE (exp1, x) -> f { exp with it = DotE (over_exp f exp1, x) }
   | NotE exp1 -> f { exp with it = NotE (over_exp f exp1) }
-  | AssertE exp1 -> f { exp with it = AssertE (over_exp f exp1) }
+  | AssertE (how, exp1) -> f { exp with it = AssertE (how, over_exp f exp1) }
   | LabelE (x, y, exp1) -> f { exp with it = LabelE (x, y, over_exp f exp1) }
   | BreakE (x, exp1) -> f { exp with it = BreakE (x, over_exp f exp1) }
   | RetE exp1 -> f { exp with it = RetE (over_exp f exp1) }
@@ -37,6 +37,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = AndE (over_exp f exp1, over_exp f exp2) }
   | OrE (exp1, exp2) ->
      f { exp with it = OrE (over_exp f exp1, over_exp f exp2) }
+  | ImpliesE (exp1, exp2) ->
+     f { exp with it = ImpliesE (over_exp f exp1, over_exp f exp2) }
   | WhileE (exp1, exp2) ->
      f { exp with it = WhileE (over_exp f exp1, over_exp f exp2) }
   | LoopE (exp1, exp2_opt) ->

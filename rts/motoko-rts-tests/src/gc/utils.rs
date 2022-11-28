@@ -18,10 +18,11 @@ pub const MAX_MARK_STACK_SIZE: usize = 100;
 pub enum GC {
     Copying,
     MarkCompact,
+    Generational,
     Incremental,
 }
 
-pub static GC_IMPLS: [GC; 3] = [GC::Copying, GC::MarkCompact, GC::Incremental];
+pub static GC_IMPLS: [GC; 4] = [GC::Copying, GC::MarkCompact, GC::Generational, GC::Incremental];
 
 /// Read a little-endian (Wasm) word from given offset
 pub fn read_word(heap: &[u8], offset: usize) -> u32 {

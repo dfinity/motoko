@@ -6,8 +6,9 @@ actor a {
   public func check_A() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
     assert (Prim.rts_reclaimed() > 10000);
-    // debug sanity check for write barrier coverage peforms memory snapshot
-    assert (Prim.rts_reclaimed() < 200_000);
+    // Generational GC has additional remembered set that is discarded on each GC run
+    // Debug mode for generational GC also produces additional memory snapshots for sanity checks
+    assert (Prim.rts_reclaimed() < 512 * 1024);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
     // 8 at some point
@@ -20,8 +21,9 @@ actor a {
   public func check_B() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
     assert (Prim.rts_reclaimed() > 10000);
-    // debug sanity check for write barrier coverage peforms memory snapshot
-    assert (Prim.rts_reclaimed() < 400_000);
+    // Generational GC has additional remembered set that is discarded on each GC run
+    // Debug mode for generational GC also produces additional memory snapshots for sanity checks
+    assert (Prim.rts_reclaimed() < 1024 * 1024);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
     // 10_008 at some point

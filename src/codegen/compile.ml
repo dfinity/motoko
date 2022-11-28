@@ -39,7 +39,6 @@ let ptr_unskew = 1l
 (* Generating function names for functions parametrized by prim types *)
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
-
 (* Helper functions to produce annotated terms (Wasm.AST) *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 
@@ -566,11 +565,12 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying") "_gc" *)
+    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational") "_gc" *)
     let gc_fn = match !Flags.gc_strategy with
-    | Mo_config.Flags.MarkCompact -> "compacting"
-    | Mo_config.Flags.Copying -> "copying"
-    | Mo_config.Flags.Incremental -> "incremental"
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.Incremental -> "incremental"
     in
     let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
     call_import env "rts" (gc_fn ^ "_gc")
@@ -923,9 +923,11 @@ module RTS = struct
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
+    E.add_func_import env "rts" "generational_gc" [] [];
     E.add_func_import env "rts" "incremental_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
+    E.add_func_import env "rts" "schedule_generational_gc" [] [];
     E.add_func_import env "rts" "schedule_incremental_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
@@ -942,7 +944,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
-    E.add_func_import env "rts" "write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "init_post_write_barrier" [] [];
+    E.add_func_import env "rts" "pre_write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -3457,17 +3461,17 @@ module Arr = struct
   (* Does not initialize the fields! *)
   let alloc env = E.call_import env "rts" "alloc_array"
 
-  let iterate env get_array body = 
+  let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
-    
+
     (* Initial element pointer, skewed *)
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
-    
+
     (* Upper pointer boundary, skewed *)
     get_array ^^ Heap.load_field len_field ^^
     compile_mul_const element_size ^^
@@ -3481,7 +3485,7 @@ module Arr = struct
       get_boundary ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU))
     ) (
-      body get_pointer ^^      
+      body get_pointer ^^
 
       (* Next element pointer, skewed *)
       get_pointer ^^
@@ -3495,14 +3499,14 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
     set_r ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer -> 
+    iterate env get_r (fun get_pointer ->
       get_pointer ^^
       get_x ^^
       store_ptr
@@ -3514,7 +3518,7 @@ module Arr = struct
     let (set_r, get_r) = new_local env "r" in
     let (set_i, get_i) = new_local env "i" in
     set_f ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
@@ -3525,7 +3529,7 @@ module Arr = struct
     set_i ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer -> 
+    iterate env get_r (fun get_pointer ->
       get_pointer ^^
       (* The closure *)
       get_f ^^
@@ -6265,8 +6269,8 @@ module Stabilization = struct
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       compile_add64_const 4L ^^ (* `N` is now on the stack *)
-      set_dst ^^ 
-      
+      set_dst ^^
+
       get_dst ^^
       extend64 get_len ^^
       StableMem.ensure env ^^
@@ -6840,43 +6844,54 @@ module Var = struct
 
   (* Returns desired stack representation, preparation code and code to consume
      the value onto the stack *)
-  let set_val env ae var : G.t * SR.t * G.t = match VarEnv.lookup ae var with
-    | Some ((Local (sr, i)), _) ->
+  let set_val env ae var : G.t * SR.t * G.t = match (VarEnv.lookup ae var, !Flags.gc_strategy) with
+    | (Some ((Local (sr, i)), _), _) ->
       G.nop,
       sr,
       G.i (LocalSet (nr i))
-
-    | Some ((HeapInd i), typ) ->
-      (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer typ)
-       then
-        G.i (LocalGet (nr i)) ^^
-        compile_add_const ptr_unskew ^^
-        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-        E.call_import env "rts" "write_barrier"
-       else G.nop
-      ) ^^
+    | (Some ((HeapInd i), typ), Flags.Generational) when potential_pointer typ ->
+      G.i (LocalGet (nr i)),
+      SR.Vanilla,
+      Heap.store_field MutBox.field ^^
+      G.i (LocalGet (nr i)) ^^
+      compile_add_const ptr_unskew ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "post_write_barrier"
+    | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
+      G.i (LocalGet (nr i)) ^^
+      compile_add_const ptr_unskew ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "pre_write_barrier" ^^
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       Heap.store_field MutBox.field
-
-    | Some ((HeapStatic ptr), typ) ->
-      (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer typ)
-       then 
-        compile_unboxed_const ptr ^^
-        compile_add_const ptr_unskew ^^
-        compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-        E.call_import env "rts" "write_barrier"
-       else G.nop
-      ) ^^
+    | (Some ((HeapInd i), typ), _) ->
+      G.i (LocalGet (nr i)),
+      SR.Vanilla,
+      Heap.store_field MutBox.field
+    | (Some ((HeapStatic ptr), typ), Flags.Generational) when potential_pointer typ ->
+      compile_unboxed_const ptr,
+      SR.Vanilla,
+      Heap.store_field MutBox.field ^^
+      compile_unboxed_const ptr ^^
+      compile_add_const ptr_unskew ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "post_write_barrier"
+    | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
+      compile_unboxed_const ptr ^^
+      compile_add_const ptr_unskew ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "pre_write_barrier" ^^
       compile_unboxed_const ptr,
       SR.Vanilla,
       Heap.store_field MutBox.field
-
-    | Some ((Const _), _) -> fatal "set_val: %s is const" var
-
-    | Some ((PublicMethod _), _) -> fatal "set_val: %s is PublicMethod" var
-
-    | None   -> fatal "set_val: %s missing" var
+    | (Some (HeapStatic ptr), typ) ->
+      compile_unboxed_const ptr,
+      SR.Vanilla,
+      Heap.store_field MutBox.field
+    | (Some (Const _), _) -> fatal "set_val: %s is const" var
+    | (Some (PublicMethod _), _) -> fatal "set_val: %s is PublicMethod" var
+    | (None, _)   -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
   let set_val_vanilla env ae var : G.t * G.t =
@@ -8271,48 +8286,66 @@ let compile_load_field env typ name =
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
-  match lexp.it with
-  | VarLE var -> Var.set_val env ae var
-  | IdxLE (e1, e2) ->
+  match lexp.it, !Flags.gc_strategy with
+  | VarLE var, _ -> Var.set_val env ae var
+  | IdxLE (e1, e2), Flags.Generational when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
     let (set_field, get_field) = new_local env "field" in
-    
-   (
-     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-     compile_exp_vanilla env ae e2 ^^ (* idx *)
-     Arr.idx_bigint env ^^
-     (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer (Arr.element_type env e1.note.Note.typ))
-      then
-        set_field ^^
-        get_field ^^
-        compile_add_const ptr_unskew ^^
-        E.call_import env "rts" "write_barrier" ^^
-        get_field
-      else
-        G.nop
-     ),
-     SR.Vanilla,
-     store_ptr
-   )
-  | DotLE (e, n) ->
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    set_field ^^ (* peepholes to tee *)
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "post_write_barrier"
+  | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    set_field ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "pre_write_barrier" ^^
+    get_field,
+    SR.Vanilla,
+    store_ptr
+  | IdxLE (e1, e2), _ ->
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env,
+    SR.Vanilla,
+    store_ptr
+  | DotLE (e, n), Flags.Generational when potential_pointer (Object.field_type env e.note.Note.typ n) ->
     let (set_field, get_field) = new_local env "field" in
-    
-   ( 
-     compile_exp_vanilla env ae e ^^
-     (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env e.note.Note.typ n ^^
-     (if !Flags.gc_strategy = Mo_config.Flags.Incremental && (potential_pointer (Object.field_type env e.note.Note.typ n))
-      then  
-        set_field ^^
-        get_field ^^
-        compile_add_const ptr_unskew ^^
-        E.call_import env "rts" "write_barrier" ^^
-        get_field
-      else
-        G.nop
-     ),
-     SR.Vanilla,
-     store_ptr
-   )
+    compile_exp_vanilla env ae e ^^
+    Object.idx env e.note.Note.typ n ^^
+    set_field ^^ (* peepholes to tee *)
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "post_write_barrier"
+  | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) ->
+    compile_exp_vanilla env ae e ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    Object.idx env e.note.Note.typ n ^^
+    set_field ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "pre_write_barrier" ^^
+    get_field,
+    SR.Vanilla,
+    store_ptr
+  | DotLE (e, n), _ ->
+    compile_exp_vanilla env ae e ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    Object.idx env e.note.Note.typ n,
+    SR.Vanilla,
+    store_ptr
+
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
   let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
@@ -9974,9 +10007,14 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Mo_config.Flags.Incremental) ^^
+    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Flags.Generational || !Flags.gc_strategy = Mo_config.Flags.Incremental) ^^
     Bool.lit (!Flags.gc_strategy = Mo_config.Flags.Incremental) ^^
     E.call_import env "rts" "init" ^^
+    (if !Flags.gc_strategy = Flags.Generational
+     then
+      E.call_import env "rts" "init_post_write_barrier"
+     else
+      G.nop) ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
