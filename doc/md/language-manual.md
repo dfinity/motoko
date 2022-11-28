@@ -2213,23 +2213,26 @@ Any control-flow label in scope for `async* <block-or-exp>` is not in scope for 
 
 The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
-Evaluation of `async* <block-or-exp>` produces a delayed computation to evaluate `<block-or-exp>`.It immediately returns a value of type `async* T`.
+Evaluation of `async* <block-or-exp>` produces a delayed computation to evaluate `<block-or-exp>`. It immediately returns a value of type `async* T`.
 The delayed computation can be performed using `await*`, producing one evaluation
 of the computation `<block-or-exp>`.
+
+:::danger
+
+Note that `async <block-or-exp>` has the effect of scheduling a single asynchronous computation of `<exp>`, regardless of whether its result, a future, is consumed with an `await`.
+Moreover, each additional consumption by an `await` just returns the previous result, without repeating the computation.
+
+In comparison, `async* <block-or_exp>`,  has *no effect* until its value is consumed by an `await*`.
+Moreover, each additional consumption by an `await*` will trigger a new evaluation of `<block-or-exp>`.
+
+Be careful of this distinction, and other differences, when refactoring code.
+
+:::
 
 :::note
 
 The `async*` and corresponding `await*` constructs are useful for efficiently abstracting asynchronous code into re-useable functions.
 In comparison, calling a local function that returns a proper `async` type requires committing state and suspending execution with each `await` of its result, which can be undesirable.
-
-:::
-
-:::danger
-
-Note that `async <block-or-exp>` has the effect of scheduling a single asynchronous computation of `<exp>`, regardless of whether its result, a future, is consumed with an `await`.
-`async* <block-or_exp>`, on the other hand, has *no effect* until its value is consumed by an `await*`.
-Moreover, unlike a future, each additional consumption by an `await*` will trigger a new evaluation of `<block-or-exp>`. With a future,
-each additional consumption by an `await` just returns the previous result, without repeating the computation.
 
 :::
 
@@ -2246,20 +2249,24 @@ The `await*` expression `await* <exp>` has type `T` provided:
 Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a delayed computation `<block-or-exp>`. The evaluation of `await* <exp>` proceeds
 with the evaluation of `<block-or-exp>`, forcing the delayed computation.
 
-Note: Unlike `await`, which, regardless of the dynamic status of the future, ensures that all tentative state changes and message sends prior to the `await` are committed and irrevocable, `await*` does not, in itself, commit any state changes, nor does it suspend computation.
-Instead, evaluation proceeds immediately according to `<block-or-exp>` (the value of `<exp>`), committing state and suspending execution whenever `<block-or-exp>` does (but not otherwise).
-
 :::danger
 
 During the evaluation of `<block-or-exp>`, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer’s responsibility to guard against non-synchronized state changes.
-
-Using `await*` signals that the computation *may* commit state and suspend execution during the evaluation of `<block-or-exp>`, that is, that evaluation of `<block-or-exp>` may perform zero or more proper `await`s and may be interleaved with the execution of other, concurrent messages.
 
 :::
 
 :::note
 
-Evaluation of a delayed `async*` block is synchronous while possible, switching to asynchronous when necessary.
+Unlike `await`, which, regardless of the dynamic status of the future, ensures that all tentative state changes and message sends prior to the `await` are committed and irrevocable, `await*` does not, in itself, commit any state changes, nor does it suspend computation.
+Instead, evaluation proceeds immediately according to `<block-or-exp>` (the value of `<exp>`), committing state and suspending execution whenever `<block-or-exp>` does (but not otherwise).
+
+:::
+
+:::note
+
+Evaluation of a delayed `async*` block is synchronous while possible, switching to asynchronous when necessary due to a proper `await`.
+
+Using `await*` signals that the computation *may* commit state and suspend execution during the evaluation of `<block-or-exp>`, that is, that evaluation of `<block-or-exp>` may perform zero or more proper `await`s and may be interleaved with the execution of other, concurrent messages.
 
 :::
 
