@@ -647,7 +647,7 @@ let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
   | Non -> Any, Non
   | _ -> invalid "as_func_sub"
-let as_async_sub s default_scope t = match promote t with (* fix me *)
+let as_async_sub s default_scope t = match promote t with
   | Async (s0, t1, t2) when s = s0 -> (t1, t2)
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"

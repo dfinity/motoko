@@ -1,1 +1,1 @@
-type t = shared() -> async* ();
+type t = shared() -> async* (); // reject (shared function can't return async*)

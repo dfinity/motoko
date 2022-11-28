@@ -1,18 +1,18 @@
 actor {
   func f() : async* Nat {
-    await* g();
+    await* g(); // reject
   };
 
   func g() : async Nat {
-   await f();
+   await f(); // reject
   };
 
   func anon1() : async () {
-    await async* {};
+    await async* {}; // reject
   };
 
   func anon2() : async () {
-    await* async {};
+    await* async {}; // reject
   };
 
 }
