@@ -42,7 +42,7 @@ unsafe fn test_allocate_free() {
     println!("      Overflow sizes ...");
     // overflow sizes, external fragmentation
     let allocation_sizes = vec![260, 512, 700, 516, 704, 600, 300, 520, 1024];
-    let memory_size = allocation_sizes.iter().sum::<u32>() * 3;
+    let memory_size = allocation_sizes.iter().sum::<u32>() * 4;
     allocate_free(&allocation_sizes, memory_size);
 }
 
