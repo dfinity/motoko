@@ -358,7 +358,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         let mut address = start_address;
         while address < end_address && !(address as *mut Obj).is_marked() {
             let tag = (address as *mut Obj).tag();
-            if tag > TAG_FREE_BLOCK_MIN {
+            if tag >= TAG_FREE_BLOCK_MIN {
                 let block = address as *mut FreeBlock;
                 address += block.size().as_usize();
             } else {

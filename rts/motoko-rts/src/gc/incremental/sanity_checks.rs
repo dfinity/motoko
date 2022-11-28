@@ -10,6 +10,8 @@ use crate::memory::Memory;
 use crate::visitor::visit_pointer_fields;
 use crate::{types::*, visitor::pointer_to_dynamic_heap};
 
+use super::free_list::FreeBlock;
+
 #[cfg(feature = "ic")]
 pub unsafe fn check_mark_completeness<M: Memory>(mem: &mut M) {
     let heap = get_heap();
@@ -197,6 +199,11 @@ impl MemoryChecker {
         let pointer = object.get_ptr();
         assert!(pointer < self.heap.limits.free);
         let tag = object.tag();
+
+        if !(tag >= TAG_OBJECT && tag <= TAG_NULL) {
+            println!(100, "ERROR {pointer:#x} {tag} {tag:#x}");
+        }
+
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         if !self.allow_marked_objects {
             assert!(!(pointer as *mut Obj).is_marked());
@@ -207,10 +214,16 @@ impl MemoryChecker {
         let mut pointer = self.heap.limits.base;
         while pointer < self.heap.limits.free {
             let object = Value::from_ptr(pointer as usize);
-            if object.tag() != TAG_ONE_WORD_FILLER {
-                self.check_object(object);
+            let tag = object.tag();
+            if tag >= TAG_FREE_BLOCK_MIN {
+                let block = pointer as *mut FreeBlock;
+                pointer += block.size().as_usize();
+            } else {
+                if object.tag() != TAG_ONE_WORD_FILLER {
+                    self.check_object(object);
+                }
+                pointer += object_size(pointer as usize).to_bytes().as_usize();
             }
-            pointer += object_size(pointer as usize).to_bytes().as_usize();
         }
     }
 }

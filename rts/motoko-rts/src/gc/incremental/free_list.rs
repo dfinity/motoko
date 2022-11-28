@@ -107,7 +107,7 @@ impl FreeBlock {
     pub unsafe fn size(self: *mut Self) -> Bytes<u32> {
         assert_ne!(self, null_mut());
         assert!(!is_marked((*self).header.raw_tag));
-        assert!((*self).header.raw_tag > TAG_FREE_BLOCK_MIN);
+        assert!((*self).header.raw_tag >= TAG_FREE_BLOCK_MIN);
         let words = (*self).header.raw_tag - TAG_FREE_BLOCK_MIN;
         Words(words).to_bytes()
     }
