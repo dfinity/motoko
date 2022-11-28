@@ -206,11 +206,13 @@ rule token mode = parse
   | "class" { CLASS }
   | "continue" { CONTINUE }
   | "debug" { DEBUG }
+  | "debug_show" { DEBUG_SHOW }
   | "do" { DO }
   | "else" { ELSE }
   | "false" { BOOL false }
   | "flexible" { FLEXIBLE }
   | "for" { FOR }
+  | "from_candid" { FROM_CANDID }
   | "func" { FUNC }
   | "if" { IF }
   | "ignore" { IGNORE }
@@ -226,22 +228,20 @@ rule token mode = parse
   | "loop" { LOOP }
   | "private" { PRIVATE }
   | "public" { PUBLIC }
+  | "query" { QUERY }
   | "return" { RETURN }
   | "shared" { SHARED }
   | "stable" { STABLE }
+  | "switch" { SWITCH }
   | "system" { SYSTEM }
   | "try" { TRY }
   | "throw" { THROW }
-  | "with" { WITH }
-  | "debug_show" { DEBUG_SHOW }
   | "to_candid" { TO_CANDID }
-  | "from_candid" { FROM_CANDID }
-  | "query" { QUERY }
-  | "switch" { SWITCH }
   | "true" { BOOL true }
   | "type" { TYPE }
   | "var" { VAR }
   | "while" { WHILE }
+  | "with" { WITH }
 
   | "prim" as s { if mode.privileged then PRIM else ID s }
   | id as s { ID s }
