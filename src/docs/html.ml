@@ -278,7 +278,8 @@ and html_of_doc : env -> Extract.doc -> t =
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")))
 
 let html_of_docs : render_input -> Cow.Html.t =
- fun { all_modules; module_comment; declarations; lookup_type; current_path } ->
+ fun { all_modules; module_comment; declarations; lookup_type; current_path; package_name } ->
+  (* TODO: use `package_name` *)
   let env = { lookup_type } in
   let path_to_root =
     String.split_on_char '/' current_path

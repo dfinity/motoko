@@ -2,6 +2,12 @@ open Extract
 
 type output_format = Plain | Adoc | Html
 
+type config = {
+  source : string;
+  output : string;
+  name : string option;
+}
+
 let mkdir_recursive path =
   let segments = String.split_on_char '/' path in
   let _ =
@@ -69,9 +75,9 @@ let list_files : string -> string -> (string * string * string) list =
       |> fun f -> (file, Filename.concat output f, f))
     all_files
 
-let make_render_inputs : string -> string -> (string * Common.render_input) list
+let make_render_inputs : config -> (string * Common.render_input) list
     =
- fun source output ->
+ fun { source; output; name; _ } ->
   let all_files = List.sort compare (list_files source output) in
   let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
   List.filter_map
@@ -86,35 +92,37 @@ let make_render_inputs : string -> string -> (string * Common.render_input) list
                 lookup_type;
                 module_comment;
                 declarations = docs;
+                package_name = name;
               } ))
         (extract input))
     all_files
 
-let start : output_format -> string -> string -> unit =
- fun output_format src out ->
-  (try Unix.mkdir out 0o777 with _ -> ());
-  match output_format with
+let start : output_format -> config -> unit =
+ fun format config ->
+  let { source; output; name } = config in
+  (try Unix.mkdir output 0o777 with _ -> ());
+  match format with
   | Plain ->
-      let inputs = make_render_inputs src out in
+      let inputs = make_render_inputs config in
       List.iter
         (fun (out, input) -> write_file (out ^ ".md") (Plain.render_docs input))
         inputs;
       write_file
-        (Filename.concat out "index.md")
+        (Filename.concat output "index.md")
         (Plain.make_index (List.map snd inputs))
   | Adoc ->
-      let inputs = make_render_inputs src out in
+      let inputs = make_render_inputs config in
       List.iter
         (fun (out, input) ->
           write_file (out ^ ".adoc") (Adoc.render_docs input))
         inputs
   | Html ->
-      write_file (Filename.concat out "styles.css") Styles.styles;
-      let inputs = make_render_inputs src out in
+      write_file (Filename.concat output "styles.css") Styles.styles;
+      let inputs = make_render_inputs config in
       List.iter
         (fun (out, input) ->
           write_file (out ^ ".html") (Html.render_docs input))
         inputs;
       write_file
-        (Filename.concat out "index.html")
+        (Filename.concat output "index.html")
         (Html.make_index (List.map snd inputs))

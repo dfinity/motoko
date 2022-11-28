@@ -203,6 +203,7 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
   opt_typ buf arg.typ
 
 let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
+let begin_block_repl buf = bprintf buf "\n``` motoko\n"
 let end_block buf = bprintf buf "\n```\n\n"
 
 let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
@@ -246,9 +247,14 @@ and plain_of_doc : Buffer.t -> level -> doc -> unit =
   Option.iter (bprintf buf "%s\n") doc_comment
 
 let render_docs : Common.render_input -> string =
- fun Common.{ module_comment; declarations; current_path; _ } ->
+ fun Common.{ module_comment; declarations; current_path; package_name; _ } ->
   let buf = Buffer.create 1024 in
   bprintf buf "# %s\n" current_path;
+  Option.iter (fun s ->
+    begin_block_repl buf;
+    bprintf buf "import %s \"mo:%s/%s\";" (Filename.basename current_path) s current_path;
+    end_block buf
+  ) package_name;
   Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
   Buffer.contents buf

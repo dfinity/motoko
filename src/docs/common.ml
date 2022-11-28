@@ -8,6 +8,7 @@ type render_input = {
   lookup_type : Syntax.path -> Xref.t option;
       (** How to look up references to types in the current module *)
   declarations : Extract.doc list;  (** The list of declarations to process *)
+  package_name : string option;  (** The Vessel package name, if applicable *)
 }
 
 let is_scope_bind : Syntax.typ_bind -> bool =
