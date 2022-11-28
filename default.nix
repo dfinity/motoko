@@ -350,6 +350,7 @@ rec {
             patchShebangs .
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
+            export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
             make -C ${dir}
           '';
@@ -364,6 +365,11 @@ rec {
     compacting_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      });
+
+    generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
       });
 
     perf_subdir = dir: deps:
@@ -478,9 +484,11 @@ rec {
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-generational-gc = generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -490,6 +498,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
@@ -750,6 +759,11 @@ rec {
     builtins.attrValues js;
   };
 
+  viperServer = nixpkgs.fetchurl {
+    url = https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar;
+    sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
+  };
+
   shell = stdenv.mkDerivation {
     name = "motoko-shell";
 
@@ -780,6 +794,7 @@ rec {
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
           nixpkgs.difftastic
+          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
         ]
       ));
 
@@ -797,6 +812,7 @@ rec {
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
+    VIPER_SERVER = "${viperServer}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.

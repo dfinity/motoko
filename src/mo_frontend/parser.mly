@@ -237,6 +237,8 @@ and objblock s dec_fields =
 %token PRIM
 %token UNDERSCORE
 
+%nonassoc IMPLIES (* see assertions.mly *)
+
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE LET_NO_ELSE
 %nonassoc ELSE WHILE
 
@@ -551,7 +553,7 @@ lit :
 
 
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
-ob : e=exp_obj { e }
+%public ob : e=exp_obj { e }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
@@ -569,7 +571,6 @@ exp_plain :
 
 exp_nullary(B) :
   | e=B
-    { e }
   | e=exp_plain
     { e }
   | x=id
@@ -626,7 +627,7 @@ exp_un(B) :
   | FROM_CANDID e=exp_un(ob)
     { FromCandidE e @? at $sloc }
 
-exp_bin(B) :
+%public exp_bin(B) :
   | e=exp_un(B)
     { e }
   | e1=exp_bin(B) op=binop e2=exp_bin(ob)
@@ -640,7 +641,7 @@ exp_bin(B) :
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
 
-exp_nondec(B) :
+%public exp_nondec(B) :
   | e=exp_bin(B)
     { e }
   | e1=exp_bin(B) ASSIGN e2=exp(ob)
@@ -656,7 +657,7 @@ exp_nondec(B) :
   | AWAIT e=exp_nest
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp_nest
-    { AssertE(e) @? at $sloc }
+    { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
     { let x' = ("continue " ^ x.it) @@ x.at in
       let unit () = TupT [] @! at $sloc in
@@ -718,9 +719,8 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp_nest :
+%public exp_nest :
   | e=block
-    { e }
   | e=exp(bl)
     { e }
 

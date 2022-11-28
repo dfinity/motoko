@@ -10,14 +10,14 @@ use motoko_rts::types::*;
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
-    println!("Testing mark stack ...");
+    println!("  Testing mark stack ...");
 
     test_push_pop();
     test_grow_stack();
 }
 
 fn test_push_pop() {
-    println!("  Testing push/pop");
+    println!("    Testing push/pop");
 
     let mut proptest_runner = TestRunner::new(Config {
         cases: 100,
@@ -81,7 +81,7 @@ fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
 }
 
 unsafe fn test_grow_stack() {
-    println!("  Testing grow_stack");
+    println!("    Testing grow_stack");
 
     // Allow doubling twice
     let mut mem = TestMemory::new(

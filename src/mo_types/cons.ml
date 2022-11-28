@@ -17,6 +17,16 @@ module Stamps = Env.Make(String)
 
 let stamps : int Stamps.t ref = ref Stamps.empty
 
+let session f =
+  let original = !stamps in
+  try let result = f () in
+       stamps := original;
+       result
+  with e -> begin
+     stamps := original;
+     raise e
+  end
+
 let fresh_stamp name =
   let n = Lib.Option.get (Stamps.find_opt name !stamps) 0 in
   stamps := Stamps.add name (n + 1) !stamps;

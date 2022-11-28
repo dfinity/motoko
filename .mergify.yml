@@ -58,3 +58,14 @@ pull_request_rules:
       review:
         type: APPROVE
         message: A change to `Changelog.md`? I can handle that!
+  - name: Auto-approve dependabot PR
+    conditions:
+      - files=doc/docusaurus/package-lock.json
+      - "#files=1"
+    actions:
+      review:
+        type: APPROVE
+        message: A change to `doc/docusaurus/package-lock.json`? I can handle that!
+      label:
+        add:
+        - automerge-squash
