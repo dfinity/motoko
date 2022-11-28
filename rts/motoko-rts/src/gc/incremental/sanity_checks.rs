@@ -1,6 +1,8 @@
 //! Incremental GC sanity checker
 #![allow(dead_code)]
 
+use core::ptr::null_mut;
+
 use crate::constants::WORD_SIZE;
 use crate::gc::mark_compact::bitmap::{alloc_bitmap, free_bitmap, get_bit, set_bit};
 use crate::gc::mark_compact::mark_stack::{
@@ -197,13 +199,9 @@ impl MemoryChecker {
     unsafe fn check_object_header(&self, object: Value) {
         assert!(object.is_ptr());
         let pointer = object.get_ptr();
+        assert_ne!(pointer as *mut Obj, null_mut());
         assert!(pointer < self.heap.limits.free);
         let tag = object.tag();
-
-        if !(tag >= TAG_OBJECT && tag <= TAG_NULL) {
-            println!(100, "ERROR {pointer:#x} {tag} {tag:#x}");
-        }
-
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         if !self.allow_marked_objects {
             assert!(!(pointer as *mut Obj).is_marked());
