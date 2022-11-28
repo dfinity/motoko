@@ -10,3 +10,9 @@ Use keyword 'await*' (not 'await') to consume this type.
 bad-async-sort.mo:15.12-15.20: type error [M0088], expected async* type, but expression has type
   async<$anon2> ()
 Use keyword 'await' (not 'await*') to consume this type.
+bad-async-sort.mo:19.14-19.22: type error [M0183], async expression cannot produce expected async type 
+  async*<$anon3> ().
+Use keyword 'async*' (not 'async') to produce the expected type.
+bad-async-sort.mo:23.14-23.23: type error [M0183], async expression cannot produce expected async type 
+  async<$anon4> ().
+Use keyword 'async' (not 'async*') to produce the expected type.

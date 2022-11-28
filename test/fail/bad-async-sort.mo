@@ -15,4 +15,12 @@ actor {
     await* async {}; // reject
   };
 
+  func anon3() : async () {
+    ignore ((async {}) : async* ()); // reject
+  };
+
+  func anon4() : async () {
+    ignore ((async* {}) : async ()); // reject
+  };
+
 }
