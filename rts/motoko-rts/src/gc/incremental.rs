@@ -4,7 +4,7 @@ use crate::{
     memory::Memory,
     types::{
         is_skewed, mark, object_size, Bytes, Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN,
-        TAG_FREE_BLOCK_MIN, TAG_NULL, TAG_OBJECT,
+        TAG_FREE_BLOCK_MIN, TAG_NULL, TAG_OBJECT, TAG_ONE_WORD_FILLER,
     },
     visitor::visit_pointer_fields,
 };
@@ -362,7 +362,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 let block = address as *mut FreeBlock;
                 address += block.size().as_usize();
             } else {
-                assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+                assert!(tag >= TAG_OBJECT && tag <= TAG_ONE_WORD_FILLER);
                 address += object_size(address).to_bytes().as_usize();
             }
             assert!(address <= end_address);
