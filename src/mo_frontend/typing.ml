@@ -754,7 +754,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -1245,6 +1245,7 @@ and infer_exp'' env exp : T.typ =
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
+    typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
       let env'' =
@@ -1297,6 +1298,12 @@ and infer_exp'' env exp : T.typ =
     end;
     T.bool
   | OrE (exp1, exp2) ->
+    if not env.pre then begin
+      check_exp_strong env T.bool exp1;
+      check_exp_strong env T.bool exp2
+    end;
+    T.bool
+  | ImpliesE (exp1, exp2) ->
     if not env.pre then begin
       check_exp_strong env T.bool exp1;
       check_exp_strong env T.bool exp2
@@ -1438,7 +1445,7 @@ and infer_exp'' env exp : T.typ =
         "expected async type, but expression has type%a"
         display_typ_expand t1
     )
-  | AssertE exp1 ->
+  | AssertE (_, exp1) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     T.unit
   | AnnotE (exp1, typ) ->
