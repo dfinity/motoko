@@ -1423,12 +1423,6 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     (try
        let (t2, t3) = T.as_async_sub s t0 t1 in
-       (* if s1 <> s2 then begin
-           local_error env exp.at "M0XXX" (* check number! *)
-             "incompatible async sorts%a\nexpected %a" (* TBR *)
-             display_typ_expand t1
-             display_typ_expand t1'
-         end; *)
        if not (T.eq t0 t2) then begin
           local_error env exp1.at "M0087"
             "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
@@ -1440,10 +1434,17 @@ and infer_exp'' env exp : T.typ =
          scope_info env t2 exp.at;
        end;
        t3
-    with Invalid_argument _ ->
-      error env exp1.at "M0088"
-        "expected async type, but expression has type%a"
-        display_typ_expand t1
+     with Invalid_argument _ ->
+       error env exp1.at "M0088"
+         "expected async%s type, but expression has type%a%s"
+         (if s = T.Fut then "" else "*")
+         display_typ_expand t1
+         (if T.is_async t1 then
+            (if s = T.Fut then
+              "\nUse keyword 'await*' (not 'await') to consume this type."
+            else
+              "\nUse keyword 'await' (not 'await*') to consume this type.")
+          else "")
     )
   | AssertE exp1 ->
     if not env.pre then check_exp_strong env T.bool exp1;
@@ -1580,10 +1581,14 @@ and check_exp' env0 t exp : T.typ =
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
-      local_error env exp.at "M0XXX" (* check number! *)
-        "incompatible async sorts%a\nexpected %a" (* TBR *)
+      local_error env exp.at "M0183"
+        "async expression of type%a\ncannot produce expected async type %a.%s"
         display_typ_expand t1
         display_typ_expand t1'
+        (if s2 = T.Cmp then
+          "Use keyword 'async' (not 'async*') to produce the expected type."
+         else
+          "Use keyword 'async*' (not 'async') to produce the expected type.")
     end;
     if not (T.eq t1 t1') then begin
       local_error env exp.at "M0092"

@@ -1,0 +1,12 @@
+bad-async-sort.mo:5.12-5.15: type error [M0088], expected async* type, but expression has type
+  async<$f> Nat
+Use keyword 'await' (not 'await*') to consume this type.
+bad-async-sort.mo:9.10-9.13: type error [M0088], expected async type, but expression has type
+  async*<$g> Nat
+Use keyword 'await*' (not 'await') to consume this type.
+bad-async-sort.mo:13.11-13.20: type error [M0088], expected async type, but expression has type
+  async*<$anon1> ()
+Use keyword 'await*' (not 'await') to consume this type.
+bad-async-sort.mo:17.12-17.20: type error [M0088], expected async* type, but expression has type
+  async<$anon2> ()
+Use keyword 'await' (not 'await*') to consume this type.
