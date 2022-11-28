@@ -3,8 +3,8 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     memory::Memory,
     types::{
-        mark, object_size, Bytes, Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_FREE_BLOCK_MIN,
-        TAG_NULL, TAG_OBJECT,
+        is_skewed, mark, object_size, Bytes, Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN,
+        TAG_FREE_BLOCK_MIN, TAG_NULL, TAG_OBJECT,
     },
     visitor::visit_pointer_fields,
 };
@@ -107,10 +107,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     pub unsafe fn empty_call_stack_increment(mem: &'a mut M, limits: Limits, roots: Roots) {
         let mut gc = Self::instance(mem);
         if Self::pausing() {
-            #[cfg(debug_assertions)]
-            #[cfg(feature = "ic")]
-            sanity_checks::check_memory(false);
-
             gc.start_marking(limits.base, roots);
         }
         if Self::mark_completed() {
@@ -171,6 +167,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
         assert!(Self::pausing());
+
+        #[cfg(debug_assertions)]
+        #[cfg(feature = "ic")]
+        sanity_checks::check_memory(false);
+
         let mark_stack = MarkStack::new(self.mem);
         let state = MarkState {
             heap_base,
@@ -390,9 +391,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 ///   - If allocated at or above the sweep line, new allocations are conservatively marked
 ///     to retain them for the next GC run.
 /// Summary: New allocated objects are conservatively retained during an active GC run.
+/// `new_object` is the unskewed object pointer.
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
 #[no_mangle]
 pub unsafe fn mark_new_allocation(new_object: *mut Obj) {
+    assert!(!is_skewed(new_object as u32));
     let should_mark = match &mut PHASE {
         Phase::Pause => false,
         Phase::Mark(_) => true,

@@ -1362,6 +1362,7 @@ module Tagged = struct
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field raw_tag_field ^^
     get_object ^^
+    compile_add_const ptr_unskew ^^
     E.call_import env "rts" "mark_new_allocation" ^^
     get_object
 
@@ -1445,6 +1446,7 @@ module Tagged = struct
       compile_unboxed_const (int_of_tag tag) ::
       element_instructions) ^^
       set_object ^^ get_object ^^
+      compile_add_const ptr_unskew ^^
       E.call_import env "rts" "mark_new_allocation" ^^
       get_object
 
