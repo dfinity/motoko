@@ -159,8 +159,8 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait of Type.async_sort * Type.typ              (* typ is the current continuation type of cps translation *)
-  (*  | CPSDoAsync of Type.typ *)
+  | CPSAwait of Type.async_sort * Type.typ
+                                      (* typ is the current continuation type of cps translation *)
   | CPSAsync of Type.async_sort * Type.typ
   | ICPerformGC
   | ICReplyPrim of Type.typ list
