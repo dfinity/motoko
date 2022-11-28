@@ -6,11 +6,11 @@ actor a {
   };
 
   private func foo(n : Nat) : async* Int {
-     let _ = await async* { "hello" };
+     let _ = await* async* { "hello" };
      if (n == 0) {
-       await async* { await bar(); }
+       await* async* { await bar(); }
      }
-     else await { async* { await foo(n-1); }; }
+     else await* { async* { await* foo(n-1); }; }
   };
 
   public func go() : async () {
