@@ -18,8 +18,8 @@ use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
-use motoko_rts::gc::incremental::{IncrementalGC, Limits, Roots};
-use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
+use motoko_rts::gc::generational::{GenerationalGC, Strategy};
+use motoko_rts::gc::incremental::IncrementalGC;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
@@ -119,6 +119,11 @@ fn test_gc(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
+    if gc == GC::Incremental {
+        unsafe {
+            IncrementalGC::<MotokoHeap>::reset_for_testing();
+        }
+    }
     let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
 
     // Check `create_dynamic_heap` sanity
@@ -141,7 +146,7 @@ fn test_gc(
         let heap_ptr_offset = heap.heap_ptr_offset();
         let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
         check_dynamic_heap(
-            gc != GC::Incremental, // check for unreachable objects
+            check_all_reclaimed, // check for unreachable objects
             refs,
             roots,
             continuation_table,
@@ -151,6 +156,11 @@ fn test_gc(
             continuation_table_ptr_offset,
             gc == GC::Incremental,
         );
+    }
+    if gc == GC::Incremental {
+        unsafe {
+            IncrementalGC::<MotokoHeap>::reset_for_testing();
+        }
     }
 }
 
@@ -419,12 +429,12 @@ impl GC {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
                     LAST_HP = heap_1.last_ptr_address() as u32;
 
-                    let limits = Limits {
+                    let limits = motoko_rts::gc::generational::Limits {
                         base: heap_base as usize,
                         last_free: heap_1.last_ptr_address(),
                         free: heap_1.heap_ptr_address(),
                     };
-                    let roots = Roots {
+                    let roots = motoko_rts::gc::generational::Roots {
                         static_roots,
                         continuation_table_ptr_loc: continuation_table_ptr_address,
                     };
@@ -445,15 +455,15 @@ impl GC {
             GC::Incremental => unsafe {
                 const INCREMENTS_UNTIL_COMPLETION: usize = 16;
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
-                    let limits = Limits {
+                    let limits = motoko_rts::gc::incremental::Limits {
                         base: heap_base as usize,
                         free: heap_1.heap_ptr_address(),
                     };
-                    let roots = Roots {
+                    let roots = motoko_rts::gc::incremental::Roots {
                         static_roots,
                         continuation_table: *continuation_table_ptr_address,
                     };
-                    IncrementalGC::empty_call_stack_increment(&mut heap, limits, roots);
+                    IncrementalGC::empty_call_stack_increment(heap, limits, roots);
                 }
                 false
             },

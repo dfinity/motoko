@@ -11,7 +11,7 @@ pub static mut LAST_HP: u32 = 0;
 
 /// (Re-)initialize the write barrier for generational GC.
 #[ic_mem_fn(ic_only)]
-pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
+pub unsafe fn init_post_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     REMEMBERED_SET = Some(RememberedSet::new(mem));
     HEAP_BASE = ic::get_aligned_heap_base();
@@ -24,7 +24,7 @@ pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
 /// As the barrier is called after the write, `*location` refers to the NEW value.
 /// No effect is the write barrier is deactivated.
 #[ic_mem_fn]
-pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
+pub unsafe fn post_write_barrier<M: Memory>(mem: &mut M, location: u32) {
     // Must be an unskewed address.
     debug_assert_eq!(location & 0b1, 0);
     // Checks have been optimized according to the frequency of occurrence.

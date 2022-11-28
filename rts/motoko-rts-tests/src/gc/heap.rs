@@ -2,7 +2,6 @@ use super::utils::{
     make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
-use motoko_rts::gc::incremental::IncrementalGC;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
@@ -39,11 +38,6 @@ impl MotokoHeap {
         continuation_table: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeap {
-        if gc == GC::Incremental {
-            unsafe {
-                IncrementalGC::<MotokoHeap>::reset_for_testing();
-            }
-        }
         MotokoHeap {
             inner: Rc::new(RefCell::new(MotokoHeapInner::new(
                 map,

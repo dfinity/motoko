@@ -19,8 +19,8 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
+use crate::gc::generational::write_barrier::post_write_barrier;
 use crate::gc::incremental::mark_new_allocation;
-use crate::gc::generational::write_barrier::write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -495,7 +495,7 @@ impl Array {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
-        write_barrier(mem, slot_addr as u32);
+        post_write_barrier(mem, slot_addr as u32);
     }
 
     /// Write a scalar value to an array element. No need for a write barrier.

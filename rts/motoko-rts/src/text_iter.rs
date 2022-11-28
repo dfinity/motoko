@@ -10,7 +10,7 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
-use crate::gc::incremental::write_barrier::write_barrier;
+use crate::gc::incremental::write_barrier::pre_write_barrier;
 use core::ptr::null_mut;
 
 use crate::memory::{alloc_array, Memory};
@@ -113,7 +113,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             // allocation)
             let concat = text.as_concat();
 
-            write_barrier(
+            pre_write_barrier(
                 mem,
                 todo_array.payload_addr().add(TODO_TEXT_IDX as usize) as *mut Value,
             );
@@ -121,7 +121,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
 
-            write_barrier(
+            pre_write_barrier(
                 mem,
                 iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as *mut Value,
             );
@@ -136,19 +136,19 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             // Otherwise remove the entry from the chain
             debug_assert_eq!(text.tag(), TAG_BLOB);
 
-            write_barrier(
+            pre_write_barrier(
                 mem,
                 iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as *mut Value,
             );
             iter_array.set_pointer(ITER_BLOB_IDX, text, mem);
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-            write_barrier(
+            pre_write_barrier(
                 mem,
                 iter_array.payload_addr().add(TODO_LINK_IDX as usize) as *mut Value,
             );
             iter_array.set_pointer(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX), mem);
-            
+
             text_iter_next(mem, iter)
         }
     } else {

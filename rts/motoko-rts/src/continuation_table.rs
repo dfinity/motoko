@@ -22,7 +22,7 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::gc::incremental::write_barrier::write_barrier;
+use crate::gc::incremental::write_barrier::pre_write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::Value;
@@ -102,7 +102,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     FREE_SLOT = table.get(idx).get_scalar();
 
-    write_barrier(mem, table.payload_addr().add(idx as usize) as *mut Value);
+    pre_write_barrier(mem, table.payload_addr().add(idx as usize) as *mut Value);
     table.set_pointer(idx, ptr, mem);
 
     N_CONTINUATIONS += 1;

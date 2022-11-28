@@ -73,7 +73,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
         sanity_checks::take_snapshot(&mut gc.heap);
     }
 
-    write_barrier::init_write_barrier(gc.heap.mem);
+    write_barrier::init_post_write_barrier(gc.heap.mem);
 }
 
 #[cfg(feature = "ic")]
@@ -290,12 +290,12 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     // Remember to visit the array suffix later, store the next visit offset in the tag.
-                    (*array).header.tag = new_start;
+                    (array as *mut Obj).initialize_tag(new_start);
                     push_mark_stack(gc.heap.mem, array as usize);
                     new_start
                 } else {
                     // No further visits of this array. Restore the tag.
-                    (*array).header.tag = TAG_ARRAY;
+                    (array as *mut Obj).initialize_tag(TAG_ARRAY);
                     array.len()
                 }
             },
@@ -486,21 +486,21 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn thread(&self, field: *mut Value) {
         let pointed = (*field).get_ptr() as *mut Obj;
         assert!(self.should_be_threaded(pointed));
-        let pointed_header = pointed.tag();
+        let pointed_header = (*pointed).raw_tag;
         *field = Value::from_raw(pointed_header);
-        (*pointed).tag = field as u32;
+        (*pointed).raw_tag = field as u32;
     }
 
     unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {
         assert!(self.should_be_threaded(object));
-        let mut header = object.tag();
+        let mut header = (*object).raw_tag;
         while header & 0b1 == 0 {
-            let tmp = (header as *const Obj).tag();
+            let tmp = (*(header as *const Obj)).raw_tag;
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
         assert!(header >= TAG_OBJECT && header <= TAG_NULL);
-        (*object).tag = header;
+        (*object).raw_tag = header;
     }
 
     unsafe fn should_be_threaded(&self, object: *mut Obj) -> bool {

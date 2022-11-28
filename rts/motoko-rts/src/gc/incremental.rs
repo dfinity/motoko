@@ -123,7 +123,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// The barrier is only effective while the GC is in the mark phase.
     /// A GC increment is implicitly combined with the write barrier.
     #[inline]
-    pub unsafe fn write_barrier(mem: &'a mut M, value: Value) {
+    pub unsafe fn pre_write_barrier(mem: &'a mut M, value: Value) {
         if value.is_ptr() {
             if let Phase::Mark(state) = &PHASE {
                 if value.get_ptr() >= state.heap_base {
