@@ -18,7 +18,7 @@ fn dump(file: &str) {
     let content = fs::read(file).expect("invalid file");
     for (count, byte) in content.iter().enumerate() {
         print!("{byte:02x} ");
-        if count % 32 == 0 {
+        if count + 1 % 32 == 0 {
             println!();
         }
     }
