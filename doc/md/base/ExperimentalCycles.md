@@ -1,4 +1,9 @@
 # ExperimentalCycles
+
+``` motoko
+import ExperimentalCycles "mo:base/ExperimentalCycles";
+```
+
 Managing cycles
 
 Usage of the Internet Computer is measured, and paid for, in _cycles_.

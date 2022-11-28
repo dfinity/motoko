@@ -1,4 +1,9 @@
 # Int64
+
+``` motoko
+import Int64 "mo:base/Int64";
+```
+
 64-bit signed integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

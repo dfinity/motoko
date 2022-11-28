@@ -1,4 +1,9 @@
 # Deque
+
+``` motoko
+import Deque "mo:base/Deque";
+```
+
 Functions for persistent, double-ended queues.
 
 ## Type `Deque`

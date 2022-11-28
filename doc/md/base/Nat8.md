@@ -1,4 +1,9 @@
 # Nat8
+
+``` motoko
+import Nat8 "mo:base/Nat8";
+```
+
 8-bit unsigned integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

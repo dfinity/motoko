@@ -1,4 +1,9 @@
 # Option
+
+``` motoko
+import Option "mo:base/Option";
+```
+
 Typesafe nulls
 
 Optional values can be seen as a typesafe `null`. A value of type `?Int` can

@@ -1,4 +1,9 @@
 # Error
+
+``` motoko
+import Error "mo:base/Error";
+```
+
 Error values and inspection.
 
 The `Error` type is the argument to `throw`, parameter of `catch`.

@@ -1,4 +1,9 @@
 # HashMap
+
+``` motoko
+import HashMap "mo:base/HashMap";
+```
+
 Mutable hash map (aka Hashtable)
 
 This module defines an imperative hash map (hash table), with a general key and value type.

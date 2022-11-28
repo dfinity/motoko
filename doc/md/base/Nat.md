@@ -1,4 +1,9 @@
 # Nat
+
+``` motoko
+import Nat "mo:base/Nat";
+```
+
 Natural numbers
 
 Most operations on natural numbers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).

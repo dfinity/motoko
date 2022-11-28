@@ -1,4 +1,9 @@
 # CertifiedData
+
+``` motoko
+import CertifiedData "mo:base/CertifiedData";
+```
+
 Certified data.
 
 The Internet Computer allows canister smart contracts to store a small amount of data during

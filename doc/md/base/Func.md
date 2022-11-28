@@ -1,4 +1,9 @@
 # Func
+
+``` motoko
+import Func "mo:base/Func";
+```
+
 Functions on functions
 
 (Most commonly used when programming in functional style using higher-order

@@ -1,4 +1,9 @@
 # Int32
+
+``` motoko
+import Int32 "mo:base/Int32";
+```
+
 32-bit signed integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

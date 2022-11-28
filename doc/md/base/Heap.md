@@ -1,4 +1,9 @@
 # Heap
+
+``` motoko
+import Heap "mo:base/Heap";
+```
+
 Priority Queue
 
 This module provides purely-functional priority queue based on leftist heap

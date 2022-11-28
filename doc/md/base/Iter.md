@@ -1,4 +1,9 @@
 # Iter
+
+``` motoko
+import Iter "mo:base/Iter";
+```
+
 Iterators
 
 ## Type `Iter`

@@ -1,4 +1,9 @@
 # List
+
+``` motoko
+import List "mo:base/List";
+```
+
 Purely-functional, singly-linked lists.
 
 ## Type `List`

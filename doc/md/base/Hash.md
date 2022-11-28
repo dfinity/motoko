@@ -1,4 +1,9 @@
 # Hash
+
+``` motoko
+import Hash "mo:base/Hash";
+```
+
 Hash values
 
 ## Type `Hash`

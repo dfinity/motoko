@@ -1,4 +1,9 @@
 # Int
+
+``` motoko
+import Int "mo:base/Int";
+```
+
 Integer numbers
 
 Most operations on integers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).

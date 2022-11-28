@@ -1,4 +1,9 @@
 # Result
+
+``` motoko
+import Result "mo:base/Result";
+```
+
 Error handling with the Result type.
 
 ## Type `Result`

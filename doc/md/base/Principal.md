@@ -1,4 +1,9 @@
 # Principal
+
+``` motoko
+import Principal "mo:base/Principal";
+```
+
 IC principals (user and canister smart contract IDs)
 
 ## Type `Principal`

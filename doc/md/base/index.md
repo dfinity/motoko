@@ -1,6 +1,6 @@
 # Index
 
-* [Array](Array.md) Functions on Arrays
+* [Array](Array.md) Provides extended utility functions on Arrays. Note the difference between
 * [AssocList](AssocList.md) Lists of key-value entries ("associations").
 * [Blob](Blob.md) Binary blobs
 * [Bool](Bool.md) Boolean type and operations.

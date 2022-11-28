@@ -1,4 +1,9 @@
 # Char
+
+``` motoko
+import Char "mo:base/Char";
+```
+
 Characters
 
 ## Type `Char`

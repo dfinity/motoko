@@ -1,4 +1,9 @@
 # Blob
+
+``` motoko
+import Blob "mo:base/Blob";
+```
+
 Binary blobs
 
 ## Type `Blob`

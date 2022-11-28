@@ -1,4 +1,9 @@
 # Int16
+
+``` motoko
+import Int16 "mo:base/Int16";
+```
+
 16-bit signed integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

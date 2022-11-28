@@ -1,4 +1,9 @@
 # Float
+
+``` motoko
+import Float "mo:base/Float";
+```
+
 64-bit Floating-point numbers
 
 ## Type `Float`

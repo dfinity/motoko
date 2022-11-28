@@ -1,4 +1,9 @@
 # Prelude
+
+``` motoko
+import Prelude "mo:base/Prelude";
+```
+
 General utilities
 
 This prelude file proposes standard library features that _may_

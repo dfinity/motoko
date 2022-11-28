@@ -1,4 +1,9 @@
 # Debug
+
+``` motoko
+import Debug "mo:base/Debug";
+```
+
 Debugging aids
 
 ## Value `print`

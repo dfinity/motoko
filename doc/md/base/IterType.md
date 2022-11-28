@@ -1,4 +1,9 @@
 # IterType
+
+``` motoko
+import IterType "mo:base/IterType";
+```
+
 The Iterator type
 
 ## Type `Iter`

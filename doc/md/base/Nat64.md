@@ -1,4 +1,9 @@
 # Nat64
+
+``` motoko
+import Nat64 "mo:base/Nat64";
+```
+
 64-bit unsigned integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

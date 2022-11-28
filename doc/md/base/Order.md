@@ -1,4 +1,9 @@
 # Order
+
+``` motoko
+import Order "mo:base/Order";
+```
+
 Order
 
 ## Type `Order`

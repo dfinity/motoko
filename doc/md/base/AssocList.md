@@ -1,4 +1,9 @@
 # AssocList
+
+``` motoko
+import AssocList "mo:base/AssocList";
+```
+
 Lists of key-value entries ("associations").
 
 Implements the same operations as library `Trie`, but uses a

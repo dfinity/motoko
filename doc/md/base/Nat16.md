@@ -1,4 +1,9 @@
 # Nat16
+
+``` motoko
+import Nat16 "mo:base/Nat16";
+```
+
 16-bit unsigned integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

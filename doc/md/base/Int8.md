@@ -1,4 +1,9 @@
 # Int8
+
+``` motoko
+import Int8 "mo:base/Int8";
+```
+
 8-bit signed integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

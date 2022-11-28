@@ -1,4 +1,9 @@
 # None
+
+``` motoko
+import None "mo:base/None";
+```
+
 The absent value
 
 The `None` type represents a type with _no_ value.

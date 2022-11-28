@@ -1,4 +1,9 @@
 # Buffer
+
+``` motoko
+import Buffer "mo:base/Buffer";
+```
+
 Class `Buffer<X>` provides a mutable list of elements of type `X`.
 The class wraps and resizes an underyling array that holds the elements,
 and thus is comparable to ArrayLists or Vectors in other languages.
@@ -911,7 +916,7 @@ Runtime: O(size)
 
 Space: O(size)
 
-*Runtime and space assumes that `f` runs in O(1) time and space.
+*Runtime and space assumes that `k` runs in O(1) time and space.
 
 ## Function `foldLeft`
 ``` motoko no-repl
@@ -985,6 +990,7 @@ Reverses the order of elements in `buffer`.
 
 Runtime: O(size)
 
+Space: O(1)
 
 ## Function `merge`
 ``` motoko no-repl

@@ -1,4 +1,9 @@
 # Nat32
+
+``` motoko
+import Nat32 "mo:base/Nat32";
+```
+
 32-bit unsigned integers with checked arithmetic
 
 Most operations are available as built-in operators (e.g. `1 + 1`).

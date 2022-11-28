@@ -1,4 +1,9 @@
 # RBTree
+
+``` motoko
+import RBTree "mo:base/RBTree";
+```
+
 Red-Black Trees
 
 ## Type `Color`

@@ -1,4 +1,9 @@
 # Bool
+
+``` motoko
+import Bool "mo:base/Bool";
+```
+
 Boolean type and operations.
 
 While boolean operators `_ and _` and `_ or _` are short-circuiting,

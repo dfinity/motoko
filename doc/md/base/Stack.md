@@ -1,4 +1,9 @@
 # Stack
+
+``` motoko
+import Stack "mo:base/Stack";
+```
+
 Stack collection (LIFO discipline).
 
 Minimal LIFO (last in first out) implementation, as a class.

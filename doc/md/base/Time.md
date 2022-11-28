@@ -1,4 +1,9 @@
 # Time
+
+``` motoko
+import Time "mo:base/Time";
+```
+
 System time
 
 ## Type `Time`

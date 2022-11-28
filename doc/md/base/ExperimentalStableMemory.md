@@ -1,4 +1,9 @@
 # ExperimentalStableMemory
+
+``` motoko
+import ExperimentalStableMemory "mo:base/ExperimentalStableMemory";
+```
+
 Byte-level access to (virtual) _stable memory_.
 
 **WARNING**: As its name suggests, this library is **experimental**, subject to change

@@ -1,4 +1,9 @@
 # TrieSet
+
+``` motoko
+import TrieSet "mo:base/TrieSet";
+```
+
 Functional set
 
 Sets are partial maps from element type to unit type,

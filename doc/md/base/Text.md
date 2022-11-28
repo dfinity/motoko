@@ -1,4 +1,9 @@
 # Text
+
+``` motoko
+import Text "mo:base/Text";
+```
+
 Text values
 
 This type represents human-readable text as sequences of characters of type `Char`.
