@@ -191,6 +191,7 @@ rule token mode = parse
   (* If you add keywords, please also update
      - src/idllib/escape.ml
      - emacs/motoko-mode.el
+     - src/gen-grammar/grammar.sed
   *)
   | "actor" { ACTOR }
   | "and" { AND }
@@ -212,6 +213,8 @@ rule token mode = parse
   | "if" { IF }
   | "ignore" { IGNORE }
   | "in" { IN }
+  | "invariant" as s { if mode.verification then INVARIANT else ID s }
+  | "implies" as s { if mode.verification then IMPLIES else ID s }
   | "import" { IMPORT }
   | "module" { MODULE }
   | "not" { NOT }
