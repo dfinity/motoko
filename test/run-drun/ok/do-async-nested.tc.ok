@@ -1,2 +1,0 @@
-do-async-nested.mo:9.20-9.38: type error [M0088], expected async type, but expression has type
-  async*<$foo> Text
