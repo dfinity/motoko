@@ -312,7 +312,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn sweep_phase_increment(&mut self) {
         if let Phase::Sweep(state) = &mut PHASE {
             while state.sweep_line < state.heap_end {
-                let free_space = Self::contiguous_free_space(state.sweep_line, state.heap_end);
+                let free_space = self.contiguous_free_space(state.sweep_line, state.heap_end);
                 if free_space > 0 {
                     FREE_LIST
                         .as_mut()
@@ -354,7 +354,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    unsafe fn contiguous_free_space(start_address: usize, end_address: usize) -> usize {
+    unsafe fn contiguous_free_space(&mut self, start_address: usize, end_address: usize) -> usize {
         let mut address = start_address;
         while address < end_address && !(address as *mut Obj).is_marked() {
             let tag = (address as *mut Obj).tag();
@@ -366,6 +366,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 address += object_size(address).to_bytes().as_usize();
             }
             assert!(address <= end_address);
+            self.steps += 1;
         }
         return address - start_address;
     }
