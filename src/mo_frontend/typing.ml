@@ -337,7 +337,7 @@ let as_domT t =
 
 let as_codomT sort t =
   match sort, t.Source.it with
-  | T.Shared _,  AsyncT (_, _, t1) ->
+  | T.Shared _,  AsyncT (T.Fut, _, t1) ->
     T.Promises, as_domT t1
   | _ -> T.Returns, as_domT t
 
@@ -1582,10 +1582,9 @@ and check_exp' env0 t exp : T.typ =
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
       local_error env exp.at "M0183"
-        "async expression of type%a\ncannot produce expected async type %a.%s"
-        display_typ_expand t1
-        display_typ_expand t1'
-        (if s2 = T.Cmp then
+        "async expression cannot produce expected async type %a.\n%s"
+        display_typ_expand t
+        (if s2 = T.Fut then
           "Use keyword 'async' (not 'async*') to produce the expected type."
          else
           "Use keyword 'async*' (not 'async') to produce the expected type.")

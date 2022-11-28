@@ -1,6 +1,4 @@
 actor {
-
-
   func f() : async* Nat {
     await* g();
   };
