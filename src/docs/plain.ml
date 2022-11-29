@@ -250,11 +250,14 @@ let render_docs : Common.render_input -> string =
  fun Common.{ module_comment; declarations; current_path; package_name; _ } ->
   let buf = Buffer.create 1024 in
   bprintf buf "# %s\n" current_path;
-  Option.iter (fun s ->
-    begin_block_repl buf;
-    bprintf buf "import %s \"mo:%s/%s\";" (Filename.basename current_path) s current_path;
-    end_block buf
-  ) package_name;
+  Option.iter
+    (fun s ->
+      begin_block_repl buf;
+      bprintf buf "import %s \"mo:%s/%s\";"
+        (Filename.basename current_path)
+        s current_path;
+      end_block buf)
+    package_name;
   Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
   Buffer.contents buf

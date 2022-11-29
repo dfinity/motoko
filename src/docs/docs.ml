@@ -1,12 +1,7 @@
 open Extract
 
 type output_format = Plain | Adoc | Html
-
-type config = {
-  source : string;
-  output : string;
-  name : string option;
-}
+type config = { source : string; output : string; name : string option }
 
 let mkdir_recursive path =
   let segments = String.split_on_char '/' path in
@@ -75,8 +70,7 @@ let list_files : string -> string -> (string * string * string) list =
       |> fun f -> (file, Filename.concat output f, f))
     all_files
 
-let make_render_inputs : config -> (string * Common.render_input) list
-    =
+let make_render_inputs : config -> (string * Common.render_input) list =
  fun { source; output; name; _ } ->
   let all_files = List.sort compare (list_files source output) in
   let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
