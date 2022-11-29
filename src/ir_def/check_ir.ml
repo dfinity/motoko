@@ -551,7 +551,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
          begin
            (match ts2 with
             | [] -> ()
-            (*            | [T.Async (_, _)] -> () *)
             | _ -> error env exp.at "CPSAwait answer type error");
            typ kr <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2)];
            t1 <: T.seq ts1;
