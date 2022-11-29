@@ -285,6 +285,7 @@ const SIZE_CLASSES: [usize; LIST_COUNT] = [
 
 pub struct SegregatedFreeList {
     lists: [FreeList; LIST_COUNT],
+    total_size: Bytes<u32>,
 }
 
 impl SegregatedFreeList {
@@ -295,7 +296,14 @@ impl SegregatedFreeList {
     pub fn new_specific(size_classes: &[usize]) -> SegregatedFreeList {
         let lists = from_fn(|index| Self::free_list(size_classes, index));
         assert!(lists[lists.len() - 1].is_overflow_list());
-        SegregatedFreeList { lists }
+        SegregatedFreeList {
+            lists,
+            total_size: Bytes(0),
+        }
+    }
+
+    pub fn total_size(&self) -> Bytes<u32> {
+        self.total_size
     }
 
     fn free_list(size_classes: &[usize], index: usize) -> FreeList {
@@ -340,6 +348,8 @@ impl SegregatedFreeList {
         };
         if block == null_mut() {
             block = Self::grow_heap(heap, size);
+        } else {
+            self.total_size -= block.size();
         }
         assert!(block != null_mut());
         if block.size() > size {
@@ -393,6 +403,7 @@ impl SegregatedFreeList {
         let list = self.insertion_list(block.size());
         assert!(list.size_class.includes(block.size().as_usize()));
         list.remove(block);
+        self.total_size -= block.size();
     }
 
     unsafe fn add_block(&mut self, block: *mut FreeBlock) {
@@ -400,6 +411,7 @@ impl SegregatedFreeList {
         let list = self.insertion_list(block.size());
         assert!(list.size_class.includes(block.size().as_usize()));
         list.insert(block);
+        self.total_size += block.size();
     }
 
     unsafe fn grow_heap<H: Heap>(heap: &mut H, size: Bytes<u32>) -> *mut FreeBlock {
