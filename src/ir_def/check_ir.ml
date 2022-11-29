@@ -559,27 +559,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
        | _ -> error env exp.at "CPSAwait bad cont");
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
-(*    | CPSDoAsync t0, [exp] ->
-      (match typ exp with
-        T.Func(T.Local,T.Returns, [tb],
-               [ T.Func(T.Local, T.Returns, [], ts1, ts21);
-                 T.Func(T.Local, T.Returns, [], [t_error], ts22)],
-               [T.Async(T.Var(_,0), t2) as t_async]) ->
-         let ts =  Type.open_binds [tb] in
-         let ts1' = List.map (T.open_ ts) ts1 in
-         let ts21' = List.map (T.open_ ts) ts21 in
-         let ts22' = List.map (T.open_ ts) ts22 in
-         let t_async'  = T.open_ ts t_async in
-         T.seq ts1' <: t2;
-         T.catch <: t_error;
-         T.seq ts21' <: t_async';
-         T.seq ts22' <: t_async';
-         T.open_ [t0] t_async <: t
-       | _ -> error env exp.at "CPSDoAsync unexpected typ");
-      check (not (env.flavor.has_await)) "CPSDoAsync await flavor";
-      check (env.flavor.has_async_typ) "CPSDoAsync in post-async flavor";
-      check_typ env t0;
- *)
     | CPSAsync (s, t0), [exp] ->
       (match typ exp with
         T.Func(T.Local,T.Returns, [tb],
