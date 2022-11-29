@@ -33,7 +33,7 @@ let from_module =
         | Syntax.LetD
             ( { it = Syntax.VarP id; _ },
               { it = Syntax.ObjBlockE (_, decs); _ },
-              None ) ->
+              _ ) ->
             let mk_nested x = mk_xref (Xref.XNested (id.it, x)) in
             {
               acc with
@@ -42,7 +42,7 @@ let from_module =
                   (mk_xref (Xref.XValue id.it), Some (go mk_nested decs))
                   acc.values;
             }
-        | Syntax.LetD (pat, _, None) ->
+        | Syntax.LetD (pat, _, _) ->
             let bound_names =
               List.map
                 (fun i -> (i, (mk_xref (Xref.XValue i), None)))
