@@ -49,7 +49,6 @@ let t_async_fut as_seq t =
   T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
     [T.sum [
       ("suspend", T.unit);
-      ("resume", T.Func(T.Local, T.Returns, [], [], []));
       ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
@@ -62,23 +61,23 @@ let new_asyncT =
     T.Local,
     T.Returns,
     [ { var = "T"; sort = T.Type; bound = T.Any } ],
-    [T.bool],
+    [],
     new_async_ret unary (T.Var ("T", 0)))
 
 let new_asyncE () =
   varE (var "@new_async" new_asyncT)
 
-let new_async t getSystemRefund =
-  let call_new_async = callE (new_asyncE ()) [t] (boolE getSystemRefund) in
+let new_async t =
+  let call_new_async = callE (new_asyncE ()) [t] (unitE()) in
   let async = fresh_var "async" (typ (projE call_new_async 0)) in
   let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
   (async, fulfill, fail), call_new_async
 
-let new_nary_async_reply ts getSystemRefund =
+let new_nary_async_reply ts =
   (* The async implementation isn't n-ary *)
   let t = T.seq ts in
-  let (unary_async, unary_fulfill, fail), call_new_async = new_async t getSystemRefund in
+  let (unary_async, unary_fulfill, fail), call_new_async = new_async t in
   let v' = fresh_var "v" t in
   (* construct the n-ary async value, coercing the continuation, if necessary *)
   let nary_async =
@@ -156,7 +155,7 @@ let ensureNamed e f =
 
 (* The actual transformation *)
 
-let transform mode prog =
+let transform prog =
 
   (* the state *)
   let con_renaming = ref ConRenaming.empty
@@ -247,13 +246,10 @@ let transform mode prog =
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
           (ensureNamed (t_exp kr) (fun vkr ->
-            let resume = fresh_var "resume" (T.Func(T.Local, T.Returns, [], [], [])) in
             let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
             switch_variantE ((t_exp a) -*- varE vkr)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
-                ("resume", varP resume, (* resume now *)
-                   varE resume -*- unitE());
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
                   (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))) ]
@@ -274,7 +270,7 @@ let transform mode prog =
           tb, List.map t_typ (List.map (T.open_ [t]) ts1)
         | t -> assert false in
       let ((nary_async, nary_reply, reject), def) =
-        new_nary_async_reply ts1 true (* getSystemRefund *)
+        new_nary_async_reply ts1
       in
       ( blockE [
           letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
@@ -312,7 +308,7 @@ let transform mode prog =
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let ((nary_async, nary_reply, reject), def) =
-        new_nary_async_reply ts2 true (* getSystemRefund *)
+        new_nary_async_reply ts2
       in
       let _ = letEta in
       (blockE (
@@ -329,7 +325,7 @@ let transform mode prog =
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let exp3' = t_exp exp3 in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply [T.blob] true in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply [T.blob] in
       let _ = letEta in
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::

@@ -285,7 +285,6 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>,@Cont<Error>) -> {
   #suspend;
-  #resume : () -> ();
   #schedule : () -> ();
 };
 
@@ -306,7 +305,7 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-func @new_async<T <: Any>(getSystemRefund : Bool) : (@Async<T>, @Cont<T>, @Cont<Error>) {
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
@@ -316,7 +315,7 @@ func @new_async<T <: Any>(getSystemRefund : Bool) : (@Async<T>, @Cont<T>, @Cont<
   func fulfill(t : T) {
     switch result {
       case null {
-        let refund = if (getSystemRefund) @getSystemRefund() else @refund;
+        let refund = @getSystemRefund();
         result := ?(#ok (refund, t));
         let ws_ = ws;
         ws := w_null;
@@ -342,8 +341,8 @@ func @new_async<T <: Any>(getSystemRefund : Bool) : (@Async<T>, @Cont<T>, @Cont<
 
   func enqueue(k : @Cont<T>, r : @Cont<Error>) : {
     #suspend;
-    #resume : () -> ();
-    #schedule : () -> (); } {
+    #schedule : () -> ();
+  } {
     switch result {
       case null {
         let ws_ = ws;
