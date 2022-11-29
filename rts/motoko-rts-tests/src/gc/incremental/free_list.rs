@@ -62,7 +62,7 @@ const ROUNDS: usize = 8;
 
 impl Heap for TestMemory {
     unsafe fn grow_heap(&mut self, size: Words<u32>) -> Value {
-        self.alloc_words(size)
+        self.mutator_alloc(size)
     }
 }
 

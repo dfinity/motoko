@@ -26,13 +26,16 @@ use motoko_rts_macros::ic_mem_fn;
 ///
 /// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+    // Heap allocation function for the mutator.
+    unsafe fn mutator_alloc(&mut self, n: Words<u32>) -> Value;
+    // Heap allocation function for the garbage collector.
+    unsafe fn collector_alloc(&mut self, n: Words<u32>) -> Value;
 }
 
 /// Allocate a new blob for the mutator with the default incremental mark allocation scheme.
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
+    let ptr = mem.mutator_alloc(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
     (blob as *mut Obj).initialize_tag(TAG_BLOB);
@@ -42,9 +45,11 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
 
 /// RTS-internal allocation of blobs for the GC that can be collected during the next GC run.
 pub(crate) unsafe fn alloc_collectable_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    let ptr = alloc_blob(mem, size);
-    let object = ptr.get_ptr() as *mut Obj;
-    object.unmark();
+    let ptr = mem.collector_alloc(size_of::<Blob>() + size.to_words());
+    let blob = ptr.get_ptr() as *mut Blob;
+    (*blob).header.raw_tag = TAG_BLOB;
+    (*blob).len = size;
+    debug_assert!(!(blob as *mut Obj).is_marked());
     ptr
 }
 
@@ -56,7 +61,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
         rts_trap_with("Array allocation too large");
     }
 
-    let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
+    let skewed_ptr = mem.mutator_alloc(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
     (ptr as *mut Obj).initialize_tag(TAG_ARRAY);

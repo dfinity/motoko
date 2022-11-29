@@ -154,6 +154,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
+    /// Large GC increment invoked before a mutator heap allocation.
+    /// No recursive increments if GC allocates heap space for the mark stack.
+    pub unsafe fn allocation_increment(mem: &'a mut M) {
+        Self::instance(mem, Self::LARGE_INCREMENT_LIMIT).increment();
+    }
+
     unsafe fn pausing() -> bool {
         match &PHASE {
             Phase::Pause => true,
@@ -180,7 +186,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn increment(&mut self) {
-        self.steps = 0;
         match &mut PHASE {
             Phase::Pause => {}
             Phase::Mark(_) => self.mark_phase_increment(),
@@ -250,7 +255,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn mark_phase_increment(&mut self) {
         if let Phase::Mark(state) = &mut PHASE {
-            assert!(!state.complete);
+            if state.complete {
+                // allocation after complete marking, wait until next empty call stack increment
+                assert!(state.mark_stack.is_empty());
+                return;
+            }
             while let Some(value) = state.mark_stack.pop() {
                 assert!(value.is_ptr());
                 assert!(value.as_obj().is_marked());
