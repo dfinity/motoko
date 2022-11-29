@@ -19,13 +19,14 @@ e = x
   | if e then e else e
   | async e
   | await e                // may throw
+  | async* e
+  | await* e
   | while e do e
   | label l e
   | break l e
   | return e
   | try e with x -> e     // evaluate e, handling error x using e.
   | throw e               // throw error e to nearest enclosing handler or async block
-  | do async e            // in an async context, evaluate e, returning an async
 ```
 
 
@@ -35,11 +36,7 @@ Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect
 
 The only terms that introduce effect `A` is `await`, `try` or `throw`  and `do async` - the effect is masked by its innermost enclosing `async` (if any).
 
-(A less conservative refinement is to define the effect of `do async e` to be the effect of `e`, which would require extending the `T[e]`  translation below with a case for `T[do async e]` where the effect of `e` is `Triv`. The case would apply, for example, to a `do async` expression
-that has no `await` in `e` but merely  `return`, `throws` or exits with a completed promise).
-
-Note `await`, `try` and `throw` and `do async {}` may only occur within an `async` block.
-(In Motoko, `do async e` is allowed to occur in the body of a shared or asynchronous local function - even without an enclosing `async ...`).
+Note `await`, `await*`, `try` and `throw` may only occur within an `async` or `async*` block.
 
 The body of every lambda must be trivial.
 
@@ -53,7 +50,7 @@ Non-trivial terms must be cps-converted by translations `C r [e]` and `CPS[e] r`
 Their translations expect a pair `r = (reply,reject)` and `reply` and `reject` continuations (for interpreting early `return` and `throw`). We write `r.reply` and `r.reject` for the obvious projections.
 The `reply` continuation only changes when we enter an async block.
 The `reject` continuation changes when we enter a `async` or `try`.
-Both change when we enter a `do async e`.
+
 The translation `C r [e]` produces a term in cps, taking a single continuation argument.
 
 Since `async` and `try catch` are block structured, we can record the
@@ -63,7 +60,6 @@ the translation by not threading two continuations throughout.
 
 ```JS
 CPS[ e ] = \\r.C r [e] @ r.reply
-CPS*[ e ] = \\r.C* r [e] @ r.reply
 
 where
 
@@ -81,6 +77,10 @@ C r [ await t ] =
    \\k.await(T[t1], (k, r.reject))
 C r [ await e ] =
    \\k.C r [e] @ (\\v.await(v,(k, r.reject))
+C r [ await* t ] =
+   \\k.T[t1] (k, r.reject)
+C r [ await* e ] =
+   \\k.C r [e] @ (\\v.v (k, r.reject))
 C r [ if e1 then e2 else e3 ]  =
    \\k.C r [e1] @ (\\b.if b then C r [e1] @ k else C r [e2] @ k)
 C r [ if t1 then e2 else e3 ]  =
@@ -106,33 +106,16 @@ C r [ try e1 with x -> e2 ] =
   let reject' = \\x. C r [e2] @ k in
   \\k. C (r.reply,reject') [e1] @ k
 C r [ throw e] = \\k. C r [e] @ r.reject      // discard k, exit async or try via reject
-C r [ do async e ] =
-   \\k. k @ (CPS*[e] (\v.CompletedAsync(v), \e.RejectedAsync(e)))
 ```
 
 In `C`, an `await` is translated by passing the current continuation `k` and reject continuation `r.reject` (both returning answer type `()`) in the promise and yielding if necessary.
-
-Here translation `C*` (used by `CPS*[e]`) is like translation `C`, used by `CPS[e]`, except for the initial continuations supplied to the translation, which have answer type `async T` (not `()`),
-and its compilation of `await e`, which is
-
-```
-C* r [ await t ] =
-   \\k.(await*(T[t1], (k, r.reject))
-C* r [ await e ] =
-   \\k.C* r [e] @ (\\v. await*(v, (k, r.reject))
-```
-
-In `C*`, an `await` is translated by allocating a new promise, completed on completion of the awaited promise using the current continuation `k`, and immediately returned as a pending promise.
-
-In practice, we can use a single definition for `C` and `C*` and distinguish them on cases
-`await t` and `await e` by examining the answer type of `k` (which is `()` for the body
-of an async expression and `async _`, for the body of a `do async e` expression.
 
 The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `async _` and `do asnc _`, at which point we switch to the `CPS[-]` translation.
 Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined.
 
 ```JS
 T[ async e ] = spawn (\t.CPS[e] @ ((\v.complete(t,v)),(\e.reject(t,e)))
+T[ async* e ] = CPS[e]
 T[ x ]= x
 T[ c ] = c
 T[ \x.t ] = \x.T[t]
@@ -176,11 +159,15 @@ yield() = schedule.Next()
 // meta-operations for interpreting `async e`
 
 await(t,(k,r)) = match t with
-             | {result = Completed v} -> k v
+             | {result = Completed v} ->
+               schedule (\u.k v);
+               yield();
              | {result = Rejected e} -> r e
+               schedule (\u.r e);
+               yield();
              | {result = Pending} ->
-			   t.waiters <- (k,r)::t.waiters;
-			   yield()
+               t.waiters <- (k,r)::t.waiters;
+               yield()
 
 complete(t,v) = match t with
              | {result = Pending; waiters} ->
@@ -196,19 +183,6 @@ reject(t,v) = match t with
                  schedule(\u.reject(v))
              | { result = _ } -> assert(false)
 
-
-// meta-operations for interpreting `do async e`
-
-completedAsync(v) = { result = Completed v; waiters = [] }
-
-rejectedAsync(e) = { result = Error e; waiters =  [] }
-
-await*(au, (k, r)) =
-  let at = { result = Pending; waiters = [] };
-  let k1 u = k(u) (fun v -> complete(at, v)};
-  let r2 e = r(e) (fun e -> reject(at, e)};
-  await(au, (k1, r2));
-  at
 ```
 
 The above translations are flawed:
@@ -248,6 +222,10 @@ C env r [ return e ] =
 T env [ async e ] =
   let env' = [l_ret->Cont] in
   spawn (\t.CPS env' [e] @ ((\v.complete(t,v)),(\e.reject(t,e)))
+
+T env [ async* e ] =
+  let env' = [l_ret->Cont] in
+  CPS env' [e]
 
 T env [\x.t] =
   let env' = [l_ret->Label]
