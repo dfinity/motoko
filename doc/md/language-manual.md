@@ -553,7 +553,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
   ? <typ>                                       option
   <shared>? <typ-params>? <typ> -> <typ>        function
   async <typ>                                   future
-  async* <typ>                                  delayed asynchronous computation
+  async* <typ>                                  delayed, asynchronous computation
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
