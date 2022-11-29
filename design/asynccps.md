@@ -32,7 +32,7 @@ e = x
 
 The aim of the game is to remove async and await and try catch/throw  by a source-to-source translation, leaving as much code as possible in direct-style.
 
-Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect `A` if any subterm not enclosed by `async` is `await`.
+Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect `A` if any subterm not enclosed by `async` or `async*` is `await` or `await*`.
 
 The only terms that introduce effect `A` is `await`, `try` or `throw`  and `do async` - the effect is masked by its innermost enclosing `async` (if any).
 
