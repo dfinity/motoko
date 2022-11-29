@@ -660,10 +660,28 @@ and text_dotE proj e =
     |  _ -> assert false
 
 and let_else_switch p e f =
-  exp { e with it = S.SwitchE(e,
-        S.[ { it = { pat = p; exp = e }; at = e.at; note = () };
-            { it = { pat = { it = WildP; at = f.at; note = p.note }; exp = f }; at = f.at ; note = () }
-        ])}
+  let v = fresh_var "v" (e.note.S.note_typ) in
+  let e', p', f' = exp e, pat p, exp f in
+  let v' = varE v in
+  (* Evaluate e once, assign it to variable v, and pattern match on v. If v
+     matches p, expression evaluates to v. Otherwise evaluate f. *)
+  {
+    e' with
+    it =
+    I.BlockE(
+      [letD v e'],
+      {
+        e' with
+        it = I.SwitchE(
+          varE v,
+          I.[
+            { it = { pat = p'; exp = varE v }; at = e'.at; note = () };
+            { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
+          ]
+        )
+      }
+    )
+  }
 
 and block force_unit ds =
   match ds with
