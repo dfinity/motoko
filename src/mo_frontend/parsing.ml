@@ -70,11 +70,12 @@ let slice_lexeme lexbuf i1 i2 =
   then "<unknown>" (* Too rare to care *)
   else Bytes.sub_string lexbuf.lex_buffer offset len
 
-let parse error_detail checkpoint lexer lexbuf =
+let parse mode error_detail checkpoint lexer lexbuf =
   Diag.with_message_store (fun m ->
     try
       (* Temporary hack! *)
       Parser_lib.msg_store := Some m;
+      Parser_lib.mode := Some mode;
       Some (E.entry checkpoint lexer)
     with E.Error ((start, end_), explanations) ->
       let at =
