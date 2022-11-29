@@ -154,7 +154,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         IncrementalGC { mem, steps: 0 }
     }
 
-    const INCREMENT_LIMIT: usize = 1024; // soft limit on marked fields per GC run
+    const INCREMENT_LIMIT: usize = 1024;
 
     unsafe fn increment(&mut self) {
         self.steps = 0;
@@ -196,6 +196,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             if value.is_ptr() && value.get_ptr() >= Self::heap_base() {
                 self.mark_object(value);
             }
+            self.steps += 1;
         }
     }
 
@@ -207,6 +208,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn mark_object(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
+            self.steps += 1;
             assert!(!state.complete);
             assert!((value.get_ptr() >= state.heap_base));
             let object = value.as_obj();
@@ -265,7 +267,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
-                gc.steps += 1;
             },
             |gc, slice_start, array| {
                 assert!((array as *mut Obj).is_marked());
@@ -283,10 +284,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                         panic!("Invalid phase");
                     }
                     assert!((array as *mut Obj).is_marked());
+                    gc.steps += SLICE_INCREMENT as usize;
                     new_start
                 } else {
                     (*array).header.raw_tag = mark(TAG_ARRAY);
                     assert!((array as *mut Obj).is_marked());
+                    gc.steps += array.len() as usize;
                     array.len()
                 }
             },
@@ -320,7 +323,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                         .free_space(state.sweep_line, Bytes(free_space as u32));
 
                     if self.steps > Self::INCREMENT_LIMIT {
-                        // continue merging with this free segment on next increment
+                        // Continue merging with this free segment on the next GC increment.
                         return;
                     }
                     state.sweep_line += free_space;

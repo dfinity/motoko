@@ -55,7 +55,8 @@
 //!    from allocated free blocks that are too small for being a free block.
 //!    Such internal fragmentation is identified by `TAG_ONE_WORD_FILLER`.
 //!
-//! Free blocks are never visited by the GC mark phase.
+//! The GC mark phase never visits free blocks.
+//! The GC sweep phase retains or merges free blocks.
 //!
 
 use core::{array::from_fn, cmp::max, ptr::null_mut};
