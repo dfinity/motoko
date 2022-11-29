@@ -86,6 +86,7 @@ let rec exp m e = match e.it with
   | ThrowE _
   | TryE _
   | BangE _
+  | ImpliesE _
   -> err m e.at
 
 and dec_fields m dfs = List.iter (fun df -> dec m df.it.dec) dfs

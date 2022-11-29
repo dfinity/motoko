@@ -320,10 +320,13 @@ let falseE () = boolE false
 let trueE () = boolE true
 let notE : Ir.exp -> Ir.exp = fun e ->
   primE (RelPrim (T.bool, Operator.EqOp)) [e; falseE ()]
+
 let andE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   ifE e1 e2 (falseE ())
 let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   ifE e1 (trueE ()) e2
+let impliesE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
+  orE (notE e1) e2
 
 let rec conjE : Ir.exp list -> Ir.exp = function
   | [] -> trueE ()
