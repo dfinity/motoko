@@ -113,7 +113,7 @@ pub struct IncrementalGC<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
-    const LARGE_INCREMENT_LIMIT: usize = 256 * 1024;
+    const LARGE_INCREMENT_LIMIT: usize = 32 * 1024;
     const SMALL_INCREMENT_LIMIT: usize = 256;
 
     pub unsafe fn reset_for_testing() {
