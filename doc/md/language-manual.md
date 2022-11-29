@@ -785,7 +785,7 @@ Future types typically appear as the result type of a `shared` function that pro
 
 Computation types typically appear as the result type of a `local` function that produces an `await*`-able value.
 
-(They cannot be used as the return types of shared functions.)
+(They cannot be used as the return types of `shared` functions.)
 
 ### Tuple types
 
