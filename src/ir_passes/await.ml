@@ -102,21 +102,6 @@ and t_exp' context exp' =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-(*    
-  | DoAsyncE (tb, exp1, typ1) ->
-    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
-    (* add the implicit return/throw label *)
-    let ans_typ = T.Async(T.Con(tb.it.con,[]),typ exp1) in
-    let k_ret = fresh_cont (typ exp1) ans_typ in
-    let k_fail = fresh_err_cont ans_typ in
-    let context' =
-      LabelEnv.add Return (Cont (ContVar k_ret))
-        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-    in
-    (cps_do_asyncE typ1 (typ exp1)
-       (forall [tb] ([k_ret; k_fail] -->*
-                       c_exp context' exp1 (ContVar k_ret)))).it
- *)
   | AsyncE (s, tb, exp1, typ1) ->
     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
     (* add the implicit return/throw label *)
@@ -127,26 +112,16 @@ and t_exp' context exp' =
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
     (cps_asyncE s typ1 (typ exp1)
-       (forall [tb] ([k_ret; k_fail] -->*
-                       c_exp context' exp1 (ContVar k_ret)))).it
+      (forall [tb] ([k_ret; k_fail] -->*
+        c_exp context' exp1 (ContVar k_ret)))).it
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
-    FuncE (x, s, c, typbinds, pat, typs,
-      match eff exp1 with
-      | T.Triv ->
-        let context' = LabelEnv.add Return Label LabelEnv.empty in
-        t_exp context' exp1
-      | T.Await ->
-        (* define k_ret as identity continuation and enter cps *)
-        let k_ret = fresh_cont (typ exp1) (typ exp1) in
-        let v = fresh_var "v" (typ exp1) in
-        let context' = LabelEnv.add Return (Cont (ContVar k_ret)) LabelEnv.empty in
-        blockE [funcD k_ret v (varE v)]
-          (c_exp context' exp1 (ContVar k_ret)))
+    let context' = LabelEnv.add Return Label LabelEnv.empty in
+    FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
   | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
     ActorE (t_decs context ds, ids,
       { meta;
