@@ -110,8 +110,8 @@ C r [ throw e] = \\k. C r [e] @ r.reject      // discard k, exit async or try vi
 
 In `C`, an `await` is translated by passing the current continuation `k` and reject continuation `r.reject` (both returning answer type `()`) in the promise and yielding if necessary.
 
-The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `async _` and `do asnc _`, at which point we switch to the `CPS[-]` translation.
-Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined.
+The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `async _` and `async * _`, at which point we switch to the `CPS[-]` translation.
+Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined (since they cannot have trivial effect `T`.)
 
 ```JS
 T[ async e ] = spawn (\t.CPS[e] @ ((\v.complete(t,v)),(\e.reject(t,e)))
