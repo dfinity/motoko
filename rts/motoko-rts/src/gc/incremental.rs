@@ -318,6 +318,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                         .as_mut()
                         .unwrap()
                         .free_space(state.sweep_line, Bytes(free_space as u32));
+
+                    if self.steps > Self::INCREMENT_LIMIT {
+                        // continue merging with this free segment on next increment
+                        return;
+                    }
                     state.sweep_line += free_space;
                 } else {
                     let object = state.sweep_line as *mut Obj;
@@ -366,7 +371,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 address += object_size(address).to_bytes().as_usize();
             }
             assert!(address <= end_address);
+
             self.steps += 1;
+            if self.steps > Self::INCREMENT_LIMIT {
+                break;
+            }
         }
         return address - start_address;
     }
