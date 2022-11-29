@@ -76,6 +76,7 @@ pub struct IcMemory;
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, amount: Words<u32>) -> Value {
+        ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
         match &mut FREE_LIST {
             Some(free_list) => free_list.allocate(&mut IC_HEAP, amount.to_bytes()),
             None => allocate_at_heap_end(amount),
@@ -97,9 +98,7 @@ impl Heap for IcHeap {
 #[inline]
 unsafe fn allocate_at_heap_end(n: Words<u32>) -> Value {
     let bytes = n.to_bytes();
-    // Update ALLOCATED
     let delta = u64::from(bytes.as_u32());
-    ALLOCATED += Bytes(delta);
 
     // Update heap pointer
     let old_hp = u64::from(HP);
