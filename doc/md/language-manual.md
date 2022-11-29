@@ -781,7 +781,7 @@ Future types typically appear as the result type of a `shared` function that pro
 
 ### Async* types
 
-`async* <typ>` specifies a delayed asynchronous computation producing a value of type `<typ>`.
+`async* <typ>` specifies a delayed, asynchronous computation producing a value of type `<typ>`.
 
 Computation types typically appear as the result type of a `local` function that produces an `await*`-able value.
 
@@ -2214,7 +2214,7 @@ Any control-flow label in scope for `async* <block-or-exp>` is not in scope for 
 The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async* <block-or-exp>` produces a delayed computation to evaluate `<block-or-exp>`. It immediately returns a value of type `async* T`.
-The delayed computation can be performed using `await*`, producing one evaluation
+The delayed computation can be executed using `await*`, producing one evaluation
 of the computation `<block-or-exp>`.
 
 :::danger
