@@ -92,9 +92,13 @@ pub(crate) static mut FREE_LIST: Option<SegregatedFreeList> = None;
 pub struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
+    increment_limit: usize,
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
+    const LARGE_INCREMENT_LIMIT: usize = 256 * 1024;
+    const SMALL_INCREMENT_LIMIT: usize = 256;
+
     pub unsafe fn reset_for_testing() {
         PHASE = Phase::Pause;
         FREE_LIST = Some(SegregatedFreeList::new());
@@ -105,7 +109,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase is only started on an empty call stack.
     /// * The moving phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(mem: &'a mut M, limits: Limits, roots: Roots) {
-        let mut gc = Self::instance(mem);
+        let mut gc = Self::instance(mem, Self::LARGE_INCREMENT_LIMIT);
         if Self::pausing() {
             gc.start_marking(limits.base, roots);
         }
@@ -123,7 +127,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if value.is_ptr() {
             if let Phase::Mark(state) = &PHASE {
                 if value.get_ptr() >= state.heap_base {
-                    let mut gc = Self::instance(mem);
+                    let mut gc = Self::instance(mem, Self::SMALL_INCREMENT_LIMIT);
                     if !state.complete {
                         gc.mark_object(value);
                         gc.increment();
@@ -150,11 +154,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
-        IncrementalGC { mem, steps: 0 }
+    fn instance(mem: &'a mut M, increment_limit: usize) -> IncrementalGC<'a, M> {
+        IncrementalGC {
+            mem,
+            steps: 0,
+            increment_limit,
+        }
     }
-
-    const INCREMENT_LIMIT: usize = 1024;
 
     unsafe fn increment(&mut self) {
         self.steps = 0;
@@ -234,7 +240,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 self.mark_fields(value.as_obj());
 
                 self.steps += 1;
-                if self.steps > Self::INCREMENT_LIMIT {
+                if self.steps > self.increment_limit {
                     return;
                 }
             }
@@ -322,7 +328,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                         .unwrap()
                         .free_space(state.sweep_line, Bytes(free_space as u32));
 
-                    if self.steps > Self::INCREMENT_LIMIT {
+                    if self.steps > self.increment_limit {
                         // Continue merging with this free segment on the next GC increment.
                         return;
                     }
@@ -337,7 +343,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 assert!(state.sweep_line <= state.heap_end);
 
                 self.steps += 1;
-                if self.steps > Self::INCREMENT_LIMIT {
+                if self.steps > self.increment_limit {
                     return;
                 }
             }
@@ -376,7 +382,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             assert!(address <= end_address);
 
             self.steps += 1;
-            if self.steps > Self::INCREMENT_LIMIT {
+            if self.steps > self.increment_limit {
                 break;
             }
         }
