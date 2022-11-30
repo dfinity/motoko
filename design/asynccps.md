@@ -34,7 +34,7 @@ The aim of the game is to remove async and await and try catch/throw  by a sourc
 
 Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect `A` if any subterm not enclosed by `async` or `async*` is `await` or `await*`.
 
-The only terms that introduce effect `A` is `await`, `try` or `throw`  and `do async` - the effect is masked by its innermost enclosing `async` (if any).
+The only terms that introduce effect `A` is `await`, `await*`, `try` or `throw` - the effect is masked by its innermost enclosing `async` or `async*` (if any).
 
 Note `await`, `await*`, `try` and `throw` may only occur within an `async` or `async*` block.
 
