@@ -3,21 +3,20 @@
 
 use core::ptr::null_mut;
 
-use crate::constants::WORD_SIZE;
-use crate::gc::mark_compact::bitmap::{alloc_bitmap, free_bitmap, get_bit, set_bit};
-use crate::gc::mark_compact::mark_stack::{
-    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack,
-};
+use crate::gc::generational::remembered_set::RememberedSet;
 use crate::memory::Memory;
 use crate::visitor::visit_pointer_fields;
 use crate::{types::*, visitor::pointer_to_dynamic_heap};
 
 use super::free_list::FreeBlock;
+use super::mark_stack::MarkStack;
 
 #[cfg(feature = "ic")]
 pub unsafe fn check_mark_completeness<M: Memory>(mem: &mut M) {
     let heap = get_heap();
-    let mut checker = MarkPhaseChecker { mem, heap };
+    let mark_stack = MarkStack::new(mem);
+    let visited = RememberedSet::new(mem);
+    let mut checker = MarkPhaseChecker { mem, heap, mark_stack, visited };
     checker.check_mark_completeness();
 }
 
@@ -63,6 +62,8 @@ struct Heap {
 struct MarkPhaseChecker<'a, M: Memory> {
     mem: &'a mut M,
     heap: Heap,
+    mark_stack: MarkStack,
+    visited: RememberedSet,
 }
 
 impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
@@ -71,22 +72,8 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
     // The incremental GC may mark more objects due to concurrent allocations and
     // concurrent pointer modifications.
     unsafe fn check_mark_completeness(&mut self) {
-        self.allocate_mark_structures();
         self.mark_roots();
         self.mark_all_reachable();
-        self.free_mark_structures();
-    }
-
-    unsafe fn allocate_mark_structures(&mut self) {
-        let memory_size = Bytes(self.heap.limits.free as u32 - self.heap.limits.base as u32);
-        let heap_prefix_words = self.heap.limits.base as u32 / WORD_SIZE;
-        alloc_bitmap(self.mem, memory_size, heap_prefix_words);
-        alloc_mark_stack(self.mem);
-    }
-
-    unsafe fn free_mark_structures(&self) {
-        free_mark_stack();
-        free_bitmap();
     }
 
     unsafe fn mark_roots(&mut self) {
@@ -100,6 +87,7 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
             let mutbox = root_array.get(i).as_mutbox();
             let value = (*mutbox).field;
             if value.is_ptr() && value.get_ptr() >= self.heap.limits.base {
+                assert_ne!(value.get_raw(), 0);
                 self.mark_object(value);
             }
         }
@@ -107,24 +95,25 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
 
     unsafe fn mark_continuation_table(&mut self) {
         if self.heap.roots.continuation_table.is_ptr() {
+            assert_ne!(self.heap.roots.continuation_table.get_raw(), 0);
             self.mark_object(self.heap.roots.continuation_table);
         }
     }
 
     unsafe fn mark_object(&mut self, value: Value) {
+        assert_ne!(value.get_raw(), 0);
         let object = value.as_obj();
         // The incremental GC must also have marked this object.
         assert!(object.is_marked());
-        let object_index = object as u32 / WORD_SIZE;
-        if !get_bit(object_index) {
-            set_bit(object_index);
-            push_mark_stack(self.mem, object as usize, object.tag());
+        if !self.visited.contains(value) {
+            self.visited.insert(self.mem, value);
+            self.mark_stack.push(self.mem, value);
         }
     }
 
     unsafe fn mark_all_reachable(&mut self) {
-        while let Some((object, _)) = pop_mark_stack() {
-            self.mark_fields(object as *mut Obj);
+        while let Some(object) = self.mark_stack.pop() {
+            self.mark_fields(object.get_ptr() as *mut Obj);
         }
     }
 
@@ -135,6 +124,7 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
             object.tag(),
             self.heap.limits.base,
             |gc, field_address| {
+                assert_ne!((*field_address).get_raw(), 0);
                 gc.mark_object(*field_address);
             },
             |_, _, array| array.len(),

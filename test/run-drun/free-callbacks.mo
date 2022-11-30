@@ -39,7 +39,9 @@ actor a {
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
+// ic-ref-run is too slow on CI
 
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
+//SKIP ic-ref-run
