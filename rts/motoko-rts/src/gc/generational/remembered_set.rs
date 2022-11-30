@@ -105,7 +105,7 @@ impl RememberedSet {
         }
     }
 
-    // Will only be used for debug assertions in future (barrier coverage check).
+    // Only used for debug assertions (barrier coverage check).
     pub unsafe fn contains(&self, value: Value) -> bool {
         debug_assert!(!is_null_ptr_value(value));
         let index = self.hash_index(value);
