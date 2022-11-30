@@ -4,7 +4,7 @@ actor a {
   };
 
   public func go() : async () {
-    let length = 4 * 1024 * 1024;
+    let length = 1024 * 1024;
     // Using reclaimed size as the incremental GC uses free lists and does not reduce the heap size.
     let r0 = Prim.rts_reclaimed();
     var a = Prim.Array_init<()>(length, ());
@@ -44,4 +44,3 @@ a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
