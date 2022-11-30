@@ -1,13 +1,13 @@
 # Result
 
-``` motoko
+```motoko name=import
 import Result "mo:base/Result";
 ```
 
 Error handling with the Result type.
 
 ## Type `Result`
-``` motoko no-repl
+```motoko no-repl
 type Result<Ok, Err> = {#ok : Ok; #err : Err}
 ```
 
@@ -27,19 +27,19 @@ switch(createUser(myUser)) {
 ```
 
 ## Function `equal`
-``` motoko no-repl
+```motoko no-repl
 func equal<Ok, Err>(eqOk : (Ok, Ok) -> Bool, eqErr : (Err, Err) -> Bool, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Bool
 ```
 
 
 ## Function `compare`
-``` motoko no-repl
+```motoko no-repl
 func compare<Ok, Err>(compareOk : (Ok, Ok) -> Order.Order, compareErr : (Err, Err) -> Order.Order, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Order.Order
 ```
 
 
 ## Function `chain`
-``` motoko no-repl
+```motoko no-repl
 func chain<R1, R2, Error>(x : Result<R1, Error>, y : R1 -> Result<R2, Error>) : Result<R2, Error>
 ```
 
@@ -63,7 +63,7 @@ assert(between10And20(21) == #err("Not smaller than 20."));
 ```
 
 ## Function `flatten`
-``` motoko no-repl
+```motoko no-repl
 func flatten<Ok, Error>(result : Result<Result<Ok, Error>, Error>) : Result<Ok, Error>
 ```
 
@@ -77,21 +77,21 @@ assert(Result.flatten<Nat, Text>(#ok(#err("Wrong"))) == #err("Wrong"));
 ```
 
 ## Function `mapOk`
-``` motoko no-repl
+```motoko no-repl
 func mapOk<Ok1, Ok2, Error>(x : Result<Ok1, Error>, f : Ok1 -> Ok2) : Result<Ok2, Error>
 ```
 
 Maps the `Ok` type/value, leaving any `Error` type/value unchanged.
 
 ## Function `mapErr`
-``` motoko no-repl
+```motoko no-repl
 func mapErr<Ok, Error1, Error2>(x : Result<Ok, Error1>, f : Error1 -> Error2) : Result<Ok, Error2>
 ```
 
 Maps the `Err` type/value, leaving any `Ok` type/value unchanged.
 
 ## Function `fromOption`
-``` motoko no-repl
+```motoko no-repl
 func fromOption<R, E>(x : ?R, err : E) : Result<R, E>
 ```
 
@@ -103,7 +103,7 @@ assert(Result.fromOption(null, "err") == #err("err"));
 ```
 
 ## Function `toOption`
-``` motoko no-repl
+```motoko no-repl
 func toOption<R, E>(r : Result<R, E>) : ?R
 ```
 
@@ -115,7 +115,7 @@ assert(Result.toOption(#err("err")) == null);
 ```
 
 ## Function `iterate`
-``` motoko no-repl
+```motoko no-repl
 func iterate<Ok, Err>(res : Result<Ok, Err>, f : Ok -> ())
 ```
 
@@ -132,26 +132,26 @@ assert(counter == 5);
 ```
 
 ## Function `isOk`
-``` motoko no-repl
+```motoko no-repl
 func isOk(r : Result<Any, Any>) : Bool
 ```
 
 
 ## Function `isErr`
-``` motoko no-repl
+```motoko no-repl
 func isErr(r : Result<Any, Any>) : Bool
 ```
 
 
 ## Function `assertOk`
-``` motoko no-repl
+```motoko no-repl
 func assertOk(r : Result<Any, Any>)
 ```
 
 Asserts that its argument is an `#ok` result, traps otherwise.
 
 ## Function `assertErr`
-``` motoko no-repl
+```motoko no-repl
 func assertErr(r : Result<Any, Any>)
 ```
 

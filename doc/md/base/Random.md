@@ -1,6 +1,6 @@
 # Random
 
-``` motoko
+```motoko name=import
 import Random "mo:base/Random";
 ```
 
@@ -31,7 +31,7 @@ random number generators.
 
 
 ### Function `byte`
-``` motoko no-repl
+```motoko no-repl
 func byte() : ?Nat8
 ```
 
@@ -40,7 +40,7 @@ Consumes 1 byte of entropy.
 
 
 ### Function `coin`
-``` motoko no-repl
+```motoko no-repl
 func coin() : ?Bool
 ```
 
@@ -49,7 +49,7 @@ Consumes 1 bit of entropy (amortised).
 
 
 ### Function `range`
-``` motoko no-repl
+```motoko no-repl
 func range(p : Nat8) : ?Nat
 ```
 
@@ -58,7 +58,7 @@ Consumes ⌈p/8⌉ bytes of entropy.
 
 
 ### Function `binomial`
-``` motoko no-repl
+```motoko no-repl
 func binomial(n : Nat8) : ?Nat8
 ```
 
@@ -72,7 +72,7 @@ guaranteed only when the supplied entropy is originally obtained
 by the `blob()` call, and is never reused.
 
 ## Function `byteFrom`
-``` motoko no-repl
+```motoko no-repl
 func byteFrom(seed : Blob) : Nat8
 ```
 
@@ -80,7 +80,7 @@ Distributes outcomes in the numeric range [0 .. 255].
 Seed blob must contain at least a byte.
 
 ## Function `coinFrom`
-``` motoko no-repl
+```motoko no-repl
 func coinFrom(seed : Blob) : Bool
 ```
 
@@ -88,14 +88,14 @@ Simulates a coin toss.
 Seed blob must contain at least a byte.
 
 ## Value `blob`
-``` motoko no-repl
+```motoko no-repl
 let blob : shared () -> async Blob
 ```
 
 Obtains a full blob (32 bytes) worth of fresh entropy.
 
 ## Function `rangeFrom`
-``` motoko no-repl
+```motoko no-repl
 func rangeFrom(p : Nat8, seed : Blob) : Nat
 ```
 
@@ -103,7 +103,7 @@ Distributes outcomes in the numeric range [0 .. 2^p - 1].
 Seed blob must contain at least ((p+7) / 8) bytes.
 
 ## Function `binomialFrom`
-``` motoko no-repl
+```motoko no-repl
 func binomialFrom(n : Nat8, seed : Blob) : Nat8
 ```
 

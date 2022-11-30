@@ -1,20 +1,20 @@
 # RBTree
 
-``` motoko
+```motoko name=import
 import RBTree "mo:base/RBTree";
 ```
 
 Red-Black Trees
 
 ## Type `Color`
-``` motoko no-repl
+```motoko no-repl
 type Color = {#R; #B}
 ```
 
 Node color: red or black.
 
 ## Type `Tree`
-``` motoko no-repl
+```motoko no-repl
 type Tree<X, Y> = {#node : (Color, Tree<X, Y>, (X, ?Y), Tree<X, Y>); #leaf}
 ```
 
@@ -24,7 +24,7 @@ Ordered, (red-black) tree of entries.
 
 
 ### Function `share`
-``` motoko no-repl
+```motoko no-repl
 func share() : Tree<X, Y>
 ```
 
@@ -36,7 +36,7 @@ for drawing, pretty-printing and non-OO contexts
 
 
 ### Function `get`
-``` motoko no-repl
+```motoko no-repl
 func get(x : X) : ?Y
 ```
 
@@ -44,7 +44,7 @@ Get the value associated with a given key.
 
 
 ### Function `replace`
-``` motoko no-repl
+```motoko no-repl
 func replace(x : X, y : Y) : ?Y
 ```
 
@@ -52,7 +52,7 @@ Replace the value associated with a given key.
 
 
 ### Function `put`
-``` motoko no-repl
+```motoko no-repl
 func put(x : X, y : Y)
 ```
 
@@ -60,7 +60,7 @@ Put an entry: A value associated with a given key.
 
 
 ### Function `delete`
-``` motoko no-repl
+```motoko no-repl
 func delete(x : X)
 ```
 
@@ -68,7 +68,7 @@ Delete the entry associated with a given key.
 
 
 ### Function `remove`
-``` motoko no-repl
+```motoko no-repl
 func remove(x : X) : ?Y
 ```
 
@@ -76,7 +76,7 @@ Remove the entry associated with a given key.
 
 
 ### Function `entries`
-``` motoko no-repl
+```motoko no-repl
 func entries() : I.Iter<(X, Y)>
 ```
 
@@ -86,7 +86,7 @@ iterator is persistent, like the tree itself
 
 
 ### Function `entriesRev`
-``` motoko no-repl
+```motoko no-repl
 func entriesRev() : I.Iter<(X, Y)>
 ```
 
@@ -96,14 +96,14 @@ iterator is persistent, like the tree itself
 Create an order map from an order function for its keys.
 
 ## Function `iter`
-``` motoko no-repl
+```motoko no-repl
 func iter<X, Y>(t : Tree<X, Y>, dir : {#fwd; #bwd}) : I.Iter<(X, Y)>
 ```
 
 An iterator for the entries of the map, in ascending (`#fwd`) or descending (`#bwd`) order.
 
 ## Function `size`
-``` motoko no-repl
+```motoko no-repl
 func size<X, Y>(t : Tree<X, Y>) : Nat
 ```
 

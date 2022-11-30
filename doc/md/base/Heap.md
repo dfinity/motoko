@@ -1,6 +1,6 @@
 # Heap
 
-``` motoko
+```motoko name=import
 import Heap "mo:base/Heap";
 ```
 
@@ -9,7 +9,7 @@ Priority Queue
 This module provides purely-functional priority queue based on leftist heap
 
 ## Type `Tree`
-``` motoko no-repl
+```motoko no-repl
 type Tree<T> = ?(Int, T, Tree<T>, Tree<T>)
 ```
 
@@ -18,7 +18,7 @@ type Tree<T> = ?(Int, T, Tree<T>, Tree<T>)
 
 
 ### Function `share`
-``` motoko no-repl
+```motoko no-repl
 func share() : Tree<T>
 ```
 
@@ -26,7 +26,7 @@ Get purely-functional representation
 
 
 ### Function `unsafeUnshare`
-``` motoko no-repl
+```motoko no-repl
 func unsafeUnshare(t : Tree<T>)
 ```
 
@@ -34,7 +34,7 @@ Put purely-functional representation into class. Need to make sure the tree is c
 
 
 ### Function `put`
-``` motoko no-repl
+```motoko no-repl
 func put(x : T)
 ```
 
@@ -42,7 +42,7 @@ Insert an element to the heap
 
 
 ### Function `peekMin`
-``` motoko no-repl
+```motoko no-repl
 func peekMin() : ?T
 ```
 
@@ -50,7 +50,7 @@ Return the minimal element
 
 
 ### Function `deleteMin`
-``` motoko no-repl
+```motoko no-repl
 func deleteMin()
 ```
 
@@ -58,14 +58,14 @@ Delete the minimal element
 
 
 ### Function `removeMin`
-``` motoko no-repl
+```motoko no-repl
 func removeMin() : ?T
 ```
 
 Remove the minimal element and return its value
 
 ## Function `fromIter`
-``` motoko no-repl
+```motoko no-repl
 func fromIter<T>(iter : I.Iter<T>, ord : (T, T) -> O.Order) : Heap<T>
 ```
 

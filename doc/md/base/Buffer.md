@@ -1,6 +1,6 @@
 # Buffer
 
-``` motoko
+```motoko name=import
 import Buffer "mo:base/Buffer";
 ```
 
@@ -44,7 +44,7 @@ Space: O(initCapacity)
 
 
 ### Function `size`
-``` motoko no-repl
+```motoko no-repl
 func size() : Nat
 ```
 
@@ -61,7 +61,7 @@ Space: O(1)
 
 
 ### Function `add`
-``` motoko no-repl
+```motoko no-repl
 func add(element : X)
 ```
 
@@ -84,7 +84,7 @@ Amortized Space: O(1), Worst Case Space: O(size)
 
 
 ### Function `get`
-``` motoko no-repl
+```motoko no-repl
 func get(index : Nat) : X
 ```
 
@@ -104,7 +104,7 @@ Space: O(1)
 
 
 ### Function `getOpt`
-``` motoko no-repl
+```motoko no-repl
 func getOpt(index : Nat) : ?X
 ```
 
@@ -126,7 +126,7 @@ Space: O(1)
 
 
 ### Function `put`
-``` motoko no-repl
+```motoko no-repl
 func put(index : Nat, element : X)
 ```
 
@@ -147,7 +147,7 @@ Space: O(1)
 
 
 ### Function `removeLast`
-``` motoko no-repl
+```motoko no-repl
 func removeLast() : ?X
 ```
 
@@ -168,7 +168,7 @@ Amortized Space: O(1), Worst Case Space: O(size)
 
 
 ### Function `remove`
-``` motoko no-repl
+```motoko no-repl
 func remove(index : Nat) : X
 ```
 
@@ -198,7 +198,7 @@ Amortized Space: O(1), Worst Case Space: O(size)
 
 
 ### Function `clear`
-``` motoko no-repl
+```motoko no-repl
 func clear()
 ```
 
@@ -220,7 +220,7 @@ Space: O(1)
 
 
 ### Function `filterEntries`
-``` motoko no-repl
+```motoko no-repl
 func filterEntries(predicate : (Nat, X) -> Bool)
 ```
 
@@ -244,7 +244,7 @@ Amortized Space: O(1), Worst Case Space: O(size)
 
 
 ### Function `capacity`
-``` motoko no-repl
+```motoko no-repl
 func capacity() : Nat
 ```
 
@@ -267,7 +267,7 @@ Space: O(1)
 
 
 ### Function `reserve`
-``` motoko no-repl
+```motoko no-repl
 func reserve(capacity : Nat)
 ```
 
@@ -287,7 +287,7 @@ Space: O(capacity)
 
 
 ### Function `append`
-``` motoko no-repl
+```motoko no-repl
 func append(buffer2 : Buffer<X>)
 ```
 
@@ -310,7 +310,7 @@ Amortized Space: O(1), Worst Case Space: O(size1 + size2)
 
 
 ### Function `insert`
-``` motoko no-repl
+```motoko no-repl
 func insert(index : Nat, element : X)
 ```
 
@@ -332,7 +332,7 @@ Amortized Space: O(1), Worst Case Space: O(size)
 
 
 ### Function `insertBuffer`
-``` motoko no-repl
+```motoko no-repl
 func insertBuffer(index : Nat, buffer2 : Buffer<X>)
 ```
 
@@ -356,7 +356,7 @@ Amortized Space: O(1), Worst Case Space: O(size1 + size2)
 
 
 ### Function `sort`
-``` motoko no-repl
+```motoko no-repl
 func sort(compare : (X, X) -> Order.Order)
 ```
 
@@ -380,7 +380,7 @@ Space: O(size)
 
 
 ### Function `vals`
-``` motoko no-repl
+```motoko no-repl
 func vals() : { next : () -> ?X }
 ```
 
@@ -407,7 +407,7 @@ Space: O(1)
 
 
 ### Function `clone`
-``` motoko no-repl
+```motoko no-repl
 func clone() : Buffer<X>
 ```
 
@@ -415,7 +415,7 @@ func clone() : Buffer<X>
 
 
 ### Function `toArray`
-``` motoko no-repl
+```motoko no-repl
 func toArray() : [X]
 ```
 
@@ -423,14 +423,14 @@ func toArray() : [X]
 
 
 ### Function `toVarArray`
-``` motoko no-repl
+```motoko no-repl
 func toVarArray() : [var X]
 ```
 
 @deprecated Use static library function instead.
 
 ## Function `isEmpty`
-``` motoko no-repl
+```motoko no-repl
 func isEmpty<X>(buffer : Buffer<X>) : Bool
 ```
 
@@ -441,7 +441,7 @@ Runtime: O(1)
 Space: O(1)
 
 ## Function `contains`
-``` motoko no-repl
+```motoko no-repl
 func contains<X>(buffer : Buffer<X>, element : X, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -455,7 +455,7 @@ Space: O(1)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `clone`
-``` motoko no-repl
+```motoko no-repl
 func clone<X>(buffer : Buffer<X>) : Buffer<X>
 ```
 
@@ -466,7 +466,7 @@ Runtime: O(size)
 Space: O(size)
 
 ## Function `max`
-``` motoko no-repl
+```motoko no-repl
 func max<X>(buffer : Buffer<X>, compare : (X, X) -> Order) : ?X
 ```
 
@@ -480,7 +480,7 @@ Space: O(1)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
 ## Function `min`
-``` motoko no-repl
+```motoko no-repl
 func min<X>(buffer : Buffer<X>, compare : (X, X) -> Order) : ?X
 ```
 
@@ -494,7 +494,7 @@ Space: O(1)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
 ## Function `equal`
-``` motoko no-repl
+```motoko no-repl
 func equal<X>(buffer1 : Buffer<X>, buffer2 : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -510,7 +510,7 @@ Space: O(1)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `compare`
-``` motoko no-repl
+```motoko no-repl
 func compare<X>(buffer1 : Buffer<X>, buffer2 : Buffer<X>, compare : (X, X) -> Order.Order) : Order.Order
 ```
 
@@ -524,7 +524,7 @@ Space: O(1)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
 ## Function `toText`
-``` motoko no-repl
+```motoko no-repl
 func toText<X>(buffer : Buffer<X>, toText : X -> Text) : Text
 ```
 
@@ -538,7 +538,7 @@ Space: O(size)
 *Runtime and space assumes that `toText` runs in O(1) time and space.
 
 ## Function `hash`
-``` motoko no-repl
+```motoko no-repl
 func hash<X>(buffer : Buffer<X>, hash : X -> Nat32) : Nat32
 ```
 
@@ -553,7 +553,7 @@ Space: O(1)
 *Runtime and space assumes that `hash` runs in O(1) time and space.
 
 ## Function `indexOf`
-``` motoko no-repl
+```motoko no-repl
 func indexOf<X>(element : X, buffer : Buffer<X>, equal : (X, X) -> Bool) : ?Nat
 ```
 
@@ -567,7 +567,7 @@ Space: O(size)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `lastIndexOf`
-``` motoko no-repl
+```motoko no-repl
 func lastIndexOf<X>(element : X, buffer : Buffer<X>, equal : (X, X) -> Bool) : ?Nat
 ```
 
@@ -581,7 +581,7 @@ Space: O(size)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `indexOfBuffer`
-``` motoko no-repl
+```motoko no-repl
 func indexOfBuffer<X>(subBuffer : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : ?Nat
 ```
 
@@ -594,7 +594,7 @@ Space: O(size of subBuffer)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `binarySearch`
-``` motoko no-repl
+```motoko no-repl
 func binarySearch<X>(element : X, buffer : Buffer<X>, compare : (X, X) -> Order.Order) : ?Nat
 ```
 
@@ -609,7 +609,7 @@ Space: O(1)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
 ## Function `subBuffer`
-``` motoko no-repl
+```motoko no-repl
 func subBuffer<X>(buffer : Buffer<X>, start : Nat, length : Nat) : Buffer<X>
 ```
 
@@ -622,7 +622,7 @@ Runtime: O(length)
 Space: O(length)
 
 ## Function `isSubBufferOf`
-``` motoko no-repl
+```motoko no-repl
 func isSubBufferOf<X>(subBuffer : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -636,7 +636,7 @@ Space: O(size of subBuffer)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `isStrictSubBufferOf`
-``` motoko no-repl
+```motoko no-repl
 func isStrictSubBufferOf<X>(subBuffer : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -651,7 +651,7 @@ Space: O(size of subBuffer)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `prefix`
-``` motoko no-repl
+```motoko no-repl
 func prefix<X>(buffer : Buffer<X>, length : Nat) : Buffer<X>
 ```
 
@@ -663,7 +663,7 @@ Runtime: O(length)
 Space: O(length)
 
 ## Function `isPrefixOf`
-``` motoko no-repl
+```motoko no-repl
 func isPrefixOf<X>(prefix : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -677,7 +677,7 @@ Space: O(size of prefix)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `isStrictPrefixOf`
-``` motoko no-repl
+```motoko no-repl
 func isStrictPrefixOf<X>(prefix : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -691,7 +691,7 @@ Space: O(size of prefix)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `suffix`
-``` motoko no-repl
+```motoko no-repl
 func suffix<X>(buffer : Buffer<X>, length : Nat) : Buffer<X>
 ```
 
@@ -703,7 +703,7 @@ Runtime: O(length)
 Space: O(length)
 
 ## Function `isSuffixOf`
-``` motoko no-repl
+```motoko no-repl
 func isSuffixOf<X>(suffix : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -717,7 +717,7 @@ Space: O(length of suffix)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `isStrictSuffixOf`
-``` motoko no-repl
+```motoko no-repl
 func isStrictSuffixOf<X>(suffix : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
@@ -731,7 +731,7 @@ Space: O(length of suffix)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `forAll`
-``` motoko no-repl
+```motoko no-repl
 func forAll<X>(buffer : Buffer<X>, predicate : X -> Bool) : Bool
 ```
 
@@ -744,7 +744,7 @@ Space: O(1)
 *Runtime and space assumes that `predicate` runs in O(1) time and space.
 
 ## Function `forSome`
-``` motoko no-repl
+```motoko no-repl
 func forSome<X>(buffer : Buffer<X>, predicate : X -> Bool) : Bool
 ```
 
@@ -757,7 +757,7 @@ Space: O(1)
 *Runtime and space assumes that `predicate` runs in O(1) time and space.
 
 ## Function `forNone`
-``` motoko no-repl
+```motoko no-repl
 func forNone<X>(buffer : Buffer<X>, predicate : X -> Bool) : Bool
 ```
 
@@ -770,7 +770,7 @@ Space: O(1)
 *Runtime and space assumes that `predicate` runs in O(1) time and space.
 
 ## Function `toArray`
-``` motoko no-repl
+```motoko no-repl
 func toArray<X>(buffer : Buffer<X>) : [X]
 ```
 
@@ -781,7 +781,7 @@ Runtime: O(size)
 Space: O(size)
 
 ## Function `toVarArray`
-``` motoko no-repl
+```motoko no-repl
 func toVarArray<X>(buffer : Buffer<X>) : [var X]
 ```
 
@@ -792,7 +792,7 @@ Runtime: O(size)
 Space: O(size)
 
 ## Function `fromArray`
-``` motoko no-repl
+```motoko no-repl
 func fromArray<X>(array : [X]) : Buffer<X>
 ```
 
@@ -803,7 +803,7 @@ Runtime: O(size)
 Space: O(size)
 
 ## Function `fromVarArray`
-``` motoko no-repl
+```motoko no-repl
 func fromVarArray<X>(array : [var X]) : Buffer<X>
 ```
 
@@ -814,7 +814,7 @@ Runtime: O(size)
 Space: O(size)
 
 ## Function `fromIter`
-``` motoko no-repl
+```motoko no-repl
 func fromIter<X>(iter : { next : () -> ?X }) : Buffer<X>
 ```
 
@@ -825,7 +825,7 @@ Runtime: O(size)
 Space: O(size)
 
 ## Function `trimToSize`
-``` motoko no-repl
+```motoko no-repl
 func trimToSize<X>(buffer : Buffer<X>)
 ```
 
@@ -836,7 +836,7 @@ Runtime: O(size)
 Space: O(size)
 
 ## Function `map`
-``` motoko no-repl
+```motoko no-repl
 func map<X, Y>(buffer : Buffer<X>, f : X -> Y) : Buffer<Y>
 ```
 
@@ -849,7 +849,7 @@ Space: O(size)
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `iterate`
-``` motoko no-repl
+```motoko no-repl
 func iterate<X>(buffer : Buffer<X>, f : X -> ())
 ```
 
@@ -862,7 +862,7 @@ Space: O(size)
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `mapEntries`
-``` motoko no-repl
+```motoko no-repl
 func mapEntries<X, Y>(buffer : Buffer<X>, f : (Nat, X) -> Y) : Buffer<Y>
 ```
 
@@ -875,7 +875,7 @@ Space: O(size)
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `mapFilter`
-``` motoko no-repl
+```motoko no-repl
 func mapFilter<X, Y>(buffer : Buffer<X>, f : X -> ?Y) : Buffer<Y>
 ```
 
@@ -889,7 +889,7 @@ Space: O(size)
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `mapResult`
-``` motoko no-repl
+```motoko no-repl
 func mapResult<X, Y, E>(buffer : Buffer<X>, f : X -> Result.Result<Y, E>) : Result.Result<Buffer<Y>, E>
 ```
 
@@ -904,7 +904,7 @@ Space: O(size)
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `chain`
-``` motoko no-repl
+```motoko no-repl
 func chain<X, Y>(buffer : Buffer<X>, k : X -> Buffer<Y>) : Buffer<Y>
 ```
 
@@ -919,7 +919,7 @@ Space: O(size)
 *Runtime and space assumes that `k` runs in O(1) time and space.
 
 ## Function `foldLeft`
-``` motoko no-repl
+```motoko no-repl
 func foldLeft<A, X>(buffer : Buffer<X>, base : A, combine : (A, X) -> A) : A
 ```
 
@@ -934,7 +934,7 @@ Space: O(1)
 *Runtime and space assumes that `combine` runs in O(1) time and space.
 
 ## Function `foldRight`
-``` motoko no-repl
+```motoko no-repl
 func foldRight<X, A>(buffer : Buffer<X>, base : A, combine : (X, A) -> A) : A
 ```
 
@@ -949,7 +949,7 @@ Space: O(1)
 *Runtime and space assumes that `combine` runs in O(1) time and space.
 
 ## Function `first`
-``` motoko no-repl
+```motoko no-repl
 func first<X>(buffer : Buffer<X>) : X
 ```
 
@@ -960,7 +960,7 @@ Runtime: O(1)
 Space: O(1)
 
 ## Function `last`
-``` motoko no-repl
+```motoko no-repl
 func last<X>(buffer : Buffer<X>) : X
 ```
 
@@ -971,7 +971,7 @@ Runtime: O(1)
 Space: O(1)
 
 ## Function `make`
-``` motoko no-repl
+```motoko no-repl
 func make<X>(element : X) : Buffer<X>
 ```
 
@@ -982,7 +982,7 @@ Runtime: O(1)
 Space: O(1)
 
 ## Function `reverse`
-``` motoko no-repl
+```motoko no-repl
 func reverse<X>(buffer : Buffer<X>)
 ```
 
@@ -993,7 +993,7 @@ Runtime: O(size)
 Space: O(1)
 
 ## Function `merge`
-``` motoko no-repl
+```motoko no-repl
 func merge<X>(buffer1 : Buffer<X>, buffer2 : Buffer<X>, compare : (X, X) -> Order) : Buffer<X>
 ```
 
@@ -1008,7 +1008,7 @@ Space: O(size1 + size2)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
 ## Function `removeDuplicates`
-``` motoko no-repl
+```motoko no-repl
 func removeDuplicates<X>(buffer : Buffer<X>, compare : (X, X) -> Order)
 ```
 
@@ -1020,7 +1020,7 @@ Runtime: O(size * log(size))
 Space: O(size)
 
 ## Function `partition`
-``` motoko no-repl
+```motoko no-repl
 func partition<X>(buffer : Buffer<X>, predicate : X -> Bool) : (Buffer<X>, Buffer<X>)
 ```
 
@@ -1034,7 +1034,7 @@ Space: O(size)
 *Runtime and space assumes that `predicate` runs in O(1) time and space.
 
 ## Function `split`
-``` motoko no-repl
+```motoko no-repl
 func split<X>(buffer : Buffer<X>, index : Nat) : (Buffer<X>, Buffer<X>)
 ```
 
@@ -1050,7 +1050,7 @@ Space: O(size)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
 ## Function `chunk`
-``` motoko no-repl
+```motoko no-repl
 func chunk<X>(buffer : Buffer<X>, size : Nat) : Buffer<Buffer<X>>
 ```
 
@@ -1063,7 +1063,7 @@ Runtime: O(number of elements in buffer)
 Space: O(number of elements in buffer)
 
 ## Function `groupBy`
-``` motoko no-repl
+```motoko no-repl
 func groupBy<X>(buffer : Buffer<X>, equal : (X, X) -> Bool) : Buffer<Buffer<X>>
 ```
 
@@ -1076,7 +1076,7 @@ Space: O(size)
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
 ## Function `flatten`
-``` motoko no-repl
+```motoko no-repl
 func flatten<X>(buffer : Buffer<Buffer<X>>) : Buffer<X>
 ```
 
@@ -1087,7 +1087,7 @@ Runtime: O(number of elements in buffer)
 Space: O(number of elements in buffer)
 
 ## Function `zip`
-``` motoko no-repl
+```motoko no-repl
 func zip<X, Y>(buffer1 : Buffer<X>, buffer2 : Buffer<Y>) : Buffer<(X, Y)>
 ```
 
@@ -1100,7 +1100,7 @@ Runtime: O(min(size1, size2))
 Space: O(min(size1, size2))
 
 ## Function `zipWith`
-``` motoko no-repl
+```motoko no-repl
 func zipWith<X, Y, Z>(buffer1 : Buffer<X>, buffer2 : Buffer<Y>, zip : (X, Y) -> Z) : Buffer<Z>
 ```
 
@@ -1116,7 +1116,7 @@ Space: O(min(size1, size2))
 *Runtime and space assumes that `zip` runs in O(1) time and space.
 
 ## Function `takeWhile`
-``` motoko no-repl
+```motoko no-repl
 func takeWhile<X>(buffer : Buffer<X>, predicate : X -> Bool) : Buffer<X>
 ```
 
@@ -1130,7 +1130,7 @@ Space: O(size)
 *Runtime and space assumes that `predicate` runs in O(1) time and space.
 
 ## Function `dropWhile`
-``` motoko no-repl
+```motoko no-repl
 func dropWhile<X>(buffer : Buffer<X>, predicate : X -> Bool) : Buffer<X>
 ```
 

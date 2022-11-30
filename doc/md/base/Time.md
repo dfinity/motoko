@@ -1,20 +1,20 @@
 # Time
 
-``` motoko
+```motoko name=import
 import Time "mo:base/Time";
 ```
 
 System time
 
 ## Type `Time`
-``` motoko no-repl
+```motoko no-repl
 type Time = Int
 ```
 
 System time is represent as nanoseconds since 1970-01-01.
 
 ## Value `now`
-``` motoko no-repl
+```motoko no-repl
 let now : () -> Time
 ```
 

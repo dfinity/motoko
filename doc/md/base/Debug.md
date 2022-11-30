@@ -1,13 +1,13 @@
 # Debug
 
-``` motoko
+```motoko name=import
 import Debug "mo:base/Debug";
 ```
 
 Debugging aids
 
 ## Value `print`
-``` motoko no-repl
+```motoko no-repl
 let print : Text -> ()
 ```
 
@@ -16,7 +16,7 @@ How this stream is stored or displayed depends on the
 execution environment.
 
 ## Value `trap`
-``` motoko no-repl
+```motoko no-repl
 let trap : Text -> None
 ```
 

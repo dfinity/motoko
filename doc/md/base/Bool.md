@@ -1,6 +1,6 @@
 # Bool
 
-``` motoko
+```motoko name=import
 import Bool "mo:base/Bool";
 ```
 
@@ -12,63 +12,63 @@ avoiding computation of the right argument when possible, the functions
 of their arguments.
 
 ## Type `Bool`
-``` motoko no-repl
+```motoko no-repl
 type Bool = Prim.Types.Bool
 ```
 
 Booleans with constants `true` and `false`.
 
 ## Function `toText`
-``` motoko no-repl
+```motoko no-repl
 func toText(x : Bool) : Text
 ```
 
 Conversion.
 
 ## Function `logand`
-``` motoko no-repl
+```motoko no-repl
 func logand(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x and y`.
 
 ## Function `logor`
-``` motoko no-repl
+```motoko no-repl
 func logor(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x or y`.
 
 ## Function `logxor`
-``` motoko no-repl
+```motoko no-repl
 func logxor(x : Bool, y : Bool) : Bool
 ```
 
 Returns exclusive or of `x` and `y`, `x != y`.
 
 ## Function `lognot`
-``` motoko no-repl
+```motoko no-repl
 func lognot(x : Bool) : Bool
 ```
 
 Returns `not x`.
 
 ## Function `equal`
-``` motoko no-repl
+```motoko no-repl
 func equal(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x == y`.
 
 ## Function `notEqual`
-``` motoko no-repl
+```motoko no-repl
 func notEqual(x : Bool, y : Bool) : Bool
 ```
 
 Returns `x != y`.
 
 ## Function `compare`
-``` motoko no-repl
+```motoko no-repl
 func compare(x : Bool, y : Bool) : {#less; #equal; #greater}
 ```
 

@@ -1,6 +1,6 @@
 # Func
 
-``` motoko
+```motoko name=import
 import Func "mo:base/Func";
 ```
 
@@ -10,7 +10,7 @@ Functions on functions
 functions.)
 
 ## Function `compose`
-``` motoko no-repl
+```motoko no-repl
 func compose<A, B, C>(f : B -> C, g : A -> B) : A -> C
 ```
 
@@ -21,7 +21,7 @@ compose(f, g)(x) = f(g(x))
 ```
 
 ## Function `identity`
-``` motoko no-repl
+```motoko no-repl
 func identity<A>(x : A) : A
 ```
 
@@ -33,7 +33,7 @@ assert(Func.identity(true) == true);
 ```
 
 ## Function `const`
-``` motoko no-repl
+```motoko no-repl
 func const<A, B>(x : A) : B -> A
 ```
 

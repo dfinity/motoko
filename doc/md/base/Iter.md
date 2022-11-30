@@ -1,13 +1,13 @@
 # Iter
 
-``` motoko
+```motoko name=import
 import Iter "mo:base/Iter";
 ```
 
 Iterators
 
 ## Type `Iter`
-``` motoko no-repl
+```motoko no-repl
 type Iter<T> = { next : () -> ?T }
 ```
 
@@ -29,7 +29,7 @@ for (x in i) {
 
 
 ### Function `next`
-``` motoko no-repl
+```motoko no-repl
 func next() : ?Nat
 ```
 
@@ -48,7 +48,7 @@ assert(null == iter.next());
 
 
 ### Function `next`
-``` motoko no-repl
+```motoko no-repl
 func next() : ?Int
 ```
 
@@ -56,7 +56,7 @@ Like `range` but produces the values in the opposite
 order.
 
 ## Function `iterate`
-``` motoko no-repl
+```motoko no-repl
 func iterate<A>(xs : Iter<A>, f : (A, Nat) -> ())
 ```
 
@@ -73,7 +73,7 @@ assert(6 == sum)
 ```
 
 ## Function `size`
-``` motoko no-repl
+```motoko no-repl
 func size<A>(xs : Iter<A>) : Nat
 ```
 
@@ -81,7 +81,7 @@ Consumes an iterator and counts how many elements were produced
 (discarding them in the process).
 
 ## Function `map`
-``` motoko no-repl
+```motoko no-repl
 func map<A, B>(xs : Iter<A>, f : A -> B) : Iter<B>
 ```
 
@@ -98,7 +98,7 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `filter`
-``` motoko no-repl
+```motoko no-repl
 func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>
 ```
 
@@ -114,7 +114,7 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `make`
-``` motoko no-repl
+```motoko no-repl
 func make<A>(x : A) : Iter<A>
 ```
 
@@ -129,7 +129,7 @@ assert(?10 == iter.next());
 ```
 
 ## Function `fromArray`
-``` motoko no-repl
+```motoko no-repl
 func fromArray<A>(xs : [A]) : Iter<A>
 ```
 
@@ -144,7 +144,7 @@ assert(null == iter.next());
 ```
 
 ## Function `fromArrayMut`
-``` motoko no-repl
+```motoko no-repl
 func fromArrayMut<A>(xs : [var A]) : Iter<A>
 ```
 
@@ -153,14 +153,14 @@ the elements of the Array at the time the iterator is created, so
 further modifications won't be reflected in the iterator.
 
 ## Value `fromList`
-``` motoko no-repl
+```motoko no-repl
 let fromList
 ```
 
 Like `fromArray` but for Lists.
 
 ## Function `toArray`
-``` motoko no-repl
+```motoko no-repl
 func toArray<A>(xs : Iter<A>) : [A]
 ```
 
@@ -172,21 +172,21 @@ assert([1, 2, 3] == Iter.toArray(iter));
 ```
 
 ## Function `toArrayMut`
-``` motoko no-repl
+```motoko no-repl
 func toArrayMut<A>(xs : Iter<A>) : [var A]
 ```
 
 Like `toArray` but for Arrays with mutable elements.
 
 ## Function `toList`
-``` motoko no-repl
+```motoko no-repl
 func toList<A>(xs : Iter<A>) : List.List<A>
 ```
 
 Like `toArray` but for Lists.
 
 ## Function `sort`
-``` motoko no-repl
+```motoko no-repl
 func sort<A>(xs : Iter<A>, compare : (A, A) -> Order.Order) : Iter<A>
 ```
 
