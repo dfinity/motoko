@@ -1,1 +1,1 @@
-let x = 3 else loop (asdf);
+let x = 3 else { assert false; loop() };
