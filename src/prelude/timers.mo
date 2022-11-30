@@ -44,7 +44,7 @@ func @timer_helper() : async () {
     };
 
     var gathered = 0;
-    let thunks : [var ?(() -> async ())] = Array_init(10, null); // we want max 10
+    let thunks = Array_init<?(() -> async ())>(10, null); // we want max 10
 
     func gatherExpired(n : ?@Node) = switch n {
         case null ();
@@ -78,7 +78,7 @@ func @timer_helper() : async () {
 
     gatherExpired(@timers);
 
-    let futures : [var ?(async ())] = Array_init(thunks.size(), null);
+    let futures = Array_init<?(async ())>(thunks.size(), null);
     for (k in thunks.keys()) {
         futures[k] := switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
     };
@@ -113,7 +113,7 @@ func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : (id 
     if (exp == 0) @timers := null;
     let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
     /*FIXME: this is expensive*/
-    if (prev != 0 and prev != 0 and exp > prev) {
+    if (exp != 0 and prev != 0 and exp > prev) {
         // reinstall
         ignore (prim "global_timer_set" : Nat64 -> Nat64) prev;
     };
