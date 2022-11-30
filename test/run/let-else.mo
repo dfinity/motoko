@@ -1,1 +1,1 @@
-func foo(i : Int) = let (5, 3) = (i, i) else { return };
+let x = 3 else loop (asdf);
