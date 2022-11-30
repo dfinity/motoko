@@ -202,15 +202,19 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
   Buffer.add_string buf arg.name;
   opt_typ buf arg.typ
 
-let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
-let begin_block_repl buf = bprintf buf "\n``` motoko\n"
+let begin_block buf flags =
+  bprintf buf "\n```motoko";
+  if flags then
+    bprintf buf ' '
+    bprintf buf flags;
+  bprintf buf "\n"
 let end_block buf = bprintf buf "\n```\n\n"
 
 let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
  fun buf lvl -> function
   | Function function_doc ->
       title buf lvl (Printf.sprintf "Function `%s`" function_doc.name);
-      begin_block buf;
+      begin_block buf "no-repl";
       bprintf buf "func %s" function_doc.name;
       plain_of_typ_binders buf plain_render_functions function_doc.type_args;
       bprintf buf "(";
@@ -220,13 +224,13 @@ let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
       end_block buf
   | Value value_doc ->
       title buf lvl (Printf.sprintf "Value `%s`" value_doc.name);
-      begin_block buf;
+      begin_block buf "no-repl";
       bprintf buf "let %s" value_doc.name;
       opt_typ buf value_doc.typ;
       end_block buf
   | Type type_doc ->
       title buf lvl (Printf.sprintf "Type `%s`" type_doc.name);
-      begin_block buf;
+      begin_block buf "no-repl";
       bprintf buf "type %s" type_doc.name;
       plain_of_typ_binders buf plain_render_functions type_doc.type_args;
       bprintf buf " = ";
@@ -252,7 +256,7 @@ let render_docs : Common.render_input -> string =
   bprintf buf "# %s\n" current_path;
   Option.iter
     (fun s ->
-      begin_block_repl buf;
+      begin_block buf "name=import";
       bprintf buf "import %s \"mo:%s/%s\";"
         (Filename.basename current_path)
         s current_path;
