@@ -16,7 +16,12 @@ pub unsafe fn check_mark_completeness<M: Memory>(mem: &mut M) {
     let heap = get_heap();
     let mark_stack = MarkStack::new(mem);
     let visited = RememberedSet::new(mem);
-    let mut checker = MarkPhaseChecker { mem, heap, mark_stack, visited };
+    let mut checker = MarkPhaseChecker {
+        mem,
+        heap,
+        mark_stack,
+        visited,
+    };
     checker.check_mark_completeness();
 }
 

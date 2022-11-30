@@ -947,6 +947,7 @@ module RTS = struct
     E.add_func_import env "rts" "init_post_write_barrier" [] [];
     E.add_func_import env "rts" "pre_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
 end (* RTS *)
@@ -5936,6 +5937,11 @@ module MakeSerialization (Strm : Stream) = struct
       let tydesc = type_desc env ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
+      (if !Flags.gc_strategy == Flags.Incremental then
+        E.call_import env "rts" "stop_gc_on_upgrade"
+      else
+        G.nop) ^^
+      
       (* Get object sizes *)
       get_x ^^
       buffer_size env (Type.seq ts) ^^

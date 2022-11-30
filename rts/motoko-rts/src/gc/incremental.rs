@@ -74,6 +74,7 @@ enum Phase {
     Pause,
     Mark(MarkState),
     Sweep(SweepState),
+    Stop, // on upgrade
 }
 
 struct MarkState {
@@ -187,7 +188,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn increment(&mut self) {
         match &mut PHASE {
-            Phase::Pause => {}
+            Phase::Pause | Phase::Stop => {}
             Phase::Mark(_) => self.mark_phase_increment(),
             Phase::Sweep(_) => self.sweep_phase_increment(),
         }
@@ -442,7 +443,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 pub unsafe fn mark_new_allocation(new_object: *mut Obj) {
     assert!(!is_skewed(new_object as u32));
     let should_mark = match &mut PHASE {
-        Phase::Pause => false,
+        Phase::Pause | Phase::Stop => false,
         Phase::Mark(_) => true,
         Phase::Sweep(state) => new_object as usize >= state.sweep_line,
     };
@@ -450,4 +451,12 @@ pub unsafe fn mark_new_allocation(new_object: *mut Obj) {
         assert!(!new_object.is_marked());
         new_object.mark();
     }
+}
+
+/// Stop the GC before performing upgrade. Otherwise, GC increments
+/// on allocation and writes may interfere with the upgrade mechanism
+/// that invalidates object tags during stream serialization.
+#[no_mangle]
+pub unsafe fn stop_gc_on_upgrade() {
+    PHASE = Phase::Stop;
 }
