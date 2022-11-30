@@ -204,10 +204,11 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
 
 let begin_block buf flags =
   bprintf buf "\n```motoko";
-  if flags then
-    bprintf buf ' '
-    bprintf buf flags;
+  if flags <> "" then (
+    bprintf buf " ";
+    bprintf buf "%s" flags);
   bprintf buf "\n"
+
 let end_block buf = bprintf buf "\n```\n\n"
 
 let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
