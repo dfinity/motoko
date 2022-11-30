@@ -27,9 +27,6 @@ static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     if !IncrementalGC::<M>::pausing() || should_start() {
         incremental_gc(mem);
-        if IncrementalGC::<M>::pausing() {
-            update_statistics();
-        }
     }
 }
 
@@ -39,16 +36,6 @@ unsafe fn should_start() -> bool {
     assert!(ic::ALLOCATED >= LAST_ALLOCATED);
     const THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
     ic::ALLOCATED - LAST_ALLOCATED >= THRESHOLD
-}
-
-#[cfg(feature = "ic")]
-unsafe fn update_statistics() {
-    use crate::memory::ic;
-    LAST_ALLOCATED = ic::ALLOCATED;
-    let free_size = FREE_LIST.as_ref().unwrap().total_size().as_u32();
-    assert!(free_size <= ic::HP);
-    let live_set = Bytes(ic::HP - free_size);
-    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -64,9 +51,22 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
         continuation_table: *crate::continuation_table::continuation_table_loc(),
     };
     IncrementalGC::empty_call_stack_increment(mem, limits, roots);
+    update_statistics::<M>(old_free_size);
+}
+
+#[cfg(feature = "ic")]
+unsafe fn update_statistics<M: Memory>(old_free_size: Bytes<u32>) {
+    use crate::memory::ic;
     let free_size = FREE_LIST.as_ref().unwrap().total_size();
     if free_size > old_free_size {
         ic::RECLAIMED += Bytes(u64::from((free_size - old_free_size).as_u32()));
+    }
+    if IncrementalGC::<M>::pausing() {
+        LAST_ALLOCATED = ic::ALLOCATED;
+        let free_size = FREE_LIST.as_ref().unwrap().total_size().as_u32();
+        assert!(free_size <= ic::HP);
+        let live_set = Bytes(ic::HP - free_size);
+        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
     }
 }
 
