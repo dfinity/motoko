@@ -2,7 +2,6 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::free_list::Heap;
 use crate::gc::incremental::free_list::SegregatedFreeList;
 use crate::gc::incremental::IncrementalGC;
 use crate::gc::incremental::FREE_LIST;
@@ -76,55 +75,44 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     #[inline]
-    unsafe fn mutator_alloc(&mut self, amount: Words<u32>) -> Value {
+    unsafe fn mutator_allocate(&mut self, amount: Words<u32>) -> Value {
         if FREE_LIST.is_some() {
             IncrementalGC::allocation_increment(self);
         }
-        allocate(amount)
+        internal_allocate(self, amount)
     }
 
     #[inline]
-    unsafe fn collector_alloc(&mut self, amount: Words<u32>) -> Value {
-        allocate(amount)
+    unsafe fn collector_allocate(&mut self, amount: Words<u32>) -> Value {
+        internal_allocate(self, amount)
     }
-}
 
-#[inline]
-unsafe fn allocate(amount: Words<u32>) -> Value {
-    ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
-    match &mut FREE_LIST {
-        Some(free_list) => free_list.allocate(&mut IC_HEAP, amount.to_bytes()),
-        None => allocate_at_heap_end(amount),
-    }
-}
-
-static mut IC_HEAP: IcHeap = IcHeap {};
-
-struct IcHeap;
-
-impl Heap for IcHeap {
     #[inline]
     unsafe fn grow_heap(&mut self, n: Words<u32>) -> Value {
-        allocate_at_heap_end(n)
+        let bytes = n.to_bytes();
+        let delta = u64::from(bytes.as_u32());
+
+        // Update heap pointer
+        let old_hp = u64::from(HP);
+        let new_hp = old_hp + delta;
+
+        // Grow memory if needed
+        grow_memory(new_hp);
+
+        debug_assert!(new_hp <= u64::from(core::u32::MAX));
+        HP = new_hp as u32;
+
+        Value::from_ptr(old_hp as usize)
     }
 }
 
 #[inline]
-unsafe fn allocate_at_heap_end(n: Words<u32>) -> Value {
-    let bytes = n.to_bytes();
-    let delta = u64::from(bytes.as_u32());
-
-    // Update heap pointer
-    let old_hp = u64::from(HP);
-    let new_hp = old_hp + delta;
-
-    // Grow memory if needed
-    grow_memory(new_hp);
-
-    debug_assert!(new_hp <= u64::from(core::u32::MAX));
-    HP = new_hp as u32;
-
-    Value::from_ptr(old_hp as usize)
+unsafe fn internal_allocate<M: Memory>(mem: &mut M, amount: Words<u32>) -> Value {
+    ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
+    match &mut FREE_LIST {
+        Some(free_list) => free_list.allocate(mem, amount.to_bytes()),
+        None => mem.grow_heap(amount),
+    }
 }
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.

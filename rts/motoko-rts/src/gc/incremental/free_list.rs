@@ -63,6 +63,7 @@ use core::{array::from_fn, cmp::max, ptr::null_mut};
 
 use crate::{
     constants::WORD_SIZE,
+    memory::Memory,
     types::{
         is_marked, object_size, size_of, unmark, Bytes, Obj, Value, Words, TAG_FREE_BLOCK_MIN,
         TAG_ONE_WORD_FILLER,
@@ -257,10 +258,6 @@ impl FreeList {
     }
 }
 
-pub trait Heap {
-    unsafe fn grow_heap(&mut self, size: Words<u32>) -> Value;
-}
-
 const KB: usize = 1024;
 const MB: usize = 1024 * KB;
 const LIST_COUNT: usize = 16;
@@ -337,7 +334,7 @@ impl SegregatedFreeList {
     }
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
-    pub unsafe fn allocate<H: Heap>(&mut self, heap: &mut H, size: Bytes<u32>) -> Value {
+    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
         let list = self.allocation_list(size);
         assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
         let mut block = if list.is_overflow_list() {
@@ -347,7 +344,7 @@ impl SegregatedFreeList {
             list.remove_first()
         };
         if block == null_mut() {
-            block = Self::grow_heap(heap, size);
+            block = Self::grow_heap(mem, size);
         } else {
             self.total_size -= block.size();
         }
@@ -414,10 +411,10 @@ impl SegregatedFreeList {
         self.total_size += block.size();
     }
 
-    unsafe fn grow_heap<H: Heap>(heap: &mut H, size: Bytes<u32>) -> *mut FreeBlock {
+    unsafe fn grow_heap<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
         let size = max(size, FreeBlock::min_size());
         assert_eq!(size.as_u32() % WORD_SIZE, 0);
-        let value = heap.grow_heap(size.to_words());
+        let value = mem.grow_heap(size.to_words());
         let block = value.get_ptr() as *mut FreeBlock;
         block.initialize(size);
         block

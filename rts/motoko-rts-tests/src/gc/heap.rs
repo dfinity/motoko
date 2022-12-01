@@ -20,12 +20,16 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
-    unsafe fn mutator_alloc(&mut self, n: Words<u32>) -> Value {
+    unsafe fn mutator_allocate(&mut self, n: Words<u32>) -> Value {
         self.inner.borrow_mut().alloc_words(n)
     }
 
-    unsafe fn collector_alloc(&mut self, n: Words<u32>) -> Value {
-        self.mutator_alloc(n)
+    unsafe fn collector_allocate(&mut self, n: Words<u32>) -> Value {
+        self.mutator_allocate(n)
+    }
+
+    unsafe fn grow_heap(&mut self, n: Words<u32>) -> Value {
+        self.mutator_allocate(n)
     }
 }
 
