@@ -5,6 +5,12 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe extern "C" fn initialize_copying_gc() {
+    crate::memory::ic::initialize_memory(false);
+}
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
     // Half of the heap.

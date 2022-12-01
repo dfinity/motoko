@@ -16,6 +16,12 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe extern "C" fn initialize_compacting_gc() {
+    crate::memory::ic::initialize_memory(true);
+}
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message

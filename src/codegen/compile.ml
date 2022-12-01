@@ -564,15 +564,15 @@ module E = struct
   let mem_size env =
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
+  let gc_name = match !Flags.gc_strategy with
+  | Flags.MarkCompact -> "compacting"
+  | Flags.Copying -> "copying"
+  | Flags.Generational -> "generational"
+  | Flags.Incremental -> "incremental"
+
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational") "_gc" *)
-    let gc_fn = match !Flags.gc_strategy with
-    | Flags.MarkCompact -> "compacting"
-    | Flags.Copying -> "copying"
-    | Flags.Generational -> "generational"
-    | Flags.Incremental -> "incremental"
-    in
-    let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
+    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
+    let gc_fn = if !Flags.force_gc then gc_name else "schedule_" ^ gc_name in
     call_import env "rts" (gc_fn ^ "_gc")
 end
 
@@ -925,6 +925,10 @@ module RTS = struct
     E.add_func_import env "rts" "compacting_gc" [] [];
     E.add_func_import env "rts" "generational_gc" [] [];
     E.add_func_import env "rts" "incremental_gc" [] [];
+    E.add_func_import env "rts" "initialize_copying_gc" [] [];
+    E.add_func_import env "rts" "initialize_compacting_gc" [] [];
+    E.add_func_import env "rts" "initialize_generational_gc" [] [];
+    E.add_func_import env "rts" "initialize_incremental_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "schedule_generational_gc" [] [];
@@ -932,7 +936,6 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
-    E.add_func_import env "rts" "init" [I32Type; I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
@@ -944,7 +947,6 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
-    E.add_func_import env "rts" "init_post_write_barrier" [] [];
     E.add_func_import env "rts" "pre_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
@@ -10019,14 +10021,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact || !Flags.gc_strategy = Flags.Generational || !Flags.gc_strategy = Mo_config.Flags.Incremental) ^^
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.Incremental) ^^
-    E.call_import env "rts" "init" ^^
-    (if !Flags.gc_strategy = Flags.Generational
-     then
-      E.call_import env "rts" "init_post_write_barrier"
-     else
-      G.nop) ^^
+    E.call_import env "rts" ("initialize_" ^ E.gc_name ^ "_gc") ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)

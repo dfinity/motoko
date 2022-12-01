@@ -23,6 +23,13 @@ pub mod write_barrier;
 #[cfg(feature = "ic")]
 static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
 
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe extern "C" fn initialize_incremental_gc() {
+    crate::memory::ic::initialize_memory(true);
+    FREE_LIST = Some(SegregatedFreeList::new());
+}
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     if !IncrementalGC::<M>::pausing() || should_start() {
@@ -440,7 +447,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 /// `new_object` is the unskewed object pointer.
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
 #[no_mangle]
-pub unsafe fn mark_new_allocation(new_object: *mut Obj) {
+pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     assert!(!is_skewed(new_object as u32));
     let should_mark = match &mut PHASE {
         Phase::Pause | Phase::Stop => false,
@@ -457,6 +464,6 @@ pub unsafe fn mark_new_allocation(new_object: *mut Obj) {
 /// on allocation and writes may interfere with the upgrade mechanism
 /// that invalidates object tags during stream serialization.
 #[no_mangle]
-pub unsafe fn stop_gc_on_upgrade() {
+pub unsafe extern "C" fn stop_gc_on_upgrade() {
     PHASE = Phase::Stop;
 }

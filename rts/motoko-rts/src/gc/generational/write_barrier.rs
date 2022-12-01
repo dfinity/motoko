@@ -9,9 +9,9 @@ pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
 pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
+#[cfg(feature = "ic")]
 /// (Re-)initialize the write barrier for generational GC.
-#[ic_mem_fn(ic_only)]
-pub unsafe fn init_post_write_barrier<M: Memory>(mem: &mut M) {
+pub(crate) unsafe fn init_post_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     REMEMBERED_SET = Some(RememberedSet::new(mem));
     HEAP_BASE = ic::get_aligned_heap_base();
