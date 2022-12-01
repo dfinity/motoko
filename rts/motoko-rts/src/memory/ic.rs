@@ -2,7 +2,6 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::IncrementalGC;
 use crate::gc::incremental::FREE_LIST;
 use crate::rts_trap_with;
 use crate::types::*;
@@ -70,16 +69,12 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     #[inline]
-    unsafe fn mutator_allocate(&mut self, amount: Words<u32>) -> Value {
-        if FREE_LIST.is_some() {
-            IncrementalGC::allocation_increment(self);
+    unsafe fn allocate(&mut self, amount: Words<u32>) -> Value {
+        ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
+        match &mut FREE_LIST {
+            Some(free_list) => free_list.allocate(self, amount.to_bytes()),
+            None => self.grow_heap(amount),
         }
-        internal_allocate(self, amount)
-    }
-
-    #[inline]
-    unsafe fn collector_allocate(&mut self, amount: Words<u32>) -> Value {
-        internal_allocate(self, amount)
     }
 
     #[inline]
@@ -98,15 +93,6 @@ impl Memory for IcMemory {
         HP = new_hp as u32;
 
         Value::from_ptr(old_hp as usize)
-    }
-}
-
-#[inline]
-unsafe fn internal_allocate<M: Memory>(mem: &mut M, amount: Words<u32>) -> Value {
-    ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
-    match &mut FREE_LIST {
-        Some(free_list) => free_list.allocate(mem, amount.to_bytes()),
-        None => mem.grow_heap(amount),
     }
 }
 

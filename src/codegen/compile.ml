@@ -949,6 +949,7 @@ module RTS = struct
     E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
     E.add_func_import env "rts" "pre_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "allocation_increment" [] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
@@ -1023,14 +1024,15 @@ module Heap = struct
   let get_max_live_size env =
     E.call_import env "rts" "get_max_live_size"
 
-  let dyn_alloc_words env =
-    E.call_import env "rts" "alloc_words"
-
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.call_import env "rts" "allocation_increment"
+    else 
+      G.nop) ^^
     compile_unboxed_const n  ^^
-    dyn_alloc_words env
+    E.call_import env "rts" "alloc_words"
 
   (* Heap objects *)
 
@@ -3180,7 +3182,12 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = E.call_import env "rts" "alloc_blob"
+  let alloc env = 
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.call_import env "rts" "allocation_increment"
+    else 
+      G.nop) ^^
+    E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
@@ -3464,7 +3471,12 @@ module Arr = struct
       ] @ element_instructions)
 
   (* Does not initialize the fields! *)
-  let alloc env = E.call_import env "rts" "alloc_array"
+  let alloc env = 
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.call_import env "rts" "allocation_increment"
+    else 
+      G.nop) ^^
+    E.call_import env "rts" "alloc_array"
 
   let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in

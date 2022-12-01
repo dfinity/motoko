@@ -165,6 +165,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     /// Large GC increment invoked before a mutator heap allocation.
     /// No recursive increments if GC allocates heap space for the mark stack.
+    #[inline]
     pub unsafe fn allocation_increment(mem: &'a mut M) {
         Self::instance(mem, Self::LARGE_INCREMENT_LIMIT).increment();
     }
@@ -459,6 +460,12 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
         assert!(!new_object.is_marked());
         new_object.mark();
     }
+}
+
+/// GC increment triggered by the mutator on a heap allocation.
+#[ic_mem_fn(ic_only)]
+unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
+    IncrementalGC::allocation_increment(mem);
 }
 
 /// Stop the GC before performing upgrade. Otherwise, GC increments
