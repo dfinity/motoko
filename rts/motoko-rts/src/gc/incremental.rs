@@ -162,10 +162,10 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     #[inline]
     unsafe fn pre_write_barrier(mem: &'a mut M, value: Value) {
         if value.is_ptr() {
-            if let Phase::Mark(state) = &STATE.as_ref().unwrap().phase {
-                if value.get_ptr() >= state.heap_base {
+            if let Phase::Mark(mark_state) = &STATE.as_ref().unwrap().phase {
+                if value.get_ptr() >= mark_state.heap_base {
                     let mut gc = Self::instance(mem, Self::SMALL_INCREMENT_LIMIT);
-                    if !state.complete {
+                    if !mark_state.complete {
                         gc.mark_object(value);
                         gc.increment();
                     }
@@ -213,12 +213,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         sanity_checks::check_memory(false);
 
         let mark_stack = MarkStack::new(self.mem);
-        let state = MarkState {
+        let mark_state = MarkState {
             heap_base,
             mark_stack,
             complete: false,
         };
-        self.state.phase = Phase::Mark(state);
+        self.state.phase = Phase::Mark(mark_state);
         self.mark_roots(roots);
     }
 
@@ -247,10 +247,10 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn mark_object(&mut self, value: Value) {
-        if let Phase::Mark(state) = &mut self.state.phase {
+        if let Phase::Mark(mark_state) = &mut self.state.phase {
             self.steps += 1;
-            assert!(!state.complete);
-            assert!((value.get_ptr() >= state.heap_base));
+            assert!(!mark_state.complete);
+            assert!((value.get_ptr() >= mark_state.heap_base));
             let object = value.as_obj();
             if object.is_marked() {
                 return;
@@ -259,17 +259,17 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             assert!(
                 object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
             );
-            state.mark_stack.push(self.mem, value);
+            mark_state.mark_stack.push(self.mem, value);
         } else {
             panic!("Invalid phase");
         }
     }
 
     unsafe fn mark_phase_increment(&mut self) {
-        if let Phase::Mark(state) = &mut self.state.phase {
-            if state.complete {
+        if let Phase::Mark(mark_state) = &mut self.state.phase {
+            if mark_state.complete {
                 // allocation after complete marking, wait until next empty call stack increment
-                assert!(state.mark_stack.is_empty());
+                assert!(mark_state.mark_stack.is_empty());
                 return;
             }
             while let Some(value) = self.pop_mark_stack() {
@@ -289,8 +289,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn pop_mark_stack(&mut self) -> Option<Value> {
-        if let Phase::Mark(state) = &mut self.state.phase {
-            state.mark_stack.pop()
+        if let Phase::Mark(mark_state) = &mut self.state.phase {
+            mark_state.mark_stack.pop()
         } else {
             panic!("Invalid phase");
         }
@@ -314,9 +314,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     (*array).header.raw_tag = mark(new_start);
-                    if let Phase::Mark(state) = &mut gc.state.phase {
-                        assert!(!state.complete);
-                        state
+                    if let Phase::Mark(mark_state) = &mut gc.state.phase {
+                        assert!(!mark_state.complete);
+                        mark_state
                             .mark_stack
                             .push(gc.mem, Value::from_ptr(array as usize));
                     } else {
@@ -336,16 +336,16 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn complete_marking(&mut self) {
-        if let Phase::Mark(state) = &mut self.state.phase {
-            assert!(!state.complete);
-            state.complete = true;
+        if let Phase::Mark(mark_state) = &mut self.state.phase {
+            assert!(!mark_state.complete);
+            mark_state.complete = true;
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "ic")]
             sanity_checks::check_mark_completeness(self.mem);
 
             #[cfg(debug_assertions)]
-            state.mark_stack.assert_is_garbage();
+            mark_state.mark_stack.assert_is_garbage();
         } else {
             panic!("Invalid phase");
         }
@@ -353,17 +353,17 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn mark_completed(&self) -> bool {
         match &self.state.phase {
-            Phase::Mark(state) => {
-                assert!(!state.complete || state.mark_stack.is_empty());
-                state.complete
+            Phase::Mark(mark_state) => {
+                assert!(!mark_state.complete || mark_state.mark_stack.is_empty());
+                mark_state.complete
             }
             _ => false,
         }
     }
 
     fn heap_base(&self) -> usize {
-        if let Phase::Mark(state) = &self.state.phase {
-            state.heap_base
+        if let Phase::Mark(mark_state) = &self.state.phase {
+            mark_state.heap_base
         } else {
             panic!("Invalid phase");
         }
@@ -417,16 +417,16 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     fn sweep_line(&self) -> usize {
-        if let Phase::Sweep(state) = &self.state.phase {
-            state.sweep_line
+        if let Phase::Sweep(sweep_state) = &self.state.phase {
+            sweep_state.sweep_line
         } else {
             panic!("Invalid phase");
         }
     }
 
     fn advance_sweep(&mut self, offset: usize) {
-        if let Phase::Sweep(state) = &mut self.state.phase {
-            state.sweep_line += offset;
+        if let Phase::Sweep(sweep_state) = &mut self.state.phase {
+            sweep_state.sweep_line += offset;
         } else {
             panic!("Invalid phase");
         }
@@ -471,8 +471,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     fn heap_end(&self) -> usize {
-        if let Phase::Sweep(state) = &self.state.phase {
-            state.heap_end
+        if let Phase::Sweep(sweep_state) = &self.state.phase {
+            sweep_state.heap_end
         } else {
             panic!("Invalid phase");
         }
@@ -501,7 +501,7 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
         && match &STATE.as_ref().unwrap().phase {
             Phase::Pause | Phase::Stop => false,
             Phase::Mark(_) => true,
-            Phase::Sweep(state) => new_object as usize >= state.sweep_line,
+            Phase::Sweep(sweep_state) => new_object as usize >= sweep_state.sweep_line,
         };
     if should_mark {
         assert!(!new_object.is_marked());
