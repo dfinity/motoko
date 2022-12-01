@@ -22,7 +22,6 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::gc::incremental::write_barrier::pre_write_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::Value;
@@ -65,11 +64,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     for i in 0..old_size {
         let old_value = old_array.get(i);
-        if old_value.is_ptr() {
-            new_array.set_pointer(i, old_value, mem);
-        } else {
-            new_array.set_scalar(i, old_value);
-        }
+        new_array.initialize(i, old_value, mem);
     }
 
     for i in old_size..new_size {
@@ -102,7 +97,6 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     FREE_SLOT = table.get(idx).get_scalar();
 
-    pre_write_barrier(mem, table.payload_addr().add(idx as usize) as *mut Value);
     table.set_pointer(idx, ptr, mem);
 
     N_CONTINUATIONS += 1;

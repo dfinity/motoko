@@ -10,7 +10,6 @@
 //! 1. A pointer to the text
 //! 2. 0, or a pointer to the next list entry
 
-use crate::gc::incremental::write_barrier::pre_write_barrier;
 use core::ptr::null_mut;
 
 use crate::memory::{alloc_array, Memory};
@@ -32,9 +31,9 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
         // Add right node to TODOs
         let new_todo = alloc_array(mem, 2);
         let new_todo_array = new_todo.as_array();
-        // no pre-updare write barrier for object initialization
-        new_todo_array.set_pointer(TODO_TEXT_IDX, (*concat).text2, mem);
-        new_todo_array.set_pointer(TODO_LINK_IDX, *todo, mem);
+        // No pre-update barrier for object initialization, but do perform post-update barrier.
+        new_todo_array.initialize(TODO_TEXT_IDX, (*concat).text2, mem);
+        new_todo_array.initialize(TODO_LINK_IDX, *todo, mem);
         *todo = new_todo;
 
         // Follow left node
@@ -62,8 +61,8 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     // Initialize position field
     array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-    // Initialize blob field, no pre-update write barrier for object initialization
-    array.set_pointer(
+    // Initialize blob field, no pre-update barrier, but post-update barrier.
+    array.initialize(
         ITER_BLOB_IDX,
         find_leaf(mem, text, todo_addr as *mut _),
         mem,
@@ -113,18 +112,10 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             // allocation)
             let concat = text.as_concat();
 
-            pre_write_barrier(
-                mem,
-                todo_array.payload_addr().add(TODO_TEXT_IDX as usize) as *mut Value,
-            );
             todo_array.set_pointer(TODO_TEXT_IDX, (*concat).text2, mem);
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
 
-            pre_write_barrier(
-                mem,
-                iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as *mut Value,
-            );
             iter_array.set_pointer(
                 ITER_BLOB_IDX,
                 find_leaf(mem, (*concat).text1, todo_addr),
@@ -136,17 +127,9 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             // Otherwise remove the entry from the chain
             debug_assert_eq!(text.tag(), TAG_BLOB);
 
-            pre_write_barrier(
-                mem,
-                iter_array.payload_addr().add(ITER_BLOB_IDX as usize) as *mut Value,
-            );
             iter_array.set_pointer(ITER_BLOB_IDX, text, mem);
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-            pre_write_barrier(
-                mem,
-                iter_array.payload_addr().add(TODO_LINK_IDX as usize) as *mut Value,
-            );
             iter_array.set_pointer(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX), mem);
 
             text_iter_next(mem, iter)

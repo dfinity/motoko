@@ -16,7 +16,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     (iter_array as *mut Obj).initialize_tag(TAG_ARRAY);
     (*iter_array).len = 2;
 
-    iter_array.set_pointer(ITER_BLOB_IDX, blob, mem);
+    iter_array.initialize(ITER_BLOB_IDX, blob, mem);
     iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
     iter_ptr
