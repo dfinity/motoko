@@ -121,7 +121,7 @@ fn test_gc(
 ) {
     if gc == GC::Incremental {
         unsafe {
-            IncrementalGC::<MotokoHeap>::reset_for_testing();
+            IncrementalGC::<MotokoHeap>::initialize();
         }
     }
     let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
@@ -159,7 +159,7 @@ fn test_gc(
     }
     if gc == GC::Incremental {
         unsafe {
-            IncrementalGC::<MotokoHeap>::reset_for_testing();
+            IncrementalGC::<MotokoHeap>::initialize();
         }
     }
 }

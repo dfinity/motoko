@@ -23,11 +23,10 @@ pub mod write_barrier;
 #[cfg(feature = "ic")]
 static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-pub unsafe extern "C" fn initialize_incremental_gc() {
+#[ic_mem_fn(ic_only)]
+pub unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
     crate::memory::ic::initialize_memory(true);
-    FREE_LIST = Some(SegregatedFreeList::new());
+    IncrementalGC::<M>::initialize();
 }
 
 #[ic_mem_fn(ic_only)]
@@ -124,7 +123,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     const LARGE_INCREMENT_LIMIT: usize = 32 * 1024;
     const SMALL_INCREMENT_LIMIT: usize = 256;
 
-    pub unsafe fn reset_for_testing() {
+    /// (Re-)Initialize the entire incremental garbage collector.
+    /// Called on a runtime system start with incremental GC and also during RTS testing.
+    pub unsafe fn initialize() {
         PHASE = Phase::Pause;
         FREE_LIST = Some(SegregatedFreeList::new());
     }
