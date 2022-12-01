@@ -564,15 +564,16 @@ module E = struct
   let mem_size env =
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
-  let gc_name = match !Flags.gc_strategy with
-  | Flags.MarkCompact -> "compacting"
-  | Flags.Copying -> "copying"
-  | Flags.Generational -> "generational"
-  | Flags.Incremental -> "incremental"
+  let gc_strategy_name gc_strategy = match gc_strategy with
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.Incremental -> "incremental"  
 
   let collect_garbage env =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
-    let gc_fn = if !Flags.force_gc then gc_name else "schedule_" ^ gc_name in
+    let name = gc_strategy_name !Flags.gc_strategy in
+    let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
     call_import env "rts" (gc_fn ^ "_gc")
 end
 
@@ -10033,7 +10034,7 @@ and conclude_module env start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    E.call_import env "rts" ("initialize_" ^ E.gc_name ^ "_gc") ^^
+    E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
