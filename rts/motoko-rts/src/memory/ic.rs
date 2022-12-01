@@ -2,7 +2,6 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::STATE;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -71,7 +70,7 @@ impl Memory for IcMemory {
     #[inline]
     unsafe fn allocate(&mut self, amount: Words<u32>) -> Value {
         ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
-        match &mut STATE {
+        match &mut crate::gc::incremental::STATE {
             Some(state) => state.free_list.allocate(self, amount.to_bytes()),
             None => self.grow_heap(amount),
         }

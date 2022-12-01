@@ -84,18 +84,18 @@ enum Phase {
     Pause,
     Mark(MarkState),
     Sweep(SweepState),
-    Stop, // on upgrade
+    Stop, // On canister upgrade
 }
 
 struct MarkState {
-    pub heap_base: usize,
-    pub mark_stack: MarkStack,
-    pub complete: bool,
+    heap_base: usize,
+    mark_stack: MarkStack,
+    complete: bool,
 }
 
 struct SweepState {
-    pub sweep_line: usize,
-    pub heap_end: usize,
+    sweep_line: usize,
+    heap_end: usize,
 }
 
 pub struct State {
@@ -106,13 +106,13 @@ pub struct State {
 /// GC state retained over multiple GC increments.
 pub(crate) static mut STATE: Option<State> = None;
 
-/// Heap limits
+/// Heap limits.
 pub struct Limits {
     pub base: usize,
     pub free: usize,
 }
 
-/// GC Root set
+/// GC Root set.
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table: Value,
