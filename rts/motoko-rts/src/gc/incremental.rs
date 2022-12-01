@@ -28,8 +28,7 @@ pub unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
-    if !IncrementalGC::<M>::pausing() || IncrementalGC::<M>::should_start(ic::ALLOCATED) {
+    if !IncrementalGC::<M>::pausing() || should_start() {
         incremental_gc(mem);
     }
 }
@@ -51,6 +50,17 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
+static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
+
+#[cfg(feature = "ic")]
+unsafe fn should_start() -> bool {
+    use crate::memory::ic;
+    assert!(ic::ALLOCATED >= LAST_ALLOCATED);
+    const THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
+    ic::ALLOCATED - LAST_ALLOCATED >= THRESHOLD
+}
+
+#[cfg(feature = "ic")]
 unsafe fn update_statistics<M: Memory>(old_free_size: Bytes<u32>) {
     use crate::memory::ic;
     if let Some(state) = &mut STATE {
@@ -59,7 +69,7 @@ unsafe fn update_statistics<M: Memory>(old_free_size: Bytes<u32>) {
             ic::RECLAIMED += Bytes(u64::from((free_size - old_free_size).as_u32()));
         }
         if IncrementalGC::<M>::pausing() {
-            state.last_allocated = ic::ALLOCATED;
+            LAST_ALLOCATED = ic::ALLOCATED;
             let free_size = state.free_list.total_size().as_u32();
             assert!(free_size <= ic::HP);
             let live_set = Bytes(ic::HP - free_size);
@@ -91,7 +101,6 @@ struct SweepState {
 pub struct State {
     pub free_list: SegregatedFreeList,
     phase: Phase,
-    last_allocated: Bytes<u64>,
 }
 
 /// GC state retained over multiple GC increments.
@@ -129,16 +138,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         STATE = Some(State {
             free_list: SegregatedFreeList::new(),
             phase: Phase::Pause,
-            last_allocated: Bytes(0),
         });
-    }
-
-    /// Determine whether a new GC run should be started (if not yet running).
-    pub unsafe fn should_start(allocated: Bytes<u64>) -> bool {
-        let last_allocated = STATE.as_ref().unwrap().last_allocated;
-        assert!(allocated >= last_allocated);
-        const THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
-        allocated - last_allocated >= THRESHOLD
     }
 
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
