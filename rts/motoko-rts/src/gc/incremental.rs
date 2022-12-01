@@ -106,13 +106,13 @@ pub struct Limits {
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table: Value,
-    // If new roots are added in future, extend `mark_roots()`.
+    // If new roots are added in future, extend `IncrementalGC::mark_roots()`.
 }
 
 pub(crate) static mut FREE_LIST: Option<SegregatedFreeList> = None;
 
 /// Incremental GC.
-/// Each increment call can have its new instance that shares the common GC state `PHASE`.
+/// Each increment call has its new `Memory` instance that shares the common GC state `PHASE`.
 pub struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
@@ -133,7 +133,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
     /// * The mark phase is only started on an empty call stack.
-    /// * The moving phase can only be completed on an empty call stack.
+    /// * In future: The moving phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(mem: &'a mut M, limits: Limits, roots: Roots) {
         let mut gc = Self::instance(mem, Self::LARGE_INCREMENT_LIMIT);
         if Self::pausing() {
