@@ -33,6 +33,7 @@ pub unsafe fn post_write_barrier<M: Memory>(mem: &mut M, location: u32) {
         // Nested ifs are more efficient when counting instructions on IC (explicit return counts as an instruction).
         let value = *(location as *mut Value);
         if value.points_to_or_beyond(LAST_HP as usize) {
+            #[allow(clippy::collapsible_if)]
             if location >= HEAP_BASE {
                 // Trap pointers that lead from old generation (or static roots) to young generation.
                 REMEMBERED_SET
