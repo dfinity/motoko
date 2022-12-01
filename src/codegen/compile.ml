@@ -5937,11 +5937,6 @@ module MakeSerialization (Strm : Stream) = struct
       let tydesc = type_desc env ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
-      (if !Flags.gc_strategy == Flags.Incremental then
-        E.call_import env "rts" "stop_gc_on_upgrade"
-      else
-        G.nop) ^^
-      
       (* Get object sizes *)
       get_x ^^
       buffer_size env (Type.seq ts) ^^
@@ -6325,6 +6320,13 @@ module Stabilization = struct
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
+    
+    (if !Flags.gc_strategy == Flags.Incremental then
+      E.call_import env "rts" "stop_gc_on_upgrade"
+    else
+      G.nop) ^^
+    
+
     Externalization.serialize env [t] ^^
     set_len ^^
     set_dst ^^
