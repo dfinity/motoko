@@ -5,7 +5,7 @@ func none() {
 none();
 
 func single() : Nat {
-    let 2 = 2 else { return 2 };
+    let 2 = 3 else { return 2 };
     0
 };
 
