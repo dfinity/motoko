@@ -433,12 +433,17 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 // fundamental node invariant: max_exp ante <= expire <= min_exp dopo
 // corollary: if expire == 0 then the ante is completely expired
 //
-type @Node = { var expire : Nat64; id : Nat; delay : ?Nat64; job : () -> async (); ante : ?@Node; dopo : ?@Node };
+// Note: Below the `expire` field is an encoding of an aliased mutable field with
+//       a single-element mutable array. It eliminates `--experimental-field-aliasing`
+//       while compiling this file at the cost of slightly higher syntactic noise
+//       as well as increased allocation and runtime cost accessing the data. Oh well.
+//
+type @Node = { expire : [var Nat64]; id : Nat; delay : ?Nat64; job : () -> async (); ante : ?@Node; dopo : ?@Node };
 var @timers : ?@Node = null;
 func @prune(n : ?@Node) : ?@Node = switch n {
     case null null;
     case (?n) {
-        if (n.expire == 0) {
+        if (n.expire[0] == 0) {
             @prune(n.dopo) // by corollary
         } else {
             ?{ n with ante = @prune(n.ante); dopo = @prune(n.dopo) }
@@ -451,7 +456,7 @@ func @nextExpiration(n : ?@Node) : Nat64 = switch n {
     case (?n) {
         var exp = @nextExpiration(n.ante); // TODO: use the corollary for expire == 0
         if (exp == 0) {
-            exp := n.expire;
+            exp := n.expire[0];
             if (exp == 0) {
                 exp := @nextExpiration(n.dopo)
             }
@@ -481,18 +486,18 @@ func @timer_helper() : async () {
         case null ();
         case (?n) {
             gatherExpired(n.ante);
-            if (n.expire > 0 and n.expire <= now and gathered < thunks.size()) {
+            if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
                 thunks[gathered] := ?(n.job);
                 switch (n.delay) {
                     case (?delay) {
                         // re-add the node
-                        let expire = n.expire + delay;
+                        let expire = n.expire[0] + delay;
                         // N.B. insert only works on pruned nodes
                         func reinsert(m : ?@Node) : @Node = switch m {
-                            case null ({ n with var expire; ante = null; dopo = null });
+                            case null ({ n with expire = [var expire]; ante = null; dopo = null });
                             case (?m) {
-                                assert m.expire != 0;
-                                if (expire < m.expire) ({ m with ante = ?reinsert(m.ante) })
+                                assert m.expire[0] != 0;
+                                if (expire < m.expire[0]) ({ m with ante = ?reinsert(m.ante) })
                                 else ({ m with dopo = ?reinsert(m.dopo) })
                             }
                         };
@@ -500,7 +505,7 @@ func @timer_helper() : async () {
                     };
                     case _ ()
                 };
-                n.expire := 0;
+                n.expire[0] := 0;
                 gathered += 1;
             };
             gatherExpired(n.dopo);
@@ -531,10 +536,10 @@ func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : (id 
     // only works on pruned nodes
     func insert(n : ?@Node) : @Node =
         switch n {
-            case null ({ var expire; id; delay; job; ante = null; dopo = null });
+            case null ({ expire = [var expire]; id; delay; job; ante = null; dopo = null });
             case (?n) {
-                assert n.expire != 0;
-                if (expire < n.expire) ({ n with ante = ?insert(n.ante) })
+                assert n.expire[0] != 0;
+                if (expire < n.expire[0]) ({ n with ante = ?insert(n.ante) })
                 else ({ n with dopo = ?insert(n.dopo) })
             }
     };
