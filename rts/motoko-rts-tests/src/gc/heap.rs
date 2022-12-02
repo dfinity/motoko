@@ -3,7 +3,7 @@ use super::utils::{
 };
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
-use motoko_rts::memory::Memory;
+use motoko_rts::memory::{Memory, Roots};
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
@@ -20,6 +20,25 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
+    unsafe fn heap_base(&self) -> usize {
+        self.heap_base_address()
+    }
+
+    unsafe fn last_heap_pointer(&self) -> usize {
+        self.last_ptr_address()
+    }
+
+    unsafe fn heap_pointer(&self) -> usize {
+        self.heap_ptr_address()
+    }
+
+    unsafe fn roots(&self) -> Roots {
+        Roots {
+            static_roots: Value::from_ptr(self.static_root_array_address()),
+            continuation_table: *(self.continuation_table_ptr_address() as *mut Value),
+        }
+    }
+
     unsafe fn allocate(&mut self, n: Words<u32>) -> Value {
         self.grow_heap(n)
     }

@@ -1,4 +1,4 @@
-use motoko_rts::memory::Memory;
+use motoko_rts::memory::{Memory, Roots};
 use motoko_rts::types::{Value, Words};
 
 pub struct TestMemory {
@@ -27,6 +27,22 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
+    unsafe fn heap_base(&self) -> usize {
+        0
+    }
+
+    unsafe fn last_heap_pointer(&self) -> usize {
+        panic!("Not implemented");
+    }
+
+    unsafe fn heap_pointer(&self) -> usize {
+        self.hp
+    }
+
+    unsafe fn roots(&self) -> Roots {
+        panic!("Not implemented");
+    }
+
     unsafe fn allocate(&mut self, n: Words<u32>) -> Value {
         self.grow_heap(n)
     }

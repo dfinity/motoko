@@ -16,5 +16,8 @@ use crate::{
 pub unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
     debug_assert!(!is_skewed(location as u32));
     debug_assert_ne!(location, core::ptr::null_mut());
-    IncrementalGC::instance(mem).pre_write_barrier(*location);
+    let value = *location;
+    if value.is_ptr() && value.get_ptr() >= mem.heap_base() {
+        IncrementalGC::instance(mem).pre_write_barrier(value);
+    }
 }

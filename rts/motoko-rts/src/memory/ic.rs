@@ -1,7 +1,9 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
+use super::Roots;
 use crate::constants::WASM_PAGE_SIZE;
+use crate::continuation_table::continuation_table_loc;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -15,6 +17,9 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 /// Counter for total allocations
 pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
+
+/// Heap base address
+pub(crate) static mut BASE: u32 = 0;
 
 /// Heap pointer
 pub(crate) static mut HP: u32 = 0;
@@ -34,11 +39,12 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
 }
 
 pub(crate) unsafe fn initialize_memory(align: bool) {
-    HP = if align {
+    BASE = if align {
         get_aligned_heap_base()
     } else {
         get_heap_base()
     };
+    HP = BASE;
     LAST_HP = HP;
 }
 
@@ -67,6 +73,25 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 pub struct IcMemory;
 
 impl Memory for IcMemory {
+    unsafe fn heap_base(&self) -> usize {
+        BASE as usize
+    }
+
+    unsafe fn last_heap_pointer(&self) -> usize {
+        LAST_HP as usize
+    }
+
+    unsafe fn heap_pointer(&self) -> usize {
+        HP as usize
+    }
+
+    unsafe fn roots(&self) -> Roots {
+        Roots {
+            static_roots: get_static_roots(),
+            continuation_table: *continuation_table_loc(),
+        }
+    }
+
     #[inline]
     unsafe fn allocate(&mut self, amount: Words<u32>) -> Value {
         ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
