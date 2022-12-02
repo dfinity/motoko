@@ -1,7 +1,5 @@
 let prelude = [%blob "prelude.mo"]
-let internals' = [%blob "internals.mo"]
-let timers = [%blob "timers.mo"]
-let internals = internals' ^ timers
+let internals = [%blob "internals.mo"]
 let timers_api = [%blob "timers-api.mo"]
 let prim_module' = [%blob "prim.mo"]
 let prim_module want_timers =
