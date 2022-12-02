@@ -30,11 +30,10 @@ pub unsafe fn post_write_barrier<M: Memory>(mem: &mut M, location: u32) {
         if value.points_to_or_beyond(mem.last_heap_pointer() as usize) {
             #[allow(clippy::collapsible_if)]
             if location >= mem.heap_base() {
-                // Trap pointers that lead from old generation (or static roots) to young generation.
-                REMEMBERED_SET
-                    .as_mut()
-                    .unwrap()
-                    .insert(mem, Value::from_raw(location));
+                if let Some(remembered_set) = &mut REMEMBERED_SET {
+                    // Trap pointers that lead from old generation (or static roots) to young generation.
+                    remembered_set.insert(mem, Value::from_raw(location));
+                }
             }
         }
     }
