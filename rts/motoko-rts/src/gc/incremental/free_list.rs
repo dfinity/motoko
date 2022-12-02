@@ -422,15 +422,18 @@ impl SegregatedFreeList {
 
     #[cfg(debug_assertions)]
     pub unsafe fn sanity_check(&self) {
+        let mut total_size = Bytes(0);
         for list in &self.lists {
             let mut previous: *mut FreeBlock = null_mut();
             let mut block = list.first;
             while block != null_mut() {
                 debug_assert!(list.fits(block));
                 debug_assert_eq!((*block).previous, previous);
+                total_size += block.size();
                 previous = block;
                 block = (*block).next;
             }
         }
+        assert_eq!(self.total_size, total_size);
     }
 }

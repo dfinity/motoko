@@ -36,7 +36,6 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    let old_free_size = FREE_LIST.as_ref().unwrap().total_size();
     let limits = Limits {
         base: ic::get_aligned_heap_base() as usize,
         free: ic::HP as usize,
@@ -46,7 +45,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
         continuation_table: *crate::continuation_table::continuation_table_loc(),
     };
     IncrementalGC::instance(mem).empty_call_stack_increment(limits, roots);
-    update_statistics::<M>(old_free_size);
+    update_statistics::<M>();
 }
 
 #[cfg(feature = "ic")]
@@ -61,18 +60,22 @@ unsafe fn should_start() -> bool {
 }
 
 #[cfg(feature = "ic")]
-unsafe fn update_statistics<M: Memory>(old_free_size: Bytes<u32>) {
+unsafe fn update_statistics<M: Memory>() {
     use crate::memory::ic;
-    let free_size = FREE_LIST.as_ref().unwrap().total_size();
-    if free_size > old_free_size {
-        ic::RECLAIMED += Bytes(u64::from((free_size - old_free_size).as_u32()));
-    }
     if IncrementalGC::<M>::pausing() {
         LAST_ALLOCATED = ic::ALLOCATED;
         let free_size = FREE_LIST.as_ref().unwrap().total_size().as_u32();
         debug_assert!(free_size <= ic::HP);
         let live_set = Bytes(ic::HP - free_size);
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
+    }
+}
+
+unsafe fn record_reclaimed(_size: usize) {
+    #[cfg(feature = "ic")]
+    {
+        use crate::memory::ic;
+        ic::RECLAIMED += Bytes(_size as u64);
     }
 }
 
@@ -120,8 +123,8 @@ pub struct IncrementalGC<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
-    const LARGE_INCREMENT_LIMIT: usize = 32 * 1024;
-    const SMALL_INCREMENT_LIMIT: usize = 256;
+    const LARGE_INCREMENT_LIMIT: usize = 64 * 1024;
+    const SMALL_INCREMENT_LIMIT: usize = 32;
 
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
@@ -158,7 +161,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 if value.get_ptr() >= state.heap_base && !state.complete {
                     let mut gc = Increment::instance(self.mem, state, Self::SMALL_INCREMENT_LIMIT);
                     gc.mark_object(value);
-                    gc.mark_phase_increment();
+                    // gc.mark_phase_increment();
                 }
             }
         }
@@ -168,7 +171,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// No recursive increments if GC allocates heap space for the mark stack.
     #[inline]
     pub unsafe fn allocation_increment(&mut self) {
-        self.increment(Self::LARGE_INCREMENT_LIMIT);
+        self.increment(Self::SMALL_INCREMENT_LIMIT);
     }
 
     unsafe fn pausing() -> bool {
@@ -191,6 +194,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
+        println!(100, "START MARKING");
         debug_assert!(Self::pausing());
 
         #[cfg(debug_assertions)]
@@ -224,6 +228,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_sweeping(&mut self, heap_base: usize, heap_end: usize) {
+        println!(100, "START SWEEPING");
         debug_assert!(Self::mark_completed());
         let state = SweepState {
             sweep_line: heap_base,
@@ -299,7 +304,9 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             return;
         }
         object.mark();
-        debug_assert!(object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL);
+        debug_assert!(
+            object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
+        );
         self.state.mark_stack.push(self.mem, value);
     }
 
@@ -335,7 +342,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             },
             |gc, slice_start, array| {
                 debug_assert!((array as *mut Obj).is_marked());
-                const SLICE_INCREMENT: u32 = 127;
+                const SLICE_INCREMENT: u32 = 128;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
@@ -350,7 +357,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
                 } else {
                     (*array).header.raw_tag = mark(TAG_ARRAY);
                     debug_assert!((array as *mut Obj).is_marked());
-                    gc.steps += array.len() as usize;
+                    gc.steps += (array.len() % SLICE_INCREMENT) as usize;
                     array.len()
                 }
             },
@@ -358,6 +365,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 
     unsafe fn complete_marking(&mut self) {
+        println!(100, "COMPLETE MARKING");
         debug_assert!(!self.state.complete);
         self.state.complete = true;
 
@@ -404,6 +412,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
     }
 
     unsafe fn complete_sweeping(&mut self) {
+        println!(100, "COMPLETE SWEEPING");
         PHASE = Phase::Pause;
 
         #[cfg(debug_assertions)]
@@ -415,6 +424,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
     }
 
     unsafe fn collect_contiguous_free_space(&mut self) -> usize {
+        let mut reclaimed = 0;
         let mut address = self.state.sweep_line;
         while address < self.state.heap_end && !(address as *mut Obj).is_marked() {
             let tag = (address as *mut Obj).tag();
@@ -423,7 +433,11 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 address += block.size().as_usize();
             } else {
                 debug_assert!(tag >= TAG_OBJECT && tag <= TAG_ONE_WORD_FILLER);
-                address += object_size(address).to_bytes().as_usize();
+                let size = object_size(address).to_bytes().as_usize();
+                address += size;
+                if tag != TAG_ONE_WORD_FILLER {
+                    reclaimed += size;
+                }
             }
             debug_assert!(address <= self.state.heap_end);
 
@@ -432,6 +446,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 break;
             }
         }
+        record_reclaimed(reclaimed);
         return address - self.state.sweep_line;
     }
 }
