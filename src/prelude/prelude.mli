@@ -1,3 +1,3 @@
 val prelude : string
-val internals : bool -> string
+val internals : string
 val prim_module : bool -> string
