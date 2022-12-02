@@ -463,7 +463,7 @@ impl GC {
                         static_roots,
                         continuation_table: *continuation_table_ptr_address,
                     };
-                    IncrementalGC::empty_call_stack_increment(heap, limits, roots);
+                    IncrementalGC::instance(heap).empty_call_stack_increment(limits, roots);
                 }
                 false
             },
