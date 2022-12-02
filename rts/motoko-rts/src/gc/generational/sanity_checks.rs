@@ -13,92 +13,108 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 
+struct BarrierCoverageChecker<'a, M: Memory> {
+    mem: &'a mut M,
+}
+
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(mem: &mut M) {
-    let length = Bytes(mem.heap_pointer());
-    let blob = alloc_collectable_blob(mem, length).get_ptr() as *mut Blob;
-    memcpy_bytes(blob.payload_addr() as usize, 0, length);
-    SNAPSHOT = blob;
+    let mut checker = BarrierCoverageChecker { mem };
+    checker.take_snapshot();
 }
 
 /// Verify write barrier coverage by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
 pub unsafe fn verify_snapshot<M: Memory>(mem: &mut M, verify_roots: bool) {
-    if SNAPSHOT.is_null() {
-        return;
-    }
-    assert!(mem.heap_base() <= mem.heap_pointer());
-    if verify_roots {
-        verify_static_roots(mem);
-    }
-    verify_heap(mem);
-    SNAPSHOT = null_mut();
+    let checker = BarrierCoverageChecker { mem };
+    checker.verify_snapshot(verify_roots);
 }
 
-unsafe fn verify_static_roots<M: Memory>(mem: &mut M) {
-    let static_roots = mem.roots().static_roots.as_array();
-    for index in 0..static_roots.len() {
-        let current = static_roots.get(index).as_obj();
-        assert_eq!(current.tag(), TAG_MUTBOX); // check tag
-        let mutbox = current as *mut MutBox;
-        let current_field = &mut (*mutbox).field;
-        if relevant_field(mem, current_field) {
-            verify_field(current_field);
+impl<'a, M: Memory> BarrierCoverageChecker<'a, M> {
+    pub unsafe fn take_snapshot(&mut self) {
+        let length = Bytes(self.mem.heap_pointer());
+        let blob = alloc_collectable_blob(self.mem, length).get_ptr() as *mut Blob;
+        memcpy_bytes(blob.payload_addr() as usize, 0, length);
+        SNAPSHOT = blob;
+    }
+
+    pub unsafe fn verify_snapshot(&self, verify_roots: bool) {
+        if SNAPSHOT.is_null() {
+            return;
+        }
+        assert!(self.mem.heap_base() <= self.mem.heap_pointer());
+        if verify_roots {
+            self.verify_static_roots();
+        }
+        self.verify_heap();
+        SNAPSHOT = null_mut();
+    }
+
+    unsafe fn verify_static_roots(&self) {
+        let static_roots = self.mem.roots().static_roots.as_array();
+        for index in 0..static_roots.len() {
+            let current = static_roots.get(index).as_obj();
+            assert_eq!(current.tag(), TAG_MUTBOX); // check tag
+            let mutbox = current as *mut MutBox;
+            let current_field = &mut (*mutbox).field;
+            if self.relevant_field(current_field) {
+                self.verify_field(current_field);
+            }
+        }
+    }
+
+    unsafe fn verify_heap(&self) {
+        assert!(SNAPSHOT.len().as_usize() <= self.mem.heap_pointer() as usize);
+        let mut pointer = self.mem.heap_base() as usize;
+        while pointer < SNAPSHOT.len().as_usize() {
+            let current = pointer as *mut Obj;
+            let previous = (SNAPSHOT.payload_addr() as usize + pointer) as *mut Obj;
+            assert!(current.tag() == previous.tag());
+            visit_pointer_fields(
+                &mut (),
+                current,
+                current.tag(),
+                0,
+                |_, current_field| {
+                    if self.relevant_field(current_field) {
+                        self.verify_field(current_field);
+                    }
+                },
+                |_, slice_start, arr| {
+                    assert!(slice_start == 0);
+                    arr.len()
+                },
+            );
+            pointer += object_size(current as usize).to_bytes().as_usize();
+        }
+    }
+
+    unsafe fn relevant_field(&self, current_field: *mut Value) -> bool {
+        if (current_field as usize) < self.mem.last_heap_pointer() as usize {
+            let value = *current_field;
+            value.is_ptr() && value.get_ptr() as usize >= self.mem.last_heap_pointer() as usize
+        } else {
+            false
+        }
+    }
+
+    unsafe fn verify_field(&self, current_field: *mut Value) {
+        let memory_copy = SNAPSHOT.payload_addr() as usize;
+        let previous_field = (memory_copy + current_field as usize) as *mut Value;
+        if *previous_field != *current_field && !Self::recorded(current_field as u32) {
+            panic!("Missing write barrier at {:#x}", current_field as usize);
+        }
+    }
+
+    unsafe fn recorded(value: u32) -> bool {
+        match &REMEMBERED_SET {
+            None => panic!("No remembered set"),
+            Some(remembered_set) => remembered_set.contains(Value::from_raw(value)),
         }
     }
 }
 
-unsafe fn verify_heap<M: Memory>(mem: &mut M) {
-    assert!(SNAPSHOT.len().as_usize() <= mem.heap_pointer() as usize);
-    let mut pointer = mem.heap_base() as usize;
-    while pointer < SNAPSHOT.len().as_usize() {
-        let current = pointer as *mut Obj;
-        let previous = (SNAPSHOT.payload_addr() as usize + pointer) as *mut Obj;
-        assert!(current.tag() == previous.tag());
-        visit_pointer_fields(
-            mem,
-            current,
-            current.tag(),
-            0,
-            |mem, current_field| {
-                if relevant_field(mem, current_field) {
-                    verify_field(current_field);
-                }
-            },
-            |_, slice_start, arr| {
-                assert!(slice_start == 0);
-                arr.len()
-            },
-        );
-        pointer += object_size(current as usize).to_bytes().as_usize();
-    }
-}
-
-unsafe fn relevant_field<M: Memory>(mem: &mut M, current_field: *mut Value) -> bool {
-    if (current_field as usize) < mem.last_heap_pointer() as usize {
-        let value = *current_field;
-        value.is_ptr() && value.get_ptr() as usize >= mem.last_heap_pointer() as usize
-    } else {
-        false
-    }
-}
-
-unsafe fn verify_field(current_field: *mut Value) {
-    let memory_copy = SNAPSHOT.payload_addr() as usize;
-    let previous_field = (memory_copy + current_field as usize) as *mut Value;
-    if *previous_field != *current_field && !recorded(current_field as u32) {
-        panic!("Missing write barrier at {:#x}", current_field as usize);
-    }
-}
-
-unsafe fn recorded(value: u32) -> bool {
-    match &REMEMBERED_SET {
-        None => panic!("No remembered set"),
-        Some(remembered_set) => remembered_set.contains(Value::from_raw(value)),
-    }
-}
-
-pub struct MemoryChecker<'a, M: Memory> {
+struct MemoryChecker<'a, M: Memory> {
     mem: &'a mut M,
 }
 
