@@ -35,8 +35,17 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
+    use crate::memory::ic;
     let old_free_size = FREE_LIST.as_ref().unwrap().total_size();
-    IncrementalGC::instance(mem).empty_call_stack_increment();
+    let limits = Limits {
+        base: ic::get_aligned_heap_base() as usize,
+        free: ic::HP as usize,
+    };
+    let roots = Roots {
+        static_roots: ic::get_static_roots(),
+        continuation_table: *crate::continuation_table::continuation_table_loc(),
+    };
+    IncrementalGC::instance(mem).empty_call_stack_increment(limits, roots);
     update_statistics::<M>(old_free_size);
 }
 
@@ -75,12 +84,14 @@ enum Phase {
 }
 
 struct MarkState {
+    heap_base: usize,
     mark_stack: MarkStack,
     complete: bool,
 }
 
 struct SweepState {
     sweep_line: usize,
+    heap_end: usize,
 }
 
 /// GC state retained over multiple GC increments.
@@ -88,6 +99,19 @@ static mut PHASE: Phase = Phase::Pause;
 
 /// Free list activated on incremental GC.
 pub(crate) static mut FREE_LIST: Option<SegregatedFreeList> = None;
+
+/// Heap limits.
+pub struct Limits {
+    pub base: usize,
+    pub free: usize,
+}
+
+/// GC Root set.
+pub struct Roots {
+    pub static_roots: Value,
+    pub continuation_table: Value,
+    // If new roots are added in future, extend `IncrementalGC::mark_roots()`.
+}
 
 /// Incremental GC.
 /// Each GC call has its new `Memory` instance that shares the common GC state `PHASE`.
@@ -114,11 +138,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
     /// * The mark phase is only started on an empty call stack.
     /// * In future: The moving phase can only be completed on an empty call stack.
-    pub unsafe fn empty_call_stack_increment(&mut self) {
+    pub unsafe fn empty_call_stack_increment(&mut self, limits: Limits, roots: Roots) {
         if Self::pausing() {
-            self.start_marking();
+            self.start_marking(limits.base, roots);
         } else if Self::mark_completed() {
-            self.start_sweeping();
+            self.start_sweeping(limits.base, limits.free);
         } else {
             self.increment(Self::LARGE_INCREMENT_LIMIT);
         }
@@ -129,12 +153,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// A GC increment is implicitly combined with the write barrier.
     #[inline]
     unsafe fn pre_write_barrier(&mut self, value: Value) {
-        assert!(value.is_ptr() && value.get_ptr() >= self.mem.heap_base());
-        if let Phase::Mark(state) = &mut PHASE {
-            if !state.complete {
-                let mut gc = Increment::instance(self.mem, state, Self::SMALL_INCREMENT_LIMIT);
-                gc.mark_object(value);
-                gc.mark_phase_increment();
+        if value.is_ptr() {
+            if let Phase::Mark(state) = &mut PHASE {
+                if value.get_ptr() >= state.heap_base && !state.complete {
+                    let mut gc = Increment::instance(self.mem, state, Self::SMALL_INCREMENT_LIMIT);
+                    gc.mark_object(value);
+                    gc.mark_phase_increment();
+                }
             }
         }
     }
@@ -165,7 +190,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    unsafe fn start_marking(&mut self) {
+    unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
         assert!(Self::pausing());
 
         #[cfg(debug_assertions)]
@@ -174,13 +199,14 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
         let mark_stack = MarkStack::new(self.mem);
         let state = MarkState {
+            heap_base,
             mark_stack,
             complete: false,
         };
         PHASE = Phase::Mark(state);
         if let Phase::Mark(state) = &mut PHASE {
             let mut gc = Increment::instance(self.mem, state, Self::LARGE_INCREMENT_LIMIT);
-            gc.mark_roots();
+            gc.mark_roots(roots);
             gc.mark_phase_increment();
         } else {
             panic!("Invalid phase");
@@ -197,10 +223,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    unsafe fn start_sweeping(&mut self) {
+    unsafe fn start_sweeping(&mut self, heap_base: usize, heap_end: usize) {
         assert!(Self::mark_completed());
         let state = SweepState {
-            sweep_line: self.mem.heap_base(),
+            sweep_line: heap_base,
+            heap_end,
         };
         PHASE = Phase::Sweep(state);
 
@@ -239,8 +266,7 @@ impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
-    unsafe fn mark_roots(&mut self) {
-        let roots = self.mem.roots();
+    unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
         self.mark_continuation_table(roots.continuation_table);
     }
@@ -249,9 +275,9 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            assert!((mutbox as usize) < self.mem.heap_base());
+            assert!((mutbox as usize) < self.state.heap_base);
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.mem.heap_base() {
+            if value.is_ptr() && value.get_ptr() >= self.state.heap_base {
                 self.mark_object(value);
             }
             self.steps += 1;
@@ -267,7 +293,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     unsafe fn mark_object(&mut self, value: Value) {
         self.steps += 1;
         assert!(!self.state.complete);
-        assert!((value.get_ptr() >= self.mem.heap_base()));
+        assert!((value.get_ptr() >= self.state.heap_base));
         let object = value.as_obj();
         if object.is_marked() {
             return;
@@ -302,7 +328,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             self,
             object,
             object.tag(),
-            self.mem.heap_base(),
+            self.state.heap_base,
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
@@ -346,7 +372,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
     unsafe fn sweep_phase_increment(&mut self) {
-        while self.state.sweep_line < self.mem.heap_pointer() {
+        while self.state.sweep_line < self.state.heap_end {
             let free_space = self.collect_contiguous_free_space();
             if free_space > 0 {
                 FREE_LIST
@@ -367,7 +393,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 let size = object_size(self.state.sweep_line).to_bytes().as_usize();
                 self.state.sweep_line += size;
             }
-            assert!(self.state.sweep_line <= self.mem.heap_pointer());
+            assert!(self.state.sweep_line <= self.state.heap_end);
 
             self.steps += 1;
             if self.steps > self.increment_limit {
@@ -390,7 +416,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
 
     unsafe fn collect_contiguous_free_space(&mut self) -> usize {
         let mut address = self.state.sweep_line;
-        while address < self.mem.heap_pointer() && !(address as *mut Obj).is_marked() {
+        while address < self.state.heap_end && !(address as *mut Obj).is_marked() {
             let tag = (address as *mut Obj).tag();
             if tag >= TAG_FREE_BLOCK_MIN {
                 let block = address as *mut FreeBlock;
@@ -399,7 +425,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 assert!(tag >= TAG_OBJECT && tag <= TAG_ONE_WORD_FILLER);
                 address += object_size(address).to_bytes().as_usize();
             }
-            assert!(address <= self.mem.heap_pointer());
+            assert!(address <= self.state.heap_end);
 
             self.steps += 1;
             if self.steps > self.increment_limit {

@@ -7,16 +7,6 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
-/// GC root set (excluding call stack).
-/// WASM does not allow access on to the native call stack.
-/// There, GC needs to start marking and complete moving on an empty call stack.
-pub struct Roots {
-    /// Static roots: An array of pointers to `mutbox` objects.
-    pub static_roots: Value,
-    /// Continuation table. Scalar value 0 if not (yet) allocated.
-    pub continuation_table: Value,
-}
-
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
 /// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
@@ -36,17 +26,9 @@ pub struct Roots {
 ///
 /// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
-    /// Get the current heap base.
-    unsafe fn heap_base(&self) -> usize;
-    /// Get the heap pointer after last GC run.
-    unsafe fn last_heap_pointer(&self) -> usize;
-    /// Get the current heap pointer, also called free pointer.
-    unsafe fn heap_pointer(&self) -> usize;
-    /// Get the current GC root set.
-    unsafe fn roots(&self) -> Roots;
-    /// Heap allocation function.
+    // Heap allocation function.
     unsafe fn allocate(&mut self, n: Words<u32>) -> Value;
-    /// Grow the heap, only explicitly used by the free list.
+    // Grow the heap, only explicitly used by the free list.
     unsafe fn grow_heap(&mut self, n: Words<u32>) -> Value;
 }
 
