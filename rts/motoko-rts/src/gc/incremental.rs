@@ -194,7 +194,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
-        println!(100, "START MARKING");
         debug_assert!(Self::pausing());
 
         #[cfg(debug_assertions)]
@@ -228,7 +227,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_sweeping(&mut self, heap_base: usize, heap_end: usize) {
-        println!(100, "START SWEEPING");
         debug_assert!(Self::mark_completed());
         let state = SweepState {
             sweep_line: heap_base,
@@ -365,7 +363,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 
     unsafe fn complete_marking(&mut self) {
-        println!(100, "COMPLETE MARKING");
         debug_assert!(!self.state.complete);
         self.state.complete = true;
 
@@ -412,7 +409,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
     }
 
     unsafe fn complete_sweeping(&mut self) {
-        println!(100, "COMPLETE SWEEPING");
         PHASE = Phase::Pause;
 
         #[cfg(debug_assertions)]
