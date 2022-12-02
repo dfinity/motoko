@@ -55,7 +55,7 @@ static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use crate::memory::ic;
-    assert!(ic::ALLOCATED >= LAST_ALLOCATED);
+    debug_assert!(ic::ALLOCATED >= LAST_ALLOCATED);
     const THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
     ic::ALLOCATED - LAST_ALLOCATED >= THRESHOLD
 }
@@ -70,7 +70,7 @@ unsafe fn update_statistics<M: Memory>(old_free_size: Bytes<u32>) {
     if IncrementalGC::<M>::pausing() {
         LAST_ALLOCATED = ic::ALLOCATED;
         let free_size = FREE_LIST.as_ref().unwrap().total_size().as_u32();
-        assert!(free_size <= ic::HP);
+        debug_assert!(free_size <= ic::HP);
         let live_set = Bytes(ic::HP - free_size);
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
     }
@@ -191,7 +191,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
-        assert!(Self::pausing());
+        debug_assert!(Self::pausing());
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
@@ -216,7 +216,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn mark_completed() -> bool {
         match &PHASE {
             Phase::Mark(state) => {
-                assert!(!state.complete || state.mark_stack.is_empty());
+                debug_assert!(!state.complete || state.mark_stack.is_empty());
                 state.complete
             }
             _ => false,
@@ -224,7 +224,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_sweeping(&mut self, heap_base: usize, heap_end: usize) {
-        assert!(Self::mark_completed());
+        debug_assert!(Self::mark_completed());
         let state = SweepState {
             sweep_line: heap_base,
             heap_end,
@@ -275,7 +275,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            assert!((mutbox as usize) < self.state.heap_base);
+            debug_assert!((mutbox as usize) < self.state.heap_base);
             let value = (*mutbox).field;
             if value.is_ptr() && value.get_ptr() >= self.state.heap_base {
                 self.mark_object(value);
@@ -292,26 +292,26 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 
     unsafe fn mark_object(&mut self, value: Value) {
         self.steps += 1;
-        assert!(!self.state.complete);
-        assert!((value.get_ptr() >= self.state.heap_base));
+        debug_assert!(!self.state.complete);
+        debug_assert!((value.get_ptr() >= self.state.heap_base));
         let object = value.as_obj();
         if object.is_marked() {
             return;
         }
         object.mark();
-        assert!(object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL);
+        debug_assert!(object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL);
         self.state.mark_stack.push(self.mem, value);
     }
 
     unsafe fn mark_phase_increment(&mut self) {
         if self.state.complete {
             // allocation after complete marking, wait until next empty call stack increment
-            assert!(self.state.mark_stack.is_empty());
+            debug_assert!(self.state.mark_stack.is_empty());
             return;
         }
         while let Some(value) = self.state.mark_stack.pop() {
-            assert!(value.is_ptr());
-            assert!(value.as_obj().is_marked());
+            debug_assert!(value.is_ptr());
+            debug_assert!(value.as_obj().is_marked());
             self.mark_fields(value.as_obj());
 
             self.steps += 1;
@@ -323,7 +323,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 
     unsafe fn mark_fields(&mut self, object: *mut Obj) {
-        assert!(object.is_marked());
+        debug_assert!(object.is_marked());
         visit_pointer_fields(
             self,
             object,
@@ -334,22 +334,22 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
                 gc.mark_object(field_value);
             },
             |gc, slice_start, array| {
-                assert!((array as *mut Obj).is_marked());
+                debug_assert!((array as *mut Obj).is_marked());
                 const SLICE_INCREMENT: u32 = 127;
-                assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
+                debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     (*array).header.raw_tag = mark(new_start);
-                    assert!(!gc.state.complete);
+                    debug_assert!(!gc.state.complete);
                     gc.state
                         .mark_stack
                         .push(gc.mem, Value::from_ptr(array as usize));
-                    assert!((array as *mut Obj).is_marked());
+                    debug_assert!((array as *mut Obj).is_marked());
                     gc.steps += SLICE_INCREMENT as usize;
                     new_start
                 } else {
                     (*array).header.raw_tag = mark(TAG_ARRAY);
-                    assert!((array as *mut Obj).is_marked());
+                    debug_assert!((array as *mut Obj).is_marked());
                     gc.steps += array.len() as usize;
                     array.len()
                 }
@@ -358,7 +358,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 
     unsafe fn complete_marking(&mut self) {
-        assert!(!self.state.complete);
+        debug_assert!(!self.state.complete);
         self.state.complete = true;
 
         #[cfg(debug_assertions)]
@@ -387,13 +387,13 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 self.state.sweep_line += free_space;
             } else {
                 let object = self.state.sweep_line as *mut Obj;
-                assert!(object.tag() >= TAG_OBJECT && object.tag() <= TAG_NULL);
-                assert!(object.is_marked());
+                debug_assert!(object.tag() >= TAG_OBJECT && object.tag() <= TAG_NULL);
+                debug_assert!(object.is_marked());
                 object.unmark();
                 let size = object_size(self.state.sweep_line).to_bytes().as_usize();
                 self.state.sweep_line += size;
             }
-            assert!(self.state.sweep_line <= self.state.heap_end);
+            debug_assert!(self.state.sweep_line <= self.state.heap_end);
 
             self.steps += 1;
             if self.steps > self.increment_limit {
@@ -422,10 +422,10 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 let block = address as *mut FreeBlock;
                 address += block.size().as_usize();
             } else {
-                assert!(tag >= TAG_OBJECT && tag <= TAG_ONE_WORD_FILLER);
+                debug_assert!(tag >= TAG_OBJECT && tag <= TAG_ONE_WORD_FILLER);
                 address += object_size(address).to_bytes().as_usize();
             }
-            assert!(address <= self.state.heap_end);
+            debug_assert!(address <= self.state.heap_end);
 
             self.steps += 1;
             if self.steps > self.increment_limit {
@@ -453,14 +453,14 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
 #[no_mangle]
 pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
-    assert!(!is_skewed(new_object as u32));
+    debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
         Phase::Pause | Phase::Stop => false,
         Phase::Mark(_) => true,
         Phase::Sweep(state) => new_object as usize >= state.sweep_line,
     };
     if should_mark {
-        assert!(!new_object.is_marked());
+        debug_assert!(!new_object.is_marked());
         new_object.mark();
     }
 }

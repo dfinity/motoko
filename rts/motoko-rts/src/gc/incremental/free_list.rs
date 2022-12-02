@@ -92,36 +92,36 @@ impl FreeBlock {
     /// Initialize a new free block. Overwriting the existing content.
     /// Zeros block space in debug mode.
     pub unsafe fn initialize(self: *mut Self, size: Bytes<u32>) {
-        assert_ne!(self, null_mut());
-        assert!(size >= Self::min_size());
-        assert_eq!(size.as_u32() % WORD_SIZE, 0);
+        debug_assert_ne!(self, null_mut());
+        debug_assert!(size >= Self::min_size());
+        debug_assert_eq!(size.as_u32() % WORD_SIZE, 0);
         let words = size.to_words();
         #[cfg(debug_assertions)]
         crate::mem_utils::memzero(self as usize, words);
-        assert!(words.as_u32() <= u32::MAX - TAG_FREE_BLOCK_MIN);
+        debug_assert!(words.as_u32() <= u32::MAX - TAG_FREE_BLOCK_MIN);
         (*self).header.raw_tag = unmark(TAG_FREE_BLOCK_MIN + words.as_u32());
-        assert!(!is_marked((*self).header.raw_tag));
+        debug_assert!(!is_marked((*self).header.raw_tag));
         (*self).next = null_mut();
         (*self).previous = null_mut();
     }
 
     /// Size of the free entire free block (includes object header)
     pub unsafe fn size(self: *mut Self) -> Bytes<u32> {
-        assert_ne!(self, null_mut());
-        assert!(!is_marked((*self).header.raw_tag));
-        assert!((*self).header.raw_tag >= TAG_FREE_BLOCK_MIN);
+        debug_assert_ne!(self, null_mut());
+        debug_assert!(!is_marked((*self).header.raw_tag));
+        debug_assert!((*self).header.raw_tag >= TAG_FREE_BLOCK_MIN);
         let words = (*self).header.raw_tag - TAG_FREE_BLOCK_MIN;
         Words(words).to_bytes()
     }
 
     /// Remainder block is split off and returned to the free unless it is too small.
     pub unsafe fn split(self: *mut Self, size: Bytes<u32>) -> *mut FreeBlock {
-        assert_ne!(self, null_mut());
-        assert_eq!(size.as_u32() % WORD_SIZE, 0);
-        assert!(size <= self.size());
+        debug_assert_ne!(self, null_mut());
+        debug_assert_eq!(size.as_u32() % WORD_SIZE, 0);
+        debug_assert!(size <= self.size());
         let remainder_address = self as usize + size.as_usize();
         let remainder_size = self.size() - size;
-        assert_eq!(remainder_size.as_u32() % WORD_SIZE, 0);
+        debug_assert_eq!(remainder_size.as_u32() % WORD_SIZE, 0);
         #[cfg(debug_assertions)]
         crate::mem_utils::memzero(self as usize, size.to_words());
         if remainder_size < Self::min_size() {
@@ -136,7 +136,7 @@ impl FreeBlock {
 
     /// Unused small free block remainder. Contributes to internal fragmentation.
     pub unsafe fn write_free_filler(start_address: usize, size: Bytes<u32>) {
-        assert_eq!(size.as_u32() % WORD_SIZE, 0);
+        debug_assert_eq!(size.as_u32() % WORD_SIZE, 0);
         for word in 0..size.as_u32() / WORD_SIZE {
             let current_address = start_address as u32 + word * WORD_SIZE;
             *(current_address as *mut u32) = TAG_ONE_WORD_FILLER;
@@ -152,7 +152,7 @@ struct Range {
 
 impl Range {
     pub fn new(lower: usize, upper: usize) -> Range {
-        assert!(lower <= upper);
+        debug_assert!(lower <= upper);
         Range { lower, upper }
     }
 
@@ -172,7 +172,7 @@ struct FreeList {
 
 impl FreeList {
     pub fn new(size_class: Range) -> FreeList {
-        assert!(size_class.lower() >= size_of::<FreeBlock>().to_bytes().as_usize());
+        debug_assert!(size_class.lower() >= size_of::<FreeBlock>().to_bytes().as_usize());
         FreeList {
             size_class,
             first: null_mut(),
@@ -196,24 +196,24 @@ impl FreeList {
     }
 
     pub unsafe fn insert(&mut self, block: *mut FreeBlock) {
-        assert_ne!(block, null_mut());
-        assert!(self.fits(block));
-        assert_eq!((*block).next, null_mut());
-        assert_eq!((*block).previous, null_mut());
+        debug_assert_ne!(block, null_mut());
+        debug_assert!(self.fits(block));
+        debug_assert_eq!((*block).next, null_mut());
+        debug_assert_eq!((*block).previous, null_mut());
         (*block).next = self.first;
         if self.first != null_mut() {
             (*self.first).previous = block;
         }
         self.first = block;
-        assert!(self.fits(block));
+        debug_assert!(self.fits(block));
     }
 
     /// returns null if empty
     pub unsafe fn remove_first(&mut self) -> *mut FreeBlock {
         let block = self.first;
         if block != null_mut() {
-            assert!(self.fits(block));
-            assert!((*block).previous == null_mut());
+            debug_assert!(self.fits(block));
+            debug_assert!((*block).previous == null_mut());
             let next = (*block).next;
             if next != null_mut() {
                 (*next).previous = null_mut();
@@ -221,13 +221,13 @@ impl FreeList {
             self.first = next;
             (*block).next = null_mut();
         }
-        assert!(self.fits(block));
+        debug_assert!(self.fits(block));
         block
     }
 
     pub unsafe fn remove(&mut self, block: *mut FreeBlock) {
-        assert_ne!(block, null_mut());
-        assert!(self.fits(block));
+        debug_assert_ne!(block, null_mut());
+        debug_assert!(self.fits(block));
         let previous = (*block).previous;
         let next = (*block).next;
         if previous != null_mut() {
@@ -237,7 +237,7 @@ impl FreeList {
             (*next).previous = previous;
         }
         if block == self.first {
-            assert_eq!(previous, null_mut());
+            debug_assert_eq!(previous, null_mut());
             self.first = next;
         }
         (*block).next = null_mut();
@@ -246,7 +246,7 @@ impl FreeList {
 
     // Linear search is only used for overflow list.
     pub unsafe fn remove_first_fit(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
-        assert!(self.is_overflow_list());
+        debug_assert!(self.is_overflow_list());
         let mut block = self.first;
         while block != null_mut() && block.size() < size {
             block = (*block).next;
@@ -292,7 +292,7 @@ impl SegregatedFreeList {
 
     pub fn new_specific(size_classes: &[usize]) -> SegregatedFreeList {
         let lists = from_fn(|index| Self::free_list(size_classes, index));
-        assert!(lists[lists.len() - 1].is_overflow_list());
+        debug_assert!(lists[lists.len() - 1].is_overflow_list());
         SegregatedFreeList {
             lists,
             total_size: Bytes(0),
@@ -336,11 +336,11 @@ impl SegregatedFreeList {
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
         let list = self.allocation_list(size);
-        assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
+        debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
         let mut block = if list.is_overflow_list() {
             list.remove_first_fit(size)
         } else {
-            assert!(size.as_usize() <= list.size_class.lower());
+            debug_assert!(size.as_usize() <= list.size_class.lower());
             list.remove_first()
         };
         if block == null_mut() {
@@ -348,7 +348,7 @@ impl SegregatedFreeList {
         } else {
             self.total_size -= block.size();
         }
-        assert!(block != null_mut());
+        debug_assert!(block != null_mut());
         if block.size() > size {
             let remainder = block.split(size);
             if remainder != null_mut() {
@@ -370,8 +370,8 @@ impl SegregatedFreeList {
         let mut address = start_address;
         while address < end_address {
             let object = address as *mut Obj;
-            assert_ne!(object, null_mut());
-            assert!(!object.is_marked());
+            debug_assert_ne!(object, null_mut());
+            debug_assert!(!object.is_marked());
             if object.tag() >= TAG_FREE_BLOCK_MIN {
                 let block = object as *mut FreeBlock;
                 let block_size = block.size();
@@ -384,7 +384,7 @@ impl SegregatedFreeList {
             } else {
                 address += object_size(address).to_bytes().as_usize();
             };
-            assert!(address <= end_address);
+            debug_assert!(address <= end_address);
         }
         if length >= FreeBlock::min_size() {
             let block = start_address as *mut FreeBlock;
@@ -396,24 +396,24 @@ impl SegregatedFreeList {
     }
 
     unsafe fn remove_block(&mut self, block: *mut FreeBlock) {
-        assert_ne!(block, null_mut());
+        debug_assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
-        assert!(list.size_class.includes(block.size().as_usize()));
+        debug_assert!(list.size_class.includes(block.size().as_usize()));
         list.remove(block);
         self.total_size -= block.size();
     }
 
     unsafe fn add_block(&mut self, block: *mut FreeBlock) {
-        assert_ne!(block, null_mut());
+        debug_assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
-        assert!(list.size_class.includes(block.size().as_usize()));
+        debug_assert!(list.size_class.includes(block.size().as_usize()));
         list.insert(block);
         self.total_size += block.size();
     }
 
     unsafe fn grow_heap<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
         let size = max(size, FreeBlock::min_size());
-        assert_eq!(size.as_u32() % WORD_SIZE, 0);
+        debug_assert_eq!(size.as_u32() % WORD_SIZE, 0);
         let value = mem.grow_heap(size.to_words());
         let block = value.get_ptr() as *mut FreeBlock;
         block.initialize(size);
@@ -426,8 +426,8 @@ impl SegregatedFreeList {
             let mut previous: *mut FreeBlock = null_mut();
             let mut block = list.first;
             while block != null_mut() {
-                assert!(list.fits(block));
-                assert_eq!((*block).previous, previous);
+                debug_assert!(list.fits(block));
+                debug_assert_eq!((*block).previous, previous);
                 previous = block;
                 block = (*block).next;
             }
