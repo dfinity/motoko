@@ -542,12 +542,7 @@ func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : (id 
 
     let exp = @nextExpiration @timers;
     if (exp == 0) @timers := null;
-    let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
-    /*FIXME: this is expensive*/
-    if (exp != 0 and prev != 0 and exp > prev) {
-        // reinstall
-        ignore (prim "global_timer_set" : Nat64 -> Nat64) prev;
-    };
+    ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
     id
 };
