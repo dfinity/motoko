@@ -70,8 +70,8 @@ impl Memory for IcMemory {
     #[inline]
     unsafe fn allocate(&mut self, amount: Words<u32>) -> Value {
         ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
-        match &mut crate::gc::incremental::STATE {
-            Some(state) => state.free_list.allocate(self, amount.to_bytes()),
+        match &mut crate::gc::incremental::FREE_LIST {
+            Some(free_list) => free_list.allocate(self, amount.to_bytes()),
             None => self.grow_heap(amount),
         }
     }
