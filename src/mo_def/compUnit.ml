@@ -30,11 +30,10 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let rec go imports ds : comp_unit =
     match ds with
     (* imports *)
-    | {it = LetD (p, ({it = ImportE (url, ri); _} as e), None); _} :: ds' ->
+    | {it = LetD (p, ({it = ImportE (url, ri); _} as e), _); _} :: ds' ->
       let i : import = { it = (p, url, ri); note = e.note.note_typ; at = e.at } in
       go (i :: imports) ds'
-    (* import cannot use let else binding *)
-    | {it = LetD (_, {it = ImportE _; _}, Some _); _} :: _ -> assert false
+
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
