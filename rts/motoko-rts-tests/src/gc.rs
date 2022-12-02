@@ -14,7 +14,7 @@ mod utils;
 
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::remembered_set::RememberedSet;
-use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
+use motoko_rts::gc::generational::write_barrier::REMEMBERED_SET;
 use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
@@ -372,7 +372,6 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 
 impl GC {
     fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
-        let heap_base = heap.heap_base_address() as u32;
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
@@ -384,11 +383,6 @@ impl GC {
                 unsafe {
                     copying_gc_internal(
                         heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
                         // note_live_size
@@ -396,6 +390,7 @@ impl GC {
                         // note_reclaimed
                         |_reclaimed| {},
                     );
+                    heap_2.set_heap_ptr_address(heap_1.heap_ptr_address());
                 }
                 true
             }
@@ -404,11 +399,6 @@ impl GC {
                 unsafe {
                     compacting_gc_internal(
                         heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
                         // note_live_size
@@ -416,6 +406,7 @@ impl GC {
                         // note_reclaimed
                         |_reclaimed| {},
                     );
+                    heap_2.set_heap_ptr_address(heap_1.heap_ptr_address());
                 }
                 true
             }
@@ -427,25 +418,9 @@ impl GC {
                 };
                 unsafe {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
-                    LAST_HP = heap_1.last_ptr_address() as u32;
-
-                    let limits = motoko_rts::gc::generational::Limits {
-                        base: heap_base as usize,
-                        last_free: heap_1.last_ptr_address(),
-                        free: heap_1.heap_ptr_address(),
-                    };
-                    let roots = motoko_rts::gc::generational::Roots {
-                        static_roots,
-                        continuation_table_ptr_loc: continuation_table_ptr_address,
-                    };
-                    let gc_heap = motoko_rts::gc::generational::Heap {
-                        mem: heap,
-                        limits,
-                        roots,
-                    };
-                    let mut gc = GenerationalGC::new(gc_heap, strategy);
+                    let mut gc = GenerationalGC::new(heap, strategy);
                     gc.run();
-                    let free = gc.heap.limits.free;
+                    let free = heap.heap_ptr_address();
                     heap.set_last_ptr_address(free);
                     heap.set_heap_ptr_address(free);
                 }

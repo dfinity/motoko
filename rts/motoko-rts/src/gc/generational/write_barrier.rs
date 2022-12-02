@@ -6,16 +6,11 @@ use crate::types::Value;
 use motoko_rts_macros::ic_mem_fn;
 
 pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
-pub static mut HEAP_BASE: u32 = 0;
-pub static mut LAST_HP: u32 = 0;
 
 #[cfg(feature = "ic")]
 /// (Re-)initialize the write barrier for generational GC.
 pub(crate) unsafe fn init_post_write_barrier<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
     REMEMBERED_SET = Some(RememberedSet::new(mem));
-    HEAP_BASE = ic::get_aligned_heap_base();
-    LAST_HP = ic::LAST_HP;
 }
 
 /// Write barrier to be called AFTER the pointer store, used for generational GC.
@@ -29,12 +24,12 @@ pub unsafe fn post_write_barrier<M: Memory>(mem: &mut M, location: u32) {
     debug_assert_eq!(location & 0b1, 0);
     // Checks have been optimized according to the frequency of occurrence.
     // Only record locations inside old generation. Static roots are anyway marked by GC.
-    if location < LAST_HP {
+    if location < mem.last_heap_pointer() {
         // Nested ifs are more efficient when counting instructions on IC (explicit return counts as an instruction).
         let value = *(location as *mut Value);
-        if value.points_to_or_beyond(LAST_HP as usize) {
+        if value.points_to_or_beyond(mem.last_heap_pointer() as usize) {
             #[allow(clippy::collapsible_if)]
-            if location >= HEAP_BASE {
+            if location >= mem.heap_base() {
                 // Trap pointers that lead from old generation (or static roots) to young generation.
                 REMEMBERED_SET
                     .as_mut()

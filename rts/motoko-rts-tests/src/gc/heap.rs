@@ -20,22 +20,30 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
-    unsafe fn heap_base(&self) -> usize {
-        self.heap_base_address()
+    unsafe fn heap_base(&self) -> u32 {
+        self.heap_base_address() as u32
     }
 
-    unsafe fn last_heap_pointer(&self) -> usize {
-        self.last_ptr_address()
+    unsafe fn last_heap_pointer(&self) -> u32 {
+        self.last_ptr_address() as u32
     }
 
-    unsafe fn heap_pointer(&self) -> usize {
-        self.heap_ptr_address()
+    unsafe fn set_last_heap_pointer(&mut self, last_heap_pointer: u32) {
+        self.set_last_ptr_address(last_heap_pointer as usize);
+    }
+
+    unsafe fn heap_pointer(&self) -> u32 {
+        self.heap_ptr_address() as u32
+    }
+
+    unsafe fn set_heap_pointer(&mut self, heap_pointer: u32) {
+        self.set_heap_ptr_address(heap_pointer as usize);
     }
 
     unsafe fn roots(&self) -> Roots {
         Roots {
             static_roots: Value::from_ptr(self.static_root_array_address()),
-            continuation_table: *(self.continuation_table_ptr_address() as *mut Value),
+            continuation_table_address: self.continuation_table_ptr_address() as *mut Value,
         }
     }
 

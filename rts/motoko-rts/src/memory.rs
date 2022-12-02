@@ -13,8 +13,8 @@ use motoko_rts_macros::ic_mem_fn;
 pub struct Roots {
     /// Static roots: An array of pointers to `mutbox` objects.
     pub static_roots: Value,
-    /// Continuation table. Scalar value 0 if not (yet) allocated.
-    pub continuation_table: Value,
+    /// Address to the continuation table.
+    pub continuation_table_address: *mut Value,
 }
 
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
@@ -37,13 +37,19 @@ pub struct Roots {
 /// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
     /// Get the current heap base.
-    unsafe fn heap_base(&self) -> usize;
+    unsafe fn heap_base(&self) -> u32;
     /// Get the heap pointer after last GC run.
-    unsafe fn last_heap_pointer(&self) -> usize;
+    unsafe fn last_heap_pointer(&self) -> u32;
+    /// Set the last heap pointer after GC run.
+    unsafe fn set_last_heap_pointer(&mut self, last_heap_pointer: u32);
     /// Get the current heap pointer, also called free pointer.
-    unsafe fn heap_pointer(&self) -> usize;
+    unsafe fn heap_pointer(&self) -> u32;
+    /// Set the current heap pointer.
+    unsafe fn set_heap_pointer(&mut self, heap_pointer: u32);
+
     /// Get the current GC root set.
     unsafe fn roots(&self) -> Roots;
+
     /// Heap allocation function.
     unsafe fn allocate(&mut self, n: Words<u32>) -> Value;
     /// Grow the heap, only explicitly used by the free list.

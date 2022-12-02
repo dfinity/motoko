@@ -27,16 +27,24 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
-    unsafe fn heap_base(&self) -> usize {
+    unsafe fn heap_base(&self) -> u32 {
         0
     }
 
-    unsafe fn last_heap_pointer(&self) -> usize {
+    unsafe fn last_heap_pointer(&self) -> u32 {
+        0
+    }
+
+    unsafe fn set_last_heap_pointer(&mut self, _: u32) {
         panic!("Not implemented");
     }
 
-    unsafe fn heap_pointer(&self) -> usize {
-        self.hp
+    unsafe fn heap_pointer(&self) -> u32 {
+        self.hp as u32
+    }
+
+    unsafe fn set_heap_pointer(&mut self, _: u32) {
+        panic!("Not implemented");
     }
 
     unsafe fn roots(&self) -> Roots {

@@ -13,60 +13,26 @@ use super::mark_stack::MarkStack;
 
 #[cfg(feature = "ic")]
 pub unsafe fn check_mark_completeness<M: Memory>(mem: &mut M) {
-    let heap = get_heap();
     let mark_stack = MarkStack::new(mem);
     let visited = RememberedSet::new(mem);
     let mut checker = MarkPhaseChecker {
         mem,
-        heap,
         mark_stack,
         visited,
     };
     checker.check_mark_completeness();
 }
 
-#[cfg(feature = "ic")]
-pub unsafe fn check_memory(allow_marked_objects: bool) {
-    let heap = get_heap();
+pub unsafe fn check_memory<M: Memory>(mem: &mut M, allow_marked_objects: bool) {
     let checker = MemoryChecker {
-        heap,
+        mem,
         allow_marked_objects,
     };
     checker.check_memory();
 }
 
-#[cfg(feature = "ic")]
-unsafe fn get_heap() -> Heap {
-    use crate::memory::ic;
-    let limits = Limits {
-        base: ic::get_aligned_heap_base() as usize,
-        free: ic::HP as usize,
-    };
-    let roots = Roots {
-        static_roots: ic::get_static_roots(),
-        continuation_table: *crate::continuation_table::continuation_table_loc(),
-    };
-    Heap { limits, roots }
-}
-
-struct Limits {
-    pub base: usize,
-    pub free: usize,
-}
-
-struct Roots {
-    pub static_roots: Value,
-    pub continuation_table: Value,
-}
-
-struct Heap {
-    limits: Limits,
-    roots: Roots,
-}
-
 struct MarkPhaseChecker<'a, M: Memory> {
     mem: &'a mut M,
-    heap: Heap,
     mark_stack: MarkStack,
     visited: RememberedSet,
 }
@@ -87,11 +53,11 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
     }
 
     unsafe fn mark_static_roots(&mut self) {
-        let root_array = self.heap.roots.static_roots.as_array();
+        let root_array = self.mem.roots().static_roots.as_array();
         for i in 0..root_array.len() {
             let mutbox = root_array.get(i).as_mutbox();
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap.limits.base {
+            if value.is_ptr() && value.get_ptr() >= self.mem.heap_base() as usize {
                 assert_ne!(value.get_raw(), 0);
                 self.mark_object(value);
             }
@@ -99,9 +65,10 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
     }
 
     unsafe fn mark_continuation_table(&mut self) {
-        if self.heap.roots.continuation_table.is_ptr() {
-            assert_ne!(self.heap.roots.continuation_table.get_raw(), 0);
-            self.mark_object(self.heap.roots.continuation_table);
+        let continuation_table = *self.mem.roots().continuation_table_address;
+        if continuation_table.is_ptr() {
+            assert_ne!(continuation_table.get_raw(), 0);
+            self.mark_object(continuation_table);
         }
     }
 
@@ -127,7 +94,7 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
             self,
             object,
             object.tag(),
-            self.heap.limits.base,
+            self.mem.heap_base() as usize,
             |gc, field_address| {
                 assert_ne!((*field_address).get_raw(), 0);
                 gc.mark_object(*field_address);
@@ -139,18 +106,18 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
     unsafe fn check_object_header(&self, object: Value) {
         assert!(object.is_ptr());
         let pointer = object.get_ptr();
-        assert!(pointer < self.heap.limits.free);
+        assert!(pointer < self.mem.heap_pointer() as usize);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
     }
 }
 
-struct MemoryChecker {
-    heap: Heap,
+struct MemoryChecker<'a, M: Memory> {
+    mem: &'a mut M,
     allow_marked_objects: bool,
 }
 
-impl MemoryChecker {
+impl<'a, M: Memory> MemoryChecker<'a, M> {
     /// Check whether all objects and pointers in the memory have plausible values.
     unsafe fn check_memory(&self) {
         self.check_static_roots();
@@ -159,12 +126,12 @@ impl MemoryChecker {
     }
 
     unsafe fn check_static_roots(&self) {
-        let root_array = self.heap.roots.static_roots.as_array();
+        let root_array = self.mem.roots().static_roots.as_array();
         for i in 0..root_array.len() {
             let mutbox = root_array.get(i).as_mutbox();
-            assert!((mutbox as usize) < self.heap.limits.base);
+            assert!((mutbox as usize) < self.mem.heap_base() as usize);
             let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(field_addr, self.heap.limits.base) {
+            if pointer_to_dynamic_heap(field_addr, self.mem.heap_base() as usize) {
                 let object = *field_addr;
                 self.check_object(object);
             }
@@ -172,8 +139,9 @@ impl MemoryChecker {
     }
 
     unsafe fn check_continuation_table(&self) {
-        if self.heap.roots.continuation_table.is_ptr() {
-            self.check_object(self.heap.roots.continuation_table);
+        let continuation_table = *self.mem.roots().continuation_table_address;
+        if continuation_table.is_ptr() {
+            self.check_object(continuation_table);
         }
     }
 
@@ -198,7 +166,7 @@ impl MemoryChecker {
         assert!(object.is_ptr());
         let pointer = object.get_ptr();
         assert_ne!(pointer as *mut Obj, null_mut());
-        assert!(pointer < self.heap.limits.free);
+        assert!(pointer < self.mem.heap_pointer() as usize);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         if !self.allow_marked_objects {
@@ -207,8 +175,8 @@ impl MemoryChecker {
     }
 
     unsafe fn check_heap(&self) {
-        let mut pointer = self.heap.limits.base;
-        while pointer < self.heap.limits.free {
+        let mut pointer = self.mem.heap_base() as usize;
+        while pointer < self.mem.heap_pointer() as usize {
             let object = Value::from_ptr(pointer as usize);
             let tag = object.tag();
             if tag >= TAG_FREE_BLOCK_MIN {

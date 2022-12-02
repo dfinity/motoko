@@ -37,7 +37,7 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     let old_free_size = FREE_LIST.as_ref().unwrap().total_size();
     IncrementalGC::instance(mem).empty_call_stack_increment();
-    update_statistics::<M>(old_free_size);
+    update_statistics(mem, old_free_size);
 }
 
 #[cfg(feature = "ic")]
@@ -52,7 +52,7 @@ unsafe fn should_start() -> bool {
 }
 
 #[cfg(feature = "ic")]
-unsafe fn update_statistics<M: Memory>(old_free_size: Bytes<u32>) {
+unsafe fn update_statistics<M: Memory>(mem: &mut M, old_free_size: Bytes<u32>) {
     use crate::memory::ic;
     let free_size = FREE_LIST.as_ref().unwrap().total_size();
     if free_size > old_free_size {
@@ -61,8 +61,8 @@ unsafe fn update_statistics<M: Memory>(old_free_size: Bytes<u32>) {
     if IncrementalGC::<M>::pausing() {
         LAST_ALLOCATED = ic::ALLOCATED;
         let free_size = FREE_LIST.as_ref().unwrap().total_size().as_u32();
-        assert!(free_size <= ic::HP);
-        let live_set = Bytes(ic::HP - free_size);
+        assert!(free_size <= mem.heap_pointer());
+        let live_set = Bytes(mem.heap_pointer() - free_size);
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
     }
 }
@@ -129,7 +129,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// A GC increment is implicitly combined with the write barrier.
     #[inline]
     unsafe fn pre_write_barrier(&mut self, value: Value) {
-        assert!(value.is_ptr() && value.get_ptr() >= self.mem.heap_base());
+        assert!(value.is_ptr() && value.get_ptr() >= self.mem.heap_base() as usize);
         if let Phase::Mark(state) = &mut PHASE {
             if !state.complete {
                 let mut gc = Increment::instance(self.mem, state, Self::SMALL_INCREMENT_LIMIT);
@@ -170,7 +170,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
-        sanity_checks::check_memory(false);
+        sanity_checks::check_memory(self.mem, false);
 
         let mark_stack = MarkStack::new(self.mem);
         let state = MarkState {
@@ -200,7 +200,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_sweeping(&mut self) {
         assert!(Self::mark_completed());
         let state = SweepState {
-            sweep_line: self.mem.heap_base(),
+            sweep_line: self.mem.heap_base() as usize,
         };
         PHASE = Phase::Sweep(state);
 
@@ -209,7 +209,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
-        sanity_checks::check_memory(true);
+        sanity_checks::check_memory(self.mem, true);
 
         self.increment(Self::LARGE_INCREMENT_LIMIT);
     }
@@ -242,16 +242,16 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     unsafe fn mark_roots(&mut self) {
         let roots = self.mem.roots();
         self.mark_static_roots(roots.static_roots);
-        self.mark_continuation_table(roots.continuation_table);
+        self.mark_continuation_table(*roots.continuation_table_address);
     }
 
     unsafe fn mark_static_roots(&mut self, static_roots: Value) {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            assert!((mutbox as usize) < self.mem.heap_base());
+            assert!((mutbox as usize) < self.mem.heap_base() as usize);
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.mem.heap_base() {
+            if value.is_ptr() && value.get_ptr() >= self.mem.heap_base() as usize {
                 self.mark_object(value);
             }
             self.steps += 1;
@@ -267,7 +267,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     unsafe fn mark_object(&mut self, value: Value) {
         self.steps += 1;
         assert!(!self.state.complete);
-        assert!((value.get_ptr() >= self.mem.heap_base()));
+        assert!((value.get_ptr() >= self.mem.heap_base() as usize));
         let object = value.as_obj();
         if object.is_marked() {
             return;
@@ -302,7 +302,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             self,
             object,
             object.tag(),
-            self.mem.heap_base(),
+            self.mem.heap_base() as usize,
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
@@ -346,7 +346,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
     unsafe fn sweep_phase_increment(&mut self) {
-        while self.state.sweep_line < self.mem.heap_pointer() {
+        while self.state.sweep_line < self.mem.heap_pointer() as usize {
             let free_space = self.collect_contiguous_free_space();
             if free_space > 0 {
                 FREE_LIST
@@ -367,7 +367,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 let size = object_size(self.state.sweep_line).to_bytes().as_usize();
                 self.state.sweep_line += size;
             }
-            assert!(self.state.sweep_line <= self.mem.heap_pointer());
+            assert!(self.state.sweep_line <= self.mem.heap_pointer() as usize);
 
             self.steps += 1;
             if self.steps > self.increment_limit {
@@ -385,12 +385,12 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
-        sanity_checks::check_memory(false);
+        sanity_checks::check_memory(self.mem, false);
     }
 
     unsafe fn collect_contiguous_free_space(&mut self) -> usize {
         let mut address = self.state.sweep_line;
-        while address < self.mem.heap_pointer() && !(address as *mut Obj).is_marked() {
+        while address < self.mem.heap_pointer() as usize && !(address as *mut Obj).is_marked() {
             let tag = (address as *mut Obj).tag();
             if tag >= TAG_FREE_BLOCK_MIN {
                 let block = address as *mut FreeBlock;
@@ -399,7 +399,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 assert!(tag >= TAG_OBJECT && tag <= TAG_ONE_WORD_FILLER);
                 address += object_size(address).to_bytes().as_usize();
             }
-            assert!(address <= self.mem.heap_pointer());
+            assert!(address <= self.mem.heap_pointer() as usize);
 
             self.steps += 1;
             if self.steps > self.increment_limit {

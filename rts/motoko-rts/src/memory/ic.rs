@@ -19,21 +19,21 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
 
 /// Heap base address
-pub(crate) static mut BASE: u32 = 0;
+static mut BASE: u32 = 0;
 
 /// Heap pointer
-pub(crate) static mut HP: u32 = 0;
+static mut HP: u32 = 0;
 
 /// Heap pointer after last GC
-pub(crate) static mut LAST_HP: u32 = 0;
+static mut LAST_HP: u32 = 0;
 
 // Provided by generated code
 extern "C" {
-    pub(crate) fn get_heap_base() -> u32;
+    fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> Value;
 }
 
-pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
+unsafe fn get_aligned_heap_base() -> u32 {
     // align to 32 bytes
     ((get_heap_base() + 31) / 32) * 32
 }
@@ -73,22 +73,30 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 pub struct IcMemory;
 
 impl Memory for IcMemory {
-    unsafe fn heap_base(&self) -> usize {
-        BASE as usize
+    unsafe fn heap_base(&self) -> u32 {
+        BASE
     }
 
-    unsafe fn last_heap_pointer(&self) -> usize {
-        LAST_HP as usize
+    unsafe fn last_heap_pointer(&self) -> u32 {
+        LAST_HP
     }
 
-    unsafe fn heap_pointer(&self) -> usize {
-        HP as usize
+    unsafe fn set_last_heap_pointer(&mut self, last_heap_pointer: u32) {
+        LAST_HP = last_heap_pointer;
+    }
+
+    unsafe fn heap_pointer(&self) -> u32 {
+        HP
+    }
+
+    unsafe fn set_heap_pointer(&mut self, heap_pointer: u32) {
+        HP = heap_pointer;
     }
 
     unsafe fn roots(&self) -> Roots {
         Roots {
             static_roots: get_static_roots(),
-            continuation_table: *continuation_table_loc(),
+            continuation_table_address: continuation_table_loc(),
         }
     }
 
