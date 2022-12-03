@@ -8,7 +8,7 @@ open Wasm.Sexpr
 module type Config = sig
   val include_sources : bool
   val include_types : bool
-  val include_docs : Syntax.prog option
+  val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
   val main_file : string option
 end
 
@@ -35,9 +35,9 @@ module Make (Cfg : Config) = struct
   
   let trivia at it =
     match Cfg.include_docs with
-    | Some prog ->
+    | Some table ->
       let rec lookup_trivia (line, column) =
-        Trivia.PosHashtbl.find_opt prog.note.Syntax.trivia Trivia.{ line; column }
+        Trivia.PosHashtbl.find_opt table Trivia.{ line; column }
       and find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
         lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column) |> Option.get
       in
