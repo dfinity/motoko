@@ -129,9 +129,11 @@ let js_parse_motoko s =
   let main_file = "" in
   let parse_result = Pipeline.parse_string main_file (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    let module Arrange = Mo_def.Arrange.Make (struct
+    let open Mo_def in
+    let module Arrange = Arrange.Make (struct
       let include_sources = true
       let include_types = false
+      let include_docs = Some prog.note.Syntax.trivia
       let main_file = Some main_file
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
@@ -143,9 +145,11 @@ let js_parse_motoko_typed paths =
   in
   js_result load_result (fun (libs, progs, senv) ->
   progs |> List.map (fun prog ->
-    let module Arrange_sources_types = Mo_def.Arrange.Make (struct
+    let open Mo_def in
+    let module Arrange_sources_types = Arrange.Make (struct
       let include_sources = true
       let include_types = true
+      let include_docs = Some prog.note.Syntax.trivia
       let main_file = Some prog.at.left.file
     end)
     in object%js
