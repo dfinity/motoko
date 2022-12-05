@@ -59,6 +59,9 @@ let js_check source =
   Mo_types.Cons.session (fun _ -> 
     js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null))
 
+let js_set_run_step_limit limit =
+  Mo_interpreter.Interpret.step_limit := limit
+
 let js_run list source =
   Mo_types.Cons.session (fun _ -> 
     let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in

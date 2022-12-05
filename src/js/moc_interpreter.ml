@@ -20,5 +20,6 @@ let () =
       method clearPackage () = clear_package ()
       method setCandidPath path = set_candid_path path
       method setActorAliases entries = set_actor_aliases entries
+      method setRunStepLimit limit = js_set_run_step_limit limit
       method run list s = wrap_output (fun _ -> js_run list s)
      end);
