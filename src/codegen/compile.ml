@@ -1368,9 +1368,12 @@ module Tagged = struct
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field raw_tag_field ^^
     get_object ^^
-    compile_add_const ptr_unskew ^^
-    E.call_import env "rts" "mark_new_allocation" ^^
-    get_object
+    (if !Flags.gc_strategy = Flags.Incremental then
+      compile_add_const ptr_unskew ^^
+      E.call_import env "rts" "mark_new_allocation" ^^
+      get_object
+    else
+      G.nop)
 
   (* Assumes a pointer to the object on the stack *)
   let store_unmarked_tag env tag =
@@ -1451,10 +1454,13 @@ module Tagged = struct
     (Heap.obj env @@
       compile_unboxed_const (int_of_tag tag) ::
       element_instructions) ^^
-      set_object ^^ get_object ^^
-      compile_add_const ptr_unskew ^^
-      E.call_import env "rts" "mark_new_allocation" ^^
-      get_object
+      (if !Flags.gc_strategy = Flags.Incremental then
+        set_object ^^ get_object ^^
+        compile_add_const ptr_unskew ^^
+        E.call_import env "rts" "mark_new_allocation" ^^
+        get_object
+      else
+        G.nop)
 
 end (* Tagged *)
 
