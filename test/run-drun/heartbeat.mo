@@ -8,7 +8,9 @@ actor {
   var max = 10;
 
   public shared func inc() : async () {
-    count := count + 1;
+    if (count < max) {
+      count := count + 1;
+    }
   };
 
   system func heartbeat() : async () {
