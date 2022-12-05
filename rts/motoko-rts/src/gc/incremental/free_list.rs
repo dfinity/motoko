@@ -160,6 +160,10 @@ impl Range {
         self.lower
     }
 
+    pub fn upper(&self) -> usize {
+        self.upper
+    }
+
     pub fn includes(&self, value: usize) -> bool {
         self.lower <= value && value < self.upper
     }
@@ -208,23 +212,6 @@ impl FreeList {
         debug_assert!(self.fits(block));
     }
 
-    /// returns null if empty
-    pub unsafe fn remove_first(&mut self) -> *mut FreeBlock {
-        let block = self.first;
-        if block != null_mut() {
-            debug_assert!(self.fits(block));
-            debug_assert!((*block).previous == null_mut());
-            let next = (*block).next;
-            if next != null_mut() {
-                (*next).previous = null_mut();
-            }
-            self.first = next;
-            (*block).next = null_mut();
-        }
-        debug_assert!(self.fits(block));
-        block
-    }
-
     pub unsafe fn remove(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
         debug_assert!(self.fits(block));
@@ -245,14 +232,11 @@ impl FreeList {
     }
 
     // Linear search is only used for overflow list.
-    pub unsafe fn remove_first_fit(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
+    pub unsafe fn first_fit(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
         debug_assert!(self.is_overflow_list());
         let mut block = self.first;
         while block != null_mut() && block.size() < size {
             block = (*block).next;
-        }
-        if block != null_mut() {
-            self.remove(block);
         }
         block
     }
@@ -282,6 +266,9 @@ const SIZE_CLASSES: [usize; LIST_COUNT] = [
 
 pub struct SegregatedFreeList {
     lists: [FreeList; LIST_COUNT],
+    // Search optimization: Fast forward to the next non-empty list.
+    // If all higher lists are empty, forward to the overflow list.
+    next_available: [usize; LIST_COUNT],
     total_size: Bytes<u32>,
 }
 
@@ -292,9 +279,11 @@ impl SegregatedFreeList {
 
     pub fn new_specific(size_classes: &[usize]) -> SegregatedFreeList {
         let lists = from_fn(|index| Self::free_list(size_classes, index));
+        let next_available = from_fn(|_| lists.len() - 1);
         debug_assert!(lists[lists.len() - 1].is_overflow_list());
         SegregatedFreeList {
             lists,
+            next_available,
             total_size: Bytes(0),
         }
     }
@@ -314,23 +303,34 @@ impl SegregatedFreeList {
     }
 
     fn allocation_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
-        for index in 0..self.lists.len() {
-            let list = &self.lists[index];
-            if size.as_usize() <= list.size_class().lower() && !list.is_empty() {
-                return &mut self.lists[index];
-            }
+        let mut index = self.list_index(size);
+        let list = &self.lists[index];
+        // Round up the size class to guarantee that first fit (except for the overflow list).
+        if !list.is_overflow_list() && size.as_usize() > list.size_class().lower() {
+            index += 1;
         }
-        return &mut self.lists[self.lists.len() - 1]; // overflow list
+        let available = self.next_available[index];
+        debug_assert!(index <= available);
+        return &mut self.lists[available];
     }
 
-    fn insertion_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
-        for index in 0..self.lists.len() {
-            let list = &self.lists[index];
-            if list.size_class().includes(size.as_usize()) {
-                return &mut self.lists[index];
+    fn list_index(&mut self, size: Bytes<u32>) -> usize {
+        let mut left = 0;
+        let mut right = self.lists.len() - 1;
+        while left < right {
+            let middle = (left + right) / 2;
+            if size.as_usize() >= self.lists[middle].size_class().upper() {
+                left = middle + 1;
+            } else {
+                right = middle;
             }
         }
-        panic!("No matching free list");
+        debug_assert!(left < self.lists.len());
+        debug_assert!(
+            size < FreeBlock::min_size() && left == 0
+                || self.lists[left].size_class().includes(size.as_usize())
+        );
+        left
     }
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
@@ -338,15 +338,15 @@ impl SegregatedFreeList {
         let list = self.allocation_list(size);
         debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
         let mut block = if list.is_overflow_list() {
-            list.remove_first_fit(size)
+            list.first_fit(size)
         } else {
             debug_assert!(size.as_usize() <= list.size_class.lower());
-            list.remove_first()
+            list.first
         };
         if block == null_mut() {
             block = Self::grow_heap(mem, size);
         } else {
-            self.total_size -= block.size();
+            self.remove_block(block);
         }
         debug_assert!(block != null_mut());
         if block.size() > size {
@@ -397,18 +397,38 @@ impl SegregatedFreeList {
 
     unsafe fn remove_block(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
-        let list = self.insertion_list(block.size());
+        let removal_index = self.list_index(block.size());
+        let list = &mut self.lists[removal_index];
         debug_assert!(list.size_class.includes(block.size().as_usize()));
         list.remove(block);
         self.total_size -= block.size();
+        if list.is_empty() && !list.is_overflow_list() {
+            let mut index = removal_index;
+            let next_index = self.next_available[removal_index + 1];
+            debug_assert!(removal_index < next_index);
+            while self.next_available[index] == removal_index {
+                self.next_available[index] = next_index;
+                if index > 0 {
+                    index -= 1;
+                }
+            }
+        }
     }
 
     unsafe fn add_block(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
-        let list = self.insertion_list(block.size());
+        let insertion_index = self.list_index(block.size());
+        let list = &mut self.lists[insertion_index];
         debug_assert!(list.size_class.includes(block.size().as_usize()));
         list.insert(block);
         self.total_size += block.size();
+        let mut index = insertion_index;
+        while self.next_available[index] > insertion_index {
+            self.next_available[index] = insertion_index;
+            if index > 0 {
+                index -= 1;
+            }
+        }
     }
 
     unsafe fn grow_heap<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
@@ -427,13 +447,33 @@ impl SegregatedFreeList {
             let mut previous: *mut FreeBlock = null_mut();
             let mut block = list.first;
             while block != null_mut() {
-                debug_assert!(list.fits(block));
-                debug_assert_eq!((*block).previous, previous);
+                assert!(list.fits(block));
+                assert_eq!((*block).previous, previous);
                 total_size += block.size();
                 previous = block;
                 block = (*block).next;
             }
         }
         assert_eq!(self.total_size, total_size);
+        self.check_fast_forwarding();
+    }
+
+    #[cfg(debug_assertions)]
+    fn check_fast_forwarding(&self) {
+        let mut index = 0;
+        while index < self.lists.len() - 1 {
+            let next = self.next_available[index];
+            assert!(index <= next);
+            for test in index..next {
+                assert!(self.lists[test].is_empty());
+            }
+            assert!(next == self.lists.len() - 1 || !self.lists[next].is_empty());
+            assert_eq!(self.next_available[next], next);
+            index += next + 1;
+        }
+        assert_eq!(
+            self.next_available[self.lists.len() - 1],
+            self.lists.len() - 1
+        );
     }
 }
