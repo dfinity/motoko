@@ -160,6 +160,10 @@ impl Range {
         self.lower
     }
 
+    pub fn upper(&self) -> usize {
+        self.upper
+    }
+
     pub fn includes(&self, value: usize) -> bool {
         self.lower <= value && value < self.upper
     }
@@ -298,31 +302,35 @@ impl SegregatedFreeList {
         FreeList::new(Range::new(lower, upper))
     }
 
-    // TODO Use binary search
     fn allocation_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
-        let mut index = self.next_available[0];
-        while index < self.lists.len() - 1 {
-            let list = &self.lists[index];
-            if size.as_usize() <= list.size_class().lower() {
-                debug_assert!(!list.is_empty());
-                return &mut self.lists[index];
-            }
-            let next = self.next_available[index + 1];
-            debug_assert!(next >= index + 1);
-            index = next;
+        let mut index = self.list_index(size);
+        let list = &self.lists[index];
+        // Round up the size class to guarantee that first fit (except for the overflow list).
+        if !list.is_overflow_list() && size.as_usize() > list.size_class().lower() {
+            index += 1;
         }
-        return &mut self.lists[self.lists.len() - 1]; // overflow list
+        let available = self.next_available[index];
+        debug_assert!(index <= available);
+        return &mut self.lists[available];
     }
 
-    // TODO Use binary search
     fn list_index(&mut self, size: Bytes<u32>) -> usize {
-        for index in 0..self.lists.len() {
-            let list = &self.lists[index];
-            if list.size_class().includes(size.as_usize()) {
-                return index;
+        let mut left = 0;
+        let mut right = self.lists.len() - 1;
+        while left < right {
+            let middle = (left + right) / 2;
+            if size.as_usize() >= self.lists[middle].size_class().upper() {
+                left = middle + 1;
+            } else {
+                right = middle;
             }
         }
-        panic!("No matching free list");
+        debug_assert!(left < self.lists.len());
+        debug_assert!(
+            size < FreeBlock::min_size() && left == 0
+                || self.lists[left].size_class().includes(size.as_usize())
+        );
+        left
     }
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
