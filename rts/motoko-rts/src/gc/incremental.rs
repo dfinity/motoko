@@ -170,7 +170,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
                 if value.get_ptr() >= state.heap_base && !state.complete {
                     let mut gc = Increment::instance(self.mem, state, Self::SMALL_INCREMENT_LIMIT);
                     gc.mark_object(value);
-                    // gc.mark_phase_increment();
+                    gc.mark_phase_increment();
                 }
             }
         }
