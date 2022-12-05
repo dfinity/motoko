@@ -49,20 +49,24 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-static mut LAST_HEAP_OCCUPATION: Bytes<u32> = Bytes(0);
+const MIN_HEAP_OCCUPATION: Bytes<u32> = Bytes(32 * 1024 * 1024);
+
+#[cfg(feature = "ic")]
+static mut HEAP_OCCUPATION_THRESHOLD: Bytes<u32> = MIN_HEAP_OCCUPATION;
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    const GROW_FACTOR: f64 = 1.5;
-    heap_occupation().as_usize() as f64 >= LAST_HEAP_OCCUPATION.as_usize() as f64 * GROW_FACTOR
+    heap_occupation() >= HEAP_OCCUPATION_THRESHOLD
 }
 
 #[cfg(feature = "ic")]
 unsafe fn update_statistics<M: Memory>() {
     use crate::memory::ic;
     if IncrementalGC::<M>::pausing() {
+        const GROW_FACTOR: f64 = 1.5;
         let heap_occupation = heap_occupation();
-        LAST_HEAP_OCCUPATION = heap_occupation;
+        let threshold = Bytes((heap_occupation.as_usize() as f64 * GROW_FACTOR) as u32);
+        HEAP_OCCUPATION_THRESHOLD = ::core::cmp::max(MIN_HEAP_OCCUPATION, threshold);
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, heap_occupation);
     }
 }
