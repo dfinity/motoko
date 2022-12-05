@@ -2223,7 +2223,7 @@ Note that `async <block-or-exp>` has the effect of scheduling a single asynchron
 Moreover, each additional consumption by an `await` just returns the previous result, without repeating the computation.
 
 In comparison, `async* <block-or_exp>`,  has *no effect* until its value is consumed by an `await*`.
-Moreover, each additional consumption by an `await*` will trigger a new evaluation of `<block-or-exp>`.
+Moreover, each additional consumption by an `await*` will trigger a new evaluation of `<block-or-exp>`, including repeated effects.
 
 Be careful of this distinction, and other differences, when refactoring code.
 

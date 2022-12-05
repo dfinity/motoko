@@ -142,7 +142,7 @@ let awaitE s e =
   let (s, _ , typ) = T.as_async (T.normalize (typ e)) in
   { it = PrimE (AwaitPrim s, [e]);
     at = no_region;
-    note = Note.{ def with typ = typ; eff = T.Await }
+    note = Note.{ def with typ; eff = T.Await }
   }
 
 let cps_asyncE s typ1 typ2 e =
@@ -578,16 +578,16 @@ let nary_funcD ((id, typ) as f) xs exp =
 
 (* Continuation types with explicit answer typ *)
 
-let contT typ ans_typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, T.as_seq ans_typ)
+let contT typ ans_typ = T.(Func (Local, Returns, [], as_seq typ, as_seq ans_typ))
 
-let err_contT ans_typ =  T.Func (T.Local, T.Returns, [], [T.catch], T.as_seq ans_typ)
+let err_contT ans_typ =  T.(Func (Local, Returns, [], [catch], as_seq ans_typ))
 
 let answerT typ : T.typ =
   match typ with
   | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
   | _ -> assert false
 
-let cpsT typ ans_typ = T.Func (T.Local, T.Returns, [], [contT typ ans_typ; err_contT ans_typ], T.as_seq ans_typ)
+let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_contT ans_typ], as_seq ans_typ))
 
 (* Sequence expressions *)
 

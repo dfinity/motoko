@@ -20,7 +20,7 @@ e = x
   | async e
   | await e                // may throw
   | async* e
-  | await* e
+  | await* e               // may throw
   | while e do e
   | label l e
   | break l e
