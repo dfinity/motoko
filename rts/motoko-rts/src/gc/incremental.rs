@@ -49,26 +49,31 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
+static mut LAST_HEAP_OCCUPATION: Bytes<u32> = Bytes(0);
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    use crate::memory::ic;
-    debug_assert!(ic::ALLOCATED >= LAST_ALLOCATED);
-    const THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
-    ic::ALLOCATED - LAST_ALLOCATED >= THRESHOLD
+    const GROW_FACTOR: f64 = 1.5;
+    heap_occupation().as_usize() as f64 >= LAST_HEAP_OCCUPATION.as_usize() as f64 * GROW_FACTOR
 }
 
 #[cfg(feature = "ic")]
 unsafe fn update_statistics<M: Memory>() {
     use crate::memory::ic;
     if IncrementalGC::<M>::pausing() {
-        LAST_ALLOCATED = ic::ALLOCATED;
-        let free_size = FREE_LIST.as_ref().unwrap().total_size().as_u32();
-        debug_assert!(free_size <= ic::HP);
-        let live_set = Bytes(ic::HP - free_size);
-        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
+        let heap_occupation = heap_occupation();
+        LAST_HEAP_OCCUPATION = heap_occupation;
+        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, heap_occupation);
     }
+}
+
+#[cfg(feature = "ic")]
+unsafe fn heap_occupation() -> Bytes<u32> {
+    use crate::memory::ic;
+    let free_size = FREE_LIST.as_ref().unwrap().total_size().as_u32();
+    let heap_size = ic::HP - ic::get_aligned_heap_base();
+    debug_assert!(free_size <= heap_size);
+    Bytes(heap_size - free_size)
 }
 
 unsafe fn record_reclaimed(_size: usize) {
