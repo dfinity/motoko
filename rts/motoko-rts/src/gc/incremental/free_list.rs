@@ -311,7 +311,7 @@ impl SegregatedFreeList {
         }
         let available = self.next_available[index];
         debug_assert!(index <= available);
-        return &mut self.lists[available];
+        &mut self.lists[available]
     }
 
     fn list_index(&mut self, size: Bytes<u32>) -> usize {
@@ -335,14 +335,17 @@ impl SegregatedFreeList {
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
-        let list = self.allocation_list(size);
-        debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
-        let mut block = if list.is_overflow_list() {
-            list.first_fit(size)
-        } else {
-            debug_assert!(size.as_usize() <= list.size_class.lower());
-            list.first
-        };
+        let mut block: *mut FreeBlock = null_mut();
+        if size <= self.total_size() {
+            let list = self.allocation_list(size);
+            debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
+            block = if list.is_overflow_list() {
+                list.first_fit(size)
+            } else {
+                debug_assert!(size.as_usize() <= list.size_class.lower());
+                list.first
+            };    
+        }
         if block == null_mut() {
             block = Self::grow_heap(mem, size);
         } else {
