@@ -22,7 +22,7 @@ actor {
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
-       if (attempts >= 50 and count == 0)
+       if (attempts >= 200 and count == 0)
          throw Prim.error("he's dead Jim");
      };
      Prim.debugPrint(debug_show {count});
