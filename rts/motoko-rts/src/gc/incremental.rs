@@ -103,7 +103,7 @@ struct MarkState {
 
 struct SweepState {
     sweep_line: usize,
-    heap_end: usize,
+    sweep_end: usize,
 }
 
 /// GC state retained over multiple GC increments.
@@ -239,7 +239,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(Self::mark_completed());
         let state = SweepState {
             sweep_line: heap_base,
-            heap_end,
+            sweep_end: heap_end,
         };
         PHASE = Phase::Sweep(state);
 
@@ -386,7 +386,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
     unsafe fn sweep_phase_increment(&mut self) {
-        while self.state.sweep_line < self.state.heap_end {
+        while self.state.sweep_line < self.state.sweep_end {
             let free_space = self.collect_contiguous_free_space();
             if free_space > 0 {
                 FREE_LIST
@@ -407,7 +407,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 let size = object_size(self.state.sweep_line).to_bytes().as_usize();
                 self.state.sweep_line += size;
             }
-            debug_assert!(self.state.sweep_line <= self.state.heap_end);
+            debug_assert!(self.state.sweep_line <= self.state.sweep_end);
 
             self.steps += 1;
             if self.steps > self.increment_limit {
@@ -431,7 +431,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
     unsafe fn collect_contiguous_free_space(&mut self) -> usize {
         let mut reclaimed = 0;
         let mut address = self.state.sweep_line;
-        while address < self.state.heap_end && !(address as *mut Obj).is_marked() {
+        while address < self.state.sweep_end && !(address as *mut Obj).is_marked() {
             let tag = (address as *mut Obj).tag();
             if tag >= TAG_FREE_BLOCK_MIN {
                 let block = address as *mut FreeBlock;
@@ -444,7 +444,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                     reclaimed += size;
                 }
             }
-            debug_assert!(address <= self.state.heap_end);
+            debug_assert!(address <= self.state.sweep_end);
 
             self.steps += 1;
             if self.steps > self.increment_limit {
@@ -466,8 +466,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
 /// * During sweep phase:
 ///   - If allocated below the sweep line, new allocations should not be marked as the
 ///     current GC run will no longer visit this object and not reset the mark.
-///   - If allocated at or above the sweep line, new allocations are conservatively marked
-///     to retain them for the next GC run.
+///   - If allocated at or above the sweep line and below the sweep end,
+///     new allocations are conservatively marked to retain them for the next GC run.
 /// Summary: New allocated objects are conservatively retained during an active GC run.
 /// `new_object` is the unskewed object pointer.
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
@@ -477,7 +477,10 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     let should_mark = match &PHASE {
         Phase::Pause | Phase::Stop => false,
         Phase::Mark(_) => true,
-        Phase::Sweep(state) => new_object as usize >= state.sweep_line,
+        Phase::Sweep(state) => {
+            let address = new_object as usize;
+            address >= state.sweep_line && address < state.sweep_end
+        }
     };
     if should_mark {
         debug_assert!(!new_object.is_marked());
