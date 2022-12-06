@@ -3894,7 +3894,11 @@ module IC = struct
     let fi = E.add_fun env "canister_heartbeat"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
-        GC.collect_garbage env))
+        (* TODO(3622)
+           Until DTS is implemented for heartbeats, don't collect garbage here,
+           just record mutator_instructiond and leave GC scheduling to the
+           already sheduled async message running `system` function `hearbeat` *)
+        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_heartbeat";
