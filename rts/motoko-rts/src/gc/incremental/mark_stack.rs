@@ -95,6 +95,7 @@ impl MarkStack {
             as *mut StackTable;
         debug_assert!(!(table as *mut Obj).is_marked());
         (*table).previous = previous;
+        (*table).next = null_mut();
         if previous != null_mut() {
             (*previous).next = table;
         }
