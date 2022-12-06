@@ -344,7 +344,7 @@ impl SegregatedFreeList {
             } else {
                 debug_assert!(size.as_usize() <= list.size_class.lower());
                 list.first
-            };    
+            };
         }
         if block == null_mut() {
             block = Self::grow_heap(mem, size);
