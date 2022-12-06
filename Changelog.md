@@ -2,11 +2,14 @@
 
 * motoko (`moc`)
 
+  * Suppress GC during IC `canister_heartbeat`, deferring any GC to the scheduled Motoko `heartbeat` `system` method (#3623).
+    This is a temporary workaround, to be removed once DTS is supported for `canister_heartbeat` itself (#3622).
+
   * Add a new _generational_ GC, enabled with new moc flag `--generational-gc` (#3495).
     The generational garbage collector optimizes for fast reclamation of short-lived objects.
-    New objects are allocated in a young generation that is more frequently collected than the older objects 
+    New objects are allocated in a young generation that is more frequently collected than the older objects
     that have already survived a GC run.
-    
+
     For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
     * Lower runtimes: Less number of executed instructions on average.
     * Shorter interruptions: Young generation collection entails shorter program interruptions.
