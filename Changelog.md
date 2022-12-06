@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * Add new keywords `async*` and `await*` (note the `*`) for efficient abstraction of asynchronous code.
+  * Add new keywords `async*` and `await*` (note the `*`) for efficient abstraction of asynchronous code (#3609).
     ```
       <typ> ::= ...
         async* <typ>             delayed, asynchronous computation
