@@ -65,6 +65,7 @@ let context env = V.Blob env.self
 (* Error handling *)
 
 exception Trap of Source.region * string
+exception Cancel of string
 
 let trap at fmt = Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 
@@ -109,6 +110,9 @@ let print_exn flags exn =
 
 (* Scheduling *)
 
+let step_total = ref 0
+let step_limit = ref 0
+
 module Scheduler =
 struct
   let q : (unit -> unit) Queue.t = Queue.create ()
@@ -131,15 +135,18 @@ struct
   let interval = 128
   let count = ref interval
   let trampoline3 f x y z =
-    if !Flags.ocaml_js then
-      if !count <= 0 then begin
-          count := interval;
-          bounce (fun () -> f x y z);
-        end
-      else begin
-          count := (!count) - 1;
-          f x y z
-        end
+    if !Flags.ocaml_js then begin
+        step_total := (!step_total) + 1;
+        if !step_total = !step_limit then raise (Cancel "interpreter reached step limit");
+        if !count <= 0 then begin
+            count := interval;
+            bounce (fun () -> f x y z);
+          end
+        else begin
+            count := (!count) - 1;
+            f x y z
+          end
+      end
     else f x y z
 end
 
@@ -980,6 +987,7 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
 (* Programs *)
 
 let interpret_prog flags scope p : (V.value * scope) option =
+  step_total := 0;
   try
     let env =
       { (env_of_scope flags scope) with
@@ -995,7 +1003,11 @@ let interpret_prog flags scope p : (V.value * scope) option =
     match !vo with
     | Some v -> Some (v, scope)
     | None -> None
-  with exn ->
+  with
+  | Cancel s ->
+    Printf.eprintf "cancelled: %s\n" s; 
+    None
+  | exn ->
     (* For debugging, should never happen. *)
     print_exn flags exn;
     None
