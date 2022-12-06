@@ -1076,22 +1076,6 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = F64Type; align = 2; offset; sz = None})
 
-  (* Create a heap object with instructions that fill in each word *)
-  let obj env element_instructions : G.t =
-    let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
-
-    let n = List.length element_instructions in
-    alloc env (Wasm.I32.of_int_u n) ^^
-    set_heap_obj ^^
-
-    let init_elem idx instrs : G.t =
-      get_heap_obj ^^
-      instrs ^^
-      store_field (Wasm.I32.of_int_u idx)
-    in
-    G.concat_mapi init_elem element_instructions ^^
-    get_heap_obj
-
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
@@ -1450,17 +1434,18 @@ module Tagged = struct
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
   let obj env tag element_instructions : G.t =
+    let n = List.length element_instructions in
+    let size = (Int32.add (Wasm.I32.of_int_u n) header_size) in
     let (set_object, get_object) = new_local env "new_object" in
-    (Heap.obj env @@
-      compile_unboxed_const (int_of_tag tag) ::
-      element_instructions) ^^
-      (if !Flags.gc_strategy = Flags.Incremental then
-        set_object ^^ get_object ^^
-        compile_add_const ptr_unskew ^^
-        E.call_import env "rts" "mark_new_allocation" ^^
-        get_object
-      else
-        G.nop)
+    alloc env size tag ^^
+    set_object ^^
+    let init_elem idx instrs : G.t =
+      get_object ^^
+      instrs ^^
+      Heap.store_field (Int32.add (Wasm.I32.of_int_u idx) header_size)
+    in
+    G.concat_mapi init_elem element_instructions ^^
+    get_object
 
 end (* Tagged *)
 
