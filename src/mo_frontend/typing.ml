@@ -1421,7 +1421,7 @@ and infer_exp'' env exp : T.typ =
         scopes = T.ConEnv.add c exp.at env.scopes } in
     let t = infer_exp env' exp1 in
     let t' = T.open_ [t1] (T.close [c] t)  in
-    if s = Type.Fut && not (T.shared t') then
+    if not (T.shared t') then
       error_shared env t' exp1.at "M0033" "async type has non-shared content type%a"
         display_typ_expand t';
     T.Async (s, t1, t')
