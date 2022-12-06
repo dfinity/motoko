@@ -160,10 +160,6 @@ impl Range {
         self.lower
     }
 
-    pub fn upper(&self) -> usize {
-        self.upper
-    }
-
     pub fn includes(&self, value: usize) -> bool {
         self.lower <= value && value < self.upper
     }
@@ -283,33 +279,26 @@ impl SegregatedFreeList {
     fn allocation_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
         let mut index = self.list_index(size);
         // Round up the size class to guarantee that first fit (except for the overflow list).
-        if index + 1 < self.lists.len() && size.as_usize() > self.lists[index].size_class().lower()
+        if index < self.lists.len() - 1 && size.as_usize() > self.lists[index].size_class().lower()
         {
             index += 1;
         }
-        while self.lists[index].is_empty() && index + 1 < self.lists.len() {
+        while self.lists[index].is_empty() && index < self.lists.len() - 1 {
             index += 1;
         }
         &mut self.lists[index]
     }
 
     fn list_index(&mut self, size: Bytes<u32>) -> usize {
-        let mut left = 0;
-        let mut right = self.lists.len() - 1;
-        while left < right {
-            let middle = (left + right) / 2;
-            if size.as_usize() >= self.lists[middle].size_class().upper() {
-                left = middle + 1;
-            } else {
-                right = middle;
-            }
+        let mut index = self.lists.len() - 1;
+        while index > 0 && size.as_usize() < self.lists[index].size_class().lower() {
+            index -= 1;
         }
-        debug_assert!(left < self.lists.len());
         debug_assert!(
-            size < FreeBlock::min_size() && left == 0
-                || self.lists[left].size_class().includes(size.as_usize())
+            size < FreeBlock::min_size() && index == 0
+                || self.lists[index].size_class().includes(size.as_usize())
         );
-        left
+        index
     }
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
