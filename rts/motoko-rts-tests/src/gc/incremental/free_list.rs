@@ -7,10 +7,7 @@ use motoko_rts::{
 
 use crate::memory::TestMemory;
 
-const SIZE_CLASSES: [usize; 24] = [
-    12, 16, 20, 24, 32, 36, 40, 44, 48, 52, 56, 60, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352,
-    400, 512,
-];
+const SIZE_CLASSES: [usize; 4] = [12, 16, 20, 512];
 
 pub unsafe fn test() {
     println!("  Testing free list...");
@@ -23,7 +20,7 @@ unsafe fn test_allocate_free() {
 
     println!("      Uniform sizes ...");
     // uniform sizes, no splitting, no fragmentation issues due to same sized blocks
-    let allocation_sizes = vec![128];
+    let allocation_sizes = vec![16];
     let memory_size = allocation_sizes.iter().sum();
     allocate_free(&allocation_sizes, memory_size);
 

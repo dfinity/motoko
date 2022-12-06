@@ -244,33 +244,8 @@ impl FreeList {
 
 const KB: usize = 1024;
 const MB: usize = 1024 * KB;
-const LIST_COUNT: usize = 24;
-const SIZE_CLASSES: [usize; LIST_COUNT] = [
-    12,
-    16,
-    32,
-    64,
-    128,
-    256,
-    512,
-    KB,
-    2 * KB,
-    4 * KB,
-    16 * KB,
-    32 * KB,
-    64 * KB,
-    128 * KB,
-    256 * KB,
-    512 * KB,
-    MB,
-    2 * MB,
-    4 * MB,
-    8 * MB,
-    16 * MB,
-    32 * MB,
-    64 * MB,
-    128 * MB,
-];
+const LIST_COUNT: usize = 4;
+const SIZE_CLASSES: [usize; LIST_COUNT] = [12, 32, KB, 32 * MB];
 
 pub struct SegregatedFreeList {
     lists: [FreeList; LIST_COUNT],
