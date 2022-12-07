@@ -163,12 +163,10 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// The barrier is only effective while the GC is in the mark phase.
     #[inline]
     unsafe fn pre_write_barrier(&mut self, value: Value) {
-        if value.is_ptr() {
-            if let Phase::Mark(state) = &mut PHASE {
-                if value.get_ptr() >= state.heap_base && !state.complete {
-                    let mut gc = Increment::instance(self.mem, state);
-                    gc.mark_object(value);
-                }
+        if let Phase::Mark(state) = &mut PHASE {
+            if value.points_to_or_beyond(state.heap_base) && !state.complete {
+                let mut gc = Increment::instance(self.mem, state);
+                gc.mark_object(value);
             }
         }
     }
