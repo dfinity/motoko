@@ -250,8 +250,6 @@ struct Increment<'a, M: Memory, S: 'static> {
 }
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
-    const INCREMENT_LIMIT: usize = 64 * 1024;
-
     fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
         Increment {
             mem,
@@ -262,6 +260,8 @@ impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
+    const INCREMENT_LIMIT: usize = 1000_000;
+
     unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
         self.mark_continuation_table(roots.continuation_table);
@@ -369,6 +369,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
+    const INCREMENT_LIMIT: usize = 180_000;
+
     unsafe fn sweep_phase_increment(&mut self) {
         while self.state.sweep_line < self.state.sweep_end {
             let free_block = self.merge_contiguous_free_space();
@@ -386,6 +388,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                     debug_assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
                     debug_assert!(object.is_marked());
                     object.unmark();
+                    self.steps += 1;
                 }
                 object_size(self.state.sweep_line).to_bytes()
             };
