@@ -52,7 +52,7 @@ For transparency into the principles that guide the engineering effort, the engi
 
 The following guiding principles represent the core values of the engineering organization in prioritized order:
 
-1.  Seamless integration with the [Internet Computer blockchain network](../concepts/what-is-IC.md#what-is-the-internet-computer) to ensure that Motoko provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
+1.  Seamless integration with the [Internet Computer blockchain network](https://internetcomputer.org) to ensure that Motoko provides full language support for the actor-based model, asynchronous messaging, data persistence, interface description language interoperability, and other features.
 
 2.  Ergonomics to ensure that Motoko embraces familiarity, simplicity, clarity, explicitness, and other human factors.
 
@@ -79,8 +79,6 @@ As a counterpoint to the core values and goals, the engineering organization als
 3.  Interoperability or support for running Motoko programs on blockchains other than the Internet Computer.
 
 ## Finding more information
-
-For information about using Motoko with the DFINITY Canister SDK, see the [SDK Developer Tools](../developer-docs/build/index.md).
 
 For background information on various topics relevant to the design, use, or deployment of Motoko services, or the language’s design itself, consider the following resources as a starting point:
 
