@@ -45,7 +45,7 @@ let ensure_async_typ t_opt =
   match t_opt with
   | None -> t_opt
   | Some { it = AsyncT _; _} -> t_opt
-  | Some t -> Some (AsyncT(scopeT no_region, t) @! no_region)
+  | Some t -> Some (AsyncT(Type.Fut, scopeT no_region, t) @! no_region)
 
 let funcT (sort, tbs, t1, t2) =
   match sort.it, t2.it with
@@ -132,8 +132,8 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
     false, e (* body declared as EQ e *)
   else (* body declared as immediate block *)
     match sp.it, t_opt with
-    | _, Some {it = AsyncT _; _} ->
-      true, asyncE (scope_bind x.it e.at) e
+    | _, Some {it = AsyncT (s, _, _); _} ->
+      true, asyncE s (scope_bind x.it e.at) e
     | Type.Shared _, (None | Some { it = TupT []; _}) ->
       true, ignore_asyncE (scope_bind x.it e.at) e
     | _, _ -> (true, e)
@@ -205,7 +205,7 @@ and objblock s dec_fields =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
+%token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
@@ -419,7 +419,9 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(scopeT (at $sloc), t) @! at $sloc }
+    { AsyncT(Type.Fut, scopeT (at $sloc), t) @! at $sloc }
+  | ASYNCSTAR t=typ_pre
+    { AsyncT(Type.Cmp, scopeT (at $sloc), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -652,9 +654,13 @@ exp_un(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
-    { AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+  | ASYNCSTAR e=block
+    { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
-    { AwaitE(e) @? at $sloc }
+    { AwaitE(Type.Fut, e) @? at $sloc }
+  | AWAITSTAR e=exp_nest
+    { AwaitE(Type.Cmp, e) @? at $sloc }
   | ASSERT e=exp_nest
     { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
@@ -704,7 +710,6 @@ exp_un(B) :
     { e }
   | DO QUEST e=block
     { DoOptE(e) @? at $sloc }
-
 
 exp_nonvar(B) :
   | e=exp_nondec(B)
@@ -840,7 +845,8 @@ dec_nonvar :
       let e =
         if s.it = Type.Actor then
           AwaitE
-            (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+            (Type.Fut,
+             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
               (objblock s (List.map share_dec_field efs) @? (at $sloc)))
              @? at $sloc)
         else objblock s efs

@@ -51,7 +51,7 @@ let transform prog =
       Func (s, c, List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
-    | Async (t1, t2) -> Async (t_typ t1, t_typ t2)
+    | Async (s, t1, t2) -> Async (s, t_typ t1, t_typ t2)
     | Mut t -> Mut (t_typ t)
     | Any -> Any
     | Non -> Non
@@ -116,8 +116,8 @@ let transform prog =
       LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
       LabelE (id, t_typ typ, t_exp exp1)
-    | AsyncE (tb, exp1, typ) ->
-      AsyncE (t_typ_bind tb, t_exp exp1, t_typ typ)
+    | AsyncE (s, tb, exp1, typ) ->
+      AsyncE (s, t_typ_bind tb, t_exp exp1, t_typ typ)
     | TryE (exp1, cases) ->
       TryE (t_exp exp1, List.map t_case cases)
     | DeclareE (id, typ, exp1) ->
