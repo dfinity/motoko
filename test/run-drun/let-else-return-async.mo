@@ -1,6 +1,8 @@
-func foo() : async Nat {
-    let 2 = 3 else { return 4 };
-    5
+actor {
+    public func foo() : async Nat {
+        let 2 = 3 else { return 4 };
+        5;
+    };
 };
 
-assert (await foo()) == 4;
+//CALL ingress foo "DIDL\x00\x00"
