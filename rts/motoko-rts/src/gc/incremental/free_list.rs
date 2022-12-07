@@ -59,20 +59,20 @@
 //! The GC sweep phase retains or merges free blocks.
 //!
 
-use core::{array::from_fn, cmp::max, ptr::null_mut};
+use core::{array::from_fn, ptr::null_mut};
 
 use crate::{
     constants::WORD_SIZE,
     memory::Memory,
     types::{
-        is_marked, object_size, size_of, unmark, Bytes, Obj, Value, Words, TAG_FREE_BLOCK_MIN,
+        is_marked, size_of, unmark, Bytes, Obj, Value, Words, TAG_FREE_BLOCK_MIN,
         TAG_ONE_WORD_FILLER,
     },
 };
 
 /// Free block. Must have a size >= `min_size()`.
 #[repr(C)] // See note in `types.rs`
-pub(crate) struct FreeBlock {
+pub struct FreeBlock {
     /// Object tag and size, encoded as `TAG_FREE_BLOCK_MIN + size`. Mark bit never set.
     /// The size includes the free block header, i.e. denotes the entire block size.
     pub header: Obj,
@@ -300,22 +300,11 @@ impl SegregatedFreeList {
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
-        let mut block: *mut FreeBlock = null_mut();
-        if size <= self.total_size() {
-            let list = self.allocation_list(size);
-            debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
-            block = if list.is_overflow_list() {
-                list.first_fit(size)
-            } else {
-                debug_assert!(size.as_usize() <= list.size_class.lower());
-                list.first
-            };
-        }
+        let block = self.find_block(size);
         if block == null_mut() {
-            block = Self::grow_heap(mem, size);
-        } else {
-            self.remove_block(block);
+            return mem.grow_heap(size.to_words());
         }
+        self.remove_block(block);
         debug_assert!(block.size() >= size);
         if block.size() > size {
             let remainder = block.split(size);
@@ -331,59 +320,46 @@ impl SegregatedFreeList {
         Value::from_ptr(address)
     }
 
-    /// Merge the free space to one free block (if large enough).
-    /// Checks the free space consists of garbage objects and/or old free blocks.
-    pub unsafe fn free_space(&mut self, start_address: usize, length: Bytes<u32>) {
-        let end_address = start_address + length.as_usize();
-        let mut address = start_address;
-        while address < end_address {
-            let object = address as *mut Obj;
-            debug_assert_ne!(object, null_mut());
-            debug_assert!(!object.is_marked());
-            if object.tag() >= TAG_FREE_BLOCK_MIN {
-                let block = object as *mut FreeBlock;
-                let block_size = block.size();
-                if address == start_address && block_size == length {
-                    // Optimization: The free space is exactly one old free block.
-                    return;
-                }
-                self.remove_block(block);
-                address += block_size.as_usize();
-            } else {
-                address += object_size(address).to_bytes().as_usize();
-            };
-            debug_assert!(address <= end_address);
+    unsafe fn find_block(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
+        if size > self.total_size() {
+            return null_mut();
         }
-        if length >= FreeBlock::min_size() {
-            let block = start_address as *mut FreeBlock;
-            block.initialize(length);
-            self.add_block(block)
+        let list = self.allocation_list(size);
+        debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
+        if list.is_overflow_list() {
+            list.first_fit(size)
         } else {
-            FreeBlock::write_free_filler(start_address, length);
+            debug_assert!(size.as_usize() <= list.size_class.lower());
+            list.first
         }
     }
 
-    unsafe fn remove_block(&mut self, block: *mut FreeBlock) {
+    /// Initialize free space and return as a free block if large enough.
+    pub unsafe fn create_free_space(start_address: usize, length: Bytes<u32>) -> *mut FreeBlock {
+        if length >= FreeBlock::min_size() {
+            let block = start_address as *mut FreeBlock;
+            block.initialize(length);
+            block
+        } else {
+            FreeBlock::write_free_filler(start_address, length);
+            null_mut()
+        }
+    }
+
+    /// Remove free block during allocation or on sweep merge.
+    pub unsafe fn remove_block(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
         list.remove(block);
         self.total_size -= block.size();
     }
 
-    unsafe fn add_block(&mut self, block: *mut FreeBlock) {
+    /// Add allocation remainder or free block during sweep.
+    pub unsafe fn add_block(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
         list.insert(block);
         self.total_size += block.size();
-    }
-
-    unsafe fn grow_heap<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
-        let size = max(size, FreeBlock::min_size());
-        debug_assert_eq!(size.as_u32() % WORD_SIZE, 0);
-        let value = mem.grow_heap(size.to_words());
-        let block = value.get_ptr() as *mut FreeBlock;
-        block.initialize(size);
-        block
     }
 
     #[cfg(debug_assertions)]

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, mem::size_of};
+use std::{collections::HashSet, mem::size_of, ptr::null_mut};
 
 use motoko_rts::{
     gc::incremental::free_list::SegregatedFreeList,
@@ -87,7 +87,10 @@ unsafe fn free(list: &mut SegregatedFreeList, blob: *mut Blob) {
     assert!(!(blob as *mut Obj).is_marked());
     let address = blob as usize;
     let length = (*blob).len + Bytes(size_of::<Blob>() as u32);
-    list.free_space(address, length);
+    let block = SegregatedFreeList::create_free_space(address, length);
+    if block != null_mut() {
+        list.add_block(block);
+    }
     list.sanity_check();
 }
 
@@ -103,7 +106,9 @@ unsafe fn split_merge(amount: u32, small_sizes: &[u32]) {
                 allocate(&mut list, &mut mem, *size);
             }
         }
-        list.free_space(large as usize, Bytes(total_size));
+        let block = SegregatedFreeList::create_free_space(large as usize, Bytes(total_size));
+        assert_ne!(block, null_mut());
+        list.add_block(block);
         list.sanity_check();
     }
 }

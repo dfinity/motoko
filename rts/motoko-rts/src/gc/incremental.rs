@@ -1,3 +1,5 @@
+use core::ptr::null_mut;
+
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
@@ -369,26 +371,21 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
 
     unsafe fn sweep_phase_increment(&mut self) {
         while self.state.sweep_line < self.state.sweep_end {
-            let free_space = self.collect_contiguous_free_space();
-            if free_space > 0 {
-                FREE_LIST
-                    .as_mut()
-                    .unwrap()
-                    .free_space(self.state.sweep_line, Bytes(free_space as u32));
-
-                if self.steps > Self::INCREMENT_LIMIT {
-                    // Continue merging with this free segment on the next GC increment.
-                    return;
-                }
-                self.state.sweep_line += free_space;
+            let free_space = self.merge_contiguous_free_space();
+            if self.steps > Self::INCREMENT_LIMIT {
+                // Continue merging with this free segment on the next GC increment.
+                return;
+            }
+            let size = if free_space > 0 {
+                free_space
             } else {
                 let object = self.state.sweep_line as *mut Obj;
                 debug_assert!(object.tag() >= TAG_OBJECT && object.tag() <= TAG_NULL);
                 debug_assert!(object.is_marked());
                 object.unmark();
-                let size = object_size(self.state.sweep_line).to_bytes().as_usize();
-                self.state.sweep_line += size;
-            }
+                object_size(self.state.sweep_line).to_bytes().as_usize()
+            };
+            self.state.sweep_line += size;
             debug_assert!(self.state.sweep_line <= self.state.sweep_end);
 
             self.steps += 1;
@@ -399,7 +396,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
         self.complete_sweeping();
     }
 
-    unsafe fn collect_contiguous_free_space(&mut self) -> usize {
+    unsafe fn merge_contiguous_free_space(&mut self) -> usize {
         let mut reclaimed = 0;
         let mut address = self.state.sweep_line;
         while address < self.state.sweep_end && !(address as *mut Obj).is_marked() {
@@ -407,6 +404,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             if tag >= TAG_FREE_BLOCK_MIN {
                 let block = address as *mut FreeBlock;
                 address += block.size().as_usize();
+                FREE_LIST.as_mut().unwrap().remove_block(block);
             } else {
                 debug_assert!(tag >= TAG_OBJECT && tag <= TAG_ONE_WORD_FILLER);
                 let size = object_size(address).to_bytes().as_usize();
@@ -423,7 +421,13 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             }
         }
         record_reclaimed(reclaimed);
-        address - self.state.sweep_line
+        let length = address - self.state.sweep_line;
+        let block =
+            SegregatedFreeList::create_free_space(self.state.sweep_line, Bytes(length as u32));
+        if block != null_mut() {
+            FREE_LIST.as_mut().unwrap().add_block(block);
+        }
+        length
     }
 
     unsafe fn complete_sweeping(&mut self) {
