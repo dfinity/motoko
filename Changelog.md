@@ -44,7 +44,7 @@
     ...
     ```
 
-  * `moc.js` : add trampoline and step limiter to interpreter, avoid (some) stackoverflows and
+  * `moc.js` : add trampoline and step limiter to interpreter, avoiding (some) stackoverflows and
     hangs (#3618, #3541).
     Enables execution of larger examples on web pages.
 
