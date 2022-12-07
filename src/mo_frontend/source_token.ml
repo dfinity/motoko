@@ -12,7 +12,9 @@ type token =
   | LCURLY
   | RCURLY
   | AWAIT
+  | AWAITSTAR
   | ASYNC
+  | ASYNCSTAR
   | BREAK
   | CASE
   | CATCH
@@ -136,7 +138,9 @@ let to_parser_token :
   | LCURLY -> Ok Parser.LCURLY
   | RCURLY -> Ok Parser.RCURLY
   | AWAIT -> Ok Parser.AWAIT
+  | AWAITSTAR -> Ok Parser.AWAITSTAR
   | ASYNC -> Ok Parser.ASYNC
+  | ASYNCSTAR -> Ok Parser.ASYNCSTAR
   | BREAK -> Ok Parser.BREAK
   | CASE -> Ok Parser.CASE
   | CATCH -> Ok Parser.CATCH
@@ -259,7 +263,9 @@ let string_of_parser_token = function
   | Parser.LCURLY -> "LCURLY"
   | Parser.RCURLY -> "RCURLY"
   | Parser.AWAIT -> "AWAIT"
+  | Parser.AWAITSTAR -> "AWAIT*"
   | Parser.ASYNC -> "ASYNC"
+  | Parser.ASYNCSTAR -> "ASYNC*"
   | Parser.BREAK -> "BREAK"
   | Parser.CASE -> "CASE"
   | Parser.CATCH -> "CATCH"

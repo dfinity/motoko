@@ -644,16 +644,23 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | AsyncE (_, exp1) ->
+  | AsyncE (T.Fut, _, exp1) ->
     async env
       exp.at
       (fun k' r ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
         in interpret_exp env' exp1 k')
       k
-  | AwaitE exp1 ->
+  | AsyncE (T.Cmp, _, exp1) ->
+    k (V.Comp (fun k' r ->
+      let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
+      in interpret_exp env' exp1 k'))
+  | AwaitE (T.Fut, exp1) ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)
+  | AwaitE (T.Cmp, exp1) ->
+    interpret_exp env exp1
+      (fun v1 -> (V.as_comp v1) k (Option.get env.throws))
   | AssertE (Runtime, exp1) ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v

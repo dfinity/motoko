@@ -53,7 +53,8 @@ let rec typ = function
   | Func (s, c, tbs, at, rt) ->
     "Func" $$ [Atom (func_sort s); Atom (control c)] @
       List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
-  | Async (t1, t2)         -> "Async" $$ [typ t1; typ t2]
+  | Async (Fut, t1, t2)    -> "Async" $$ [typ t1; typ t2]
+  | Async (Cmp, t1, t2)    -> "Async*" $$ [typ t1; typ t2]
   | Mut t                  -> "Mut" $$ [typ t]
   | Any                    -> Atom "Any"
   | Non                    -> Atom "Non"

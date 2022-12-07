@@ -83,10 +83,10 @@ Equality function for two `Key<K>`s, in terms of equality of `K`'s.
 
 ## Function `isValid`
 ``` motoko no-repl
-func isValid<K, V>(t : Trie<K, V>, enforceNormal : Bool) : Bool
+func isValid<K, V>(t : Trie<K, V>, _enforceNormal : Bool) : Bool
 ```
 
-Checks the invariants of the trie structure, including the placement of keys at trie paths
+@deprecated `isValid` is an internal predicate and will be removed in future.
 
 ## Type `Trie2D`
 ``` motoko no-repl
