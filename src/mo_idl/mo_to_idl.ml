@@ -187,7 +187,7 @@ let actor progs =
      (match normalize cub.note.note_typ with
       | Func (Local, Returns, [tb], ts1, [t2]) ->
         let args = List.map typ (List.map (open_ [Non]) ts1) in
-        let (_, rng) = as_async (normalize (open_ [Non] t2)) in
+        let (_, _, rng) = as_async (normalize (open_ [Non] t2)) in
         let actor = typ rng in
         Some (I.ClassT (args, actor) @@ cub.at)
       | _ -> assert false

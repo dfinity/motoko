@@ -109,7 +109,7 @@ let edges_typ cs c (es : EdgeSet.t) t : EdgeSet.t =
       go_typs i (VertexSet.union exp non) VertexSet.empty es ts
     | (Opt t1 | Mut t1 | Array t1) ->
       go_typ i (VertexSet.union exp non) VertexSet.empty es t1
-    | Async (t1, t2) ->
+    | Async (s, t1, t2) ->
       go_typs i (VertexSet.union exp non) VertexSet.empty es [t1;t2]
     | Func (s, _c, tbs, ts1, ts2) ->
       let i1 = i + List.length tbs in

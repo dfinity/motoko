@@ -47,7 +47,7 @@ and exp' rho = function
   | LoopE e1            -> LoopE (exp rho e1)
   | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
                            LabelE(i', t, exp rho' e)
-  | AsyncE (tb, e, t)   -> AsyncE (tb, exp rho e, t)
+  | AsyncE (s, tb, e, t) -> AsyncE (s, tb, exp rho e, t)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
