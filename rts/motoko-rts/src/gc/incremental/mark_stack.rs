@@ -36,7 +36,7 @@ pub struct MarkStack {
     top: usize, // index of next free entry in the last stack table
 }
 
-pub const STACK_TABLE_CAPACITY: usize = 1020;
+pub const STACK_TABLE_CAPACITY: usize = 1018;
 
 #[repr(C)]
 struct StackTable {
