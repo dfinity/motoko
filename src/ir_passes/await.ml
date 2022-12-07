@@ -8,6 +8,12 @@ module R = Rename
 module T = Type
 open Construct
 
+(* TODO: dedup *)
+let isAwaitableFunc exp =
+  match typ exp with
+  | T.Func (T.Shared _, T.Promises, _, _, _) -> true
+  | _ -> false
+
 let fresh_cont typ = fresh_var "k" (contT typ)
 
 let fresh_err_cont ()  = fresh_var "r" (err_contT)
@@ -382,6 +388,14 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (DefineE (id, mut, varE v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
+  | PrimE (CallPrim typs, ([exp1; _exp2] as exps)) when isAwaitableFunc exp1 ->
+    let r = match LabelEnv.find_opt Throw context with
+      | Some (Cont r) -> r
+      | Some Label
+      | None -> assert false
+    in
+    letcont r (fun r ->
+    nary context k (fun vs -> e (PrimE (CallPrim typs, vs @ [varE r] ))) exps)
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
 

@@ -4044,7 +4044,14 @@ module IC = struct
         (fun env -> system_call env "msg_reject_msg_size")
         (fun env -> system_call env "msg_reject_msg_copy")
         (fun env -> compile_unboxed_const 0l)
-    )
+      )
+
+  let perform_call_error env =
+    Func.share_code0 env "perform_call_error" [I32Type] (fun env ->
+    let (set_code, get_code) = new_local env "code" in
+    (Variant.inject env "future" Tuple.compile_unit) ^^ (* TBD *)
+    (get_code ^^ BoxedSmallWord.box env)) ^^
+    Tuple.from_stack env 2
 
   let error_value env =
     Func.share_code0 env "error_value" [I32Type] (fun env ->
@@ -7181,7 +7188,8 @@ module FuncDec = struct
         G.i Drop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call_threaded env purpose get_meth_pair push_continuations add_data add_cycles =
+  let ic_call_threaded env purpose get_meth_pair push_continuations
+    add_data get_t_opt add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -7204,19 +7212,47 @@ module FuncDec = struct
       add_cycles ^^
       (* done! *)
       IC.system_call env "call_perform" ^^
-      (* Check error code *)
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-      E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
+        (* Check error code *)
+      begin match get_t_opt with
+      | None ->
+        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+        E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
+      | Some get_t ->
+        let (set_error, get_error) = new_local env "error" in
+        set_error ^^
+        get_error ^^
+        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+        G.if1 I32Type
+        begin
+          G.nop
+        end
+        begin
+          (* Recall (don't leak) continuations *)
+          get_cb_index ^^
+          ContinuationTable.recall env ^^
+          G.i Drop ^^
+          (* The throw closure *)
+          get_t ^^
+          (* The arg *)
+          get_error ^^
+          IC.perform_call_error env ^^
+          (* The closure again *)
+          get_t ^^
+          (* Call *)
+          Closure.call_closure env 1 0
+         end
+      end
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_t =
     ic_call_threaded
       env
       "remote call"
       get_meth_pair
       (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
       (fun _ -> get_arg ^^ Serialization.serialize env ts1)
+      (Some get_t)
 
   let ic_call_raw env get_meth_pair get_arg get_k get_r =
     ic_call_threaded
@@ -7225,6 +7261,8 @@ module FuncDec = struct
       get_meth_pair
       (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
       (fun _ -> get_arg ^^ Blob.as_ptr_len env)
+      None (* TBC *)
+
 
   let ic_self_call env ts get_meth_pair get_future get_k get_r =
     ic_call_threaded
@@ -7236,7 +7274,8 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         BoxedSmallWord.box env ^^
-        Serialization.serialize env Type.[Prim Nat32])
+          Serialization.serialize env Type.[Prim Nat32])
+      None (* TBC *)
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9093,7 +9132,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim, [f;e;k;r] ->
+  | ICCallPrim, [f;e;k;r;t] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -9102,12 +9141,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let (set_arg, get_arg) = new_local env "arg" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
+    let (set_t, get_t) = new_local env "t" in
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
+    compile_exp_vanilla env ae t ^^ set_t ^^
+    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_t add_cycles
     end
   | ICCallRawPrim, [p;m;a;k;r] ->
     SR.unit, begin

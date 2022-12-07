@@ -174,8 +174,8 @@ let ic_rejectE e =
     note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
-let ic_callE f e k r =
-  let es = [f; e; k; r] in
+let ic_callE f e k r t =
+  let es = [f; e; k; r; t] in
   let effs = List.map eff es in
   let eff = List.fold_left max_eff T.Triv effs in
   { it = PrimE (ICCallPrim, es);

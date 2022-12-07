@@ -265,7 +265,7 @@ let transform mode prog =
         ]
         (varE nary_async)
       ).it
-    | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
+    | PrimE (CallPrim typs, [exp1; exp2; throw]) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -275,14 +275,15 @@ let transform mode prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
+      let throw' = t_exp throw in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts2 in
       let _ = letEta in
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
         letEta exp1' (fun v1 ->
           letSeq ts1 exp2' (fun vs ->
-            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
-            )
+            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) throw') ]
+           )
           )
          )
          (varE nary_async))
