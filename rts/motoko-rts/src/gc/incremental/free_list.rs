@@ -6,16 +6,15 @@
 //! Memory representation per free list.
 //! Doubly linking for fast list removal when merging free neighours.
 //!
-//! first ──> ┌────────┬────────┬────────────────┐
-//!           │ header │  next  |     (free)     |
-//!           └────────┴────────┴────────────────┘
+//! first ──> ┌────────┬────────┬──────────┬───────────────┐
+//!           │ header │  next  | previous |    (free)     |
+//!           └────────┴────────┴──────────┴───────────────┘
 //!
 //! The header encodes the block size with a special added tag:
 //!   `TAG_FREE_BLOCK_MIN + word_size`.
 //! Free blocks must be unmarked.
 //!
-//! The smallest free block size is 2 words (8 bytes), equal to the minimum
-//! object size.
+//! The smallest free block size is 3 words (12 bytes).
 //!
 //! * `header` is useful for the sweep phase to identify old free blocks.
 //!    i.e. blocks already freed by a previous GC increment.
@@ -25,62 +24,62 @@
 //!    sweep phase.
 //! * `next` denotes the next block in the corresponding free list.
 //!    This supports fast removal of the first list item on allocation.
-//!
-//! (A previous pointer would allow fast random access removal of free blocks
-//! during merging. However, the GC rebuilds the free lists on sweep to save
-//! the previous pointer and allow a minimum free block size of 8 bytes.)
+//! * `previous` denotes the previous block in the corresponding free list
+//!    This enables fast free neighbor block merging.
 //!
 //! Allocation first consults the free list of the next higher size class.
-//! E.g. `allocate(100)` looks in the free list of size class [KB, 32 * MB].
+//! E.g. `allocate(100)` looks in the free list of size class [128, 256].
 //! *  If the free list is non-empty, the first block is a match and returned.
 //! *  The remainder is cut off and replaced into the corresponding free list.
-//! *  Small remainders (less than smallest size class, i.e. 4 bytes) remain
-//!    unused and the unused words are identified by `TAG_ONE_WORD_FILLER`.
+//! *  Small remainders (less than smallest size class) remain unused
+//!    and each unused word is identified by the tag `TAG_ONE_WORD_FILLER`.
 //! *  If a free list is empty, allocation advances to the next larger list
 //!    until reaching the last list.
 //! *  The last list constitutes an overflow list for large memory blocks
 //!    and requires linear search.
-//! *  If no more free memory, try to reserve more free memory space by
-//!    extending the heap.
+//! *  If no more free memory, try to reserve more free WASM space.
 //!
-//! The sweep phase rebuilds the free lists and merges free neighbor blocks.
+//! Deallocation determines the free list with the size class that includes
+//! the freed block size.
+//! *  Free neighbors are merged by first removing the neighbor from its list.
 //!
 //! Performance per block operation (`n` = number of blocks):
 //! *  Allocation by the mutator: `O(1)` unless overflow list `O(n)`.
-//! *  Free by the GC: `O(1)`, merging neighbor free space and inserting it
-//!    to the free list (cleared on sweep start).
+//! *  Free by the GC: `O(1)`, including merging.
 //!
 //! Fragmentation:
 //! *  External fragmentation: Free space can be fragmented in many small
 //!    blocks that are each insufficient for a larger allocation.
 //!    Free neighbor merging helps to reduce external fragmentation.
-//! *  Internal fragmentation: Useless small 4 byte remainders can be split
-//!    off from allocated free blocks that are less than minimum free block
-//!    size. Such remainders are identified by `TAG_ONE_WORD_FILLER`.
+//! *  Internal fragmentation: Useless small remainders can be split off
+//!    from allocated free blocks that are too small for being a free block.
+//!    Such internal fragmentation is identified by `TAG_ONE_WORD_FILLER`.
 //!
 //! The GC mark phase never visits free blocks.
-//! The GC sweep phase rebuilds the free lists and merges free neighbors.
+//! The GC sweep phase retains or merges free blocks.
 //!
 
-use core::{array::from_fn, ptr::null_mut};
+use core::{array::from_fn, cmp::max, ptr::null_mut};
 
 use crate::{
     constants::WORD_SIZE,
     memory::Memory,
     types::{
-        is_marked, size_of, unmark, Bytes, Obj, Value, Words, TAG_FREE_BLOCK_MIN,
+        is_marked, object_size, size_of, unmark, Bytes, Obj, Value, Words, TAG_FREE_BLOCK_MIN,
         TAG_ONE_WORD_FILLER,
     },
 };
 
 /// Free block. Must have a size >= `min_size()`.
 #[repr(C)] // See note in `types.rs`
-pub struct FreeBlock {
+pub(crate) struct FreeBlock {
     /// Object tag and size, encoded as `TAG_FREE_BLOCK_MIN + size`. Mark bit never set.
     /// The size includes the free block header, i.e. denotes the entire block size.
     pub header: Obj,
     /// Next free block in the corresponding free list. `null_mut()` if last block.
     pub next: *mut FreeBlock,
+    /// Prevuous free block in the corresponding free list. `null_mut()` if first block.
+    pub previous: *mut FreeBlock,
 }
 
 impl FreeBlock {
@@ -103,6 +102,7 @@ impl FreeBlock {
         (*self).header.raw_tag = unmark(TAG_FREE_BLOCK_MIN + words.as_u32());
         debug_assert!(!is_marked((*self).header.raw_tag));
         (*self).next = null_mut();
+        (*self).previous = null_mut();
     }
 
     /// Size of the free entire free block (includes object header)
@@ -179,10 +179,6 @@ impl FreeList {
         }
     }
 
-    pub fn clear(&mut self) {
-        self.first = null_mut();
-    }
-
     unsafe fn fits(&self, block: *mut FreeBlock) -> bool {
         self.size_class.includes(block.size().as_usize())
     }
@@ -203,44 +199,40 @@ impl FreeList {
         debug_assert_ne!(block, null_mut());
         debug_assert!(self.fits(block));
         debug_assert_eq!((*block).next, null_mut());
+        debug_assert_eq!((*block).previous, null_mut());
         (*block).next = self.first;
+        if self.first != null_mut() {
+            (*self.first).previous = block;
+        }
         self.first = block;
         debug_assert!(self.fits(block));
     }
 
-    // Return the first free block from the non-empty list.
-    pub unsafe fn remove_first(&mut self) -> *mut FreeBlock {
-        debug_assert_ne!(self.first, null_mut());
-        let block = self.first;
-        self.first = (*block).next;
-        #[cfg(debug_assertions)]
-        {
-            (*block).next = null_mut();
+    pub unsafe fn remove(&mut self, block: *mut FreeBlock) {
+        debug_assert_ne!(block, null_mut());
+        debug_assert!(self.fits(block));
+        let previous = (*block).previous;
+        let next = (*block).next;
+        if previous != null_mut() {
+            (*previous).next = next;
         }
-        block
+        if next != null_mut() {
+            (*next).previous = previous;
+        }
+        if block == self.first {
+            debug_assert_eq!(previous, null_mut());
+            self.first = next;
+        }
+        (*block).next = null_mut();
+        (*block).previous = null_mut();
     }
 
-    // Linear search is only used for overflow list. Returns null if no fit.
-    pub unsafe fn remove_first_fit(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
+    // Linear search is only used for overflow list.
+    pub unsafe fn first_fit(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
         debug_assert!(self.is_overflow_list());
-        let mut previous: *mut FreeBlock = null_mut();
         let mut block = self.first;
         while block != null_mut() && block.size() < size {
-            previous = block;
             block = (*block).next;
-        }
-        if block != null_mut() {
-            if block == self.first {
-                debug_assert_eq!(previous, null_mut());
-                self.first = (*block).next;
-            } else {
-                debug_assert_ne!(previous, null_mut());
-                (*previous).next = (*block).next;
-            }
-        }
-        #[cfg(debug_assertions)]
-        {
-            (*block).next = null_mut();
         }
         block
     }
@@ -249,7 +241,7 @@ impl FreeList {
 const KB: usize = 1024;
 const MB: usize = 1024 * KB;
 const LIST_COUNT: usize = 4;
-const SIZE_CLASSES: [usize; LIST_COUNT] = [8, 32, KB, 32 * MB];
+const SIZE_CLASSES: [usize; LIST_COUNT] = [12, 32, KB, 32 * MB];
 
 pub struct SegregatedFreeList {
     lists: [FreeList; LIST_COUNT],
@@ -272,14 +264,6 @@ impl SegregatedFreeList {
 
     pub fn total_size(&self) -> Bytes<u32> {
         self.total_size
-    }
-
-    /// Clear on sweep start. Recollect and merge free space as new blocks.
-    pub fn clear(&mut self) {
-        for list in self.lists.iter_mut() {
-            list.clear();
-        }
-        self.total_size = Bytes(0);
     }
 
     fn free_list(size_classes: &[usize], index: usize) -> FreeList {
@@ -314,65 +298,105 @@ impl SegregatedFreeList {
         &mut self.lists[index]
     }
 
-    /// Returned memory chunk has no header and exactly fits the size.
+    /// Returned memory chunk has no header and can be smaller than the minimum free block size.
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
         let mut block: *mut FreeBlock = null_mut();
         if size <= self.total_size() {
             let list = self.allocation_list(size);
-            if list.is_overflow_list() {
-                block = list.remove_first_fit(size);
+            debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
+            block = if list.is_overflow_list() {
+                list.first_fit(size)
             } else {
                 debug_assert!(size.as_usize() <= list.size_class.lower());
-                block = list.remove_first();
+                list.first
             };
         }
         if block == null_mut() {
-            mem.grow_heap(size.to_words())
+            block = Self::grow_heap(mem, size);
         } else {
-            self.total_size -= block.size();
-            if block.size() > size {
-                let remainder = block.split(size);
-                if remainder != null_mut() {
-                    self.add_block(remainder);
-                }
-            }
-            let address = block as usize;
-            #[cfg(debug_assertions)]
-            crate::mem_utils::memzero(address, size.to_words());
-            #[cfg(debug_assertions)]
-            self.sanity_check();
-            Value::from_ptr(address)
+            self.remove_block(block);
         }
+        debug_assert!(block.size() >= size);
+        if block.size() > size {
+            let remainder = block.split(size);
+            if remainder != null_mut() {
+                self.add_block(remainder);
+            }
+        }
+        let address = block as usize;
+        #[cfg(debug_assertions)]
+        crate::mem_utils::memzero(address, size.to_words());
+        #[cfg(debug_assertions)]
+        self.sanity_check();
+        Value::from_ptr(address)
     }
 
-    /// Initialize free space and return as a free block if large enough.
-    pub unsafe fn create_free_space(start_address: usize, length: Bytes<u32>) -> *mut FreeBlock {
+    /// Merge the free space to one free block (if large enough).
+    /// Checks the free space consists of garbage objects and/or old free blocks.
+    pub unsafe fn free_space(&mut self, start_address: usize, length: Bytes<u32>) {
+        let end_address = start_address + length.as_usize();
+        let mut address = start_address;
+        while address < end_address {
+            let object = address as *mut Obj;
+            debug_assert_ne!(object, null_mut());
+            debug_assert!(!object.is_marked());
+            if object.tag() >= TAG_FREE_BLOCK_MIN {
+                let block = object as *mut FreeBlock;
+                let block_size = block.size();
+                if address == start_address && block_size == length {
+                    // Optimization: The free space is exactly one old free block.
+                    return;
+                }
+                self.remove_block(block);
+                address += block_size.as_usize();
+            } else {
+                address += object_size(address).to_bytes().as_usize();
+            };
+            debug_assert!(address <= end_address);
+        }
         if length >= FreeBlock::min_size() {
             let block = start_address as *mut FreeBlock;
             block.initialize(length);
-            block
+            self.add_block(block)
         } else {
             FreeBlock::write_free_filler(start_address, length);
-            null_mut()
         }
     }
 
-    /// Add allocation remainder or merged free block during GC sweep phase.
-    pub unsafe fn add_block(&mut self, block: *mut FreeBlock) {
+    unsafe fn remove_block(&mut self, block: *mut FreeBlock) {
+        debug_assert_ne!(block, null_mut());
+        let list = self.insertion_list(block.size());
+        list.remove(block);
+        self.total_size -= block.size();
+    }
+
+    unsafe fn add_block(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
         list.insert(block);
         self.total_size += block.size();
     }
 
+    unsafe fn grow_heap<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut FreeBlock {
+        let size = max(size, FreeBlock::min_size());
+        debug_assert_eq!(size.as_u32() % WORD_SIZE, 0);
+        let value = mem.grow_heap(size.to_words());
+        let block = value.get_ptr() as *mut FreeBlock;
+        block.initialize(size);
+        block
+    }
+
     #[cfg(debug_assertions)]
     pub unsafe fn sanity_check(&self) {
         let mut total_size = Bytes(0);
         for list in &self.lists {
+            let mut previous: *mut FreeBlock = null_mut();
             let mut block = list.first;
             while block != null_mut() {
                 assert!(list.fits(block));
+                assert_eq!((*block).previous, previous);
                 total_size += block.size();
+                previous = block;
                 block = (*block).next;
             }
         }
