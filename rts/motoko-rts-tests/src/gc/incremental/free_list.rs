@@ -1,4 +1,4 @@
-use std::{collections::HashSet, mem::size_of};
+use std::{collections::HashSet, mem::size_of, ptr::null_mut};
 
 use motoko_rts::{
     gc::incremental::free_list::SegregatedFreeList,
@@ -7,7 +7,7 @@ use motoko_rts::{
 
 use crate::memory::TestMemory;
 
-const SIZE_CLASSES: [usize; 4] = [12, 16, 20, 512];
+const SIZE_CLASSES: [usize; 4] = [8, 16, 20, 512];
 
 pub unsafe fn test() {
     println!("  Testing free list...");
@@ -25,14 +25,8 @@ unsafe fn test_allocate_free() {
     allocate_free(&allocation_sizes, memory_size);
 
     println!("      Mixed sizes ...");
-    // different sizes, external fragmentation
-    let allocation_sizes = vec![12, 4096, 12, 16, 124, 128, 132, 16];
-    let memory_size = allocation_sizes.iter().sum::<u32>() * 2;
-    allocate_free(&allocation_sizes, memory_size);
-
-    println!("      Small sizes ...");
-    // sizes below minimum free block size, internal fragmentation
-    let allocation_sizes = vec![12, 8, 12, 8, 4096, 12, 8, 8, 16, 124, 128, 132, 16];
+    // different sizes, external and internal fragmentation
+    let allocation_sizes = vec![8, 4096, 8, 12, 16, 32, 124, 128, 132, 16];
     let memory_size = allocation_sizes.iter().sum::<u32>() * 2;
     allocate_free(&allocation_sizes, memory_size);
 
@@ -48,11 +42,11 @@ unsafe fn test_split_merge() {
 
     println!("      Uniform sizes ...");
     // same sized free blocks, fits a size class to avoid fragmentation
-    split_merge(1024, &[32]);
+    split_merge(1024, &[8]);
 
     println!("      Mixed sizes ...");
     // mixed free fillers and free blocks, of same size class to avoid fragmentation
-    split_merge(1024, &[8, 12]);
+    split_merge(1024, &[16, 32]);
 }
 
 const ROUNDS: usize = 8;
@@ -87,7 +81,9 @@ unsafe fn free(list: &mut SegregatedFreeList, blob: *mut Blob) {
     assert!(!(blob as *mut Obj).is_marked());
     let address = blob as usize;
     let length = (*blob).len + Bytes(size_of::<Blob>() as u32);
-    list.free_space(address, length);
+    let block = SegregatedFreeList::create_free_space(address, length);
+    assert_ne!(block, null_mut());
+    list.add_block(block);
     list.sanity_check();
 }
 
@@ -103,7 +99,11 @@ unsafe fn split_merge(amount: u32, small_sizes: &[u32]) {
                 allocate(&mut list, &mut mem, *size);
             }
         }
-        list.free_space(large as usize, Bytes(total_size));
+        assert_eq!(list.total_size(), Bytes(0));
+        let block = SegregatedFreeList::create_free_space(large as usize, Bytes(total_size));
+        assert_ne!(block, null_mut());
+        list.add_block(block);
+        assert_eq!(list.total_size(), Bytes(total_size));
         list.sanity_check();
     }
 }
