@@ -277,9 +277,9 @@ impl SegregatedFreeList {
     }
 
     fn allocation_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
-        let mut index = self.list_index(size);
-        // Round up the size class to guarantee that first fit (except for the overflow list).
-        if index < self.lists.len() - 1 && size.as_usize() > self.lists[index].size_class().lower()
+        let mut index = 0;
+        while size.as_usize() > self.lists[index].size_class().lower()
+            && index < self.lists.len() - 1
         {
             index += 1;
         }
@@ -289,16 +289,13 @@ impl SegregatedFreeList {
         &mut self.lists[index]
     }
 
-    fn list_index(&mut self, size: Bytes<u32>) -> usize {
+    fn insertion_list(&mut self, size: Bytes<u32>) -> &mut FreeList {
         let mut index = self.lists.len() - 1;
         while index > 0 && size.as_usize() < self.lists[index].size_class().lower() {
             index -= 1;
         }
-        debug_assert!(
-            size < FreeBlock::min_size() && index == 0
-                || self.lists[index].size_class().includes(size.as_usize())
-        );
-        index
+        debug_assert!(self.lists[index].size_class().includes(size.as_usize()));
+        &mut self.lists[index]
     }
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
@@ -319,7 +316,7 @@ impl SegregatedFreeList {
         } else {
             self.remove_block(block);
         }
-        debug_assert!(block != null_mut());
+        debug_assert!(block.size() >= size);
         if block.size() > size {
             let remainder = block.split(size);
             if remainder != null_mut() {
@@ -368,18 +365,14 @@ impl SegregatedFreeList {
 
     unsafe fn remove_block(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
-        let removal_index = self.list_index(block.size());
-        let list = &mut self.lists[removal_index];
-        debug_assert!(list.size_class.includes(block.size().as_usize()));
+        let list = self.insertion_list(block.size());
         list.remove(block);
         self.total_size -= block.size();
     }
 
     unsafe fn add_block(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
-        let insertion_index = self.list_index(block.size());
-        let list = &mut self.lists[insertion_index];
-        debug_assert!(list.size_class.includes(block.size().as_usize()));
+        let list = self.insertion_list(block.size());
         list.insert(block);
         self.total_size += block.size();
     }
