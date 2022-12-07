@@ -260,7 +260,7 @@ impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
-    const INCREMENT_LIMIT: usize = 1000_000;
+    const INCREMENT_LIMIT: usize = 500_000;
 
     unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
@@ -369,7 +369,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
-    const INCREMENT_LIMIT: usize = 180_000;
+    const INCREMENT_LIMIT: usize = 90_000;
 
     unsafe fn sweep_phase_increment(&mut self) {
         while self.state.sweep_line < self.state.sweep_end {
