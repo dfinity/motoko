@@ -58,7 +58,9 @@ static mut HEAP_OCCUPATION_THRESHOLD: Bytes<u32> = MIN_HEAP_OCCUPATION;
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    heap_occupation() >= HEAP_OCCUPATION_THRESHOLD
+    const CRITICAL_LIMIT: Bytes<u32> = Bytes(u32::MAX - 512 * 1024 * 1024);
+    let occupation = heap_occupation();
+    occupation >= HEAP_OCCUPATION_THRESHOLD || occupation >= CRITICAL_LIMIT
 }
 
 #[cfg(feature = "ic")]
@@ -470,6 +472,20 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     if should_mark {
         debug_assert!(!new_object.is_marked());
         new_object.mark();
+    }
+}
+
+#[cfg(feature = "ic")]
+static mut ALLOCATION_COUNT: usize = 0;
+
+/// GC increment triggered by the mutator on a heap allocation.
+#[ic_mem_fn(ic_only)]
+unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
+    const ALLOCATION_THRESHOLD: usize = 5_000;
+    ALLOCATION_COUNT += 1;
+    if ALLOCATION_COUNT > ALLOCATION_THRESHOLD {
+        ALLOCATION_COUNT = 0;
+        IncrementalGC::instance(mem).increment();
     }
 }
 
