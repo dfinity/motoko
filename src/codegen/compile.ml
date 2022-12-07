@@ -950,7 +950,6 @@ module RTS = struct
     E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
     E.add_func_import env "rts" "pre_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
-    E.add_func_import env "rts" "allocation_increment" [] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
@@ -1028,10 +1027,6 @@ module Heap = struct
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
-    (if !Flags.gc_strategy = Flags.Incremental then
-      E.call_import env "rts" "allocation_increment"
-    else 
-      G.nop) ^^
     compile_unboxed_const n  ^^
     E.call_import env "rts" "alloc_words"
 
@@ -3175,10 +3170,6 @@ module Blob = struct
     compile_unboxed_const (Int32.of_int (String.length s))
 
   let alloc env = 
-    (if !Flags.gc_strategy = Flags.Incremental then
-      E.call_import env "rts" "allocation_increment"
-    else 
-      G.nop) ^^
     E.call_import env "rts" "alloc_blob"
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
@@ -3464,10 +3455,6 @@ module Arr = struct
 
   (* Does not initialize the fields! *)
   let alloc env = 
-    (if !Flags.gc_strategy = Flags.Incremental then
-      E.call_import env "rts" "allocation_increment"
-    else 
-      G.nop) ^^
     E.call_import env "rts" "alloc_array"
 
   let iterate env get_array body =
