@@ -3876,6 +3876,13 @@ module IC = struct
     let empty_f = Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
 
+      begin if !Flags.global_timer then
+        (* initiate a timer pulse *)
+        compile_const_64 1L ^^
+        system_call env "global_timer_set" ^^
+        G.i Drop
+        else G.nop
+      end ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
       GC.collect_garbage env ^^
 
