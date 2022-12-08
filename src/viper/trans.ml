@@ -207,7 +207,7 @@ and dec_field' ctxt d =
         NoInfo)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
-                       {it = AsyncE (_, e); _} );_})) -> (* ignore async *)
+                       {it = AsyncE (T.Fut, _, e); _} );_})) -> (* ignore async *)
       { ctxt with ids = Env.add f.it Method ctxt.ids },
       None,
       fun ctxt' ->
@@ -288,7 +288,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.IfE(e, s1, s2) ->
     !!([],
        [ !!(IfS(exp ctxt e, stmt ctxt s1, stmt ctxt s2))])
-  | M.(AwaitE({ it = AsyncE (_, e); at; _ })) -> (* gross hack *)
+  | M.(AwaitE(T.Fut, { it = AsyncE (T.Fut, _, e); at; _ })) -> (* gross hack *)
      let id = fresh_id "$message_async" in
      let (!!) p = !!! (s.at) p in
      let (!@) p = !!! at p in
@@ -441,7 +441,7 @@ and rets t_opt =
   | Some t ->
     (match T.normalize t.note with
      | T.Tup [] -> []
-     | T.Async (_, _) -> []
+     | T.Async (T.Fut, _, _) -> []
      | _ -> unsupported t.at (Arrange.typ t)
     )
 
