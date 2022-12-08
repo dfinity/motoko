@@ -1,5 +1,6 @@
 open Extract
 open Mo_def
+open Mo_types
 open Cow.Html
 open Common
 
@@ -123,7 +124,10 @@ let rec html_of_type : env -> Syntax.typ -> t =
       ++ html_of_type env res
   | Syntax.ArrayT (mut, ty) ->
       string "[" ++ html_of_mut mut ++ html_of_type env ty ++ string "]"
-  | Syntax.AsyncT (_scope, typ) -> keyword "async " ++ html_of_type env typ
+  | Syntax.AsyncT (Type.Fut, _scope, typ) ->
+      keyword "async " ++ html_of_type env typ
+  | Syntax.AsyncT (Type.Cmp, _scope, typ) ->
+      keyword "async* " ++ html_of_type env typ
   | Syntax.AndT (typ1, typ2) ->
       html_of_type env typ1 ++ string " and " ++ html_of_type env typ2
   | Syntax.OrT (typ1, typ2) ->

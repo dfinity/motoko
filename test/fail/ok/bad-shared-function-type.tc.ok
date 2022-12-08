@@ -1,0 +1,1 @@
+bad-shared-function-type.mo:1.22-1.31: type error [M0035], shared function must have syntactic return type '()' or 'async <typ>'

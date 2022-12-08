@@ -22,7 +22,7 @@ let effect_exp (exp: exp) : T.eff = eff exp
 
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
 let rec infer_effect_prim = function
-  | ThrowPrim | AwaitPrim -> T.Await
+  | ThrowPrim | AwaitPrim _ -> T.Await
   | _ -> T.Triv
 
  and infer_effect_exp (exp: exp) : T.eff =

@@ -9,7 +9,7 @@ actor {};
 // CHECK-NEXT:    i32.const 0
 // CHECK-NEXT:    call 30
 // CHECK-NEXT:    global.set 1
-// CHECK-NEXT:    call ${{copying_gc|compacting_gc}}
+// CHECK-NEXT:    call ${{copying_gc|compacting_gc|generational_gc}}
 // CHECK-NEXT:    i32.const 0
 // CHECK-NEXT:    call 30
 // CHECK-NEXT:    global.get 1
