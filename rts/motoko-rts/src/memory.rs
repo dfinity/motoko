@@ -7,6 +7,8 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+use self::ic::print_object;
+
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
 /// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
@@ -37,6 +39,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let blob = ptr.get_ptr() as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
     (*blob).len = size;
+    print_object(ptr);
     ptr
 }
 
@@ -54,5 +57,6 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     (*ptr).header.tag = TAG_ARRAY;
     (*ptr).len = len;
 
+    print_object(skewed_ptr);
     skewed_ptr
 }

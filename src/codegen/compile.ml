@@ -942,6 +942,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "init_write_barrier" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "before_heartbeat" [] [];
+    E.add_func_import env "rts" "after_heartbeat" [] [];
+    E.add_func_import env "rts" "print_object" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -1079,6 +1082,8 @@ module Heap = struct
       store_field (Wasm.I32.of_int_u idx)
     in
     G.concat_mapi init_elem element_instructions ^^
+    get_heap_obj ^^
+    E.call_import env "rts" "print_object" ^^
     get_heap_obj
 
   (* Convenience functions related to memory *)
@@ -1637,6 +1642,8 @@ module BoxedWord64 = struct
     set_i ^^
     get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
+    get_i ^^
+    E.call_import env "rts" "print_object" ^^
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
@@ -1755,6 +1762,8 @@ module BoxedSmallWord = struct
     set_i ^^
     get_i ^^ Tagged.(store Bits32) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
+    get_i ^^
+    E.call_import env "rts" "print_object" ^^
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -1997,6 +2006,8 @@ module Float = struct
     set_i ^^
     get_i ^^ Tagged.(store Bits64) ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
+    get_i ^^
+    E.call_import env "rts" "print_object" ^^
     get_i
     )
 
@@ -3040,6 +3051,8 @@ module Object = struct
     G.concat_map init_field fs ^^
 
     (* Return the pointer to the object *)
+    get_ri ^^
+    E.call_import env "rts" "print_object" ^^
     get_ri
 
 
@@ -3893,7 +3906,9 @@ module IC = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let fi = E.add_fun env "canister_heartbeat"
       (Func.of_body env [] [] (fun env ->
+        E.call_import env "rts" "before_heartbeat" ^^
         G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
+        E.call_import env "rts" "after_heartbeat" ^^
         (* TODO(3622)
            Until DTS is implemented for heartbeats, don't collect garbage here,
            just record mutator_instructions and leave GC scheduling to the
@@ -7053,6 +7068,9 @@ module FuncDec = struct
         get_clos ^^
         compile_unboxed_const len ^^
         Heap.store_field Closure.len_field ^^
+
+        get_clos ^^
+        E.call_import env "rts" "print_object" ^^
 
         (* Store all captured values *)
         store_env

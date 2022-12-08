@@ -70,6 +70,7 @@ pub struct IcMemory;
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+        println!(100, "HEAP ALLOC {}", n.to_bytes().as_usize());
         let bytes = n.to_bytes();
         // Update ALLOCATED
         let delta = u64::from(bytes.as_u32());
@@ -102,4 +103,21 @@ unsafe fn grow_memory(ptr: u64) {
             rts_trap_with("Cannot grow memory");
         }
     }
+}
+
+#[no_mangle]
+pub unsafe fn before_heartbeat() {
+    println!(100, "BEFORE HEARTBEAT");
+}
+
+#[no_mangle]
+pub unsafe fn after_heartbeat() {
+    println!(100, "AFTER HEARTBEAT");
+}
+
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe fn print_object(object: Value) {
+    assert!(object.is_ptr());
+    crate::debug::print_value(object);
 }

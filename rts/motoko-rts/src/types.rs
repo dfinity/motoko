@@ -468,7 +468,7 @@ impl Object {
         (*self).size
     }
 
-    #[cfg(debug_assertions)]
+    //#[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
         *self.payload_addr().add(idx as usize)
     }

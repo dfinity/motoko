@@ -48,6 +48,10 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
+
+    #[cfg(feature = "ic")]
+    crate::memory::ic::print_object(ptr);
+    
     blob.payload_addr() as *mut u8
 }
 

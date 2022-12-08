@@ -145,6 +145,7 @@ unsafe fn evac<M: Memory>(
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();
+    println!(100, "ALLOC TO SPACE {}", obj_size.as_usize());
 
     // Copy object to to-space
     memcpy_words(obj_addr, obj as usize, obj_size);
