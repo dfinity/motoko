@@ -46,32 +46,37 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
         static_roots: ic::get_static_roots(),
         continuation_table: *crate::continuation_table::continuation_table_loc(),
     };
+    record_increment_start::<M>();
     IncrementalGC::instance(mem).empty_call_stack_increment(limits, roots);
-    update_statistics::<M>();
+    record_increment_stop::<M>();
 }
 
 #[cfg(feature = "ic")]
-const MIN_HEAP_OCCUPATION: Bytes<u32> = Bytes(32 * 1024 * 1024);
-
-#[cfg(feature = "ic")]
-static mut HEAP_OCCUPATION_THRESHOLD: Bytes<u32> = MIN_HEAP_OCCUPATION;
+static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
+    use crate::memory::ic;
+    const GROWTH_THRESHOLD: Bytes<u64> = Bytes(128 * 1024 * 1024);
     const CRITICAL_LIMIT: Bytes<u32> = Bytes(u32::MAX - 512 * 1024 * 1024);
-    let occupation = heap_occupation();
-    occupation >= HEAP_OCCUPATION_THRESHOLD || occupation >= CRITICAL_LIMIT
+    debug_assert!(ic::ALLOCATED >= LAST_ALLOCATED);
+    let growth = ic::ALLOCATED - LAST_ALLOCATED;
+    growth >= GROWTH_THRESHOLD || heap_occupation() >= CRITICAL_LIMIT
 }
 
 #[cfg(feature = "ic")]
-unsafe fn update_statistics<M: Memory>() {
+unsafe fn record_increment_start<M: Memory>() {
     use crate::memory::ic;
     if IncrementalGC::<M>::pausing() {
-        const GROW_FACTOR: f64 = 1.5;
-        let heap_occupation = heap_occupation();
-        let threshold = Bytes((heap_occupation.as_usize() as f64 * GROW_FACTOR) as u32);
-        HEAP_OCCUPATION_THRESHOLD = ::core::cmp::max(MIN_HEAP_OCCUPATION, threshold);
-        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, heap_occupation);
+        LAST_ALLOCATED = ic::ALLOCATED;
+    }
+}
+
+#[cfg(feature = "ic")]
+unsafe fn record_increment_stop<M: Memory>() {
+    use crate::memory::ic;
+    if IncrementalGC::<M>::pausing() {
+        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, heap_occupation());
     }
 }
 
@@ -136,8 +141,6 @@ pub struct IncrementalGC<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
-    const LARGE_INCREMENT_LIMIT: usize = 500_000;
-
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
     pub unsafe fn initialize() {
@@ -159,7 +162,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         } else if Self::mark_completed() {
             self.start_sweeping(limits.base, limits.free);
         } else {
-            self.increment(Self::LARGE_INCREMENT_LIMIT);
+            self.increment();
         }
     }
 
@@ -169,7 +172,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn pre_write_barrier(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
             if value.points_to_or_beyond(state.heap_base) && !state.complete {
-                let mut gc = Increment::instance(self.mem, state, 0);
+                let mut gc = Increment::instance(self.mem, state);
                 gc.mark_object(value);
             }
         }
@@ -182,15 +185,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    unsafe fn increment(&mut self, increment_limit: usize) {
+    unsafe fn increment(&mut self) {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
-            Phase::Mark(state) => {
-                Increment::instance(self.mem, state, increment_limit).mark_phase_increment()
-            }
-            Phase::Sweep(state) => {
-                Increment::instance(self.mem, state, increment_limit).sweep_phase_increment()
-            }
+            Phase::Mark(state) => Increment::instance(self.mem, state).mark_phase_increment(),
+            Phase::Sweep(state) => Increment::instance(self.mem, state).sweep_phase_increment(),
         }
     }
 
@@ -209,7 +208,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         };
         PHASE = Phase::Mark(state);
         if let Phase::Mark(state) = &mut PHASE {
-            let mut gc = Increment::instance(self.mem, state, Self::LARGE_INCREMENT_LIMIT);
+            let mut gc = Increment::instance(self.mem, state);
             gc.mark_roots(roots);
             gc.mark_phase_increment();
         } else {
@@ -242,7 +241,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         #[cfg(feature = "ic")]
         sanity_checks::check_memory(true);
 
-        self.increment(Self::LARGE_INCREMENT_LIMIT);
+        self.increment();
     }
 }
 
@@ -251,27 +250,21 @@ struct Increment<'a, M: Memory, S: 'static> {
     mem: &'a mut M,
     state: &'static mut S,
     steps: usize,
-    increment_limit: usize,
 }
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
-    fn instance(
-        mem: &'a mut M,
-        state: &'static mut S,
-        increment_limit: usize,
-    ) -> Increment<'a, M, S> {
+    fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
         Increment {
             mem,
             state,
             steps: 0,
-            increment_limit,
         }
     }
+
+    const INCREMENT_LIMIT: usize = 1_000_000;
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
-    const INCREMENT_STEP: usize = 1;
-
     unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
         self.mark_continuation_table(roots.continuation_table);
@@ -286,7 +279,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             if value.is_ptr() && value.get_ptr() >= self.state.heap_base {
                 self.mark_object(value);
             }
-            self.steps += Self::INCREMENT_STEP;
+            self.steps += 1;
         }
     }
 
@@ -323,7 +316,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             self.mark_fields(value.as_obj());
 
             self.steps += 1;
-            if self.steps > self.increment_limit {
+            if self.steps > Self::INCREMENT_LIMIT {
                 return;
             }
         }
@@ -379,12 +372,10 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
-    const INCREMENT_STEP: usize = 5;
-
     unsafe fn sweep_phase_increment(&mut self) {
         while self.state.sweep_line < self.state.sweep_end {
             let free_space = self.merge_contiguous_free_space();
-            if self.steps > self.increment_limit {
+            if self.steps > Self::INCREMENT_LIMIT {
                 // Continue merging with this free segment on the next GC increment.
                 return;
             }
@@ -400,8 +391,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             self.state.sweep_line += size;
             debug_assert!(self.state.sweep_line <= self.state.sweep_end);
 
-            self.steps += Self::INCREMENT_STEP;
-            if self.steps > self.increment_limit {
+            self.steps += 1;
+            if self.steps > Self::INCREMENT_LIMIT {
                 return;
             }
         }
@@ -427,8 +418,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             }
             debug_assert!(address <= self.state.sweep_end);
 
-            self.steps += Self::INCREMENT_STEP;
-            if self.steps > self.increment_limit {
+            self.steps += 1;
+            if self.steps > Self::INCREMENT_LIMIT {
                 break;
             }
         }
@@ -483,23 +474,6 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     if should_mark {
         debug_assert!(!new_object.is_marked());
         new_object.mark();
-    }
-}
-
-#[cfg(feature = "ic")]
-static mut ALLOCATION_COUNT: usize = 0;
-
-/// GC increment triggered in defined intervals by the mutator on  
-/// heap allocation. This is necessary to keep up with high rate of
-/// allocations between regular GC scheduling points.
-#[ic_mem_fn(ic_only)]
-unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
-    const SMALL_INCREMENT_LIMIT: usize = 1_500;
-    const ALLOCATION_THRESHOLD: usize = 100;
-    ALLOCATION_COUNT += 1;
-    if ALLOCATION_COUNT > ALLOCATION_THRESHOLD {
-        ALLOCATION_COUNT = 0;
-        IncrementalGC::instance(mem).increment(SMALL_INCREMENT_LIMIT);
     }
 }
 
