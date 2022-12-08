@@ -1,4 +1,1 @@
-no-timer.mo:5.3-6.4: type error [M0127], system function timer is declared with type
-  () -> async ()
-instead of expected type
-  (Nat64 -> ()) -> async ()
+no-timer.mo:5.5-6.4: type error [M0182], system function timer is present but -no-timer flag is specified
