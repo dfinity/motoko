@@ -942,6 +942,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "init_write_barrier" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "trace_output" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -3879,6 +3880,8 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InInit ^^
 
       G.i (Call (nr (E.built_in env "init"))) ^^
+      compile_unboxed_const 1l ^^
+      E.call_import env "rts" "trace_output" ^^
       GC.collect_garbage env ^^
 
       Lifecycle.trans env Lifecycle.Idle
@@ -3952,6 +3955,8 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InPostUpgrade ^^
       G.i (Call (nr (E.built_in env "post_exp"))) ^^
       Lifecycle.trans env Lifecycle.Idle ^^
+      compile_unboxed_const 2l ^^
+      E.call_import env "rts" "trace_output" ^^
       GC.collect_garbage env
     )) in
 
@@ -6951,6 +6956,8 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
+        compile_unboxed_const 3l ^^
+        E.call_import env "rts" "trace_output" ^^
         GC.collect_garbage env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
@@ -6978,6 +6985,8 @@ module FuncDec = struct
       Serialization.deserialize env arg_tys ^^
       G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names) ^^
       mk_body env ae1 ^^
+      compile_unboxed_const 4l ^^
+      E.call_import env "rts" "trace_output" ^^
       message_cleanup env sort
     ))
 
@@ -7148,6 +7157,8 @@ module FuncDec = struct
         get_closure ^^
         Closure.call_closure env 1 0 ^^
 
+        compile_unboxed_const 5l ^^
+        E.call_import env "rts" "trace_output" ^^
         message_cleanup env (Type.Shared Type.Write)
       );
 
@@ -7302,6 +7313,8 @@ module FuncDec = struct
         ContinuationTable.peek_future env ^^
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
+        compile_unboxed_const 6l ^^
+        E.call_import env "rts" "trace_output" ^^
         message_cleanup env (Type.Shared Type.Write)
       );
 
@@ -8631,6 +8644,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICPerformGC, [] ->
     SR.unit,
+    compile_unboxed_const 4l ^^
+    E.call_import env "rts" "trace_output" ^^
     GC.collect_garbage env
 
   | ICStableSize t, [e] ->
