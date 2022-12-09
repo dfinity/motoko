@@ -330,11 +330,11 @@ impl SegregatedFreeList {
                 }
             }
             self.total_size -= block_size;
+            #[cfg(debug_assertions)]
+            crate::mem_utils::memzero(block as usize, size.to_words());
+            #[cfg(debug_assertions)]
+            self.sanity_check();
         }
-        #[cfg(debug_assertions)]
-        crate::mem_utils::memzero(block as usize, size.to_words());
-        #[cfg(debug_assertions)]
-        self.sanity_check();
         block as *mut u8
     }
 
