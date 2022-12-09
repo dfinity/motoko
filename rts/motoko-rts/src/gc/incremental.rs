@@ -125,8 +125,8 @@ static mut PHASE: Phase = Phase::Pause;
 /// Free list activated on incremental GC.
 pub(crate) static mut FREE_LIST: Option<SegregatedFreeList> = None;
 
-// Number of allocations during a GC run.
-static mut CONCURRENT_ALLOCATIONS: usize = 0;
+// Number of allocated objects in the heap.
+static mut ALLOCATED_OBJECTS: usize = 0;
 
 /// Heap limits.
 pub struct Limits {
@@ -202,7 +202,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
         debug_assert!(Self::pausing());
-        CONCURRENT_ALLOCATIONS = 0;
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
@@ -263,9 +262,11 @@ struct Increment<'a, M: Memory, S: 'static> {
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
     unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
-        const LOWER_LIMIT: usize = 200_000;
-        const ALLOCATION_FACTOR: usize = 3;
-        let increment_limit = LOWER_LIMIT + CONCURRENT_ALLOCATIONS * ALLOCATION_FACTOR;
+        const INCREMENT_BASE: usize = 50_000;
+        const INCREMENT_DIVISOR: usize = 10;
+        let free_blocks = FREE_LIST.as_ref().unwrap().total_count();
+        let total_blocks = ALLOCATED_OBJECTS + free_blocks;
+        let increment_limit = INCREMENT_BASE + total_blocks / INCREMENT_DIVISOR;
         Increment {
             mem,
             state,
@@ -424,6 +425,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 let size = object_size(address).to_bytes().as_usize();
                 address += size;
                 if tag != TAG_ONE_WORD_FILLER {
+                    ALLOCATED_OBJECTS -= 1;
                     reclaimed += size;
                 }
             }
@@ -473,15 +475,12 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
 #[no_mangle]
 pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
+    ALLOCATED_OBJECTS += 1;
     debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
         Phase::Pause | Phase::Stop => false,
-        Phase::Mark(_) => {
-            CONCURRENT_ALLOCATIONS += 1;
-            true
-        }
+        Phase::Mark(_) => true,
         Phase::Sweep(state) => {
-            CONCURRENT_ALLOCATIONS += 1;
             let address = new_object as usize;
             address >= state.sweep_line && address < state.sweep_end
         }

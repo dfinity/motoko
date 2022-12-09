@@ -239,6 +239,7 @@ const SIZE_CLASSES: [usize; LIST_COUNT] = [12, 32, KB, 32 * MB];
 
 pub struct SegregatedFreeList {
     lists: [FreeList; LIST_COUNT],
+    total_count: usize,
     total_size: Bytes<u32>,
 }
 
@@ -252,8 +253,13 @@ impl SegregatedFreeList {
         debug_assert!(lists[lists.len() - 1].is_overflow_list());
         SegregatedFreeList {
             lists,
+            total_count: 0,
             total_size: Bytes(0),
         }
+    }
+
+    pub fn total_count(&self) -> usize {
+        self.total_count
     }
 
     pub fn total_size(&self) -> Bytes<u32> {
@@ -323,12 +329,14 @@ impl SegregatedFreeList {
                 if remainder != null_mut() {
                     if list.fits(remainder) {
                         list.insert(remainder);
+                        self.total_count += 1;
                         self.total_size += remainder.size();
                     } else {
                         self.add_block(remainder);
                     }
                 }
             }
+            self.total_count -= 1;
             self.total_size -= block_size;
             #[cfg(debug_assertions)]
             crate::mem_utils::memzero(block as usize, size.to_words());
@@ -355,6 +363,7 @@ impl SegregatedFreeList {
         debug_assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
         list.remove(block);
+        self.total_count -= 1;
         self.total_size -= block.size();
     }
 
@@ -363,11 +372,13 @@ impl SegregatedFreeList {
         debug_assert_ne!(block, null_mut());
         let list = self.insertion_list(block.size());
         list.insert(block);
+        self.total_count += 1;
         self.total_size += block.size();
     }
 
     #[cfg(debug_assertions)]
     pub unsafe fn sanity_check(&self) {
+        let mut total_count = 0;
         let mut total_size = Bytes(0);
         for list in &self.lists {
             let mut previous: *mut FreeBlock = null_mut();
@@ -375,11 +386,13 @@ impl SegregatedFreeList {
             while block != null_mut() {
                 assert!(list.fits(block));
                 assert_eq!((*block).previous, previous);
+                total_count += 1;
                 total_size += block.size();
                 previous = block;
                 block = (*block).next;
             }
         }
+        assert_eq!(self.total_count, total_count);
         assert_eq!(self.total_size, total_size);
     }
 }
