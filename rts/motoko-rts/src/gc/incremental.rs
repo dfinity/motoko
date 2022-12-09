@@ -262,8 +262,8 @@ struct Increment<'a, M: Memory, S: 'static> {
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
     unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
-        const INCREMENT_BASE: usize = 50_000;
-        const INCREMENT_DIVISOR: usize = 10;
+        const INCREMENT_BASE: usize = 100_000;
+        const INCREMENT_DIVISOR: usize = 2;
         let free_blocks = FREE_LIST.as_ref().unwrap().total_count();
         let total_blocks = ALLOCATED_OBJECTS + free_blocks;
         let increment_limit = INCREMENT_BASE + total_blocks / INCREMENT_DIVISOR;
