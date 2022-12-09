@@ -101,8 +101,6 @@ impl FreeBlock {
         debug_assert!(words.as_u32() <= u32::MAX - TAG_FREE_BLOCK_MIN);
         (*self).header.raw_tag = unmark(TAG_FREE_BLOCK_MIN + words.as_u32());
         debug_assert!(!is_marked((*self).header.raw_tag));
-        (*self).next = null_mut();
-        (*self).previous = null_mut();
     }
 
     /// Size of the free entire free block (includes object header)
@@ -198,14 +196,12 @@ impl FreeList {
     pub unsafe fn insert(&mut self, block: *mut FreeBlock) {
         debug_assert_ne!(block, null_mut());
         debug_assert!(self.fits(block));
-        debug_assert_eq!((*block).next, null_mut());
-        debug_assert_eq!((*block).previous, null_mut());
+        (*block).previous = null_mut();
         (*block).next = self.first;
         if self.first != null_mut() {
             (*self.first).previous = block;
         }
         self.first = block;
-        debug_assert!(self.fits(block));
     }
 
     pub unsafe fn remove(&mut self, block: *mut FreeBlock) {
@@ -223,8 +219,6 @@ impl FreeList {
             debug_assert_eq!(previous, null_mut());
             self.first = next;
         }
-        (*block).next = null_mut();
-        (*block).previous = null_mut();
     }
 
     // Linear search is only used for overflow list.
