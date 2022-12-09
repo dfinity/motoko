@@ -57,7 +57,7 @@ static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     const ABSOLUTE_GROWTH_THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
-    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.5;
+    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.85;
     const CRITICAL_LIMIT: Bytes<u32> = Bytes(u32::MAX - 256 * 1024 * 1024);
     use crate::memory::ic;
     debug_assert!(ic::ALLOCATED >= LAST_ALLOCATED);
