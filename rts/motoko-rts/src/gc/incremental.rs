@@ -263,9 +263,9 @@ struct Increment<'a, M: Memory, S: 'static> {
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
     unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
-        const LOWER_LIMIT: usize = 250_000;
-        const UPPER_LIMIT: usize = 1_000_000;
-        const ALLOCATION_FACTOR: usize = 25;
+        const LOWER_LIMIT: usize = 200_000;
+        const UPPER_LIMIT: usize = 20_000_000;
+        const ALLOCATION_FACTOR: usize = 3;
         let increment_limit = ::core::cmp::min(
             UPPER_LIMIT,
             LOWER_LIMIT + CONCURRENT_ALLOCATIONS * ALLOCATION_FACTOR,
@@ -280,8 +280,6 @@ impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
-    const INCREMENT_STEP: usize = 1;
-
     unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
         self.mark_continuation_table(roots.continuation_table);
@@ -296,7 +294,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             if value.is_ptr() && value.get_ptr() >= self.state.heap_base {
                 self.mark_object(value);
             }
-            self.steps += Self::INCREMENT_STEP;
+            self.steps += 1;
         }
     }
 
@@ -307,7 +305,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 
     unsafe fn mark_object(&mut self, value: Value) {
-        self.steps += Self::INCREMENT_STEP;
+        self.steps += 1;
         debug_assert!(!self.state.complete);
         debug_assert!((value.get_ptr() >= self.state.heap_base));
         let object = value.as_obj();
@@ -332,7 +330,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             debug_assert!(value.as_obj().is_marked());
             self.mark_fields(value.as_obj());
 
-            self.steps += Self::INCREMENT_STEP;
+            self.steps += 1;
             if self.steps > self.increment_limit {
                 return;
             }
@@ -389,8 +387,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
-    const INCREMENT_STEP: usize = 1;
-
     unsafe fn sweep_phase_increment(&mut self) {
         while self.state.sweep_line < self.state.sweep_end {
             let free_space = self.merge_contiguous_free_space();
@@ -410,7 +406,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             self.state.sweep_line += size;
             debug_assert!(self.state.sweep_line <= self.state.sweep_end);
 
-            self.steps += Self::INCREMENT_STEP;
+            self.steps += 1;
             if self.steps > self.increment_limit {
                 return;
             }
@@ -437,7 +433,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             }
             debug_assert!(address <= self.state.sweep_end);
 
-            self.steps += Self::INCREMENT_STEP;
+            self.steps += 1;
             if self.steps > self.increment_limit {
                 break;
             }
