@@ -264,12 +264,8 @@ struct Increment<'a, M: Memory, S: 'static> {
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
     unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
         const LOWER_LIMIT: usize = 200_000;
-        const UPPER_LIMIT: usize = 20_000_000;
         const ALLOCATION_FACTOR: usize = 3;
-        let increment_limit = ::core::cmp::min(
-            UPPER_LIMIT,
-            LOWER_LIMIT + CONCURRENT_ALLOCATIONS * ALLOCATION_FACTOR,
-        );
+        let increment_limit = LOWER_LIMIT + CONCURRENT_ALLOCATIONS * ALLOCATION_FACTOR;
         Increment {
             mem,
             state,
