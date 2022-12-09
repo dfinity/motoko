@@ -263,9 +263,9 @@ struct Increment<'a, M: Memory, S: 'static> {
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
     unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
-        const LOWER_LIMIT: usize = 1_000_000;
-        const UPPER_LIMIT: usize = 3_000_000;
-        const ALLOCATION_FACTOR: usize = 100;
+        const LOWER_LIMIT: usize = 250_000;
+        const UPPER_LIMIT: usize = 750_000;
+        const ALLOCATION_FACTOR: usize = 25;
         let increment_limit = ::core::cmp::min(
             UPPER_LIMIT,
             LOWER_LIMIT + CONCURRENT_ALLOCATIONS * ALLOCATION_FACTOR,
@@ -389,7 +389,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
-    const INCREMENT_STEP: usize = 4;
+    const INCREMENT_STEP: usize = 1;
 
     unsafe fn sweep_phase_increment(&mut self) {
         while self.state.sweep_line < self.state.sweep_end {
@@ -484,14 +484,17 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
         Phase::Pause | Phase::Stop => false,
-        Phase::Mark(_) => true,
+        Phase::Mark(_) => {
+            CONCURRENT_ALLOCATIONS += 1;
+            true
+        }
         Phase::Sweep(state) => {
+            CONCURRENT_ALLOCATIONS += 1;
             let address = new_object as usize;
             address >= state.sweep_line && address < state.sweep_end
         }
     };
     if should_mark {
-        CONCURRENT_ALLOCATIONS += 1;
         debug_assert!(!new_object.is_marked());
         new_object.mark();
     }
