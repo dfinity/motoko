@@ -125,9 +125,6 @@ static mut PHASE: Phase = Phase::Pause;
 /// Free list activated on incremental GC.
 pub(crate) static mut FREE_LIST: Option<SegregatedFreeList> = None;
 
-// Number of allocated objects in the heap.
-static mut ALLOCATED_OBJECTS: usize = 0;
-
 /// Heap limits.
 pub struct Limits {
     pub base: usize,
@@ -148,6 +145,8 @@ pub struct IncrementalGC<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
+    const LARGE_INCREMENT_LIMIT: usize = 1_000_000;
+
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
     pub unsafe fn initialize() {
@@ -169,7 +168,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         } else if Self::mark_completed() {
             self.start_sweeping(limits.base, limits.free);
         } else {
-            self.increment();
+            self.increment(Self::LARGE_INCREMENT_LIMIT);
         }
     }
 
@@ -179,7 +178,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn pre_write_barrier(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
             if value.points_to_or_beyond(state.heap_base) && !state.complete {
-                let mut gc = Increment::instance(self.mem, state);
+                let mut gc = Increment::instance(self.mem, state, 0);
                 gc.mark_object(value);
             }
         }
@@ -192,11 +191,15 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    unsafe fn increment(&mut self) {
+    unsafe fn increment(&mut self, increment_limit: usize) {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
-            Phase::Mark(state) => Increment::instance(self.mem, state).mark_phase_increment(),
-            Phase::Sweep(state) => Increment::instance(self.mem, state).sweep_phase_increment(),
+            Phase::Mark(state) => {
+                Increment::instance(self.mem, state, increment_limit).mark_phase_increment()
+            }
+            Phase::Sweep(state) => {
+                Increment::instance(self.mem, state, increment_limit).sweep_phase_increment()
+            }
         }
     }
 
@@ -215,7 +218,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         };
         PHASE = Phase::Mark(state);
         if let Phase::Mark(state) = &mut PHASE {
-            let mut gc = Increment::instance(self.mem, state);
+            let mut gc = Increment::instance(self.mem, state, Self::LARGE_INCREMENT_LIMIT);
             gc.mark_roots(roots);
             gc.mark_phase_increment();
         } else {
@@ -248,7 +251,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         #[cfg(feature = "ic")]
         sanity_checks::check_memory(true);
 
-        self.increment();
+        self.increment(Self::LARGE_INCREMENT_LIMIT);
     }
 }
 
@@ -261,12 +264,11 @@ struct Increment<'a, M: Memory, S: 'static> {
 }
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
-    unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
-        const INCREMENT_BASE: usize = 100_000;
-        const INCREMENT_DIVISOR: usize = 2;
-        let free_blocks = FREE_LIST.as_ref().unwrap().total_count();
-        let total_blocks = ALLOCATED_OBJECTS + free_blocks;
-        let increment_limit = INCREMENT_BASE + total_blocks / INCREMENT_DIVISOR;
+    unsafe fn instance(
+        mem: &'a mut M,
+        state: &'static mut S,
+        increment_limit: usize,
+    ) -> Increment<'a, M, S> {
         Increment {
             mem,
             state,
@@ -425,7 +427,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
                 let size = object_size(address).to_bytes().as_usize();
                 address += size;
                 if tag != TAG_ONE_WORD_FILLER {
-                    ALLOCATED_OBJECTS -= 1;
                     reclaimed += size;
                 }
             }
@@ -475,7 +476,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
 #[no_mangle]
 pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
-    ALLOCATED_OBJECTS += 1;
     debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
         Phase::Pause | Phase::Stop => false,
@@ -497,4 +497,21 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
     PHASE = Phase::Stop;
+}
+
+// Number of mutator allocations since last allocation-triggered GC increment.
+static mut ALLOCATION_COUNT: usize = 0;
+
+/// Small GC increment on regular interval of concurrent allocations, to
+/// keep up with a high allocation rate.
+#[inline]
+pub unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
+    const INCREMENT_INTERVAL: usize = 1_000;
+    const INCREMENT_PER_ALLOCATION: usize = 4;
+    ALLOCATION_COUNT += 1;
+    if ALLOCATION_COUNT == INCREMENT_INTERVAL {
+        ALLOCATION_COUNT = 0;
+        let mut gc = IncrementalGC::instance(mem);
+        gc.increment(INCREMENT_INTERVAL * INCREMENT_PER_ALLOCATION);
+    }
 }
