@@ -294,38 +294,48 @@ impl SegregatedFreeList {
 
     /// Returned memory chunk has no header and can be smaller than the minimum free block size.
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
-        let block = self.find_block(size);
-        if block == null_mut() {
-            return mem.grow_heap(size.to_words());
+        let block = self.allocate_block(size);
+        if block != null_mut() {
+            Value::from_ptr(block as usize)
+        } else {
+            mem.grow_heap(size.to_words())
         }
-        self.remove_block(block);
-        debug_assert!(block.size() >= size);
-        if block.size() > size {
-            let remainder = block.split(size);
-            if remainder != null_mut() {
-                self.add_block(remainder);
-            }
-        }
-        let address = block as usize;
-        #[cfg(debug_assertions)]
-        crate::mem_utils::memzero(address, size.to_words());
-        #[cfg(debug_assertions)]
-        self.sanity_check();
-        Value::from_ptr(address)
     }
 
-    unsafe fn find_block(&mut self, size: Bytes<u32>) -> *mut FreeBlock {
+    unsafe fn allocate_block(&mut self, size: Bytes<u32>) -> *mut u8 {
         if size > self.total_size() {
             return null_mut();
         }
         let list = self.allocation_list(size);
         debug_assert!(list.is_overflow_list() || size.as_usize() <= list.size_class.lower());
-        if list.is_overflow_list() {
+        let block = if list.is_overflow_list() {
             list.first_fit(size)
         } else {
             debug_assert!(size.as_usize() <= list.size_class.lower());
             list.first
+        };
+        if block != null_mut() {
+            debug_assert!(block.size() >= size);
+            list.remove(block);
+            let block_size = block.size();
+            if block_size > size {
+                let remainder = block.split(size);
+                if remainder != null_mut() {
+                    if list.fits(remainder) {
+                        list.insert(remainder);
+                        self.total_size += remainder.size();
+                    } else {
+                        self.add_block(remainder);
+                    }
+                }
+            }
+            self.total_size -= block_size;
         }
+        #[cfg(debug_assertions)]
+        crate::mem_utils::memzero(block as usize, size.to_words());
+        #[cfg(debug_assertions)]
+        self.sanity_check();
+        block as *mut u8
     }
 
     /// Initialize free space and return as a free block if large enough.
