@@ -125,6 +125,9 @@ static mut PHASE: Phase = Phase::Pause;
 /// Free list activated on incremental GC.
 pub(crate) static mut FREE_LIST: Option<SegregatedFreeList> = None;
 
+// Number of allocations during a GC run.
+static mut CONCURRENT_ALLOCATIONS: usize = 0;
+
 /// Heap limits.
 pub struct Limits {
     pub base: usize,
@@ -199,6 +202,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
         debug_assert!(Self::pausing());
+        CONCURRENT_ALLOCATIONS = 0;
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
@@ -254,20 +258,29 @@ struct Increment<'a, M: Memory, S: 'static> {
     mem: &'a mut M,
     state: &'static mut S,
     steps: usize,
+    increment_limit: usize,
 }
 
 impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
-    fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
+    unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
+        const LOWER_LIMIT: usize = 1_000_000;
+        const UPPER_LIMIT: usize = 3_000_000;
+        const ALLOCATION_FACTOR: usize = 100;
+        let increment_limit = ::core::cmp::min(
+            UPPER_LIMIT,
+            LOWER_LIMIT + CONCURRENT_ALLOCATIONS * ALLOCATION_FACTOR,
+        );
         Increment {
             mem,
             state,
             steps: 0,
+            increment_limit,
         }
     }
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
-    const INCREMENT_LIMIT: usize = 1_200_000;
+    const INCREMENT_STEP: usize = 1;
 
     unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
@@ -283,7 +296,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             if value.is_ptr() && value.get_ptr() >= self.state.heap_base {
                 self.mark_object(value);
             }
-            self.steps += 1;
+            self.steps += Self::INCREMENT_STEP;
         }
     }
 
@@ -294,7 +307,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 
     unsafe fn mark_object(&mut self, value: Value) {
-        self.steps += 1;
+        self.steps += Self::INCREMENT_STEP;
         debug_assert!(!self.state.complete);
         debug_assert!((value.get_ptr() >= self.state.heap_base));
         let object = value.as_obj();
@@ -319,8 +332,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             debug_assert!(value.as_obj().is_marked());
             self.mark_fields(value.as_obj());
 
-            self.steps += 1;
-            if self.steps > Self::INCREMENT_LIMIT {
+            self.steps += Self::INCREMENT_STEP;
+            if self.steps > self.increment_limit {
                 return;
             }
         }
@@ -376,12 +389,12 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
-    const INCREMENT_LIMIT: usize = 350_000;
+    const INCREMENT_STEP: usize = 4;
 
     unsafe fn sweep_phase_increment(&mut self) {
         while self.state.sweep_line < self.state.sweep_end {
             let free_space = self.merge_contiguous_free_space();
-            if self.steps > Self::INCREMENT_LIMIT {
+            if self.steps > self.increment_limit {
                 // Continue merging with this free segment on the next GC increment.
                 return;
             }
@@ -397,8 +410,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             self.state.sweep_line += size;
             debug_assert!(self.state.sweep_line <= self.state.sweep_end);
 
-            self.steps += 1;
-            if self.steps > Self::INCREMENT_LIMIT {
+            self.steps += Self::INCREMENT_STEP;
+            if self.steps > self.increment_limit {
                 return;
             }
         }
@@ -424,8 +437,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, SweepState> {
             }
             debug_assert!(address <= self.state.sweep_end);
 
-            self.steps += 1;
-            if self.steps > Self::INCREMENT_LIMIT {
+            self.steps += Self::INCREMENT_STEP;
+            if self.steps > self.increment_limit {
                 break;
             }
         }
@@ -478,6 +491,7 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
         }
     };
     if should_mark {
+        CONCURRENT_ALLOCATIONS += 1;
         debug_assert!(!new_object.is_marked());
         new_object.mark();
     }
