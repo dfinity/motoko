@@ -145,7 +145,7 @@ pub struct IncrementalGC<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
-    const LARGE_INCREMENT_LIMIT: usize = 250_000;
+    const LARGE_INCREMENT_LIMIT: usize = 1_000_000;
 
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
@@ -502,12 +502,12 @@ pub unsafe extern "C" fn stop_gc_on_upgrade() {
 // Number of mutator allocations since last allocation-triggered GC increment.
 static mut ALLOCATION_COUNT: usize = 0;
 
-/// GC increment on regular interval of concurrent allocations, to
-/// keep up with a high allocation rate during GC collection.
+/// Small GC increment on regular interval of concurrent allocations, to
+/// keep up with a high allocation rate.
 #[inline]
 pub unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
-    const INCREMENT_INTERVAL: usize = 5_000;
-    const INCREMENT_PER_ALLOCATION: usize = 4;
+    const INCREMENT_INTERVAL: usize = 1_000;
+    const INCREMENT_PER_ALLOCATION: usize = 5;
     ALLOCATION_COUNT += 1;
     if ALLOCATION_COUNT == INCREMENT_INTERVAL {
         ALLOCATION_COUNT = 0;
