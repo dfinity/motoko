@@ -2246,8 +2246,8 @@ The `await*` expression `await* <exp>` has type `T` provided:
 -   `T` is shared,
 
 -   the `await*` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
-Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a delayed computation `<block-or-exp>`. The evaluation of `await* <exp>` proceeds
-with the evaluation of `<block-or-exp>`, executing the delayed computation.
+
+Expression `await* <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a delayed computation `<block-or-exp>`. The evaluation of `await* <exp>` proceeds with the evaluation of `<block-or-exp>`, executing the delayed computation.
 
 :::danger
 
