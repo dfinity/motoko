@@ -91,9 +91,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE (T.Fut, _, _) ->
-    T.Await
-  | AsyncE (T.Cmp, _, _) ->
+  | AsyncE _ ->
     T.Triv
   | ThrowE _
   | TryE _
