@@ -22,7 +22,8 @@ let rec exp e = match e.it with
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | AsyncE (tb, e, t)   -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Type.Fut, tb, e, t) -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Type.Cmp, tb, e, t) -> "AsyncE*"  $$ [typ_bind tb; exp e; typ t]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
@@ -73,7 +74,8 @@ and prim = function
   | GetPastArrayOffset _ -> Atom "GetPastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
-  | AwaitPrim         -> Atom "AwaitPrim"
+  | AwaitPrim Type.Fut -> Atom "AwaitPrim"
+  | AwaitPrim Type.Cmp -> Atom "AwaitPrim*"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
@@ -98,8 +100,10 @@ and prim = function
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait t        -> "CPSAwait" $$ [typ t]
-  | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | CPSAwait (Type.Fut, t) -> "CPSAwait" $$ [typ t]
+  | CPSAwait (Type.Cmp, t) -> "CPSAwait*" $$ [typ t]
+  | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
+  | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
   | ICArgDataPrim     -> Atom "ICArgDataPrim"
   | ICStableSize t    -> "ICStableSize" $$ [typ t]
   | ICPerformGC       -> Atom "ICPerformGC"
