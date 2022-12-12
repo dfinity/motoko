@@ -1,0 +1,8 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: test1:
+debug.print: test1:perform_call failure
+debug.print: test2:
+debug.print: caught perform_call failure
+debug.print: test2:perform_call failure
+ingress Completed: Reply: 0x4449444c0000

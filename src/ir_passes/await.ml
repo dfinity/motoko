@@ -142,7 +142,7 @@ and t_exp' context exp' =
   | SelfCallE _ -> assert false
   | PrimE (CallPrim typs, ([exp1; exp2] as exps)) when isAwaitableFunc exp1 ->
     (match LabelEnv.find_opt Throw context with
-    | Some (Cont r) ->
+     | Some (Cont r) ->
       (letcont r (fun r ->
            let { it = PrimE(p, exps'); at; note } =
              callE (t_exp context exp1) typs (t_exp context exp2) in
@@ -315,8 +315,8 @@ and c_exp' context exp k =
     letcont f (fun f ->
     letcont k (fun k ->
     match eff exp1 with
-    | T.Triv ->
-      varE k -*- (t_exp context exp1)
+    | T.Triv (* ->  FIXME
+      varE k -*- (t_exp context exp1) *)
     | T.Await ->
       let error = fresh_var "v" T.catch  in
       let cases' =
