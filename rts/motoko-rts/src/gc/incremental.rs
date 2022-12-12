@@ -57,7 +57,7 @@ static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     const ABSOLUTE_GROWTH_THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
-    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.5;
+    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.75;
     const CRITICAL_LIMIT: Bytes<u32> = Bytes(u32::MAX - 256 * 1024 * 1024);
     use crate::memory::ic;
     debug_assert!(ic::ALLOCATED >= LAST_ALLOCATED);
@@ -145,7 +145,7 @@ pub struct IncrementalGC<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
-    const LARGE_INCREMENT_LIMIT: usize = 1_000_000;
+    const LARGE_INCREMENT_LIMIT: usize = 500_000;
 
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
@@ -507,7 +507,7 @@ static mut ALLOCATION_COUNT: usize = 0;
 #[inline]
 pub unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
     const INCREMENT_INTERVAL: usize = 1_000;
-    const INCREMENT_PER_ALLOCATION: usize = 5;
+    const INCREMENT_PER_ALLOCATION: usize = 4;
     ALLOCATION_COUNT += 1;
     if ALLOCATION_COUNT == INCREMENT_INTERVAL {
         ALLOCATION_COUNT = 0;
