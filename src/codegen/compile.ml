@@ -7242,8 +7242,8 @@ module FuncDec = struct
           (* The closure again *)
           get_t ^^
           (* Call *)
-          Closure.call_closure env 1 0 ^^
-          G.i Return
+          Closure.call_closure env 1 0  ^^
+          G.i Return (* TODO: what about GC? *)
          end
       end
     | _ ->

@@ -313,8 +313,7 @@ let transform prog =
           let e = fresh_var "e" T.catch in
           [e] -->* (ic_rejectE (errorMessageE (varE e)))
         | [ throw ] ->
-           assert false;
-           t_exp throw
+          t_exp throw
         | _ -> assert false (* at most one throw cont *)
       in
        let ((nary_async, nary_reply, reject), def) =

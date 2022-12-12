@@ -140,8 +140,19 @@ and t_exp' context exp' =
       t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
-(*  | PrimE (CallPrim typs, ([exp1; _exp2] as exps)) when isAwaitableFunc exp1 ->
-    assert false *)
+  | PrimE (CallPrim typs, ([exp1; exp2] as exps)) when isAwaitableFunc exp1 ->
+    (match LabelEnv.find_opt Throw context with
+    | Some (Cont r) ->
+      (letcont r (fun r ->
+           let { it = PrimE(p, exps'); at; note } =
+             callE (t_exp context exp1) typs (t_exp context exp2) in
+            { it = PrimE (p, exps' @ [varE r]);
+              at;
+              note; })).it
+    | Some Label ->
+      assert false
+    | None ->
+      PrimE (CallPrim typs, List.map (t_exp context) exps))
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
 
