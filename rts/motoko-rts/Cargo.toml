@@ -13,15 +13,10 @@ crate-type = ["staticlib"]
 # we enable the "ic" feature. `native/Cargo.toml` doesn't have this feature and
 # is used in RTS tests.
 default = ["ic"]
-# default = ["ic", "memory_check"]
-
 
 # This feature is used to enable stuff needed for the RTS linked with
 # moc-generated code, but not when testing the RTS
 ic = []
-
-# This feature enables extensive memory sanity checks in the generational GC
-memory_check = []
 
 [dependencies]
 libc = { version = "0.2.112", default_features = false }
