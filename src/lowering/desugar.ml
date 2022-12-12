@@ -320,17 +320,19 @@ and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
-        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _); _ };
+        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _); at; _ };
         _ }
       when id.it = name ->
       Some (
         match name with
         | "timer" when not !Mo_config.Flags.global_timer -> assert false;
         | "timer" ->
-          blockE
-            [ expD T.(callE (varE (var id.it note)) [Any]
-                        (varE (var "@set_global_timer" (Func (Local, Returns, [], [Prim Nat64], []))))) ]
-            (unitE ())
+           let timer =
+             blockE
+               [ expD T.(callE (varE (var id.it note)) [Any]
+                           (varE (var "@set_global_timer" (Func (Local, Returns, [], [Prim Nat64], []))))) ]
+               (unitE ()) in
+           { timer with at }
         | "heartbeat" ->
           blockE
             [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
