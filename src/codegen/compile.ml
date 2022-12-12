@@ -9986,7 +9986,6 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let start_timer =
-        !Flags.global_timer &&
         match fst prog with
         | ActorU (_, _, _, up, _) -> up.timer.at <> no_region
         | _ -> false in
