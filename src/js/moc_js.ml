@@ -24,9 +24,11 @@ let () =
       method setCandidPath path = set_candid_path path
       method setActorAliases entries = set_actor_aliases entries
       method setPublicMetadata entries = set_public_metadata entries
+      method setRunStepLimit limit = js_set_run_step_limit limit
       method gcFlags option = gc_flags option
       method run list s = Flags.compiled := false; wrap_output (fun _ -> js_run list s)
       method check s = Flags.compiled := false; js_check s
+      method viper filenames = js_viper filenames
       method candid s = Flags.compiled := true; js_candid s
       method stableCompatible pre post = js_stable_compatible pre post
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s

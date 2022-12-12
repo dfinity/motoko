@@ -65,6 +65,7 @@ let context env = V.Blob env.self
 (* Error handling *)
 
 exception Trap of Source.region * string
+exception Cancel of string
 
 let trap at fmt = Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 
@@ -109,6 +110,9 @@ let print_exn flags exn =
 
 (* Scheduling *)
 
+let step_total = ref 0
+let step_limit = ref 0
+
 module Scheduler =
 struct
   let q : (unit -> unit) Queue.t = Queue.create ()
@@ -131,15 +135,18 @@ struct
   let interval = 128
   let count = ref interval
   let trampoline3 f x y z =
-    if !Flags.ocaml_js then
-      if !count <= 0 then begin
-          count := interval;
-          bounce (fun () -> f x y z);
-        end
-      else begin
-          count := (!count) - 1;
-          f x y z
-        end
+    if !Flags.ocaml_js then begin
+        step_total := (!step_total) + 1;
+        if !step_total = !step_limit then raise (Cancel "interpreter reached step limit");
+        if !count <= 0 then begin
+            count := interval;
+            bounce (fun () -> f x y z);
+          end
+        else begin
+            count := (!count) - 1;
+            f x y z
+          end
+      end
     else f x y z
 end
 
@@ -567,6 +574,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       then k v1
       else interpret_exp env exp2 k
     )
+  | ImpliesE (exp1, exp2) ->
+    interpret_exp env exp1 (fun v1 ->
+      interpret_exp env exp2 (fun v2 ->
+        k V.(Bool (as_bool v1 <= as_bool v2))
+      )
+    )
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
@@ -631,22 +644,30 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | AsyncE (_, exp1) ->
+  | AsyncE (T.Fut, _, exp1) ->
     async env
       exp.at
       (fun k' r ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
         in interpret_exp env' exp1 k')
       k
-  | AwaitE exp1 ->
+  | AsyncE (T.Cmp, _, exp1) ->
+    k (V.Comp (fun k' r ->
+      let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
+      in interpret_exp env' exp1 k'))
+  | AwaitE (T.Fut, exp1) ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)
-  | AssertE exp1 ->
+  | AwaitE (T.Cmp, exp1) ->
+    interpret_exp env exp1
+      (fun v1 -> (V.as_comp v1) k (Option.get env.throws))
+  | AssertE (Runtime, exp1) ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
       then k V.unit
       else trap exp.at "assertion failure"
     )
+  | AssertE (_, exp1) -> k V.unit
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
   | IgnoreE exp1 ->
@@ -973,6 +994,7 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
 (* Programs *)
 
 let interpret_prog flags scope p : (V.value * scope) option =
+  step_total := 0;
   try
     let env =
       { (env_of_scope flags scope) with
@@ -988,7 +1010,11 @@ let interpret_prog flags scope p : (V.value * scope) option =
     match !vo with
     | Some v -> Some (v, scope)
     | None -> None
-  with exn ->
+  with
+  | Cancel s ->
+    Printf.eprintf "cancelled: %s\n" s; 
+    None
+  | exn ->
     (* For debugging, should never happen. *)
     print_exn flags exn;
     None

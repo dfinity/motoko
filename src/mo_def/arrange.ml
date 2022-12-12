@@ -8,16 +8,19 @@ open Wasm.Sexpr
 module type Config = sig
   val include_sources : bool
   val include_types : bool
+  val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
   val main_file : string option
 end
 
 module Default = struct
   let include_sources = false
   let include_types = false
+  let include_docs = None
   let main_file = None
 end
 
 module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
+
 
 module Make (Cfg : Config) = struct
   let ($$) head inner = Node (head, inner)
@@ -29,10 +32,21 @@ module Make (Cfg : Config) = struct
     in "Pos" $$ [Atom file; Atom (string_of_int p.line); Atom (string_of_int p.column)]
   let source at it = if Cfg.include_sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
-  let typ typ = Atom (Type_pretty.string_of_typ typ)
-  (* let typ typ = Atom (Type.string_of_typ typ) *)
-  (* let typ = Mo_types.Arrange_type.typ *)
+  let typ t = Atom (Type_pretty.string_of_typ t)
   
+  let trivia at it =
+    match Cfg.include_docs with
+    | Some table ->
+      let rec lookup_trivia (line, column) =
+        Trivia.PosHashtbl.find_opt table Trivia.{ line; column }
+      and find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
+        lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column) |> Option.get
+      in
+      (match Trivia.doc_comment_of_trivia_info (find_trivia at) with
+      | Some s -> "*" $$ [Atom s; it]
+      | None -> it)
+    | None -> it
+
   let eff (eff : Mo_types.Type.eff) = match eff with
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
@@ -78,6 +92,7 @@ module Make (Cfg : Config) = struct
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
     | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
+    | ImpliesE (e1, e2)   -> "ImpliesE"$$ [exp e1; exp e2]
     | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
     | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
     | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
@@ -88,9 +103,19 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
-    | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
-    | AwaitE e            -> "AwaitE"  $$ [exp e]
-    | AssertE e           -> "AssertE" $$ [exp e]
+    | AsyncE (Type.Fut, tb, e) -> "AsyncE"  $$ [typ_bind tb; exp e]
+    | AsyncE (Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
+    | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
+    | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
+    | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
+    | AssertE (Static, e)        -> "Static_AssertE" $$ [exp e]
+    | AssertE (Invariant, e)     -> "Invariant" $$ [exp e]
+    | AssertE (Precondition, e)  -> "Precondition" $$ [exp e]
+    | AssertE (Postcondition, e) -> "Postcondition" $$ [exp e]
+    | AssertE (Loop_entry, e)    -> "Loop_entry" $$ [exp e]
+    | AssertE (Loop_continue, e) -> "Loop_continue" $$ [exp e]
+    | AssertE (Loop_exit, e)     -> "Loop_exit" $$ [exp e]
+    | AssertE (Concurrency s, e) -> "Concurrency"^s $$ [exp e]
     | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
     | OptE e              -> "OptE"    $$ [exp e]
     | DoOptE e            -> "DoOptE"  $$ [exp e]
@@ -196,7 +221,7 @@ module Make (Cfg : Config) = struct
     = source tb.at (tb.it.var.it $$ [typ tb.it.bound])
 
   and dec_field (df : dec_field)
-    = source df.at ("DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab])
+    = trivia df.at (source df.at ("DecField" $$ [dec df.it.dec; vis df.it.vis; stab df.it.stab]))
 
   and exp_field (ef : exp_field)
     = source ef.at ("ExpField" $$ [mut ef.it.mut; id ef.it.id; exp ef.it.exp])
@@ -216,13 +241,14 @@ module Make (Cfg : Config) = struct
   | VariantT cts -> "VariantT" $$ List.map typ_tag cts
   | TupT ts -> "TupT" $$ List.concat_map typ_item ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT (t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | AsyncT (Type.Fut, t1, t2) -> "AsyncT" $$ [typ t1; typ t2]
+  | AsyncT (Type.Cmp, t1, t2) -> "AsyncT*" $$ [typ t1; typ t2]
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
   | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
   | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
 
-  and dec d = source d.at (match d.it with
+  and dec d = trivia d.at (source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e ]
     | LetD (p, e) -> "LetD" $$ [pat p; exp e]
     | VarD (x, e) -> "VarD" $$ [id x; exp e]
@@ -233,7 +259,7 @@ module Make (Cfg : Config) = struct
         pat p;
         (match rt with None -> Atom "_" | Some t -> typ t);
         obj_sort s; id i'
-      ] @ List.map dec_field dfs)
+      ] @ List.map dec_field dfs))
 
   and prog p = "Prog" $$ List.map dec p.it
 end

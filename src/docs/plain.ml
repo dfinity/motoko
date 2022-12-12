@@ -1,5 +1,6 @@
 open Extract
 open Mo_def
+open Mo_types
 open Source
 open Printf
 open Common
@@ -114,8 +115,11 @@ let rec plain_of_typ : Buffer.t -> render_functions -> Syntax.typ -> unit =
       bprintf buf "(";
       sep_by buf ", " (plain_of_typ_item buf rf) typ_list;
       bprintf buf ")"
-  | Syntax.AsyncT (_scope, typ) ->
+  | Syntax.AsyncT (Type.Fut, _scope, typ) ->
       bprintf buf "async ";
+      plain_of_typ buf rf typ
+  | Syntax.AsyncT (Type.Cmp, _scope, typ) ->
+      bprintf buf "async* ";
       plain_of_typ buf rf typ
   | Syntax.AndT (typ1, typ2) ->
       plain_of_typ buf rf typ1;
