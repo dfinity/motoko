@@ -60,3 +60,4 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 * [Awesome Motoko](https://github.com/motoko-unofficial/awesome-motoko#readme)
 * [Motoko Bootcamp](https://github.com/motoko-bootcamp/bootcamp#readme) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
 * [Motoko library starter template](https://github.com/ByronBecker/motoko-library-template)
+* [MOPS - a Motoko package manager hosted on the IC](https://j4mwm-bqaaa-aaaam-qajbq-cai.ic0.app/#/)
