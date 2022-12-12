@@ -4051,11 +4051,10 @@ module IC = struct
       )
 
   let perform_call_error env =
-    Func.share_code0 env "perform_call_error" [I32Type] (fun env ->
-    let (set_code, get_code) = new_local env "code" in
-    (Variant.inject env "future" Tuple.compile_unit) ^^ (* TBD *)
-    (get_code ^^ BoxedSmallWord.box env)) ^^
-    Tuple.from_stack env 2
+    Func.share_code1 env "perform_call_error" ("code", I32Type) [I32Type] (fun env get_code ->
+    Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env) ^^ (* TBR *)
+    Blob.lit env "perform_call failure" ^^
+    Tuple.from_stack env 2)
 
   let error_value env =
     Func.share_code0 env "error_value" [I32Type] (fun env ->
@@ -7226,7 +7225,7 @@ module FuncDec = struct
         set_error ^^
         get_error ^^
         G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-        G.if1 I32Type
+        G.if0
         begin
           G.nop
         end
@@ -7243,7 +7242,8 @@ module FuncDec = struct
           (* The closure again *)
           get_t ^^
           (* Call *)
-          Closure.call_closure env 1 0
+          Closure.call_closure env 1 0 ^^
+          G.i Return
          end
       end
     | _ ->

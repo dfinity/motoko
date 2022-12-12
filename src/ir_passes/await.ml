@@ -141,7 +141,7 @@ and t_exp' context exp' =
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
 (*  | PrimE (CallPrim typs, ([exp1; _exp2] as exps)) when isAwaitableFunc exp1 ->
-    assert false*)
+    assert false *)
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
 
