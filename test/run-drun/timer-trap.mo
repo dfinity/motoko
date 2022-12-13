@@ -1,4 +1,4 @@
-import { debugPrint; error; setTimer } = "mo:⛔";
+import { debugPrint; error; cancelTimer; setTimer } = "mo:⛔";
 
 actor {
 
@@ -12,8 +12,8 @@ actor {
   public shared func go() : async () {
      var attempts = 0;
 
-     ignore setTimer(1, true,
-                     func () : async () { count += 1; debugPrint "YEP!" });
+     let rep = setTimer(1, true,
+                        func () : async () { count += 1; debugPrint "YEP!" });
      ignore setTimer(1, false,
                      func () : async () { count += 1; debugPrint "EEK!"; assert false });
      ignore setTimer(1, false,
@@ -25,6 +25,7 @@ actor {
        if (attempts >= 200 and count == 0)
          throw error("he's dead Jim");
      };
+     cancelTimer rep;
      debugPrint(debug_show {count});
   };
 };
