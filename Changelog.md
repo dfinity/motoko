@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: silence bogus cascading errors in stable compatibility check (#3645).
+
 ## 0.7.4 (2022-12-07)
 
 * motoko (`moc`)
