@@ -123,6 +123,7 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
+(* FIX ME: these error reporting functions are eager and will construct unnecessary type strings !*)
 let check_sub env at t1 t2 =
   if not (T.sub t1 t2) then
     error env at "subtype violation:\n  %s\n  %s\n"
@@ -222,7 +223,7 @@ let rec check_typ env typ : unit =
        error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
-  | T.Async (typ1, typ2) ->
+  | T.Async (s, typ1, typ2) ->
     check_typ env typ1;
     check_typ env typ2;
     check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
@@ -507,13 +508,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (env.async <> None) "misplaced throw";
       typ exp1 <: T.throw;
       T.Non <: t (* vacuously true *)
-    | AwaitPrim, [exp1] ->
+    | AwaitPrim s, [exp1] ->
       check env.flavor.has_await "await in non-await flavor";
       let t0 = match env.async with
       | Some c -> T.Con(c, [])
       | None -> error env exp.at "misplaced await" in
       let t1 = T.promote (typ exp1) in
-      let (t2, t3) = try T.as_async_sub t0 t1
+      let (t2, t3) = try T.as_async_sub s t0 t1
              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)
@@ -540,11 +541,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (T.shared (T.seq ots)) "DeserializeOpt is not defined for operand type";
       typ exp1 <: T.blob;
       T.Opt (T.seq ots) <: t
-    | CPSAwait cont_typ, [a; kr] ->
-      check (not (env.flavor.has_await)) "CPSAwait await flavor";
-      check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
+    | CPSAwait (s, cont_typ), [a; kr] ->
       let (_, t1) =
-        try T.as_async_sub T.Non (T.normalize (typ a))
+        try T.as_async_sub s T.Non (T.normalize (typ a))
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
       in
       (match cont_typ with
@@ -557,20 +556,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
-       | _ -> error env exp.at "CPSAwait bad cont")
-    | CPSAsync t0, [exp] ->
-      check (not (env.flavor.has_await)) "CPSAsync await flavor";
-      check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
-      check_typ env t0;
+       | _ -> error env exp.at "CPSAwait bad cont");
+      check (not (env.flavor.has_await)) "CPSAwait await flavor";
+      check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
+    | CPSAsync (s, t0), [exp] ->
       (match typ exp with
         T.Func(T.Local,T.Returns, [tb],
-          [ T.Func(T.Local, T.Returns, [], ts1, []);
-            T.Func(T.Local, T.Returns, [], [t_error], []) ],
+          [T.Func(T.Local, T.Returns, [], ts1, []);
+           T.Func(T.Local, T.Returns, [], [t_error], [])],
           []) ->
          T.catch <: t_error;
-         T.Async(t0, Type.open_ [t0] (T.seq ts1)) <: t
-       | _ -> error env exp.at "CPSAsync unexpected typ")
-      (* TODO: We can check more here, can we *)
+         T.Async(s, t0, Type.open_ [t0] (T.seq ts1)) <: t
+       | _ -> error env exp.at "CPSAsync unexpected typ");
+      check (not (env.flavor.has_await)) "CPSAsync await flavor";
+      check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      check_typ env t;
     | ICArgDataPrim, [] ->
       T.blob <: t
     | ICReplyPrim ts, [exp1] ->
@@ -726,7 +726,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
-  | AsyncE (tb, exp1, t0) ->
+  | AsyncE (s, tb, exp1, t0) ->
     check env.flavor.has_await "async expression in non-await flavor";
     check_typ env t0;
     let c, tb, ce = check_open_typ_bind env tb in
@@ -737,7 +737,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env' exp1;
     let t1' = T.open_ [t0] (T.close [c] t1)  in
     t1' <: T.Any; (* vacuous *)
-    T.Async (t0, t1') <: t
+    (* check t1' shared when Fut? *)
+    T.Async (s, t0, t1') <: t
   | DeclareE (id, t0, exp1) ->
     check_mut_typ env t0;
     let val_info = { typ = t0; loc_known = false; const = false } in

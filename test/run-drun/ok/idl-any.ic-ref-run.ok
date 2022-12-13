@@ -89,6 +89,6 @@ debug.print: ok: Foo
 => query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 <= replied: ()
-=> query any(0x4449444c016602abcd0200710400deadbeef03466f6f)
+=> query any(future, "Foo")
 debug.print: ok: Foo
 <= replied: ()

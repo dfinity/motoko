@@ -1,7 +1,6 @@
 # Array
-Provides extended utility functions on Arrays.
-
-Note the difference between mutable and non-mutable arrays below.
+Provides extended utility functions on Arrays. Note the difference between
+mutable and non-mutable arrays below.
 
 WARNING: If you are looking for a list that can grow and shrink in size,
 it is recommended you use either the Buffer class or the List class for
