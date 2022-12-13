@@ -430,18 +430,23 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 };
 
 // default timer mechanism implementation
-// fundamental node invariant: max_exp ante <= expire <= min_exp dopo
-// corollary: if expire == 0 then the ante is completely expired
+// fundamental node invariant: max_exp pre <= expire <= min_exp post
+// corollary: if expire == 0 then the pre is completely expired
 //
-type @Node = { var expire : Nat64; id : Nat; delay : ?Nat64; job : () -> async (); ante : ?@Node; dopo : ?@Node };
+// Note: Below the `expire` field is an encoding of an aliased mutable field with
+//       a single-element mutable array. It eliminates `--experimental-field-aliasing`
+//       while compiling this file at the cost of slightly higher syntactic noise
+//       as well as increased allocation and runtime cost accessing the data. Oh well.
+//
+type @Node = { expire : [var Nat64]; id : Nat; delay : ?Nat64; job : () -> async (); pre : ?@Node; post : ?@Node };
 var @timers : ?@Node = null;
 func @prune(n : ?@Node) : ?@Node = switch n {
     case null null;
     case (?n) {
-        if (n.expire == 0) {
-            @prune(n.dopo) // by corollary
+        if (n.expire[0] == 0) {
+            @prune(n.post) // by corollary
         } else {
-            ?{ n with ante = @prune(n.ante); dopo = @prune(n.dopo) }
+            ?{ n with pre = @prune(n.pre); post = @prune(n.post) }
         }
     }
 };
@@ -449,11 +454,11 @@ func @prune(n : ?@Node) : ?@Node = switch n {
 func @nextExpiration(n : ?@Node) : Nat64 = switch n {
     case null 0;
     case (?n) {
-        var exp = @nextExpiration(n.ante); // TODO: use the corollary for expire == 0
+        var exp = @nextExpiration(n.pre); // TODO: use the corollary for expire == 0
         if (exp == 0) {
-            exp := n.expire;
+            exp := n.expire[0];
             if (exp == 0) {
-                exp := @nextExpiration(n.dopo)
+                exp := @nextExpiration(n.post)
             }
         };
         exp
@@ -480,30 +485,30 @@ func @timer_helper() : async () {
     func gatherExpired(n : ?@Node) = switch n {
         case null ();
         case (?n) {
-            gatherExpired(n.ante);
-            if (n.expire > 0 and n.expire <= now and gathered < thunks.size()) {
+            gatherExpired(n.pre);
+            if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
                 thunks[gathered] := ?(n.job);
                 switch (n.delay) {
                     case (?delay) {
                         // re-add the node
-                        let expire = n.expire + delay;
+                        let expire = n.expire[0] + delay;
                         // N.B. insert only works on pruned nodes
                         func reinsert(m : ?@Node) : @Node = switch m {
-                            case null ({ n with var expire; ante = null; dopo = null });
+                            case null ({ n with expire = [var expire]; pre = null; post = null });
                             case (?m) {
-                                assert m.expire != 0;
-                                if (expire < m.expire) ({ m with ante = ?reinsert(m.ante) })
-                                else ({ m with dopo = ?reinsert(m.dopo) })
+                                assert m.expire[0] != 0;
+                                if (expire < m.expire[0]) ({ m with pre = ?reinsert(m.pre) })
+                                else ({ m with post = ?reinsert(m.post) })
                             }
                         };
                         @timers := ?reinsert(@prune(@timers));
                     };
                     case _ ()
                 };
-                n.expire := 0;
+                n.expire[0] := 0;
                 gathered += 1;
             };
-            gatherExpired(n.dopo);
+            gatherExpired(n.post);
         }
     };
 
@@ -531,23 +536,18 @@ func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : (id 
     // only works on pruned nodes
     func insert(n : ?@Node) : @Node =
         switch n {
-            case null ({ var expire; id; delay; job; ante = null; dopo = null });
+            case null ({ expire = [var expire]; id; delay; job; pre = null; post = null });
             case (?n) {
-                assert n.expire != 0;
-                if (expire < n.expire) ({ n with ante = ?insert(n.ante) })
-                else ({ n with dopo = ?insert(n.dopo) })
+                assert n.expire[0] != 0;
+                if (expire < n.expire[0]) ({ n with pre = ?insert(n.pre) })
+                else ({ n with post = ?insert(n.post) })
             }
     };
     @timers := ?insert(@prune(@timers));
 
     let exp = @nextExpiration @timers;
     if (exp == 0) @timers := null;
-    let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
-    /*FIXME: this is expensive*/
-    if (exp != 0 and prev != 0 and exp > prev) {
-        // reinstall
-        ignore (prim "global_timer_set" : Nat64 -> Nat64) prev;
-    };
+    ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
     id
 };
@@ -557,15 +557,15 @@ func @cancelTimer(id : Nat) {
         case (null, null) null;
         case (null, _) branch;
         case (_, null) onto;
-        case (?onto, _) { ?{ onto with dopo = graft(onto.dopo, branch) } }
+        case (?onto, _) { ?{ onto with post = graft(onto.post, branch) } }
     };
     func hunt(n : ?@Node) : ?@Node = switch n {
         case null n;
-        case (?{ id = node; ante; dopo }) {
+        case (?{ id = node; pre; post }) {
             if (node == id) {
-                graft(ante, dopo)
+                graft(pre, post)
             } else do? {
-                { n! with ante = hunt ante; dopo = hunt dopo }
+                { n! with pre = hunt pre; post = hunt post }
             }
         }
     };
