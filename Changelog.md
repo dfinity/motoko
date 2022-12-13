@@ -2,6 +2,56 @@
 
 * motoko (`moc`)
 
+  * bugfix: silence bogus cascading errors in stable compatibility check (#3645).
+
+## 0.7.4 (2022-12-07)
+
+* motoko (`moc`)
+
+  * Add new keywords `async*` and `await*` (note the `*`) for efficient abstraction of asynchronous code (#3609).
+    ```
+      <typ> ::= ...
+        async* <typ>             delayed, asynchronous computation
+      <exp> ::= ...
+        async* <block-or-exp>    delay an asynchronous computation
+        await* <block-or-exp>    execute a delayed computation (only in async, async*)
+    ```
+    This avoids the resource consumption and latency of `async`/`await` by only committing state and suspending execution
+    when necessary in the `await*`-ed computation, not necessarily at the `await*` itself.
+
+    WARNING: Unlike `async`/`await`:
+    *  an `async*` value has no effect unless `await*`-ed;
+    *  each `await*` of the same `async*` value repeats its effects.
+
+    This feature is experimental and may evolve in future. Use with discretion.
+    See the [manual](doc/md/language-manual.md) for details.
+
+  * Suppress GC during IC `canister_heartbeat`, deferring any GC to the scheduled Motoko `heartbeat` `system` method (#3623).
+    This is a temporary workaround, to be removed once DTS is supported for `canister_heartbeat` itself (#3622).
+
+  * Add a new _generational_ GC, enabled with new moc flag `--generational-gc` (#3495).
+    The generational garbage collector optimizes for fast reclamation of short-lived objects.
+    New objects are allocated in a young generation that is more frequently collected than the older objects
+    that have already survived a GC run.
+
+    For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
+    * Lower runtimes: Less number of executed instructions on average.
+    * Shorter interruptions: Young generation collection entails shorter program interruptions.
+
+    To activate the generational GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--generational-gc"
+    ...
+    ```
+
+  * `moc.js` : add trampoline and step limiter to interpreter, avoiding (some) stackoverflows and
+    hangs (#3618, #3541).
+    Enables execution of larger examples on web pages.
+
   * BREAKING CHANGE (Minor):
 
     Consider records with mutable fields as non-static (#3586).
@@ -12,6 +62,14 @@
   * Experimental Viper integration by compiling a very narrow subset of
     Motoko to the verification intermediate language. See `src/viper/README.md`
     and the PR for details. (#3477).
+
+* motoko-base
+
+  * Unit tests for Trie and fix for `disj` (dfinity/motoko-base#438).
+
+  * Respect Trie structure in `filter` (dfinity/motoko-base#431, dfinity/motoko-base#438).
+
+  * Array module reimplementation, tests and documentation (dfinity/motoko-base#425,dfinity/motoko-base#432).
 
 ## 0.7.3 (2022-11-01)
 

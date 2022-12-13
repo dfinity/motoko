@@ -8,9 +8,9 @@ module R = Rename
 module T = Type
 open Construct
 
-let fresh_cont typ = fresh_var "k" (contT typ)
+let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
 
-let fresh_err_cont ()  = fresh_var "r" (err_contT)
+let fresh_err_cont ans_typ  = fresh_var "r" (err_contT ans_typ)
 
 (* continuations, syntactic and meta-level *)
 
@@ -30,10 +30,11 @@ let meta typ exp =
 let letcont k scope =
   match k with
   | ContVar k' -> scope k' (* letcont eta-contraction *)
-  | MetaCont (typ, cont) ->
-    let k' = fresh_cont typ in
-    let v = fresh_var "v" typ in
-    blockE [funcD k' v (cont v)] (* at this point, I'm really worried about variable capture *)
+  | MetaCont (typ0, cont) ->
+    let v = fresh_var "v" typ0 in
+    let e = cont v in
+    let k' = fresh_cont typ0 (typ e) in
+    blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
 (* Named labels for break, special labels for return and throw *)
@@ -57,6 +58,8 @@ module LabelEnv = Env.Make(struct type t = label let compare = compare end)
 module PatEnv = Env.Make(String)
 
 type label_sort = Cont of kont | Label
+
+let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
 
@@ -99,26 +102,26 @@ and t_exp' context exp' =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE (tb, exp1, typ1) ->
-     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
-     (* add the implicit return/throw label *)
-     let k_ret = fresh_cont (typ exp1) in
-     let k_fail = fresh_err_cont () in
-     let context' =
-       LabelEnv.add Return (Cont (ContVar k_ret))
-         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-     in
-     (cps_asyncE typ1 (typ exp1)
-        (forall [tb] ([k_ret; k_fail] -->*
-                       c_exp context' exp1 (ContVar k_ret)))).it
+  | AsyncE (s, tb, exp1, typ1) ->
+    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
+    (* add the implicit return/throw label *)
+    let k_ret = fresh_cont (typ exp1) T.unit in
+    let k_fail = fresh_err_cont T.unit in
+    let context' =
+      LabelEnv.add Return (Cont (ContVar k_ret))
+        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+    in
+    (cps_asyncE s typ1 (typ exp1)
+      (forall [tb] ([k_ret; k_fail] -->*
+        c_exp context' exp1 (ContVar k_ret)))).it
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, s, c, typbinds, pat, typ, exp) ->
+  | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
-    FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
+    FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
   | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
     ActorE (t_decs context ds, ids,
       { meta;
@@ -210,9 +213,9 @@ and c_if context k e1 e2 e3 =
   let e3 = trans_branch e3 in
   match eff e1 with
   | T.Triv ->
-    ifE (t_exp context e1) e2 e3 answerT
+    ifE (t_exp context e1) e2 e3
   | T.Await ->
-    c_exp context e1 (meta (typ e1) (fun v1 -> ifE (varE v1) e2 e3 answerT))
+    c_exp context e1 (meta (typ e1) (fun v1 -> ifE (varE v1) e2 e3))
   )
 
 and c_loop context k e1 =
@@ -220,7 +223,7 @@ and c_loop context k e1 =
   | T.Triv ->
     assert false
   | T.Await ->
-    let loop = fresh_var "loop" (contT T.unit) in
+    let loop = fresh_var "loop" (contT T.unit T.unit) in
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
@@ -272,19 +275,20 @@ and c_exp' context exp k =
         {it = { pat; exp = exp' }; at; note})
       cases
     in
+    let typ' = typ_cases cases' in
     begin
     match eff exp1 with
     | T.Triv ->
       { it = SwitchE(t_exp context exp1, cases');
         at = exp.at;
-        note = Note.{ exp.note with typ = answerT } }
+        note = Note.{ exp.note with typ = typ' } }
     | T.Await ->
        c_exp context exp1
          (meta (typ exp1)
            (fun v1 ->
              { it = SwitchE(varE v1, cases');
                at = exp.at;
-               note = Note.{ exp.note with typ = answerT } }))
+               note = Note.{ exp.note with typ = typ' } }))
     end)
   | TryE (exp1, cases) ->
     (* TODO: do we need to reify f? *)
@@ -309,14 +313,14 @@ and c_exp' context exp k =
              at = no_region;
              note = ()
         }] in
-      let throw = fresh_err_cont () in
+      let throw = fresh_err_cont (answerT (typ_of_var k)) in
       let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
             it = SwitchE (varE e, cases');
             at = exp.at;
-            note = Note.{ def with typ = T.unit; eff = T.Await; (* shouldn't matter *) }
+            note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
           }
         ]
         (c_exp context' exp1 (ContVar k))
@@ -349,19 +353,19 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     end
-  | AsyncE (tb, exp1, typ1) ->
+  | AsyncE (s, tb, exp1, typ1) ->
      (* add the implicit return label *)
-    let k_ret = fresh_cont (typ exp1) in
-    let k_fail = fresh_err_cont () in
+    let k_ret = fresh_cont (typ exp1) T.unit in
+    let k_fail = fresh_err_cont T.unit in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
     k -@-
-      (cps_asyncE typ1 (typ exp1)
+      (cps_asyncE s typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
           (c_exp context' exp1 (ContVar k_ret)))))
-  | PrimE (AwaitPrim, [exp1]) ->
+  | PrimE (AwaitPrim s, [exp1]) ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
       | Some Label
@@ -372,10 +376,10 @@ and c_exp' context exp k =
        let kr = tupE [varE k; varE r] in
        match eff exp1 with
        | T.Triv ->
-          cps_awaitE (typ_of_var k) (t_exp context exp1) kr
+          cps_awaitE s (typ_of_var k) (t_exp context exp1) kr
        | T.Await ->
           c_exp context  exp1
-            (meta (typ exp1) (fun v1 -> (cps_awaitE (typ_of_var k) (varE v1) kr)))
+            (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) kr)))
      ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
@@ -524,7 +528,7 @@ and t_comp_unit context = function
       | T.Triv ->
         ProgU (t_decs context ds)
       | T.Await ->
-        let throw = fresh_err_cont () in
+        let throw = fresh_err_cont T.unit in
         let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
         let e = fresh_var "e" T.catch in
         ProgU [

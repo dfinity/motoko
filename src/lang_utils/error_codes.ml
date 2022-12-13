@@ -186,4 +186,5 @@ let error_codes : (string * string option) list =
     "M0180", None; (* Shared function has unexpected type parameters *)
     "M0181", None; (* Verification mode assertions not allowed *)
     "M0182", None; (* Timer defined by user when -no-timer flag is specified *)
+    "M0183", None; (* Incompatible async sorts *)
   ]

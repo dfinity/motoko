@@ -283,7 +283,10 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 };
 
 type @Cont<T> = T -> () ;
-type @Async<T> = (@Cont<T>,@Cont<Error>) -> ?(() -> ());
+type @Async<T> = (@Cont<T>,@Cont<Error>) -> {
+  #suspend;
+  #schedule : () -> ();
+};
 
 type @Refund = Nat;
 type @Result<T> = {#ok : (refund : @Refund, value: T); #error : Error};
@@ -336,7 +339,10 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
-  func enqueue(k : @Cont<T>, r : @Cont<Error>) : ?(() -> ()) {
+  func enqueue(k : @Cont<T>, r : @Cont<Error>) : {
+    #suspend;
+    #schedule : () -> ();
+  } {
     switch result {
       case null {
         let ws_ = ws;
@@ -351,14 +357,15 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
           rs_(e);
           @reset_cycles();
           @reset_refund();
-          r(e) };
-	  null
+          r(e)
+        };
+	#suspend
       };
       case (? (#ok (r, t))) {
-        ? (func () { @refund := r; k(t) });
+        #schedule (func () { @refund := r; k(t) });
       };
       case (? (#error e)) {
-        ? (func () { r(e) });
+        #schedule (func () { r(e) });
       };
     };
   };

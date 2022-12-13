@@ -132,7 +132,9 @@ s/CATASSIGN/\'@=\'/g
 s/CASE/\'case\'/g
 s/BREAK/\'break\'/g
 s/BOOL/<bool>/g
+s/AWAITSTAR/\'await*\'/g
 s/AWAIT/\'await\'/g
+s/ASYNCSTAR/\'async*\'/g
 s/ASYNC/\'async\'/g
 s/ASSERT/\'assert\'/g
 s/ARROW/\'->\'/g

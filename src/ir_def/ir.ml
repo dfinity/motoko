@@ -66,7 +66,7 @@ and exp' =
   | SwitchE of exp * case list                 (* switch *)
   | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
-  | AsyncE of typ_bind * exp * Type.typ        (* async *)
+  | AsyncE of Type.async_sort * typ_bind * exp * Type.typ        (* async/async* *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
@@ -126,7 +126,7 @@ and prim =
   | IdxPrim                           (* array indexing *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
-  | AwaitPrim                         (* await *)
+  | AwaitPrim of Type.async_sort       (* await/await* *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug_show *)
@@ -160,8 +160,9 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait of Type.typ
-  | CPSAsync of Type.typ
+  | CPSAwait of Type.async_sort * Type.typ
+                                      (* typ is the current continuation type of cps translation *)
+  | CPSAsync of Type.async_sort * Type.typ
   | ICPerformGC
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
@@ -275,7 +276,7 @@ let map_prim t_typ t_id p =
   | GetPastArrayOffset _ -> p
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
-  | AwaitPrim
+  | AwaitPrim _
   | AssertPrim
   | ThrowPrim -> p
   | ShowPrim t -> ShowPrim (t_typ t)
@@ -300,8 +301,8 @@ let map_prim t_typ t_id p =
   | SetCertifiedData
   | GetCertificate
   | OtherPrim _ -> p
-  | CPSAwait t -> CPSAwait (t_typ t)
-  | CPSAsync t -> CPSAsync (t_typ t)
+  | CPSAwait (s, t) -> CPSAwait (s, t_typ t)
+  | CPSAsync (s, t) -> CPSAsync (s, t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICArgDataPrim
   | ICPerformGC

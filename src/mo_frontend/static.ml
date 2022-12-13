@@ -69,7 +69,7 @@ let rec exp m e = match e.it with
   | LabelE _
   | BreakE _
   | RetE _
-  | AsyncE _
+  | AsyncE _ (* TBR - Cmp could be static *)
   | AwaitE _
   | LoopE _
   | BinE _

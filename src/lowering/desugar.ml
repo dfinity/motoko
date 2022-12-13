@@ -217,12 +217,12 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
-  | S.AsyncE (tb, e) ->
-    I.AsyncE (typ_bind tb, exp e,
-              match note.Note.typ with
-              | T.Async (t, _) -> t
-              | _ -> assert false)
-  | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
+  | S.AsyncE (s, tb, e) ->
+    I.AsyncE (s, typ_bind tb, exp e,
+      match note.Note.typ with
+      | T.Async (_, t, _) -> t
+      | _ -> assert false)
+  | S.AwaitE (s, e) -> I.PrimE (I.AwaitPrim s, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
@@ -386,8 +386,7 @@ and call_system_func_opt name es obj_typ =
               (ifE (varE accept)
                 (unitE ())
                 (primE (Ir.OtherPrim "trap")
-                  [textE "canister_inspect_message explicitly refused message"])
-                T.unit)
+                  [textE "canister_inspect_message explicitly refused message"]))
         | _name ->
           callE (varE (var id.it note)) [] (tupE []))
     | _ -> None) es
@@ -409,7 +408,7 @@ and export_interface txt =
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   ([ letD (var v typ) (
     funcE v (Shared Query) Promises [bind1] [] [text] (
-      asyncE bind2 (textE txt) (Con (scope_con1, []))
+      asyncE Type.Fut bind2 (textE txt) (Con (scope_con1, []))
     )
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
@@ -426,7 +425,7 @@ and export_footprint self_id expr =
   let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; depr = None}]) in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
-           (asyncE bind2
+           (asyncE T.Fut bind2
               (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
                                         [primE I.ICCallerPrim []; selfRefE caller]));
                        letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
@@ -736,9 +735,9 @@ and dec' at n = function
     let args, wrap, control, _n_res = to_args n.S.note_typ op p in
     let body = if s.it = T.Actor
       then
-        let (_, obj_typ) = T.as_async rng_typ in
+        let (_, _, obj_typ) = T.as_async rng_typ in
         let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
-        asyncE (typ_arg c T.Scope T.scope_bound)
+        asyncE T.Fut (typ_arg c T.Scope T.scope_bound) (* TBR *)
           (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
@@ -897,12 +896,12 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
-      | (T.Promises, Ir.AsyncE (tb, e', t)) ->
-        { e with it = Ir.AsyncE (tb, wrap_po e', t) }
+      | (T.Promises, Ir.AsyncE (s, tb, e', t)) ->
+        { e with it = Ir.AsyncE (s, tb, wrap_po e', t) }
       | T.Returns, Ir.BlockE (
-          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (tb,e',t); _} as exp)); _ }],
+          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE (tb,wrap_po e',t)} ] unit
+        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
     else wrap_po e in
@@ -939,11 +938,11 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let ts1' = List.map (T.open_ cs) ts1 in
   let ts2' = List.map (T.open_ cs) ts2 in
   let class_typ = match List.map T.normalize ts2' with
-    | [T.Async (_ , class_typ)] -> class_typ
+    | [T.Async (_, _, class_typ)] -> class_typ
     | _ -> assert false
   in
   let t_async = T.codom cntrl (fun () -> assert false) ts2' in
-  let _, t_actor = T.as_async (T.normalize t_async) in
+  let _, _, t_actor = T.as_async (T.normalize t_async) in
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
   let available = fresh_var "available" T.nat in
@@ -995,7 +994,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
-    (asyncE
+    (asyncE T.Fut (* TBR *)
       (typ_arg c' T.Scope T.scope_bound)
       (blockE
         [ letD modeprincipal
@@ -1009,7 +1008,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
                       letD accepted (primE Ir.SystemCyclesAcceptPrim [varE available]);
                       expD (assignE cycles (varE accepted)) ]
                       (dotE
-                         (awaitE
+                         (awaitE T.Fut
                            (callE (callE (varE ic00_create_canister) [] (unitE()))
                               cs' (varE settings)))
                          "canister_id" T.principal)]);
@@ -1030,7 +1029,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
             ("wasm_module", blobE wasm);
             ("arg", primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)])
           ]);
-          expD (awaitE (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record)))
+          expD (awaitE T.Fut (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record)))
         ]
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs))
@@ -1099,7 +1098,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       | T.Func(_s, _c, bds, ts1, [async_rng]) ->
         assert(1 = List.length bds);
         let cs  = T.open_binds bds in
-        let (_, rng) = T.as_async (T.normalize (T.open_ cs async_rng)) in
+        let (_, _, rng) = T.as_async (T.normalize (T.open_ cs async_rng)) in
         List.map (T.open_ cs) ts1,
         T.promote rng
       | _ -> assert false
@@ -1156,12 +1155,13 @@ let import_unit (u : S.comp_unit) : import_declaration =
       let c', _ = T.as_con (List.hd cs') in
       let body =
         asyncE
+          T.Fut
           (typ_arg c' T.Scope T.scope_bound)
           { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
           (List.hd cs)
       in
       let class_typ = match List.map T.normalize ts2 with
-        | [ T.Async(_, t2) ] -> t2
+        | [ T.Async(_, _, t2) ] -> t2
         | _ -> assert false in
       let install_arg =
         fresh_var "install_arg" T.install_arg_typ
@@ -1170,7 +1170,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
         funcE id T.Local T.Returns
           [typ_arg c T.Scope T.scope_bound]
           as_
-          [T.Async (List.hd cs, actor_t)]
+          [T.Async (T.Fut, List.hd cs, actor_t)]
           body
       in
       let install =
@@ -1184,8 +1184,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
                  tagE "new" (recordE ["settings", nullE()]) ])
              installBody
              (primE (Ir.OtherPrim "trap")
-               [textE "actor class configuration not supported in interpreter"])
-             installBody.note.Note.typ)
+               [textE "actor class configuration not supported in interpreter"]))
       in
       actor_class_mod_exp id class_typ install
     | I.ProgU ds ->
