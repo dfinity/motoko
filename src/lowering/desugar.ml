@@ -330,7 +330,7 @@ and call_system_func_opt name es obj_typ =
            let timer =
              blockE
                [ expD T.(callE (varE (var id.it note)) [Any]
-                           (varE (var "@set_global_timer" (Func (Local, Returns, [], [Prim Nat64], []))))) ]
+                   (varE (var "@set_global_timer" (Func (Local, Returns, [], [Prim Nat64], []))))) ]
                (unitE ()) in
            { timer with at }
         | "heartbeat" ->
