@@ -1209,14 +1209,14 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 | name          | type                                                          | description         |
 |---------------|---------------------------------------------------------------|---------------------|
 | `heartbeat`   | `() -> async ()`                                              | heartbeat action    |
-| `timer`       | `() -> async ()`                                              | timer action        |
+| `timer`       | `(Nat64 -> ()) -> async ()`                                   | timer action        |
 | `inspect`     | `{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool` | message predicate   |
 | `preupgrade`  | `() -> ()`                                                    | pre upgrade action  |
 | `postupgrade` | `() -> ()`                                                    | post upgrade action |
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
 
--   `timer`, when declared, is called as a response of the canister global timer's expiration. When not declared (and in absence of the `-no-timer` flag) this system action is defaulted by the compiler. The canister's global timer can be manipulated with the system API `global_timer_set` upon which libraries can build their own abstractions. The corresponding primitive is `setGlobalTimer`. When using the default mechanism, `setGlobalTimer` shouldn't be used, instead `setTimer` and `cancelTimer` are provided. 
+-   `timer`, when declared, is called as a response of the canister global timer's expiration. The canister's global timer can be manipulated with the passed-in function argument of type `Nat64 -> ()` upon which libraries can build their own abstractions. When not declared (and in absence of the `-no-timer` flag), this system action is provided with default implementation by the compiler (additionally `setTimer` and `cancelTimer` are provided as primitives).
 
 -   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 

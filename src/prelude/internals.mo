@@ -578,3 +578,5 @@ func @cancelTimer(id : Nat) {
         @timers := null
     }
 };
+
+func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;

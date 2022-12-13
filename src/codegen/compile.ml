@@ -3871,11 +3871,18 @@ module IC = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let export_init env =
+  let export_init env start_timer =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
 
+      begin if start_timer then
+        (* initiate a timer pulse *)
+        compile_const_64 1L ^^
+        system_call env "global_timer_set" ^^
+        G.i Drop
+        else G.nop
+      end ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
       GC.collect_garbage env ^^
 
@@ -9978,7 +9985,11 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   compile_init_func env prog;
   let start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      IC.export_init env;
+      let start_timer =
+        match fst prog with
+        | ActorU (_, _, _, up, _) -> up.timer.at <> no_region
+        | _ -> false in
+      IC.export_init env start_timer;
       None
     | Flags.WASIMode ->
       IC.export_wasi_start env;
