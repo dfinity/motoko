@@ -911,7 +911,7 @@ Runtime: O(size)
 
 Space: O(size)
 
-*Runtime and space assumes that `f` runs in O(1) time and space.
+*Runtime and space assumes that `k` runs in O(1) time and space.
 
 ## Function `foldLeft`
 ``` motoko no-repl
@@ -985,6 +985,7 @@ Reverses the order of elements in `buffer`.
 
 Runtime: O(size)
 
+Space: O(1)
 
 ## Function `merge`
 ``` motoko no-repl
