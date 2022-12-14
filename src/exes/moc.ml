@@ -101,7 +101,7 @@ let argspec = [
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
-  "-no-timer", Arg.Clear Flags.global_timer, " do not create a global timer endpoint";
+  "-no-timer", Arg.Clear Flags.global_timer, " do not create a global timer expiration endpoint";
   "-no-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WasmMode)),
       " do not import any system API";
