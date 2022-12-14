@@ -3921,7 +3921,7 @@ module IC = struct
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "timer_exp"))) ^^
         (* TODO(3622)
-           Until DTS is implemented for heartbeats, don't collect garbage here,
+           Until DTS is implemented for timers, don't collect garbage here,
            just record mutator_instructions and leave GC scheduling to the
            already sheduled async message running `system` function `heartbeat` *)
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
