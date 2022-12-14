@@ -521,9 +521,8 @@ func @timer_helper() : async () {
 
     gatherExpired(@timers);
 
-    let futures = Array_init<?(async ())>(thunks.size(), null);
     for (k in thunks.keys()) {
-        futures[k] := switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
+        ignore switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
     };
 };
 
