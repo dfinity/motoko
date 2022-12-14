@@ -281,7 +281,7 @@ let prim_error phase (msgs : Diag.messages) =
   exit 1
 
 let check_prim () : Syntax.lib * stat_env =
-  let lexer = Lexing.from_string (Prelude.prim_module !Flags.global_timer) in
+  let lexer = Lexing.from_string (Prelude.prim_module ~timers:!Flags.global_timer) in
   let parse = Parser.Incremental.parse_prog in
 
   match parse_with Lexer.mode_priv lexer parse prim_name with
