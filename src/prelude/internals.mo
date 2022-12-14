@@ -525,10 +525,6 @@ func @timer_helper() : async () {
     for (k in thunks.keys()) {
         futures[k] := switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
     };
-
-    for (f in futures.vals()) {
-        switch f { case (?f) try await f catch _ { }; case _ () }
-    };
 };
 
 var @lastId = 0;
