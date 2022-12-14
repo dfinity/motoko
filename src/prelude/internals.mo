@@ -448,137 +448,138 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 type @Node = { expire : [var Nat64]; id : Nat; delay : ?Nat64; job : () -> async (); pre : ?@Node; post : ?@Node };
 var @timers : ?@Node = null;
 func @prune(n : ?@Node) : ?@Node = switch n {
-    case null null;
-    case (?n) {
-        if (n.expire[0] == 0) {
-            @prune(n.post) // by corollary
-        } else {
-            ?{ n with pre = @prune(n.pre); post = @prune(n.post) }
-        }
+  case null null;
+  case (?n) {
+    if (n.expire[0] == 0) {
+      @prune(n.post) // by corollary
+    } else {
+      ?{ n with pre = @prune(n.pre); post = @prune(n.post) }
     }
+  }
 };
 
 func @nextExpiration(n : ?@Node) : Nat64 = switch n {
-    case null 0;
-    case (?n) {
-        var exp = @nextExpiration(n.pre); // TODO: use the corollary for expire == 0
-        if (exp == 0) {
-            exp := n.expire[0];
-            if (exp == 0) {
-                exp := @nextExpiration(n.post)
-            }
-        };
-        exp
-    }
+  case null 0;
+  case (?n) {
+    var exp = @nextExpiration(n.pre); // TODO: use the corollary for expire == 0
+    if (exp == 0) {
+      exp := n.expire[0];
+      if (exp == 0) {
+        exp := @nextExpiration(n.post)
+      }
+    };
+    exp
+  }
 };
 
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
 func @timer_helper() : async () {
-    func Array_init<T>(len : Nat,  x : T) : [var T] {
-        (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
-    };
-    let now = (prim "time" : () -> Nat64)();
-    let exp = @nextExpiration @timers;
-    let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
+  func Array_init<T>(len : Nat,  x : T) : [var T] {
+    (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
+  };
+  let now = (prim "time" : () -> Nat64)();
+  let exp = @nextExpiration @timers;
+  let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
-    if (exp == 0) {
-        return
-    };
+  if (exp == 0) {
+    return
+  };
 
-    var gathered = 0;
-    let thunks = Array_init<?(() -> async ())>(10, null); // we want max 10
+  var gathered = 0;
+  let thunks = Array_init<?(() -> async ())>(10, null); // we want max 10
 
-    func gatherExpired(n : ?@Node) = switch n {
-        case null ();
-        case (?n) {
-            gatherExpired(n.pre);
-            if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
-                thunks[gathered] := ?(n.job);
-                switch (n.delay) {
-                    case (?delay) if (delay != 0) {
-                        // re-add the node
-                        let expire = n.expire[0] + delay;
-                        // N.B. insert only works on pruned nodes
-                        func reinsert(m : ?@Node) : @Node = switch m {
-                            case null ({ n with expire = [var expire]; pre = null; post = null });
-                            case (?m) {
-                                assert m.expire[0] != 0;
-                                if (expire < m.expire[0]) ({ m with pre = ?reinsert(m.pre) })
-                                else ({ m with post = ?reinsert(m.post) })
-                            }
-                        };
-                        @timers := ?reinsert(@prune(@timers));
-                    };
-                    case _ ()
-                };
-                n.expire[0] := 0;
-                gathered += 1;
+  func gatherExpired(n : ?@Node) = switch n {
+    case null ();
+    case (?n) {
+      gatherExpired(n.pre);
+      if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
+        thunks[gathered] := ?(n.job);
+        switch (n.delay) {
+          case (?delay) if (delay != 0) {
+            // re-add the node
+            let expire = n.expire[0] + delay;
+            // N.B. insert only works on pruned nodes
+            func reinsert(m : ?@Node) : @Node = switch m {
+              case null ({ n with expire = [var expire]; pre = null; post = null });
+              case (?m) {
+                assert m.expire[0] != 0;
+                if (expire < m.expire[0]) ({ m with pre = ?reinsert(m.pre) })
+                else ({ m with post = ?reinsert(m.post) })
+              }
             };
-            gatherExpired(n.post);
-        }
-    };
+            @timers := ?reinsert(@prune(@timers));
+          };
+          case _ ()
+        };
+        n.expire[0] := 0;
+        gathered += 1;
+      };
+      gatherExpired(n.post);
+    }
+  };
 
-    gatherExpired(@timers);
+  gatherExpired(@timers);
 
-    for (k in thunks.keys()) {
-        ignore switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
-    };
+  for (k in thunks.keys()) {
+    ignore switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
+  }
 };
 
-var @lastId = 0;
+var @lastTimerId = 0;
 
 func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
-    @lastId += 1;
-    let id = @lastId;
-    let now = (prim "time" : () -> Nat64) ();
-    let delayNanos = 1_000_000_000 * delaySecs;
-    let expire = now + delayNanos;
-    let delay = if recurring ?delayNanos else null;
-    // only works on pruned nodes
-    func insert(n : ?@Node) : @Node =
-        switch n {
-            case null ({ expire = [var expire]; id; delay; job; pre = null; post = null });
-            case (?n) {
-                assert n.expire[0] != 0;
-                if (expire < n.expire[0]) ({ n with pre = ?insert(n.pre) })
-                else ({ n with post = ?insert(n.post) })
-            }
+  @lastTimerId += 1;
+  let id = @lastTimerId;
+  let now = (prim "time" : () -> Nat64) ();
+  let delayNanos = 1_000_000_000 * delaySecs;
+  let expire = now + delayNanos;
+  let delay = if recurring ?delayNanos else null;
+  // only works on pruned nodes
+  func insert(n : ?@Node) : @Node =
+    switch n {
+      case null ({ expire = [var expire]; id; delay; job; pre = null; post = null });
+      case (?n) {
+        assert n.expire[0] != 0;
+        if (expire < n.expire[0]) ({ n with pre = ?insert(n.pre) })
+        else ({ n with post = ?insert(n.post) })
+      }
     };
-    @timers := ?insert(@prune(@timers));
+  @timers := ?insert(@prune(@timers));
 
-    let exp = @nextExpiration @timers;
-    if (exp == 0) @timers := null;
-    ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
+  let exp = @nextExpiration @timers;
+  if (exp == 0) @timers := null;
+  ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
-    id
+  id
 };
 
 func @cancelTimer(id : Nat) {
-    func graft(onto : ?@Node, branch : ?@Node) : ?@Node = switch (onto, branch) {
-        case (null, null) null;
-        case (null, _) branch;
-        case (_, null) onto;
-        case (?onto, _) { ?{ onto with post = graft(onto.post, branch) } }
-    };
-    func hunt(n : ?@Node) : ?@Node = switch n {
-        case null n;
-        case (?{ id = node; pre; post }) {
-            if (node == id) {
-                graft(pre, post)
-            } else do? {
-                { n! with pre = hunt pre; post = hunt post }
-            }
-        }
-    };
+  func graft(onto : ?@Node, branch : ?@Node) : ?@Node = switch (onto, branch) {
+    case (null, null) null;
+    case (null, _) branch;
+    case (_, null) onto;
+    case (?onto, _) { ?{ onto with post = graft(onto.post, branch) } }
+  };
 
-    @timers := hunt @timers;
-
-    if (@nextExpiration @timers == 0) {
-        // no more expirations ahead
-        ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
-        @timers := null
+  func hunt(n : ?@Node) : ?@Node = switch n {
+    case null n;
+    case (?{ id = node; pre; post }) {
+      if (node == id) {
+        graft(pre, post)
+      } else do? {
+        { n! with pre = hunt pre; post = hunt post }
+      }
     }
+  };
+
+  @timers := hunt @timers;
+
+  if (@nextExpiration @timers == 0) {
+    // no more expirations ahead
+      ignore (prim "global_timer_set" : Nat64 -> Nat64) 0;
+      @timers := null
+  }
 };
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
