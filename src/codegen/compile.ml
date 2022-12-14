@@ -3906,7 +3906,7 @@ module IC = struct
         (* TODO(3622)
            Until DTS is implemented for heartbeats, don't collect garbage here,
            just record mutator_instructions and leave GC scheduling to the
-           already sheduled async message running `system` function `heartbeat` *)
+           already scheduled async message running `system` function `heartbeat` *)
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
@@ -3923,7 +3923,7 @@ module IC = struct
         (* TODO(3622)
            Until DTS is implemented for timers, don't collect garbage here,
            just record mutator_instructions and leave GC scheduling to the
-           already sheduled async message running `system` function `heartbeat` *)
+           already scheduled async message running `system` function `timer` *)
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
