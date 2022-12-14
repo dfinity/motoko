@@ -12,4 +12,3 @@ val check_actors : scope -> Syntax.prog list -> unit Diag.result
 val check_stab_sig : scope -> Syntax.stab_sig -> (field list) Diag.result
 
 val heartbeat_type : typ
-val timer_type : typ
