@@ -496,7 +496,7 @@ func @timer_helper() : async () {
             if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
                 thunks[gathered] := ?(n.job);
                 switch (n.delay) {
-                    case (?delay) {
+                    case (?delay) if (delay != 0) {
                         // re-add the node
                         let expire = n.expire[0] + delay;
                         // N.B. insert only works on pruned nodes
