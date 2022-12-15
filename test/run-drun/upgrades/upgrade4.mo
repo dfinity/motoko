@@ -8,7 +8,8 @@ actor {
     assert (c.size() == 3);
     assert (i == n);
   };
-  system func timer(_ : Nat64 -> ()) : async () {
+  system func timer(set : Nat64 -> ()) : async () {
       Prim.debugPrint ("timer endpoint in 4");
+      set 0
   };
 }
