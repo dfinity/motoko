@@ -48,7 +48,7 @@ debug.print: init'ed 3
 => update check(6)
 <= replied: ()
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
-debug.print: init'ed 2
+debug.print: init'ed 4
 <= replied: ()
 => query check(6)
 <= replied: ()
