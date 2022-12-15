@@ -108,7 +108,7 @@ let argspec = [
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
   "-ref-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
+  Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
       " use the reference implementation of the Internet Computer system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
@@ -130,6 +130,7 @@ let argspec = [
       " respect debug expressions in source (the default)";
   "--sanity-checks",
   Arg.Unit
+    (* reset to false below when !compile_mode = RefMode *)
     (fun () -> Flags.sanity := true),
   " enable sanity checking in the RTS and generated code";
 
@@ -138,7 +139,7 @@ let argspec = [
     stable_types := true;
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
- 
+
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
   " use generational GC";
@@ -206,6 +207,7 @@ let process_files files : unit =
       | _ -> assert false
     end
   | Compile ->
+    Flags.(if !compile_mode = RefMode then sanity := false); (* too slow *)
     set_out_file files ".wasm";
     let source_map_file = !out_file ^ ".map" in
     let (idl_prog, module_) = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
