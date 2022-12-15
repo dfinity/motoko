@@ -3879,6 +3879,7 @@ module IC = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
+
       G.i (Call (nr (E.built_in env "init"))) ^^
       GC.collect_garbage env ^^
 
