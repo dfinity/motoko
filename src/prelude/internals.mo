@@ -482,6 +482,8 @@ func @timer_helper() : async () {
   let exp = @nextExpiration @timers;
   let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
 
+  // debug { assert prev == 0 };
+
   if (exp == 0) {
     return
   };
@@ -528,11 +530,10 @@ func @timer_helper() : async () {
 
 var @lastTimerId = 0;
 
-func @setTimer(delaySecs : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
+func @setTimer(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
   @lastTimerId += 1;
   let id = @lastTimerId;
   let now = (prim "time" : () -> Nat64) ();
-  let delayNanos = 1_000_000_000 * delaySecs;
   let expire = now + delayNanos;
   let delay = if recurring ?delayNanos else null;
   // only works on pruned nodes
