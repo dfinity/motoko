@@ -3705,7 +3705,17 @@ end (* Lifecycle *)
 
 
 module IC = struct
+
   (* IC-specific stuff: System imports, databufs etc. *)
+
+  let register_globals env =
+    (* result of last ic0.call_perform  *)
+    E.add_global32 env "__call_perform_status" Mutable 0l
+
+  let get_call_perform_status env =
+    G.i (GlobalGet (nr (E.get_global env "__call_perform_status")))
+  let set_call_perform_status env =
+    G.i (GlobalSet (nr (E.get_global env "__call_perform_status")))
 
   let i32s n = Lib.List.make n I32Type
   let i64s n = Lib.List.make n I64Type
@@ -7192,7 +7202,7 @@ module FuncDec = struct
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call_threaded env purpose get_meth_pair push_continuations
-    add_data get_t_opt add_cycles =
+    add_data trap add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -7215,15 +7225,13 @@ module FuncDec = struct
       add_cycles ^^
       (* done! *)
       IC.system_call env "call_perform" ^^
+      IC.set_call_perform_status env ^^
+      IC.get_call_perform_status env ^^
         (* Check error code *)
-      begin match get_t_opt with
-      | None ->
+      if trap then
         G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
         E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
-      | Some get_t ->
-        let (set_error, get_error) = new_local env "error" in
-        set_error ^^
-        get_error ^^
+      else
         G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
         G.if0
         begin
@@ -7233,19 +7241,8 @@ module FuncDec = struct
           (* Recall (don't leak) continuations *)
           get_cb_index ^^
           ContinuationTable.recall env ^^
-          G.i Drop ^^
-          (* The throw closure *)
-          get_t ^^
-          (* The arg *)
-          get_error ^^
-          IC.perform_call_error env ^^
-          (* The closure again *)
-          get_t ^^
-          (* Call *)
-          Closure.call_closure env 1 0  ^^
-          G.i Return (* TODO: what about GC? *)
+          G.i Drop
          end
-      end
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
@@ -7256,7 +7253,7 @@ module FuncDec = struct
       get_meth_pair
       (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
       (fun _ -> get_arg ^^ Serialization.serialize env ts1)
-      (Some get_t)
+      false
 
   let ic_call_raw env get_meth_pair get_arg get_k get_r =
     ic_call_threaded
@@ -7265,7 +7262,7 @@ module FuncDec = struct
       get_meth_pair
       (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
       (fun _ -> get_arg ^^ Blob.as_ptr_len env)
-      None (* TBC *)
+      true (* TBC *)
 
 
   let ic_self_call env ts get_meth_pair get_future get_k get_r =
@@ -7279,7 +7276,7 @@ module FuncDec = struct
         get_cb_index ^^
         BoxedSmallWord.box env ^^
           Serialization.serialize env Type.[Prim Nat32])
-      None (* TBC *)
+      true (* TBC *)
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -7302,8 +7299,8 @@ module FuncDec = struct
       (* the cycles *)
       add_cycles ^^
       IC.system_call env "call_perform" ^^
-      (* This is a one-shot function: Ignore error code *)
-      G.i Drop
+      (* This is a one-shot function: just remember error code *)
+      IC.set_call_perform_status env
     | _ -> assert false
 
   let equate_msgref env =
@@ -8845,6 +8842,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64,
     IC.get_system_time env
 
+  | OtherPrim "call_perform_status", [e; f] ->
+    SR.UnboxedWord32,
+    IC.get_call_perform_status env
+
   | OtherPrim "rts_version", [] ->
     SR.Vanilla,
     E.call_import env "rts" "version"
@@ -10025,6 +10026,7 @@ and conclude_module env start_fi_o =
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
+  IC.register_globals env;
   Stack.register_globals env;
   GC.register_globals env;
   StableMem.register_globals env;

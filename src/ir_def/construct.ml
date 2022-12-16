@@ -109,6 +109,7 @@ let primE prim es =
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
+    | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -244,6 +245,12 @@ let blockE decs exp =
       at = no_region;
       note = Note.{ def with typ; eff }
     }
+
+let nat32E n =
+  { it = LitE (Nat32Lit n);
+    at = no_region;
+    note = Note.{ def with typ = T.Prim (T.Nat32) }
+  }
 
 let natE n =
   { it = LitE (NatLit n);

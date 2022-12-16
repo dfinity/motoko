@@ -69,7 +69,18 @@ type label_sort = Cont of kont | Label
 let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
-
+(*
+let throw_on_call_perform_failure context k =
+  let r = match LabelEnv.find_opt Throw context with
+    | Some (Cont r) -> r
+    | Some Label
+    | None -> assert false
+  in
+    letcont r (fun r ->
+        ifE (primE (OtherPrim "call_perform_status", [])
+               k 
+               r unit())
+*)
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp.it }
@@ -412,10 +423,21 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     in
-    letcont r (fun r ->
-    nary context k (fun vs -> e (PrimE (CallPrim typs, vs @ [varE r] ))) exps)
+    let k' = meta (typ exp) (fun v -> check_call_perform_status v k r) in
+    nary context k' (fun vs -> e (PrimE (CallPrim typs, vs))) exps
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
+
+and check_call_perform_status v k r =
+  ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
+         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
+    (k -@- varE v)
+    (r -@-
+       (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
+          [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
+                 textE "ic0.call_perform failed"]]))
+
+
 
 and c_block context decs exp k =
   declare_decs decs (c_decs context decs (meta T.unit (fun _ -> c_exp context exp k)))
