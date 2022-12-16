@@ -1,7 +1,7 @@
 import Prim "mo:⛔";
 actor {
   flexible var c = 1;
-  public func inc() {
+  public func inc() : async () {
     c += 1;
     Prim.debugPrintNat c
   };

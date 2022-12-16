@@ -135,7 +135,11 @@ let assertE e =
 let asyncE s typ_bind e typ1 =
   { it = AsyncE (s, typ_bind, e, typ1);
     at = no_region;
-    note = Note.{ def with typ = T.Async (s, typ1, typ e); eff = T.Triv }
+    note = Note.{
+      def with typ = T.Async (s, typ1, typ e);
+      eff = match s with
+            | T.Fut -> T.Await
+            | T.Cmp -> T.Triv }
   }
 
 let awaitE s e =

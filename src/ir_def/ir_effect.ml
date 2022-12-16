@@ -49,7 +49,9 @@ let rec infer_effect_prim = function
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE _ ->
+  | AsyncE (T.Fut, _,  _, _)->
+    T.Await
+  | AsyncE (T.Cmp, _,  _, _)->
     T.Triv
   | TryE _ ->
     T.Await
