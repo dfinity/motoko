@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "8384593e2046158effd760bc1045038bcc86eda9",
-        "sha256": "00xsfm1cxk9gkib8g81h8kmdw3lrsjcza1fydhp0spc31vjbh4pn",
+        "rev": "e9132861660cdda284b7745290552d8f84cb2efc",
+        "sha256": "1fwj8q6q33lpny0mr8267fdrn32l819zi7gh4mpkcp1fhixjr9f0",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/8384593e2046158effd760bc1045038bcc86eda9.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/e9132861660cdda284b7745290552d8f84cb2efc.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "692f77b30bd8c6a55105f194beccbf3b5dec58ea",
-        "sha256": "04aljxmpnna5cp5q564j28xjiqdmhrpcy41bcxnk43sqd63qi78l",
+        "rev": "3caba2778b63d23150b332e034970b9a8a8ce2fd",
+        "sha256": "0frbfaymiv7mb0cmbf3ayss5sawxhb2fhnlfxgrnl3zim8rkasjq",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/692f77b30bd8c6a55105f194beccbf3b5dec58ea.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/3caba2778b63d23150b332e034970b9a8a8ce2fd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
