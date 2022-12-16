@@ -51,5 +51,3 @@ func Loop<T,U>(n:Int){
 
 Loop<Int,Bool>(0);
 };
-
-//SKIP run
