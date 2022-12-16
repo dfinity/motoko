@@ -1,7 +1,7 @@
 import Prim "mo:⛔";
 /* test generic self-tail-recursion */
 
-let bound:Int = 10000;
+let bound:Int = 100000;
 
 do {
 func Loop(n:Int){
