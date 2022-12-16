@@ -446,7 +446,9 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
 //       as well as increased allocation and runtime cost accessing the data. Oh well.
 //
 type @Node = { expire : [var Nat64]; id : Nat; delay : ?Nat64; job : () -> async (); pre : ?@Node; post : ?@Node };
+
 var @timers : ?@Node = null;
+
 func @prune(n : ?@Node) : ?@Node = switch n {
   case null null;
   case (?n) {
