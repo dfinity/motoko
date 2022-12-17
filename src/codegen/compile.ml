@@ -8842,7 +8842,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64,
     IC.get_system_time env
 
-  | OtherPrim "call_perform_status", [e; f] ->
+  | OtherPrim "call_perform_status", [] ->
     SR.UnboxedWord32,
     IC.get_call_perform_status env
 

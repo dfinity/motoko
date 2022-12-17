@@ -83,8 +83,8 @@ let throw_on_call_perform_failure context k =
 *)
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
-  { exp with it = t_exp' context exp.it }
-and t_exp' context exp' =
+  { exp with it = t_exp' context exp.it exp.note }
+and t_exp' context exp' note =
   match exp' with
   | VarE _
   | LitE _ -> exp'
@@ -154,15 +154,22 @@ and t_exp' context exp' =
   | PrimE (CallPrim typs, ([exp1; exp2] as exps)) when isAwaitableFunc exp1 ->
     (match LabelEnv.find_opt Throw context with
      | Some (Cont r) ->
-      (letcont r (fun r ->
-           let { it = PrimE(p, exps'); at; note } =
-             callE (t_exp context exp1) typs (t_exp context exp2) in
-            { it = PrimE (p, exps' @ [varE r]);
-              at;
-              note; })).it
+        (letcont r (fun r ->
+           let v = fresh_var "call" note.typ in
+           blockE [
+               letD v (callE (t_exp context exp1) typs (t_exp context exp2)) ]
+                 (ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
+                         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
+                    (varE v)
+                    (retE (varE r -*-
+                             (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
+                                [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
+                                       textE "ic0.call_perform failed"]]))))))
+       .it
     | Some Label ->
       assert false
     | None ->
+      assert false;
       PrimE (CallPrim typs, List.map (t_exp context) exps))
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
