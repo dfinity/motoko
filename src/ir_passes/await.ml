@@ -154,17 +154,10 @@ and t_exp' context exp' note =
   | PrimE (CallPrim typs, ([exp1; exp2] as exps)) when isAwaitableFunc exp1 ->
     (match LabelEnv.find_opt Throw context with
      | Some (Cont r) ->
-        (letcont r (fun r ->
-           let v = fresh_var "call" note.typ in
-           blockE [
-               letD v (callE (t_exp context exp1) typs (t_exp context exp2)) ]
-                 (ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
-                         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
-                    (varE v)
-                    (retE (varE r -*-
-                             (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
-                                [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
-                                       textE "ic0.call_perform failed"]]))))))
+       (letcont r (fun r ->
+         let v = fresh_var "call" note.typ in
+         letE v (callE (t_exp context exp1) typs (t_exp context exp2))
+         (check_call_perform_status (varE v) (fun e -> retE (varE r -*- e)))))
        .it
     | Some Label ->
       assert false
@@ -430,21 +423,24 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     in
-    let k' = meta (typ exp) (fun v -> check_call_perform_status v k r) in
+    let k' = meta (typ exp)
+      (fun v ->
+         check_call_perform_status
+           (k -@- varE v)
+           (fun e -> r -@- e))
+    in
     nary context k' (fun vs -> e (PrimE (CallPrim typs, vs))) exps
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
 
-and check_call_perform_status v k r =
+and check_call_perform_status success failure =
   ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
          [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
-    (k -@- varE v)
-    (r -@-
+    success
+    (failure
        (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
           [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
                  textE "ic0.call_perform failed"]]))
-
-
 
 and c_block context decs exp k =
   declare_decs decs (c_decs context decs (meta T.unit (fun _ -> c_exp context exp k)))
