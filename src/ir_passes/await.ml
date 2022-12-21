@@ -9,10 +9,9 @@ module T = Type
 open Construct
 
 
-(* TODO: dedup *)
-let isAwaitableFunc exp =
+let isSharedFunc exp =
   match typ exp with
-  | T.Func (T.Shared _, T.Promises, _, _, _) -> true
+  | T.Func (T.Shared _, _, _, _, _) -> true
   | _ -> false
 
 let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
@@ -69,18 +68,16 @@ type label_sort = Cont of kont | Label
 let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
-(*
-let throw_on_call_perform_failure context k =
-  let r = match LabelEnv.find_opt Throw context with
-    | Some (Cont r) -> r
-    | Some Label
-    | None -> assert false
-  in
-    letcont r (fun r ->
-        ifE (primE (OtherPrim "call_perform_status", [])
-               k 
-               r unit())
-*)
+
+let check_call_perform_status success failure =
+  ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
+         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
+    success
+    (failure
+       (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
+          [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
+                 textE "ic0.call_perform failed"]]))
+
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp.it exp.note }
@@ -151,7 +148,7 @@ and t_exp' context exp' note =
       t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
-  | PrimE (CallPrim typs, ([exp1; exp2] as exps)) when isAwaitableFunc exp1 ->
+  | PrimE (CallPrim typs, ([exp1; exp2] as exps)) when isSharedFunc exp1 ->
     (match LabelEnv.find_opt Throw context with
      | Some (Cont r) ->
        (letcont r (fun r ->
@@ -417,7 +414,7 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (DefineE (id, mut, varE v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
-  | PrimE (CallPrim typs, ([exp1; _exp2] as exps)) when isAwaitableFunc exp1 ->
+  | PrimE (CallPrim typs, ([exp1; _exp2] as exps)) when isSharedFunc exp1 ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
       | Some Label
@@ -432,15 +429,6 @@ and c_exp' context exp k =
     nary context k' (fun vs -> e (PrimE (CallPrim typs, vs))) exps
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
-
-and check_call_perform_status success failure =
-  ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
-         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
-    success
-    (failure
-       (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
-          [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
-                 textE "ic0.call_perform failed"]]))
 
 and c_block context decs exp k =
   declare_decs decs (c_decs context decs (meta T.unit (fun _ -> c_exp context exp k)))
