@@ -117,7 +117,7 @@ and t_exp' context exp' note =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE (s, tb, exp1, typ1) ->
+  | AsyncE (s, tb, exp1, typ1) -> begin
     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
     (* add the implicit return/throw label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
@@ -126,9 +126,24 @@ and t_exp' context exp' note =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
-    (cps_asyncE s typ1 (typ exp1)
-      (forall [tb] ([k_ret; k_fail] -->*
-        c_exp context' exp1 (ContVar k_ret)))).it
+    let cps_async =
+      cps_asyncE s typ1 (typ exp1)
+        (forall [tb] ([k_ret; k_fail] -->*
+          c_exp context' exp1 (ContVar k_ret)))
+    in
+    let v = fresh_var "async" note.typ in
+    match LabelEnv.find_opt Throw context with
+    | Some (Cont r) when LabelEnv.find_opt Return context <> None ->
+       (letE v cps_async
+         (check_call_perform_status
+           (varE v)
+           ((fun e -> retE (r -@- e))))).it (* TBR *)
+    | Some Label ->
+       assert false
+    | _ ->
+       (* in immediate body of shared func *) 
+       cps_async.it
+    end
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
@@ -388,10 +403,22 @@ and c_exp' context exp k =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
-    k -@-
-      (cps_asyncE s typ1 (typ exp1)
+    let r = match LabelEnv.find_opt Throw context with
+      | Some (Cont r) -> r
+      | Some Label
+      | None -> assert false
+    in
+    let cps_async =
+      cps_asyncE s typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
-          (c_exp context' exp1 (ContVar k_ret)))))
+          (c_exp context' exp1 (ContVar k_ret)))) in
+    let k' = meta (typ cps_async)
+      (fun v ->
+        check_call_perform_status
+          (k -@- varE v)
+          (fun e -> r -@- e))
+    in
+    k' -@- cps_async
   | PrimE (AwaitPrim s, [exp1]) ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
@@ -422,9 +449,9 @@ and c_exp' context exp k =
     in
     let k' = meta (typ exp)
       (fun v ->
-         check_call_perform_status
-           (k -@- varE v)
-           (fun e -> r -@- e))
+        check_call_perform_status
+          (k -@- varE v)
+          (fun e -> r -@- e))
     in
     nary context k' (fun vs -> e (PrimE (CallPrim typs, vs))) exps
   | PrimE (p, exps) ->

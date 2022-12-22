@@ -7240,7 +7240,7 @@ module FuncDec = struct
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_t =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
     ic_call_threaded
       env
       "remote call"
@@ -7270,7 +7270,7 @@ module FuncDec = struct
         get_cb_index ^^
         BoxedSmallWord.box env ^^
           Serialization.serialize env Type.[Prim Nat32])
-      true (* TBC *)
+      false
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9131,7 +9131,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim, [f;e;k;r;t] ->
+  | ICCallPrim, [f;e;k;r] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -9140,14 +9140,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let (set_arg, get_arg) = new_local env "arg" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
-    let (set_t, get_t) = new_local env "t" in
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    compile_exp_vanilla env ae t ^^ set_t ^^
-    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_t add_cycles
+    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
     end
   | ICCallRawPrim, [p;m;a;k;r] ->
     SR.unit, begin
