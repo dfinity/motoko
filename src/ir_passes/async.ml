@@ -297,7 +297,7 @@ let transform prog =
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
        ( [v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
-    | PrimE (CallPrim typs, exp1::exp2::throws) when isAwaitableFunc exp1 ->
+    | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -307,16 +307,7 @@ let transform prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let throw' =
-        match throws with
-        | [] ->
-          let e = fresh_var "e" T.catch in
-          [e] -->* (ic_rejectE (errorMessageE (varE e)))
-        | [ throw ] ->
-          t_exp throw
-        | _ -> assert false (* at most one throw cont *)
-      in
-       let ((nary_async, nary_reply, reject), def) =
+      let ((nary_async, nary_reply, reject), def) =
         new_nary_async_reply ts2
       in
       let _ = letEta in
@@ -324,7 +315,7 @@ let transform prog =
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
         letEta exp1' (fun v1 ->
           letSeq ts1 exp2' (fun vs ->
-            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) throw') ]
+            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
            )
           )
          )
