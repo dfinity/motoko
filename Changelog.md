@@ -1,5 +1,19 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Add new primitives for a default timer mechanism (#3542). These are
+    ``` Motoko
+    setTimer : (delayNanos : Nat64, recurring : Bool, job : () -> async ()) -> (id : Nat)
+    cancelTimer : (id : Nat) -> ()
+    ```
+    By defining a `system func timer` the default mechanism can be overridden by a custom
+    implementation. Additionally by supplying the command-line flag `-no-timer` all aspects
+    of timers can be suppressed, e.g. for space- or security-sensitive purposes, thus effectively
+    reverting canisters to the pre-timers era.
+
+  * bugfix: silence bogus cascading errors in stable compatibility check (#3645).
+
 ## 0.7.4 (2022-12-07)
 
 * motoko (`moc`)
