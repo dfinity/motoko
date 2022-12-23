@@ -186,7 +186,7 @@ Find the given key's value in the trie, or return null if nonexistent
 func merge<K, V>(tl : Trie<K, V>, tr : Trie<K, V>, k_eq : (K, K) -> Bool) : Trie<K, V>
 ```
 
-Merge tries, preferring the right trie where there are collisions
+Merge tries, preferring the left trie where there are collisions
 in common keys.
 
 note: the `disj` operation generalizes this `merge`
