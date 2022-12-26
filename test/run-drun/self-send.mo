@@ -95,6 +95,34 @@ actor self {
     }
   };
 
+  public func test7() : async () {
+    var n = 0;
+    var a = async ();
+    await a;
+    while (n < 499) {
+//      Prim.debugPrint(debug_show n);
+      ignore request();
+      n += 1;
+    };
+    await a;
+    assert false;
+  };
+
+  public func test8() : async () {
+    try {
+      var n = 0;
+      var a = async ();
+      await a;
+      while (n < 499) {
+        ignore request();
+        n += 1;
+      };
+      await a;
+    } catch e {
+      Prim.debugPrint("caught " # Prim.errorMessage(e));
+      throw e;
+    }
+  };
 
   public func go() : async () {
 
@@ -161,6 +189,30 @@ actor self {
     }
     catch e {
       Prim.debugPrint("test6: " # Prim.errorMessage(e));
+    };
+
+
+    let _ = await raw_rand(); // drain queues, can't use await async() as full!
+
+    // completed awaits
+    Prim.debugPrint("test7:");
+
+    try {
+      await test7();
+      assert false;
+    }
+    catch e {
+      Prim.debugPrint("test7: " # Prim.errorMessage(e));
+    };
+
+    let _ = await raw_rand(); // drain queues, can't use await async() as full!
+
+    Prim.debugPrint("test8:");
+    try {
+      await test8();
+    }
+    catch e {
+      Prim.debugPrint("test8: " # Prim.errorMessage(e));
     };
 
   }
