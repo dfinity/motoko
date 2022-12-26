@@ -3,6 +3,10 @@ import Prim "mo:⛔";
 
 actor self {
 
+  let MAX_SELF_QUEUE_CAPACITY = 500;
+  let PRED_MAX_SELF_QUEUE_CAPACITY = MAX_SELF_QUEUE_CAPACITY - 1 : Nat;
+  let DOUBLE_CAPACITY = 2 * MAX_SELF_QUEUE_CAPACITY;
+
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   public func request() : async () {
@@ -13,7 +17,7 @@ actor self {
 
   public func test1() : async () {
     var n = 0;
-    while (n < 1000) {
+    while (n < DOUBLE_CAPACITY) {
 //      Prim.debugPrint(debug_show n);
       ignore request();
       n += 1;
@@ -24,7 +28,7 @@ actor self {
   public func test2() : async () {
     try {
       var n = 0;
-      while (n < 1000) {
+      while (n < DOUBLE_CAPACITY) {
 //        Prim.debugPrint(debug_show n);
         ignore request();
         n += 1;
@@ -38,7 +42,7 @@ actor self {
 
   public func test3() : async () {
     var n = 0;
-    while (n < 1000) {
+    while (n < DOUBLE_CAPACITY) {
 //      Prim.debugPrint(debug_show n);
       oneway();
       n += 1;
@@ -49,7 +53,7 @@ actor self {
   public func test4() : async () {
     try {
       var n = 0;
-      while (n < 1000) {
+      while (n < DOUBLE_CAPACITY) {
 //        Prim.debugPrint(debug_show n);
         oneway();
         n += 1;
@@ -62,7 +66,7 @@ actor self {
 
   public func test5() : async () {
     var n = 0;
-    while (n < 1000) {
+    while (n < DOUBLE_CAPACITY) {
 //    Prim.debugPrint(debug_show n);
       // NB: calling
       // ignore Prim.call_raw(Prim.principalOfActor(self),"request", to_candid ());
@@ -79,7 +83,7 @@ actor self {
   public func test6() : async () {
     try {
       var n = 0;
-      while (n < 1000) {
+      while (n < DOUBLE_CAPACITY) {
 //        Prim.debugPrint(debug_show n);
       // NB: calling
       // ignore Prim.call_raw(Prim.principalOfActor(self),"request", to_candid ());
@@ -99,7 +103,7 @@ actor self {
     var n = 0;
     var a = async ();
     await a;
-    while (n < 499) {
+    while (n < PRED_MAX_SELF_QUEUE_CAPACITY) {
 //      Prim.debugPrint(debug_show n);
       ignore request();
       n += 1;
@@ -113,7 +117,7 @@ actor self {
       var n = 0;
       var a = async ();
       await a;
-      while (n < 499) {
+      while (n < PRED_MAX_SELF_QUEUE_CAPACITY) {
         ignore request();
         n += 1;
       };
