@@ -252,7 +252,11 @@ let transform prog =
                   unitE()); (* suspend *)
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
-                  (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))) ]
+                 (let v = fresh_var "call" T.unit in
+                  letE v
+                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))
+                    (check_call_perform_status (varE v) (fun e -> (* retE *) ((projE (varE vkr) 1) -*- e)))))
+              ]
               T.unit
           )).it
         | _ -> assert false

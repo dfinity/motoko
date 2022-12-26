@@ -77,15 +77,6 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
 
-let check_call_perform_status success failure =
-  ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
-         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
-    success
-    (failure
-       (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
-          [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
-                 textE "ic0.call_perform failed"]]))
-
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp }
