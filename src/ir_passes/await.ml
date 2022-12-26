@@ -9,9 +9,17 @@ module T = Type
 open Construct
 
 
-let isSharedFunc exp =
+let is_shared_func exp =
   match typ exp with
   | T.Func (T.Shared _, _, _, _, _) -> true
+  | _ -> false
+
+let is_shared_or_raw_call (p, exps) =
+  match (p, exps) with
+  | CallPrim _, [exp1; _] ->
+    is_shared_func exp1
+  | OtherPrim "call_raw", _ ->
+    true
   | _ -> false
 
 let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
@@ -50,11 +58,11 @@ let ( -@- ) k exp2 =
   match k with
   | ContVar v ->
      varE v -*- exp2
-  | MetaCont (typ, k) ->
+  | MetaCont (typ0, k) ->
      match exp2.it with
-     | VarE v -> k (var v exp2.note.Note.typ)
+     | VarE v -> k (var v (typ exp2))
      | _ ->
-        let u = fresh_var "u" typ in
+        let u = fresh_var "u" typ0 in
         letE u exp2 (k u)
 
 (* Label environments *)
@@ -80,11 +88,11 @@ let check_call_perform_status success failure =
 
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
-  { exp with it = t_exp' context exp.it exp.note }
-and t_exp' context exp' note =
-  match exp' with
+  { exp with it = t_exp' context exp }
+and t_exp' context exp =
+  match exp.it with
   | VarE _
-  | LitE _ -> exp'
+  | LitE _ -> exp.it
   | AssignE (exp1, exp2) ->
     AssignE (t_lexp context exp1, t_exp context exp2)
   | BlockE b ->
@@ -131,7 +139,7 @@ and t_exp' context exp' note =
         (forall [tb] ([k_ret; k_fail] -->*
           c_exp context' exp1 (ContVar k_ret)))
     in
-    let v = fresh_var "async" note.typ in
+    let v = fresh_var "async" (typ exp) in
     match LabelEnv.find_opt Throw context with
     | Some (Cont r) when LabelEnv.find_opt Return context <> None ->
        (letE v cps_async
@@ -141,7 +149,7 @@ and t_exp' context exp' note =
     | Some Label ->
        assert false
     | _ ->
-       (* in immediate body of shared func *) 
+       (* in immediate body of shared func *)
        cps_async.it
     end
   | TryE _ -> assert false (* these never have effect T.Triv *)
@@ -161,21 +169,20 @@ and t_exp' context exp' note =
         inspect = t_exp LabelEnv.empty inspect
       },
       t)
-  | NewObjE (sort, ids, typ) -> exp'
+  | NewObjE (sort, ids, typ) -> exp.it
   | SelfCallE _ -> assert false
-  | PrimE (CallPrim typs, ([exp1; exp2] as exps)) when isSharedFunc exp1 ->
-    (match LabelEnv.find_opt Throw context with
-     | Some (Cont r) ->
-       (letcont r (fun r ->
-         let v = fresh_var "call" note.typ in
-         letE v (callE (t_exp context exp1) typs (t_exp context exp2))
-         (check_call_perform_status (varE v) (fun e -> retE (varE r -*- e)))))
-       .it
-    | Some Label ->
+  | PrimE (p, exps) when is_shared_or_raw_call(p, exps) -> begin
+    match LabelEnv.find_opt Throw context with
+    | Some (Cont r) ->
+      (letcont r (fun r ->
+        let v = fresh_var "call" (typ exp) in
+        letE v
+          { exp with it = PrimE(p, List.map (t_exp context) exps) }
+        (check_call_perform_status (varE v) (fun e -> retE (varE r -*- e)))))
+      .it
+    | _ ->
       assert false
-    | None ->
-      assert false;
-      PrimE (CallPrim typs, List.map (t_exp context) exps))
+    end
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
 
@@ -441,7 +448,7 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (DefineE (id, mut, varE v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
-  | PrimE (CallPrim typs, ([exp1; _exp2] as exps)) when isSharedFunc exp1 ->
+  | PrimE (p, exps) when is_shared_or_raw_call(p, exps) ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
       | Some Label
@@ -453,7 +460,7 @@ and c_exp' context exp k =
           (k -@- varE v)
           (fun e -> r -@- e))
     in
-    nary context k' (fun vs -> e (PrimE (CallPrim typs, vs))) exps
+    nary context k' (fun vs -> e (PrimE (p, vs))) exps
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
 
