@@ -114,14 +114,14 @@ let new_nary_async_reply ts =
         (tupE [nary_async; nary_reply; varE fail])
 
 
-let letEta e scope =
+let let_eta e scope =
   match e.it with
   | VarE _ -> scope e (* pure, so reduce *)
   | _  ->
     let f = fresh_var "x" (typ e) in
     letD f e :: (scope (varE f)) (* maybe impure; sequence *)
 
-let isAwaitableFunc exp =
+let is_awaitable_func exp =
   match typ exp with
   | T.Func (T.Shared _, T.Promises, _, _, _) -> true
   | _ -> false
@@ -132,7 +132,7 @@ let isAwaitableFunc exp =
  d_of_es must not duplicate or discard the evaluation of es.
  *)
 
-let letSeq ts e d_of_vs =
+let let_seq ts e d_of_vs =
   match ts with
   | [] ->
     (expD e)::d_of_vs []
@@ -297,7 +297,7 @@ let transform prog =
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
        ( [v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
-    | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
+    | PrimE (CallPrim typs, [exp1; exp2]) when is_awaitable_func exp1 ->
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -310,11 +310,10 @@ let transform prog =
       let ((nary_async, nary_reply, reject), def) =
         new_nary_async_reply ts2
       in
-      let _ = letEta in
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
-        letEta exp1' (fun v1 ->
-          letSeq ts1 exp2' (fun vs ->
+        let_eta exp1' (fun v1 ->
+          let_seq ts1 exp2' (fun vs ->
             [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
            )
           )
@@ -326,12 +325,11 @@ let transform prog =
       let exp2' = t_exp exp2 in
       let exp3' = t_exp exp3 in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply [T.blob] in
-      let _ = letEta in
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
-          letEta exp1' (fun v1 ->
-          letEta exp2' (fun v2 ->
-          letEta exp3' (fun v3 ->
+          let_eta exp1' (fun v1 ->
+          let_eta exp2' (fun v2 ->
+          let_eta exp3' (fun v3 ->
             [ expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject)) ]
             )
           ))
