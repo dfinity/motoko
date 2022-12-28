@@ -47,7 +47,6 @@ actor self {
       oneway();
       n += 1;
     }
-
   };
 
   public func test4() : async () {

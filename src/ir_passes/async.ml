@@ -255,7 +255,7 @@ let transform prog =
                  (let v = fresh_var "call" T.unit in
                   letE v
                     (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))
-                    (check_call_perform_status (varE v) (fun e -> (* retE *) ((projE (varE vkr) 1) -*- e)))))
+                    (check_call_perform_status (varE v) (fun e -> ((projE (varE vkr) 1) -*- e)))))
               ]
               T.unit
           )).it
@@ -300,7 +300,7 @@ let transform prog =
       in
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
-       ( [v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
+      ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
     | PrimE (CallPrim typs, [exp1; exp2]) when is_awaitable_func exp1 ->
       let ts1,ts2 =
         match typ exp1 with
