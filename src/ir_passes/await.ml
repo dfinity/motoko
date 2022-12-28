@@ -77,15 +77,6 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
 
-let check_call_perform_status success failure =
-  ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
-         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
-    success
-    (failure
-       (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
-          [tupE [tagE "future" (primE (OtherPrim "call_perform_status") []);
-                 textE "ic0.call_perform failed"]]))
-
 let rec t_exp context exp =
   assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp }
@@ -344,10 +335,13 @@ and c_exp' context exp k =
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
     letcont k (fun k ->
+(* this optimization no longer applies since exp1 may need the handler for failing
+   message sends which aren't tracked by effects
     match eff exp1 with
-    | T.Triv (* ->  FIXME
-      varE k -*- (t_exp context exp1) *)
+    | T.Triv ->
+      varE k -*- (t_exp context exp1)
     | T.Await ->
+ *)
       let error = fresh_var "v" T.catch  in
       let cases' =
         List.map
@@ -433,15 +427,15 @@ and c_exp' context exp k =
       | None -> assert false
     in
     letcont r (fun r ->
-     letcont k (fun k ->
-       let kr = tupE [varE k; varE r] in
-       match eff exp1 with
-       | T.Triv ->
-          cps_awaitE s (typ_of_var k) (t_exp context exp1) kr
-       | T.Await ->
-          c_exp context  exp1
-            (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) kr)))
-     ))
+    letcont k (fun k ->
+      let kr = tupE [varE k; varE r] in
+      match eff exp1 with
+      | T.Triv ->
+        cps_awaitE s (typ_of_var k) (t_exp context exp1) kr
+      | T.Await ->
+        c_exp context exp1
+          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) kr)))
+    ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
   | DefineE (id, mut, exp1) ->

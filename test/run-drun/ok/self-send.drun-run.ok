@@ -15,4 +15,9 @@ debug.print: test5: ic0.call_perform failed
 debug.print: test6:
 debug.print: caught ic0.call_perform failed
 debug.print: test6: ic0.call_perform failed
+debug.print: test7:
+debug.print: test7: ic0.call_perform failed
+debug.print: test8:
+debug.print: caught ic0.call_perform failed
+debug.print: test8: ic0.call_perform failed
 ingress Completed: Reply: 0x4449444c0000
