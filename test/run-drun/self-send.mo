@@ -3,6 +3,8 @@ import Prim "mo:⛔";
 
 actor self {
 
+  func showError(e : Error) : Text = debug_show (Prim.errorCode(e), Prim.errorMessage(e));
+
   let MAX_SELF_QUEUE_CAPACITY = 500;
   let PRED_MAX_SELF_QUEUE_CAPACITY = MAX_SELF_QUEUE_CAPACITY - 1 : Nat;
   let DOUBLE_CAPACITY = 2 * MAX_SELF_QUEUE_CAPACITY;
@@ -34,7 +36,7 @@ actor self {
         n += 1;
       }
     } catch e {
-      Prim.debugPrint("caught " # Prim.errorMessage(e));
+      Prim.debugPrint("caught " # showError(e));
       throw e;
     }
   };
@@ -47,6 +49,7 @@ actor self {
       oneway();
       n += 1;
     }
+
   };
 
   public func test4() : async () {
@@ -58,7 +61,7 @@ actor self {
         n += 1;
       }
     } catch e {
-      Prim.debugPrint("caught " # Prim.errorMessage(e));
+      Prim.debugPrint("caught " # showError(e));
       throw e;
     }
   };
@@ -93,7 +96,7 @@ actor self {
         n += 1;
       }
     } catch e {
-      Prim.debugPrint("caught " # Prim.errorMessage(e));
+      Prim.debugPrint("caught " # showError(e));
       throw e;
     }
   };
@@ -122,7 +125,7 @@ actor self {
       };
       await a;
     } catch e {
-      Prim.debugPrint("caught " # Prim.errorMessage(e));
+      Prim.debugPrint("caught " # showError(e));
       throw e;
     }
   };
@@ -136,7 +139,7 @@ actor self {
       assert false;
     }
     catch e {
-      Prim.debugPrint("test1: " # Prim.errorMessage(e));
+      Prim.debugPrint("test1: " # showError(e));
     };
 
     let _ = await raw_rand(); // drain queues, can't use await async() as full!
@@ -146,7 +149,7 @@ actor self {
       await test2();
     }
     catch e {
-      Prim.debugPrint("test2: " # Prim.errorMessage(e));
+      Prim.debugPrint("test2: " # showError(e));
     };
 
     Prim.debugPrint("test3:");
@@ -158,7 +161,7 @@ actor self {
       assert false;
     }
     catch e {
-      Prim.debugPrint("test3: " # Prim.errorMessage(e));
+      Prim.debugPrint("test3: " # showError(e));
     };
 
     let _ = await raw_rand(); // drain queues, can't use await async() as full!
@@ -168,7 +171,7 @@ actor self {
       await test4();
     }
     catch e {
-      Prim.debugPrint("test4: " # Prim.errorMessage(e));
+      Prim.debugPrint("test4: " # showError(e));
     };
 
     let _ = await raw_rand(); // drain queues, can't use await async() as full!
@@ -181,7 +184,7 @@ actor self {
       assert false;
     }
     catch e {
-      Prim.debugPrint("test5: " # Prim.errorMessage(e));
+      Prim.debugPrint("test5: " # showError(e));
     };
 
     let _ = await raw_rand(); // drain queues, can't use await async() as full!
@@ -191,7 +194,7 @@ actor self {
       await test6();
     }
     catch e {
-      Prim.debugPrint("test6: " # Prim.errorMessage(e));
+      Prim.debugPrint("test6: " # showError(e));
     };
 
 
@@ -205,7 +208,7 @@ actor self {
       assert false;
     }
     catch e {
-      Prim.debugPrint("test7: " # Prim.errorMessage(e));
+      Prim.debugPrint("test7: " # showError(e));
     };
 
     let _ = await raw_rand(); // drain queues, can't use await async() as full!
@@ -215,7 +218,7 @@ actor self {
       await test8();
     }
     catch e {
-      Prim.debugPrint("test8: " # Prim.errorMessage(e));
+      Prim.debugPrint("test8: " # showError(e));
     };
 
   }
