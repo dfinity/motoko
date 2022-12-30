@@ -341,7 +341,7 @@ Note that the parameters (if any) of an actor class must have shared type (see [
 The syntax of an *import* `<imp>` is as follows:
 
 ``` bnf
-<imp> ::= imports
+<imp> ::=                           imports
   import <pat> =? <url>
 
 <url> ::=
