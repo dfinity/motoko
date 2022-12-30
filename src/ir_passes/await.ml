@@ -10,16 +10,22 @@ open Construct
 
 
 let is_shared_func exp =
-  match typ exp with
-  | T.Func (T.Shared _, _, _, _, _) -> true
-  | _ -> false
+  T.(match typ exp with
+    | Func (Shared _, _, _, _, _) -> true
+    | _ -> false)
 
-let is_shared_or_raw_call (p, exps) =
+let is_local_async_func exp =
+ T.(match typ exp with
+   | Func (Local, Returns, { sort = Scope; _ }::_, _, [Async (Fut, Var (_ ,0) , _)]) -> true
+   | _ -> false)
+
+let is_async_call (p, exps) =
   match (p, exps) with
   | CallPrim _, [exp1; _] ->
-    is_shared_func exp1
+     is_shared_func exp1 ||
+     is_local_async_func exp1
   | OtherPrim "call_raw", _ ->
-    true
+     true
   | _ -> false
 
 let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
@@ -162,7 +168,7 @@ and t_exp' context exp =
       t)
   | NewObjE (sort, ids, typ) -> exp.it
   | SelfCallE _ -> assert false
-  | PrimE (p, exps) when is_shared_or_raw_call(p, exps) -> begin
+  | PrimE (p, exps) when is_async_call(p, exps) -> begin
     match LabelEnv.find_opt Throw context with
     | Some (Cont r) ->
       (letcont r (fun r ->
@@ -442,7 +448,7 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (DefineE (id, mut, varE v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
-  | PrimE (p, exps) when is_shared_or_raw_call(p, exps) ->
+  | PrimE (p, exps) when is_async_call (p, exps) ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
       | Some Label
