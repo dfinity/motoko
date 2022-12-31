@@ -16,7 +16,10 @@ let is_shared_func exp =
 
 let is_local_async_func exp =
  T.(match typ exp with
-   | Func (Local, Returns, { sort = Scope; _ }::_, _, [Async (Fut, Var (_ ,0) , _)]) -> true
+   | Func (Local, Returns,
+      { sort = Scope; _ }::_,
+       _,
+      [Async (Fut, Var (_ ,0), _)]) -> true
    | _ -> false)
 
 let is_async_call (p, exps) =
