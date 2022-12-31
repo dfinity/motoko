@@ -173,7 +173,7 @@ and t_exp' context exp =
   | SelfCallE _ -> assert false
   | PrimE (p, exps) when is_async_call(p, exps) -> begin
     match LabelEnv.find_opt Throw context with
-    | Some (Cont r) ->
+    | Some (Cont r) when LabelEnv.find_opt Return context <> None -> (* FIXME *)
       (letcont r (fun r ->
         let v = fresh_var "call" (typ exp) in
         letE v
@@ -181,7 +181,8 @@ and t_exp' context exp =
         (check_call_perform_status (varE v) (fun e -> retE (varE r -*- e)))))
       .it
     | _ ->
-      assert false
+       (* FIXME *)
+      PrimE(p, List.map (t_exp context) exps)
     end
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
@@ -603,7 +604,7 @@ and t_comp_unit context = function
     begin
       match infer_effect_decs ds with
       | T.Triv ->
-        ProgU (t_decs context ds)
+        ProgU (t_decs context ds) (* FIXME: any send can throw *)
       | T.Await ->
         let throw = fresh_err_cont T.unit in
         let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
