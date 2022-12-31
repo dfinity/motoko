@@ -3,26 +3,26 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: test1:
 debug.print: test1: (#canister_reject, "ic0.call_perform failed")
 debug.print: test2:
-debug.print: caught (#future(2), "ic0.call_perform failed")
+debug.print: caught (#call_error({err_code = 2}), "ic0.call_perform failed")
 debug.print: test2: (#canister_reject, "ic0.call_perform failed")
 debug.print: test3:
 debug.print: test3: (#canister_reject, "ic0.call_perform failed")
 debug.print: test4:
-debug.print: caught (#future(2), "ic0.call_perform failed")
+debug.print: caught (#call_error({err_code = 2}), "ic0.call_perform failed")
 debug.print: test4: (#canister_reject, "ic0.call_perform failed")
 debug.print: test5:
 debug.print: test5: (#canister_reject, "ic0.call_perform failed")
 debug.print: test6:
-debug.print: caught (#future(2), "ic0.call_perform failed")
+debug.print: caught (#call_error({err_code = 2}), "ic0.call_perform failed")
 debug.print: test6: (#canister_reject, "ic0.call_perform failed")
 debug.print: test7:
 debug.print: test7: (#canister_reject, "ic0.call_perform failed")
 debug.print: test8:
-debug.print: caught (#future(2), "ic0.call_perform failed")
+debug.print: caught (#call_error({err_code = 2}), "ic0.call_perform failed")
 debug.print: test8: (#canister_reject, "ic0.call_perform failed")
 debug.print: test9:
 debug.print: test9: (#canister_reject, "ic0.call_perform failed")
 debug.print: test10:
-debug.print: caught (#future(2), "ic0.call_perform failed")
+debug.print: caught (#call_error({err_code = 2}), "ic0.call_perform failed")
 debug.print: test10: (#canister_reject, "ic0.call_perform failed")
 ingress Completed: Reply: 0x4449444c0000
