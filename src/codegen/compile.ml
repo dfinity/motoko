@@ -7196,7 +7196,7 @@ module FuncDec = struct
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call_threaded env purpose get_meth_pair push_continuations
-    add_data trap add_cycles =
+    add_data add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
@@ -7221,22 +7221,18 @@ module FuncDec = struct
       IC.system_call env "call_perform" ^^
       IC.set_call_perform_status env ^^
       IC.get_call_perform_status env ^^
-        (* Check error code *)
-      if trap then
-        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-        E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
-      else
-        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-        G.if0
-        begin
-          G.nop
-        end
-        begin
-          (* Recall (don't leak) continuations *)
-          get_cb_index ^^
-          ContinuationTable.recall env ^^
-          G.i Drop
-         end
+      (* save error code, cleanup on error *)
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      G.if0
+      begin
+        G.nop
+      end
+      begin
+        (* Recall (don't leak) continuations *)
+        get_cb_index ^^
+        ContinuationTable.recall env ^^
+        G.i Drop
+      end
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
@@ -7247,7 +7243,6 @@ module FuncDec = struct
       get_meth_pair
       (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
       (fun _ -> get_arg ^^ Serialization.serialize env ts1)
-      false
 
   let ic_call_raw env get_meth_pair get_arg get_k get_r =
     ic_call_threaded
@@ -7256,8 +7251,6 @@ module FuncDec = struct
       get_meth_pair
       (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
       (fun _ -> get_arg ^^ Blob.as_ptr_len env)
-      false (* TBC *)
-
 
   let ic_self_call env ts get_meth_pair get_future get_k get_r =
     ic_call_threaded
@@ -7270,7 +7263,6 @@ module FuncDec = struct
         get_cb_index ^^
         BoxedSmallWord.box env ^^
           Serialization.serialize env Type.[Prim Nat32])
-      false
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
