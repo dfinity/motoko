@@ -1,0 +1,26 @@
+define $Perm($Self) (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)))
+define $Inv($Self) (invariant_7($Self))
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).claimed := false
+      ($Self).count := 0 
+    }
+field claimed: Bool
+field count: Int
+define invariant_7($Self) ((((!($Self).claimed) ==> (($Self).count == 0)) && ((
+  ($Self).count == 0) || (($Self).count == 1))))
+method reward($Self: Ref)
+    
+    requires $Perm($Self)
+    requires (($Self).count == 0)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).count := (($Self).count + 1)
+      assert (($Self).count == 1) 
+    }

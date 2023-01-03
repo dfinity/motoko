@@ -205,9 +205,26 @@ and dec_field' ctxt d =
       fun ctxt' ->
         (FieldI(id x, tr_typ e.note.M.note_typ),
         NoInfo)
+  (* async functions *)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
                        {it = AsyncE (T.Fut, _, e); _} );_})) -> (* ignore async *)
+      { ctxt with ids = Env.add f.it Method ctxt.ids },
+      None,
+      fun ctxt' ->
+        let open Either in
+        let self_id = !!! (Source.no_region) "$Self" in
+        let ctxt'' = { ctxt' with self = Some self_id.it }
+        in (* TODO: add args (and rets?) *)
+        let stmts = stmt ctxt'' e in
+        let _, stmts = extract_concurrency stmts in
+        let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
+        let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
+        (MethodI(id f, (self_id, !!! Source.no_region RefT)::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
+        NoInfo)
+  (* private sync functions *)
+  | M.(LetD ({it=VarP f;_},
+             {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_})) ->
       { ctxt with ids = Env.add f.it Method ctxt.ids },
       None,
       fun ctxt' ->

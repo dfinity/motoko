@@ -111,7 +111,7 @@ Contributing to _Motoko-san_
 <a name="Running"></a>
 
 ```bash
-[nix-shell:motoko] moc -viper input.mo > output.vpr
+[nix-shell:motoko] moc --viper input.mo > output.vpr
 ```
 
 You may then verify the `output.vpr` file using [Viper](https://viper.ethz.ch/). Soon, there will be an interactive IDE integration for VS Code, s.t. the outputs do not need to be verified by manually invoking Viper.
