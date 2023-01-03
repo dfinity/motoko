@@ -1,4 +1,8 @@
-type info = NoInfo
+type info =
+  | NoInfo
+  | ActorInit
+  | PublicFunction of string
+  | PrivateFunction of string
 
 type id = (string, info) Source.annotated_phrase
 

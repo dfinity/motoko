@@ -11,7 +11,12 @@ let comma ppf () = fprintf ppf ",@ "
 
 let semi ppf () = fprintf ppf ";@ "
 
-let pp_info ppf NoInfo = ()
+let pp_info ppf info =
+  match info with
+  | NoInfo -> ()
+  | ActorInit -> fprintf ppf "@[// translation of actor initializers @]"
+  | PublicFunction x -> fprintf ppf "@[// translation of PUBLIC function %s@]" x
+  | PrivateFunction x -> fprintf ppf "@[// translation of _private_ function %s@]" x
 
 let rec pp_prog ppf p =
   match p.it with

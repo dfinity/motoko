@@ -27,7 +27,10 @@ let fresh_id name =
 
 (* helpers for constructing annotated syntax *)
 
-let (!!!) at it = { it; at; note = NoInfo}
+let (^^^) at it note = { it; at; note}
+
+let (!!!) at it = (^^^) at it NoInfo
+
 
 let intLitE at i =
   !!! at (IntLitE (Mo_values.Numerics.Int.of_int i))
@@ -148,32 +151,49 @@ and unit' (u : M.comp_unit) : prog =
       !!! (body.at) ([], init_list)(* ATG: Is this the correct position? *)
     in
     let init_m =
-      !!! (body.at) (MethodI(init_id, [self_id, self_typ], [], [], [], Some init_body))
+      (^^^) (body.at) (MethodI(init_id, [self_id, self_typ], [], [], [], Some init_body)) ActorInit
     in
     let is'' = init_m :: is' in
     (* Add permissions *)
-    let is''' = List.map (fun {it; at; note: info} -> (
-      match it with
-      | MethodI (id, ins, outs, pres, posts, body) ->
-        !!! at
-          (MethodI (id, ins, outs,
-            !!! at (MacroCall("$Perm", self ctxt'' at))::pres,
-            !!! at (MacroCall("$Perm", self ctxt'' at))::posts,
-            body))
-      | _ -> {it; at; note})) is'' in
-    (* Add functional invariants *)
+    let is''' = List.map (function
+    | {it = MethodI (id, ins, outs, pres, posts, body); at; note: info} ->
+      (^^^)
+        at
+        (MethodI (id, ins, outs,
+          !!! at (MacroCall("$Perm", self ctxt'' at))::pres,
+          !!! at (MacroCall("$Perm", self ctxt'' at))::posts,
+          body))
+        note
+      | x -> x) is'' in
+    (* Add functional invariants to public functions *)
     let invs = extract_invariants is''' (self_id, self_typ) [] in
-    let is4 = List.map (fun {it; at; note: info} ->
-      match it with
-      | MethodI (id, ins, outs, pres, posts, body) ->
-        !!! at
-          (MethodI(id, ins, outs,
-             (if id.it = init_id.it
-              then pres
-              else pres @ [!!! at (MacroCall("$Inv", self ctxt'' at))]),
-             posts @ [!!! at (MacroCall("$Inv", self ctxt'' at))],
-             body))
-      | _ -> {it; at; note}) is''' in
+    let is4 = List.map (function
+      | {
+        it = MethodI (id, ins, outs, pres, posts, body);
+        at;
+        note = ActorInit
+      } -> ((^^^)
+        at
+        (MethodI(id, ins, outs,
+          pres,
+          posts @ [!!! at (MacroCall("$Inv", self ctxt'' at))],
+          body))
+        ActorInit
+      )
+      | {
+        it = MethodI (id, ins, outs, pres, posts, body);
+        at;
+        note = PublicFunction x
+      } -> ((^^^)
+        at
+        (MethodI(id, ins, outs,
+          pres @ [!!! at (MacroCall("$Inv", self ctxt'' at))],
+          posts @ [!!! at (MacroCall("$Inv", self ctxt'' at))],
+          body))
+        (PublicFunction x)
+      )
+      | x -> x
+    ) is''' in
     let perm_def = !!! (body.at) (InvariantI("$Perm", perm body.at)) in
     let inv_def = !!! (body.at) (InvariantI("$Inv", adjoin ctxt'' (conjoin invs body.at) !(ctxt.ghost_conc))) in
     let is = ghost_is @ (perm_def :: inv_def :: is4) in
@@ -191,11 +211,11 @@ and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
 
 and dec_field ctxt d =
   let ctxt, init, mk_i = dec_field' ctxt d.it in
-  (ctxt,
-   init,
-   fun ctxt' ->
-     let (i, info) = mk_i ctxt' in
-     !!! (d.at) i)
+   (ctxt,
+    init,
+    fun ctxt' ->
+      let (i, info) = mk_i ctxt' in
+      (^^^) (d.at) i info)
 
 and dec_field' ctxt d =
   match d.M.dec.it with
@@ -221,7 +241,7 @@ and dec_field' ctxt d =
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
-        NoInfo)
+        PublicFunction f.it)
   (* private sync functions *)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_})) ->
@@ -237,7 +257,7 @@ and dec_field' ctxt d =
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
-        NoInfo)
+        PrivateFunction f.it)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
       None,

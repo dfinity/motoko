@@ -17,9 +17,7 @@ method reward($Self: Ref)
     
     requires $Perm($Self)
     requires (($Self).count == 0)
-    requires $Inv($Self)
     ensures $Perm($Self)
-    ensures $Inv($Self)
     { 
       ($Self).count := (($Self).count + 1)
       assert (($Self).count == 1) 
