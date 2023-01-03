@@ -185,13 +185,13 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
         * Immutable: `let y = ...`
         * Fields may _not_ be initialized via block expressions: `let z = { ... };`
 
-    * **Public functions** — Only functions of `async ()` type with no arguments are supported:
+    * **Functions** — Only functions of `()` and `async ()` type with no arguments are supported:
 
-        `public func claim() : async () = { ... };`
+        `public shared func claim() : async () = { ... };`
+
+        `private func reward() : () = { ... };`
 
         Supporting function arguments and return values is _simple_.
-
-    * **Private functions** — Currently not supported (extension is _simple_).
 
     * **Local declarations** — Only local variable declarations with trivial left-hand side are supported:
 
@@ -245,7 +245,7 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
     
     **Loop invariants** — Extension is _simple_.
     
-    **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`. This feature requires private functions.
+    **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`.
 
 Further information
 -------------------
