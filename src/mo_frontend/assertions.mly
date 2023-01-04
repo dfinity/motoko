@@ -47,6 +47,6 @@ let is_verification () =
   | ASSERT COLON s=NAT COLON ASYNC e=exp_nest
     { is_verification () &&& AssertE(Concurrency s, e) @? at $sloc }
   | OLD e=exp_nest
-    { is_verification () &&& OldE(e) @? at $sloc }
+    { is_verification () &&& OldE e @? at $sloc }
 
 %%
