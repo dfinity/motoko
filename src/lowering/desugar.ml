@@ -202,6 +202,7 @@ and exp' at note = function
   | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
   | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
   | S.ImpliesE (e1, e2) -> (impliesE (exp e1) (exp e2)).it
+  | S.OldE (e) -> (oldE (exp e)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)

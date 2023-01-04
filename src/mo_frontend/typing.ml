@@ -763,7 +763,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -1318,6 +1318,8 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.bool exp2
     end;
     T.bool
+  | OldE exp1 ->
+    infer_exp_promote env exp1
   | IfE (exp1, exp2, exp3) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     let t2 = infer_exp env exp2 in

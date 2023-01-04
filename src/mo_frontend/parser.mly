@@ -238,6 +238,7 @@ and objblock s dec_fields =
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
+
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 

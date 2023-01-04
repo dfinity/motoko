@@ -415,6 +415,11 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.AssertE (M.Runtime, e) ->
     !!([],
        [ !!(AssumeS (exp ctxt e)) ])
+  | M.(CallE({it = VarE m; _}, inst, {it = TupE args; _})) ->
+    !!([],
+       [ !!(MethodCallS ([], id m, 
+       let self_var = self ctxt m.at in
+       self_var :: List.map (fun arg -> exp ctxt arg) args))])
   | _ ->
      unsupported s.at (Arrange.exp s)
 
@@ -469,6 +474,8 @@ and exp ctxt e =
      !!(AndE (exp ctxt e1, exp ctxt e2))
   | M.ImpliesE (e1, e2) ->
      !!(Implies (exp ctxt e1, exp ctxt e2))
+  | M.OldE e ->
+    !!(Old (exp ctxt e))
   | _ ->
      unsupported e.at (Arrange.exp e)
 
