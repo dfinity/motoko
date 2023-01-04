@@ -239,7 +239,28 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
     
     * `assert:func` — Function preconditions
     
-    * `assert:return` — Function postconditions
+    * `assert:return` — Function postconditions. 
+    
+        * These may refer to variables in the _initial_ state of the function call using the syntax `(old <exp>)`, for example:
+
+            ```motoko
+            var x : Int;
+            private func dec() : () {
+                x -= 1;
+                assert:return x < old(x);
+            };
+            ```
+
+            is equivalent to
+
+            ```motoko
+            var x : Int;
+            private func dec() : () {
+                let old_x = x;
+                x -= 1;
+                assert:return x < old_x;
+            };
+            ```
     
     * `assert:system` — Compile-time assertions
     
