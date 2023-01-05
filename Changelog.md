@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * Added preliminary Viper support for `old` expressions in specifications and calls to private methods. (#3675).
+  * Added preliminary Viper support for `old` expressions in specifications and calls to private methods (#3675).
 
 * motoko-base
 
