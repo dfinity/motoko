@@ -728,14 +728,15 @@ let objE sort typ_flds flds =
 
 let recordE flds = objE T.Object [] flds
 
-(* TODO: define a helper/prim to avoid code duplication *)
-let check_call_perform_status success failure =
-  ifE (primE (RelPrim (T.(Prim Nat32), Mo_values.Operator.EqOp))
-         [primE (OtherPrim "call_perform_status") []; nat32E Mo_values.Numerics.Nat32.zero])
+let check_call_perform_status success mk_failure =
+  ifE
+    (callE
+      (varE (var "@call_succeeded"
+        T.(Func (Local, Returns, [], [], [bool]))))
+      [] (unitE ()))
     success
-    (failure
-       (primE (CastPrim (T.Tup [T.Variant T.catchErrorCodes; T.text], T.error))
-          [tupE [tagE "call_error" (
-                   recordE ["err_code",  primE (OtherPrim "call_perform_status") []]);
-                 textE "ic0.call_perform failed"]]))
-
+    (mk_failure
+      (callE
+        (varE (var "@call_error"
+          T.(Func (Local, Returns, [], [], [T.error]))))
+        [] (unitE ())))

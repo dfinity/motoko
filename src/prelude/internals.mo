@@ -435,3 +435,16 @@ func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = 
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
+
+// helpers for reifying ic0.call_perform failures as errors
+func @call_succeeded() : Bool {
+  (prim "call_perform_status" : () -> Nat32) () == 0;
+};
+
+func @call_error() : Error {
+  let status = (prim "call_perform_status" : () -> Nat32) ();
+  let code = #call_error({err_code = status});
+  let message = "ic0.call_perform failed";
+  (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error)
+    (code, message)
+};
