@@ -1,4 +1,5 @@
 RUNFLAGS = -p
+export EXTRA_MOC_ARGS = -no-timer
 
 all:
 	../run.sh $(RUNFLAGS) *.mo

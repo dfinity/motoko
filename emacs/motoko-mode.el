@@ -79,6 +79,7 @@
                  "while"
                  "prim"
                  "invariant"
+                 "old"
                  "implies"
                  ))
               ;; Braces introduce blocks; it's nice to make them stand
