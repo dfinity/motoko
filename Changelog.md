@@ -2,7 +2,9 @@
 
 * motoko-base
 
-  * BREAKING CHANGE (Minor):
+  * Add user-facing timer functionality (dfinity/motoko-base#474).
+
+  * BREAKING CHANGES (Minor):
     - renamed `Float.neq` to `Float.neg` (this was a misspelling)
     - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
     - removed second argument from `bitneg` (this was an oversight)
