@@ -27,6 +27,7 @@ let is_verification () =
 (*
 %nonassoc IMPLIES  (* see parser.mly *)
 *)
+%token OLD
 
 %%
 
@@ -45,5 +46,7 @@ let is_verification () =
     { is_verification () &&& AssertE(Postcondition, e) @? at $sloc }
   | ASSERT COLON s=NAT COLON ASYNC e=exp_nest
     { is_verification () &&& AssertE(Concurrency s, e) @? at $sloc }
+  | OLD e=exp_nest
+    { is_verification () &&& OldE e @? at $sloc }
 
 %%
