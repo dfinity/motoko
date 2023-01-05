@@ -131,7 +131,6 @@ let argspec = [
       " respect debug expressions in source (the default)";
   "--sanity-checks",
   Arg.Unit
-    (* reset to false below when !compile_mode = RefMode *)
     (fun () -> Flags.sanity := true),
   " enable sanity checking in the RTS and generated code";
 
@@ -208,7 +207,6 @@ let process_files files : unit =
       | _ -> assert false
     end
   | Compile ->
-    Flags.(if !compile_mode = RefMode then sanity := false); (* too slow *)
     set_out_file files ".wasm";
     let source_map_file = !out_file ^ ".map" in
     let (idl_prog, module_) = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
