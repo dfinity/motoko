@@ -20,12 +20,32 @@ let is_triv phrase = eff phrase = T.Triv
 
 let effect_exp (exp: exp) : T.eff = eff exp
 
-(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
-let rec infer_effect_prim = function
-  | ThrowPrim | AwaitPrim _ -> T.Await
-  | _ -> T.Triv
+let is_shared_func exp =
+  T.(match typ exp with
+    | Func (Shared _, _, _, _, _) -> true
+    | _ -> false)
 
- and infer_effect_exp (exp: exp) : T.eff =
+let is_local_async_func exp =
+ T.(match typ exp with
+   | Func (Local, Returns,
+      { sort = Scope; _ }::_,
+       _,
+      [Async (Fut, Var (_ ,0), _)]) -> true
+   | _ -> false)
+
+(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
+
+let rec infer_effect_prim p exps =
+  match p, exps with
+  | ThrowPrim, _
+  | AwaitPrim _, _
+  | OtherPrim "call_raw", _ -> T.Await
+  | CallPrim _, [exp1; _] when is_shared_func exp1 || is_local_async_func exp1 ->
+    T.Await
+  | _ ->
+    List.fold_left max_eff T.Triv (List.map eff exps)
+
+and infer_effect_exp (exp: exp) : T.eff =
   match exp.it with
   | VarE _
   | LitE _ ->
@@ -34,9 +54,8 @@ let rec infer_effect_prim = function
   | LoopE exp1
   | AssignE (_, exp1) ->
     effect_exp exp1
-  | PrimE (p, exps) ->
-    let es = List.map effect_exp exps in
-    List.fold_left max_eff (infer_effect_prim p) es
+  | PrimE (p, exps)->
+    infer_effect_prim p exps
   | BlockE (ds, exp) ->
     let es = List.map effect_dec ds in
     List.fold_left max_eff (effect_exp exp) es
@@ -49,7 +68,9 @@ let rec infer_effect_prim = function
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE _ ->
+  | AsyncE (T.Fut, _, _, _) ->
+    T.Await
+  | AsyncE (T.Cmp, _, _, _) ->
     T.Triv
   | TryE _ ->
     T.Await

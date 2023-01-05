@@ -363,7 +363,14 @@ let store_typ t  =
 
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
-  let check p = check env exp.at p in
+  let check p s =
+    try
+      check env exp.at p s
+    with e ->
+      Printf.printf "in IR:\n%s"
+       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+      raise e
+  in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run

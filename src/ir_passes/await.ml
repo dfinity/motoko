@@ -25,10 +25,10 @@ let is_local_async_func exp =
 let is_async_call (p, exps) =
   match (p, exps) with
   | CallPrim _, [exp1; _] ->
-     is_shared_func exp1 ||
-     is_local_async_func exp1
+    is_shared_func exp1 ||
+    is_local_async_func exp1
   | OtherPrim "call_raw", _ ->
-     true
+    true
   | _ -> false
 
 let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
@@ -87,7 +87,7 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 (* Trivial translation of pure terms (eff = T.Triv) *)
 
 let rec t_exp context exp =
-  assert (eff exp = T.Triv);
+  (*  assert (eff exp = T.Triv); *)
   { exp with it = t_exp' context exp }
 and t_exp' context exp =
   match exp.it with
@@ -156,7 +156,12 @@ and t_exp' context exp =
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
-    DefineE (id, mut, t_exp context exp1)
+     DefineE (id, mut, t_exp context exp1)
+(* TODO: special case the usual suspects
+  | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
+    let context' = LabelEnv.add Return Label LabelEnv.empty in
+    FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
+ *)
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
@@ -345,13 +350,10 @@ and c_exp' context exp k =
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
     letcont k (fun k ->
-(* this optimization no longer applies since exp1 may need the handler for failing
-   message sends which aren't tracked by effects
     match eff exp1 with
     | T.Triv ->
       varE k -*- (t_exp context exp1)
     | T.Await ->
- *)
       let error = fresh_var "v" T.catch  in
       let cases' =
         List.map
