@@ -11,7 +11,7 @@
   * BREAKING CHANGES (Minor):
     - renamed `Float.neq` to `Float.neg` (this was a misspelling)
     - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
-    - removed second argument from `bitneg` (this was an oversight)
+    - removed second argument from `bitnot` (this was an oversight)
 
 ## 0.7.5 (2022-12-23)
 
