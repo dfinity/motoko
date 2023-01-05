@@ -1,5 +1,25 @@
 import Prim "mo:⛔";
 
+func isNegative(number: Float): Bool {
+    Prim.floatCopySign(1.0, number) < 0.0
+};
+
+func negate(number: Float): Float {
+    Prim.floatCopySign(number, if (isNegative(number)) { 1.0 } else { -1.0 })
+};
+
+let positiveZero = 0.0;
+let negativeZero = -0.0;
+assert(negate(positiveZero) == negativeZero);
+assert(negate(negativeZero) == positiveZero);
+assert (not isNegative(positiveZero));
+assert (isNegative(negativeZero));
+assert (isNegative(negate(positiveZero)));
+assert (not isNegative(negate(negativeZero)));
+
+Prim.debugPrint(debug_show(positiveZero));
+Prim.debugPrint(debug_show(negativeZero));
+
 assert (Prim.floatAbs(9.7) == 9.7);
 assert (Prim.floatAbs(-9.7) == 9.7);
 
