@@ -87,6 +87,7 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 let rec t_async context exp =
   match exp.it with
   | AsyncE (s, tb, exp1, typ1) ->
+   let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *) (*Why?*)
    (* add the implicit return label *)
    let k_ret = fresh_cont (typ exp1) T.unit in
    let k_fail = fresh_err_cont T.unit in
@@ -172,8 +173,7 @@ and t_exp' context exp =
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
   | FuncE (x, (T.Local as s1), c, typbinds, pat, typs,
-      ({ it = AsyncE _; _} as body))
-    when is_local_async_func exp ->
+      ({ it = AsyncE _; _} as body)) ->
     FuncE (x, s1, c, typbinds, pat, typs,
       t_async context body)
   | FuncE (x, (T.Shared _ as s1), c, typbinds, pat, typs,
@@ -646,12 +646,20 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+  | ActorU (as_opt, ds, ids, { meta=m; preupgrade; postupgrade; heartbeat; inspect}, t) ->
     ActorU (as_opt, t_decs context ds, ids,
-      { meta;
+      { meta = m;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
-        heartbeat = t_exp LabelEnv.empty heartbeat;
+        heartbeat = begin
+          let throw = fresh_err_cont T.unit in
+          let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+          let e = fresh_var "e" T.catch in
+          blockE [
+            funcD throw e (tupE[]);
+            ]
+            (c_exp context' heartbeat (meta (T.unit) (fun v1 -> tupE [])))
+        end;
         inspect = t_exp LabelEnv.empty inspect;
       },
       t)
