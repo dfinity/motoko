@@ -72,18 +72,17 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     #[inline]
-    unsafe fn allocate(&mut self, amount: Words<u32>) -> Value {
-        ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
-        if let Some(map) = &mut PARTITION_MAP {
-            map.prepare_allocation_partition(&mut HP, amount.to_bytes());
-        }
-        self.grow_heap(amount)
-    }
-
-    #[inline]
-    unsafe fn grow_heap(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
+
+        // Select partition, if incremental GC is enabled
+        if let Some(map) = &mut PARTITION_MAP {
+            map.prepare_allocation_partition(&mut HP, bytes);
+        }
+
+        // Update ALLOCATED
         let delta = u64::from(bytes.as_u32());
+        ALLOCATED += Bytes(delta);
 
         // Update heap pointer
         let old_hp = u64::from(HP);

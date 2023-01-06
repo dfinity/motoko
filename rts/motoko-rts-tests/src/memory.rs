@@ -27,11 +27,7 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
-    unsafe fn allocate(&mut self, n: Words<u32>) -> Value {
-        self.grow_heap(n)
-    }
-
-    unsafe fn grow_heap(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
 
         // Update heap pointer

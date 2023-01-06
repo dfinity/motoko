@@ -40,7 +40,7 @@ use crate::types::{size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
-    let ptr = mem.allocate(size_of::<BigInt>() + size.to_words());
+    let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
     (blob as *mut Obj).initialize_tag(TAG_BIGINT);
