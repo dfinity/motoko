@@ -8,7 +8,6 @@ use crate::memory::Memory;
 use crate::visitor::visit_pointer_fields;
 use crate::{types::*, visitor::pointer_to_dynamic_heap};
 
-use super::free_list::FreeBlock;
 use super::mark_stack::MarkStack;
 
 #[cfg(feature = "ic")]
@@ -210,16 +209,10 @@ impl MemoryChecker {
         let mut pointer = self.heap.limits.base;
         while pointer < self.heap.limits.free {
             let object = Value::from_ptr(pointer as usize);
-            let tag = object.tag();
-            if tag >= TAG_FREE_BLOCK_MIN {
-                let block = pointer as *mut FreeBlock;
-                pointer += block.size().as_usize();
-            } else {
-                if object.tag() != TAG_ONE_WORD_FILLER {
-                    self.check_object(object);
-                }
-                pointer += object_size(pointer as usize).to_bytes().as_usize();
+            if object.tag() != TAG_ONE_WORD_FILLER {
+                self.check_object(object);
             }
+            pointer += object_size(pointer as usize).to_bytes().as_usize();
         }
     }
 }
