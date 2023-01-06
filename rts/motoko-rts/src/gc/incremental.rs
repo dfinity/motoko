@@ -1,11 +1,8 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{
-    gc::incremental::partition_map::PARTITION_MAP, memory::Memory, types::*,
-    visitor::visit_pointer_fields,
-};
+use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
-use self::{mark_stack::MarkStack, partition_map::initialize_partitions};
+use self::{mark_stack::MarkStack, partition_map::PartitionMap};
 
 pub mod mark_stack;
 pub mod partition_map;
@@ -97,6 +94,7 @@ struct MarkState {
 
 /// GC state retained over multiple GC increments.
 static mut PHASE: Phase = Phase::Pause;
+pub static mut PARTITION_MAP: Option<PartitionMap> = None;
 
 /// Heap limits.
 pub struct Limits {
@@ -122,7 +120,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// Called on a runtime system start with incremental GC and also during RTS testing.
     pub unsafe fn initialize(heap_base: usize) {
         PHASE = Phase::Pause;
-        initialize_partitions(heap_base)
+        PARTITION_MAP = Some(PartitionMap::new(heap_base));
     }
 
     pub fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {

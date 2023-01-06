@@ -2,7 +2,7 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::partition_map::PARTITION_MAP;
+use crate::gc::incremental::PARTITION_MAP;
 use crate::rts_trap_with;
 use crate::types::*;
 

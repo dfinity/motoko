@@ -165,9 +165,3 @@ impl PartitionMap {
         self.allocation_target = new_partition.id;
     }
 }
-
-pub static mut PARTITION_MAP: Option<PartitionMap> = None;
-
-pub unsafe fn initialize_partitions(heap_base: usize) {
-    PARTITION_MAP = Some(PartitionMap::new(heap_base));
-}
