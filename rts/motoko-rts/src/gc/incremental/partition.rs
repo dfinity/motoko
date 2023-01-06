@@ -1,6 +1,6 @@
 use crate::{
     constants::WORD_SIZE,
-    types::{Bytes, FreeSpace, Obj, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER},
+    types::{object_size, Bytes, FreeSpace, Obj, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER},
 };
 
 const PARTITION_SIZE: usize = 128 * 1024 * 1024;
@@ -53,6 +53,7 @@ impl Partition {
 
 struct PartitionMap {
     is_free: [bool; MAX_PARTITIONS],
+    marked_space: [usize; MAX_PARTITIONS],
     allocation_partition: Partition,
 }
 
@@ -89,10 +90,15 @@ impl PartitionMap {
             occupied - heap_pointer % PARTITION_SIZE
         }
     }
+
+    pub fn record_marked_space(&mut self, partition: Partition, size: usize) {
+        self.marked_space[partition.get_index()] += size;
+    }
 }
 
 static mut PARTITION_MAP: PartitionMap = PartitionMap {
     is_free: [false; MAX_PARTITIONS],
+    marked_space: [0; MAX_PARTITIONS],
     allocation_partition: Partition { index: 0 },
 };
 
@@ -118,6 +124,13 @@ pub unsafe fn prepare_allocation_partition(heap_pointer: &mut u32, allocation_si
         PARTITION_MAP.allocation_partition = partition;
         *heap_pointer = partition.start_address() as u32;
     }
+}
+
+pub unsafe fn record_marked_space(object: *mut Obj) {
+    assert!(USE_PARTITIONING);
+    let address = object as usize;
+    let size = object_size(address);
+    PARTITION_MAP.record_marked_space(Partition::from_address(address), size.to_bytes().as_usize());
 }
 
 pub unsafe fn occupied_size(heap_pointer: u32) -> Bytes<u32> {

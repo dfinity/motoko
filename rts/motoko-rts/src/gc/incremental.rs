@@ -246,6 +246,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             return;
         }
         object.mark();
+        partition::record_marked_space(object);
         debug_assert!(
             object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
         );
