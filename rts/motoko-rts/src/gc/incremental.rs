@@ -1,11 +1,14 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
+use crate::{
+    gc::incremental::partition_map::PARTITION_MAP, memory::Memory, types::*,
+    visitor::visit_pointer_fields,
+};
 
-use self::{mark_stack::MarkStack, partition::initialize_partitions};
+use self::{mark_stack::MarkStack, partition_map::initialize_partitions};
 
 pub mod mark_stack;
-pub mod partition;
+pub mod partition_map;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
 pub mod write_barrier;
@@ -51,7 +54,10 @@ unsafe fn should_start() -> bool {
     use crate::memory::ic;
     debug_assert!(ic::ALLOCATED >= LAST_ALLOCATED);
     let absolute_growth = ic::ALLOCATED - LAST_ALLOCATED;
-    let occupation = partition::occupied_size(ic::HP);
+    let occupation = PARTITION_MAP
+        .as_ref()
+        .unwrap()
+        .occupied_size(ic::HP as usize);
     let relative_growth = absolute_growth.0 as f64 / occupation.as_usize() as f64;
     relative_growth > RELATIVE_GROWTH_THRESHOLD && absolute_growth >= ABSOLUTE_GROWTH_THRESHOLD
         || occupation >= CRITICAL_LIMIT
@@ -69,7 +75,11 @@ unsafe fn record_increment_start<M: Memory>() {
 unsafe fn record_increment_stop<M: Memory>() {
     use crate::memory::ic;
     if IncrementalGC::<M>::pausing() {
-        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, partition::occupied_size(ic::HP));
+        let occupation = PARTITION_MAP
+            .as_ref()
+            .unwrap()
+            .occupied_size(ic::HP as usize);
+        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, occupation);
     }
 }
 
@@ -246,7 +256,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             return;
         }
         object.mark();
-        partition::record_marked_space(object);
+        PARTITION_MAP.as_mut().unwrap().record_marked_space(object);
         debug_assert!(
             object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
         );

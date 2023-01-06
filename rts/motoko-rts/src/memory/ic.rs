@@ -2,9 +2,7 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::partition;
-use crate::gc::incremental::partition::prepare_allocation_partition;
-use crate::gc::incremental::partition::USE_PARTITIONING;
+use crate::gc::incremental::partition_map::PARTITION_MAP;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -62,10 +60,9 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    if USE_PARTITIONING {
-        partition::occupied_size(HP)
-    } else {
-        Bytes(HP - get_aligned_heap_base())
+    match &PARTITION_MAP {
+        None => Bytes(HP - get_aligned_heap_base()),
+        Some(map) => map.occupied_size(HP as usize),
     }
 }
 
@@ -77,7 +74,9 @@ impl Memory for IcMemory {
     #[inline]
     unsafe fn allocate(&mut self, amount: Words<u32>) -> Value {
         ALLOCATED += Bytes(u64::from(amount.to_bytes().as_u32()));
-        prepare_allocation_partition(&mut HP, amount.to_bytes());
+        if let Some(map) = &mut PARTITION_MAP {
+            map.prepare_allocation_partition(&mut HP, amount.to_bytes());
+        }
         self.grow_heap(amount)
     }
 
