@@ -181,6 +181,9 @@ func btstInt64(w : Int64, amount : Int64) : Bool = (prim "btst64" : (Int64, Int6
 
 // Float operations
 
+let positiveInfinity = @positiveInfinity;
+let negativeInfinity = @negativeInfinity;
+
 func floatAbs(f : Float) : Float = (prim "fabs" : Float -> Float) f;
 func floatSqrt(f : Float) : Float = (prim "fsqrt" : Float -> Float) f;
 func floatCeil(f : Float) : Float = (prim "fceil" : Float -> Float) f;

@@ -1,5 +1,8 @@
 import Prim "mo:⛔";
 
+assert (Prim.positiveInfinity == 1.0/0.0);
+assert (Prim.negativeInfinity == -1.0/0.0);
+
 assert (Prim.floatAbs(9.7) == 9.7);
 assert (Prim.floatAbs(-9.7) == 9.7);
 

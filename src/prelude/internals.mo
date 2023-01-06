@@ -7,6 +7,9 @@ visible. All names here are prefixed with `@`, so they are invisible from user
 code, and cannot be shadowed.
 */
 
+let @positiveInfinity = 1.0/0.0;
+let @negativeInfinity = -1.0/0.0;
+
 type @Iter<T_> = {next : () -> ?T_};
 
 var @cycles : Nat = 0;
@@ -586,3 +589,4 @@ func @cancelTimer(id : Nat) {
 };
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
+
