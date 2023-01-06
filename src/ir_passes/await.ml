@@ -84,10 +84,24 @@ type label_sort = Cont of kont | Label
 
 let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
-(* Trivial translation of pure terms (eff = T.Triv) *)
+let rec t_async context exp =
+  match exp.it with
+  | AsyncE (s, tb, exp1, typ1) ->
+   (* add the implicit return label *)
+   let k_ret = fresh_cont (typ exp1) T.unit in
+   let k_fail = fresh_err_cont T.unit in
+   let context' =
+     LabelEnv.add Return (Cont (ContVar k_ret))
+       (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+   in
+     cps_asyncE s typ1 (typ exp1)
+       (forall [tb] ([k_ret; k_fail] -->*
+          (c_exp context' exp1 (ContVar k_ret))))
+ |  _ -> assert false
 
-let rec t_exp context exp =
-  (*  assert (eff exp = T.Triv); *)
+(* Trivial translation of pure terms (eff = T.Triv) *)
+and t_exp context exp =
+  assert (eff exp = T.Triv); 
   { exp with it = t_exp' context exp }
 and t_exp' context exp =
   match exp.it with
@@ -101,9 +115,9 @@ and t_exp' context exp =
     IfE (t_exp context exp1, t_exp context exp2, t_exp context exp3)
   | SwitchE (exp1, cases) ->
     let cases' = List.map
-                  (fun {it = {pat;exp}; at; note} ->
-                     {it = {pat;exp = t_exp context exp}; at; note})
-                  cases
+      (fun {it = {pat;exp}; at; note} ->
+        {it = {pat;exp = t_exp context exp}; at; note})
+      cases
     in
     SwitchE (t_exp context exp1, cases')
   | LoopE exp1 ->
@@ -126,7 +140,7 @@ and t_exp' context exp =
       | None -> assert false
     end
   | AsyncE (s, tb, exp1, typ1) -> begin
-    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
+    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *) (*Why?*)
     (* add the implicit return/throw label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
@@ -157,56 +171,28 @@ and t_exp' context exp =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, s, c, typbinds, pat, typs, exp1) when is_local_async_func exp ->
-    FuncE (x, s, c, typbinds, pat, typs,
-      match exp1.it with
-      | AsyncE (s, tb, exp1, typ1) ->
-         (* add the implicit return label *)
-         let k_ret = fresh_cont (typ exp1) T.unit in
-         let k_fail = fresh_err_cont T.unit in
-         let context' =
-           LabelEnv.add Return (Cont (ContVar k_ret))
-             (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-         in
-         cps_asyncE s typ1 (typ exp1)
-           (forall [tb] ([k_ret; k_fail] -->*
-              (c_exp context' exp1 (ContVar k_ret))))
-      | _ -> assert false
-    )
-  | FuncE (x, s, c, typbinds, pat, typs, exp1) when is_shared_func exp ->
-    let exp1' =  match exp1.it with
-    | AsyncE (s, tb, exp1, typ1) ->
-      (* add the implicit return label *)
-      let k_ret = fresh_cont (typ exp1) T.unit in
-      let k_fail = fresh_err_cont T.unit in
-      let context' =
-       LabelEnv.add Return (Cont (ContVar k_ret))
-         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-      in
-       cps_asyncE s typ1 (typ exp1)
-         (forall [tb] ([k_ret; k_fail] -->*
-           (c_exp context' exp1 (ContVar k_ret))))
-    | BlockE ([ { it = LetD (
-                  { it = WildP; _} as pat,
-                  ({ it = AsyncE (s, tb, exp1, typ1); _})); _ }],
-              ({ it = PrimE (TupPrim, []); _ } as unitE)) ->
-      (* add the implicit return label *)
-      let k_ret = fresh_cont (typ exp1) T.unit in
-      let k_fail = fresh_err_cont T.unit in
-      let context' =
-       LabelEnv.add Return (Cont (ContVar k_ret))
-         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-      in
-      let cps_async =
-       cps_asyncE s typ1 (typ exp1)
-         (forall [tb] ([k_ret; k_fail] -->*
-                         (c_exp context' exp1 (ContVar k_ret))))
-      in
-      blockE [letP pat cps_async] unitE
-    | _ -> assert false
-    in
-    FuncE (x, s, c, typbinds, pat, typs, exp1')
+  | FuncE (x, (T.Local as s1), c, typbinds, pat, typs,
+      ({ it = AsyncE _; _} as body))
+    when is_local_async_func exp ->
+    FuncE (x, s1, c, typbinds, pat, typs,
+      t_async context body)
+  | FuncE (x, (T.Shared _ as s1), c, typbinds, pat, typs,
+      ({ it = AsyncE _;_ } as body)) ->
+    FuncE (x, s1, c, typbinds, pat, typs,
+      t_async context body)
+  | FuncE (x, (T.Shared _ as s1), c, typbinds, pat, typs,
+      { it = BlockE ([
+         { it = LetD (
+            { it = WildP; _} as wild_pat,
+            ({ it = AsyncE _; _} as body)); _ }],
+                     ({ it = PrimE (TupPrim, []); _ } as unitE));
+        _
+      }) ->
+    FuncE (x, s1, c, typbinds, pat, typs,
+      blockE [letP wild_pat (t_async context body)] unitE)
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
+    assert (not (is_local_async_func exp));
+    assert (not (is_shared_func exp));
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
   | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
