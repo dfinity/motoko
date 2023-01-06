@@ -59,7 +59,7 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
             go tfs1' tfs2'
        | -1 ->
           error_discard s tf1;
-          go tfs1' tfs2'
+          go tfs1' tfs2
         | _ ->
           go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
         )

@@ -102,7 +102,12 @@ let rec t_async context exp =
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
 and t_exp context exp =
-  assert (eff exp = T.Triv); 
+  if (eff exp != T.Triv) then
+  begin
+      Printf.printf "in IR:\n%s"
+        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+      assert false;
+  end;
   { exp with it = t_exp' context exp }
 and t_exp' context exp =
   match exp.it with
@@ -195,12 +200,13 @@ and t_exp' context exp =
     assert (not (is_shared_func exp));
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
-  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
     ActorE (t_decs context ds, ids,
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
-        heartbeat = t_exp LabelEnv.empty heartbeat;
+        heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
+        timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect
       },
       t)
@@ -646,23 +652,26 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta=m; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
     ActorU (as_opt, t_decs context ds, ids,
       { meta = m;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
-        heartbeat = begin
-          let throw = fresh_err_cont T.unit in
-          let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
-          let e = fresh_var "e" T.catch in
-          blockE [
-            funcD throw e (tupE[]);
-            ]
-            (c_exp context' heartbeat (meta (T.unit) (fun v1 -> tupE [])))
-        end;
+        heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
+        timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
       },
       t)
+
+and t_ignore_throw context exp =
+  let throw = fresh_err_cont T.unit in
+  let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+  let e = fresh_var "e" T.catch in
+  blockE [
+      funcD throw e (tupE[]);
+    ]
+  (c_exp context' exp (meta (T.unit) (fun v1 -> tupE [])))
+
 
 and t_prog (prog, flavor) =
   (t_comp_unit LabelEnv.empty prog, { flavor with has_await = false })

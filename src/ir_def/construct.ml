@@ -339,6 +339,13 @@ let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   ifE e1 (trueE ()) e2
 let impliesE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   orE (notE e1) e2
+let oldE : Ir.exp -> Ir.exp = fun e ->
+  { it = (primE (CallPrim [typ e]) [e]).it;
+    at = no_region;
+    note = Note.{ def with
+      typ = typ e;
+    }
+  }
 
 let rec conjE : Ir.exp list -> Ir.exp = function
   | [] -> trueE ()

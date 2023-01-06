@@ -364,13 +364,24 @@ rec {
 
     compacting_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+          EXTRA_MOC_ARGS = "--compacting-gc";
       });
 
     generational_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--generational-gc";
+      });
+
+    snty_compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      });
+
+    snty_generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
       });
+
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -487,8 +498,8 @@ rec {
       ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-generational-gc = generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
