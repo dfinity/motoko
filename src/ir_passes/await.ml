@@ -156,12 +156,56 @@ and t_exp' context exp =
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
-     DefineE (id, mut, t_exp context exp1)
-(* TODO: special case the usual suspects
-  | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
-    let context' = LabelEnv.add Return Label LabelEnv.empty in
-    FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
- *)
+    DefineE (id, mut, t_exp context exp1)
+  | FuncE (x, s, c, typbinds, pat, typs, exp1) when is_local_async_func exp ->
+    FuncE (x, s, c, typbinds, pat, typs,
+      match exp1.it with
+      | AsyncE (s, tb, exp1, typ1) ->
+         (* add the implicit return label *)
+         let k_ret = fresh_cont (typ exp1) T.unit in
+         let k_fail = fresh_err_cont T.unit in
+         let context' =
+           LabelEnv.add Return (Cont (ContVar k_ret))
+             (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+         in
+         cps_asyncE s typ1 (typ exp1)
+           (forall [tb] ([k_ret; k_fail] -->*
+              (c_exp context' exp1 (ContVar k_ret))))
+      | _ -> assert false
+    )
+  | FuncE (x, s, c, typbinds, pat, typs, exp1) when is_shared_func exp ->
+    let exp1' =  match exp1.it with
+    | AsyncE (s, tb, exp1, typ1) ->
+      (* add the implicit return label *)
+      let k_ret = fresh_cont (typ exp1) T.unit in
+      let k_fail = fresh_err_cont T.unit in
+      let context' =
+       LabelEnv.add Return (Cont (ContVar k_ret))
+         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+      in
+       cps_asyncE s typ1 (typ exp1)
+         (forall [tb] ([k_ret; k_fail] -->*
+           (c_exp context' exp1 (ContVar k_ret))))
+    | BlockE ([ { it = LetD (
+                  { it = WildP; _} as pat,
+                  ({ it = AsyncE (s, tb, exp1, typ1); _})); _ }],
+              ({ it = PrimE (TupPrim, []); _ } as unitE)) ->
+      (* add the implicit return label *)
+      let k_ret = fresh_cont (typ exp1) T.unit in
+      let k_fail = fresh_err_cont T.unit in
+      let context' =
+       LabelEnv.add Return (Cont (ContVar k_ret))
+         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+      in
+      let cps_async =
+       cps_asyncE s typ1 (typ exp1)
+         (forall [tb] ([k_ret; k_fail] -->*
+                         (c_exp context' exp1 (ContVar k_ret))))
+      in
+      blockE [letP pat cps_async] unitE
+    | _ -> assert false
+    in
+    FuncE (x, s, c, typbinds, pat, typs, exp1')
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
