@@ -14,15 +14,15 @@ struct PartitionId {
 }
 
 impl PartitionId {
-    pub fn from_index(index: usize) -> PartitionId {
+    fn from_index(index: usize) -> PartitionId {
         PartitionId { index }
     }
 
-    pub fn from_address(address: usize) -> PartitionId {
+    fn from_address(address: usize) -> PartitionId {
         Self::from_index(address / PARTITION_SIZE)
     }
 
-    pub fn get_index(self) -> usize {
+    fn get_index(self) -> usize {
         self.index
     }
 }
@@ -101,9 +101,18 @@ impl PartitionMap {
         panic!("Out of memory, no free partition available");
     }
 
-    fn allocation_partition(&self) -> &Partition {
-        let index = self.allocation_target.get_index();
+    fn get_partition(&self, id: PartitionId) -> &Partition {
+        let index = id.get_index();
         &self.partitions[index]
+    }
+
+    fn mutable_partition(&mut self, id: PartitionId) -> &mut Partition {
+        let index = id.get_index();
+        &mut self.partitions[index]
+    }
+
+    fn allocation_partition(&self) -> &Partition {
+        self.get_partition(self.allocation_target)
     }
 
     pub fn occupied_size(&self, heap_pointer: usize) -> Bytes<u32> {
@@ -126,9 +135,9 @@ impl PartitionMap {
     pub unsafe fn record_marked_space(&mut self, object: *mut Obj) {
         let address = object as usize;
         let size = object_size(address);
-        let partition = PartitionId::from_address(address);
-        let index = partition.get_index();
-        self.partitions[index].marked_space += size.to_bytes().as_usize();
+        let id = PartitionId::from_address(address);
+        let partition = self.mutable_partition(id);
+        partition.marked_space += size.to_bytes().as_usize();
     }
 
     pub unsafe fn prepare_allocation_partition(
