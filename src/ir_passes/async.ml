@@ -29,6 +29,7 @@ let selfcallE ts e1 e2 e3 =
     at = no_region;
     note = Note.{ def with typ = T.unit } }
 
+(* FIXME: type of first component seems wrong - outdated? *)
 let error_ty = T.(Tup [ Variant [
     {lab = "error"; typ = unit; depr = None};
     {lab = "system"; typ = unit; depr = None}

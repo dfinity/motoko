@@ -145,33 +145,10 @@ and t_exp' context exp =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE (s, tb, exp1, typ1) -> begin
-    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *) (*Why?*)
-    (* add the implicit return/throw label *)
-    let k_ret = fresh_cont (typ exp1) T.unit in
-    let k_fail = fresh_err_cont T.unit in
-    let context' =
-      LabelEnv.add Return (Cont (ContVar k_ret))
-        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-    in
-    let cps_async =
-      cps_asyncE s typ1 (typ exp1)
-        (forall [tb] ([k_ret; k_fail] -->*
-          c_exp context' exp1 (ContVar k_ret)))
-    in
-    let v = fresh_var "async" (typ exp) in
-    match LabelEnv.find_opt Throw context with
-    | Some (Cont r) when LabelEnv.find_opt Return context <> None ->
-       (letE v cps_async
-         (check_call_perform_status
-           (varE v)
-           ((fun e -> retE (r -@- e))))).it (* TBR *)
-    | Some Label ->
-       assert false
-    | _ ->
-       (* in immediate body of shared func *)
-       cps_async.it
-    end
+  | AsyncE (T.Cmp, _, _, _) ->
+     (t_async context exp).it
+  | AsyncE (T.Fut, _, _, _) ->
+     assert false  (* must have effect T.Await *)
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
@@ -212,20 +189,8 @@ and t_exp' context exp =
       t)
   | NewObjE (sort, ids, typ) -> exp.it
   | SelfCallE _ -> assert false
-  | PrimE (p, exps) when is_async_call(p, exps) -> begin
-    match LabelEnv.find_opt Throw context with
-    | Some (Cont r) when LabelEnv.find_opt Return context <> None -> (* FIXME *)
-      (letcont r (fun r ->
-        let v = fresh_var "call" (typ exp) in
-        letE v
-          { exp with it = PrimE(p, List.map (t_exp context) exps) }
-        (check_call_perform_status (varE v) (fun e -> retE (varE r -*- e)))))
-      .it
-    | _ ->
-       (* FIXME *)
-      PrimE(p, List.map (t_exp context) exps)
-    end
   | PrimE (p, exps) ->
+    assert (not (is_async_call (p, exps))); (* async calls have effect T.Await, not T.Triv *)
     PrimE (p, List.map (t_exp context) exps)
 
 and t_lexp context lexp =
@@ -444,7 +409,9 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     end
-  | AsyncE (s, tb, exp1, typ1) ->
+  | AsyncE (T.Cmp, tb, exp1, typ1) ->
+     assert false (* must have effect T.Triv, handled by first case *)
+  | AsyncE (T.Fut, tb, exp1, typ1) ->
      (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
@@ -458,7 +425,7 @@ and c_exp' context exp k =
       | None -> assert false
     in
     let cps_async =
-      cps_asyncE s typ1 (typ exp1)
+      cps_asyncE T.Fut typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
           (c_exp context' exp1 (ContVar k_ret)))) in
     let k' = meta (typ cps_async)
@@ -642,7 +609,7 @@ and t_comp_unit context = function
     begin
       match infer_effect_decs ds with
       | T.Triv ->
-        ProgU (t_decs context ds) (* FIXME: any send can throw *)
+        ProgU (t_decs context ds)
       | T.Await ->
         let throw = fresh_err_cont T.unit in
         let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
