@@ -675,7 +675,9 @@ and t_ignore_throw context exp =
           funcD throw e (tupE[]);
         ]
        (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
-      (* timer logic requires us to preserve any source location, or timer won't be initialized *)        with at = exp.at
+       (* timer logic requires us to preserve any source location,
+          or timer won't be initialized in compile.ml *)
+       with at = exp.at
      }
 
 
