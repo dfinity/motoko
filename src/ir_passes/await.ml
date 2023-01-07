@@ -671,10 +671,12 @@ and t_ignore_throw context exp =
      let throw = fresh_err_cont T.unit in
      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
      let e = fresh_var "e" T.catch in
-     blockE [
-       funcD throw e (tupE[]);
-     ]
-     (c_exp context' exp (meta (T.unit) (fun v1 -> tupE [])))
+     { (blockE [
+          funcD throw e (tupE[]);
+        ]
+       (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
+      (* timer logic requires us to preserve any source location, or timer won't be initialized *)        with at = exp.at
+     }
 
 
 and t_prog (prog, flavor) =

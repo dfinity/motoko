@@ -9937,12 +9937,14 @@ and main_actor as_opt mod_env ds fs up =
         Serialization.deserialize env arg_tys ^^
         G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
     end ^^
-    begin if up.timer.at <> no_region then
-      (* initiate a timer pulse *)
-      compile_const_64 1L ^^
-      IC.system_call env "global_timer_set" ^^
-      G.i Drop
-      else G.nop
+    begin
+     if up.timer.at <> no_region then
+       (* initiate a timer pulse *)
+       compile_const_64 1L ^^
+       IC.system_call env "global_timer_set" ^^
+       G.i Drop
+     else
+       G.nop
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop
