@@ -390,7 +390,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | PrimE (p, es) ->
     List.iter (check_exp env) es;
     begin match p, es with
-    | CallPrim insts, [exp1; exp2]
     | CallPrim insts, [exp1; exp2] ->
       begin match T.promote (typ exp1) with
         | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
