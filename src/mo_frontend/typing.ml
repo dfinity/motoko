@@ -207,10 +207,18 @@ let infer_mut mut : T.typ -> T.typ =
 
 (* System method types *)
 
+let heartbeat_type = 
+  T.(Func (Local, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)]))
+
+let timer_type = 
+  T.(Func (Local, Returns, [scope_bind],
+    [Func (Local, Returns, [], [Prim Nat64], [])],
+    [Async (Fut, Var (default_scope_var, 0), unit)]))
+
 let system_funcs tfs =
   [
-    ("heartbeat", T.Func (T.Local, T.Returns, [T.scope_bind], [],
-      [T.Async (T.Fut, T.Var (T.default_scope_var, 0), T.unit)]));
+    ("heartbeat", heartbeat_type);
+    ("timer", timer_type);
     ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
     ("inspect",
@@ -755,7 +763,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ ->
@@ -1310,6 +1318,8 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.bool exp2
     end;
     T.bool
+  | OldE exp1 ->
+    infer_exp_promote env exp1
   | IfE (exp1, exp2, exp3) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     let t2 = infer_exp env exp2 in
@@ -2228,6 +2238,8 @@ and check_system_fields env sort scope tfs dec_fields =
                 local_error env df.at "M0127" "system function %s is declared with type%a\ninstead of expected type%a" id.it
                    display_typ t1
                    display_typ t
+              else if id.it = "timer" && not !Mo_config.Flags.global_timer then
+                local_error env df.at "M0182" "system function timer is present but -no-timer flag is specified"
             end
           else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
         | None ->

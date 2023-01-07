@@ -29,13 +29,10 @@ let selfcallE ts e1 e2 e3 =
     at = no_region;
     note = Note.{ def with typ = T.unit } }
 
-let error_ty = T.(Tup [ Variant [
-    {lab = "error"; typ = unit; depr = None};
-    {lab = "system"; typ = unit; depr = None}
-  ]; text])
+let error_rep_ty = T.(Tup [ Variant T.catchErrorCodes; text])
 
 let errorMessageE e =
-  projE (primE (CastPrim (T.error, error_ty)) [e]) 1
+  projE (primE (CastPrim (T.error, error_rep_ty)) [e]) 1
 
 let unary typ = [typ]
 
@@ -426,12 +423,13 @@ let transform prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
       ActorE (t_decs ds, t_fields fs,
         {meta;
          preupgrade = t_exp preupgrade;
          postupgrade = t_exp postupgrade;
          heartbeat = t_exp heartbeat;
+         timer = t_exp timer;
          inspect = t_exp inspect
         }, t_typ typ)
     | NewObjE (sort, ids, t) ->
@@ -503,12 +501,13 @@ let transform prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
         { meta;
           preupgrade = t_exp preupgrade;
           postupgrade = t_exp postupgrade;
           heartbeat = t_exp heartbeat;
+          timer = t_exp timer;
           inspect = t_exp inspect
         }, t_typ t)
 

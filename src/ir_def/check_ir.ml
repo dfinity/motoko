@@ -363,7 +363,14 @@ let store_typ t  =
 
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
-  let check p = check env exp.at p in
+  let check p s =
+    try
+      check env exp.at p s
+    with e ->
+      Printf.printf "in IR:\n%s"
+       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+      raise e
+  in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
@@ -796,7 +803,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
   | ActorE (ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -805,10 +812,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
     check_exp env'' heartbeat;
+    check_exp env'' timer;
     check_exp env'' inspect;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
+    typ timer <: T.unit;
     typ inspect <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
@@ -1132,7 +1141,7 @@ let check_comp_unit env = function
     let env' = adjoin env scope in
     check_decs env' ds
   | ActorU (as_opt, ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1148,10 +1157,12 @@ let check_comp_unit env = function
     check_exp env'' preupgrade;
     check_exp env'' postupgrade;
     check_exp env'' heartbeat;
+    check_exp env'' timer;
     check_exp env'' inspect;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
+    typ timer <: T.unit;
     typ inspect <: T.unit;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in

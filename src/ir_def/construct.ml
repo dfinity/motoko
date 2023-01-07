@@ -136,7 +136,9 @@ let assertE e =
 let asyncE s typ_bind e typ1 =
   { it = AsyncE (s, typ_bind, e, typ1);
     at = no_region;
-    note = Note.{ def with typ = T.Async (s, typ1, typ e); eff = T.Triv }
+    note =
+      Note.{ def with typ = T.Async (s, typ1, typ e);
+                      eff = if s = T.Fut then T.Await else T.Triv }
   }
 
 let awaitE s e =
@@ -306,13 +308,16 @@ let callE exp1 typs exp2 =
     | T.Non -> T.Non
     | _ -> raise (Invalid_argument "callE expect a function")
   in
+  let p = CallPrim typs in
+  let es = [exp1; exp2] in
   { it = PrimE (CallPrim typs, [exp1; exp2]);
     at = no_region;
     note = Note.{ def with
      typ;
-     eff = max_eff (eff exp1) (eff exp2)
+     eff = Ir_effect.infer_effect_prim p es
     }
   }
+
 
 let ifE exp1 exp2 exp3 =
   { it = IfE (exp1, exp2, exp3);
@@ -334,6 +339,13 @@ let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   ifE e1 (trueE ()) e2
 let impliesE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   orE (notE e1) e2
+let oldE : Ir.exp -> Ir.exp = fun e ->
+  { it = (primE (CallPrim [typ e]) [e]).it;
+    at = no_region;
+    note = Note.{ def with
+      typ = typ e;
+    }
+  }
 
 let rec conjE : Ir.exp list -> Ir.exp = function
   | [] -> trueE ()

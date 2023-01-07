@@ -11,7 +11,12 @@ let comma ppf () = fprintf ppf ",@ "
 
 let semi ppf () = fprintf ppf ";@ "
 
-let pp_info ppf NoInfo = ()
+let pp_info ppf info =
+  match info with
+  | NoInfo -> ()
+  | ActorInit -> fprintf ppf "@[// translation of actor initializers @]"
+  | PublicFunction x -> fprintf ppf "@[// translation of PUBLIC function %s@]" x
+  | PrivateFunction x -> fprintf ppf "@[// translation of _private_ function %s@]" x
 
 let rec pp_prog ppf p =
   match p.it with
@@ -118,6 +123,8 @@ and pp_exp ppf exp =
        | Implies _ -> "==>" | OrE _ -> "||" | AndE _ -> "&&"
        | _ -> failwith "not a binary operator" in
      fprintf ppf "(%a %s %a)" pp_exp e1 op pp_exp e2
+  | Old e ->
+    fprintf ppf "@[old(%a)@]" pp_exp e
   | PermE p -> pp_perm ppf p
   | AccE (fldacc, perm) -> fprintf ppf "@[acc(%a,%a)@]" pp_fldacc fldacc pp_exp perm
   | _ -> fprintf ppf "@[// pretty printer not implemented for node at %s@]" (string_of_region exp.at)
@@ -179,8 +186,27 @@ and pp_stmt' ppf = function
     fprintf ppf "@[<v 2>/*concurrency max %s, cond: s %a*/@]"
       max
       pp_exp exp
-  | MethodCallS (_, _, _)
-  | LabelS (_, _) -> failwith "MethodCallS or LabelS?"
+  | MethodCallS (rs, m, args) ->
+    let () = match rs with
+    | [] -> ()
+    | r :: rs ->
+      let () = fprintf ppf "@[%s@]" r.it in
+      List.iter (fun r ->
+        fprintf ppf ", @[%s@]" r.it
+      ) rs
+    in
+    let () = if rs != [] then
+      fprintf ppf " := "
+    in
+    let () = fprintf ppf "@[%s(@]" m.it in
+    let () = match args with
+    | [] -> ()
+    | arg :: args ->
+      let () = fprintf ppf "@[%a@]" pp_exp arg in
+      fprintf ppf "@[%a@]" (pp_print_list ~pp_sep:comma pp_exp) args
+    in
+    fprintf ppf ")"
+  | LabelS (_, _) -> failwith "LabelS?"
 
 and pp_fldacc ppf fldacc =
   match fldacc with
