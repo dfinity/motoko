@@ -102,12 +102,7 @@ let rec t_async context exp =
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
 and t_exp context exp =
-  if (eff exp != T.Triv) then
-  begin
-      Printf.printf "in IR:\n%s"
-        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
-      assert false;
-  end;
+  assert (eff exp = T.Triv);
   { exp with it = t_exp' context exp }
 and t_exp' context exp =
   match exp.it with
@@ -641,7 +636,7 @@ and t_ignore_throw context exp =
      { (blockE [
           funcD throw e (tupE[]);
         ]
-       (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
+        (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
        (* timer logic requires us to preserve any source location,
           or timer won't be initialized in compile.ml *)
        with at = exp.at

@@ -4077,7 +4077,7 @@ module IC = struct
         (fun env -> system_call env "msg_reject_msg_size")
         (fun env -> system_call env "msg_reject_msg_copy")
         (fun env -> compile_unboxed_const 0l)
-      )
+    )
 
   let error_value env =
     Func.share_code0 env "error_value" [I32Type] (fun env ->
@@ -7281,7 +7281,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         BoxedSmallWord.box env ^^
-          Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[Prim Nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with

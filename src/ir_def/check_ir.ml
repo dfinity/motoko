@@ -363,14 +363,7 @@ let store_typ t  =
 
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
-  let check p s =
-    try
-      check env exp.at p s
-    with e ->
-      Printf.printf "in IR:\n%s"
-       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
-      raise e
-  in
+  let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
@@ -397,7 +390,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | PrimE (p, es) ->
     List.iter (check_exp env) es;
     begin match p, es with
-    | CallPrim insts, [exp1; exp2; _] (*HACK*)
+    | CallPrim insts, [exp1; exp2]
     | CallPrim insts, [exp1; exp2] ->
       begin match T.promote (typ exp1) with
         | T.Func (sort, control, tbs, arg_tys, ret_tys) ->

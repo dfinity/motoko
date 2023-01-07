@@ -82,7 +82,7 @@ and system = {
   preupgrade : exp;
   postupgrade : exp;
   heartbeat : exp;
-  timer : exp; (* TODO: use an option type *)
+  timer : exp; (* TODO: use an option type: (Default of exp | UserDefined of exp) option *)
   inspect : exp
 }
 
