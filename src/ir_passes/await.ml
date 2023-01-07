@@ -664,13 +664,17 @@ and t_comp_unit context = function
       t)
 
 and t_ignore_throw context exp =
-  let throw = fresh_err_cont T.unit in
-  let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
-  let e = fresh_var "e" T.catch in
-  blockE [
-      funcD throw e (tupE[]);
-    ]
-  (c_exp context' exp (meta (T.unit) (fun v1 -> tupE [])))
+  match exp.it with
+  | Ir.PrimE (Ir.TupPrim, []) -> (* TODO: use an option instead *)
+     exp
+  | _ ->
+     let throw = fresh_err_cont T.unit in
+     let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+     let e = fresh_var "e" T.catch in
+     blockE [
+       funcD throw e (tupE[]);
+     ]
+     (c_exp context' exp (meta (T.unit) (fun v1 -> tupE [])))
 
 
 and t_prog (prog, flavor) =
