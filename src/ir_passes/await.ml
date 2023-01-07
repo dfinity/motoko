@@ -665,7 +665,7 @@ and t_comp_unit context = function
 
 and t_ignore_throw context exp =
   match exp.it with
-  | Ir.PrimE (Ir.TupPrim, []) -> (* TODO: use an option instead *)
+  | Ir.PrimE (Ir.TupPrim, []) ->
      exp
   | _ ->
      let throw = fresh_err_cont T.unit in
