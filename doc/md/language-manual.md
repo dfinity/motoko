@@ -706,6 +706,8 @@ type ErrorCode = {
   #canister_error;
   // Future error code (with unrecognized numeric code)
   #future : Nat32;
+  // Error issuing inter-canister call
+  #call_error : { err_code : Nat32 }
 };
 ```
 
@@ -718,6 +720,16 @@ Errors with codes other than `#canister_reject` (i.e. *system* errors) may be ca
 :::note
 
 Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message. This prevents programmatic forgery of system errors.
+
+:::
+
+:::note
+
+On the Internet Computer, the act of issuing a call to a canister function can fail, so that the call cannot (and will not be) performed.
+This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
+or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
+Such call failures are reported by throwing an `Error` with code `#call_error { err_code = n }`, where `n` is the non-zero `err_code` value returned by the Internet Computer.
+Like other errors, call errors can be caught and handled using `try ... catch ...` expressions, if desired.
 
 :::
 
@@ -1931,6 +1943,16 @@ The exhaustiveness side condition on `shared` function expressions ensures that 
 
 :::
 
+:::note
+
+Calls to local functions with `async` return type and `shared` functions can fail due to a lack of canister resources.
+Such failures will result in the call immediately throwing an error with  `code` `#call_error { err_code = n }`,
+where `n` is the non-zero `err_code` value returned by the Internet Computer.
+Earlier versions of Motoko would trap in such situations, making it difficult for the calling canister to mitigate such failures.
+Now, a caller can handle these errors using enclosing `try ... catch ...` expressions, if desired.
+
+:::
+
 ### Functions
 
 The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the assumption that `X0 <: T0, …​, Xn <: Tn`:
@@ -2182,6 +2204,17 @@ The implicit return type in `<block-or-exp>` is `T`. That is, the return express
 
 Evaluation of `async <block-or-exp>` queues a message to evaluate `<block-or-exp>` in the nearest enclosing or top-level actor. It immediately returns a future of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
 
+:::note
+
+Because it involves messaging, evaluating an `async` expression can fail due to a lack of canister resources.
+Such failures will result in the call immediately throwing an error with  `code` `#call_error { err_code = n }`,
+where `n` is the non-zero `err_code` value returned by the Internet Computer.
+Earlier version of Motoko would trap in such situations, making it difficult for the producer of the async expression to mitigate such failures.
+Now, the producer can handle these errors using an enclosing `try ... catch ...` expression, if desired.
+
+:::
+
+
 ### Await
 
 The `await` expression `await <exp>` has type `T` provided:
@@ -2203,6 +2236,18 @@ Between suspension and resumption of a computation, the state of the enclosing a
 Using `await` signals that the computation *will* commit its current state and suspend execution.
 
 :::
+
+:::note
+
+Because it involves additional messaging, an `await` on a completed future can, in rare circumstances, fail due to a lack of canister resources.
+Such failures will result in the call immediately throwing an error with `code` `#call_error { err_code = n }`,
+where `n` is the non-zero `err_code` value returned by the Internet Computer
+The error is produced eagerly, without suspending nor committing state.
+Earlier versions of Motoko would trap in such situations, making it difficult for the consumer of the `await` to mitigate such failures.
+Now, the consumer can handle these errors by using an enclosing `try ... catch ...` expression, if desired.
+
+:::
+
 
 ### Async*
 

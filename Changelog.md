@@ -1,5 +1,25 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * BREAKING CHANGE
+
+    On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
+    This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
+    or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
+    Such call failures are now reported by throwing an `Error` with new `ErrorCode` `#call_error { err_code = n }`,
+    where `n` is the non-zero `err_code` value returned by the IC.
+    Like other errors, call errors can be caught and handled using `try ... catch ...` expressions, if desired.
+
+    The constructs that now throw call errors, instead of trapping as with previous version of Motoko are:
+    * calls to `shared` functions (including oneway functions that return `()`).
+      These involve sending a message to another canister, and can fail when the queue for the destination canister is full.
+    * calls to local functions with return type `async`. These involve sending a message to self, and can fail when the local queue for sends to self is full.
+    * `async` expressions. These involve sending a message to self, and can fail when the local queue for sends to self is full.
+    * `await` expressions. These can fail on awaiting an already completed future, which requires sending a message to self to suspend and commit state.
+
+    (On the other hand, `async*` (being delayed) cannot throw, and evaluating `await*` will at most propagate an error from its argument but not, in itself, throw.)
+
 ## 0.7.5 (2022-12-23)
 
 * motoko (`moc`)
