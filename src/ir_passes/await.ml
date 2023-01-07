@@ -410,9 +410,9 @@ and c_exp' context exp k =
       | None -> assert false
     end
   | AsyncE (T.Cmp, tb, exp1, typ1) ->
-     assert false (* must have effect T.Triv, handled by first case *)
+    assert false (* must have effect T.Triv, handled by first case *)
   | AsyncE (T.Fut, tb, exp1, typ1) ->
-     (* add the implicit return label *)
+    (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
     let context' =
