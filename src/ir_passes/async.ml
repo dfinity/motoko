@@ -29,14 +29,10 @@ let selfcallE ts e1 e2 e3 =
     at = no_region;
     note = Note.{ def with typ = T.unit } }
 
-(* FIXME: type of first component seems wrong - outdated? *)
-let error_ty = T.(Tup [ Variant [
-    {lab = "error"; typ = unit; depr = None};
-    {lab = "system"; typ = unit; depr = None}
-  ]; text])
+let error_rep_ty = T.(Tup [ Variant T.catchErrorCodes; text])
 
 let errorMessageE e =
-  projE (primE (CastPrim (T.error, error_ty)) [e]) 1
+  projE (primE (CastPrim (T.error, error_rep_ty)) [e]) 1
 
 let unary typ = [typ]
 
