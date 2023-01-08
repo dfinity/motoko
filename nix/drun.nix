@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-JUyquIbp8e8f6VxIKd7r+6eObDkyJdbrb7GCUuNIEvA=";
+      cargoSha256 = "sha256-PdTjh/1cQrRGDy/ZV/37jfzgTAg7fsRFs/A1VGXzZD4=";
 
       patchPhase = ''
       cd ../drun-vendor.tar.gz
