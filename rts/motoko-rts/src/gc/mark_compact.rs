@@ -40,6 +40,14 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
+    #[cfg(debug_assertions)]
+    if crate::check::ARTIFICIAL_FORWARDING {
+        crate::check::check_memory(mem);
+        return;
+    }
+
+    assert!(!crate::check::ARTIFICIAL_FORWARDING);
+
     use crate::memory::ic;
 
     compacting_gc_internal(
@@ -76,6 +84,11 @@ pub unsafe fn compacting_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
+    #[cfg(debug_assertions)]
+    {
+        crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
+    }
+
     let old_hp = get_hp() as u32;
 
     assert_eq!(heap_base % 32, 0);
@@ -94,6 +107,11 @@ pub unsafe fn compacting_gc_internal<
 
     let live = get_hp() as u32 - heap_base;
     note_live_size(Bytes(live));
+
+    #[cfg(debug_assertions)]
+    {
+        crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
+    }
 }
 
 unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
@@ -142,6 +160,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
+    debug_assert!((*(obj as *mut Obj)).forward.get_ptr() as u32 == obj);
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);
@@ -229,6 +248,12 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         let p_size_words = object_size(p as usize);
         if p_new as usize != p as usize {
             memcpy_words(p_new as usize, p as usize, p_size_words);
+
+            debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
+            // Update forwarding pointer
+            let new_obj = p_new as *mut Obj;
+            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
+            (*new_obj).forward = Value::from_ptr(p_new as usize);
         }
 
         free += p_size_words.to_bytes().as_u32();

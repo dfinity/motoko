@@ -29,6 +29,9 @@ use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
 
+#[cfg(debug_assertions)]
+pub static mut STRICT_FORWARDING_POINTER_CHECKS: bool = true;
+
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
 }
@@ -258,69 +261,94 @@ impl Value {
     }
 
     /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
-    /// the value is not a pointer.
+    /// the value is not a pointer or if it points to a stale object that has been forwarded.
     pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
         unskew(self.0 as usize)
     }
 
-    /// Get the object tag. In debug mode panics if the value is not a pointer.
+    /// Check that the forwarding pointer is valid.
+    #[inline]
+    pub unsafe fn check_forwarding_pointer(self) {
+        debug_assert!(
+            self.forward().get_ptr() == self.get_ptr()
+                || self.forward().forward().get_ptr() == self.forward().get_ptr()
+        );
+    }
+
+    /// Get the object tag, with potential forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
         debug_assert!(self.get().is_ptr());
-        (self.get_ptr() as *mut Obj).tag()
+        self.check_forwarding_pointer();
+        (self.forward().get_ptr() as *mut Obj).tag()
     }
 
-    /// Get the pointer as `Obj`. In debug mode panics if the value is not a pointer.
+    /// Get the forwarding pointer. Used in incremental GC.
+    pub unsafe fn forward(self) -> Value {
+        let obj = self.get_ptr() as *mut Obj;
+        (*obj).forward
+    }
+
+    /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
-        self.get_ptr() as *mut Obj
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Obj
     }
 
-    /// Get the pointer as `MutBox`. In debug mode panics if the value is not a pointer.
+    /// Get the pointer as `MutBox` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_mutbox(self) -> *mut MutBox {
         debug_assert_eq!(self.tag(), TAG_MUTBOX);
-        self.get_ptr() as *mut MutBox
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut MutBox
     }
 
-    /// Get the pointer as `Array`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
         debug_assert!(self.tag() == TAG_ARRAY || self.tag() >= TAG_ARRAY_SLICE_MIN);
-        self.get_ptr() as *mut Array
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Concat` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.get_ptr() as *const Concat
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *const Concat
     }
 
-    /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Blob` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.get_ptr() as *const Blob
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *const Blob
     }
 
+    /// Get the pointer as mutable `Blob` using forwarding.
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.get_ptr() as *mut Blob
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Blob
     }
 
-    /// Get the pointer as `Stream`, which is a glorified `Blob`.
+    /// Get the pointer as `Stream` using forwarding, which is a glorified `Blob`.
     /// In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.get_ptr() as *mut Stream
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Stream
     }
 
-    /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `BigInt` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
-        self.get_ptr() as *mut BigInt
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut BigInt
     }
 
     pub fn as_tiny(self) -> i32 {
@@ -375,7 +403,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19;
+pub const TAG_FWD_PTR: Tag = 19; // only used in copying GC - not to be confused with forwarding pointer in the header used for incremental GC
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -423,7 +451,10 @@ pub fn unmark(tag: Tag) -> Tag {
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
+    /// Raw tag encoding the object tag together with the mark bit
     pub raw_tag: Tag,
+    /// Forwarding pointer to support object moving in the incremental GC
+    pub forward: Value,
 }
 
 impl Obj {
@@ -446,17 +477,29 @@ impl Obj {
         (*self).raw_tag = unmark((*self).raw_tag);
     }
 
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn tag(self: *const Self) -> Tag {
+        self.check_dereferenced_forwarding();
         unmark((*self).raw_tag)
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
+        self.check_dereferenced_forwarding();
         self as *mut Blob
     }
 
     pub unsafe fn as_concat(self: *mut Self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
+        self.check_dereferenced_forwarding();
         self as *const Concat
     }
 }
@@ -473,7 +516,17 @@ pub struct Array {
 }
 
 impl Array {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
+        self.check_dereferenced_forwarding();
         self.offset(1) as *mut Value // skip array header
     }
 
@@ -513,11 +566,20 @@ impl Array {
 
     #[inline]
     unsafe fn element_address(self: *const Self, idx: u32) -> usize {
+        self.check_dereferenced_forwarding();
+        debug_assert!(self.len() > idx);
+        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        *(slot_addr as *const Value)
+    }
+
+    pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
+        self.check_dereferenced_forwarding();
         debug_assert!(self.len() > idx);
         self.payload_addr() as usize + (idx * WORD_SIZE) as usize
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {
+        self.check_dereferenced_forwarding();
         (*self).len
     }
 }
@@ -530,16 +592,28 @@ pub struct Object {
 }
 
 impl Object {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.check_dereferenced_forwarding();
         self.add(1) as *mut Value // skip object header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+        self.check_dereferenced_forwarding();
         (*self).size
     }
 
     #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
+        self.check_dereferenced_forwarding();
         *self.payload_addr().add(idx as usize)
     }
 }
@@ -559,11 +633,22 @@ pub struct Closure {
 }
 
 impl Closure {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.check_dereferenced_forwarding();
         self.offset(1) as *mut Value // skip closure header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+        self.check_dereferenced_forwarding();
         (*self).size
     }
 }
@@ -576,28 +661,43 @@ pub struct Blob {
 }
 
 impl Blob {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
-        self.add(1) as *mut u8 // skip closure header
+        self.check_dereferenced_forwarding();
+        self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn payload_const(self: *const Self) -> *const u8 {
-        self.add(1) as *mut u8 // skip closure header
+        self.check_dereferenced_forwarding();
+        self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn len(self: *const Self) -> Bytes<u32> {
+        self.check_dereferenced_forwarding();
         (*self).len
     }
 
     pub unsafe fn get(self: *const Self, idx: u32) -> u8 {
+        self.check_dereferenced_forwarding();
         *self.payload_const().add(idx as usize)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
+        self.check_dereferenced_forwarding();
         *self.payload_addr().add(idx as usize) = byte;
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
     pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
+        self.check_dereferenced_forwarding();
         let current_len_words = self.len().to_words();
         let new_len_words = new_len.to_words();
 
@@ -623,6 +723,7 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
+    pub padding: u32, // insertion of forwarding pointer in the header implies 1 word padding to 64-bit
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -630,10 +731,12 @@ pub struct Stream {
     pub filled: Bytes<u32>, // cache data follows ..
 }
 
-/// A forwarding pointer placed by the GC in place of an evacuated object.
+/// Only used in copying GC - not to be confused with the forwarding pointer in the general object header
+/// that is used in the incremental GC.
+/// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
-    pub header: Obj,
+    pub tag: Tag,
     pub fwd: Value,
 }
 
@@ -649,16 +752,28 @@ pub struct BigInt {
 }
 
 impl BigInt {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+        self.check_dereferenced_forwarding();
         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
+        self.check_dereferenced_forwarding();
         self.add(1) as *mut mp_digit // skip closure header
     }
 
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
-        (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt
+        let bigint = (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
+        (*bigint).header.forward.as_bigint()
     }
 
     /// Returns pointer to the `mp_int` struct
@@ -704,11 +819,22 @@ pub struct Concat {
 }
 
 impl Concat {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(self: *const Self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
+        }
+    }
+
     pub unsafe fn text1(self: *const Self) -> Value {
+        self.check_dereferenced_forwarding();
         (*self).text1
     }
 
     pub unsafe fn text2(self: *const Self) -> Value {
+        self.check_dereferenced_forwarding();
         (*self).text2
     }
 }
@@ -728,7 +854,22 @@ pub struct Bits64 {
 }
 
 impl Bits64 {
+    /// Check that the forwarding pointer has already been dereferenced
+    #[inline]
+    unsafe fn check_dereferenced_forwarding(&self) {
+        #[cfg(debug_assertions)]
+        if STRICT_FORWARDING_POINTER_CHECKS {
+            debug_assert_eq!(
+                self.header.forward.get_ptr(),
+                (self as *const Self) as usize
+            );
+        }
+    }
+
     pub fn bits(&self) -> u64 {
+        unsafe {
+            self.check_dereferenced_forwarding();
+        }
         (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
     }
 }
@@ -742,13 +883,13 @@ pub struct Bits32 {
 /// Marks one word empty space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct OneWordFiller {
-    pub header: Obj,
+    pub tag: Tag,
 }
 
 /// Marks arbitrary sized emtpy space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
-    pub header: Obj,
+    pub tag: Tag,
     pub words: Words<u32>,
 }
 

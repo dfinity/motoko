@@ -14,10 +14,14 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     // NB. cannot use as_array() here as we didn't write the header yet
     let iter_array = iter_ptr.get_ptr() as *mut Array;
     (iter_array as *mut Obj).initialize_tag(TAG_ARRAY);
+    (*iter_array).header.forward = iter_ptr;
     (*iter_array).len = 2;
 
     iter_array.initialize(ITER_BLOB_IDX, blob, mem);
     iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
+
+    #[cfg(debug_assertions)]
+    crate::check::create_artificial_forward(mem, iter_ptr);
 
     iter_ptr
 }
