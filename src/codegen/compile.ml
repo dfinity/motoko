@@ -668,10 +668,6 @@ let new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
   in (set_i, get_i)
 
-let new_float_local env name =
-  let (set_i, get_i, _) = new_local_ env F64Type name
-  in (set_i, get_i)
-
 (* Some common code macros *)
 
 (* Iterates while cond is true. *)
@@ -1998,9 +1994,7 @@ module Float = struct
   let payload_field = Tagged.header_size
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
-  let lit f = compile_unboxed_const (Wasm.F64.of_float f)
-  let compile_unboxed_zero = lit 0.0
-
+  
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Bits64);
@@ -7738,8 +7732,7 @@ let compile_unop env t op =
     )
   | NegOp, Type.(Prim Float) ->
     SR.UnboxedFloat64, SR.UnboxedFloat64,
-    let (set_f, get_f) = new_float_local env "f" in
-    set_f ^^ Float.compile_unboxed_zero ^^ get_f ^^ G.i (Binary (Wasm.Values.F64 F64Op.Sub))
+    G.i (Unary (Wasm.Values.F64 F64Op.Neg))
   | NotOp, Type.(Prim (Nat64|Int64)) ->
      SR.UnboxedWord64, SR.UnboxedWord64,
      compile_xor64_const (-1L)
