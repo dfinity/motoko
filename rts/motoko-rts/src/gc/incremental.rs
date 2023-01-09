@@ -137,7 +137,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         PARTITION_MAP = Some(PartitionMap::new(heap_base));
     }
 
-    pub fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
+    pub unsafe fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
         IncrementalGC { mem }
     }
 
@@ -150,6 +150,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             self.start_marking(limits.base, roots);
         } else if Self::mark_completed() {
             self.start_evacuating();
+        } else if Self::evacuation_completed() {
+            println!(100, "EVACUATION COMPLETED");
         } else {
             self.increment();
         }
@@ -218,19 +220,34 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_evacuating(&mut self) {
-        PARTITION_MAP.as_mut().unwrap().plan_evacuations();
         let state = EvacuationState {
             partition_index: 0,
             sweep_address: None,
         };
         PHASE = Phase::Evacuate(state);
-        self.increment();
+        if let Phase::Evacuate(state) = &mut PHASE {
+            let mut gc = Increment::instance(self.mem, state);
+            gc.initiate_evacuations();
+            gc.evacuation_phase_increment();
+        } else {
+            panic!("Invalid phase");
+        }
+    }
+
+    unsafe fn evacuation_completed() -> bool {
+        match &PHASE {
+            Phase::Evacuate(state) => {
+                state.partition_index == MAX_PARTITIONS
+            },
+            _ => false,
+        }
     }
 }
 
 /// GC increment.
 struct Increment<'a, M: Memory, S: 'static> {
     mem: &'a mut M,
+    partition_map: &'a mut PartitionMap,
     state: &'static mut S,
     steps: usize,
 }
@@ -239,6 +256,7 @@ impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
     unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
         Increment {
             mem,
+            partition_map: PARTITION_MAP.as_mut().unwrap(),
             state,
             steps: 0,
         }
@@ -281,7 +299,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             return;
         }
         object.mark();
-        PARTITION_MAP.as_mut().unwrap().record_marked_space(object);
+        self.partition_map.record_marked_space(object);
         debug_assert!(
             object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
         );
@@ -356,12 +374,15 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 }
 
 impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
+    unsafe fn initiate_evacuations(&mut self) {
+        self.partition_map.plan_evacuations();
+    }
+
     unsafe fn evacuation_phase_increment(&mut self) {
         while self.state.partition_index < MAX_PARTITIONS {
-            if self.current_partition().should_evacuate() {
+            if self.current_partition().to_be_evacuated() {
                 if self.state.sweep_address.is_none() {
-                    let partition = self.current_partition();
-                    self.state.sweep_address = Some(partition.evacuation_start());
+                    self.state.sweep_address = Some(self.current_partition().evacuation_start());
                 }
                 self.evacuate_partition();
                 if self.steps > Self::INCREMENT_LIMIT {
@@ -371,14 +392,10 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
             self.state.partition_index += 1;
             self.state.sweep_address = None;
         }
-        self.complete_evacuation();
     }
 
     unsafe fn current_partition(&mut self) -> &Partition {
-        PARTITION_MAP
-            .as_ref()
-            .unwrap()
-            .get_partition(self.state.partition_index)
+        self.partition_map.get_partition(self.state.partition_index)
     }
 
     unsafe fn evacuate_partition(&mut self) {
@@ -400,8 +417,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
             }
         }
     }
-
-    fn complete_evacuation(&mut self) {}
 }
 
 /// Incremental GC allocation scheme:

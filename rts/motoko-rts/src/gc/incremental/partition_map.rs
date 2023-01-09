@@ -13,7 +13,7 @@ pub struct Partition {
     free: bool,
     marked_space: usize,
     static_space: usize,
-    should_evacuate: bool,
+    evacuate: bool,
 }
 
 impl Partition {
@@ -37,8 +37,8 @@ impl Partition {
         self.free
     }
 
-    pub fn should_evacuate(&self) -> bool {
-        self.should_evacuate
+    pub fn to_be_evacuated(&self) -> bool {
+        self.evacuate
     }
 
     fn covers_address(&self, address: usize) -> bool {
@@ -85,7 +85,7 @@ impl PartitionMap {
             } else {
                 0
             },
-            should_evacuate: false,
+            evacuate: false,
         });
         PartitionMap {
             partitions,
@@ -96,8 +96,8 @@ impl PartitionMap {
     pub fn plan_evacuations(&mut self) {
         const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
         for partition in &mut self.partitions {
-            assert!(!partition.should_evacuate);
-            partition.should_evacuate = self.allocation_index != partition.index
+            assert!(!partition.evacuate);
+            partition.evacuate = self.allocation_index != partition.index
                 && !partition.is_free()
                 && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD
         }
