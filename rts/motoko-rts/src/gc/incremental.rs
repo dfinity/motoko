@@ -29,6 +29,14 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
+    #[cfg(debug_assertions)]
+    if crate::check::ARTIFICIAL_FORWARDING {
+        crate::check::check_memory(mem);
+        return;
+    }
+
+    assert!(!crate::check::ARTIFICIAL_FORWARDING);
+
     use crate::memory::ic;
     let limits = Limits {
         base: ic::get_aligned_heap_base() as usize,
@@ -236,9 +244,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn evacuation_completed() -> bool {
         match &PHASE {
-            Phase::Evacuate(state) => {
-                state.partition_index == MAX_PARTITIONS
-            },
+            Phase::Evacuate(state) => state.partition_index == MAX_PARTITIONS,
             _ => false,
         }
     }
@@ -402,12 +408,18 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
         let end_address = self.current_partition().end_address();
         let sweep_address = self.state.sweep_address.as_mut().unwrap();
         while *sweep_address < end_address {
-            let object = *sweep_address as *mut Obj;
+            let original = *sweep_address as *mut Obj;
+            assert_eq!((*original).forward.get_ptr(), original as usize);
             let size = object_size(*sweep_address);
-            if object.is_marked() {
-                let copy = self.mem.alloc_words(size);
-                memcpy_words(copy.get_ptr(), *sweep_address, size);
-                // TODO: Update forwarding pointer for both the original and the copy
+            if original.is_marked() {
+                debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+                let new_object = self.mem.alloc_words(size);
+                let new_address = new_object.get_ptr();
+                memcpy_words(new_address, *sweep_address, size);
+                let copy = new_address as *mut Obj;
+                // Set the forwarding pointers
+                (*copy).forward = new_object;
+                (*original).forward = new_object;
             }
             *sweep_address += size.to_bytes().as_usize();
             assert!(*sweep_address <= end_address);

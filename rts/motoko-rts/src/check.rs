@@ -59,7 +59,7 @@ pub unsafe fn create_artificial_forward<M: Memory>(mem: &mut M, source: Value) {
     );
     memzero(source_object as usize, size);
     assert!(size.to_bytes().as_u32() < INVALID_TAG_BITMASK);
-    (*source_object).tag = size.to_bytes().as_u32() | INVALID_TAG_BITMASK; // encode length in invalid tag
+    (*source_object).raw_tag = size.to_bytes().as_u32() | INVALID_TAG_BITMASK; // encode length in invalid tag
     (*source_object).forward = target;
 }
 
@@ -70,7 +70,9 @@ pub struct MemoryChecker {
     continuation_table_ptr_loc: *mut Value,
 }
 
+#[cfg(feature = "ic")]
 static mut MEMORY_CHECK_COUNTER: usize = 0;
+#[cfg(feature = "ic")]
 const MEMORY_CHECK_FREQUENCY: usize = 4;
 
 #[ic_mem_fn(ic_only)]

@@ -1387,7 +1387,7 @@ module Tagged = struct
     Heap.store_field raw_tag_field ^^
     get_object ^^ (* object pointer *)
     get_object ^^ (* forwarding pointer *)
-    Heap.store_field forwarding_pointer_field
+    Heap.store_field forwarding_pointer_field ^^
     get_object ^^ 
     (if !Flags.gc_strategy = Flags.Incremental then
       compile_add_const ptr_unskew ^^
@@ -1396,8 +1396,14 @@ module Tagged = struct
     else
       G.nop)
 
-  (* Assumes a pointer to the object on the stack *)
+  let load_forwarding_pointer env =
+    (if !Flags.sanity then
+      E.call_import env "rts" "check_forwarding_pointer"
+    else
+      Heap.load_field forwarding_pointer_field)
+      
   let store_unmarked_tag env tag =
+    load_forwarding_pointer env ^^
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field raw_tag_field
         
@@ -1406,12 +1412,6 @@ module Tagged = struct
     Heap.load_field raw_tag_field ^^
     compile_bitand_const (Int32.lognot mark_bit_mask)
 
-  let load_forwarding_pointer env =
-    (if !Flags.sanity then
-      E.call_import env "rts" "check_forwarding_pointer"
-    else
-      Heap.load_field forwarding_pointer_field)
-    
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
   let branch_default env retty def (cases : (tag * G.t) list) : G.t =
@@ -1483,11 +1483,6 @@ module Tagged = struct
     let (set_object, get_object) = new_local env "new_object" in
     alloc env size tag ^^
     set_object ^^
-
-    get_object ^^
-    get_object ^^ (* forwarding pointer *)
-    Heap.store_field forwarding_pointer_field ^^
-
     let init_elem idx instrs : G.t =
       get_object ^^
       instrs ^^
@@ -1497,7 +1492,7 @@ module Tagged = struct
     get_object ^^
     (if !Flags.sanity then
       E.call_import env "rts" "create_artificial_forward" ^^
-      get_heap_obj
+      get_object
     else
       G.nop
     )
@@ -5269,7 +5264,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.load_forwarding_pointer env ^^ Tagged.(store_unmarked_tag StableSeen) ^^
+          get_x ^^ Tagged.(store_unmarked_tag env StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -7073,43 +7068,47 @@ module Var = struct
     | (Some ((HeapInd i), typ), Flags.Generational) when potential_pointer typ ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field MutBox.field ^^
+      MutBox.store_field env ^^
       G.i (LocalGet (nr i)) ^^
+      Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
     | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
       G.i (LocalGet (nr i)) ^^
+      Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "pre_write_barrier" ^^
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      MutBox.store_field env
     | (Some ((HeapInd i), typ), _) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      MutBox.store_field env
     | (Some ((HeapStatic ptr), typ), Flags.Generational) when potential_pointer typ ->
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field MutBox.field ^^
+      MutBox.store_field env ^^
+      Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
       compile_unboxed_const ptr ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
     | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
+      Tagged.load_forwarding_pointer env ^^
       compile_unboxed_const ptr ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "pre_write_barrier" ^^
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      MutBox.store_field env
     | (Some ((HeapStatic ptr), typ), _) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      MutBox.store_field env
     | (Some ((Const _), _), _) -> fatal "set_val: %s is const" var
     | (Some ((PublicMethod _), _), _) -> fatal "set_val: %s is PublicMethod" var
     | (None, _)   -> fatal "set_val: %s missing" var

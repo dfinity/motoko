@@ -43,6 +43,14 @@ unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
+    #[cfg(debug_assertions)]
+    if crate::check::ARTIFICIAL_FORWARDING {
+        crate::check::check_memory(mem);
+        return;
+    }
+
+    assert!(!crate::check::ARTIFICIAL_FORWARDING);
+
     use crate::memory::ic;
 
     let old_limits = get_limits();
@@ -191,10 +199,20 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     pub unsafe fn run(&mut self) {
+        #[cfg(debug_assertions)]
+        {
+            crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
+        }
+
         self.alloc_mark_structures();
         self.mark_phase();
         self.compact_phase();
         self.free_mark_structures();
+
+        #[cfg(debug_assertions)]
+        {
+            crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
+        }
     }
 
     unsafe fn alloc_mark_structures(&mut self) {
@@ -460,6 +478,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             if new_pointer as usize != old_pointer as usize {
                 memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
+
+                // Update forwarding pointer
+                let new_obj = new_pointer as *mut Obj;
+                debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
+                (*new_obj).forward = Value::from_ptr(new_pointer as usize);
             }
 
             free += object_size.to_bytes().as_usize();

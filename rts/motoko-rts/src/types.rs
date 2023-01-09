@@ -462,7 +462,7 @@ impl Obj {
         debug_assert!(!is_marked(tag));
         (*self).raw_tag = tag;
         mark_new_allocation(self);
-        debug_assert_eq!(self.tag(), tag);
+        debug_assert_eq!(unmark((*self).raw_tag), tag);
     }
 
     pub unsafe fn is_marked(self: *const Self) -> bool {
@@ -566,13 +566,6 @@ impl Array {
 
     #[inline]
     unsafe fn element_address(self: *const Self, idx: u32) -> usize {
-        self.check_dereferenced_forwarding();
-        debug_assert!(self.len() > idx);
-        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *const Value)
-    }
-
-    pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
         self.check_dereferenced_forwarding();
         debug_assert!(self.len() > idx);
         self.payload_addr() as usize + (idx * WORD_SIZE) as usize
@@ -708,11 +701,11 @@ impl Blob {
         if slop == Words(1) {
             let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
                 as *mut OneWordFiller;
-            (*filler).header.raw_tag = TAG_ONE_WORD_FILLER;
+            (*filler).tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
-            (*filler).header.raw_tag = TAG_FREE_SPACE;
+            (*filler).tag = TAG_FREE_SPACE;
             (*filler).words = slop - Words(1);
         }
 

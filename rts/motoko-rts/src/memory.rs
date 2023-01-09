@@ -50,6 +50,7 @@ pub(crate) unsafe fn alloc_collectable_blob<M: Memory>(mem: &mut M, size: Bytes<
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     let blob = ptr.get_ptr() as *mut Blob;
     (*blob).header.raw_tag = TAG_BLOB;
+    (*blob).header.forward = ptr;
     (*blob).len = size;
     debug_assert!(!(blob as *mut Obj).is_marked());
     ptr
