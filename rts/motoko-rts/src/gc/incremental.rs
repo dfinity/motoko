@@ -218,6 +218,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_evacuating(&mut self) {
+        PARTITION_MAP.as_mut().unwrap().plan_evacuations();
         let state = EvacuationState {
             partition_index: 0,
             sweep_address: None,
@@ -357,7 +358,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
     unsafe fn evacuation_phase_increment(&mut self) {
         while self.state.partition_index < MAX_PARTITIONS {
-            if self.should_evacuate() {
+            if self.current_partition().should_evacuate() {
                 if self.state.sweep_address.is_none() {
                     let partition = self.current_partition();
                     self.state.sweep_address = Some(partition.evacuation_start());
@@ -371,15 +372,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
             self.state.sweep_address = None;
         }
         self.complete_evacuation();
-    }
-
-    unsafe fn should_evacuate(&mut self) -> bool {
-        const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
-        let allocation_partition = PARTITION_MAP.as_ref().unwrap().allocation_partition();
-        let partition = self.current_partition();
-        partition.get_index() != allocation_partition.get_index()
-            && !partition.is_free()
-            && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD
     }
 
     unsafe fn current_partition(&mut self) -> &Partition {
@@ -420,9 +412,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
 ///     current GC run. This is necessary because the incremental GC does neither scan
 ///     nor use write barriers on the call stack.
 /// * During evacuation phase:
-///   - New allocated objects are also marked to retain them in the current GC run.
-///     This is necessary because allocation partitions may be completed during the
-///     evacuation phase and then considered for potential evacuation.
+///   - New allocated objects do not need to be marked since the allocation partition
+///     will not be evacuated and reclaimed in the current GC run.
 /// Summary: New allocated objects are conservatively retained during an active GC run.
 /// `new_object` is the unskewed object pointer.
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
@@ -430,8 +421,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
 pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
-        Phase::Pause | Phase::Stop => false,
-        Phase::Mark(_) | Phase::Evacuate(_) => true,
+        Phase::Pause | Phase::Stop | Phase::Evacuate(_) => false,
+        Phase::Mark(_) => true,
     };
     if should_mark {
         debug_assert!(!new_object.is_marked());
