@@ -1,8 +1,11 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
+use crate::{mem_utils::memcpy_words, memory::Memory, types::*, visitor::visit_pointer_fields};
 
-use self::{mark_stack::MarkStack, partition_map::PartitionMap};
+use self::{
+    mark_stack::MarkStack,
+    partition_map::{PartitionId, PartitionMap},
+};
 
 pub mod mark_stack;
 pub mod partition_map;
@@ -41,31 +44,36 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-static mut LAST_ALLOCATED: Bytes<u64> = Bytes(0);
+static mut LAST_HEAP_OCCUPATION: usize = 0;
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    const ABSOLUTE_GROWTH_THRESHOLD: Bytes<u64> = Bytes(32 * 1024 * 1024);
+    use crate::gc::incremental::partition_map::PARTITION_SIZE;
     const RELATIVE_GROWTH_THRESHOLD: f64 = 0.75;
-    const CRITICAL_LIMIT: Bytes<u32> = Bytes(u32::MAX - 256 * 1024 * 1024);
-    use crate::memory::ic;
-    debug_assert!(ic::ALLOCATED >= LAST_ALLOCATED);
-    let absolute_growth = ic::ALLOCATED - LAST_ALLOCATED;
-    let occupation = PARTITION_MAP
-        .as_ref()
-        .unwrap()
-        .occupied_size(ic::HP as usize);
-    let relative_growth = absolute_growth.0 as f64 / occupation.as_usize() as f64;
-    relative_growth > RELATIVE_GROWTH_THRESHOLD && absolute_growth >= ABSOLUTE_GROWTH_THRESHOLD
+    const CRITICAL_LIMIT: usize = usize::MAX - 256 * 1024 * 1024;
+    let occupation = heap_occupation();
+    debug_assert!(occupation >= LAST_HEAP_OCCUPATION);
+    let absolute_growth = occupation - LAST_HEAP_OCCUPATION;
+    let relative_growth = absolute_growth as f64 / occupation as f64;
+    relative_growth > RELATIVE_GROWTH_THRESHOLD && absolute_growth >= PARTITION_SIZE
         || occupation >= CRITICAL_LIMIT
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_increment_start<M: Memory>() {
-    use crate::memory::ic;
     if IncrementalGC::<M>::pausing() {
-        LAST_ALLOCATED = ic::ALLOCATED;
+        LAST_HEAP_OCCUPATION = heap_occupation();
     }
+}
+
+#[cfg(feature = "ic")]
+unsafe fn heap_occupation() -> usize {
+    use crate::memory::ic;
+    PARTITION_MAP
+        .as_ref()
+        .unwrap()
+        .occupied_size(ic::HP as usize)
+        .as_usize()
 }
 
 #[cfg(feature = "ic")]
@@ -83,6 +91,7 @@ unsafe fn record_increment_stop<M: Memory>() {
 enum Phase {
     Pause,
     Mark(MarkState),
+    Evacuate(EvacuationState),
     Stop, // On canister upgrade
 }
 
@@ -90,6 +99,11 @@ struct MarkState {
     heap_base: usize,
     mark_stack: MarkStack,
     complete: bool,
+}
+
+struct EvacuationState {
+    partition_id: Option<PartitionId>,
+    sweep_address: Option<usize>,
 }
 
 /// GC state retained over multiple GC increments.
@@ -135,7 +149,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if Self::pausing() {
             self.start_marking(limits.base, roots);
         } else if Self::mark_completed() {
-            // TODO
+            self.start_evacuating();
         } else {
             self.increment();
         }
@@ -164,6 +178,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
             Phase::Mark(state) => Increment::instance(self.mem, state).mark_phase_increment(),
+            Phase::Evacuate(state) => {
+                Increment::instance(self.mem, state).evacuation_phase_increment()
+            }
         }
     }
 
@@ -198,6 +215,15 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             }
             _ => false,
         }
+    }
+
+    unsafe fn start_evacuating(&mut self) {
+        let state = EvacuationState {
+            partition_id: Some(PartitionId::first()),
+            sweep_address: None,
+        };
+        PHASE = Phase::Evacuate(state);
+        self.increment();
     }
 }
 
@@ -328,15 +354,67 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 }
 
+impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
+    unsafe fn evacuation_phase_increment(&mut self) {
+        while let Some(partition_id) = self.state.partition_id {
+            let partition_map = PARTITION_MAP.as_ref().unwrap();
+            if partition_map.should_evacuate(partition_id) {
+                if self.state.sweep_address.is_none() {
+                    self.state.sweep_address =
+                        Some(partition_map.evacuation_start_address(partition_id));
+                }
+                self.evacuate_partition();
+                if self.steps > Self::INCREMENT_LIMIT {
+                    return;
+                }
+            }
+            self.state.partition_id = partition_id.next();
+            self.state.sweep_address = None;
+        }
+        self.complete_evacuation();
+    }
+
+    unsafe fn evacuate_partition(&mut self) {
+        let end_address = self.partition_end_address();
+        let sweep_address = self.state.sweep_address.as_mut().unwrap();
+        while *sweep_address < end_address {
+            let object = *sweep_address as *mut Obj;
+            let size = object_size(*sweep_address);
+            if object.is_marked() {
+                println!(100, "EVACUATE {:#x} {}", *sweep_address, size.to_bytes().as_usize());
+                let copy = self.mem.alloc_words(size);
+                memcpy_words(copy.get_ptr(), *sweep_address, size);
+                // TODO: Update forwarding pointer for both the original and the copy
+            }
+            *sweep_address += size.to_bytes().as_usize();
+            assert!(*sweep_address <= end_address);
+            self.steps += 1;
+            if self.steps > Self::INCREMENT_LIMIT {
+                return;
+            }
+        }
+    }
+
+    unsafe fn partition_end_address(&self) -> usize {
+        let partition_map = PARTITION_MAP.as_ref().unwrap();
+        let partition_id = self.state.partition_id.unwrap();
+        partition_map.partition_end_address(partition_id)
+    }
+
+    fn complete_evacuation(&mut self) {}
+}
+
 /// Incremental GC allocation scheme:
-/// * During pause phase:
+/// * During pause:
 ///   - New objects are not marked. Can be reclaimed on the next GC run.
 /// * During mark phase:
 ///   - New allocated objects are conservatively marked and cannot be reclaimed in the
 ///     current GC run. This is necessary because the incremental GC does neither scan
 ///     nor use write barriers on the call stack.
 /// * During evacuation phase:
-///    TODO
+///   - New allocated objects are also marked to retain them in the current GC run. 
+///     This is necessary because allocation partitions may be completed during the 
+///     evacuation phase and then considered for potential evacuation.
 /// Summary: New allocated objects are conservatively retained during an active GC run.
 /// `new_object` is the unskewed object pointer.
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
@@ -345,7 +423,7 @@ pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
         Phase::Pause | Phase::Stop => false,
-        Phase::Mark(_) => true,
+        Phase::Mark(_) | Phase::Evacuate(_) => true,
     };
     if should_mark {
         debug_assert!(!new_object.is_marked());
