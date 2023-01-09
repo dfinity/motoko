@@ -2,7 +2,7 @@ use core::array::from_fn;
 
 use crate::{
     constants::WORD_SIZE,
-    types::{object_size, Bytes, FreeSpace, Obj, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER},
+    types::{object_size, size_of, Bytes, FreeSpace, Obj, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER},
 };
 
 pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
@@ -71,7 +71,7 @@ impl Partition {
         } else {
             block.initialize_tag(TAG_FREE_SPACE);
             let free_space = block as *mut FreeSpace;
-            (*free_space).words = Bytes(remaining_space as u32).to_words();
+            (*free_space).words = Bytes(remaining_space as u32).to_words() - size_of::<Obj>();
         }
     }
 
