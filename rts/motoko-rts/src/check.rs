@@ -31,7 +31,7 @@ unsafe fn set_artificial_forwarding<M: Memory>(_mem: &mut M, active: bool) {
     ARTIFICIAL_FORWARDING = active;
 }
 
-const INVALID_TAG_BITMASK: u32 = 0x8000_0000;
+const INVALID_TAG_BITMASK: u32 = 0x4000_0000;
 
 #[ic_mem_fn]
 /// Forward the object to a new copy and clear the content in the source object.
