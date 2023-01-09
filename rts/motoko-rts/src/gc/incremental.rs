@@ -4,7 +4,7 @@ use crate::{mem_utils::memcpy_words, memory::Memory, types::*, visitor::visit_po
 
 use self::{
     mark_stack::MarkStack,
-    partition_map::{PartitionId, PartitionMap},
+    partition_map::{Partition, PartitionMap, MAX_PARTITIONS},
 };
 
 pub mod mark_stack;
@@ -102,7 +102,7 @@ struct MarkState {
 }
 
 struct EvacuationState {
-    partition_id: Option<PartitionId>,
+    partition_index: usize,
     sweep_address: Option<usize>,
 }
 
@@ -219,7 +219,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn start_evacuating(&mut self) {
         let state = EvacuationState {
-            partition_id: Some(PartitionId::first()),
+            partition_index: 0,
             sweep_address: None,
         };
         PHASE = Phase::Evacuate(state);
@@ -356,32 +356,46 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 
 impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
     unsafe fn evacuation_phase_increment(&mut self) {
-        while let Some(partition_id) = self.state.partition_id {
-            let partition_map = PARTITION_MAP.as_ref().unwrap();
-            if partition_map.should_evacuate(partition_id) {
+        while self.state.partition_index < MAX_PARTITIONS {
+            if self.should_evacuate() {
                 if self.state.sweep_address.is_none() {
-                    self.state.sweep_address =
-                        Some(partition_map.evacuation_start_address(partition_id));
+                    let partition = self.current_partition();
+                    self.state.sweep_address = Some(partition.evacuation_start());
                 }
                 self.evacuate_partition();
                 if self.steps > Self::INCREMENT_LIMIT {
                     return;
                 }
             }
-            self.state.partition_id = partition_id.next();
+            self.state.partition_index += 1;
             self.state.sweep_address = None;
         }
         self.complete_evacuation();
     }
 
+    unsafe fn should_evacuate(&mut self) -> bool {
+        const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
+        let allocation_partition = PARTITION_MAP.as_ref().unwrap().allocation_partition();
+        let partition = self.current_partition();
+        partition.get_index() != allocation_partition.get_index()
+            && !partition.is_free()
+            && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD
+    }
+
+    unsafe fn current_partition(&mut self) -> &Partition {
+        PARTITION_MAP
+            .as_ref()
+            .unwrap()
+            .get_partition(self.state.partition_index)
+    }
+
     unsafe fn evacuate_partition(&mut self) {
-        let end_address = self.partition_end_address();
+        let end_address = self.current_partition().end_address();
         let sweep_address = self.state.sweep_address.as_mut().unwrap();
         while *sweep_address < end_address {
             let object = *sweep_address as *mut Obj;
             let size = object_size(*sweep_address);
             if object.is_marked() {
-                println!(100, "EVACUATE {:#x} {}", *sweep_address, size.to_bytes().as_usize());
                 let copy = self.mem.alloc_words(size);
                 memcpy_words(copy.get_ptr(), *sweep_address, size);
                 // TODO: Update forwarding pointer for both the original and the copy
@@ -395,12 +409,6 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
         }
     }
 
-    unsafe fn partition_end_address(&self) -> usize {
-        let partition_map = PARTITION_MAP.as_ref().unwrap();
-        let partition_id = self.state.partition_id.unwrap();
-        partition_map.partition_end_address(partition_id)
-    }
-
     fn complete_evacuation(&mut self) {}
 }
 
@@ -412,8 +420,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
 ///     current GC run. This is necessary because the incremental GC does neither scan
 ///     nor use write barriers on the call stack.
 /// * During evacuation phase:
-///   - New allocated objects are also marked to retain them in the current GC run. 
-///     This is necessary because allocation partitions may be completed during the 
+///   - New allocated objects are also marked to retain them in the current GC run.
+///     This is necessary because allocation partitions may be completed during the
 ///     evacuation phase and then considered for potential evacuation.
 /// Summary: New allocated objects are conservatively retained during an active GC run.
 /// `new_object` is the unskewed object pointer.

@@ -6,55 +6,34 @@ use crate::{
 };
 
 pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
-const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
+pub const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
-#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
-pub struct PartitionId {
+pub struct Partition {
     index: usize,
-}
-
-impl PartitionId {
-    pub fn from_index(index: usize) -> PartitionId {
-        assert!(index < MAX_PARTITIONS);
-        PartitionId { index }
-    }
-
-    pub fn from_address(address: usize) -> PartitionId {
-        Self::from_index(address / PARTITION_SIZE)
-    }
-
-    pub fn get_index(self) -> usize {
-        self.index
-    }
-
-    pub fn first() -> PartitionId {
-        PartitionId::from_index(0)
-    }
-
-    pub fn next(&self) -> Option<PartitionId> {
-        let next_index = self.index + 1;
-        if next_index < MAX_PARTITIONS {
-            Some(PartitionId::from_index(next_index))
-        } else {
-            None
-        }
-    }
-}
-
-struct Partition {
-    id: PartitionId,
     free: bool,
     marked_space: usize,
     static_space: usize,
 }
 
 impl Partition {
-    fn start_address(&self) -> usize {
-        self.id.get_index() * PARTITION_SIZE
+    pub fn get_index(&self) -> usize {
+        self.index
     }
 
-    fn end_address(&self) -> usize {
+    fn start_address(&self) -> usize {
+        self.index * PARTITION_SIZE
+    }
+
+    pub fn end_address(&self) -> usize {
         self.start_address() + PARTITION_SIZE
+    }
+
+    pub fn evacuation_start(&self) -> usize {
+        self.start_address() + self.static_space
+    }
+
+    pub fn is_free(&self) -> bool {
+        self.free
     }
 
     fn covers_address(&self, address: usize) -> bool {
@@ -75,7 +54,7 @@ impl Partition {
         }
     }
 
-    fn survival_rate(&self) -> f64 {
+    pub fn survival_rate(&self) -> f64 {
         let dynamic_heap_space = PARTITION_SIZE - self.static_space;
         assert!(self.marked_space <= dynamic_heap_space);
         self.marked_space as f64 / dynamic_heap_space as f64
@@ -84,31 +63,32 @@ impl Partition {
 
 pub struct PartitionMap {
     partitions: [Partition; MAX_PARTITIONS],
-    allocation_target: PartitionId,
+    allocation_index: usize, // index of the partition to allocate in
 }
 
 impl PartitionMap {
     pub fn new(heap_base: usize) -> PartitionMap {
-        let allocation_target = PartitionId::from_address(heap_base);
-        let partitions = from_fn(|index| {
-            let id = PartitionId::from_index(index);
-            Partition {
-                id,
-                free: id > allocation_target,
-                marked_space: 0,
-                static_space: if id < allocation_target {
-                    PARTITION_SIZE
-                } else if id == allocation_target {
-                    heap_base % PARTITION_SIZE
-                } else {
-                    0
-                },
-            }
+        let allocation_index = heap_base / PARTITION_SIZE;
+        let partitions = from_fn(|index| Partition {
+            index,
+            free: index > allocation_index,
+            marked_space: 0,
+            static_space: if index < allocation_index {
+                PARTITION_SIZE
+            } else if index == allocation_index {
+                heap_base % PARTITION_SIZE
+            } else {
+                0
+            },
         });
         PartitionMap {
             partitions,
-            allocation_target,
+            allocation_index,
         }
+    }
+
+    pub fn allocation_partition(&self) -> &Partition {
+        &self.partitions[self.allocation_index]
     }
 
     fn allocate_free_partition(&mut self) -> &Partition {
@@ -121,38 +101,8 @@ impl PartitionMap {
         panic!("Out of memory, no free partition available");
     }
 
-    pub fn evacuation_start_address(&self, id: PartitionId) -> usize {
-        assert!(id != self.allocation_target);
-        let partition = self.get_partition(id);
-        partition.start_address() + partition.static_space
-    }
-
-    pub fn partition_end_address(&self, id: PartitionId) -> usize {
-        assert!(id != self.allocation_target);
-        let partition = self.get_partition(id);
-        partition.end_address()
-    }
-
-    pub fn should_evacuate(&self, id: PartitionId) -> bool {
-        const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
-        let partition = self.get_partition(id);
-        id != self.allocation_target
-            && !partition.free
-            && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD
-    }
-
-    fn get_partition(&self, id: PartitionId) -> &Partition {
-        let index = id.get_index();
+    pub fn get_partition(&self, index: usize) -> &Partition {
         &self.partitions[index]
-    }
-
-    fn mutable_partition(&mut self, id: PartitionId) -> &mut Partition {
-        let index = id.get_index();
-        &mut self.partitions[index]
-    }
-
-    fn allocation_partition(&self) -> &Partition {
-        self.get_partition(self.allocation_target)
     }
 
     pub fn occupied_size(&self, heap_pointer: usize) -> Bytes<u32> {
@@ -175,8 +125,7 @@ impl PartitionMap {
     pub unsafe fn record_marked_space(&mut self, object: *mut Obj) {
         let address = object as usize;
         let size = object_size(address);
-        let id = PartitionId::from_address(address);
-        let partition = self.mutable_partition(id);
+        let partition = &mut self.partitions[address / PARTITION_SIZE];
         partition.marked_space += size.to_bytes().as_usize();
     }
 
@@ -188,11 +137,12 @@ impl PartitionMap {
         if allocation_size.as_usize() > PARTITION_SIZE {
             panic!("Allocation exceeds partition size");
         }
-        let partition = self.allocation_partition();
-        assert!(!partition.free);
-        assert!(partition.covers_address(*heap_pointer as usize));
-        assert!(allocation_size.as_usize() < partition.end_address());
-        if *heap_pointer as usize >= partition.end_address() - allocation_size.as_usize() {
+        let allocation_partition = self.allocation_partition();
+        assert!(!allocation_partition.free);
+        assert!(allocation_partition.covers_address(*heap_pointer as usize));
+        assert!(allocation_size.as_usize() < allocation_partition.end_address());
+        if *heap_pointer as usize >= allocation_partition.end_address() - allocation_size.as_usize()
+        {
             self.open_new_allocation_partition(heap_pointer);
         }
     }
@@ -202,6 +152,6 @@ impl PartitionMap {
         old_partition.close(*heap_pointer as usize);
         let new_partition = self.allocate_free_partition();
         *heap_pointer = new_partition.start_address() as u32;
-        self.allocation_target = new_partition.id;
+        self.allocation_index = new_partition.index;
     }
 }
