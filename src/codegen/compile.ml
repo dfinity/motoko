@@ -7091,14 +7091,14 @@ module Var = struct
       compile_unboxed_const ptr,
       SR.Vanilla,
       MutBox.store_field env ^^
-      Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
       compile_unboxed_const ptr ^^
+      Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
     | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
-      Tagged.load_forwarding_pointer env ^^
       compile_unboxed_const ptr ^^
+      Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "pre_write_barrier" ^^
