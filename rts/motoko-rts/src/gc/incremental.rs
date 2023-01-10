@@ -124,7 +124,7 @@ pub struct Roots {
 }
 
 /// Incremental GC.
-/// Each GC call has its new `Memory` instance that shares the common GC state `PHASE`.
+/// Each GC call has its new GC instance that shares the common GC states `PHASE` and `PARTITION_MAP`.
 pub struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
 }
@@ -163,8 +163,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn pre_write_barrier(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
             if value.points_to_or_beyond(state.heap_base) && !state.complete {
-                let mut gc = Increment::instance(self.mem, state);
-                gc.mark_object(value);
+                MarkIncrement::instance(self.mem).mark_object(value);
             }
         }
     }
@@ -179,10 +178,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn increment(&mut self) {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
-            Phase::Mark(state) => Increment::instance(self.mem, state).mark_phase_increment(),
-            Phase::Evacuate(state) => {
-                Increment::instance(self.mem, state).evacuation_phase_increment()
-            }
+            Phase::Mark(_) => MarkIncrement::instance(self.mem).run(),
+            Phase::Evacuate(_) => EvacuateIncrement::instance(self.mem).run()
         }
     }
 
@@ -200,13 +197,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             complete: false,
         };
         PHASE = Phase::Mark(state);
-        if let Phase::Mark(state) = &mut PHASE {
-            let mut gc = Increment::instance(self.mem, state);
-            gc.mark_roots(roots);
-            gc.mark_phase_increment();
-        } else {
-            panic!("Invalid phase");
-        }
+        let mut increment = MarkIncrement::instance(self.mem);
+        increment.mark_roots(roots);
+        increment.run();
     }
 
     unsafe fn mark_completed() -> bool {
@@ -225,13 +218,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             sweep_address: None,
         };
         PHASE = Phase::Evacuate(state);
-        if let Phase::Evacuate(state) = &mut PHASE {
-            let mut gc = Increment::instance(self.mem, state);
-            gc.initiate_evacuations();
-            gc.evacuation_phase_increment();
-        } else {
-            panic!("Invalid phase");
-        }
+        let mut increment = EvacuateIncrement::instance(self.mem);
+        increment.initiate_evacuations();
+        increment.run();
     }
 
     unsafe fn evacuation_completed() -> bool {
@@ -242,28 +231,33 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 }
 
-/// GC increment.
-struct Increment<'a, M: Memory, S: 'static> {
+const INCREMENT_LIMIT: usize = 500_000;
+
+struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
-    partition_map: &'a mut PartitionMap,
-    state: &'static mut S,
     steps: usize,
+    partition_map: &'a mut PartitionMap,
+    heap_base: usize,
+    mark_stack: &'a mut MarkStack,
+    complete: &'a mut bool,
 }
 
-impl<'a, M: Memory + 'a, S: 'static> Increment<'a, M, S> {
-    unsafe fn instance(mem: &'a mut M, state: &'static mut S) -> Increment<'a, M, S> {
-        Increment {
-            mem,
-            partition_map: PARTITION_MAP.as_mut().unwrap(),
-            state,
-            steps: 0,
+impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
+    unsafe fn instance(mem: &'a mut M) -> MarkIncrement<'a, M> {
+        if let Phase::Mark(state) = &mut PHASE {
+            MarkIncrement { 
+                mem, 
+                steps: 0,
+                partition_map: PARTITION_MAP.as_mut().unwrap(), 
+                heap_base: state.heap_base, 
+                mark_stack: &mut state.mark_stack,
+                complete: &mut state.complete
+            }
+        } else {
+            panic!("Invalid phase");
         }
     }
 
-    const INCREMENT_LIMIT: usize = 500_000;
-}
-
-impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     unsafe fn mark_roots(&mut self, roots: Roots) {
         self.mark_static_roots(roots.static_roots);
         self.mark_continuation_table(roots.continuation_table);
@@ -273,9 +267,9 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.state.heap_base);
+            debug_assert!((mutbox as usize) < self.heap_base);
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.state.heap_base {
+            if value.is_ptr() && value.get_ptr() >= self.heap_base {
                 self.mark_object(value);
             }
             self.steps += 1;
@@ -290,8 +284,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
 
     unsafe fn mark_object(&mut self, value: Value) {
         self.steps += 1;
-        debug_assert!(!self.state.complete);
-        debug_assert!((value.get_ptr() >= self.state.heap_base));
+        debug_assert!(!*self.complete);
+        debug_assert!((value.get_ptr() >= self.heap_base));
         assert!(!value.is_forwarded());
         let object = value.as_obj();
         if object.is_marked() {
@@ -302,22 +296,22 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
         debug_assert!(
             object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
         );
-        self.state.mark_stack.push(self.mem, value);
+        self.mark_stack.push(self.mem, value);
     }
 
-    unsafe fn mark_phase_increment(&mut self) {
-        if self.state.complete {
+    unsafe fn run(&mut self) {
+        if *self.complete {
             // allocation after complete marking, wait until next empty call stack increment
-            debug_assert!(self.state.mark_stack.is_empty());
+            debug_assert!(self.mark_stack.is_empty());
             return;
         }
-        while let Some(value) = self.state.mark_stack.pop() {
+        while let Some(value) = self.mark_stack.pop() {
             debug_assert!(value.is_ptr());
             debug_assert!(value.as_obj().is_marked());
             self.mark_fields(value.as_obj());
 
             self.steps += 1;
-            if self.steps > Self::INCREMENT_LIMIT {
+            if self.steps > INCREMENT_LIMIT {
                 return;
             }
         }
@@ -330,7 +324,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
             self,
             object,
             object.tag(),
-            self.state.heap_base,
+            self.heap_base,
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
@@ -342,10 +336,8 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     (*array).header.raw_tag = mark(new_start);
-                    debug_assert!(!gc.state.complete);
-                    gc.state
-                        .mark_stack
-                        .push(gc.mem, Value::from_ptr(array as usize));
+                    debug_assert!(!*gc.complete);
+                    gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
                     gc.steps += SLICE_INCREMENT as usize;
                     new_start
                 } else {
@@ -358,58 +350,80 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
     }
 
     unsafe fn complete_marking(&mut self) {
-        debug_assert!(!self.state.complete);
-        self.state.complete = true;
+        debug_assert!(!*self.complete);
+        *self.complete = true;
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
         sanity_checks::check_mark_completeness(self.mem);
 
         #[cfg(debug_assertions)]
-        self.state.mark_stack.assert_is_garbage();
+        self.mark_stack.assert_is_garbage();
     }
 }
 
-impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
+struct EvacuateIncrement<'a, M: Memory> {
+    mem: &'a mut M,
+    steps: usize,
+    partition_map: &'a mut PartitionMap,
+    partition_index: &'a mut usize,
+    sweep_address: &'a mut Option<usize>,
+}
+
+impl<'a, M: Memory + 'a> EvacuateIncrement<'a, M> {
+    unsafe fn instance(mem: &'a mut M) -> EvacuateIncrement<'a, M> {
+        if let Phase::Evacuate(state) = &mut PHASE {
+            EvacuateIncrement { 
+                mem, 
+                steps: 0,
+                partition_map: PARTITION_MAP.as_mut().unwrap(), 
+                partition_index: &mut state.partition_index,
+                sweep_address: &mut state.sweep_address
+            }
+        } else {
+            panic!("Invalid phase");
+        }
+    }
+
     unsafe fn initiate_evacuations(&mut self) {
         self.partition_map.plan_evacuations();
     }
 
-    unsafe fn evacuation_phase_increment(&mut self) {
-        while self.state.partition_index < MAX_PARTITIONS {
+    unsafe fn run(&mut self) {
+        while *self.partition_index < MAX_PARTITIONS {
             if self.current_partition().to_be_evacuated() {
-                if self.state.sweep_address.is_none() {
-                    self.state.sweep_address = Some(self.current_partition().evacuation_start());
+                if self.sweep_address.is_none() {
+                    *self.sweep_address = Some(self.current_partition().evacuation_start());
                 }
                 self.evacuate_partition();
-                if self.steps > Self::INCREMENT_LIMIT {
+                if self.steps > INCREMENT_LIMIT {
                     return;
                 }
             }
-            self.state.partition_index += 1;
-            self.state.sweep_address = None;
+            *self.partition_index += 1;
+            *self.sweep_address = None;
         }
     }
 
     unsafe fn current_partition(&mut self) -> &Partition {
-        self.partition_map.get_partition(self.state.partition_index)
+        self.partition_map.get_partition(*self.partition_index)
     }
 
     unsafe fn evacuate_partition(&mut self) {
         let end_address = self.current_partition().end_address();
-        while self.state.sweep_address.unwrap() < end_address {
-            let block = Value::from_ptr(self.state.sweep_address.unwrap());
+        while self.sweep_address.unwrap() < end_address {
+            let block = Value::from_ptr(self.sweep_address.unwrap());
             if block.is_obj() {
-                let original = self.state.sweep_address.unwrap() as *mut Obj;
+                let original = self.sweep_address.unwrap() as *mut Obj;
                 if original.is_marked() {
                     self.evacuate_object(original);
                 }
             }
-            let size = block_size(self.state.sweep_address.unwrap());
-            *self.state.sweep_address.as_mut().unwrap() += size.to_bytes().as_usize();
-            assert!(self.state.sweep_address.unwrap() <= end_address);
+            let size = block_size(self.sweep_address.unwrap());
+            *self.sweep_address.as_mut().unwrap() += size.to_bytes().as_usize();
+            assert!(self.sweep_address.unwrap() <= end_address);
             self.steps += 1;
-            if self.steps > Self::INCREMENT_LIMIT {
+            if self.steps > INCREMENT_LIMIT {
                 return;
             }
         }
