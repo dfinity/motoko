@@ -115,3 +115,5 @@ let a = actor {
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+
+//SKIP ic-ref-run

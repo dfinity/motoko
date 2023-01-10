@@ -35,6 +35,8 @@ actor {
   };
 }
 
+//SKIP ic-ref-run
+
 //CALL ingress testBytes "DIDL\x00\x00"
 //CALL ingress testChars "DIDL\x00\x00"
 //CALL ingress testArray "DIDL\x00\x00"
