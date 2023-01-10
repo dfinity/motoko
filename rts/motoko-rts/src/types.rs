@@ -296,7 +296,7 @@ impl Value {
         (*obj).forward
     }
 
-    unsafe fn is_obj(self) -> bool {
+    pub unsafe fn is_obj(self) -> bool {
         let tag = self.tag();
         tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
     }

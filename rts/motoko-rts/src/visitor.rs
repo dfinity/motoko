@@ -112,7 +112,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't have pointers, skip
         }
 
@@ -120,7 +120,8 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             rts_trap_with("encountered NULL object tag in visit_pointer_fields");
         }
 
-        TAG_FWD_PTR | _ => {
+        TAG_FWD_PTR | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE | _ => {
+            println!(100, "ERROR {tag}");
             rts_trap_with("invalid object tag in visit_pointer_fields");
         }
     }
