@@ -117,3 +117,5 @@ actor Await {
 };
 
 Await.Test(); //OR-CALL ingress Test 0x4449444C0000
+
+//SKIP ic-ref-run
