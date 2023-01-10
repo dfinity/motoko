@@ -398,10 +398,12 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
     unsafe fn evacuate_partition(&mut self) {
         let end_address = self.current_partition().end_address();
         while self.state.sweep_address.unwrap() < end_address {
-            let raw_tag = *(self.state.sweep_address.unwrap() as *mut Tag);
-            if is_marked(raw_tag) {
+            let block = Value::from_ptr(self.state.sweep_address.unwrap());
+            if block.is_obj() {
                 let original = self.state.sweep_address.unwrap() as *mut Obj;
-                self.evacuate_object(original);
+                if original.is_marked() {
+                    self.evacuate_object(original);
+                }
             }
             let size = block_size(self.state.sweep_address.unwrap());
             *self.state.sweep_address.as_mut().unwrap() += size.to_bytes().as_usize();

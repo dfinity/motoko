@@ -195,6 +195,7 @@ impl MemoryChecker {
 
     unsafe fn check_object_header(&self, object: Value) {
         assert!(object.is_ptr());
+        object.check_forwarding_pointer();
         let pointer = object.get_ptr();
         assert_ne!(pointer as *const Obj, null());
         assert!(pointer < self.heap.limits.free);
