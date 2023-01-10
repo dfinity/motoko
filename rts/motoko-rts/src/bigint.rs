@@ -43,7 +43,7 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
-    (blob as *mut Obj).initialize_tag(TAG_BIGINT);
+    blob.initialize_tag(TAG_BIGINT);
     (*blob).header.forward = ptr;
 
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
@@ -84,7 +84,7 @@ pub unsafe fn mp_realloc<M: Memory>(
 ) -> *mut libc::c_void {
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
-    debug_assert_eq!((bigint as *mut Obj).tag(), TAG_BIGINT);
+    debug_assert_eq!((bigint as *const Obj).tag(), TAG_BIGINT);
     debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {
@@ -457,7 +457,7 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
 
 #[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
-    debug_assert!((*(stream as *mut Obj)).forward.get_ptr() == stream as usize);
+    debug_assert!(!stream.is_forwarded());
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     stream.write_leb128(&mut tmp, false)
@@ -501,7 +501,7 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
 
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
-    debug_assert!((*(stream as *mut Obj)).forward.get_ptr() == stream as usize);
+    debug_assert!(!stream.is_forwarded());
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 

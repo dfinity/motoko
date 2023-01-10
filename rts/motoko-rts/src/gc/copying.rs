@@ -192,7 +192,8 @@ unsafe fn scav<M: Memory>(
     begin_to_space: usize,
     block: Value,
 ) {
-    if !block.is_obj() { // skip `OneWordFiller` and `FreeSpace` that have no regular object header
+    if !block.is_obj() {
+        // skip `OneWordFiller` and `FreeSpace` that have no regular object header
         return;
     }
     let obj = block.get_ptr() as *mut Obj;

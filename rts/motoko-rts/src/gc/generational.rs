@@ -306,12 +306,12 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     // Remember to visit the array suffix later, store the next visit offset in the tag.
-                    (array as *mut Obj).initialize_tag(new_start);
+                    array.initialize_tag(new_start);
                     push_mark_stack(gc.heap.mem, array as usize);
                     new_start
                 } else {
                     // No further visits of this array. Restore the tag.
-                    (array as *mut Obj).initialize_tag(TAG_ARRAY);
+                    array.initialize_tag(TAG_ARRAY);
                     array.len()
                 }
             },

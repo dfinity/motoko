@@ -36,7 +36,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{size_of, Blob, Bytes, Obj, Stream, Value, TAG_BLOB};
+use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -73,12 +73,6 @@ impl Stream {
     #[inline]
     pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
         self.add(1) as *const u8 // skip closure header
-    }
-
-    #[inline]
-    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
-        debug_assert!((*(self as *mut Obj)).forward.get_ptr() == self as usize);
-        self as *mut Blob
     }
 
     /// make sure that the cache is empty
@@ -199,7 +193,7 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        (blob as *mut Obj).initialize_tag(TAG_BLOB);
+        blob.initialize_tag(TAG_BLOB);
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);

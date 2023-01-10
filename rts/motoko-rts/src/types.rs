@@ -533,6 +533,10 @@ pub struct Array {
 }
 
 impl Array {
+    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
+        (self as *mut Obj).initialize_tag(tag);
+    }
+
     /// Check that the forwarding pointer has already been dereferenced
     #[inline]
     unsafe fn check_dereferenced_forwarding(self: *const Self) {
@@ -671,6 +675,10 @@ pub struct Blob {
 }
 
 impl Blob {
+    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
+        (self as *mut Obj).initialize_tag(tag);
+    }
+
     /// Check that the forwarding pointer has already been dereferenced
     #[inline]
     unsafe fn check_dereferenced_forwarding(self: *const Self) {
@@ -741,6 +749,17 @@ pub struct Stream {
     pub filled: Bytes<u32>, // cache data follows ..
 }
 
+impl Stream {
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        (self as *const Obj).is_forwarded()
+    }
+
+    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
+        debug_assert!(!self.is_forwarded());
+        self as *mut Blob
+    }
+}
+
 /// Only used in copying GC - not to be confused with the forwarding pointer in the general object header
 /// that is used in the incremental GC.
 /// A forwarding pointer placed by the copying GC in place of an evacuated object.
@@ -762,6 +781,10 @@ pub struct BigInt {
 }
 
 impl BigInt {
+    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
+        (self as *mut Obj).initialize_tag(tag);
+    }
+
     /// Check that the forwarding pointer has already been dereferenced
     #[inline]
     unsafe fn check_dereferenced_forwarding(self: *const Self) {
@@ -829,6 +852,10 @@ pub struct Concat {
 }
 
 impl Concat {
+    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
+        (self as *mut Obj).initialize_tag(tag);
+    }
+
     /// Check that the forwarding pointer has already been dereferenced
     #[inline]
     unsafe fn check_dereferenced_forwarding(self: *const Self) {

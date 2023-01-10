@@ -184,7 +184,7 @@ impl MemoryChecker {
             object.tag(),
             0,
             |_, field_address| {
-                // skip null pointers used in text_iter
+                // Ignore null pointers used in text_iter.
                 if (*field_address).get_ptr() as *mut Obj != null_mut() {
                     (&self).check_object_header(*field_address);
                 }

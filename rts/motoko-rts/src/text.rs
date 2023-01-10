@@ -29,7 +29,7 @@
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Obj, Stream, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
@@ -107,7 +107,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     // Create concat node
     let r = mem.alloc_words(size_of::<Concat>());
     let r_concat = r.get_ptr() as *mut Concat;
-    (r_concat as *mut Obj).initialize_tag(TAG_CONCAT);
+    r_concat.initialize_tag(TAG_CONCAT);
     (*r_concat).header.forward = r;
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1;
