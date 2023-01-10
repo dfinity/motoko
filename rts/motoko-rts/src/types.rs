@@ -537,6 +537,10 @@ impl Array {
         (self as *mut Obj).initialize_tag(tag);
     }
 
+    pub unsafe fn is_marked(self: *const Self) -> bool {
+        (self as *const Obj).is_marked()
+    }
+
     /// Check that the forwarding pointer has already been dereferenced
     #[inline]
     unsafe fn check_dereferenced_forwarding(self: *const Self) {

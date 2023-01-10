@@ -1,7 +1,7 @@
 //! Incremental GC sanity checker
 #![allow(dead_code)]
 
-use core::ptr::null_mut;
+use core::ptr::null;
 
 use crate::gc::generational::remembered_set::RememberedSet;
 use crate::memory::Memory;
@@ -185,7 +185,7 @@ impl MemoryChecker {
             0,
             |_, field_address| {
                 // Ignore null pointers used in text_iter.
-                if (*field_address).get_ptr() as *mut Obj != null_mut() {
+                if (*field_address).get_ptr() as *const Obj != null() {
                     (&self).check_object_header(*field_address);
                 }
             },
@@ -196,12 +196,12 @@ impl MemoryChecker {
     unsafe fn check_object_header(&self, object: Value) {
         assert!(object.is_ptr());
         let pointer = object.get_ptr();
-        assert_ne!(pointer as *mut Obj, null_mut());
+        assert_ne!(pointer as *const Obj, null());
         assert!(pointer < self.heap.limits.free);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         if !self.allow_marked_objects {
-            assert!(!(pointer as *mut Obj).is_marked());
+            assert!(!(pointer as *const Obj).is_marked());
         }
     }
 

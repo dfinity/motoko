@@ -336,7 +336,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
                 gc.mark_object(field_value);
             },
             |gc, slice_start, array| {
-                debug_assert!((array as *mut Obj).is_marked());
+                debug_assert!(array.is_marked());
                 const SLICE_INCREMENT: u32 = 128;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
                 if array.len() - slice_start > SLICE_INCREMENT {
@@ -346,12 +346,10 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
                     gc.state
                         .mark_stack
                         .push(gc.mem, Value::from_ptr(array as usize));
-                    debug_assert!((array as *mut Obj).is_marked());
                     gc.steps += SLICE_INCREMENT as usize;
                     new_start
                 } else {
                     (*array).header.raw_tag = mark(TAG_ARRAY);
-                    debug_assert!((array as *mut Obj).is_marked());
                     gc.steps += (array.len() % SLICE_INCREMENT) as usize;
                     array.len()
                 }
