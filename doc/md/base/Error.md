@@ -11,7 +11,6 @@ type Error = Prim.Types.Error
 
 Error value resulting from  `async` computations
 
-
 ## Type `ErrorCode`
 ``` motoko no-repl
 type ErrorCode = Prim.ErrorCode
@@ -35,7 +34,6 @@ type ErrorCode = {
 };
 ```
 
-
 ## Value `reject`
 ``` motoko no-repl
 let reject : (message : Text) -> Error
@@ -49,7 +47,6 @@ import Error "mo:base/Error";
 
 Error.reject("Example error") // can be used as throw argument
 ```
-
 
 ## Value `code`
 ``` motoko no-repl
@@ -66,7 +63,6 @@ let error = Error.reject("Example error");
 Error.code(error) // #canister_reject
 ```
 
-
 ## Value `message`
 ``` motoko no-repl
 let message : (error : Error) -> Text
@@ -82,4 +78,3 @@ import Debug "mo:base/Debug";
 let error = Error.reject("Example error");
 Error.message(error) // "Example error"
 ```
-

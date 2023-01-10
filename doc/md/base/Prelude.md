@@ -17,12 +17,10 @@ Mark incomplete code with the `nyi` and `xxx` functions.
 Each have calls are well-typed in all typing contexts, which
 trap in all execution contexts.
 
-
 ## Function `xxx`
 ``` motoko no-repl
 func xxx() : None
 ```
-
 
 
 
@@ -35,4 +33,3 @@ Mark unreachable code with the `unreachable` function.
 
 Calls are well-typed in all typing contexts, and they
 trap in all execution contexts.
-

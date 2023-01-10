@@ -20,7 +20,6 @@ for (x in i) {
 }
 ```
 
-
 ## `class range`
 
 Creates an iterator that produces all `Nat`s from `x` to `y` including
@@ -34,14 +33,10 @@ assert(?3 == iter.next());
 assert(null == iter.next());
 ```
 
-
-
-
 ### Function `next`
 ``` motoko no-repl
 func next() : ?Nat
 ```
-
 
 
 
@@ -50,14 +45,10 @@ func next() : ?Nat
 Like `range` but produces the values in the opposite
 order.
 
-
-
-
 ### Function `next`
 ``` motoko no-repl
 func next() : ?Int
 ```
-
 
 
 
@@ -78,7 +69,6 @@ Iter.iterate<Nat>(Iter.range(1, 3), func(x, _index) {
 assert(6 == sum)
 ```
 
-
 ## Function `size`
 ``` motoko no-repl
 func size<A>(xs : Iter<A>) : Nat
@@ -86,7 +76,6 @@ func size<A>(xs : Iter<A>) : Nat
 
 Consumes an iterator and counts how many elements were produced
 (discarding them in the process).
-
 
 ## Function `map`
 ``` motoko no-repl
@@ -105,7 +94,6 @@ assert(?6 == mappedIter.next());
 assert(null == mappedIter.next());
 ```
 
-
 ## Function `filter`
 ``` motoko no-repl
 func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>
@@ -122,7 +110,6 @@ assert(?3 == mappedIter.next());
 assert(null == mappedIter.next());
 ```
 
-
 ## Function `make`
 ``` motoko no-repl
 func make<A>(x : A) : Iter<A>
@@ -137,7 +124,6 @@ assert(?10 == iter.next());
 assert(?10 == iter.next());
 // ...
 ```
-
 
 ## Function `fromArray`
 ``` motoko no-repl
@@ -154,7 +140,6 @@ assert(?3 == iter.next());
 assert(null == iter.next());
 ```
 
-
 ## Function `fromArrayMut`
 ``` motoko no-repl
 func fromArrayMut<A>(xs : [var A]) : Iter<A>
@@ -164,14 +149,12 @@ Like `fromArray` but for Arrays with mutable elements. Captures
 the elements of the Array at the time the iterator is created, so
 further modifications won't be reflected in the iterator.
 
-
 ## Value `fromList`
 ``` motoko no-repl
 let fromList
 ```
 
 Like `fromArray` but for Lists.
-
 
 ## Function `toArray`
 ``` motoko no-repl
@@ -185,14 +168,12 @@ let iter = Iter.range(1, 3);
 assert([1, 2, 3] == Iter.toArray(iter));
 ```
 
-
 ## Function `toArrayMut`
 ``` motoko no-repl
 func toArrayMut<A>(xs : Iter<A>) : [var A]
 ```
 
 Like `toArray` but for Arrays with mutable elements.
-
 
 ## Function `toList`
 ``` motoko no-repl
@@ -201,11 +182,9 @@ func toList<A>(xs : Iter<A>) : List.List<A>
 
 Like `toArray` but for Lists.
 
-
 ## Function `sort`
 ``` motoko no-repl
 func sort<A>(xs : Iter<A>, compare : (A, A) -> Order.Order) : Iter<A>
 ```
 
 Sorted iterator.  Will iterate over *all* elements to sort them, necessarily.
-

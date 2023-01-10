@@ -20,7 +20,6 @@ Set the certified data.
 Must be called from an update method, else traps.
 Must be passed a blob of at most 32 bytes, else traps.
 
-
 ## Value `getCertificate`
 ``` motoko no-repl
 let getCertificate : () -> ?Blob
@@ -31,4 +30,3 @@ Gets a certificate
 Returns `null` if no certificate is available, e.g. when processing an
 update call or inter-canister call. This returns a non-`null` value only
 when processing a query call.
-

@@ -245,7 +245,6 @@ let rec declaration_header : Buffer.t -> level -> (unit -> unit) -> declaration_
       plain_of_typ_binders buf plain_render_functions class_doc.type_args;
       bprintf buf "`\n\n";
       doc_comment ();
-      bprintf buf "\n\n";
       sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields;
   | Unknown u ->
      title buf lvl (Printf.sprintf "Unknown %s" u);
@@ -255,7 +254,7 @@ and plain_of_doc : Buffer.t -> level -> doc -> unit =
  fun buf lvl { doc_comment; declaration; _ } ->
   let doc_comment () =
     Option.iter (Buffer.add_string buf) doc_comment;
-    bprintf buf "\n\n"
+    bprintf buf "\n"
   in
   declaration_header buf lvl doc_comment declaration
 

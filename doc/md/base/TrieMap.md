@@ -23,9 +23,6 @@ let map = TrieMap.TrieMap<Nat, Nat>(Nat.equal, Hash.hash)
 
 
 
-
-
-
 ### Function `size`
 ``` motoko no-repl
 func size() : Nat
@@ -40,7 +37,6 @@ map.size()
 
 Runtime: O(1)
 Space: O(1)
-
 
 
 ### Function `put`
@@ -65,7 +61,6 @@ Space: O(log(size))
 map is using a constant time and space equality and hash function.
 
 
-
 ### Function `replace`
 ``` motoko no-repl
 func replace(key : K, value : V) : ?V
@@ -87,7 +82,6 @@ Space: O(log(size))
 map is using a constant time and space equality and hash function.
 
 
-
 ### Function `get`
 ``` motoko no-repl
 func get(key : K) : ?V
@@ -107,7 +101,6 @@ Space: O(log(size))
 
 *Runtime and space assumes that the trie is reasonably balanced and the
 map is using a constant time and space equality and hash function.
-
 
 
 ### Function `delete`
@@ -132,7 +125,6 @@ Space: O(log(size))
 map is using a constant time and space equality and hash function.
 
 
-
 ### Function `remove`
 ``` motoko no-repl
 func remove(key : K) : ?V
@@ -152,7 +144,6 @@ Space: O(log(size))
 
 *Runtime and space assumes that the trie is reasonably balanced and the
 map is using a constant time and space equality and hash function.
-
 
 
 ### Function `keys`
@@ -187,7 +178,6 @@ Space: O(1)
 The iteration itself takes linear time and logarithmic space to execute.
 
 
-
 ### Function `vals`
 ``` motoko no-repl
 func vals() : I.Iter<V>
@@ -218,7 +208,6 @@ Space: O(1)
 
 *The above runtime and space are for the construction of the iterator.
 The iteration itself takes linear time and logarithmic space to execute.
-
 
 
 ### Function `entries`
@@ -252,7 +241,6 @@ Space: O(1)
 *The above runtime and space are for the construction of the iterator.
 The iteration itself takes linear time and logarithmic space to execute.
 
-
 ## Function `clone`
 ``` motoko no-repl
 func clone<K, V>(map : TrieMap<K, V>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : TrieMap<K, V>
@@ -277,7 +265,6 @@ Space: O(size)
 *Runtime and space assumes that the trie underlying `map` is reasonably
 balanced and that `keyEq` and `keyHash` run in O(1) time and space.
 
-
 ## Function `fromEntries`
 ``` motoko no-repl
 func fromEntries<K, V>(entries : I.Iter<(K, V)>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash) : TrieMap<K, V>
@@ -298,7 +285,6 @@ Space: O(size)
 
 *Runtime and space assumes that `entries` returns elements in O(1) time,
 and `keyEq` and `keyHash` run in O(1) time and space.
-
 
 ## Function `map`
 ``` motoko no-repl
@@ -323,7 +309,6 @@ Space: O(size)
 
 *Runtime and space assumes that `f`, `keyEq`, and `keyHash` run in O(1)
 time and space.
-
 
 ## Function `mapFilter`
 ``` motoko no-repl
@@ -355,4 +340,3 @@ Space: O(size)
 
 *Runtime and space assumes that `f`, `keyEq`, and `keyHash` run in O(1)
 time and space.
-

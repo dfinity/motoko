@@ -15,7 +15,6 @@ The composition of two functions `f` and `g` is a function that applies `g` and 
 compose(f, g)(x) = f(g(x))
 ```
 
-
 ## Function `identity`
 ``` motoko no-repl
 func identity<A>(x : A) : A
@@ -27,7 +26,6 @@ import Func "mo:base/Func";
 assert(Func.identity(10) == 10);
 assert(Func.identity(true) == true);
 ```
-
 
 ## Function `const`
 ``` motoko no-repl
@@ -43,4 +41,3 @@ import Func "mo:base/Func";
 assert(Func.const<Nat, Text>(10)("hello") == 10);
 assert(Func.const<Bool, Nat>(true)(20) == true);
 ```
-

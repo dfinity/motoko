@@ -7,4 +7,3 @@ type Iter<T> = { next : () -> ?T }
 ```
 
 
-
