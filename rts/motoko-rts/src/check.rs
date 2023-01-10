@@ -1,3 +1,5 @@
+use core::ptr::null_mut;
+
 use crate::{
     mem_utils::{memcpy_bytes, memzero},
     memory::Memory,
@@ -137,7 +139,11 @@ impl MemoryChecker {
                 object.tag(),
                 0,
                 |_, field_address| {
-                    (&self).check_object_header(*field_address);
+                    let value = *field_address;
+                    // Skip true and null value
+                    if value.is_ptr() && value.get_ptr() as *mut Obj != null_mut() {
+                        (&self).check_object_header(*field_address);
+                    }
                 },
                 |_, _, arr| arr.len(),
             );
