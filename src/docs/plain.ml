@@ -209,7 +209,8 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
 let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
 let end_block buf = bprintf buf "\n```\n\n"
 
-let rec declaration_header : Buffer.t -> level -> (unit -> unit) -> declaration_doc -> unit =
+let rec declaration_header :
+    Buffer.t -> level -> (unit -> unit) -> declaration_doc -> unit =
  fun buf lvl doc_comment -> function
   | Function function_doc ->
       title buf lvl (Printf.sprintf "Function `%s`" function_doc.name);
@@ -245,16 +246,14 @@ let rec declaration_header : Buffer.t -> level -> (unit -> unit) -> declaration_
       plain_of_typ_binders buf plain_render_functions class_doc.type_args;
       bprintf buf "`\n\n";
       doc_comment ();
-      sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields;
+      sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields
   | Unknown u ->
-     title buf lvl (Printf.sprintf "Unknown %s" u);
-     doc_comment ()
+      title buf lvl (Printf.sprintf "Unknown %s" u);
+      doc_comment ()
 
 and plain_of_doc : Buffer.t -> level -> doc -> unit =
  fun buf lvl { doc_comment; declaration; _ } ->
-  let doc_comment () =
-    Option.iter (bprintf buf "%s\n") doc_comment;
-  in
+  let doc_comment () = Option.iter (bprintf buf "%s\n") doc_comment in
   declaration_header buf lvl doc_comment declaration
 
 let render_docs : Common.render_input -> string =
