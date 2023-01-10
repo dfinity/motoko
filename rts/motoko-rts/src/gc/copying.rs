@@ -157,7 +157,7 @@ unsafe fn evac<M: Memory>(
     }
 
     debug_assert!(!(*ptr_loc).is_forwarded());
-    let obj = (*ptr_loc).as_obj();
+    let obj = (*ptr_loc).get_ptr() as *mut Obj;
 
     let obj_size = block_size(obj as usize);
 
