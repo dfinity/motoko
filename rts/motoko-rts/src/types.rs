@@ -282,17 +282,23 @@ impl Value {
         self.forward().get_ptr() != self.get_ptr()
     }
 
-    /// Get the object tag, with potential forwarding. In debug mode panics if the value is not a pointer.
+    /// Get the object tag. No forwarding. Can be applied to any block, regular objects
+    /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
+    /// In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
-        debug_assert!(self.get().is_ptr());
-        self.check_forwarding_pointer();
-        (self.forward().get_ptr() as *mut Obj).tag()
+        unmark(*(self.get_ptr() as *mut Tag))
     }
 
     /// Get the forwarding pointer. Used in incremental GC.
     pub unsafe fn forward(self) -> Value {
+        debug_assert!(self.is_obj());
         let obj = self.get_ptr() as *mut Obj;
         (*obj).forward
+    }
+
+    unsafe fn is_obj(self) -> bool {
+        let tag = self.tag();
+        tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
     }
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
@@ -906,7 +912,7 @@ impl FreeSpace {
 
 /// Returns the heap block size in words.
 /// Handles both objects with header and forwarding pointer
-/// and special blocks such as `OneWordFiller` and `FreeSpace`
+/// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
 /// that do not have a forwarding pointer.
 pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
     let tag = unmark(*(address as *mut Tag));

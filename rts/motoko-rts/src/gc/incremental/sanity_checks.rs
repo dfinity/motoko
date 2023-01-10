@@ -208,9 +208,9 @@ impl MemoryChecker {
     unsafe fn check_heap(&self) {
         let mut pointer = self.heap.limits.base;
         while pointer < self.heap.limits.free {
-            let object = Value::from_ptr(pointer as usize);
-            if object.tag() != TAG_ONE_WORD_FILLER {
-                self.check_object(object);
+            let block = Value::from_ptr(pointer as usize);
+            if block.tag() != TAG_ONE_WORD_FILLER {
+                self.check_object(block);
             }
             pointer += block_size(pointer as usize).to_bytes().as_usize();
         }

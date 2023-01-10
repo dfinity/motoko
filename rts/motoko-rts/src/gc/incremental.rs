@@ -399,29 +399,34 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
 
     unsafe fn evacuate_partition(&mut self) {
         let end_address = self.current_partition().end_address();
-        let sweep_address = self.state.sweep_address.as_mut().unwrap();
-        while *sweep_address < end_address {
-            let original = *sweep_address as *mut Obj;
-            let size = block_size(*sweep_address);
-            if original.is_marked() {
-                debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
-                assert!(!original.is_forwarded());
-                let new_object = self.mem.alloc_words(size);
-                let new_address = new_object.get_ptr();
-                memcpy_words(new_address, *sweep_address, size);
-                let copy = new_address as *mut Obj;
-                // Set the forwarding pointers
-                (*copy).forward = new_object;
-                (*original).forward = new_object;
-                Value::from_ptr(original as usize).check_forwarding_pointer();
+        while self.state.sweep_address.unwrap() < end_address {
+            let raw_tag = *(self.state.sweep_address.unwrap() as *mut Tag);
+            if is_marked(raw_tag) {
+                let original = self.state.sweep_address.unwrap() as *mut Obj;
+                self.evacuate_object(original);
             }
-            *sweep_address += size.to_bytes().as_usize();
-            assert!(*sweep_address <= end_address);
+            let size = block_size(self.state.sweep_address.unwrap());
+            *self.state.sweep_address.as_mut().unwrap() += size.to_bytes().as_usize();
+            assert!(self.state.sweep_address.unwrap() <= end_address);
             self.steps += 1;
             if self.steps > Self::INCREMENT_LIMIT {
                 return;
             }
         }
+    }
+
+    unsafe fn evacuate_object(&mut self, original: *mut Obj) {
+        debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+        assert!(!original.is_forwarded());
+        assert!(original.is_marked());
+        let size = block_size(original as usize);
+        let new_address = self.mem.alloc_words(size);
+        let copy = new_address.get_ptr() as *mut Obj;
+        memcpy_words(copy as usize, original as usize, size);
+        (*copy).forward = new_address;
+        (*original).forward = new_address;
+        assert!(!copy.is_forwarded());
+        assert!(original.is_forwarded());
     }
 }
 
