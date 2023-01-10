@@ -1,14 +1,16 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{mem_utils::memcpy_words, memory::Memory, types::*, visitor::visit_pointer_fields};
+use crate::{memory::Memory, types::*};
 
 use self::{
     mark_stack::MarkStack,
-    partition_map::{Partition, PartitionMap, MAX_PARTITIONS},
+    partition_map::{PartitionMap, MAX_PARTITIONS},
+    phases::{evacuate_phase::EvacuateIncrement, mark_phase::MarkIncrement},
 };
 
 pub mod mark_stack;
 pub mod partition_map;
+mod phases;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
 pub mod write_barrier;
@@ -179,7 +181,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
             Phase::Mark(_) => MarkIncrement::instance(self.mem).run(),
-            Phase::Evacuate(_) => EvacuateIncrement::instance(self.mem).run()
+            Phase::Evacuate(_) => EvacuateIncrement::instance(self.mem).run(),
         }
     }
 
@@ -228,219 +230,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             Phase::Evacuate(state) => state.partition_index == MAX_PARTITIONS,
             _ => false,
         }
-    }
-}
-
-const INCREMENT_LIMIT: usize = 500_000;
-
-struct MarkIncrement<'a, M: Memory> {
-    mem: &'a mut M,
-    steps: usize,
-    partition_map: &'a mut PartitionMap,
-    heap_base: usize,
-    mark_stack: &'a mut MarkStack,
-    complete: &'a mut bool,
-}
-
-impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
-    unsafe fn instance(mem: &'a mut M) -> MarkIncrement<'a, M> {
-        if let Phase::Mark(state) = &mut PHASE {
-            MarkIncrement { 
-                mem, 
-                steps: 0,
-                partition_map: PARTITION_MAP.as_mut().unwrap(), 
-                heap_base: state.heap_base, 
-                mark_stack: &mut state.mark_stack,
-                complete: &mut state.complete
-            }
-        } else {
-            panic!("Invalid phase");
-        }
-    }
-
-    unsafe fn mark_roots(&mut self, roots: Roots) {
-        self.mark_static_roots(roots.static_roots);
-        self.mark_continuation_table(roots.continuation_table);
-    }
-
-    unsafe fn mark_static_roots(&mut self, static_roots: Value) {
-        let root_array = static_roots.as_array();
-        for index in 0..root_array.len() {
-            let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.heap_base);
-            let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap_base {
-                self.mark_object(value);
-            }
-            self.steps += 1;
-        }
-    }
-
-    unsafe fn mark_continuation_table(&mut self, continuation_table: Value) {
-        if continuation_table.is_ptr() {
-            self.mark_object(continuation_table);
-        }
-    }
-
-    unsafe fn mark_object(&mut self, value: Value) {
-        self.steps += 1;
-        debug_assert!(!*self.complete);
-        debug_assert!((value.get_ptr() >= self.heap_base));
-        assert!(!value.is_forwarded());
-        let object = value.as_obj();
-        if object.is_marked() {
-            return;
-        }
-        object.mark();
-        self.partition_map.record_marked_space(object);
-        debug_assert!(
-            object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
-        );
-        self.mark_stack.push(self.mem, value);
-    }
-
-    unsafe fn run(&mut self) {
-        if *self.complete {
-            // allocation after complete marking, wait until next empty call stack increment
-            debug_assert!(self.mark_stack.is_empty());
-            return;
-        }
-        while let Some(value) = self.mark_stack.pop() {
-            debug_assert!(value.is_ptr());
-            debug_assert!(value.as_obj().is_marked());
-            self.mark_fields(value.as_obj());
-
-            self.steps += 1;
-            if self.steps > INCREMENT_LIMIT {
-                return;
-            }
-        }
-        self.complete_marking();
-    }
-
-    unsafe fn mark_fields(&mut self, object: *mut Obj) {
-        debug_assert!(object.is_marked());
-        visit_pointer_fields(
-            self,
-            object,
-            object.tag(),
-            self.heap_base,
-            |gc, field_address| {
-                let field_value = *field_address;
-                gc.mark_object(field_value);
-            },
-            |gc, slice_start, array| {
-                debug_assert!(array.is_marked());
-                const SLICE_INCREMENT: u32 = 128;
-                debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-                if array.len() - slice_start > SLICE_INCREMENT {
-                    let new_start = slice_start + SLICE_INCREMENT;
-                    (*array).header.raw_tag = mark(new_start);
-                    debug_assert!(!*gc.complete);
-                    gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
-                    gc.steps += SLICE_INCREMENT as usize;
-                    new_start
-                } else {
-                    (*array).header.raw_tag = mark(TAG_ARRAY);
-                    gc.steps += (array.len() % SLICE_INCREMENT) as usize;
-                    array.len()
-                }
-            },
-        );
-    }
-
-    unsafe fn complete_marking(&mut self) {
-        debug_assert!(!*self.complete);
-        *self.complete = true;
-
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "ic")]
-        sanity_checks::check_mark_completeness(self.mem);
-
-        #[cfg(debug_assertions)]
-        self.mark_stack.assert_is_garbage();
-    }
-}
-
-struct EvacuateIncrement<'a, M: Memory> {
-    mem: &'a mut M,
-    steps: usize,
-    partition_map: &'a mut PartitionMap,
-    partition_index: &'a mut usize,
-    sweep_address: &'a mut Option<usize>,
-}
-
-impl<'a, M: Memory + 'a> EvacuateIncrement<'a, M> {
-    unsafe fn instance(mem: &'a mut M) -> EvacuateIncrement<'a, M> {
-        if let Phase::Evacuate(state) = &mut PHASE {
-            EvacuateIncrement { 
-                mem, 
-                steps: 0,
-                partition_map: PARTITION_MAP.as_mut().unwrap(), 
-                partition_index: &mut state.partition_index,
-                sweep_address: &mut state.sweep_address
-            }
-        } else {
-            panic!("Invalid phase");
-        }
-    }
-
-    unsafe fn initiate_evacuations(&mut self) {
-        self.partition_map.plan_evacuations();
-    }
-
-    unsafe fn run(&mut self) {
-        while *self.partition_index < MAX_PARTITIONS {
-            if self.current_partition().to_be_evacuated() {
-                if self.sweep_address.is_none() {
-                    *self.sweep_address = Some(self.current_partition().evacuation_start());
-                }
-                self.evacuate_partition();
-                if self.steps > INCREMENT_LIMIT {
-                    return;
-                }
-            }
-            *self.partition_index += 1;
-            *self.sweep_address = None;
-        }
-    }
-
-    unsafe fn current_partition(&mut self) -> &Partition {
-        self.partition_map.get_partition(*self.partition_index)
-    }
-
-    unsafe fn evacuate_partition(&mut self) {
-        let end_address = self.current_partition().end_address();
-        while self.sweep_address.unwrap() < end_address {
-            let block = Value::from_ptr(self.sweep_address.unwrap());
-            if block.is_obj() {
-                let original = self.sweep_address.unwrap() as *mut Obj;
-                if original.is_marked() {
-                    self.evacuate_object(original);
-                }
-            }
-            let size = block_size(self.sweep_address.unwrap());
-            *self.sweep_address.as_mut().unwrap() += size.to_bytes().as_usize();
-            assert!(self.sweep_address.unwrap() <= end_address);
-            self.steps += 1;
-            if self.steps > INCREMENT_LIMIT {
-                return;
-            }
-        }
-    }
-
-    unsafe fn evacuate_object(&mut self, original: *mut Obj) {
-        debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
-        assert!(!original.is_forwarded());
-        assert!(original.is_marked());
-        let size = block_size(original as usize);
-        let new_address = self.mem.alloc_words(size);
-        let copy = new_address.get_ptr() as *mut Obj;
-        memcpy_words(copy as usize, original as usize, size);
-        (*copy).forward = new_address;
-        (*original).forward = new_address;
-        assert!(!copy.is_forwarded());
-        assert!(original.is_forwarded());
     }
 }
 
