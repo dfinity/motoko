@@ -68,12 +68,10 @@ type AssocList<K, V> = AssocList.AssocList<K, V>
 ```
 
 
-
 ## Type `Key`
 ``` motoko no-repl
 type Key<K> = { hash : Hash.Hash; key : K }
 ```
-
 
 
 ## Function `equalKey`

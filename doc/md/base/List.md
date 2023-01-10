@@ -7,7 +7,6 @@ type List<T> = ?(T, List<T>)
 ```
 
 
-
 ## Function `nil`
 ``` motoko no-repl
 func nil<T>() : List<T>

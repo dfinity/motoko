@@ -38,7 +38,6 @@ Space: O(initCapacity)
 ## `class Buffer<X>`
 
 
-
 ### Function `size`
 ``` motoko no-repl
 func size() : Nat

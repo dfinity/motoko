@@ -114,10 +114,8 @@ func map<K, V1, V2>(h : HashMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> H
 ```
 
 
-
 ## Function `mapFilter`
 ``` motoko no-repl
 func mapFilter<K, V1, V2>(h : HashMap<K, V1>, keyEq : (K, K) -> Bool, keyHash : K -> Hash.Hash, mapFn : (K, V1) -> ?V2) : HashMap<K, V2>
 ```
-
 

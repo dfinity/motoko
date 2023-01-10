@@ -23,7 +23,6 @@ func xxx() : None
 ```
 
 
-
 ## Function `unreachable`
 ``` motoko no-repl
 func unreachable() : None

@@ -39,7 +39,6 @@ func next() : ?Nat
 ```
 
 
-
 ## `class revRange`
 
 Like `range` but produces the values in the opposite
@@ -49,7 +48,6 @@ order.
 ``` motoko no-repl
 func next() : ?Int
 ```
-
 
 
 ## Function `iterate`

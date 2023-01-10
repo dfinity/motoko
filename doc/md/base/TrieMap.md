@@ -22,7 +22,6 @@ let map = TrieMap.TrieMap<Nat, Nat>(Nat.equal, Hash.hash)
 ## `class TrieMap<K, V>`
 
 
-
 ### Function `size`
 ``` motoko no-repl
 func size() : Nat

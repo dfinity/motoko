@@ -75,12 +75,10 @@ let loadNat32 : (offset : Nat64) -> Nat32
 ```
 
 
-
 ## Value `storeNat32`
 ``` motoko no-repl
 let storeNat32 : (offset : Nat64, value : Nat32) -> ()
 ```
-
 
 
 ## Value `loadNat8`
@@ -89,12 +87,10 @@ let loadNat8 : (offset : Nat64) -> Nat8
 ```
 
 
-
 ## Value `storeNat8`
 ``` motoko no-repl
 let storeNat8 : (offset : Nat64, value : Nat8) -> ()
 ```
-
 
 
 ## Value `loadNat16`
@@ -103,12 +99,10 @@ let loadNat16 : (offset : Nat64) -> Nat16
 ```
 
 
-
 ## Value `storeNat16`
 ``` motoko no-repl
 let storeNat16 : (offset : Nat64, value : Nat16) -> ()
 ```
-
 
 
 ## Value `loadNat64`
@@ -117,12 +111,10 @@ let loadNat64 : (offset : Nat64) -> Nat64
 ```
 
 
-
 ## Value `storeNat64`
 ``` motoko no-repl
 let storeNat64 : (offset : Nat64, value : Nat64) -> ()
 ```
-
 
 
 ## Value `loadInt32`
@@ -131,12 +123,10 @@ let loadInt32 : (offset : Nat64) -> Int32
 ```
 
 
-
 ## Value `storeInt32`
 ``` motoko no-repl
 let storeInt32 : (offset : Nat64, value : Int32) -> ()
 ```
-
 
 
 ## Value `loadInt8`
@@ -145,12 +135,10 @@ let loadInt8 : (offset : Nat64) -> Int8
 ```
 
 
-
 ## Value `storeInt8`
 ``` motoko no-repl
 let storeInt8 : (offset : Nat64, value : Int8) -> ()
 ```
-
 
 
 ## Value `loadInt16`
@@ -159,12 +147,10 @@ let loadInt16 : (offset : Nat64) -> Int16
 ```
 
 
-
 ## Value `storeInt16`
 ``` motoko no-repl
 let storeInt16 : (offset : Nat64, value : Int16) -> ()
 ```
-
 
 
 ## Value `loadInt64`
@@ -173,12 +159,10 @@ let loadInt64 : (offset : Nat64) -> Int64
 ```
 
 
-
 ## Value `storeInt64`
 ``` motoko no-repl
 let storeInt64 : (offset : Nat64, value : Int64) -> ()
 ```
-
 
 
 ## Value `loadFloat`
@@ -187,12 +171,10 @@ let loadFloat : (offset : Nat64) -> Float
 ```
 
 
-
 ## Value `storeFloat`
 ``` motoko no-repl
 let storeFloat : (offset : Nat64, value : Float) -> ()
 ```
-
 
 
 ## Value `loadBlob`

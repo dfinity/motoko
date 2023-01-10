@@ -8,7 +8,6 @@ See library `Deque` for mixed LIFO/FIFO behavior.
 ## `class Stack<T>`
 
 
-
 ### Function `push`
 ``` motoko no-repl
 func push(x : T)

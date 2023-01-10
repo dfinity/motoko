@@ -9,9 +9,7 @@ type Tree<T> = ?(Int, T, Tree<T>, Tree<T>)
 ```
 
 
-
 ## `class Heap<T>`
-
 
 
 ### Function `share`

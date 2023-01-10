@@ -27,12 +27,10 @@ func equal<Ok, Err>(eqOk : (Ok, Ok) -> Bool, eqErr : (Err, Err) -> Bool, r1 : Re
 ```
 
 
-
 ## Function `compare`
 ``` motoko no-repl
 func compare<Ok, Err>(compareOk : (Ok, Ok) -> Order.Order, compareErr : (Err, Err) -> Order.Order, r1 : Result<Ok, Err>, r2 : Result<Ok, Err>) : Order.Order
 ```
-
 
 
 ## Function `chain`
@@ -134,12 +132,10 @@ func isOk(r : Result<Any, Any>) : Bool
 ```
 
 
-
 ## Function `isErr`
 ``` motoko no-repl
 func isErr(r : Result<Any, Any>) : Bool
 ```
-
 
 
 ## Function `assertOk`

@@ -10,12 +10,10 @@ type Hash = Hash.Hash
 ```
 
 
-
 ## Type `Set`
 ``` motoko no-repl
 type Set<T> = Trie.Trie<T, ()>
 ```
-
 
 
 ## Function `empty`
@@ -87,10 +85,8 @@ func fromArray<T>(arr : [T], elemHash : T -> Hash, eq : (T, T) -> Bool) : Set<T>
 ```
 
 
-
 ## Function `toArray`
 ``` motoko no-repl
 func toArray<T>(s : Set<T>) : [T]
 ```
-
 

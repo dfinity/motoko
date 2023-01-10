@@ -253,8 +253,7 @@ let rec declaration_header : Buffer.t -> level -> (unit -> unit) -> declaration_
 and plain_of_doc : Buffer.t -> level -> doc -> unit =
  fun buf lvl { doc_comment; declaration; _ } ->
   let doc_comment () =
-    Option.iter (Buffer.add_string buf) doc_comment;
-    bprintf buf "\n"
+    Option.iter (bprintf buf "%s\n") doc_comment;
   in
   declaration_header buf lvl doc_comment declaration
 

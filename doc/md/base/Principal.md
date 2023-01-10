@@ -43,19 +43,16 @@ func isAnonymous(p : Principal) : Bool
 ```
 
 
-
 ## Function `hash`
 ``` motoko no-repl
 func hash(principal : Principal) : Hash.Hash
 ```
 
 
-
 ## Function `fromText`
 ``` motoko no-repl
 func fromText(t : Text) : Principal
 ```
-
 
 
 ## Function `equal`
