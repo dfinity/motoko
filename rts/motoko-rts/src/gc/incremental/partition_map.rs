@@ -2,7 +2,7 @@ use core::array::from_fn;
 
 use crate::{
     constants::WORD_SIZE,
-    types::{object_size, size_of, Bytes, FreeSpace, Obj, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER},
+    types::{block_size, size_of, Bytes, FreeSpace, Obj, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER},
 };
 
 pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
@@ -140,7 +140,7 @@ impl PartitionMap {
 
     pub unsafe fn record_marked_space(&mut self, object: *mut Obj) {
         let address = object as usize;
-        let size = object_size(address);
+        let size = block_size(address);
         let partition = &mut self.partitions[address / PARTITION_SIZE];
         partition.marked_space += size.to_bytes().as_usize();
     }

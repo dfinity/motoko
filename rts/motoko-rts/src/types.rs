@@ -893,12 +893,15 @@ impl FreeSpace {
     }
 }
 
-/// Returns object size in words
-pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
-    let obj = obj as *mut Obj;
-    match obj.tag() {
+/// Returns the heap block size in words.
+/// Handles both objects with header and forwarding pointer
+/// and special blocks such as `OneWordFiller` and `FreeSpace` 
+/// that do not have a forwarding pointer.
+pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
+    let tag = unmark(*(address as *mut Tag));
+    match tag {
         TAG_OBJECT => {
-            let object = obj as *mut Object;
+            let object = address as *mut Object;
             let size = object.size();
             size_of::<Object>() + Words(size)
         }
@@ -906,7 +909,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
         TAG_ARRAY => {
-            let array = obj as *mut Array;
+            let array = address as *mut Array;
             let size = array.len();
             size_of::<Array>() + Words(size)
         }
@@ -916,7 +919,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_MUTBOX => size_of::<MutBox>(),
 
         TAG_CLOSURE => {
-            let closure = obj as *mut Closure;
+            let closure = address as *mut Closure;
             let size = closure.size();
             size_of::<Closure>() + Words(size)
         }
@@ -926,7 +929,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_VARIANT => size_of::<Variant>(),
 
         TAG_BLOB => {
-            let blob = obj as *mut Blob;
+            let blob = address as *mut Blob;
             size_of::<Blob>() + blob.len().to_words()
         }
 
@@ -937,7 +940,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_BITS32 => size_of::<Bits32>(),
 
         TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
+            let bigint = address as *mut BigInt;
             size_of::<BigInt>() + bigint.len().to_words()
         }
 
@@ -948,7 +951,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
 
         TAG_FREE_SPACE => {
-            let free_space = obj as *mut FreeSpace;
+            let free_space = address as *mut FreeSpace;
             free_space.size()
         }
 

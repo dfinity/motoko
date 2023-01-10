@@ -109,7 +109,7 @@ unsafe fn print_heap(heap_start: u32, heap_end: u32) {
         print(&write_buf);
         write_buf.reset();
 
-        let obj_size = object_size(p as usize);
+        let obj_size = block_size(p as usize);
         p += obj_size.to_bytes().as_u32();
         i += obj_size;
     }

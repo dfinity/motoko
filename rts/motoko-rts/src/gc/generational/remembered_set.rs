@@ -38,7 +38,7 @@ use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
 use crate::memory::{alloc_collectable_blob, Memory};
-use crate::types::{object_size, Blob, Bytes, Value};
+use crate::types::{block_size, Blob, Bytes, Value};
 
 pub struct RememberedSet {
     hash_table: *mut Blob,
@@ -248,7 +248,7 @@ unsafe fn table_get(table: *mut Blob, index: u32) -> *mut HashEntry {
         (table.payload_addr() as u32 + index * size_of::<HashEntry>() as u32) as *mut HashEntry;
     debug_assert!(
         entry as u32 + size_of::<HashEntry>() as u32
-            <= table as u32 + object_size(table as usize).to_bytes().as_u32()
+            <= table as u32 + block_size(table as usize).to_bytes().as_u32()
     );
     entry
 }

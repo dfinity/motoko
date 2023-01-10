@@ -212,7 +212,7 @@ impl MemoryChecker {
             if object.tag() != TAG_ONE_WORD_FILLER {
                 self.check_object(object);
             }
-            pointer += object_size(pointer as usize).to_bytes().as_usize();
+            pointer += block_size(pointer as usize).to_bytes().as_usize();
         }
     }
 }

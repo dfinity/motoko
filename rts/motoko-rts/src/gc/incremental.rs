@@ -401,10 +401,10 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
         let sweep_address = self.state.sweep_address.as_mut().unwrap();
         while *sweep_address < end_address {
             let original = *sweep_address as *mut Obj;
-            assert_eq!((*original).forward.get_ptr(), original as usize);
-            let size = object_size(*sweep_address);
+            let size = block_size(*sweep_address);
             if original.is_marked() {
                 debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+                assert_eq!((*original).forward.get_ptr(), original as usize);
                 let new_object = self.mem.alloc_words(size);
                 let new_address = new_object.get_ptr();
                 memcpy_words(new_address, *sweep_address, size);

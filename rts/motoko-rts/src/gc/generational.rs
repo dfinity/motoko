@@ -278,7 +278,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         set_bit(obj_idx);
 
         push_mark_stack(self.heap.mem, pointer as usize);
-        self.marked_space += object_size(pointer as usize).to_bytes().as_usize();
+        self.marked_space += block_size(pointer as usize).to_bytes().as_usize();
     }
 
     unsafe fn mark_all_reachable(&mut self) {
@@ -466,7 +466,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             self.unthread(old_pointer, new_pointer);
 
             // Move the object
-            let object_size = object_size(old_pointer as usize);
+            let object_size = block_size(old_pointer as usize);
             if new_pointer as usize != old_pointer as usize {
                 memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
