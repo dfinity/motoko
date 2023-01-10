@@ -79,3 +79,5 @@ actor a {
 await a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
 await a.evaluateAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
 await a.evaluateAsyncStar(); //OR-CALL ingress evaluateAsyncStar "DIDL\x00\x00"
+
+//SKIP ic-ref-run
