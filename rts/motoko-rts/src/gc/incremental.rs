@@ -292,6 +292,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, MarkState> {
         self.steps += 1;
         debug_assert!(!self.state.complete);
         debug_assert!((value.get_ptr() >= self.state.heap_base));
+        assert!(!value.is_forwarded());
         let object = value.as_obj();
         if object.is_marked() {
             return;
@@ -404,7 +405,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
             let size = block_size(*sweep_address);
             if original.is_marked() {
                 debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
-                assert_eq!((*original).forward.get_ptr(), original as usize);
+                assert!(!original.is_forwarded());
                 let new_object = self.mem.alloc_words(size);
                 let new_address = new_object.get_ptr();
                 memcpy_words(new_address, *sweep_address, size);
@@ -412,6 +413,7 @@ impl<'a, M: Memory + 'a> Increment<'a, M, EvacuationState> {
                 // Set the forwarding pointers
                 (*copy).forward = new_object;
                 (*original).forward = new_object;
+                Value::from_ptr(original as usize).check_forwarding_pointer();
             }
             *sweep_address += size.to_bytes().as_usize();
             assert!(*sweep_address <= end_address);

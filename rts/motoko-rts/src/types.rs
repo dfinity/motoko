@@ -276,6 +276,12 @@ impl Value {
         );
     }
 
+    /// Check whether the object's forwarding pointer refers to a different location.
+    pub unsafe fn is_forwarded(self) -> bool {
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() != self.get_ptr()
+    }
+
     /// Get the object tag, with potential forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
         debug_assert!(self.get().is_ptr());
@@ -482,8 +488,13 @@ impl Obj {
     unsafe fn check_dereferenced_forwarding(self: *const Self) {
         #[cfg(debug_assertions)]
         if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).forward.get_ptr(), self as usize);
+            debug_assert!(!self.is_forwarded());
         }
+    }
+
+    /// Check whether the object's forwarding pointer refers to a different location.
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        (*self).forward.get_ptr() != self as usize
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {
@@ -895,7 +906,7 @@ impl FreeSpace {
 
 /// Returns the heap block size in words.
 /// Handles both objects with header and forwarding pointer
-/// and special blocks such as `OneWordFiller` and `FreeSpace` 
+/// and special blocks such as `OneWordFiller` and `FreeSpace`
 /// that do not have a forwarding pointer.
 pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
     let tag = unmark(*(address as *mut Tag));
