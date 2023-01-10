@@ -13,9 +13,11 @@ type None = Prim.Types.None
 
 The empty type. A subtype of all types.
 
+
 ## Value `impossible`
 ``` motoko no-repl
 let impossible : <A>None -> A
 ```
 
 Turns an absurd value into an arbitrary type.
+

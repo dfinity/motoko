@@ -209,8 +209,8 @@ let function_arg : Buffer.t -> function_arg_doc -> unit =
 let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
 let end_block buf = bprintf buf "\n```\n\n"
 
-let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
- fun buf lvl -> function
+let rec declaration_header : Buffer.t -> level -> (unit -> unit) -> declaration_doc -> unit =
+ fun buf lvl doc_comment -> function
   | Function function_doc ->
       title buf lvl (Printf.sprintf "Function `%s`" function_doc.name);
       begin_block buf;
@@ -220,13 +220,15 @@ let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
       sep_by buf ", " (function_arg buf) function_doc.args;
       bprintf buf ")";
       opt_typ buf function_doc.typ;
-      end_block buf
+      end_block buf;
+      doc_comment ()
   | Value value_doc ->
       title buf lvl (Printf.sprintf "Value `%s`" value_doc.name);
       begin_block buf;
       bprintf buf "let %s" value_doc.name;
       opt_typ buf value_doc.typ;
-      end_block buf
+      end_block buf;
+      doc_comment ()
   | Type type_doc ->
       title buf lvl (Printf.sprintf "Type `%s`" type_doc.name);
       begin_block buf;
@@ -234,20 +236,28 @@ let rec declaration_header : Buffer.t -> level -> declaration_doc -> unit =
       plain_of_typ_binders buf plain_render_functions type_doc.type_args;
       bprintf buf " = ";
       plain_of_doc_typ buf type_doc.typ;
-      end_block buf
+      end_block buf;
+      doc_comment ()
   | Class class_doc ->
       title buf lvl "`";
       plain_of_obj_sort buf class_doc.sort;
       bprintf buf "class %s" class_doc.name;
       plain_of_typ_binders buf plain_render_functions class_doc.type_args;
       bprintf buf "`\n\n";
-      sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields
-  | Unknown u -> title buf lvl (Printf.sprintf "Unknown %s" u)
+      doc_comment ();
+      bprintf buf "\n\n";
+      sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields;
+  | Unknown u ->
+     title buf lvl (Printf.sprintf "Unknown %s" u);
+     doc_comment ()
 
 and plain_of_doc : Buffer.t -> level -> doc -> unit =
  fun buf lvl { doc_comment; declaration; _ } ->
-  declaration_header buf lvl declaration;
-  Option.iter (bprintf buf "%s\n") doc_comment
+  let doc_comment () =
+    Option.iter (Buffer.add_string buf) doc_comment;
+    bprintf buf "\n\n"
+  in
+  declaration_header buf lvl doc_comment declaration
 
 let render_docs : Common.render_input -> string =
  fun Common.{ module_comment; declarations; current_path; _ } ->

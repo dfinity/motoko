@@ -145,7 +145,6 @@ let rec adoc_of_declaration :
             class_doc.constructor;
           bprintf buf ")");
       doc_comment ();
-      bprintf buf "\n\n";
       List.iter (adoc_of_doc buf env) class_doc.fields
   | Unknown unknown ->
       signature (fun _ -> bprintf buf "Unknown %s" unknown);

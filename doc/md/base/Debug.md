@@ -21,6 +21,7 @@ Debug.print "Hello New World!";
 Debug.print(debug_show(4)) // Often used with `debug_show` to convert values to Text
 ```
 
+
 ## Function `trap`
 ``` motoko no-repl
 func trap(errorMessage : Text) : None
@@ -56,3 +57,4 @@ actor {
   };
 }
 ```
+

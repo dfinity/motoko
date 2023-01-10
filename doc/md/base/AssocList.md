@@ -26,6 +26,7 @@ map := null; // Alternative: null as empty list.
 map
 ```
 
+
 ## Function `find`
 ``` motoko no-repl
 func find<K, V>(map : AssocList<K, V>, key : K, equal : (K, K) -> Bool) : ?V
@@ -49,6 +50,7 @@ Runtime: O(size)
 Space: O(1)
 
 *Runtime and space assumes that `equal` runs in O(1) time and space.
+
 
 ## Function `replace`
 ``` motoko no-repl
@@ -77,6 +79,7 @@ Runtime: O(size)
 Space: O(size)
 
 *Runtime and space assumes that `equal` runs in O(1) time and space.
+
 
 ## Function `diff`
 ``` motoko no-repl
@@ -110,12 +113,14 @@ Space: O(1)
 
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
+
 ## Function `mapAppend`
 ``` motoko no-repl
 func mapAppend<K, V, W, X>(map1 : AssocList<K, V>, map2 : AssocList<K, W>, f : (?V, ?W) -> X) : AssocList<K, X>
 ```
 
 @deprecated
+
 
 ## Function `disjDisjoint`
 ``` motoko no-repl
@@ -168,6 +173,7 @@ Runtime: O(size1 + size2)
 Space: O(1)
 
 *Runtime and space assumes that `f` runs in O(1) time and space.
+
 
 ## Function `disj`
 ``` motoko no-repl
@@ -227,6 +233,7 @@ Space: O(size1 + size2)
 
 *Runtime and space assumes that `equal` and `combine` runs in O(1) time and space.
 
+
 ## Function `join`
 ``` motoko no-repl
 func join<K, V, W, X>(map1 : AssocList<K, V>, map2 : AssocList<K, W>, equal : (K, K) -> Bool, combine : (V, W) -> X) : AssocList<K, X>
@@ -260,6 +267,7 @@ Space: O(size1 + size2)
 
 *Runtime and space assumes that `equal` and `combine` runs in O(1) time and space.
 
+
 ## Function `fold`
 ``` motoko no-repl
 func fold<K, V, X>(map : AssocList<K, V>, base : X, combine : (K, V, X) -> X) : X
@@ -286,3 +294,4 @@ Runtime: O(size)
 Space: O(size)
 
 *Runtime and space assumes that `combine` runs in O(1) time and space.
+

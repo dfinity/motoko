@@ -32,6 +32,7 @@ let output : ?OutputType = from_candid(rawReply); // { decimals = 8 }
 
 [Learn more about Candid serialization](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/language-manual#candid-serialization)
 
+
 ## Function `countInstructions`
 ``` motoko no-repl
 func countInstructions(comp : () -> ()) : Nat64
@@ -53,3 +54,4 @@ let count = IC.countInstructions(func() {
   // ...
 });
 ```
+

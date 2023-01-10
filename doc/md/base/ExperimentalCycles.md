@@ -18,6 +18,7 @@ let balance : () -> (amount : Nat)
 
 Returns the actor's current balance of cycles as `amount`.
 
+
 ## Value `available`
 ``` motoko no-repl
 let available : () -> (amount : Nat)
@@ -30,6 +31,7 @@ On exit from the current shared function or async expression via `return` or `th
 any remaining available amount is automatically
 refunded to the caller/context.
 
+
 ## Value `accept`
 ``` motoko no-repl
 let accept : (amount : Nat) -> (accepted : Nat)
@@ -38,6 +40,7 @@ let accept : (amount : Nat) -> (accepted : Nat)
 Transfers up to `amount` from `available()` to `balance()`.
 Returns the amount actually transferred, which may be less than
 requested, for example, if less is available, or if canister balance limits are reached.
+
 
 ## Value `add`
 ``` motoko no-repl
@@ -55,6 +58,7 @@ If this total exceeds `balance()`, the caller traps, aborting the call.
 **Note**: the implicit register of added amounts is reset to zero on entry to
 a shared function and after each shared function call or resume from an await.
 
+
 ## Value `refunded`
 ``` motoko no-repl
 let refunded : () -> (amount : Nat)
@@ -65,3 +69,4 @@ context, or zero if no await has occurred yet.
 Calling `refunded()` is solely informational and does not affect `balance()`.
 Instead, refunds are automatically added to the current balance,
 whether or not `refunded` is used to observe them.
+

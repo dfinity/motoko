@@ -26,6 +26,7 @@ let array = Array.init<Nat>(4, 2);
 Runtime: O(size)
 Space: O(size)
 
+
 ## Function `tabulate`
 ``` motoko no-repl
 func tabulate<X>(size : Nat, generator : Nat -> X) : [X]
@@ -42,6 +43,7 @@ Runtime: O(size)
 Space: O(size)
 
 *Runtime and space assumes that `generator` runs in O(1) time and space.
+
 
 ## Function `tabulateVar`
 ``` motoko no-repl
@@ -62,6 +64,7 @@ Space: O(size)
 
 *Runtime and space assumes that `generator` runs in O(1) time and space.
 
+
 ## Function `freeze`
 ``` motoko no-repl
 func freeze<X>(varArray : [var X]) : [X]
@@ -79,6 +82,7 @@ let array = Array.freeze<Nat>(varArray);
 Runtime: O(size)
 
 Space: O(1)
+
 
 ## Function `thaw`
 ``` motoko no-repl
@@ -98,6 +102,7 @@ varArray
 Runtime: O(size)
 
 Space: O(1)
+
 
 ## Function `equal`
 ``` motoko no-repl
@@ -122,6 +127,7 @@ Space: O(1)
 
 *Runtime and space assumes that `equal` runs in O(1) time and space.
 
+
 ## Function `find`
 ``` motoko no-repl
 func find<X>(array : [X], predicate : X -> Bool) : ?X
@@ -139,6 +145,7 @@ Runtime: O(size)
 Space: O(1)
 
 *Runtime and space assumes that `predicate` runs in O(1) time and space.
+
 
 ## Function `append`
 ``` motoko no-repl
@@ -158,6 +165,7 @@ Runtime: O(size1 + size2)
 
 Space: O(size1 + size2)
 
+
 ## Function `sort`
 ``` motoko no-repl
 func sort<X>(array : [X], compare : (X, X) -> Order.Order) : [X]
@@ -176,6 +184,7 @@ Runtime: O(size * log(size))
 
 Space: O(size)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
+
 
 ## Function `sortInPlace`
 ``` motoko no-repl
@@ -198,6 +207,7 @@ Runtime: O(size * log(size))
 Space: O(size)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
+
 ## Function `reverse`
 ``` motoko no-repl
 func reverse<X>(array : [X]) : [X]
@@ -215,6 +225,7 @@ Array.reverse(array)
 Runtime: O(size)
 
 Space: O(1)
+
 
 ## Function `map`
 ``` motoko no-repl
@@ -237,6 +248,7 @@ Space: O(size)
 
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
+
 ## Function `filter`
 ``` motoko no-repl
 func filter<X>(array : [X], predicate : X -> Bool) : [X]
@@ -253,6 +265,7 @@ Runtime: O(size)
 
 Space: O(size)
 *Runtime and space assumes that `predicate` runs in O(1) time and space.
+
 
 ## Function `mapEntries`
 ``` motoko no-repl
@@ -273,6 +286,7 @@ Runtime: O(size)
 Space: O(size)
 
 *Runtime and space assumes that `f` runs in O(1) time and space.
+
 
 ## Function `mapFilter`
 ``` motoko no-repl
@@ -296,6 +310,7 @@ Runtime: O(size)
 
 Space: O(size)
 *Runtime and space assumes that `f` runs in O(1) time and space.
+
 
 ## Function `mapResult`
 ``` motoko no-repl
@@ -324,6 +339,7 @@ Space: O(size)
 
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
+
 ## Function `chain`
 ``` motoko no-repl
 func chain<X, Y>(array : [X], k : X -> [Y]) : [Y]
@@ -344,6 +360,7 @@ Runtime: O(size)
 
 Space: O(size)
 *Runtime and space assumes that `k` runs in O(1) time and space.
+
 
 ## Function `foldLeft`
 ``` motoko no-repl
@@ -372,6 +389,7 @@ Space: O(1)
 
 *Runtime and space assumes that `combine` runs in O(1) time and space.
 
+
 ## Function `foldRight`
 ``` motoko no-repl
 func foldRight<X, A>(array : [X], base : A, combine : (X, A) -> A) : A
@@ -394,6 +412,7 @@ Space: O(1)
 
 *Runtime and space assumes that `combine` runs in O(1) time and space.
 
+
 ## Function `flatten`
 ``` motoko no-repl
 func flatten<X>(arrays : [[X]]) : [X]
@@ -412,6 +431,7 @@ Runtime: O(number of elements in array)
 
 Space: O(number of elements in array)
 
+
 ## Function `make`
 ``` motoko no-repl
 func make<X>(element : X) : [X]
@@ -426,6 +446,7 @@ Array.make(2)
 Runtime: O(1)
 
 Space: O(1)
+
 
 ## Function `vals`
 ``` motoko no-repl
@@ -454,6 +475,7 @@ Runtime: O(1)
 
 Space: O(1)
 
+
 ## Function `keys`
 ``` motoko no-repl
 func keys<X>(array : [X]) : I.Iter<Nat>
@@ -480,3 +502,4 @@ sum
 Runtime: O(1)
 
 Space: O(1)
+
