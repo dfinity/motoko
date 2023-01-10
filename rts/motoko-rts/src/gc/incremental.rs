@@ -29,14 +29,6 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
-    #[cfg(debug_assertions)]
-    if crate::check::ARTIFICIAL_FORWARDING {
-        crate::check::check_memory(mem);
-        return;
-    }
-
-    assert!(!crate::check::ARTIFICIAL_FORWARDING);
-
     use crate::memory::ic;
     let limits = Limits {
         base: ic::get_aligned_heap_base() as usize,

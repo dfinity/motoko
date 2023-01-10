@@ -232,7 +232,7 @@ fn check_dynamic_heap(
             } else {
                 assert_eq!(tag, TAG_ARRAY);
             }
-        
+
             let n_fields = read_word(heap, offset);
             offset += WORD_SIZE;
 

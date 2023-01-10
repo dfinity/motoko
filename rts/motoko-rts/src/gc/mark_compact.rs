@@ -40,14 +40,6 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
-    #[cfg(debug_assertions)]
-    if crate::check::ARTIFICIAL_FORWARDING {
-        crate::check::check_memory(mem);
-        return;
-    }
-
-    assert!(!crate::check::ARTIFICIAL_FORWARDING);
-
     use crate::memory::ic;
 
     compacting_gc_internal(

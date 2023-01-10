@@ -14,7 +14,6 @@ pub mod bigint;
 mod blob_iter;
 pub mod buf;
 mod char;
-pub mod check;
 pub mod constants;
 pub mod continuation_table;
 #[cfg(feature = "ic")]
