@@ -407,11 +407,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         end
       | OtherPrim "rand", [] ->
          k (make_message env "rand" {
-              sort = T.Shared T.Write;
-              control = if env.flavor.has_async_typ then T.Promises else T.Replies;
-              n_args = 0;
-              n_res = 1
-              }
+               sort = T.Shared T.Write;
+               control = if env.flavor.has_async_typ then T.Promises else T.Replies;
+               n_args = 0;
+               n_res = 1
+             }
              (fun c v k' ->
                async env
                  exp.at

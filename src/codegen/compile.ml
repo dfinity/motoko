@@ -9746,13 +9746,12 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
     Const.t_of_v (Const.Array cs),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
   | PrimE (OtherPrim "rand", []) ->
-    let (cs, fills) = List.split [
-      Const.(t_of_v (Lit (const_lit_of_lit env (BlobLit "")))), (fun _ _ -> ());
-      Const.(t_of_v (Lit (const_lit_of_lit env (TextLit "raw_rand")))), (fun _ _ -> ());
-    ]
+    let cs =
+      [Const.(t_of_v (Lit (const_lit_of_lit env (BlobLit "")))); (* ManagementCanister *)
+       Const.(t_of_v (Lit (const_lit_of_lit env (TextLit "raw_rand"))));]
     in
     Const.t_of_v (Const.Array cs),
-    (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+    (fun env ae -> ())
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
