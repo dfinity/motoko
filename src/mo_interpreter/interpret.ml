@@ -430,12 +430,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           List.iter (fun f ->
             match f.T.typ with
             | T.Func (s, c, b, a, r) ->
-              env' := V.Env.add f.T.lab (V.Func (Call_conv.{
-              sort = s;
-              control = c;
-              n_args = List.length a;
-              n_res = List.length r;
-            }, (fun _ _ _ -> trap exp.at "unable to call method %s in actor \"%s\"" f.T.lab (V.as_text v1)))) !env'
+              let conv = Call_conv.{
+                sort = s;
+                control = c;
+                n_args = List.length a;
+                n_res = List.length r;
+              } in
+              let func = fun _ _ _ -> trap exp.at "unable to call method %s in actor \"%s\"" f.T.lab (V.as_text v1) in
+              env' := V.Env.add f.T.lab (V.Func (conv, func)) !env'
             | _ -> trap exp.at "unexpected field type %s for external actor method" (T.string_of_typ f.T.typ)
           ) fs;
           k (V.Obj !env')
