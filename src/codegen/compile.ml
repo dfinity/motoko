@@ -958,7 +958,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "generational_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
-    E.add_func_import env "rts" "incremental_write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "incremental_write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
@@ -7030,11 +7030,9 @@ module Var = struct
       G.i (LocalGet (nr i)) ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "incremental_write_barrier" ^^
-      G.i (LocalGet (nr i)),
+      compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      MutBox.store_field env
+      E.call_import env "rts" "incremental_write_with_barrier"
     | (Some ((HeapInd i), typ), _) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
@@ -7052,11 +7050,9 @@ module Var = struct
       compile_unboxed_const ptr ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "incremental_write_barrier" ^^
-      compile_unboxed_const ptr,
+      compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      MutBox.store_field env
+      E.call_import env "rts" "incremental_write_with_barrier"
     | (Some ((HeapStatic ptr), typ), _) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
@@ -8477,17 +8473,12 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "generational_write_barrier"
   | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
-    let (set_field, get_field) = new_local env "field" in
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
     Arr.idx_bigint env ^^
-    set_field ^^
-    get_field ^^
-    compile_add_const ptr_unskew ^^
-    E.call_import env "rts" "incremental_write_barrier" ^^
-    get_field,
+    compile_add_const ptr_unskew,
     SR.Vanilla,
-    store_ptr
+    E.call_import env "rts" "incremental_write_with_barrier"
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8506,17 +8497,12 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "generational_write_barrier"
   | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) ->
-    let (set_field, get_field) = new_local env "field" in
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
     Object.idx env e.note.Note.typ n ^^
-    set_field ^^
-    get_field ^^
-    compile_add_const ptr_unskew ^^
-    E.call_import env "rts" "incremental_write_barrier" ^^
-    get_field,
+    compile_add_const ptr_unskew,
     SR.Vanilla,
-    store_ptr
+    E.call_import env "rts" "incremental_write_with_barrier"
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)

@@ -21,7 +21,7 @@
 
 use crate::gc::generational::write_barrier::generational_write_barrier;
 use crate::gc::incremental::mark_new_allocation;
-use crate::gc::incremental::write_barrier::incremental_write_barrier;
+use crate::gc::incremental::write_barrier::incremental_pre_write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -576,7 +576,7 @@ impl Array {
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
-        incremental_write_barrier(mem, slot_addr);
+        incremental_pre_write_barrier(mem, slot_addr);
         *slot_addr = value;
         generational_write_barrier(mem, slot_addr as u32);
     }
