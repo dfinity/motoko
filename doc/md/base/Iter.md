@@ -22,12 +22,6 @@ for (x in i) {
 
 ## `class range`
 
-
-### Function `next`
-``` motoko no-repl
-func next() : ?Nat
-```
-
 Creates an iterator that produces all `Nat`s from `x` to `y` including
 both of the bounds.
 ```motoko
@@ -39,16 +33,22 @@ assert(?3 == iter.next());
 assert(null == iter.next());
 ```
 
+### Function `next`
+``` motoko no-repl
+func next() : ?Nat
+```
+
+
 ## `class revRange`
 
+Like `range` but produces the values in the opposite
+order.
 
 ### Function `next`
 ``` motoko no-repl
 func next() : ?Int
 ```
 
-Like `range` but produces the values in the opposite
-order.
 
 ## Function `iterate`
 ``` motoko no-repl
