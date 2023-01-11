@@ -25,11 +25,12 @@ pub unsafe fn check_mark_completeness<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-pub unsafe fn check_memory(allow_marked_objects: bool) {
+pub unsafe fn check_memory(allow_marked_objects: bool, allow_forwarded_pointers: bool) {
     let heap = get_heap();
     let checker = MemoryChecker {
         heap,
         allow_marked_objects,
+        allow_forwarded_pointers,
     };
     checker.check_memory();
 }
@@ -147,6 +148,7 @@ impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
 struct MemoryChecker {
     heap: Heap,
     allow_marked_objects: bool,
+    allow_forwarded_pointers: bool,
 }
 
 impl MemoryChecker {
@@ -196,6 +198,9 @@ impl MemoryChecker {
     unsafe fn check_object_header(&self, object: Value) {
         assert!(object.is_ptr());
         object.check_forwarding_pointer();
+        if !self.allow_forwarded_pointers {
+            assert!(!object.is_forwarded());
+        }
         let pointer = object.get_ptr();
         assert_ne!(pointer as *const Obj, null());
         assert!(pointer < self.heap.limits.free);

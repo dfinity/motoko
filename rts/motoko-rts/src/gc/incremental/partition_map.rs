@@ -1,9 +1,6 @@
 use core::array::from_fn;
 
-use crate::{
-    constants::WORD_SIZE,
-    types::{block_size, size_of, Bytes, FreeSpace, Obj, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER},
-};
+use crate::{constants::WORD_SIZE, types::*};
 
 pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
 pub const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
@@ -21,7 +18,7 @@ impl Partition {
         self.index
     }
 
-    fn start_address(&self) -> usize {
+    pub fn start_address(&self) -> usize {
         self.index * PARTITION_SIZE
     }
 
@@ -29,7 +26,7 @@ impl Partition {
         self.start_address() + PARTITION_SIZE
     }
 
-    pub fn evacuation_start(&self) -> usize {
+    pub fn dynamic_space_start(&self) -> usize {
         self.start_address() + self.static_space
     }
 
@@ -45,18 +42,40 @@ impl Partition {
         address >= self.start_address() && address <= self.end_address()
     }
 
-    unsafe fn close(&self, heap_pointer: usize) {
-        assert!(self.covers_address(heap_pointer));
-        let remaining_space = self.end_address() - heap_pointer;
+    unsafe fn close(&self, free_pointer: usize) {
+        assert!(self.covers_address(free_pointer));
+        assert!(free_pointer >= self.dynamic_space_start());
+        let remaining_space = self.end_address() - free_pointer;
         assert!(remaining_space % WORD_SIZE as usize == 0);
-        let block = heap_pointer as *mut Obj;
+        let block = free_pointer as *mut Obj;
         if remaining_space == WORD_SIZE as usize {
             block.initialize_tag(TAG_ONE_WORD_FILLER);
         } else {
             block.initialize_tag(TAG_FREE_SPACE);
             let free_space = block as *mut FreeSpace;
             (*free_space).words = Bytes(remaining_space as u32).to_words() - size_of::<Obj>();
+
+            #[cfg(debug_assertions)]
+            Self::clear_free_space(free_space, remaining_space);
         }
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn clear_free_space(free_space: *mut FreeSpace, size: usize) {
+        let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
+        let start = free_space as usize + header_size;
+        let length = size - header_size;
+        crate::mem_utils::memzero(start, Words(length as u32));
+    }
+
+    pub unsafe fn free(&mut self) {
+        assert!(!self.free);
+        assert!(self.evacuate);
+        assert_eq!(self.marked_space, 0);
+        assert!(self.dynamic_space_start() < self.end_address());
+        self.close(self.dynamic_space_start());
+        self.free = true;
+        self.evacuate = false;
     }
 
     pub fn survival_rate(&self) -> f64 {
@@ -99,12 +118,27 @@ impl PartitionMap {
             assert!(!partition.evacuate);
             partition.evacuate = self.allocation_index != partition.index
                 && !partition.is_free()
+                && partition.dynamic_space_start() < partition.end_address()
                 && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD
+        }
+    }
+
+    pub unsafe fn free_evacuated_partitions(&mut self) {
+        for partition in &mut self.partitions {
+            partition.marked_space = 0;
+            if partition.to_be_evacuated() {
+                assert!(partition.index != self.allocation_index);
+                partition.free();
+            }
         }
     }
 
     fn allocation_partition(&self) -> &Partition {
         &self.partitions[self.allocation_index]
+    }
+
+    pub fn is_allocation_partition(&self, index: usize) -> bool {
+        self.allocation_index == index
     }
 
     fn allocate_free_partition(&mut self) -> &Partition {
@@ -167,7 +201,7 @@ impl PartitionMap {
         let old_partition = self.allocation_partition();
         old_partition.close(*heap_pointer as usize);
         let new_partition = self.allocate_free_partition();
-        *heap_pointer = new_partition.start_address() as u32;
+        *heap_pointer = new_partition.dynamic_space_start() as u32;
         self.allocation_index = new_partition.index;
     }
 }

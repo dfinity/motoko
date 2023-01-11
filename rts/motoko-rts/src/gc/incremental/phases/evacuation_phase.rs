@@ -41,7 +41,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         while *self.partition_index < MAX_PARTITIONS {
             if self.current_partition().to_be_evacuated() {
                 if self.sweep_address.is_none() {
-                    *self.sweep_address = Some(self.current_partition().evacuation_start());
+                    *self.sweep_address = Some(self.current_partition().dynamic_space_start());
                 }
                 self.evacuate_partition();
                 if self.steps > INCREMENT_LIMIT {
@@ -78,7 +78,9 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {
-        debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+        assert!((original as usize) >= self.current_partition().dynamic_space_start());
+        assert!((original as usize) < self.current_partition().end_address());
+        assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
         assert!(!original.is_forwarded());
         assert!(original.is_marked());
         let size = block_size(original as usize);
@@ -89,5 +91,17 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         (*original).forward = new_address;
         assert!(!copy.is_forwarded());
         assert!(original.is_forwarded());
+
+        #[cfg(debug_assertions)]
+        Self::clear_object_content(original);
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn clear_object_content(original: *mut Obj) {
+        let object_size = block_size(original as usize);
+        let header_size = size_of::<Obj>();
+        let payload_address = original as usize + header_size.to_bytes().as_usize();
+        let payload_size = object_size - header_size;
+        crate::mem_utils::memzero(payload_address, payload_size);
     }
 }

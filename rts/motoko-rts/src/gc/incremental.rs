@@ -5,7 +5,10 @@ use crate::{memory::Memory, types::*};
 use self::{
     mark_stack::MarkStack,
     partition_map::{PartitionMap, MAX_PARTITIONS},
-    phases::{evacuation_phase::EvacuationIncrement, marking_phase::MarkingIncrement},
+    phases::{
+        evacuation_phase::EvacuationIncrement, marking_phase::MarkingIncrement,
+        updating_phase::UpdatingIncrement,
+    },
 };
 
 pub mod mark_stack;
@@ -90,11 +93,24 @@ unsafe fn record_increment_stop<M: Memory>() {
     }
 }
 
+/// GC phases per run. Each of the following phases is performed in potentially multiple increments.
+/// 1. Marking: Incremental full-heap snapshot-at-the-beginning marking. Must start on empty call stack.
+///     * Concurrent allocations are conservatively marked.
+///     * Concurrent pointer writes are handled by the write barrier.
+/// 2. Evacuation: Incremental compacting evacuation of high-garbage partitions.
+///     * Moving live objects out of the selected partitions to new partitions.
+///     * Concurrent accesses to moved objects are handled by pointer forwarding.
+/// 3. Updating: Updating old pointers to new forwarded addresses. Must complete on empty call stack.
+///     * Also clearing mark bit of all alive objects.
+///     * Concurrent copying of old pointer values is intercepted to resolve forwarding.
+/// Finally, the evacuated partitions are freed.
+
 enum Phase {
-    Pause,
-    Mark(MarkingState),
-    Evacuate(EvacuationState),
-    Stop, // On canister upgrade.
+    Pause,                     // Inactive, waiting for next GC run.
+    Mark(MarkingState),        // Incremental marking.
+    Evacuate(EvacuationState), // Incremental evacuation compact.
+    Update(UpdatingState),     // Incremental pointer updates.
+    Stop,                      // Stopped on canister upgrade.
 }
 
 struct MarkingState {
@@ -106,6 +122,12 @@ struct MarkingState {
 struct EvacuationState {
     partition_index: usize,
     sweep_address: Option<usize>,
+}
+
+struct UpdatingState {
+    limits: Limits,
+    partition_index: usize,
+    scan_address: Option<usize>,
 }
 
 /// GC state retained over multiple GC increments.
@@ -153,9 +175,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         } else if Self::mark_completed() {
             self.start_evacuating();
         } else if Self::evacuation_completed() {
-            // TODO
+            self.start_updating(limits);
         } else {
             self.increment();
+        }
+        if Self::updating_completed() {
+            self.complete_run();
         }
     }
 
@@ -182,6 +207,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             Phase::Pause | Phase::Stop => {}
             Phase::Mark(_) => MarkingIncrement::instance(self.mem).run(),
             Phase::Evacuate(_) => EvacuationIncrement::instance(self.mem).run(),
+            Phase::Update(_) => UpdatingIncrement::instance().run(),
         }
     }
 
@@ -190,7 +216,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
-        sanity_checks::check_memory(false);
+        sanity_checks::check_memory(false, false);
 
         let mark_stack = MarkStack::new(self.mem);
         let state = MarkingState {
@@ -215,6 +241,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_evacuating(&mut self) {
+        debug_assert!(Self::mark_completed());
         let state = EvacuationState {
             partition_index: 0,
             sweep_address: None,
@@ -231,6 +258,37 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             _ => false,
         }
     }
+
+    unsafe fn start_updating(&mut self, limits: Limits) {
+        debug_assert!(Self::evacuation_completed());
+        let state = UpdatingState {
+            limits,
+            partition_index: 0,
+            scan_address: None,
+        };
+        PHASE = Phase::Update(state);
+        self.increment();
+    }
+
+    unsafe fn updating_completed() -> bool {
+        match &PHASE {
+            Phase::Update(state) => state.partition_index == MAX_PARTITIONS,
+            _ => false,
+        }
+    }
+
+    /// Only to be called when the call stack is empty and all pointers forwards have been updated.
+    unsafe fn complete_run(&mut self) {
+        debug_assert!(Self::updating_completed());
+        PARTITION_MAP.as_mut().unwrap().free_evacuated_partitions();
+        PHASE = Phase::Pause;
+
+        // Note: The memory check only works if the free space is cleared in `partition_map`.
+        // Otherwise, there exist the remainder of garbage objects that have been conceptually freed.
+        #[cfg(debug_assertions)]
+        #[cfg(feature = "ic")]
+        sanity_checks::check_memory(false, false);
+    }
 }
 
 /// Incremental GC allocation scheme:
@@ -240,9 +298,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 ///   - New allocated objects are conservatively marked and cannot be reclaimed in the
 ///     current GC run. This is necessary because the incremental GC does neither scan
 ///     nor use write barriers on the call stack.
-/// * During evacuation phase:
+/// * During evacuation and updating phase:
 ///   - New allocated objects do not need to be marked since the allocation partition
 ///     will not be evacuated and reclaimed in the current GC run.
+/// * When GC is stopped on canister upgrade:
+///   - The GC will not resume and thus marking is irrelevant.
 /// Summary: New allocated objects are conservatively retained during an active GC run.
 /// `new_object` is the unskewed object pointer.
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
@@ -250,8 +310,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
-        Phase::Pause | Phase::Stop | Phase::Evacuate(_) => false,
         Phase::Mark(_) => true,
+        _ => false,
     };
     if should_mark {
         debug_assert!(!new_object.is_marked());

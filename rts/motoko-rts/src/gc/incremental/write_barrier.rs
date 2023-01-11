@@ -9,7 +9,7 @@ use crate::{
     types::{is_skewed, Value},
 };
 
-/// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding. 
+/// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
 /// Used for the incremental GC.
 /// `location` (unskewed) denotes the field or array element where the value will be written to.
 /// `value` (skewed if a pointer) denotes the value that will be written to the location.
