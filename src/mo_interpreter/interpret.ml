@@ -421,26 +421,30 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_lit env lit)
   | ActorUrlE url ->
     interpret_exp env url (fun v1 ->
-      match Ic.Url.decode_principal (V.as_text v1) with
+      let url_text = V.as_text v1 in
+      match Ic.Url.decode_principal url_text with
       (* create placeholder functions (see #3683) *)
       | Ok bytes ->
         (match exp.note.note_typ with
         | T.Obj (_, fs) ->
-          let env' = ref V.Env.empty in
-          List.iter (fun f ->
+          let env' = List.fold_right (fun f env' ->
             match f.T.typ with
             | T.Func (s, c, b, a, r) ->
-              let conv = Call_conv.{
+              let func = fun _ _ k ->
+                match (url_text, f.T.lab) with
+                | ("aaaaa-aa", "raw_rand") ->
+                  k (V.Text (String.init 32 (fun _ -> Char.chr (Random.int 256))))
+                | _ ->  trap exp.at "unsupported method %s in actor \"%s\"" f.T.lab (V.as_text v1)
+              in
+              V.Env.add f.T.lab (V.Func (CC.{
                 sort = s;
                 control = c;
                 n_args = List.length a;
                 n_res = List.length r;
-              } in
-              let func = fun _ _ _ -> trap exp.at "unable to call method %s in actor \"%s\"" f.T.lab (V.as_text v1) in
-              env' := V.Env.add f.T.lab (V.Func (conv, func)) !env'
+              }, func)) env'
             | _ -> trap exp.at "unexpected field type %s for external actor method" (T.string_of_typ f.T.typ)
-          ) fs;
-          k (V.Obj !env')
+          ) fs V.Env.empty in
+          k (V.Obj env')
         | _ -> trap exp.at "unexpected type for actor")
       | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
