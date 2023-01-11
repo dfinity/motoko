@@ -9681,6 +9681,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
 
       (* a few prims cannot be safely inlined *)
       let inlineable_prim = function
+      | OtherPrim "rand" -> false
       | RetPrim -> false
       | BreakPrim _ -> false
       | ThrowPrim -> fatal "internal error: left-over ThrowPrim"

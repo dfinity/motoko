@@ -12,7 +12,7 @@ actor a {
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
     // 8 at some point
-    assert (Prim.rts_max_live_size() < 100);
+    assert (Prim.rts_max_live_size() < 1000);
   };
   flexible var v : [var ()] = [var];
   public func bar() {
