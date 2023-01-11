@@ -18,7 +18,7 @@ impl Partition {
         self.index
     }
 
-    pub fn start_address(&self) -> usize {
+    fn start_address(&self) -> usize {
         self.index * PARTITION_SIZE
     }
 

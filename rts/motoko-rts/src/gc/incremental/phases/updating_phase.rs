@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
         partition_map::{PartitionMap, MAX_PARTITIONS},
-        Limits, Phase, PARTITION_MAP, PHASE,
+        Limits, Phase, Roots, PARTITION_MAP, PHASE,
     },
     types::*,
     visitor::visit_pointer_fields,
@@ -32,6 +32,42 @@ impl<'a> UpdatingIncrement<'a> {
         }
     }
 
+    pub unsafe fn update_roots(&mut self, roots: Roots) {
+        self.update_static_roots(roots.static_roots);
+        self.update_continuation_table(roots.continuation_table);
+    }
+
+    unsafe fn update_static_roots(&mut self, static_roots: Value) {
+        let root_array = static_roots.as_array();
+        for index in 0..root_array.len() {
+            let mutbox = root_array.get(index).as_mutbox();
+            debug_assert!((mutbox as usize) < self.limits.base);
+            let value = (*mutbox).field;
+            if value.is_ptr() && value.get_ptr() >= self.limits.base {
+                (*mutbox).field = value.forward_if_possible();
+            }
+            self.steps += 1;
+        }
+    }
+
+    unsafe fn update_continuation_table(&mut self, continuation_table: Value) {
+        if continuation_table.is_ptr() {
+            visit_pointer_fields(
+                self,
+                continuation_table.get_ptr() as *mut Obj,
+                continuation_table.tag(),
+                self.limits.base,
+                |_, field_address| {
+                    *field_address = (*field_address).forward_if_possible();
+                },
+                |gc, _, array| {
+                    gc.steps += array.len() as usize;
+                    array.len()
+                },
+            );
+        }
+    }
+
     pub unsafe fn run(&mut self) {
         while *self.partition_index < MAX_PARTITIONS {
             let partition = self.partition_map.get_partition(*self.partition_index);
@@ -49,7 +85,7 @@ impl<'a> UpdatingIncrement<'a> {
     unsafe fn update_partition(&mut self) {
         let partition = self.partition_map.get_partition(*self.partition_index);
         if self.scan_address.is_none() {
-            *self.scan_address = Some(partition.start_address());
+            *self.scan_address = Some(partition.dynamic_space_start());
         }
         let end_address = if self
             .partition_map

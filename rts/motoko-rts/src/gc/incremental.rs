@@ -175,7 +175,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         } else if Self::mark_completed() {
             self.start_evacuating();
         } else if Self::evacuation_completed() {
-            self.start_updating(limits);
+            self.start_updating(limits, roots);
         } else {
             self.increment();
         }
@@ -259,7 +259,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    unsafe fn start_updating(&mut self, limits: Limits) {
+    unsafe fn start_updating(&mut self, limits: Limits, roots: Roots) {
         debug_assert!(Self::evacuation_completed());
         let state = UpdatingState {
             limits,
@@ -267,7 +267,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             scan_address: None,
         };
         PHASE = Phase::Update(state);
-        self.increment();
+        let mut increment = UpdatingIncrement::instance();
+        increment.update_roots(roots);
+        increment.run();
     }
 
     unsafe fn updating_completed() -> bool {
