@@ -17,6 +17,7 @@ Ordered, (red-black) tree of entries.
 
 ## `class RBTree<X, Y>`
 
+Create an order map from an order function for its keys.
 
 ### Function `share`
 ``` motoko no-repl
@@ -88,7 +89,6 @@ func entriesRev() : I.Iter<(X, Y)>
 An iterator for the key-value entries of the map, in descending key order.
 
 iterator is persistent, like the tree itself
-Create an order map from an order function for its keys.
 
 ## Function `iter`
 ``` motoko no-repl
