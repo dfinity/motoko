@@ -13,7 +13,7 @@ use crate::{
 /// `location` (unskewed) denotes the field or array element that will be written.
 /// The barrier is conservatively called even if the stored value might not be a pointer.
 #[ic_mem_fn]
-pub unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
+pub unsafe fn incremental_write_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
     debug_assert!(!is_skewed(location as u32));
     debug_assert_ne!(location, core::ptr::null_mut());
     IncrementalGC::instance(mem).pre_write_barrier(*location);

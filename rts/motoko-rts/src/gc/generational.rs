@@ -30,7 +30,7 @@ use self::write_barrier::REMEMBERED_SET;
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
     crate::memory::ic::initialize_memory(true);
-    write_barrier::init_post_write_barrier(mem);
+    write_barrier::init_generational_write_barrier(mem);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -79,7 +79,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
         sanity_checks::take_snapshot(&mut gc.heap);
     }
 
-    write_barrier::init_post_write_barrier(gc.heap.mem);
+    write_barrier::init_generational_write_barrier(gc.heap.mem);
 }
 
 #[cfg(feature = "ic")]

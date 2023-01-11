@@ -19,9 +19,9 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::post_write_barrier;
+use crate::gc::generational::write_barrier::generational_write_barrier;
 use crate::gc::incremental::mark_new_allocation;
-use crate::gc::incremental::write_barrier::pre_write_barrier;
+use crate::gc::incremental::write_barrier::incremental_write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -567,7 +567,7 @@ impl Array {
         let slot_addr = self.element_address(idx) as *mut Value;
         *slot_addr = value;
         if value.is_ptr() {
-            post_write_barrier(mem, slot_addr as u32);
+            generational_write_barrier(mem, slot_addr as u32);
         }
     }
 
@@ -576,9 +576,9 @@ impl Array {
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
-        pre_write_barrier(mem, slot_addr);
+        incremental_write_barrier(mem, slot_addr);
         *slot_addr = value;
-        post_write_barrier(mem, slot_addr as u32);
+        generational_write_barrier(mem, slot_addr as u32);
     }
 
     /// Write a scalar value to an array element.
