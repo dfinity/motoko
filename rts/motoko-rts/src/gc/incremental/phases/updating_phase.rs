@@ -119,30 +119,37 @@ impl<'a> UpdatingIncrement<'a> {
     }
 
     unsafe fn update_fields(&mut self, object: *mut Obj) {
-        debug_assert!(object.is_marked());
-        visit_pointer_fields(
-            self,
-            object,
-            object.tag(),
-            self.limits.base,
-            |_, field_address| {
-                *field_address = (*field_address).forward_if_possible();
-            },
-            |gc, slice_start, array| {
-                debug_assert!(array.is_marked());
-                const SLICE_INCREMENT: u32 = 128;
-                debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-                if array.len() - slice_start > SLICE_INCREMENT {
-                    let new_start = slice_start + SLICE_INCREMENT;
-                    (*array).header.raw_tag = mark(new_start);
-                    gc.steps += SLICE_INCREMENT as usize;
-                    new_start
-                } else {
-                    (*array).header.raw_tag = mark(TAG_ARRAY);
-                    gc.steps += (array.len() % SLICE_INCREMENT) as usize;
-                    array.len()
-                }
-            },
-        );
+        assert!(object.is_marked());
+        assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
+        loop {
+            // Loop over array slices and return if GC increment is exceeded.
+            visit_pointer_fields(
+                self,
+                object,
+                object.tag(),
+                self.limits.base,
+                |_, field_address| {
+                    *field_address = (*field_address).forward_if_possible();
+                },
+                |gc, slice_start, array| {
+                    debug_assert!(array.is_marked());
+                    const SLICE_INCREMENT: u32 = 128;
+                    debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
+                    if array.len() - slice_start > SLICE_INCREMENT {
+                        let new_start = slice_start + SLICE_INCREMENT;
+                        (*array).header.raw_tag = mark(new_start);
+                        gc.steps += SLICE_INCREMENT as usize;
+                        new_start
+                    } else {
+                        (*array).header.raw_tag = mark(TAG_ARRAY);
+                        gc.steps += (array.len() % SLICE_INCREMENT) as usize;
+                        array.len()
+                    }
+                },
+            );
+            if object.tag() < TAG_ARRAY_SLICE_MIN || self.steps > INCREMENT_LIMIT {
+                return;
+            }
+        }
     }
 }
