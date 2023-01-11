@@ -9,7 +9,7 @@ actor a {
 //    Prim.debugPrint(debug_show {t1;b1;t2;b2});
     assert b1.size() == 32;
     assert b2.size() == 32;
-//    assert b1 != b2 // might fail, but not likely except on the replica! WTF?
+//    assert b1 != b2 // might fail, but not likely except on drun!
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

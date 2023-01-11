@@ -8657,12 +8657,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   (* Other prims, unary *)
 
-  | OtherPrim "rand", [] ->
-    SR.Vanilla,
-    (* TODO: wasi? *)
-    Blob.lit env "" ^^
-    IC.actor_public_field env "raw_rand"
-
   | OtherPrim "array_len", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
@@ -9681,7 +9675,6 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
 
       (* a few prims cannot be safely inlined *)
       let inlineable_prim = function
-      | OtherPrim "rand" -> false
       | RetPrim -> false
       | BreakPrim _ -> false
       | ThrowPrim -> fatal "internal error: left-over ThrowPrim"
@@ -9752,7 +9745,14 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
     Const.t_of_v (Const.Array cs),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
-
+  | PrimE (OtherPrim "rand", []) ->
+    let (cs, fills) = List.split [
+      Const.(t_of_v (Lit (const_lit_of_lit env (BlobLit "")))), (fun _ _ -> ());
+      Const.(t_of_v (Lit (const_lit_of_lit env (TextLit "raw_rand")))), (fun _ _ -> ());
+    ]
+    in
+    Const.t_of_v (Const.Array cs),
+    (fun env ae -> List.iter (fun fill -> fill env ae) fills)
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
