@@ -406,7 +406,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
          async env
            exp.at
            (fun k'' r ->
-             k'' (V.Blob ""))
+             k'' (V.Blob (V.Blob.rand32())))
            k')) (* add random bytes *)
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ,

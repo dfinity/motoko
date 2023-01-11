@@ -416,7 +416,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
                async env
                  exp.at
                  (fun k'' r ->
-                   k'' (V.Blob ""))
+                   k'' (V.Blob (V.Blob.rand32())))
                  k'))
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in

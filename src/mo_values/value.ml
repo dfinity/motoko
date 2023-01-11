@@ -14,7 +14,8 @@ module Blob = struct
           "\\" ^ Lib.Hex.hex_of_char c
         ) (String.to_seq b)
       )
-    )
+      )
+  let rand32() = String.init 32 (fun _ -> Char.chr (Random.int 256))
 end
 
 (* Types *)

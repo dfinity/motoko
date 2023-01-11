@@ -3,6 +3,7 @@ open Numerics
 
 module Blob : sig
   val escape : string -> string
+  val rand32 : unit -> string
 end
 
 (* Environment *)
