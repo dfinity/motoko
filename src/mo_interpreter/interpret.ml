@@ -422,7 +422,24 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ActorUrlE url ->
     interpret_exp env url (fun v1 ->
       match Ic.Url.decode_principal (V.as_text v1) with
-      | Ok bytes -> k (V.Blob bytes)
+      (* create placeholder functions (see #3683) *)
+      | Ok bytes ->
+        (match exp.note.note_typ with
+        | T.Obj (_, fs) ->
+          let env' = ref V.Env.empty in
+          List.iter (fun f ->
+            match f.T.typ with
+            | T.Func (s, c, b, a, r) ->
+              env' := V.Env.add f.T.lab (V.Func (Call_conv.{
+              sort = s;
+              control = c;
+              n_args = List.length a;
+              n_res = List.length r;
+            }, (fun _ _ _ -> trap exp.at "unable to call method %s in actor \"%s\"" f.T.lab (V.as_text v1)))) !env'
+            | _ -> trap exp.at "unexpected field type %s for external actor method" (T.string_of_typ f.T.typ)
+          ) fs;
+          k (V.Obj !env')
+        | _ -> trap exp.at "unexpected type for actor")
       | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
   | UnE (ot, op, exp1) ->
@@ -497,21 +514,21 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | "put" -> array_put
           | "keys" -> array_keys
           | "vals" -> array_vals
-          | _ -> assert false
+          | s -> invalid_arg s
         in k (f vs exp.at)
       | V.Text s ->
         let f = match id.it with
           | "size" -> text_len
           | "chars" -> text_chars
-          | _ -> assert false
+          | s -> invalid_arg s
         in k (f s exp.at)
       | V.Blob b ->
         let f = match id.it with
           | "size" -> blob_size
           | "vals" -> blob_vals
-          | _ -> assert false
+          | s -> invalid_arg s
         in k (f b exp.at)
-      | _ -> assert false
+      | _ -> invalid_arg id.it
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->
