@@ -400,6 +400,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
+  | PrimE "rand" ->
+    k (Value.async_func T.Write 0 1
+      (fun c v k' ->
+         async env
+           exp.at
+           (fun k'' r ->
+             k'' (V.Blob ""))
+           k')) (* add random bytes *)
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
        Prim.prim { Prim.trap = trap exp.at "%s" } s

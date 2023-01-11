@@ -241,7 +241,6 @@ let make_message env x cc f : V.value =
   | T.Promises -> make_async_message env x cc f
   | T.Replies -> make_replying_message env x cc f
 
-
 (* Literals *)
 
 let interpret_lit env lit : V.value =
@@ -406,6 +405,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
              (fun e -> r (context env) e k) (* TBR *)
         | _ -> assert false
         end
+      | OtherPrim "rand", [] ->
+         k (make_message env "rand" {
+              sort = T.Shared T.Write;
+              control = if env.flavor.has_async_typ then T.Promises else T.Replies;
+              n_args = 0;
+              n_res = 1
+              }
+             (fun c v k' ->
+               async env
+                 exp.at
+                 (fun k'' r ->
+                   k'' (V.Blob ""))
+                 k'))
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.prim { Prim.trap = trap exp.at "%s" } s (context env) arg k

@@ -1,0 +1,6 @@
+=> update provisional_create_canister_with_cycles(record {settings = null; amount = null})
+<= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+<= replied: ()
+=> update go()
+<= replied: (blob "\tx\f2V\a9\92\917\d4\faW\be\ad\f6\8d\8e\\(\84\aa\96\b4P\03I\c1\c4\beEiI\e6")

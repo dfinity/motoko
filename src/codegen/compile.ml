@@ -8657,6 +8657,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   (* Other prims, unary *)
 
+  | OtherPrim "rand", [] ->
+    SR.Vanilla,
+    (* TODO: wasi? *)
+    Blob.lit env "" ^^
+    IC.actor_public_field env "raw_rand"
+
   | OtherPrim "array_len", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
