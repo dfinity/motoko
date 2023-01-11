@@ -153,7 +153,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         } else if Self::mark_completed() {
             self.start_evacuating();
         } else if Self::evacuation_completed() {
-            println!(100, "EVACUATION COMPLETED");
+            // TODO
         } else {
             self.increment();
         }

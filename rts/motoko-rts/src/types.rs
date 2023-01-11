@@ -19,12 +19,13 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::generational_write_barrier;
+use crate::gc::generational::write_barrier::generational_post_write_barrier;
 use crate::gc::incremental::mark_new_allocation;
 use crate::gc::incremental::write_barrier::incremental_pre_write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use core::ptr::null;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -286,14 +287,24 @@ impl Value {
     /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
     /// In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
-        unmark(*(self.get_ptr() as *mut Tag))
+        unmark(*(self.get_ptr() as *const Tag))
     }
 
     /// Get the forwarding pointer. Used in incremental GC.
     pub unsafe fn forward(self) -> Value {
         debug_assert!(self.is_obj());
-        let obj = self.get_ptr() as *mut Obj;
+        debug_assert!(self.get_ptr() as *const Obj != null());
+        let obj = self.get_ptr() as *const Obj;
         (*obj).forward
+    }
+
+    /// Resolve forwarding if the value is pointer. Otherwise, return the same value.
+    pub unsafe fn forward_if_possible(self) -> Value {
+        if self.is_ptr() && self.get_ptr() as *const Obj != null() { // Ignore null pointers used in text_iter.
+            self.forward()
+        } else {
+            self
+        }
     }
 
     pub unsafe fn is_obj(self) -> bool {
@@ -561,24 +572,27 @@ impl Array {
     }
 
     /// Initialize the element of a new created array.
-    /// Uses a post-update barrier on pointer writes.
-    /// No pre-update barrier as the previous value is undefined.
+    /// Uses a generational post-update barrier on pointer writes.
+    /// No incremental pre-update barrier as the previous value is undefined.
+    /// Resolve pointer forwarding for the written value if necessary.
     pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         let slot_addr = self.element_address(idx) as *mut Value;
+        let value = value.forward_if_possible();
         *slot_addr = value;
         if value.is_ptr() {
-            generational_write_barrier(mem, slot_addr as u32);
+            generational_post_write_barrier(mem, slot_addr as u32);
         }
     }
 
     /// Write a pointer value to an array element.
-    /// Uses a pre-update barrier and a post-update barrier.
+    /// Uses a incremental pre-update barrier and a generational post-update barrier.
+    /// Resolves pointer forwarding for the written value.
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
         incremental_pre_write_barrier(mem, slot_addr);
-        *slot_addr = value;
-        generational_write_barrier(mem, slot_addr as u32);
+        *slot_addr = value.forward_if_possible();
+        generational_post_write_barrier(mem, slot_addr as u32);
     }
 
     /// Write a scalar value to an array element.

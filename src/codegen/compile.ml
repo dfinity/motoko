@@ -956,7 +956,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "generational_write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "generational_post_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
     E.add_func_import env "rts" "incremental_write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
@@ -7025,7 +7025,7 @@ module Var = struct
       Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "generational_write_barrier"
+      E.call_import env "rts" "generational_post_write_barrier"
     | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
       G.i (LocalGet (nr i)) ^^
       Tagged.load_forwarding_pointer env ^^
@@ -7045,7 +7045,7 @@ module Var = struct
       Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "generational_write_barrier"
+      E.call_import env "rts" "generational_post_write_barrier"
     | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
       compile_unboxed_const ptr ^^
       Tagged.load_forwarding_pointer env ^^
@@ -8471,7 +8471,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     store_ptr ^^
     get_field ^^
     compile_add_const ptr_unskew ^^
-    E.call_import env "rts" "generational_write_barrier"
+    E.call_import env "rts" "generational_post_write_barrier"
   | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8495,7 +8495,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     store_ptr ^^
     get_field ^^
     compile_add_const ptr_unskew ^^
-    E.call_import env "rts" "generational_write_barrier"
+    E.call_import env "rts" "generational_post_write_barrier"
   | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
