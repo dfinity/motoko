@@ -19,9 +19,9 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::generational_post_write_barrier;
+use crate::gc::generational::write_barrier::post_write_barrier;
 use crate::gc::incremental::mark_new_allocation;
-use crate::gc::incremental::write_barrier::incremental_pre_write_barrier;
+use crate::gc::incremental::write_barrier::pre_write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -300,7 +300,8 @@ impl Value {
 
     /// Resolve forwarding if the value is pointer. Otherwise, return the same value.
     pub unsafe fn forward_if_possible(self) -> Value {
-        if self.is_ptr() && self.get_ptr() as *const Obj != null() { // Ignore null pointers used in text_iter.
+        if self.is_ptr() && self.get_ptr() as *const Obj != null() {
+            // Ignore null pointers used in text_iter.
             self.forward()
         } else {
             self
@@ -580,7 +581,7 @@ impl Array {
         let value = value.forward_if_possible();
         *slot_addr = value;
         if value.is_ptr() {
-            generational_post_write_barrier(mem, slot_addr as u32);
+            post_write_barrier(mem, slot_addr as u32);
         }
     }
 
@@ -590,9 +591,9 @@ impl Array {
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
-        incremental_pre_write_barrier(mem, slot_addr);
+        pre_write_barrier(mem, slot_addr);
         *slot_addr = value.forward_if_possible();
-        generational_post_write_barrier(mem, slot_addr as u32);
+        post_write_barrier(mem, slot_addr as u32);
     }
 
     /// Write a scalar value to an array element.
