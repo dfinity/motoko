@@ -10,7 +10,7 @@ use crate::{
 
 use super::INCREMENT_LIMIT;
 
-pub struct EvacuateIncrement<'a, M: Memory> {
+pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
     partition_map: &'a mut PartitionMap,
@@ -18,10 +18,10 @@ pub struct EvacuateIncrement<'a, M: Memory> {
     sweep_address: &'a mut Option<usize>,
 }
 
-impl<'a, M: Memory + 'a> EvacuateIncrement<'a, M> {
-    pub unsafe fn instance(mem: &'a mut M) -> EvacuateIncrement<'a, M> {
+impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
+    pub unsafe fn instance(mem: &'a mut M) -> EvacuationIncrement<'a, M> {
         if let Phase::Evacuate(state) = &mut PHASE {
-            EvacuateIncrement {
+            EvacuationIncrement {
                 mem,
                 steps: 0,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),

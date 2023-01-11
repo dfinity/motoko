@@ -8,7 +8,7 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
-pub struct MarkIncrement<'a, M: Memory> {
+pub struct MarkingIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
     partition_map: &'a mut PartitionMap,
@@ -17,10 +17,10 @@ pub struct MarkIncrement<'a, M: Memory> {
     complete: &'a mut bool,
 }
 
-impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
-    pub unsafe fn instance(mem: &'a mut M) -> MarkIncrement<'a, M> {
+impl<'a, M: Memory + 'a> MarkingIncrement<'a, M> {
+    pub unsafe fn instance(mem: &'a mut M) -> MarkingIncrement<'a, M> {
         if let Phase::Mark(state) = &mut PHASE {
-            MarkIncrement {
+            MarkingIncrement {
                 mem,
                 steps: 0,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),
@@ -59,7 +59,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn run(&mut self) {
         if *self.complete {
-            // allocation after complete marking, wait until next empty call stack increment
+            // Allocation after complete marking: Wait until the next empty call stack increment.
             debug_assert!(self.mark_stack.is_empty());
             return;
         }

@@ -5,7 +5,7 @@ use crate::{memory::Memory, types::*};
 use self::{
     mark_stack::MarkStack,
     partition_map::{PartitionMap, MAX_PARTITIONS},
-    phases::{evacuate_phase::EvacuateIncrement, mark_phase::MarkIncrement},
+    phases::{evacuation_phase::EvacuationIncrement, marking_phase::MarkingIncrement},
 };
 
 pub mod mark_stack;
@@ -92,12 +92,12 @@ unsafe fn record_increment_stop<M: Memory>() {
 
 enum Phase {
     Pause,
-    Mark(MarkState),
+    Mark(MarkingState),
     Evacuate(EvacuationState),
-    Stop, // On canister upgrade
+    Stop, // On canister upgrade.
 }
 
-struct MarkState {
+struct MarkingState {
     heap_base: usize,
     mark_stack: MarkStack,
     complete: bool,
@@ -165,7 +165,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn pre_write_barrier(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
             if value.points_to_or_beyond(state.heap_base) && !state.complete {
-                MarkIncrement::instance(self.mem).mark_object(value);
+                MarkingIncrement::instance(self.mem).mark_object(value);
             }
         }
     }
@@ -180,8 +180,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn increment(&mut self) {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
-            Phase::Mark(_) => MarkIncrement::instance(self.mem).run(),
-            Phase::Evacuate(_) => EvacuateIncrement::instance(self.mem).run(),
+            Phase::Mark(_) => MarkingIncrement::instance(self.mem).run(),
+            Phase::Evacuate(_) => EvacuationIncrement::instance(self.mem).run(),
         }
     }
 
@@ -193,13 +193,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         sanity_checks::check_memory(false);
 
         let mark_stack = MarkStack::new(self.mem);
-        let state = MarkState {
+        let state = MarkingState {
             heap_base,
             mark_stack,
             complete: false,
         };
         PHASE = Phase::Mark(state);
-        let mut increment = MarkIncrement::instance(self.mem);
+        let mut increment = MarkingIncrement::instance(self.mem);
         increment.mark_roots(roots);
         increment.run();
     }
@@ -220,7 +220,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             sweep_address: None,
         };
         PHASE = Phase::Evacuate(state);
-        let mut increment = EvacuateIncrement::instance(self.mem);
+        let mut increment = EvacuationIncrement::instance(self.mem);
         increment.initiate_evacuations();
         increment.run();
     }
