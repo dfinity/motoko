@@ -15,6 +15,7 @@ module Blob = struct
         ) (String.to_seq b)
       )
     )
+  let rand32() = String.init 32 (fun _ -> Char.chr (Random.int 256))
 end
 
 (* Types *)
@@ -251,3 +252,8 @@ let string_of_val d v : string =
 let string_of_def d def : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_def d ppf) def
+
+(*
+let as_text = function Text s -> s | v -> invalid ("as_text"^(string_of_val 100 v))
+let as_blob = function Blob b -> b | v -> invalid ("as_blob"^(string_of_val 100 v))
+*)

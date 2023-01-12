@@ -433,8 +433,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
               let func = fun _ _ k ->
                 match (url_text, f.T.lab) with
                 | ("aaaaa-aa", "raw_rand") ->
-                  k (V.Blob (String.init 32 (fun _ -> Char.chr (Random.int 256))))
-                | _ ->  trap exp.at "unsupported method %s in actor \"%s\"" f.T.lab (V.as_text v1)
+                  async env
+                    exp.at
+                    (fun k' r ->
+                      k' (V.Blob (V.Blob.rand32())))
+                    k
+                | _ ->  trap exp.at "unsupported method %s in actor \"%s\"" f.T.lab "foo" (* (V.as_text v1) *)
               in
               V.Env.add f.T.lab (V.Func (CC.{
                 sort = s;
