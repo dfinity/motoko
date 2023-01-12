@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
-        partition_map::{PartitionMap, MAX_PARTITIONS},
-        Phase, Roots, INCREMENT_LIMIT, PARTITION_MAP, PHASE,
+        partitioned_heap::{PartitionedHeap, MAX_PARTITIONS},
+        Phase, Roots, INCREMENT_LIMIT, PARTITIONED_HEAP, PHASE,
     },
     types::*,
     visitor::visit_pointer_fields,
@@ -10,7 +10,7 @@ use crate::{
 pub struct UpdateIncrement<'a> {
     steps: &'a mut usize,
     heap_base: usize,
-    partition_map: &'a mut PartitionMap,
+    heap: &'a mut PartitionedHeap,
     partition_index: &'a mut usize,
     scan_address: &'a mut Option<usize>,
 }
@@ -21,7 +21,7 @@ impl<'a> UpdateIncrement<'a> {
             UpdateIncrement {
                 steps,
                 heap_base: state.heap_base,
-                partition_map: PARTITION_MAP.as_mut().unwrap(),
+                heap: PARTITIONED_HEAP.as_mut().unwrap(),
                 partition_index: &mut state.partition_index,
                 scan_address: &mut state.scan_address,
             }
@@ -68,7 +68,7 @@ impl<'a> UpdateIncrement<'a> {
 
     pub unsafe fn run(&mut self) {
         while *self.partition_index < MAX_PARTITIONS {
-            let partition = self.partition_map.get_partition(*self.partition_index);
+            let partition = self.heap.get_partition(*self.partition_index);
             if !partition.is_free() && !partition.to_be_evacuated() {
                 self.update_partition();
                 if *self.steps > INCREMENT_LIMIT {
@@ -81,7 +81,7 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     unsafe fn update_partition(&mut self) {
-        let partition = self.partition_map.get_partition(*self.partition_index);
+        let partition = self.heap.get_partition(*self.partition_index);
         if self.scan_address.is_none() {
             *self.scan_address = Some(partition.dynamic_space_start());
         }

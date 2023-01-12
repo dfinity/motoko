@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
-        mark_stack::MarkStack, partition_map::PartitionMap, Phase, Roots, INCREMENT_LIMIT,
-        PARTITION_MAP, PHASE,
+        mark_stack::MarkStack, partitioned_heap::PartitionedHeap, Phase, Roots, INCREMENT_LIMIT,
+        PARTITIONED_HEAP, PHASE,
     },
     memory::Memory,
     types::*,
@@ -11,7 +11,7 @@ use crate::{
 pub struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: &'a mut usize,
-    partition_map: &'a mut PartitionMap,
+    heap: &'a mut PartitionedHeap,
     heap_base: usize,
     mark_stack: &'a mut MarkStack,
     complete: &'a mut bool,
@@ -23,7 +23,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             MarkIncrement {
                 mem,
                 steps,
-                partition_map: PARTITION_MAP.as_mut().unwrap(),
+                heap: PARTITIONED_HEAP.as_mut().unwrap(),
                 heap_base: state.heap_base,
                 mark_stack: &mut state.mark_stack,
                 complete: &mut state.complete,
@@ -86,7 +86,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             return;
         }
         object.mark();
-        self.partition_map.record_marked_space(object);
+        self.heap.record_marked_space(object);
         debug_assert!(
             object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
         );

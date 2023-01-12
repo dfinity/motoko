@@ -2,7 +2,7 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::PARTITION_MAP;
+use crate::gc::incremental::PARTITIONED_HEAP;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -63,7 +63,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    match &PARTITION_MAP {
+    match &PARTITIONED_HEAP {
         None => Bytes(HP - get_aligned_heap_base()),
         Some(map) => map.occupied_size(),
     }
@@ -79,7 +79,7 @@ impl Memory for IcMemory {
         let bytes = n.to_bytes();
 
         // Select partition, if incremental GC is enabled
-        if let Some(map) = &mut PARTITION_MAP {
+        if let Some(map) = &mut PARTITIONED_HEAP {
             map.prepare_allocation_partition(&mut HP, bytes);
         }
 

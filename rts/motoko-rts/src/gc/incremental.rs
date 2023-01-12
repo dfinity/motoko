@@ -4,7 +4,7 @@ use crate::{memory::Memory, types::*};
 
 use self::{
     mark_stack::MarkStack,
-    partition_map::{PartitionMap, PartitionMapIterator, MAX_PARTITIONS},
+    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, MAX_PARTITIONS},
     phases::{
         evacuation_increment::EvacuationIncrement, mark_increment::MarkIncrement,
         update_increment::UpdateIncrement,
@@ -12,7 +12,7 @@ use self::{
 };
 
 pub mod mark_stack;
-pub mod partition_map;
+pub mod partitioned_heap;
 mod phases;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
@@ -53,7 +53,7 @@ static mut LAST_HEAP_OCCUPATION: usize = 0;
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    use crate::gc::incremental::partition_map::PARTITION_SIZE;
+    use crate::gc::incremental::partitioned_heap::PARTITION_SIZE;
     const RELATIVE_GROWTH_THRESHOLD: f64 = 0.75;
     const CRITICAL_LIMIT: usize = usize::MAX - 256 * 1024 * 1024;
     let occupation = heap_occupation();
@@ -73,14 +73,18 @@ unsafe fn record_increment_start<M: Memory>() {
 
 #[cfg(feature = "ic")]
 unsafe fn heap_occupation() -> usize {
-    PARTITION_MAP.as_ref().unwrap().occupied_size().as_usize()
+    PARTITIONED_HEAP
+        .as_ref()
+        .unwrap()
+        .occupied_size()
+        .as_usize()
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_increment_stop<M: Memory>() {
     use crate::memory::ic;
     if IncrementalGC::<M>::pausing() {
-        let occupation = PARTITION_MAP.as_ref().unwrap().occupied_size();
+        let occupation = PARTITIONED_HEAP.as_ref().unwrap().occupied_size();
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, occupation);
     }
 }
@@ -114,7 +118,7 @@ struct MarkState {
 }
 
 struct EvacuationState {
-    partition_map_iterator: PartitionMapIterator,
+    heap_iterator: PartitionedHeapIterator,
     sweep_address: Option<usize>,
 }
 
@@ -126,7 +130,7 @@ struct UpdateState {
 
 /// GC state retained over multiple GC increments.
 static mut PHASE: Phase = Phase::Pause;
-pub(crate) static mut PARTITION_MAP: Option<PartitionMap> = None;
+pub(crate) static mut PARTITIONED_HEAP: Option<PartitionedHeap> = None;
 
 /// Heap limits.
 pub struct Limits {
@@ -148,7 +152,7 @@ pub struct Roots {
 const INCREMENT_LIMIT: usize = 500_000;
 
 /// Incremental GC.
-/// Each GC call has its new GC instance that shares the common GC states `PHASE` and `PARTITION_MAP`.
+/// Each GC call has its new GC instance that shares the common GC states `PHASE` and `PARTITIONED_HEAP`.
 pub struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
@@ -159,7 +163,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// Called on a runtime system start with incremental GC and also during RTS testing.
     pub unsafe fn initialize(heap_base: usize) {
         PHASE = Phase::Pause;
-        PARTITION_MAP = Some(PartitionMap::new(heap_base));
+        PARTITIONED_HEAP = Some(PartitionedHeap::new(heap_base));
     }
 
     /// Each GC schedule point can get a new GC instance that shares the common GC state.
@@ -247,7 +251,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_evacuating(&mut self) {
         debug_assert!(Self::mark_completed());
         let state = EvacuationState {
-            partition_map_iterator: PartitionMapIterator::start(),
+            heap_iterator: PartitionedHeapIterator::start(),
             sweep_address: None,
         };
         PHASE = Phase::Evacuate(state);
@@ -257,7 +261,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn evacuation_completed() -> bool {
         match &PHASE {
-            Phase::Evacuate(state) => state.partition_map_iterator.current().is_none(),
+            Phase::Evacuate(state) => state.heap_iterator.current().is_none(),
             _ => false,
         }
     }
@@ -284,10 +288,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// Only to be called when the call stack is empty as pointers on stack are not updated.
     unsafe fn complete_run(&mut self) {
         debug_assert!(Self::updating_completed());
-        PARTITION_MAP.as_mut().unwrap().free_evacuated_partitions();
+        PARTITIONED_HEAP
+            .as_mut()
+            .unwrap()
+            .free_evacuated_partitions();
         PHASE = Phase::Pause;
 
-        // Note: The memory check only works if the free space is cleared in `partition_map`.
+        // Note: The memory check only works if the free space is cleared in `PartitionedHeap`.
         // Otherwise, there exist the remainder of garbage objects that have been conceptually freed.
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]

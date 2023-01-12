@@ -125,14 +125,14 @@ impl Partition {
     }
 }
 
-pub struct PartitionMapIterator {
+pub struct PartitionedHeapIterator {
     partition_index: usize,
 }
 
 // Different to the standard iterator to allow resuming between GC increment pauses.
-impl PartitionMapIterator {
-    pub fn start() -> PartitionMapIterator {
-        PartitionMapIterator { partition_index: 0 }
+impl PartitionedHeapIterator {
+    pub fn start() -> PartitionedHeapIterator {
+        PartitionedHeapIterator { partition_index: 0 }
     }
 
     pub fn current(&self) -> Option<usize> {
@@ -149,13 +149,13 @@ impl PartitionMapIterator {
     }
 }
 
-pub struct PartitionMap {
+pub struct PartitionedHeap {
     partitions: [Partition; MAX_PARTITIONS],
     allocation_index: usize, // index of the partition to allocate in
 }
 
-impl PartitionMap {
-    pub fn new(heap_base: usize) -> PartitionMap {
+impl PartitionedHeap {
+    pub fn new(heap_base: usize) -> PartitionedHeap {
         let allocation_index = heap_base / PARTITION_SIZE;
         let partitions = from_fn(|index| Partition {
             index,
@@ -171,7 +171,7 @@ impl PartitionMap {
             dynamic_size: 0,
             evacuate: false,
         });
-        PartitionMap {
+        PartitionedHeap {
             partitions,
             allocation_index,
         }
