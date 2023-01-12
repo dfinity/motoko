@@ -4,7 +4,7 @@ use crate::{memory::Memory, types::*};
 
 use self::{
     mark_stack::MarkStack,
-    partition_map::{PartitionMap, MAX_PARTITIONS},
+    partition_map::{PartitionMap, PartitionMapIterator, MAX_PARTITIONS},
     phases::{
         evacuation_increment::EvacuationIncrement, mark_increment::MarkIncrement,
         update_increment::UpdateIncrement,
@@ -73,21 +73,14 @@ unsafe fn record_increment_start<M: Memory>() {
 
 #[cfg(feature = "ic")]
 unsafe fn heap_occupation() -> usize {
-    PARTITION_MAP
-        .as_ref()
-        .unwrap()
-        .occupied_size()
-        .as_usize()
+    PARTITION_MAP.as_ref().unwrap().occupied_size().as_usize()
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_increment_stop<M: Memory>() {
     use crate::memory::ic;
     if IncrementalGC::<M>::pausing() {
-        let occupation = PARTITION_MAP
-            .as_ref()
-            .unwrap()
-            .occupied_size();
+        let occupation = PARTITION_MAP.as_ref().unwrap().occupied_size();
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, occupation);
     }
 }
@@ -121,7 +114,7 @@ struct MarkState {
 }
 
 struct EvacuationState {
-    partition_index: usize,
+    partition_map_iterator: PartitionMapIterator,
     sweep_address: Option<usize>,
 }
 
@@ -255,7 +248,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_evacuating(&mut self) {
         debug_assert!(Self::mark_completed());
         let state = EvacuationState {
-            partition_index: 0,
+            partition_map_iterator: PartitionMapIterator::start(),
             sweep_address: None,
         };
         PHASE = Phase::Evacuate(state);
@@ -265,7 +258,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn evacuation_completed() -> bool {
         match &PHASE {
-            Phase::Evacuate(state) => state.partition_index == MAX_PARTITIONS,
+            Phase::Evacuate(state) => state.partition_map_iterator.current().is_none(),
             _ => false,
         }
     }

@@ -13,9 +13,9 @@ pub struct PartitionIterator {
 // Different to the standard iterator to allow resuming between GC increment pauses.
 impl PartitionIterator {
     fn start(partition: &Partition) -> PartitionIterator {
-        PartitionIterator { 
-            current_address: partition.dynamic_space_start(), 
-            end_address: partition.dynamic_space_end() 
+        PartitionIterator {
+            current_address: partition.dynamic_space_start(),
+            end_address: partition.dynamic_space_end(),
         }
     }
 
@@ -33,7 +33,9 @@ impl PartitionIterator {
         assert!(self.current_address < self.end_address);
         let size = block_size(self.current_address);
         self.current_address += size.to_bytes().as_usize();
-        while self.current_address < self.end_address && !Value::from_ptr(self.current_address).is_obj() {
+        while self.current_address < self.end_address
+            && !Value::from_ptr(self.current_address).is_obj()
+        {
             let size = block_size(self.current_address);
             self.current_address += size.to_bytes().as_usize();
         }
@@ -96,7 +98,7 @@ impl Partition {
             *block = TAG_FREE_SPACE;
             let free_space = block as *mut FreeSpace;
             (*free_space).words = Bytes(remaining_space as u32).to_words(); // includes header
-            // Clear the remainder of the free space.
+                                                                            // Clear the remainder of the free space.
             let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
             let clear_start = free_space as usize + header_size;
             let clear_length = remaining_space - header_size;
@@ -111,7 +113,7 @@ impl Partition {
         self.free = true;
         self.dynamic_size = 0;
         self.evacuate = false;
-        
+
         #[cfg(debug_assertions)]
         self.clear_free_remainder();
     }
@@ -123,23 +125,19 @@ impl Partition {
     }
 }
 
-pub struct PartitionMapIterator<'a> {
-    partition_map: &'a PartitionMap,
+pub struct PartitionMapIterator {
     partition_index: usize,
 }
 
 // Different to the standard iterator to allow resuming between GC increment pauses.
-impl<'a> PartitionMapIterator<'a> {
-    fn start(partition_map: &'a PartitionMap) -> PartitionMapIterator<'a> {
-        PartitionMapIterator {
-            partition_map,
-            partition_index: 0,
-        }
+impl PartitionMapIterator {
+    pub fn start() -> PartitionMapIterator {
+        PartitionMapIterator { partition_index: 0 }
     }
 
-    pub fn current(&self) -> Option<&'a Partition> {
+    pub fn current(&self) -> Option<usize> {
         if self.partition_index < MAX_PARTITIONS {
-            Some(self.partition_map.get_partition(self.partition_index))
+            Some(self.partition_index)
         } else {
             None
         }
@@ -177,10 +175,6 @@ impl PartitionMap {
             partitions,
             allocation_index,
         }
-    }
-
-    pub fn iterate(&self) -> PartitionMapIterator {
-        PartitionMapIterator::start(self)
     }
 
     pub fn get_partition(&self, index: usize) -> &Partition {
@@ -228,15 +222,19 @@ impl PartitionMap {
     }
 
     pub fn occupied_size(&self) -> Bytes<u32> {
-        let occupied_size: usize = self.partitions.iter().map(|partition| {
-            if partition.free {
-                partition.static_size
-            } else if partition.index == self.allocation_index {
-                partition.dynamic_space_end()
-            } else {
-                PARTITION_SIZE
-            }
-        }).sum();
+        let occupied_size: usize = self
+            .partitions
+            .iter()
+            .map(|partition| {
+                if partition.free {
+                    partition.static_size
+                } else if partition.index == self.allocation_index {
+                    partition.dynamic_space_end()
+                } else {
+                    PARTITION_SIZE
+                }
+            })
+            .sum();
         Bytes(occupied_size as u32)
     }
 
@@ -257,9 +255,13 @@ impl PartitionMap {
         }
         let mut allocation_partition = self.allocation_partition();
         assert!(!allocation_partition.free);
-        assert!((*heap_pointer as usize) >= allocation_partition.dynamic_space_start() && (*heap_pointer as usize) <= allocation_partition.dynamic_space_end());
+        assert!(
+            (*heap_pointer as usize) >= allocation_partition.dynamic_space_start()
+                && (*heap_pointer as usize) <= allocation_partition.dynamic_space_end()
+        );
         assert!(allocation_size.as_usize() < allocation_partition.end_address());
-        if *heap_pointer as usize >= allocation_partition.end_address() - allocation_size.as_usize() {
+        if *heap_pointer as usize >= allocation_partition.end_address() - allocation_size.as_usize()
+        {
             self.open_new_allocation_partition(heap_pointer);
             allocation_partition = self.allocation_partition();
         }
@@ -269,10 +271,10 @@ impl PartitionMap {
     unsafe fn open_new_allocation_partition(&mut self, heap_pointer: &mut u32) {
         let old_partition = self.allocation_partition();
         assert_eq!(*heap_pointer as usize, old_partition.dynamic_space_end());
-        
+
         #[cfg(debug_assertions)]
         old_partition.clear_free_remainder();
-        
+
         let new_partition = self.allocate_free_partition();
         *heap_pointer = new_partition.dynamic_space_start() as u32;
         self.allocation_index = new_partition.index;

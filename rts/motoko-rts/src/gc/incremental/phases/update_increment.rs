@@ -86,7 +86,12 @@ impl<'a> UpdateIncrement<'a> {
             *self.scan_address = Some(partition.dynamic_space_start());
         }
         let end_address = partition.dynamic_space_end();
-        assert!(!self.partition_map.is_allocation_partition(*self.partition_index) || self.limits.free == partition.dynamic_space_end());
+        assert!(
+            !self
+                .partition_map
+                .is_allocation_partition(*self.partition_index)
+                || self.limits.free == partition.dynamic_space_end()
+        );
         while self.scan_address.unwrap() < end_address {
             let block = Value::from_ptr(self.scan_address.unwrap());
             if block.is_obj() {
