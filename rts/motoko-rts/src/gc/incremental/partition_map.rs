@@ -10,6 +10,7 @@ pub struct PartitionIterator {
     end_address: usize,
 }
 
+// Different to the standard iterator to allow resuming between GC increment pauses.
 impl PartitionIterator {
     fn start(partition: &Partition) -> PartitionIterator {
         PartitionIterator { 
@@ -127,6 +128,7 @@ pub struct PartitionMapIterator<'a> {
     partition_index: usize,
 }
 
+// Different to the standard iterator to allow resuming between GC increment pauses.
 impl<'a> PartitionMapIterator<'a> {
     fn start(partition_map: &'a PartitionMap) -> PartitionMapIterator<'a> {
         PartitionMapIterator {

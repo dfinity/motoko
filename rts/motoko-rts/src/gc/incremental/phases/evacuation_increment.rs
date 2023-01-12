@@ -44,6 +44,8 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
                 if *self.steps > INCREMENT_LIMIT {
                     return;
                 }
+            } else {
+                assert!(self.sweep_address.is_none());
             }
             self.partition_map_iterator.next();
             *self.sweep_address = None;
