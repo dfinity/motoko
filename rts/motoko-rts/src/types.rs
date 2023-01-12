@@ -952,7 +952,7 @@ pub struct FreeSpace {
 impl FreeSpace {
     /// Size of the free space (includes object header)
     pub unsafe fn size(self: *mut Self) -> Words<u32> {
-        (*self).words + size_of::<Obj>()
+        (*self).words + size_of::<FreeSpace>()
     }
 }
 
