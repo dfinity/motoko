@@ -9,7 +9,6 @@ use crate::{
 
 pub struct UpdateIncrement<'a> {
     steps: &'a mut usize,
-    heap_base: usize,
     heap: &'a mut PartitionedHeap,
     partition_index: &'a mut usize,
     scan_address: &'a mut Option<usize>,
@@ -20,7 +19,6 @@ impl<'a> UpdateIncrement<'a> {
         if let Phase::Update(state) = &mut PHASE {
             UpdateIncrement {
                 steps,
-                heap_base: state.heap_base,
                 heap: PARTITIONED_HEAP.as_mut().unwrap(),
                 partition_index: &mut state.partition_index,
                 scan_address: &mut state.scan_address,
@@ -39,9 +37,9 @@ impl<'a> UpdateIncrement<'a> {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.heap_base);
+            debug_assert!((mutbox as usize) < self.heap.base_address());
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap_base {
+            if value.is_ptr() && value.get_ptr() >= self.heap.base_address() {
                 (*mutbox).field = value.forward_if_possible();
             }
             *self.steps += 1;
@@ -54,7 +52,7 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 continuation_table.get_ptr() as *mut Obj,
                 continuation_table.tag(),
-                self.heap_base,
+                self.heap.base_address(),
                 |_, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                 },
@@ -118,7 +116,7 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 object,
                 object.tag(),
-                self.heap_base,
+                self.heap.base_address(),
                 |_, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                 },

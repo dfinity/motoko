@@ -461,15 +461,11 @@ impl GC {
             GC::Incremental => unsafe {
                 const INCREMENTS_UNTIL_COMPLETION: usize = 16;
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
-                    let limits = motoko_rts::gc::incremental::Limits {
-                        base: heap_base as usize,
-                        free: heap_1.heap_ptr_address(),
-                    };
                     let roots = motoko_rts::gc::incremental::Roots {
                         static_roots,
                         continuation_table: *continuation_table_ptr_address,
                     };
-                    IncrementalGC::instance(heap).empty_call_stack_increment(limits, roots);
+                    IncrementalGC::instance(heap).empty_call_stack_increment(roots);
                 }
                 false
             },

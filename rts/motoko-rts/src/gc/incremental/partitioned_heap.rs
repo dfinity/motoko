@@ -151,6 +151,7 @@ impl PartitionedHeapIterator {
 
 pub struct PartitionedHeap {
     partitions: [Partition; MAX_PARTITIONS],
+    heap_base: usize,
     allocation_index: usize, // index of the partition to allocate in
 }
 
@@ -173,8 +174,13 @@ impl PartitionedHeap {
         });
         PartitionedHeap {
             partitions,
+            heap_base,
             allocation_index,
         }
+    }
+
+    pub fn base_address(&self) -> usize {
+        self.heap_base
     }
 
     pub fn get_partition(&self, index: usize) -> &Partition {

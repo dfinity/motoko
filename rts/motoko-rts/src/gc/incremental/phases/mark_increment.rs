@@ -12,7 +12,6 @@ pub struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: &'a mut usize,
     heap: &'a mut PartitionedHeap,
-    heap_base: usize,
     mark_stack: &'a mut MarkStack,
     complete: &'a mut bool,
 }
@@ -24,7 +23,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 mem,
                 steps,
                 heap: PARTITIONED_HEAP.as_mut().unwrap(),
-                heap_base: state.heap_base,
                 mark_stack: &mut state.mark_stack,
                 complete: &mut state.complete,
             }
@@ -42,9 +40,9 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.heap_base);
+            debug_assert!((mutbox as usize) < self.heap.base_address());
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap_base {
+            if value.is_ptr() && value.get_ptr() >= self.heap.base_address() {
                 self.mark_object(value);
             }
             *self.steps += 1;
@@ -79,7 +77,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     pub unsafe fn mark_object(&mut self, value: Value) {
         *self.steps += 1;
         debug_assert!(!*self.complete);
-        debug_assert!((value.get_ptr() >= self.heap_base));
+        debug_assert!((value.get_ptr() >= self.heap.base_address()));
         assert!(!value.is_forwarded());
         let object = value.as_obj();
         if object.is_marked() {
@@ -99,7 +97,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             self,
             object,
             object.tag(),
-            self.heap_base,
+            self.heap.base_address(),
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
