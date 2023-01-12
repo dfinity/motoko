@@ -156,6 +156,7 @@ impl<'a> PartitionedHeapIterator<'a> {
 
     unsafe fn skip_free_space(&mut self) {
         self.skip_free_blocks();
+        // Implicitly also skips free partitions as the dynamic size is zero.
         while *self.current_address == self.partition_scan_end() {
             self.next_partition();
             self.skip_free_blocks();
@@ -194,7 +195,7 @@ impl<'a> PartitionedHeapIterator<'a> {
 pub struct PartitionedHeap {
     partitions: [Partition; MAX_PARTITIONS],
     heap_base: usize,
-    allocation_index: usize, // index of the partition to allocate in
+    allocation_index: usize, // Index of the partition currently used for allocations.
 }
 
 impl PartitionedHeap {
