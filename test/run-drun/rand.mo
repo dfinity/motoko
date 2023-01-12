@@ -3,7 +3,7 @@ import Prim "mo:⛔";
 actor a {
 
   let rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
-  
+
   public func go() : async () {
     let t1 = Prim.time();
     let b1 = await rand();
@@ -16,6 +16,3 @@ actor a {
   };
 };
 await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
-
-//SKIP ic-ref
-//SKIP drun
