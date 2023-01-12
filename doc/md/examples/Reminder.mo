@@ -5,14 +5,14 @@ import { setTimer; recurringTimer } = "mo:base/Timer";
 
 actor Reminder {
 
-  let solarYearNanos = 356_925_216_000_000;
+  let solarYearSeconds = 356_925_216;
 
   private func remind() : async () {
     print("Happy New Year!");
   };
 
-  ignore setTimer(#nanoseconds (abs(now()) % solarYearNanos), func () : async () {
-    ignore recurringTimer(#nanoseconds solarYearNanos, remind);
+  ignore setTimer(#seconds (solarYearSeconds - abs(now()) % solarYearSeconds), func () : async () {
+    ignore recurringTimer(#seconds solarYearSeconds, remind);
     await remind();
   });
 }
