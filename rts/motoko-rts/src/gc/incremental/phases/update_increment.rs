@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
         partition_map::{PartitionMap, MAX_PARTITIONS},
-        Limits, Phase, Roots, INCREMENT_LIMIT, PARTITION_MAP, PHASE,
+        Phase, Roots, INCREMENT_LIMIT, PARTITION_MAP, PHASE,
     },
     types::*,
     visitor::visit_pointer_fields,
@@ -9,7 +9,7 @@ use crate::{
 
 pub struct UpdateIncrement<'a> {
     steps: &'a mut usize,
-    limits: &'a Limits,
+    heap_base: usize,
     partition_map: &'a mut PartitionMap,
     partition_index: &'a mut usize,
     scan_address: &'a mut Option<usize>,
@@ -20,7 +20,7 @@ impl<'a> UpdateIncrement<'a> {
         if let Phase::Update(state) = &mut PHASE {
             UpdateIncrement {
                 steps,
-                limits: &state.limits,
+                heap_base: state.heap_base,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),
                 partition_index: &mut state.partition_index,
                 scan_address: &mut state.scan_address,
@@ -39,9 +39,9 @@ impl<'a> UpdateIncrement<'a> {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.limits.base);
+            debug_assert!((mutbox as usize) < self.heap_base);
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.limits.base {
+            if value.is_ptr() && value.get_ptr() >= self.heap_base {
                 (*mutbox).field = value.forward_if_possible();
             }
             *self.steps += 1;
@@ -54,7 +54,7 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 continuation_table.get_ptr() as *mut Obj,
                 continuation_table.tag(),
-                self.limits.base,
+                self.heap_base,
                 |_, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                 },
@@ -86,12 +86,6 @@ impl<'a> UpdateIncrement<'a> {
             *self.scan_address = Some(partition.dynamic_space_start());
         }
         let end_address = partition.dynamic_space_end();
-        assert!(
-            !self
-                .partition_map
-                .is_allocation_partition(*self.partition_index)
-                || self.limits.free == partition.dynamic_space_end()
-        );
         while self.scan_address.unwrap() < end_address {
             let block = Value::from_ptr(self.scan_address.unwrap());
             if block.is_obj() {
@@ -124,7 +118,7 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 object,
                 object.tag(),
-                self.limits.base,
+                self.heap_base,
                 |_, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                 },

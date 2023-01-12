@@ -119,7 +119,7 @@ struct EvacuationState {
 }
 
 struct UpdateState {
-    limits: Limits,
+    heap_base: usize,
     partition_index: usize,
     scan_address: Option<usize>,
 }
@@ -129,7 +129,6 @@ static mut PHASE: Phase = Phase::Pause;
 pub(crate) static mut PARTITION_MAP: Option<PartitionMap> = None;
 
 /// Heap limits.
-#[derive(Clone, Copy)]
 pub struct Limits {
     pub base: usize,
     pub free: usize,
@@ -182,7 +181,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             self.start_evacuating();
         }
         if Self::evacuation_completed() {
-            self.start_updating(limits, roots);
+            self.start_updating(limits.base, roots);
         }
         if Self::updating_completed() {
             self.complete_run();
@@ -263,10 +262,10 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    unsafe fn start_updating(&mut self, limits: Limits, roots: Roots) {
+    unsafe fn start_updating(&mut self, heap_base: usize, roots: Roots) {
         debug_assert!(Self::evacuation_completed());
         let state = UpdateState {
-            limits,
+            heap_base,
             partition_index: 0,
             scan_address: None,
         };
