@@ -9,7 +9,7 @@ use crate::{
 
 use super::INCREMENT_LIMIT;
 
-pub struct UpdatingIncrement<'a> {
+pub struct UpdateIncrement<'a> {
     steps: usize,
     limits: &'a Limits,
     partition_map: &'a mut PartitionMap,
@@ -17,10 +17,10 @@ pub struct UpdatingIncrement<'a> {
     scan_address: &'a mut Option<usize>,
 }
 
-impl<'a> UpdatingIncrement<'a> {
-    pub unsafe fn instance() -> UpdatingIncrement<'a> {
+impl<'a> UpdateIncrement<'a> {
+    pub unsafe fn instance() -> UpdateIncrement<'a> {
         if let Phase::Update(state) = &mut PHASE {
-            UpdatingIncrement {
+            UpdateIncrement {
                 steps: 0,
                 limits: &state.limits,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),

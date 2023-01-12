@@ -8,7 +8,7 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
-pub struct MarkingIncrement<'a, M: Memory> {
+pub struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
     partition_map: &'a mut PartitionMap,
@@ -17,10 +17,10 @@ pub struct MarkingIncrement<'a, M: Memory> {
     complete: &'a mut bool,
 }
 
-impl<'a, M: Memory + 'a> MarkingIncrement<'a, M> {
-    pub unsafe fn instance(mem: &'a mut M) -> MarkingIncrement<'a, M> {
+impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
+    pub unsafe fn instance(mem: &'a mut M) -> MarkIncrement<'a, M> {
         if let Phase::Mark(state) = &mut PHASE {
-            MarkingIncrement {
+            MarkIncrement {
                 mem,
                 steps: 0,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),

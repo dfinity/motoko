@@ -6,8 +6,8 @@ use self::{
     mark_stack::MarkStack,
     partition_map::{PartitionMap, MAX_PARTITIONS},
     phases::{
-        evacuation_phase::EvacuationIncrement, marking_phase::MarkingIncrement,
-        updating_phase::UpdatingIncrement,
+        evacuation_phase::EvacuationIncrement, mark_phase::MarkIncrement,
+        update_phase::UpdateIncrement,
     },
 };
 
@@ -107,13 +107,13 @@ unsafe fn record_increment_stop<M: Memory>() {
 
 enum Phase {
     Pause,                     // Inactive, waiting for next GC run.
-    Mark(MarkingState),        // Incremental marking.
+    Mark(MarkState),           // Incremental marking.
     Evacuate(EvacuationState), // Incremental evacuation compact.
-    Update(UpdatingState),     // Incremental pointer updates.
+    Update(UpdateState),       // Incremental pointer updates.
     Stop,                      // Stopped on canister upgrade.
 }
 
-struct MarkingState {
+struct MarkState {
     heap_base: usize,
     mark_stack: MarkStack,
     complete: bool,
@@ -124,7 +124,7 @@ struct EvacuationState {
     sweep_address: Option<usize>,
 }
 
-struct UpdatingState {
+struct UpdateState {
     limits: Limits,
     partition_index: usize,
     scan_address: Option<usize>,
@@ -190,7 +190,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn pre_write_barrier(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
             if value.points_to_or_beyond(state.heap_base) && !state.complete {
-                MarkingIncrement::instance(self.mem).mark_object(value);
+                MarkIncrement::instance(self.mem).mark_object(value);
             }
         }
     }
@@ -205,9 +205,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn increment(&mut self) {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
-            Phase::Mark(_) => MarkingIncrement::instance(self.mem).run(),
+            Phase::Mark(_) => MarkIncrement::instance(self.mem).run(),
             Phase::Evacuate(_) => EvacuationIncrement::instance(self.mem).run(),
-            Phase::Update(_) => UpdatingIncrement::instance().run(),
+            Phase::Update(_) => UpdateIncrement::instance().run(),
         }
     }
 
@@ -219,13 +219,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         sanity_checks::check_memory(false, false);
 
         let mark_stack = MarkStack::new(self.mem);
-        let state = MarkingState {
+        let state = MarkState {
             heap_base,
             mark_stack,
             complete: false,
         };
         PHASE = Phase::Mark(state);
-        let mut increment = MarkingIncrement::instance(self.mem);
+        let mut increment = MarkIncrement::instance(self.mem);
         increment.mark_roots(roots);
         increment.run();
     }
@@ -261,13 +261,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn start_updating(&mut self, limits: Limits, roots: Roots) {
         debug_assert!(Self::evacuation_completed());
-        let state = UpdatingState {
+        let state = UpdateState {
             limits,
             partition_index: 0,
             scan_address: None,
         };
         PHASE = Phase::Update(state);
-        let mut increment = UpdatingIncrement::instance();
+        let mut increment = UpdateIncrement::instance();
         increment.update_roots(roots);
         increment.run();
     }
