@@ -4,7 +4,7 @@ use crate::{memory::Memory, types::*};
 
 use self::{
     mark_stack::MarkStack,
-    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, MAX_PARTITIONS},
+    partitioned_heap::{HeapIteratorState, PartitionedHeap, MAX_PARTITIONS},
     phases::{
         evacuation_increment::EvacuationIncrement, mark_increment::MarkIncrement,
         update_increment::UpdateIncrement,
@@ -113,8 +113,8 @@ struct MarkState {
 }
 
 struct EvacuationState {
-    heap_iterator: PartitionedHeapIterator,
-    sweep_address: Option<usize>,
+    iterator_state: HeapIteratorState,
+    complete: bool,
 }
 
 struct UpdateState {
@@ -240,8 +240,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_evacuating(&mut self) {
         debug_assert!(Self::mark_completed());
         let state = EvacuationState {
-            heap_iterator: PartitionedHeapIterator::start(),
-            sweep_address: None,
+            iterator_state: HeapIteratorState::new(),
+            complete: false,
         };
         PHASE = Phase::Evacuate(state);
         let mut increment = EvacuationIncrement::instance(self.mem, &mut self.steps);
@@ -250,7 +250,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn evacuation_completed() -> bool {
         match &PHASE {
-            Phase::Evacuate(state) => state.heap_iterator.current().is_none(),
+            Phase::Evacuate(state) => state.complete,
             _ => false,
         }
     }

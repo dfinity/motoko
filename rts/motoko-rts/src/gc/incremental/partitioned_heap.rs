@@ -5,44 +5,6 @@ use crate::types::*;
 pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
 pub const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
-pub struct PartitionIterator {
-    current_address: usize,
-    end_address: usize,
-}
-
-// Different to the standard iterator to allow resuming between GC increment pauses.
-impl PartitionIterator {
-    fn start(partition: &Partition) -> PartitionIterator {
-        PartitionIterator {
-            current_address: partition.dynamic_space_start(),
-            end_address: partition.dynamic_space_end(),
-        }
-    }
-
-    pub unsafe fn current(&self) -> Option<*mut Obj> {
-        if self.current_address < self.end_address {
-            let block = Value::from_ptr(self.current_address);
-            assert!(block.is_obj());
-            Some(block.get_ptr() as *mut Obj)
-        } else {
-            None
-        }
-    }
-
-    pub unsafe fn next(&mut self) {
-        assert!(self.current_address < self.end_address);
-        let size = block_size(self.current_address);
-        self.current_address += size.to_bytes().as_usize();
-        while self.current_address < self.end_address
-            && !Value::from_ptr(self.current_address).is_obj()
-        {
-            let size = block_size(self.current_address);
-            self.current_address += size.to_bytes().as_usize();
-        }
-        assert!(self.current_address <= self.end_address);
-    }
-}
-
 pub struct Partition {
     index: usize,
     free: bool,
@@ -79,10 +41,6 @@ impl Partition {
 
     pub fn to_be_evacuated(&self) -> bool {
         self.evacuate
-    }
-
-    pub fn iterate(&self) -> PartitionIterator {
-        PartitionIterator::start(self)
     }
 
     #[cfg(debug_assertions)]
@@ -125,27 +83,111 @@ impl Partition {
     }
 }
 
-pub struct PartitionedHeapIterator {
+/// Iterator state that can be stored between GC increments.
+pub struct HeapIteratorState {
     partition_index: usize,
+    current_address: usize,
+}
+
+impl HeapIteratorState {
+    pub fn new() -> HeapIteratorState {
+        HeapIteratorState {
+            partition_index: 0,
+            current_address: 0,
+        }
+    }
+}
+
+/// Instantiated per GC increment, operating on a stored `HeapIteratorState`.
+pub struct PartitionedHeapIterator<'a> {
+    heap: &'a PartitionedHeap,
+    partition_index: &'a mut usize,
+    current_address: &'a mut usize,
 }
 
 // Different to the standard iterator to allow resuming between GC increment pauses.
-impl PartitionedHeapIterator {
-    pub fn start() -> PartitionedHeapIterator {
-        PartitionedHeapIterator { partition_index: 0 }
+impl<'a> PartitionedHeapIterator<'a> {
+    pub unsafe fn resume(
+        heap: &'a PartitionedHeap,
+        state: &'a mut HeapIteratorState,
+    ) -> PartitionedHeapIterator<'a> {
+        let mut iterator = PartitionedHeapIterator {
+            heap,
+            partition_index: &mut state.partition_index,
+            current_address: &mut state.current_address,
+        };
+        iterator.start();
+        iterator
     }
 
-    pub fn current(&self) -> Option<usize> {
-        if self.partition_index < MAX_PARTITIONS {
-            Some(self.partition_index)
+    unsafe fn start(&mut self) {
+        if *self.partition_index == 0 && *self.current_address == 0 {
+            *self.partition_index = self.heap.base_address() % PARTITION_SIZE;
+            *self.current_address = self.heap.base_address();
+        }
+        if *self.partition_index < MAX_PARTITIONS {
+            self.skip_free_space();
+        }
+    }
+
+    pub fn current_partition(&self) -> Option<&Partition> {
+        if *self.partition_index < MAX_PARTITIONS {
+            Some(self.heap.get_partition(*self.partition_index))
         } else {
             None
         }
     }
 
-    pub fn next(&mut self) {
-        assert!(self.partition_index < MAX_PARTITIONS);
-        self.partition_index += 1;
+    pub fn current_object(&self) -> Option<*mut Obj> {
+        if *self.current_address < usize::MAX {
+            Some(*self.current_address as *mut Obj)
+        } else {
+            None
+        }
+    }
+
+    fn partition_scan_start(&self) -> usize {
+        self.current_partition().unwrap().dynamic_space_start()
+    }
+
+    fn partition_scan_end(&self) -> usize {
+        self.current_partition().unwrap().dynamic_space_end()
+    }
+
+    unsafe fn skip_free_space(&mut self) {
+        self.skip_free_blocks();
+        while *self.current_address == self.partition_scan_end() {
+            self.next_partition();
+            self.skip_free_blocks();
+        }
+    }
+
+    unsafe fn skip_free_blocks(&mut self) {
+        while *self.current_address < self.partition_scan_end()
+            && !Value::from_ptr(*self.current_address).is_obj()
+        {
+            let size = block_size(*self.current_address);
+            *self.current_address += size.to_bytes().as_usize();
+        }
+    }
+
+    pub fn next_partition(&mut self) {
+        assert!(*self.partition_index < MAX_PARTITIONS);
+        *self.partition_index += 1;
+        if *self.partition_index < MAX_PARTITIONS {
+            *self.current_address = self.partition_scan_start();
+        } else {
+            *self.current_address = usize::MAX
+        }
+    }
+
+    pub unsafe fn next_object(&mut self) {
+        assert!(*self.current_address >= self.partition_scan_start());
+        assert!(*self.current_address < self.partition_scan_end());
+        let size = block_size(*self.current_address);
+        *self.current_address += size.to_bytes().as_usize();
+        assert!(*self.current_address <= self.partition_scan_end());
+        self.skip_free_space();
     }
 }
 

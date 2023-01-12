@@ -1,7 +1,6 @@
 use crate::{
     gc::incremental::{
-        partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
-        Phase, INCREMENT_LIMIT, PARTITIONED_HEAP, PHASE,
+        partitioned_heap::PartitionedHeapIterator, Phase, INCREMENT_LIMIT, PARTITIONED_HEAP, PHASE,
     },
     mem_utils::memcpy_words,
     memory::Memory,
@@ -11,20 +10,19 @@ use crate::{
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: &'a mut usize,
-    heap: &'a mut PartitionedHeap,
-    heap_iterator: &'a mut PartitionedHeapIterator,
-    sweep_address: &'a mut Option<usize>,
+    heap_iterator: PartitionedHeapIterator<'a>,
+    complete: &'a mut bool,
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn instance(mem: &'a mut M, steps: &'a mut usize) -> EvacuationIncrement<'a, M> {
         if let Phase::Evacuate(state) = &mut PHASE {
+            let heap = PARTITIONED_HEAP.as_mut().unwrap();
             EvacuationIncrement {
                 mem,
                 steps,
-                heap: PARTITIONED_HEAP.as_mut().unwrap(),
-                heap_iterator: &mut state.heap_iterator,
-                sweep_address: &mut state.sweep_address,
+                heap_iterator: PartitionedHeapIterator::resume(heap, &mut state.iterator_state),
+                complete: &mut state.complete,
             }
         } else {
             panic!("Invalid phase");
@@ -36,41 +34,27 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     pub unsafe fn run(&mut self) {
-        while self.heap_iterator.current().is_some() {
-            let partition_index = self.heap_iterator.current().unwrap();
-            let partition = self.heap.get_partition(partition_index);
+        while self.heap_iterator.current_partition().is_some() {
+            let partition = self.heap_iterator.current_partition().unwrap();
             if partition.to_be_evacuated() {
-                if self.sweep_address.is_none() {
-                    *self.sweep_address = Some(partition.dynamic_space_start());
-                }
                 self.evacuate_partition();
                 if *self.steps > INCREMENT_LIMIT {
                     return;
                 }
             } else {
-                assert!(self.sweep_address.is_none());
+                self.heap_iterator.next_partition();
             }
-            self.heap_iterator.next();
-            *self.sweep_address = None;
         }
+        *self.complete = true;
     }
 
     unsafe fn evacuate_partition(&mut self) {
-        let partition_index = self.heap_iterator.current().unwrap();
-        let partition = self.heap.get_partition(partition_index);
-        let end_address = partition.dynamic_space_end();
-        assert!(self.sweep_address.unwrap() >= partition.dynamic_space_start());
-        while self.sweep_address.unwrap() < end_address {
-            let block = Value::from_ptr(self.sweep_address.unwrap());
-            if block.is_obj() {
-                let original = self.sweep_address.unwrap() as *mut Obj;
-                if original.is_marked() {
-                    self.evacuate_object(original);
-                }
+        while self.heap_iterator.current_object().is_some() {
+            let original = self.heap_iterator.current_object().unwrap();
+            if original.is_marked() {
+                self.evacuate_object(original);
             }
-            let size = block_size(self.sweep_address.unwrap());
-            *self.sweep_address.as_mut().unwrap() += size.to_bytes().as_usize();
-            assert!(self.sweep_address.unwrap() <= end_address);
+            self.heap_iterator.next_object();
             *self.steps += 1;
             if *self.steps > INCREMENT_LIMIT {
                 return;
