@@ -97,10 +97,10 @@ let print_exn flags exn =
   Printf.printf "%!";
   let at = Source.string_of_region !last_region in
   Printf.eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
-(*  Printf.eprintf "\nLast environment:\n";
+  Printf.eprintf "\nLast environment:\n";
   Value.Env.iter
     (fun x d -> Printf.eprintf "%s = %s\n" x (string_of_def flags d))
-    !last_env.vals;*)
+    !last_env.vals;
   Printf.eprintf "\n";
   Printf.eprintf "%s" trace;
   Printf.eprintf "%!"
@@ -875,8 +875,8 @@ and interpret_comp_unit env cu k = match cu with
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
   | ActorU (None, ds, fs, _, _)
-  | ActorU (Some [], ds, fs, _, _)  (* to match semantics of installation with empty argument *)
-  ->
+  | ActorU (Some [], ds, fs, _, _) ->
+    (* to match semantics of installation with empty argument *)
     interpret_actor env ds fs (fun _ -> k ())
   | ActorU (Some as_, ds, fs, up, t) ->
     (* create the closure *)
@@ -899,21 +899,21 @@ let interpret_prog flags (cu, flavor) =
       with throws = Some (fun v -> trap !last_region "uncaught throw") }
   in
   env.actor_env :=
-    V.Env.singleton
-      ""
-      (V.Obj (V.Env.singleton "raw_rand"
-                (make_message env "rand" CC.{
-                     sort = T.Shared T.Write;
-                     control = if env.flavor.has_async_typ then T.Promises else T.Replies;
-                     n_args = 0;
-                     n_res = 1
-                   }
-                   (fun c v k' ->
-                     async env
-                       Source.no_region
-                       (fun k'' r ->
-                         k'' (V.Blob (V.Blob.rand32 ())))
-                       k'))));
+    (* ManagementCanister with raw_rand (only) *)
+    V.Env.singleton "" (V.Obj
+       (V.Env.singleton "raw_rand"
+         (make_message env "rand" CC.{
+             sort = T.Shared T.Write;
+             control = if env.flavor.has_async_typ then T.Promises else T.Replies;
+             n_args = 0;
+             n_res = 1
+           }
+           (fun c v k ->
+              async env
+                Source.no_region
+                  (fun k' r ->
+                    k' (V.Blob (V.Blob.rand32 ())))
+                    k))));
   trace_depth := 0;
   try
     Scheduler.queue (fun () ->
