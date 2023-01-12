@@ -15,11 +15,12 @@ When lower-level access to the canister global timer is desired, an actor can el
 If the `timer` system method is declared, the `Timers.mo` base library module may not function correctly and should not be used.
 
 The following example of a global timer expiration callback gets called immmediately
-after the canister starts (i.e. after install) and periodically every twenty second thereafter:
+after the canister starts (i.e. after install) and periodically every twenty seconds thereafter:
+
 ``` motoko
 system func timer(setGlobalTimer : Nat64 -> ()) : async () {
   let next = Nat64.fromIntWrap(Time.now()) + 20_000_000_000;
-  setGlobalTimer(next);
+  setGlobalTimer(next); // absolute time in nanoseconds
   print("Tick!");
 }
 ```
