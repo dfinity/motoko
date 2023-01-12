@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * bugfix: in default timer mechanism sometimes `cancelTimer` wouldn't actually stop a recurring timer (#3695).
+  * bugfix: in the default timer mechanism `cancelTimer` sometimes wouldn't actually stop a recurring timer (#3695).
 
 ## 0.7.5 (2022-12-23)
 
