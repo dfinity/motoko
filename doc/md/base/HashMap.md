@@ -14,6 +14,8 @@ Internally, table growth policy is very simple, for now:
 
 ## `class HashMap<K, V>`
 
+An imperative HashMap with a minimal object-oriented interface.
+Maps keys of type `K` to values of type `V`.
 
 ### Function `size`
 ``` motoko no-repl
@@ -90,8 +92,6 @@ func entries() : Iter.Iter<(K, V)>
 
 Returns an iterator over the key value pairs in this
 `HashMap`. Does _not_ modify the `HashMap`.
-An imperative HashMap with a minimal object-oriented interface.
-Maps keys of type `K` to values of type `V`.
 
 ## Function `clone`
 ``` motoko no-repl
