@@ -503,7 +503,8 @@ func @timer_helper() : async () {
           case (?delay) if (delay != 0) {
             // re-add the node
             let expire = n.expire[0] + delay;
-            // N.B. insert only works on pruned nodes
+            n.expire[0] := 0;
+            // N.B. reinsert only works on pruned nodes
             func reinsert(m : ?@Node) : @Node = switch m {
               case null ({ n with expire = [var expire]; pre = null; post = null });
               case (?m) {
@@ -514,9 +515,8 @@ func @timer_helper() : async () {
             };
             @timers := ?reinsert(@prune(@timers));
           };
-          case _ ()
+          case _ n.expire[0] := 0
         };
-        n.expire[0] := 0;
         gathered += 1;
       };
       gatherExpired(n.post);
