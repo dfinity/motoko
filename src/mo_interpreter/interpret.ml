@@ -524,21 +524,21 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | "put" -> array_put
           | "keys" -> array_keys
           | "vals" -> array_vals
-          | s -> invalid_arg s
+          | s -> assert false
         in k (f vs exp.at)
       | V.Text s ->
         let f = match id.it with
           | "size" -> text_len
           | "chars" -> text_chars
-          | s -> invalid_arg s
+          | s -> assert false
         in k (f s exp.at)
       | V.Blob b ->
         let f = match id.it with
           | "size" -> blob_size
           | "vals" -> blob_vals
-          | s -> invalid_arg s
+          | s -> assert false
         in k (f b exp.at)
-      | _ -> invalid_arg id.it
+      | _ -> assert false
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->
