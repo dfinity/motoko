@@ -49,16 +49,13 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_partition(&mut self) {
-        while self.heap_iterator.current_object().is_some() {
+        while self.heap_iterator.current_object().is_some() && *self.steps <= INCREMENT_LIMIT {
             let original = self.heap_iterator.current_object().unwrap();
             if original.is_marked() {
                 self.evacuate_object(original);
             }
             self.heap_iterator.next_object();
             *self.steps += 1;
-            if *self.steps > INCREMENT_LIMIT {
-                return;
-            }
         }
     }
 

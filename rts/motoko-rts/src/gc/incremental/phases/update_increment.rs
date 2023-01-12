@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
-        partitioned_heap::{PartitionedHeap, MAX_PARTITIONS},
-        Phase, Roots, INCREMENT_LIMIT, PARTITIONED_HEAP, PHASE,
+        partitioned_heap::PartitionedHeapIterator, Phase, Roots, INCREMENT_LIMIT, PARTITIONED_HEAP,
+        PHASE,
     },
     types::*,
     visitor::visit_pointer_fields,
@@ -9,19 +9,20 @@ use crate::{
 
 pub struct UpdateIncrement<'a> {
     steps: &'a mut usize,
-    heap: &'a mut PartitionedHeap,
-    partition_index: &'a mut usize,
-    scan_address: &'a mut Option<usize>,
+    heap_base: usize,
+    heap_iterator: PartitionedHeapIterator<'a>,
+    complete: &'a mut bool,
 }
 
 impl<'a> UpdateIncrement<'a> {
     pub unsafe fn instance(steps: &'a mut usize) -> UpdateIncrement<'a> {
         if let Phase::Update(state) = &mut PHASE {
+            let heap = PARTITIONED_HEAP.as_mut().unwrap();
             UpdateIncrement {
                 steps,
-                heap: PARTITIONED_HEAP.as_mut().unwrap(),
-                partition_index: &mut state.partition_index,
-                scan_address: &mut state.scan_address,
+                heap_base: heap.base_address(),
+                heap_iterator: PartitionedHeapIterator::resume(heap, &mut state.iterator_state),
+                complete: &mut state.complete,
             }
         } else {
             panic!("Invalid phase");
@@ -37,9 +38,9 @@ impl<'a> UpdateIncrement<'a> {
         let root_array = static_roots.as_array();
         for index in 0..root_array.len() {
             let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.heap.base_address());
+            debug_assert!((mutbox as usize) < self.heap_base);
             let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap.base_address() {
+            if value.is_ptr() && value.get_ptr() >= self.heap_base {
                 (*mutbox).field = value.forward_if_possible();
             }
             *self.steps += 1;
@@ -52,7 +53,7 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 continuation_table.get_ptr() as *mut Obj,
                 continuation_table.tag(),
-                self.heap.base_address(),
+                self.heap_base,
                 |_, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                 },
@@ -65,50 +66,38 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn run(&mut self) {
-        while *self.partition_index < MAX_PARTITIONS {
-            let partition = self.heap.get_partition(*self.partition_index);
-            if !partition.is_free() && !partition.to_be_evacuated() {
+        while self.heap_iterator.current_partition().is_some() {
+            let partition = self.heap_iterator.current_partition().unwrap();
+            if !partition.to_be_evacuated() {
+                assert!(!partition.is_free());
                 self.update_partition();
                 if *self.steps > INCREMENT_LIMIT {
                     return;
                 }
+            } else {
+                self.heap_iterator.next_partition();
             }
-            *self.partition_index += 1;
-            *self.scan_address = None;
         }
+        *self.complete = true;
     }
 
     unsafe fn update_partition(&mut self) {
-        let partition = self.heap.get_partition(*self.partition_index);
-        if self.scan_address.is_none() {
-            *self.scan_address = Some(partition.dynamic_space_start());
-        }
-        let end_address = partition.dynamic_space_end();
-        while self.scan_address.unwrap() < end_address {
-            let block = Value::from_ptr(self.scan_address.unwrap());
-            if block.is_obj() {
-                let original = self.scan_address.unwrap() as *mut Obj;
-                if original.is_marked() {
-                    self.update_fields(original);
-                    if *self.steps > INCREMENT_LIMIT {
-                        // Keep mark bit and scan address to later resume updating more slices of this array
-                        return;
-                    }
+        while self.heap_iterator.current_object().is_some() && *self.steps <= INCREMENT_LIMIT {
+            let object = self.heap_iterator.current_object().unwrap();
+            if object.is_marked() {
+                self.update_fields(object);
+                if *self.steps > INCREMENT_LIMIT {
+                    // Keep mark bit and later resume updating more slices of this array
+                    return;
                 }
-                original.unmark();
             }
-            let size = block_size(self.scan_address.unwrap());
-            *self.scan_address.as_mut().unwrap() += size.to_bytes().as_usize();
-            assert!(self.scan_address.unwrap() <= end_address);
+            object.unmark();
+            self.heap_iterator.next_object();
             *self.steps += 1;
-            if *self.steps > INCREMENT_LIMIT {
-                return;
-            }
         }
     }
 
     unsafe fn update_fields(&mut self, object: *mut Obj) {
-        assert!(object.is_marked());
         assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         loop {
             // Loop over array slices and return if GC increment is exceeded.
@@ -116,7 +105,7 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 object,
                 object.tag(),
-                self.heap.base_address(),
+                self.heap_base,
                 |_, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                 },

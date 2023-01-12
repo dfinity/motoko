@@ -2,8 +2,8 @@ use core::array::from_fn;
 
 use crate::types::*;
 
-pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
-pub const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
+pub(crate) const PARTITION_SIZE: usize = 128 * 1024 * 1024;
+const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
 pub struct Partition {
     index: usize,
