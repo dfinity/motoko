@@ -1,6 +1,6 @@
 use crate::{
     gc::incremental::{
-        mark_stack::MarkStack, partition_map::PartitionMap, phases::INCREMENT_LIMIT, Phase, Roots,
+        mark_stack::MarkStack, partition_map::PartitionMap, Phase, Roots, INCREMENT_LIMIT,
         PARTITION_MAP, PHASE,
     },
     memory::Memory,
@@ -10,7 +10,7 @@ use crate::{
 
 pub struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
-    steps: usize,
+    steps: &'a mut usize,
     partition_map: &'a mut PartitionMap,
     heap_base: usize,
     mark_stack: &'a mut MarkStack,
@@ -18,11 +18,11 @@ pub struct MarkIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
-    pub unsafe fn instance(mem: &'a mut M) -> MarkIncrement<'a, M> {
+    pub unsafe fn instance(mem: &'a mut M, steps: &'a mut usize) -> MarkIncrement<'a, M> {
         if let Phase::Mark(state) = &mut PHASE {
             MarkIncrement {
                 mem,
-                steps: 0,
+                steps,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),
                 heap_base: state.heap_base,
                 mark_stack: &mut state.mark_stack,
@@ -47,7 +47,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             if value.is_ptr() && value.get_ptr() >= self.heap_base {
                 self.mark_object(value);
             }
-            self.steps += 1;
+            *self.steps += 1;
         }
     }
 
@@ -68,8 +68,8 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(value.as_obj().is_marked());
             self.mark_fields(value.as_obj());
 
-            self.steps += 1;
-            if self.steps > INCREMENT_LIMIT {
+            *self.steps += 1;
+            if *self.steps > INCREMENT_LIMIT {
                 return;
             }
         }
@@ -77,7 +77,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     pub unsafe fn mark_object(&mut self, value: Value) {
-        self.steps += 1;
+        *self.steps += 1;
         debug_assert!(!*self.complete);
         debug_assert!((value.get_ptr() >= self.heap_base));
         assert!(!value.is_forwarded());
@@ -113,11 +113,11 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                     (*array).header.raw_tag = mark(new_start);
                     debug_assert!(!*gc.complete);
                     gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
-                    gc.steps += SLICE_INCREMENT as usize;
+                    *gc.steps += SLICE_INCREMENT as usize;
                     new_start
                 } else {
                     (*array).header.raw_tag = mark(TAG_ARRAY);
-                    gc.steps += (array.len() % SLICE_INCREMENT) as usize;
+                    *gc.steps += (array.len() % SLICE_INCREMENT) as usize;
                     array.len()
                 }
             },

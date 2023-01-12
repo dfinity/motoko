@@ -1,16 +1,14 @@
 use crate::{
     gc::incremental::{
         partition_map::{PartitionMap, MAX_PARTITIONS},
-        Limits, Phase, Roots, PARTITION_MAP, PHASE,
+        Limits, Phase, Roots, INCREMENT_LIMIT, PARTITION_MAP, PHASE,
     },
     types::*,
     visitor::visit_pointer_fields,
 };
 
-use super::INCREMENT_LIMIT;
-
 pub struct UpdateIncrement<'a> {
-    steps: usize,
+    steps: &'a mut usize,
     limits: &'a Limits,
     partition_map: &'a mut PartitionMap,
     partition_index: &'a mut usize,
@@ -18,10 +16,10 @@ pub struct UpdateIncrement<'a> {
 }
 
 impl<'a> UpdateIncrement<'a> {
-    pub unsafe fn instance() -> UpdateIncrement<'a> {
+    pub unsafe fn instance(steps: &'a mut usize) -> UpdateIncrement<'a> {
         if let Phase::Update(state) = &mut PHASE {
             UpdateIncrement {
-                steps: 0,
+                steps,
                 limits: &state.limits,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),
                 partition_index: &mut state.partition_index,
@@ -46,7 +44,7 @@ impl<'a> UpdateIncrement<'a> {
             if value.is_ptr() && value.get_ptr() >= self.limits.base {
                 (*mutbox).field = value.forward_if_possible();
             }
-            self.steps += 1;
+            *self.steps += 1;
         }
     }
 
@@ -61,7 +59,7 @@ impl<'a> UpdateIncrement<'a> {
                     *field_address = (*field_address).forward_if_possible();
                 },
                 |gc, _, array| {
-                    gc.steps += array.len() as usize;
+                    *gc.steps += array.len() as usize;
                     array.len()
                 },
             );
@@ -73,7 +71,7 @@ impl<'a> UpdateIncrement<'a> {
             let partition = self.partition_map.get_partition(*self.partition_index);
             if !partition.is_free() && !partition.to_be_evacuated() {
                 self.update_partition();
-                if self.steps > INCREMENT_LIMIT {
+                if *self.steps > INCREMENT_LIMIT {
                     return;
                 }
             }
@@ -101,7 +99,7 @@ impl<'a> UpdateIncrement<'a> {
                 let original = self.scan_address.unwrap() as *mut Obj;
                 if original.is_marked() {
                     self.update_fields(original);
-                    if self.steps > INCREMENT_LIMIT {
+                    if *self.steps > INCREMENT_LIMIT {
                         // Keep mark bit and scan address to later resume updating more slices of this array
                         return;
                     }
@@ -111,8 +109,8 @@ impl<'a> UpdateIncrement<'a> {
             let size = block_size(self.scan_address.unwrap());
             *self.scan_address.as_mut().unwrap() += size.to_bytes().as_usize();
             assert!(self.scan_address.unwrap() <= end_address);
-            self.steps += 1;
-            if self.steps > INCREMENT_LIMIT {
+            *self.steps += 1;
+            if *self.steps > INCREMENT_LIMIT {
                 return;
             }
         }
@@ -138,16 +136,16 @@ impl<'a> UpdateIncrement<'a> {
                     if array.len() - slice_start > SLICE_INCREMENT {
                         let new_start = slice_start + SLICE_INCREMENT;
                         (*array).header.raw_tag = mark(new_start);
-                        gc.steps += SLICE_INCREMENT as usize;
+                        *gc.steps += SLICE_INCREMENT as usize;
                         new_start
                     } else {
                         (*array).header.raw_tag = mark(TAG_ARRAY);
-                        gc.steps += (array.len() % SLICE_INCREMENT) as usize;
+                        *gc.steps += (array.len() % SLICE_INCREMENT) as usize;
                         array.len()
                     }
                 },
             );
-            if object.tag() < TAG_ARRAY_SLICE_MIN || self.steps > INCREMENT_LIMIT {
+            if object.tag() < TAG_ARRAY_SLICE_MIN || *self.steps > INCREMENT_LIMIT {
                 return;
             }
         }

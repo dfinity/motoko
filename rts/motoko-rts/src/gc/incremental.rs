@@ -94,23 +94,25 @@ unsafe fn record_increment_stop<M: Memory>() {
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
-/// 1. Marking: Incremental full-heap snapshot-at-the-beginning marking. Must start on empty call stack.
+/// 1. Marking: Incremental full-heap snapshot-at-the-beginning marking.
+///    Must start on empty call stack.
 ///     * Concurrent allocations are conservatively marked.
 ///     * Concurrent pointer writes are handled by the write barrier.
 /// 2. Evacuation: Incremental compacting evacuation of high-garbage partitions.
-///     * Moving live objects out of the selected partitions to new partitions.
-///     * Concurrent accesses to moved objects are handled by pointer forwarding.
-/// 3. Updating: Updating old pointers to new forwarded addresses. Must complete on empty call stack.
+///     * Copying live objects out of the selected partitions to new partitions.
+///     * Concurrent accesses to old object locations are handled by pointer forwarding.
+/// 3. Updating: Incremental updates of all old pointers to their new forwarded addresses.
+///    Must complete on empty call stack.
 ///     * Also clearing mark bit of all alive objects.
 ///     * Concurrent copying of old pointer values is intercepted to resolve forwarding.
-/// Finally, the evacuated partitions are freed.
+/// Finally, all the evacuated partitions are freed.
 
 enum Phase {
-    Pause,                     // Inactive, waiting for next GC run.
+    Pause,                     // Inactive, waiting for the next GC run.
     Mark(MarkState),           // Incremental marking.
     Evacuate(EvacuationState), // Incremental evacuation compact.
     Update(UpdateState),       // Incremental pointer updates.
-    Stop,                      // Stopped on canister upgrade.
+    Stop,                      // GC stopped on canister upgrade.
 }
 
 struct MarkState {
@@ -132,25 +134,33 @@ struct UpdateState {
 
 /// GC state retained over multiple GC increments.
 static mut PHASE: Phase = Phase::Pause;
-pub static mut PARTITION_MAP: Option<PartitionMap> = None;
+pub(crate) static mut PARTITION_MAP: Option<PartitionMap> = None;
 
 /// Heap limits.
+#[derive(Clone, Copy)]
 pub struct Limits {
     pub base: usize,
     pub free: usize,
 }
 
-/// GC Root set.
+/// GC root set.
+#[derive(Clone, Copy)]
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table: Value,
-    // If new roots are added in future, extend `IncrementalGC::mark_roots()`.
+    // If new roots are added in future, extend:
+    // - `MarkIncrement::mark_roots()`
+    // - `UpdateIncrement.mark_roots()`
 }
+
+/// Limit on the number of steps performed in a GC increment.
+const INCREMENT_LIMIT: usize = 500_000;
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC states `PHASE` and `PARTITION_MAP`.
 pub struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
+    steps: usize,
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
@@ -161,23 +171,26 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         PARTITION_MAP = Some(PartitionMap::new(heap_base));
     }
 
+    /// Each GC schedule point can get a new GC instance that shares the common GC state.
+    /// This is because the memory implementation is not stored as global variable.
     pub unsafe fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
-        IncrementalGC { mem }
+        IncrementalGC { mem, steps: 0 }
     }
 
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
     /// * The mark phase is only started on an empty call stack.
-    /// * In future: The moving phase can only be completed on an empty call stack.
+    /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, limits: Limits, roots: Roots) {
         if Self::pausing() {
             self.start_marking(limits.base, roots);
-        } else if Self::mark_completed() {
+        }
+        self.increment();
+        if Self::mark_completed() {
             self.start_evacuating();
-        } else if Self::evacuation_completed() {
+        }
+        if Self::evacuation_completed() {
             self.start_updating(limits, roots);
-        } else {
-            self.increment();
         }
         if Self::updating_completed() {
             self.complete_run();
@@ -190,7 +203,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn pre_write_barrier(&mut self, value: Value) {
         if let Phase::Mark(state) = &mut PHASE {
             if value.points_to_or_beyond(state.heap_base) && !state.complete {
-                MarkIncrement::instance(self.mem).mark_object(value);
+                MarkIncrement::instance(self.mem, &mut self.steps).mark_object(value);
             }
         }
     }
@@ -205,12 +218,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn increment(&mut self) {
         match &mut PHASE {
             Phase::Pause | Phase::Stop => {}
-            Phase::Mark(_) => MarkIncrement::instance(self.mem).run(),
-            Phase::Evacuate(_) => EvacuationIncrement::instance(self.mem).run(),
-            Phase::Update(_) => UpdateIncrement::instance().run(),
+            Phase::Mark(_) => MarkIncrement::instance(self.mem, &mut self.steps).run(),
+            Phase::Evacuate(_) => EvacuationIncrement::instance(self.mem, &mut self.steps).run(),
+            Phase::Update(_) => UpdateIncrement::instance(&mut self.steps).run(),
         }
     }
 
+    /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
     unsafe fn start_marking(&mut self, heap_base: usize, roots: Roots) {
         debug_assert!(Self::pausing());
 
@@ -225,9 +239,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             complete: false,
         };
         PHASE = Phase::Mark(state);
-        let mut increment = MarkIncrement::instance(self.mem);
+        let mut increment = MarkIncrement::instance(self.mem, &mut self.steps);
         increment.mark_roots(roots);
-        increment.run();
     }
 
     unsafe fn mark_completed() -> bool {
@@ -247,9 +260,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             sweep_address: None,
         };
         PHASE = Phase::Evacuate(state);
-        let mut increment = EvacuationIncrement::instance(self.mem);
+        let mut increment = EvacuationIncrement::instance(self.mem, &mut self.steps);
         increment.initiate_evacuations();
-        increment.run();
     }
 
     unsafe fn evacuation_completed() -> bool {
@@ -267,9 +279,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             scan_address: None,
         };
         PHASE = Phase::Update(state);
-        let mut increment = UpdateIncrement::instance();
+        let mut increment = UpdateIncrement::instance(&mut self.steps);
         increment.update_roots(roots);
-        increment.run();
     }
 
     unsafe fn updating_completed() -> bool {
@@ -279,7 +290,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
-    /// Only to be called when the call stack is empty and all pointers forwards have been updated.
+    /// Only to be called when the call stack is empty as pointers on stack are not updated.
     unsafe fn complete_run(&mut self) {
         debug_assert!(Self::updating_completed());
         PARTITION_MAP.as_mut().unwrap().free_evacuated_partitions();

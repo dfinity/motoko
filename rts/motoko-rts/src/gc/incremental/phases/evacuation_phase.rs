@@ -1,29 +1,27 @@
 use crate::{
     gc::incremental::{
         partition_map::{Partition, PartitionMap, MAX_PARTITIONS},
-        Phase, PARTITION_MAP, PHASE,
+        Phase, INCREMENT_LIMIT, PARTITION_MAP, PHASE,
     },
     mem_utils::memcpy_words,
     memory::Memory,
     types::*,
 };
 
-use super::INCREMENT_LIMIT;
-
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
-    steps: usize,
+    steps: &'a mut usize,
     partition_map: &'a mut PartitionMap,
     partition_index: &'a mut usize,
     sweep_address: &'a mut Option<usize>,
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
-    pub unsafe fn instance(mem: &'a mut M) -> EvacuationIncrement<'a, M> {
+    pub unsafe fn instance(mem: &'a mut M, steps: &'a mut usize) -> EvacuationIncrement<'a, M> {
         if let Phase::Evacuate(state) = &mut PHASE {
             EvacuationIncrement {
                 mem,
-                steps: 0,
+                steps,
                 partition_map: PARTITION_MAP.as_mut().unwrap(),
                 partition_index: &mut state.partition_index,
                 sweep_address: &mut state.sweep_address,
@@ -44,7 +42,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
                     *self.sweep_address = Some(self.current_partition().dynamic_space_start());
                 }
                 self.evacuate_partition();
-                if self.steps > INCREMENT_LIMIT {
+                if *self.steps > INCREMENT_LIMIT {
                     return;
                 }
             }
@@ -70,8 +68,8 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             let size = block_size(self.sweep_address.unwrap());
             *self.sweep_address.as_mut().unwrap() += size.to_bytes().as_usize();
             assert!(self.sweep_address.unwrap() <= end_address);
-            self.steps += 1;
-            if self.steps > INCREMENT_LIMIT {
+            *self.steps += 1;
+            if *self.steps > INCREMENT_LIMIT {
                 return;
             }
         }
