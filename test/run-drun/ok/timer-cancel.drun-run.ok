@@ -4,6 +4,5 @@ debug.print: TICK!
 debug.print: TICK!
 debug.print: TICK!
 debug.print: CANCELLING!
-debug.print: TICK!
 debug.print: {counter = 4}
 ingress Completed: Reply: 0x4449444c0000
