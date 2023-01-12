@@ -11,8 +11,9 @@ actor Reminder {
     print("Happy New Year!");
   };
 
-  ignore setTimer(#seconds (solarYearSeconds - abs(now() / 1_000_000_000) % solarYearSeconds), func () : async () {
-    ignore recurringTimer(#seconds solarYearSeconds, remind);
-    await remind();
+  ignore setTimer(#seconds (solarYearSeconds - abs(now() / 1_000_000_000) % solarYearSeconds),
+    func () : async () {
+      ignore recurringTimer(#seconds solarYearSeconds, remind);
+      await remind();
   });
 }
