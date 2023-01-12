@@ -65,7 +65,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     match &PARTITION_MAP {
         None => Bytes(HP - get_aligned_heap_base()),
-        Some(map) => map.occupied_size(HP as usize),
+        Some(map) => map.occupied_size(),
     }
 }
 

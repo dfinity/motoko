@@ -73,11 +73,10 @@ unsafe fn record_increment_start<M: Memory>() {
 
 #[cfg(feature = "ic")]
 unsafe fn heap_occupation() -> usize {
-    use crate::memory::ic;
     PARTITION_MAP
         .as_ref()
         .unwrap()
-        .occupied_size(ic::HP as usize)
+        .occupied_size()
         .as_usize()
 }
 
@@ -88,7 +87,7 @@ unsafe fn record_increment_stop<M: Memory>() {
         let occupation = PARTITION_MAP
             .as_ref()
             .unwrap()
-            .occupied_size(ic::HP as usize);
+            .occupied_size();
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, occupation);
     }
 }
