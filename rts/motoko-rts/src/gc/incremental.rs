@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{memory::Memory, types::*};
@@ -27,7 +29,11 @@ unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    if !IncrementalGC::<M>::pausing() || should_start() {
+    let running = match &PHASE {
+        Phase::Pause | Phase::Stop => false,
+        _ => true,
+    };
+    if running || should_start() {
         incremental_gc(mem);
     }
 }
@@ -62,7 +68,7 @@ unsafe fn should_start() -> bool {
 
 #[cfg(feature = "ic")]
 unsafe fn record_increment_start<M: Memory>() {
-    if IncrementalGC::<M>::pausing() {
+    if let Phase::Pause = &PHASE {
         LAST_HEAP_OCCUPATION = heap_occupation();
     }
 }
@@ -79,7 +85,7 @@ unsafe fn heap_occupation() -> usize {
 #[cfg(feature = "ic")]
 unsafe fn record_increment_stop<M: Memory>() {
     use crate::memory::ic;
-    if IncrementalGC::<M>::pausing() {
+    if let Phase::Pause = &PHASE {
         let occupation = PARTITIONED_HEAP.as_ref().unwrap().occupied_size();
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, occupation);
     }
@@ -144,6 +150,8 @@ const INCREMENT_LIMIT: usize = 500_000;
 pub struct IncrementalGC<'a, M: Memory> {
     mem: &'a mut M,
     steps: usize,
+    phase: &'a mut Phase,
+    heap: &'a mut PartitionedHeap,
 }
 
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
@@ -157,7 +165,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// Each GC schedule point can get a new GC instance that shares the common GC state.
     /// This is because the memory implementation is not stored as global variable.
     pub unsafe fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
-        IncrementalGC { mem, steps: 0 }
+        IncrementalGC {
+            mem,
+            steps: 0,
+            phase: &mut PHASE,
+            heap: PARTITIONED_HEAP.as_mut().unwrap(),
+        }
     }
 
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
@@ -165,43 +178,30 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase is only started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
-        if Self::pausing() {
+        if self.pausing() {
             self.start_marking(roots);
         }
         self.increment();
-        if Self::mark_completed() {
+        if self.mark_completed() {
             self.start_evacuating();
         }
-        if Self::evacuation_completed() {
+        if self.evacuation_completed() {
             self.start_updating(roots);
         }
-        if Self::updating_completed() {
+        if self.updating_completed() {
             self.complete_run();
         }
     }
 
-    /// Pre-update field-level write barrier peforming snapshot-at-the-beginning marking.
-    /// The barrier is only effective while the GC is in the mark phase.
-    #[inline]
-    unsafe fn pre_write_barrier(&mut self, value: Value) {
-        if let Phase::Mark(state) = &mut PHASE {
-            if value.points_to_or_beyond(PARTITIONED_HEAP.as_ref().unwrap().base_address())
-                && !state.complete
-            {
-                MarkIncrement::instance(self.mem, &mut self.steps).mark_object(value);
-            }
-        }
-    }
-
-    unsafe fn pausing() -> bool {
-        match &PHASE {
+    unsafe fn pausing(&mut self) -> bool {
+        match self.phase {
             Phase::Pause => true,
             _ => false,
         }
     }
 
     unsafe fn increment(&mut self) {
-        match &mut PHASE {
+        match self.phase {
             Phase::Pause | Phase::Stop => {}
             Phase::Mark(_) => MarkIncrement::instance(self.mem, &mut self.steps).run(),
             Phase::Evacuate(_) => EvacuationIncrement::instance(self.mem, &mut self.steps).run(),
@@ -211,7 +211,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
     unsafe fn start_marking(&mut self, roots: Roots) {
-        debug_assert!(Self::pausing());
+        debug_assert!(self.pausing());
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
@@ -222,13 +222,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             mark_stack,
             complete: false,
         };
-        PHASE = Phase::Mark(state);
+        *self.phase = Phase::Mark(state);
         let mut increment = MarkIncrement::instance(self.mem, &mut self.steps);
         increment.mark_roots(roots);
     }
 
-    unsafe fn mark_completed() -> bool {
-        match &PHASE {
+    unsafe fn mark_completed(&self) -> bool {
+        match self.phase.borrow() {
             Phase::Mark(state) => {
                 debug_assert!(!state.complete || state.mark_stack.is_empty());
                 state.complete
@@ -238,36 +238,36 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn start_evacuating(&mut self) {
-        debug_assert!(Self::mark_completed());
+        debug_assert!(self.mark_completed());
         let state = EvacuationState {
             iterator_state: HeapIteratorState::new(),
             complete: false,
         };
-        PHASE = Phase::Evacuate(state);
+        *self.phase = Phase::Evacuate(state);
         let mut increment = EvacuationIncrement::instance(self.mem, &mut self.steps);
         increment.initiate_evacuations();
     }
 
-    unsafe fn evacuation_completed() -> bool {
-        match &PHASE {
+    unsafe fn evacuation_completed(&self) -> bool {
+        match self.phase.borrow() {
             Phase::Evacuate(state) => state.complete,
             _ => false,
         }
     }
 
     unsafe fn start_updating(&mut self, roots: Roots) {
-        debug_assert!(Self::evacuation_completed());
+        debug_assert!(self.evacuation_completed());
         let state = UpdateState {
             iterator_state: HeapIteratorState::new(),
             complete: false,
         };
-        PHASE = Phase::Update(state);
+        *self.phase = Phase::Update(state);
         let mut increment = UpdateIncrement::instance(&mut self.steps);
         increment.update_roots(roots);
     }
 
-    unsafe fn updating_completed() -> bool {
-        match &PHASE {
+    unsafe fn updating_completed(&self) -> bool {
+        match self.phase.borrow() {
             Phase::Update(state) => state.complete,
             _ => false,
         }
@@ -275,18 +275,31 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     /// Only to be called when the call stack is empty as pointers on stack are not updated.
     unsafe fn complete_run(&mut self) {
-        debug_assert!(Self::updating_completed());
-        PARTITIONED_HEAP
-            .as_mut()
-            .unwrap()
-            .free_evacuated_partitions();
-        PHASE = Phase::Pause;
+        debug_assert!(self.updating_completed());
+        self.heap.free_evacuated_partitions();
+        *self.phase = Phase::Pause;
 
         // Note: The memory check only works if the free space is cleared in `PartitionedHeap`.
         // Otherwise, there exist the remainder of garbage objects that have been conceptually freed.
         #[cfg(debug_assertions)]
         #[cfg(feature = "ic")]
         sanity_checks::check_memory(false, false);
+    }
+}
+
+/// Write barrier to be called BEFORE a potential overwrite of a pointer value.
+/// `overwritten_value` (skewed if a pointer) denotes the value that will be overwritten.
+/// The barrier can be conservatively called even if the overwritten value is not a pointer.
+/// The barrier is only effective while the GC is in the mark phase.
+#[inline]
+pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value: Value) {
+    if let Phase::Mark(state) = &mut PHASE {
+        if overwritten_value.points_to_or_beyond(PARTITIONED_HEAP.as_ref().unwrap().base_address())
+            && !state.complete
+        {
+            let mut steps = 0;
+            MarkIncrement::instance(mem, &mut steps).mark_object(overwritten_value);
+        }
     }
 }
 
