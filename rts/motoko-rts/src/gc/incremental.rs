@@ -6,8 +6,8 @@ use self::{
     mark_stack::MarkStack,
     partition_map::{PartitionMap, MAX_PARTITIONS},
     phases::{
-        evacuation_phase::EvacuationIncrement, mark_phase::MarkIncrement,
-        update_phase::UpdateIncrement,
+        evacuation_increment::EvacuationIncrement, mark_increment::MarkIncrement,
+        update_increment::UpdateIncrement,
     },
 };
 
