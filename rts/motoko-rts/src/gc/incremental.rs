@@ -175,7 +175,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
-    /// * The mark phase is only started on an empty call stack.
+    /// * The mark phase is only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
         if self.pausing() {
@@ -184,9 +184,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         self.increment();
         if self.mark_completed() {
             self.start_evacuating();
+            self.increment();
         }
         if self.evacuation_completed() {
             self.start_updating(roots);
+            self.increment();
         }
         if self.updating_completed() {
             self.complete_run();
@@ -244,8 +246,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             complete: false,
         };
         *self.phase = Phase::Evacuate(state);
-        let mut increment = EvacuationIncrement::instance(self.mem, &mut self.steps);
-        increment.initiate_evacuations();
+        self.heap.plan_evacuations();
     }
 
     unsafe fn evacuation_completed(&self) -> bool {

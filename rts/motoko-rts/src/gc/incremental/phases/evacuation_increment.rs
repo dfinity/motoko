@@ -29,10 +29,6 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         }
     }
 
-    pub unsafe fn initiate_evacuations(&mut self) {
-        PARTITIONED_HEAP.as_mut().unwrap().plan_evacuations();
-    }
-
     pub unsafe fn run(&mut self) {
         while self.heap_iterator.current_partition().is_some() {
             let partition = self.heap_iterator.current_partition().unwrap();
