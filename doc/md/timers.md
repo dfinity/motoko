@@ -2,8 +2,9 @@
 
 Internet Computer canisters can set an arbitrary number of single-expiration or recurring timers. See the `Timers.mo` module in the base library.
 
-The underlying mechanism is a [canister global timer](https://internetcomputer.org/docs/current/references/ic-interface-spec#timer) that is reprogrammed according to an internally kept priority queue.
+The underlying mechanism is a [canister global timer](https://internetcomputer.org/docs/current/references/ic-interface-spec#timer) that, by default, is issued with appropriate callbacks from a priority queue maintained by the Motoko runtime. 
 
 The timer mechanism can be disabled completely by passing the `-no-timer` flag to `moc`.
 
-When utmost control about the global timer is necessary, an actor can receive global timer expiry messages by declaring a `system` function, named `timer`, with one argument (to set the global timer), returning a future of unit type (`async ()`). In this case the `Timers.mo` base library module is not functional and shouldn't be used.
+When lower-level access to the canister global timer is desired, an actor can elect to receive timer expiry messages by declaring a `system` function, named `timer`. The function takes one argument (to re-set the global timer), and returns a future of unit type (`async ()`).
+If the `timer` system method is declared, the `Timers.mo` base library module may not function correctly and should not be used.
