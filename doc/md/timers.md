@@ -4,7 +4,7 @@ Internet Computer canisters can set an arbitrary number of single-expiration or 
 
 A simple, contrived example is a periodic reminder, that logs a new-year's message:
 
-``` motoko file=./examples/Reminder.mo
+``` motoko no-repl file=./examples/Reminder.mo
 ```
 
 The underlying mechanism is a [canister global timer](https://internetcomputer.org/docs/current/references/ic-interface-spec#timer) that, by default, is issued with appropriate callbacks from a priority queue maintained by the Motoko runtime. 
@@ -17,7 +17,7 @@ If the `timer` system method is declared, the `Timers.mo` base library module ma
 The following example of a global timer expiration callback gets called immediately after
 the canister starts (i.e. after install) and periodically every twenty seconds thereafter:
 
-``` motoko
+``` motoko no-repl
 system func timer(setGlobalTimer : Nat64 -> ()) : async () {
   let next = Nat64.fromIntWrap(Time.now()) + 20_000_000_000;
   setGlobalTimer(next); // absolute time in nanoseconds
