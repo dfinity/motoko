@@ -14,7 +14,7 @@ The timer mechanism can be disabled completely by passing the `-no-timer` flag t
 When lower-level access to the canister global timer is desired, an actor can elect to receive timer expiry messages by declaring a `system` function, named `timer`. The function takes one argument (to re-set the global timer), and returns a future of unit type (`async ()`).
 If the `timer` system method is declared, the `Timers.mo` base library module may not function correctly and should not be used.
 
-The following example of a global timer expiration callback gets called immmediately after
+The following example of a global timer expiration callback gets called immediately after
 the canister starts (i.e. after install) and periodically every twenty seconds thereafter:
 
 ``` motoko
