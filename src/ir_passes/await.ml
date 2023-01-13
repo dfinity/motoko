@@ -122,12 +122,13 @@ and t_exp' context exp' =
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
-  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
     ActorE (t_decs context ds, ids,
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
         heartbeat = t_exp LabelEnv.empty heartbeat;
+        timer = t_exp LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect
       },
       t)
@@ -535,12 +536,13 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+  | ActorU (as_opt, ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
     ActorU (as_opt, t_decs context ds, ids,
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
         heartbeat = t_exp LabelEnv.empty heartbeat;
+        timer = t_exp LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
       },
       t)

@@ -202,6 +202,7 @@ and exp' at note = function
   | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
   | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
   | S.ImpliesE (e1, e2) -> (impliesE (exp e1) (exp e2)).it
+  | S.OldE e -> (oldE (exp e)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
@@ -320,14 +321,22 @@ and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
-        S.dec = { it = S.LetD( { it = S.VarP id; _ } as p, _); _ };
+        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _); at; _ };
         _ }
       when id.it = name ->
       Some (
         match name with
+        | "timer" when not !Mo_config.Flags.global_timer -> assert false;
+        | "timer" ->
+           let timer =
+             blockE
+               [ expD T.(callE (varE (var id.it note)) [Any]
+                   (varE (var "@set_global_timer" (Func (Local, Returns, [], [Prim Nat64], []))))) ]
+               (unitE ()) in
+           { timer with at }
         | "heartbeat" ->
           blockE
-            [ expD (callE (varE (var id.it p.note)) [T.Any] (unitE())) ]
+            [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
            (unitE ())
         | "inspect" ->
           let _, tfs = T.as_obj obj_typ in
@@ -374,13 +383,13 @@ and call_system_func_opt name es obj_typ =
                     {it = I.{name = "arg"; var = id_of_var arg}; at = no_region; note = typ_of_var arg };
                     {it = I.{name = "msg"; var = id_of_var msg}; at = no_region; note = typ_of_var msg }]
                     record_typ));
-                letD accept (callE (varE (var id.it p.note)) [] (varE record))]
+                letD accept (callE (varE (var id.it note)) [] (varE record))]
               (ifE (varE accept)
                 (unitE ())
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"]))
         | _name ->
-          callE (varE (var id.it p.note)) [] (tupE []))
+          callE (varE (var id.it note)) [] (tupE []))
     | _ -> None) es
 and build_candid ts obj_typ =
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
@@ -497,6 +506,14 @@ and build_actor at ts self_id es obj_typ =
        heartbeat =
          (match call_system_func_opt "heartbeat" es obj_typ with
           | Some call -> call
+          | None -> tupE []);
+       timer =
+         (match call_system_func_opt "timer" es obj_typ with
+          | Some call -> call
+          | None when !Mo_config.Flags.global_timer ->
+            blockE
+              [ expD T.(callE (varE (var "@timer_helper" Mo_frontend.Typing.heartbeat_type)) [unit] (unitE())) ]
+              (unitE ())
           | None -> tupE []);
        inspect =
          (match call_system_func_opt "inspect" es obj_typ with

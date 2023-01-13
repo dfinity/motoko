@@ -9,14 +9,14 @@ The `Error` type is opaque.
 type Error = Prim.Types.Error
 ```
 
-Error values resulting from  `async` computations
+Error value resulting from  `async` computations
 
 ## Type `ErrorCode`
 ``` motoko no-repl
 type ErrorCode = Prim.ErrorCode
 ```
 
-Error codes (user and system), where module `Prim` defines:
+Error code to classify different kinds of user and system errors:
 ```motoko
 type ErrorCode = {
   // Fatal error.
@@ -36,21 +36,45 @@ type ErrorCode = {
 
 ## Value `reject`
 ``` motoko no-repl
-let reject : (m : Text) -> Error
+let reject : (message : Text) -> Error
 ```
 
-Create an error from message `m` with code #canister_reject.
+Create an error from the message with the code `#canister_reject`.
+
+Example:
+```motoko
+import Error "mo:base/Error";
+
+Error.reject("Example error") // can be used as throw argument
+```
 
 ## Value `code`
 ``` motoko no-repl
-let code : (e : Error) -> ErrorCode
+let code : (error : Error) -> ErrorCode
 ```
 
-Returns the code of an error `e`.
+Returns the code of an error.
+
+Example:
+```motoko
+import Error "mo:base/Error";
+
+let error = Error.reject("Example error");
+Error.code(error) // #canister_reject
+```
 
 ## Value `message`
 ``` motoko no-repl
-let message : (e : Error) -> Text
+let message : (error : Error) -> Text
 ```
 
-Returns the message of an error `e`.
+Returns the message of an error.
+
+Example:
+```motoko
+import Error "mo:base/Error";
+import Debug "mo:base/Debug";
+
+let error = Error.reject("Example error");
+Error.message(error) // "Example error"
+```

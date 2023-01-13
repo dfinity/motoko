@@ -666,10 +666,6 @@ let new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
   in (set_i, get_i)
 
-let new_float_local env name =
-  let (set_i, get_i, _) = new_local_ env F64Type name
-  in (set_i, get_i)
-
 (* Some common code macros *)
 
 (* Iterates while cond is true. *)
@@ -1982,9 +1978,7 @@ module Float = struct
   let payload_field = Tagged.header_size
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
-  let lit f = compile_unboxed_const (Wasm.F64.of_float f)
-  let compile_unboxed_zero = lit 0.0
-
+  
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Bits64);
@@ -3748,6 +3742,8 @@ module IC = struct
       E.add_func_import env "ic0" "stable64_size" [] [I64Type];
       E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
+      if !Flags.global_timer then
+        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type];
       ()
 
   let system_imports env =
@@ -3897,11 +3893,28 @@ module IC = struct
         (* TODO(3622)
            Until DTS is implemented for heartbeats, don't collect garbage here,
            just record mutator_instructions and leave GC scheduling to the
-           already sheduled async message running `system` function `heartbeat` *)
+           already scheduled async message running `system` function `heartbeat` *)
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_heartbeat";
+      edesc = nr (FuncExport (nr fi))
+    })
+
+  let export_timer env =
+    assert !Flags.global_timer;
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_global_timer"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "timer_exp"))) ^^
+        (* TODO(3622)
+           Until DTS is implemented for timers, don't collect garbage here,
+           just record mutator_instructions and leave GC scheduling to the
+           already scheduled async message running `system` function `timer` *)
+        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
+    in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_global_timer";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -7632,8 +7645,7 @@ let compile_unop env t op =
     )
   | NegOp, Type.(Prim Float) ->
     SR.UnboxedFloat64, SR.UnboxedFloat64,
-    let (set_f, get_f) = new_float_local env "f" in
-    set_f ^^ Float.compile_unboxed_zero ^^ get_f ^^ G.i (Binary (Wasm.Values.F64 F64Op.Sub))
+    G.i (Unary (Wasm.Values.F64 F64Op.Neg))
   | NotOp, Type.(Prim (Nat64|Int64)) ->
      SR.UnboxedWord64, SR.UnboxedWord64,
      compile_xor64_const (-1L)
@@ -8846,6 +8858,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  (* Other prims, unary *)
+
+  | OtherPrim ("global_timer_set"), [e] ->
+    SR.UnboxedWord64,
+    compile_exp_as env ae SR.UnboxedWord64 e ^^
+    IC.system_call env "global_timer_set"
+
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
     compile_exp_vanilla env ae e ^^
@@ -8948,6 +8967,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Int8
+
+  (* Other prims, binary *)
 
   | OtherPrim ("stableMemoryStoreNat8"), [e1; e2] ->
     SR.unit,
@@ -9848,6 +9869,15 @@ and main_actor as_opt mod_env ds fs up =
        IC.export_heartbeat env;
     end;
 
+    (* Export timer (but only when required) *)
+    begin match up.timer.it with
+     | Ir.PrimE (Ir.TupPrim, []) -> ()
+     | _ ->
+       Func.define_built_in env "timer_exp" [] [] (fun env ->
+         compile_exp_as env ae2 SR.unit up.timer);
+       IC.export_timer env;
+    end;
+
     (* Export inspect (but only when required) *)
     begin match up.inspect.it with
      | Ir.PrimE (Ir.TupPrim, []) -> ()
@@ -9873,6 +9903,13 @@ and main_actor as_opt mod_env ds fs up =
       | Some (_ :: _) ->
         Serialization.deserialize env arg_tys ^^
         G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
+    end ^^
+    begin if up.timer.at <> no_region then
+      (* initiate a timer pulse *)
+      compile_const_64 1L ^^
+      IC.system_call env "global_timer_set" ^^
+      G.i Drop
+      else G.nop
     end ^^
     (* Continue with decls *)
     decls_codeW G.nop

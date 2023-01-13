@@ -580,6 +580,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k V.(Bool (as_bool v1 <= as_bool v2))
       )
     )
+  | OldE exp1 ->
+    interpret_exp env exp1 (fun v1 -> k v1)
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1

@@ -1,5 +1,36 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Added preliminary Viper support for `old` expressions in specifications and calls to private methods (#3675).
+
+  * bugfix: in the default timer mechanism `cancelTimer` sometimes wouldn't actually stop a recurring timer (#3695).
+
+* motoko-base
+
+  * Add user-facing timer functionality (dfinity/motoko-base#474).
+
+  * BREAKING CHANGES (Minor):
+    - renamed `Float.neq` to `Float.neg` (this was a misspelling)
+    - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
+    - removed second argument from `bitnot` (this was an oversight)
+
+## 0.7.5 (2022-12-23)
+
+* motoko (`moc`)
+
+  * Add new primitives for a default timer mechanism (#3542). These are
+    ``` Motoko
+    setTimer : (delayNanos : Nat64, recurring : Bool, job : () -> async ()) -> (id : Nat)
+    cancelTimer : (id : Nat) -> ()
+    ```
+    By defining a `system func timer` the default mechanism can now be overridden by a custom
+    implementation. Additionally by supplying the command-line flag `-no-timer` all aspects
+    of timers can be suppressed, e.g. for space- or security-sensitive purposes, thus effectively
+    reverting canisters to the pre-timers era.
+
+  * bugfix: silence bogus cascading errors in stable compatibility check (#3645).
+
 ## 0.7.4 (2022-12-07)
 
 * motoko (`moc`)
