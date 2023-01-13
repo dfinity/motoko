@@ -4,6 +4,8 @@
 
   * Added preliminary Viper support for `old` expressions in specifications and calls to private methods (#3675).
 
+  * bugfix: in the default timer mechanism `cancelTimer` sometimes wouldn't actually stop a recurring timer (#3695).
+
 * motoko-base
 
   * Add user-facing timer functionality (dfinity/motoko-base#474).

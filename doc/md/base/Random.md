@@ -24,6 +24,12 @@ random number generators.
 
 ## `class Finite`
 
+Drawing from a finite supply of entropy, `Finite` provides
+methods to obtain random values. When the entropy is used up,
+`null` is returned. Otherwise the outcomes' distributions are
+stated for each method. The uniformity of outcomes is
+guaranteed only when the supplied entropy is originally obtained
+by the `blob()` call, and is never reused.
 
 ### Function `byte`
 ``` motoko no-repl
@@ -59,12 +65,6 @@ func binomial(n : Nat8) : ?Nat8
 
 Counts the number of heads in `n` fair coin tosses.
 Consumes ⌈p/8⌉ bytes of entropy.
-Drawing from a finite supply of entropy, `Finite` provides
-methods to obtain random values. When the entropy is used up,
-`null` is returned. Otherwise the outcomes' distributions are
-stated for each method. The uniformity of outcomes is
-guaranteed only when the supplied entropy is originally obtained
-by the `blob()` call, and is never reused.
 
 ## Function `byteFrom`
 ``` motoko no-repl
