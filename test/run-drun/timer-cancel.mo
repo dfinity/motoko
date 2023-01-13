@@ -19,7 +19,7 @@ actor {
 
   let second : Nat64 = 1_000_000_000;
 
-  ignore setTimer(second, false,
+  ignore setTimer(2 * second, false,
     func () : async () {
       t := setTimer(2 * second, true, remind);
       await remind();
@@ -45,6 +45,5 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
 
 //CALL ingress go "DIDL\x00\x00"
