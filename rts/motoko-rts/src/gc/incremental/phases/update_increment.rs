@@ -1,5 +1,6 @@
 use crate::{
     gc::incremental::{
+        array_slicing::slice_array,
         partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
         roots::visit_roots,
         Roots, INCREMENT_LIMIT,
@@ -29,13 +30,7 @@ impl<'a> UpdateIncrement<'a> {
 
     pub unsafe fn update_roots(&mut self, roots: Roots) {
         visit_roots(roots, self.heap_base, self, |gc, object| {
-            loop {
-                // Deal with array slicing on the continuation table.
-                gc.update_fields(object.get_ptr() as *mut Obj);
-                if object.tag() < TAG_ARRAY_SLICE_MIN {
-                    return;
-                }
-            }
+            gc.update_fields(object.get_ptr() as *mut Obj, false);
         });
     }
 
@@ -58,7 +53,7 @@ impl<'a> UpdateIncrement<'a> {
         while self.heap_iterator.current_object().is_some() && *self.steps <= INCREMENT_LIMIT {
             let object = self.heap_iterator.current_object().unwrap();
             if object.is_marked() {
-                self.update_fields(object);
+                self.update_fields(object, true);
                 if *self.steps > INCREMENT_LIMIT {
                     // Keep mark bit and later resume updating more slices of this array
                     return;
@@ -70,7 +65,7 @@ impl<'a> UpdateIncrement<'a> {
         }
     }
 
-    unsafe fn update_fields(&mut self, object: *mut Obj) {
+    unsafe fn update_fields(&mut self, object: *mut Obj, use_slicing: bool) {
         assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         loop {
             // Loop over array slices and return if GC increment is exceeded.
@@ -82,20 +77,15 @@ impl<'a> UpdateIncrement<'a> {
                 |_, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                 },
-                |gc, slice_start, array| {
+                |gc, _, array| {
                     debug_assert!(array.is_marked());
-                    const SLICE_INCREMENT: u32 = 128;
-                    debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-                    if array.len() - slice_start > SLICE_INCREMENT {
-                        let new_start = slice_start + SLICE_INCREMENT;
-                        (*array).header.raw_tag = mark(new_start);
-                        *gc.steps += SLICE_INCREMENT as usize;
-                        new_start
+                    let length = if use_slicing {
+                        slice_array(array)
                     } else {
-                        (*array).header.raw_tag = mark(TAG_ARRAY);
-                        *gc.steps += (array.len() % SLICE_INCREMENT) as usize;
                         array.len()
-                    }
+                    };
+                    *gc.steps += length as usize;
+                    length
                 },
             );
             if object.tag() < TAG_ARRAY_SLICE_MIN || *self.steps > INCREMENT_LIMIT {

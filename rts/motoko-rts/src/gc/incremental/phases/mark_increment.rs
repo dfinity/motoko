@@ -1,5 +1,6 @@
 use crate::{
     gc::incremental::{
+        array_slicing::slice_array,
         mark_stack::MarkStack,
         partitioned_heap::PartitionedHeap,
         roots::{visit_roots, Roots},
@@ -88,22 +89,14 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
             },
-            |gc, slice_start, array| {
+            |gc, _, array| {
                 debug_assert!(array.is_marked());
-                const SLICE_INCREMENT: u32 = 128;
-                debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-                if array.len() - slice_start > SLICE_INCREMENT {
-                    let new_start = slice_start + SLICE_INCREMENT;
-                    (*array).header.raw_tag = mark(new_start);
-                    debug_assert!(!*gc.complete);
+                let length = slice_array(array);
+                if array.tag() >= TAG_ARRAY_SLICE_MIN {
                     gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
-                    *gc.steps += SLICE_INCREMENT as usize;
-                    new_start
-                } else {
-                    (*array).header.raw_tag = mark(TAG_ARRAY);
-                    *gc.steps += (array.len() % SLICE_INCREMENT) as usize;
-                    array.len()
                 }
+                *gc.steps += length as usize;
+                length
             },
         );
     }

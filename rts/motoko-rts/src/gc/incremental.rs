@@ -14,6 +14,7 @@ use self::{
     roots::Roots,
 };
 
+mod array_slicing;
 pub mod mark_stack;
 pub mod partitioned_heap;
 mod phases;
