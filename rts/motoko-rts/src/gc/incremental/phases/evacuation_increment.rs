@@ -1,6 +1,7 @@
 use crate::{
     gc::incremental::{
-        partitioned_heap::PartitionedHeapIterator, Phase, INCREMENT_LIMIT, PARTITIONED_HEAP, PHASE,
+        partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
+        EvacuationState, INCREMENT_LIMIT,
     },
     mem_utils::memcpy_words,
     memory::Memory,
@@ -15,17 +16,17 @@ pub struct EvacuationIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
-    pub unsafe fn instance(mem: &'a mut M, steps: &'a mut usize) -> EvacuationIncrement<'a, M> {
-        if let Phase::Evacuate(state) = &mut PHASE {
-            let heap = PARTITIONED_HEAP.as_mut().unwrap();
-            EvacuationIncrement {
-                mem,
-                steps,
-                heap_iterator: PartitionedHeapIterator::resume(heap, &mut state.iterator_state),
-                complete: &mut state.complete,
-            }
-        } else {
-            panic!("Invalid phase");
+    pub unsafe fn instance(
+        mem: &'a mut M,
+        steps: &'a mut usize,
+        state: &'a mut EvacuationState,
+        heap: &'a PartitionedHeap,
+    ) -> EvacuationIncrement<'a, M> {
+        EvacuationIncrement {
+            mem,
+            steps,
+            heap_iterator: PartitionedHeapIterator::resume(heap, &mut state.iterator_state),
+            complete: &mut state.complete,
         }
     }
 

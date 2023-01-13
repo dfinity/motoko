@@ -1,7 +1,6 @@
 use crate::{
     gc::incremental::{
-        mark_stack::MarkStack, partitioned_heap::PartitionedHeap, Phase, Roots, INCREMENT_LIMIT,
-        PARTITIONED_HEAP, PHASE,
+        mark_stack::MarkStack, partitioned_heap::PartitionedHeap, MarkState, Roots, INCREMENT_LIMIT,
     },
     memory::Memory,
     types::*,
@@ -17,17 +16,18 @@ pub struct MarkIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
-    pub unsafe fn instance(mem: &'a mut M, steps: &'a mut usize) -> MarkIncrement<'a, M> {
-        if let Phase::Mark(state) = &mut PHASE {
-            MarkIncrement {
-                mem,
-                steps,
-                heap: PARTITIONED_HEAP.as_mut().unwrap(),
-                mark_stack: &mut state.mark_stack,
-                complete: &mut state.complete,
-            }
-        } else {
-            panic!("Invalid phase");
+    pub unsafe fn instance(
+        mem: &'a mut M,
+        steps: &'a mut usize,
+        state: &'a mut MarkState,
+        heap: &'a mut PartitionedHeap,
+    ) -> MarkIncrement<'a, M> {
+        MarkIncrement {
+            mem,
+            steps,
+            heap,
+            mark_stack: &mut state.mark_stack,
+            complete: &mut state.complete,
         }
     }
 

@@ -113,17 +113,17 @@ enum Phase {
     Stop,                      // GC stopped on canister upgrade.
 }
 
-struct MarkState {
+pub struct MarkState {
     mark_stack: MarkStack,
     complete: bool,
 }
 
-struct EvacuationState {
+pub struct EvacuationState {
     iterator_state: HeapIteratorState,
     complete: bool,
 }
 
-struct UpdateState {
+pub struct UpdateState {
     iterator_state: HeapIteratorState,
     complete: bool,
 }
@@ -205,9 +205,15 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn increment(&mut self) {
         match self.phase {
             Phase::Pause | Phase::Stop => {}
-            Phase::Mark(_) => MarkIncrement::instance(self.mem, &mut self.steps).run(),
-            Phase::Evacuate(_) => EvacuationIncrement::instance(self.mem, &mut self.steps).run(),
-            Phase::Update(_) => UpdateIncrement::instance(&mut self.steps).run(),
+            Phase::Mark(state) => {
+                MarkIncrement::instance(self.mem, &mut self.steps, state, &mut self.heap).run()
+            }
+            Phase::Evacuate(state) => {
+                EvacuationIncrement::instance(self.mem, &mut self.steps, state, &self.heap).run()
+            }
+            Phase::Update(state) => {
+                UpdateIncrement::instance(&mut self.steps, state, &self.heap).run()
+            }
         }
     }
 
@@ -225,8 +231,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             complete: false,
         };
         *self.phase = Phase::Mark(state);
-        let mut increment = MarkIncrement::instance(self.mem, &mut self.steps);
-        increment.mark_roots(roots);
+        if let Phase::Mark(state) = self.phase {
+            let mut increment =
+                MarkIncrement::instance(self.mem, &mut self.steps, state, &mut self.heap);
+            increment.mark_roots(roots);
+        } else {
+            unreachable!();
+        }
     }
 
     unsafe fn mark_completed(&self) -> bool {
@@ -263,8 +274,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             complete: false,
         };
         *self.phase = Phase::Update(state);
-        let mut increment = UpdateIncrement::instance(&mut self.steps);
-        increment.update_roots(roots);
+        if let Phase::Update(state) = self.phase {
+            let mut increment = UpdateIncrement::instance(&mut self.steps, state, &self.heap);
+            increment.update_roots(roots);
+        } else {
+            unreachable!();
+        }
     }
 
     unsafe fn updating_completed(&self) -> bool {
@@ -295,11 +310,10 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 #[inline]
 pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value: Value) {
     if let Phase::Mark(state) = &mut PHASE {
-        if overwritten_value.points_to_or_beyond(PARTITIONED_HEAP.as_ref().unwrap().base_address())
-            && !state.complete
-        {
+        let heap = PARTITIONED_HEAP.as_mut().unwrap();
+        if overwritten_value.points_to_or_beyond(heap.base_address()) && !state.complete {
             let mut steps = 0;
-            MarkIncrement::instance(mem, &mut steps).mark_object(overwritten_value);
+            MarkIncrement::instance(mem, &mut steps, state, heap).mark_object(overwritten_value);
         }
     }
 }

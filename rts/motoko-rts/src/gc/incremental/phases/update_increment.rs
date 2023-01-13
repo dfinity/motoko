@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
-        partitioned_heap::PartitionedHeapIterator, Phase, Roots, INCREMENT_LIMIT, PARTITIONED_HEAP,
-        PHASE,
+        partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
+        Roots, UpdateState, INCREMENT_LIMIT,
     },
     types::*,
     visitor::visit_pointer_fields,
@@ -15,17 +15,16 @@ pub struct UpdateIncrement<'a> {
 }
 
 impl<'a> UpdateIncrement<'a> {
-    pub unsafe fn instance(steps: &'a mut usize) -> UpdateIncrement<'a> {
-        if let Phase::Update(state) = &mut PHASE {
-            let heap = PARTITIONED_HEAP.as_mut().unwrap();
-            UpdateIncrement {
-                steps,
-                heap_base: heap.base_address(),
-                heap_iterator: PartitionedHeapIterator::resume(heap, &mut state.iterator_state),
-                complete: &mut state.complete,
-            }
-        } else {
-            panic!("Invalid phase");
+    pub unsafe fn instance(
+        steps: &'a mut usize,
+        state: &'a mut UpdateState,
+        heap: &'a PartitionedHeap,
+    ) -> UpdateIncrement<'a> {
+        UpdateIncrement {
+            steps,
+            heap_base: heap.base_address(),
+            heap_iterator: PartitionedHeapIterator::resume(heap, &mut state.iterator_state),
+            complete: &mut state.complete,
         }
     }
 
