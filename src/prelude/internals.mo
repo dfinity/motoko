@@ -359,7 +359,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
           @reset_refund();
           r(e)
         };
-	#suspend
+        #suspend
       };
       case (? (#ok (r, t))) {
         #schedule (func () { @refund := r; k(t) });
