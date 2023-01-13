@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: in the default timer mechanism `cancelTimer` sometimes wouldn't actually stop a recurring timer (#3695).
+
 ## 0.7.5 (2022-12-23)
 
 * motoko (`moc`)
