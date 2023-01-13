@@ -4,8 +4,8 @@ import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
 
 actor {
 
-  system func timer(setGlobalTimer : Nat64 -> ()) : async () {
-      await @timer_helper();
+  system func timer(setGlobalTimer : Nat64 -> ()) : async* () {
+    await* @timer_helper();
   };
 
   var count = 0;
