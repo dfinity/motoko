@@ -461,7 +461,7 @@ impl GC {
             GC::Incremental => unsafe {
                 const INCREMENTS_UNTIL_COMPLETION: usize = 16;
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
-                    let roots = motoko_rts::gc::incremental::Roots {
+                    let roots = motoko_rts::gc::incremental::roots::Roots {
                         static_roots,
                         continuation_table: *continuation_table_ptr_address,
                     };

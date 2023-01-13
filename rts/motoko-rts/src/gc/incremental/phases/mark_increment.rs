@@ -1,6 +1,9 @@
 use crate::{
     gc::incremental::{
-        mark_stack::MarkStack, partitioned_heap::PartitionedHeap, MarkState, Roots, INCREMENT_LIMIT,
+        mark_stack::MarkStack,
+        partitioned_heap::PartitionedHeap,
+        roots::{visit_roots, Roots},
+        MarkState, INCREMENT_LIMIT,
     },
     memory::Memory,
     types::*,
@@ -32,27 +35,10 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     pub unsafe fn mark_roots(&mut self, roots: Roots) {
-        self.mark_static_roots(roots.static_roots);
-        self.mark_continuation_table(roots.continuation_table);
-    }
-
-    unsafe fn mark_static_roots(&mut self, static_roots: Value) {
-        let root_array = static_roots.as_array();
-        for index in 0..root_array.len() {
-            let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.heap.base_address());
-            let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap.base_address() {
-                self.mark_object(value);
-            }
-            *self.steps += 1;
-        }
-    }
-
-    unsafe fn mark_continuation_table(&mut self, continuation_table: Value) {
-        if continuation_table.is_ptr() {
-            self.mark_object(continuation_table);
-        }
+        visit_roots(roots, self.heap.base_address(), self, |gc, object| {
+            gc.mark_object(object);
+            *gc.steps += 1;
+        });
     }
 
     pub unsafe fn run(&mut self) {

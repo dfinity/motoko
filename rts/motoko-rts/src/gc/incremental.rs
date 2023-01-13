@@ -11,11 +11,13 @@ use self::{
         evacuation_increment::EvacuationIncrement, mark_increment::MarkIncrement,
         update_increment::UpdateIncrement,
     },
+    roots::Roots,
 };
 
 pub mod mark_stack;
 pub mod partitioned_heap;
 mod phases;
+pub mod roots;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
 pub mod write_barrier;
@@ -40,13 +42,9 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
-    let roots = Roots {
-        static_roots: ic::get_static_roots(),
-        continuation_table: *crate::continuation_table::continuation_table_loc(),
-    };
+    use self::roots::root_set;
     record_increment_start::<M>();
-    IncrementalGC::instance(mem).empty_call_stack_increment(roots);
+    IncrementalGC::instance(mem).empty_call_stack_increment(root_set());
     record_increment_stop::<M>();
 }
 
@@ -121,16 +119,6 @@ pub struct MarkState {
 /// GC state retained over multiple GC increments.
 static mut PHASE: Phase = Phase::Pause;
 pub(crate) static mut PARTITIONED_HEAP: Option<PartitionedHeap> = None;
-
-/// GC root set.
-#[derive(Clone, Copy)]
-pub struct Roots {
-    pub static_roots: Value,
-    pub continuation_table: Value,
-    // If new roots are added in future, extend:
-    // - `MarkIncrement::mark_roots()`
-    // - `UpdateIncrement.mark_roots()`
-}
 
 /// Limit on the number of steps performed in a GC increment.
 const INCREMENT_LIMIT: usize = 500_000;

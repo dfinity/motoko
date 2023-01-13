@@ -1,6 +1,7 @@
 use crate::{
     gc::incremental::{
         partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
+        roots::visit_roots,
         Roots, INCREMENT_LIMIT,
     },
     types::*,
@@ -27,39 +28,15 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn update_roots(&mut self, roots: Roots) {
-        self.update_static_roots(roots.static_roots);
-        self.update_continuation_table(roots.continuation_table);
-    }
-
-    unsafe fn update_static_roots(&mut self, static_roots: Value) {
-        let root_array = static_roots.as_array();
-        for index in 0..root_array.len() {
-            let mutbox = root_array.get(index).as_mutbox();
-            debug_assert!((mutbox as usize) < self.heap_base);
-            let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap_base {
-                (*mutbox).field = value.forward_if_possible();
+        visit_roots(roots, self.heap_base, self, |gc, object| {
+            loop {
+                // Deal with array slicing on the continuation table.
+                gc.update_fields(object.get_ptr() as *mut Obj);
+                if object.tag() < TAG_ARRAY_SLICE_MIN {
+                    return;
+                }
             }
-            *self.steps += 1;
-        }
-    }
-
-    unsafe fn update_continuation_table(&mut self, continuation_table: Value) {
-        if continuation_table.is_ptr() {
-            visit_pointer_fields(
-                self,
-                continuation_table.get_ptr() as *mut Obj,
-                continuation_table.tag(),
-                self.heap_base,
-                |_, field_address| {
-                    *field_address = (*field_address).forward_if_possible();
-                },
-                |gc, _, array| {
-                    *gc.steps += array.len() as usize;
-                    array.len()
-                },
-            );
-        }
+        });
     }
 
     pub unsafe fn run(&mut self) {
