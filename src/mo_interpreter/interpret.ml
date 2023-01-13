@@ -19,6 +19,9 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
+(* The actor heap. 
+    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities. 
+*)
 let state = ref V.Env.empty
 
 type flags =
