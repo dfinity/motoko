@@ -19,6 +19,8 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
+let state = ref V.Env.empty
+
 type flags =
   { trace : bool;
     print_depth : int
@@ -52,7 +54,7 @@ let empty_scope = { val_env = V.Env.empty; lib_env = V.Env.empty }
 let lib_scope f v scope : scope =
   { scope with lib_env = V.Env.add f v scope.lib_env }
 
-let env_of_scope flags scope =
+let env_of_scope flags ae scope =
   { flags;
     vals = scope.val_env;
     libs = scope.lib_env;
@@ -60,7 +62,7 @@ let env_of_scope flags scope =
     rets = None;
     throws = None;
     self = V.top_id;
-    actor_env = ref V.Env.empty;
+    actor_env = ae;
   }
 
 let context env = V.Blob env.self
@@ -96,7 +98,7 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope {trace = false; print_depth = 2} empty_scope)
+let last_env = ref (env_of_scope {trace = false; print_depth = 2} state empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
@@ -1019,24 +1021,33 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
 
 (* Programs *)
 
+let ensure_management_canister env =
+  if V.Env.mem "" (!(env.actor_env))
+  then ()
+  else
+    env.actor_env :=
+      V.Env.add
+        (* ManagementCanister with raw_rand (only) *)
+        ""
+        (V.Obj
+           (V.Env.singleton "raw_rand"
+              (V.async_func (T.Write) 0 1
+                 (fun c v k ->
+                   async env
+                     Source.no_region
+                     (fun k' r ->
+                       k' (V.Blob (V.Blob.rand32 ())))
+                     k))))
+        !(env.actor_env)
+
 let interpret_prog flags scope p : (V.value * scope) option =
   step_total := 0;
+  let state = state in
   try
     let env =
-      { (env_of_scope flags scope) with
+      { (env_of_scope flags state scope) with
         throws = Some (fun v -> trap !last_region "uncaught throw") } in
-    env.actor_env :=
-    (* ManagementCanister with raw_rand (only) *)
-    V.Env.singleton ""
-      (V.Obj
-      (V.Env.singleton "raw_rand"
-        (V.async_func (T.Write) 0 1
-          (fun c v k ->
-             async env
-               Source.no_region
-                 (fun k' r ->
-                   k' (V.Blob (V.Blob.rand32 ())))
-                   k))));
+    ensure_management_canister env;
     trace_depth := 0;
     let vo = ref None in
     let ve = ref V.Env.empty in
@@ -1082,7 +1093,7 @@ let import_lib env lib =
 
 
 let interpret_lib flags scope lib : scope =
-  let env = env_of_scope flags scope in
+  let env = env_of_scope flags state scope in
   trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in
