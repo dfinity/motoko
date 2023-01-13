@@ -2,23 +2,28 @@
 //! The heap is divided in equal sized partitions of a large size `PARTITION_SIZE`.
 //! The first partition(s) may contains a static heap space with static objects that are never moved.
 //! Beyond the static objects of a partition, the dyanmic heap space starts with `dynamic_size`.
-//! 
+//!
 //! Heap layout, with N = `MAX_PARTITIONS`.
 //! ┌───────────────┬───────────────┬───────────────┬───────────────┐
 //! │  partition 0  │  partition 1  |      ...      | partition N-1 |
 //! └───────────────┴───────────────┴───────────────┴───────────────┘
-//! 
+//!
 //! Partition layout:
 //! ┌───────────────┬───────────────┬───────────────┐
 //! │ static_space  │ dynamic_space |  free_space   |
 //! └───────────────┴───────────────┴───────────────┘
-//! 
+//!
+//! The heap defines an allocation partition that is the target for subsequent object allocations
+//! by using efficient bump allocation inside the allocation partition.
 //! Whenever a partition is full or has insufficient space to accomodate a new allocation,
-//! a new empty partition is selected for allocation. 
-//! 
-//! TODO:
+//! a new empty partition is selected for allocation.
+//!
+//! On garbage collection, the high-garbage partitions are selected for evacuation, such that
+//! their live objects are moved out to other remaining partitions (through allocation).
+//! Therefore, allocation partitions must not be evacuated.
+//!
+//! Open aspect:
 //! * Huge objects: Large allocations > `PARTITION_SIZE` are not yet supported.
-//! 
 
 use core::array::from_fn;
 
