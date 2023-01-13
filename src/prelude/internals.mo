@@ -515,8 +515,9 @@ func @timer_helper() : async () {
             };
             @timers := ?reinsert(@prune(@timers));
           };
-          case _ n.expire[0] := 0
+          case _ ()
         };
+        n.expire[0] := 0;
         gathered += 1;
       };
       gatherExpired(n.post);
