@@ -106,25 +106,15 @@ unsafe fn record_increment_stop<M: Memory>() {
 /// Finally, all the evacuated partitions are freed.
 
 enum Phase {
-    Pause,                     // Inactive, waiting for the next GC run.
-    Mark(MarkState),           // Incremental marking.
-    Evacuate(EvacuationState), // Incremental evacuation compact.
-    Update(UpdateState),       // Incremental pointer updates.
-    Stop,                      // GC stopped on canister upgrade.
+    Pause,                       // Inactive, waiting for the next GC run.
+    Mark(MarkState),             // Incremental marking.
+    Evacuate(HeapIteratorState), // Incremental evacuation compact.
+    Update(HeapIteratorState),   // Incremental pointer updates.
+    Stop,                        // GC stopped on canister upgrade.
 }
 
 pub struct MarkState {
     mark_stack: MarkStack,
-    complete: bool,
-}
-
-pub struct EvacuationState {
-    iterator_state: HeapIteratorState,
-    complete: bool,
-}
-
-pub struct UpdateState {
-    iterator_state: HeapIteratorState,
     complete: bool,
 }
 
@@ -252,27 +242,21 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn start_evacuating(&mut self) {
         debug_assert!(self.mark_completed());
-        let state = EvacuationState {
-            iterator_state: HeapIteratorState::new(),
-            complete: false,
-        };
+        let state = HeapIteratorState::new();
         *self.phase = Phase::Evacuate(state);
         self.heap.plan_evacuations();
     }
 
     unsafe fn evacuation_completed(&self) -> bool {
         match self.phase.borrow() {
-            Phase::Evacuate(state) => state.complete,
+            Phase::Evacuate(state) => state.completed(),
             _ => false,
         }
     }
 
     unsafe fn start_updating(&mut self, roots: Roots) {
         debug_assert!(self.evacuation_completed());
-        let state = UpdateState {
-            iterator_state: HeapIteratorState::new(),
-            complete: false,
-        };
+        let state = HeapIteratorState::new();
         *self.phase = Phase::Update(state);
         if let Phase::Update(state) = self.phase {
             let mut increment = UpdateIncrement::instance(&mut self.steps, state, &self.heap);
@@ -284,7 +268,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn updating_completed(&self) -> bool {
         match self.phase.borrow() {
-            Phase::Update(state) => state.complete,
+            Phase::Update(state) => state.completed(),
             _ => false,
         }
     }

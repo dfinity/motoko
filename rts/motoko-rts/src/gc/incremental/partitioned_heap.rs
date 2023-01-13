@@ -96,6 +96,11 @@ impl HeapIteratorState {
             current_address: 0,
         }
     }
+
+    pub fn completed(&self) -> bool {
+        assert!(self.partition_index <= MAX_PARTITIONS);
+        self.partition_index == MAX_PARTITIONS
+    }
 }
 
 /// Instantiated per GC increment, operating on a stored `HeapIteratorState`.
@@ -122,7 +127,7 @@ impl<'a> PartitionedHeapIterator<'a> {
 
     unsafe fn start(&mut self) {
         if *self.partition_index == 0 && *self.current_address == 0 {
-            *self.partition_index = self.heap.base_address() % PARTITION_SIZE;
+            *self.partition_index = self.heap.base_address() / PARTITION_SIZE;
             *self.current_address = self.heap.base_address();
         }
         if *self.partition_index < MAX_PARTITIONS {
@@ -134,6 +139,7 @@ impl<'a> PartitionedHeapIterator<'a> {
         if *self.partition_index < MAX_PARTITIONS {
             Some(self.heap.get_partition(*self.partition_index))
         } else {
+            assert_eq!(*self.current_address, usize::MAX);
             None
         }
     }
@@ -142,6 +148,7 @@ impl<'a> PartitionedHeapIterator<'a> {
         if *self.current_address < usize::MAX {
             Some(*self.current_address as *mut Obj)
         } else {
+            assert_eq!(*self.partition_index, MAX_PARTITIONS);
             None
         }
     }
@@ -159,6 +166,9 @@ impl<'a> PartitionedHeapIterator<'a> {
         // Implicitly also skips free partitions as the dynamic size is zero.
         while *self.current_address == self.partition_scan_end() {
             self.next_partition();
+            if *self.partition_index == MAX_PARTITIONS {
+                return;
+            }
             self.skip_free_blocks();
         }
     }
