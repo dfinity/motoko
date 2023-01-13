@@ -1,3 +1,4 @@
+//MOC-FLAG --trap-on-call-error
 import Prim "mo:⛔";
 actor {
   var count = 0;
