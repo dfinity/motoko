@@ -3,7 +3,7 @@
 //! The first partition(s) may contains a static heap space with static objects that are never moved.
 //! Beyond the static objects of a partition, the dyanmic heap space starts with `dynamic_size`.
 //!
-//! Heap layout, with N = `MAX_PARTITIONS`.
+//! Heap layout, with N = `MAX_PARTITIONS`:
 //! ┌───────────────┬───────────────┬───────────────┬───────────────┐
 //! │  partition 0  │  partition 1  |      ...      | partition N-1 |
 //! └───────────────┴───────────────┴───────────────┴───────────────┘
