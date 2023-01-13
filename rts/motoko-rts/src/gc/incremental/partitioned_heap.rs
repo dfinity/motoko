@@ -1,3 +1,25 @@
+//! Partitioned heap used in incremental GC for compacting evacuation.
+//! The heap is divided in equal sized partitions of a large size `PARTITION_SIZE`.
+//! The first partition(s) may contains a static heap space with static objects that are never moved.
+//! Beyond the static objects of a partition, the dyanmic heap space starts with `dynamic_size`.
+//! 
+//! Heap layout, with N = `MAX_PARTITIONS`.
+//! ┌───────────────┬───────────────┬───────────────┬───────────────┐
+//! │  partition 0  │  partition 1  |      ...      | partition N-1 |
+//! └───────────────┴───────────────┴───────────────┴───────────────┘
+//! 
+//! Partition layout:
+//! ┌───────────────┬───────────────┬───────────────┐
+//! │ static_space  │ dynamic_space |  free_space   |
+//! └───────────────┴───────────────┴───────────────┘
+//! 
+//! Whenever a partition is full or has insufficient space to accomodate a new allocation,
+//! a new empty partition is selected for allocation. 
+//! 
+//! TODO:
+//! * Huge objects: Large allocations > `PARTITION_SIZE` are not yet supported.
+//! 
+
 use core::array::from_fn;
 
 use crate::types::*;
@@ -5,6 +27,7 @@ use crate::types::*;
 pub(crate) const PARTITION_SIZE: usize = 128 * 1024 * 1024;
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
+/// Heap partition of size `PARTITION_SIZE`.
 pub struct Partition {
     index: usize,
     free: bool,
@@ -202,6 +225,7 @@ impl<'a> PartitionedHeapIterator<'a> {
     }
 }
 
+/// Partitioned heap used with the incremental GC.
 pub struct PartitionedHeap {
     partitions: [Partition; MAX_PARTITIONS],
     heap_base: usize,

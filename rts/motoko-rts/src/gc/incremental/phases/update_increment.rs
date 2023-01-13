@@ -68,7 +68,7 @@ impl<'a> UpdateIncrement<'a> {
     unsafe fn update_fields(&mut self, object: *mut Obj, use_slicing: bool) {
         assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         loop {
-            // Loop over array slices and return if GC increment is exceeded.
+            // Loop over potential array slices and return if GC increment is exceeded.
             visit_pointer_fields(
                 self,
                 object,
