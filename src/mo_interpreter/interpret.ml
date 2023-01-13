@@ -17,6 +17,7 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
+type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
 type flags =
   { trace : bool;
@@ -36,6 +37,7 @@ type env =
     rets : ret_env;
     throws : throw_env;
     self : V.actor_id;
+    actor_env : actor_env;
   }
 
 let adjoin_scope scope1 scope2 =
@@ -58,6 +60,7 @@ let env_of_scope flags scope =
     rets = None;
     throws = None;
     self = V.top_id;
+    actor_env = ref V.Env.empty;
   }
 
 let context env = V.Blob env.self
@@ -424,33 +427,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let url_text = V.as_text v1 in
       match Ic.Url.decode_principal url_text with
       (* create placeholder functions (see #3683) *)
-      | Ok bytes ->
-        (match exp.note.note_typ with
-        | T.Obj (_, fs) ->
-          let env' = List.fold_right (fun f env' ->
-            match f.T.typ with
-            | T.Func (s, c, b, a, r) ->
-              let func = fun _ _ k ->
-                match (bytes, f.T.lab) with
-                | ("", "raw_rand") ->
-                  async env
-                    exp.at
-                    (fun k' r ->
-                      k' (V.Blob (V.Blob.rand32())))
-                    k
-                | _ ->
-                   trap exp.at "unsupported method %s in actor \"%s\"" f.T.lab "foo" (V.as_text v1)
-              in
-              V.Env.add f.T.lab (V.Func (CC.{
-                sort = s;
-                control = c;
-                n_args = List.length a;
-                n_res = List.length r;
-              }, func)) env'
-            | _ -> trap exp.at "unexpected field type %s for external actor method" (T.string_of_typ f.T.typ)
-          ) fs V.Env.empty in
-          k (V.Obj env')
-        | _ -> trap exp.at "unexpected type for actor")
+      | Ok bytes -> k (V.Blob bytes)
       | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
   | UnE (ot, op, exp1) ->
@@ -518,6 +495,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       match v1 with
       | V.Obj fs ->
         k (find id.it fs)
+      | V.Blob aid when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
+        begin match V.Env.find_opt aid !(env.actor_env) with
+        (* not quite correct: On the platform, you can invoke and get a reject *)
+        | None -> trap exp.at "Unkown actor \"%s\"" aid
+        | Some actor_value ->
+          let fs = V.as_obj actor_value in
+          match V.Env.find_opt id.it fs with
+          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" aid id.it
+          | Some field_value -> k field_value
+        end
       | V.Array vs ->
         let f = match id.it with
           | "size" -> array_size
@@ -533,7 +520,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | "chars" -> text_chars
           | s -> assert false
         in k (f s exp.at)
-      | V.Blob b ->
+      | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
           | "vals" -> blob_vals
@@ -903,10 +890,19 @@ and match_shared_pat env shared_pat c =
 (* Objects *)
 
 and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
-  let self = if obj_sort = T.Actor then V.fresh_id() else env.self in
-  let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
-  let env' = adjoin_vals { env with self = self } ve_in in
-  interpret_dec_fields env' dec_fields ve_ex k
+  match obj_sort with
+  | T.Actor ->
+     let self = if obj_sort = T.Actor then V.fresh_id() else env.self in
+     let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
+     let env' = adjoin_vals { env with self = self } ve_in in
+     interpret_dec_fields env' dec_fields ve_ex
+     (fun obj ->
+        (env.actor_env := V.Env.add self obj !(env.actor_env);
+          k (V.Blob self)))
+  | _ ->
+     let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
+     let env' = adjoin_vals env ve_in in
+     interpret_dec_fields env' dec_fields ve_ex k
 
 and declare_dec_fields dec_fields ve_ex ve_in : val_env * val_env =
   match dec_fields with
@@ -1028,7 +1024,19 @@ let interpret_prog flags scope p : (V.value * scope) option =
   try
     let env =
       { (env_of_scope flags scope) with
-          throws = Some (fun v -> trap !last_region "uncaught throw") } in
+        throws = Some (fun v -> trap !last_region "uncaught throw") } in
+    env.actor_env :=
+    (* ManagementCanister with raw_rand (only) *)
+    V.Env.singleton ""
+      (V.Obj
+      (V.Env.singleton "raw_rand"
+        (V.async_func (T.Write) 0 1
+          (fun c v k ->
+             async env
+               Source.no_region
+                 (fun k' r ->
+                   k' (V.Blob (V.Blob.rand32 ())))
+                   k))));
     trace_depth := 0;
     let vo = ref None in
     let ve = ref V.Env.empty in
@@ -1042,7 +1050,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
     | None -> None
   with
   | Cancel s ->
-    Printf.eprintf "cancelled: %s\n" s; 
+    Printf.eprintf "cancelled: %s\n" s;
     None
   | exn ->
     (* For debugging, should never happen. *)
