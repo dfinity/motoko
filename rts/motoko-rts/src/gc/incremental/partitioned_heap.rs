@@ -29,7 +29,7 @@ use core::array::from_fn;
 
 use crate::types::*;
 
-pub(crate) const PARTITION_SIZE: usize = 128 * 1024 * 1024;
+pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
 /// Heap partition of size `PARTITION_SIZE`.
@@ -77,6 +77,9 @@ impl Partition {
         assert!(self.dynamic_space_end() <= self.end_address());
         let remaining_space = self.end_address() - self.dynamic_space_end();
         assert!(remaining_space % WORD_SIZE as usize == 0);
+        if remaining_space == 0 {
+            return;
+        }
         let block = self.dynamic_space_end() as *mut Tag;
         if remaining_space == WORD_SIZE as usize {
             *block = TAG_ONE_WORD_FILLER;
@@ -87,8 +90,8 @@ impl Partition {
                                                                             // Clear the remainder of the free space.
             let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
             let clear_start = free_space as usize + header_size;
-            let clear_length = remaining_space - header_size;
-            crate::mem_utils::memzero(clear_start, Words(clear_length as u32));
+            let clear_length = Bytes((remaining_space - header_size) as u32);
+            crate::mem_utils::memzero(clear_start, clear_length.to_words());
         }
     }
 
@@ -193,7 +196,7 @@ impl<'a> PartitionedHeapIterator<'a> {
         self.skip_free_blocks();
         // Implicitly also skips free partitions as the dynamic size is zero.
         while *self.current_address == self.partition_scan_end() {
-            self.next_partition();
+            self.start_next_partition();
             if *self.partition_index == MAX_PARTITIONS {
                 return;
             }
@@ -210,7 +213,7 @@ impl<'a> PartitionedHeapIterator<'a> {
         }
     }
 
-    pub fn next_partition(&mut self) {
+    fn start_next_partition(&mut self) {
         assert!(*self.partition_index < MAX_PARTITIONS);
         *self.partition_index += 1;
         if *self.partition_index < MAX_PARTITIONS {
@@ -218,6 +221,11 @@ impl<'a> PartitionedHeapIterator<'a> {
         } else {
             *self.current_address = usize::MAX
         }
+    }
+
+    pub unsafe fn next_partition(&mut self) {
+        self.start_next_partition();
+        self.skip_free_space();
     }
 
     pub unsafe fn next_object(&mut self) {
@@ -265,7 +273,7 @@ impl PartitionedHeap {
         self.heap_base
     }
 
-    pub fn get_partition(&self, index: usize) -> &Partition {
+    fn get_partition(&self, index: usize) -> &Partition {
         &self.partitions[index]
     }
 
@@ -317,7 +325,7 @@ impl PartitionedHeap {
                 if partition.free {
                     partition.static_size
                 } else if partition.index == self.allocation_index {
-                    partition.dynamic_space_end()
+                    partition.static_size + partition.dynamic_size
                 } else {
                     PARTITION_SIZE
                 }
@@ -348,7 +356,7 @@ impl PartitionedHeap {
                 && (*heap_pointer as usize) <= allocation_partition.dynamic_space_end()
         );
         assert!(allocation_size.as_usize() < allocation_partition.end_address());
-        if *heap_pointer as usize >= allocation_partition.end_address() - allocation_size.as_usize()
+        if *heap_pointer as usize > allocation_partition.end_address() - allocation_size.as_usize()
         {
             self.open_new_allocation_partition(heap_pointer);
             allocation_partition = self.allocation_partition();
