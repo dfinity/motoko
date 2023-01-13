@@ -7241,6 +7241,9 @@ module FuncDec = struct
         G.nop
       end
       begin
+        if !Flags.trap_on_call_error then
+          E.trap_with env (Printf.sprintf "could not perform %s" purpose)
+        else
         (* Recall (don't leak) continuations *)
         get_cb_index ^^
         ContinuationTable.recall env ^^
@@ -7299,7 +7302,14 @@ module FuncDec = struct
       add_cycles ^^
       IC.system_call env "call_perform" ^^
       (* This is a one-shot function: just remember error code *)
+      (if !Flags.trap_on_call_error then
+         (* legacy: discard status, proceed as if all well *)
+         G.i Drop ^^
+         compile_unboxed_zero
+       else
+         G.nop) ^^
       IC.set_call_perform_status env
+
     | _ -> assert false
 
   let equate_msgref env =
