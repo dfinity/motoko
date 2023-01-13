@@ -40,6 +40,7 @@ You can use the following options with the `moc` command.
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |
 | `--max-stable-pages <n>`                  | Set maximum number of pages available for library `ExperimentStableMemory.mo` (default 65536).                                                        |
 | `-no-system-api`                          | Disables system API imports.                                                                                                                          |
+| `-no-timer`                               | Disables timer API imports and hides timer primitives.                                                                                                |
 | `-o <file>`                               | Specifies the output file.                                                                                                                            |
 | `-p <n>`                                  | Sets the print depth.                                                                                                                                 |
 | `--package <package-name> <package-path>` | Specifies a `<package-name>` `<package-path>` pair, separated by a space.                                                                             |
