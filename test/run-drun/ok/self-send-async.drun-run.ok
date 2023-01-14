@@ -1,8 +1,8 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test1:
-debug.print: test1: ic0.call_perform failed
+debug.print: test1: could not perform self call
 debug.print: test2:
-debug.print: caught ic0.call_perform failed
-debug.print: test2: ic0.call_perform failed
+debug.print: caught could not perform self call
+debug.print: test2: could not perform self call
 ingress Completed: Reply: 0x4449444c0000
