@@ -57,7 +57,7 @@
     The previous semantics of trapping on call errors can be enabled with compiler option `--trap-on-call-error`, if desired,
     or selectively emulated by forcing a trap (e.g. `assert false`) when an error is caught.
 
-    E.g.
+    For example,
 
     ``` motoko
       public func allOrNothing() : async () {
@@ -66,11 +66,12 @@
            ignore inc();
           }
         } catch (e) {
-          assert false
+          assert false; // trap!
         }
       };
     ```
-    Calling `allOrNothing()` will not send any messages: the loop exits with an error,
+
+    Calling `allOrNothing()` will not send any messages: the loop exits with an error on queue full,
     the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
 
 ## 0.7.5 (2022-12-23)
