@@ -1,6 +1,8 @@
 open Source
 open Mo_types.Type
 
+val is_async_call : Ir.prim -> Ir.exp list -> bool
+
 val max_eff : eff -> eff -> eff
 
 (* (incremental) effect inference on IR *)
