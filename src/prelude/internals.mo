@@ -444,8 +444,8 @@ func @call_succeeded() : Bool {
 
 func @call_error() : Error {
   let status = (prim "call_perform_status" : () -> Nat32) ();
+  let message = (prim "call_perform_message" : () -> Text) ();
   let code = #call_error({err_code = status});
-  let message = "ic0.call_perform failed";
   (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error)
     (code, message)
 };

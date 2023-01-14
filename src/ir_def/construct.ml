@@ -110,6 +110,7 @@ let primE prim es =
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
     | OtherPrim "call_perform_status" -> T.(Prim Nat32)
+    | OtherPrim "call_perform_message" -> T.text
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
