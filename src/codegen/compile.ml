@@ -3706,6 +3706,7 @@ module IC = struct
     (* result of last ic0.call_perform  *)
     E.add_global32 env "__call_perform_status" Mutable 0l;
     E.add_global32 env "__call_perform_message" Mutable 0l
+    (* NB: not a root so text contents *must* be static *)
 
   let get_call_perform_status env =
     G.i (GlobalGet (nr (E.get_global env "__call_perform_status")))
