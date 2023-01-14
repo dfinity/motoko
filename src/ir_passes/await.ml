@@ -8,29 +8,6 @@ module R = Rename
 module T = Type
 open Construct
 
-
-let is_shared_func exp =
-  T.(match typ exp with
-    | Func (Shared _, _, _, _, _) -> true
-    | _ -> false)
-
-let is_local_async_func exp =
- T.(match typ exp with
-   | Func (Local, Returns,
-      { sort = Scope; _ }::_,
-       _,
-      [Async (Fut, Var (_ ,0), _)]) -> true
-   | _ -> false)
-
-let is_async_call (p, exps) =
-  match (p, exps) with
-  | CallPrim _, [exp1; _] ->
-    is_shared_func exp1 ||
-    is_local_async_func exp1
-  | OtherPrim "call_raw", _ ->
-    true
-  | _ -> false
-
 let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
 
 let fresh_err_cont ans_typ  = fresh_var "r" (err_contT ans_typ)
@@ -168,8 +145,8 @@ and t_exp' context exp =
     FuncE (x, s1, c, typbinds, pat, typs,
       blockE [letP wild_pat (t_async context body)] unitE)
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
-    assert (not (is_local_async_func exp));
-    assert (not (is_shared_func exp));
+    assert (not (T.is_local_async_func (typ exp)));
+    assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
   | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
@@ -185,7 +162,8 @@ and t_exp' context exp =
   | NewObjE (sort, ids, typ) -> exp.it
   | SelfCallE _ -> assert false
   | PrimE (p, exps) ->
-    assert (not (is_async_call (p, exps))); (* async calls have effect T.Await, not T.Triv *)
+    (* async calls have effect T.Await, not T.Triv *)
+    assert (not (is_async_call p exps));
     PrimE (p, List.map (t_exp context) exps)
 
 and t_lexp context lexp =
@@ -452,7 +430,7 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (DefineE (id, mut, varE v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
-  | PrimE (p, exps) when is_async_call (p, exps) ->
+  | PrimE (p, exps) when is_async_call p exps ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
       | Some Label

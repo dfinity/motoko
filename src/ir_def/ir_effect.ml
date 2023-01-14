@@ -20,30 +20,27 @@ let is_triv phrase = eff phrase = T.Triv
 
 let effect_exp (exp: exp) : T.eff = eff exp
 
-let is_shared_func exp =
-  T.(match typ exp with
-    | Func (Shared _, _, _, _, _) -> true
-    | _ -> false)
-
-let is_local_async_func exp =
- T.(match typ exp with
-   | Func (Local, Returns,
-      { sort = Scope; _ }::_,
-       _,
-      [Async (Fut, Var (_ ,0), _)]) -> true
-   | _ -> false)
+let is_async_call p exps =
+  match (p, exps) with
+  | CallPrim _, [exp1; _] ->
+    T.is_shared_func (typ exp1) ||
+    T.is_local_async_func (typ exp1)
+  | OtherPrim "call_raw", _ ->
+    true
+  | _ -> false
 
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
 
 let rec infer_effect_prim p exps =
   match p, exps with
   | ThrowPrim, _
-  | AwaitPrim _, _
-  | OtherPrim "call_raw", _ -> T.Await
-  | CallPrim _, [exp1; _] when is_shared_func exp1 || is_local_async_func exp1 ->
+  | AwaitPrim _, _ ->
     T.Await
   | _ ->
-    List.fold_left max_eff T.Triv (List.map eff exps)
+    if is_async_call p exps then
+      T.Await
+    else
+      List.fold_left max_eff T.Triv (List.map eff exps)
 
 and infer_effect_exp (exp: exp) : T.eff =
   match exp.it with

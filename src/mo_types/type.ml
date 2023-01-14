@@ -866,10 +866,21 @@ let find_unshared t =
     end
   in go t
 
-let is_shared_func t =
-  match normalize t with
+let is_shared_func typ =
+  match normalize typ with
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
+
+let is_local_async_func typ =
+  match normalize typ with
+  | Func
+      (Local, Returns,
+       { sort = Scope; _ }::_,
+       _,
+       [Async (Fut, Var (_ ,0), _)]) ->
+    true
+  | _ ->
+    false
 
 let shared t = serializable false t
 let stable t = serializable true t

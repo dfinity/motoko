@@ -3704,12 +3704,19 @@ module IC = struct
 
   let register_globals env =
     (* result of last ic0.call_perform  *)
-    E.add_global32 env "__call_perform_status" Mutable 0l
+    E.add_global32 env "__call_perform_status" Mutable 0l;
+    E.add_global32 env "__call_perform_message" Mutable 0l
+    (* NB: not a root so text contents *must* be static *)
 
   let get_call_perform_status env =
     G.i (GlobalGet (nr (E.get_global env "__call_perform_status")))
   let set_call_perform_status env =
     G.i (GlobalSet (nr (E.get_global env "__call_perform_status")))
+  let get_call_perform_message env =
+    G.i (GlobalGet (nr (E.get_global env "__call_perform_message")))
+  let set_call_perform_message env =
+    G.i (GlobalSet (nr (E.get_global env "__call_perform_message")))
+
 
   let i32s n = Lib.List.make n I32Type
   let i64s n = Lib.List.make n I64Type
@@ -7213,6 +7220,7 @@ module FuncDec = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      let message = Printf.sprintf "could not perform %s" purpose in
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
@@ -7233,6 +7241,8 @@ module FuncDec = struct
       (* done! *)
       IC.system_call env "call_perform" ^^
       IC.set_call_perform_status env ^^
+      Blob.lit env message ^^
+      IC.set_call_perform_message env ^^
       IC.get_call_perform_status env ^^
       (* save error code, cleanup on error *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
@@ -7241,6 +7251,9 @@ module FuncDec = struct
         G.nop
       end
       begin
+        if !Flags.trap_on_call_error then
+          E.trap_with env message
+        else
         (* Recall (don't leak) continuations *)
         get_cb_index ^^
         ContinuationTable.recall env ^^
@@ -7299,7 +7312,18 @@ module FuncDec = struct
       add_cycles ^^
       IC.system_call env "call_perform" ^^
       (* This is a one-shot function: just remember error code *)
-      IC.set_call_perform_status env
+      (if !Flags.trap_on_call_error then
+         (* legacy: discard status, proceed as if all well *)
+         G.i Drop ^^
+         compile_unboxed_zero ^^
+         Blob.lit env "" ^^
+         IC.set_call_perform_message env ^^
+         IC.set_call_perform_status env
+       else
+         IC.set_call_perform_status env ^^
+         Blob.lit env "could not perform oneway" ^^
+         IC.set_call_perform_message env)
+
     | _ -> assert false
 
   let equate_msgref env =
@@ -8843,6 +8867,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "call_perform_status", [] ->
     SR.UnboxedWord32,
     IC.get_call_perform_status env
+
+  | OtherPrim "call_perform_message", [] ->
+    SR.Vanilla,
+    IC.get_call_perform_message env
 
   | OtherPrim "rts_version", [] ->
     SR.Vanilla,

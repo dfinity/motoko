@@ -20,6 +20,60 @@
 
     (On the other hand, `async*` (being delayed) cannot throw, and evaluating `await*` will at most propagate an error from its argument but not, in itself, throw.)
 
+    Note that exiting a function call via an uncaught throw, rather than a trap, will commit any state changes and currently queued messages.
+    The previous behaviour of trapping would, instead, discard, such changes.
+
+    To appreciate the change in semantics, consider the following example:
+
+    ``` motoko
+    actor {
+      var count = 0;
+      public func inc() : async () {
+        count += 1;
+      };
+      public func repeat() : async () {
+        loop {
+          ignore inc();
+        }
+      };
+      public func repeatUntil() : async () {
+        try {
+          loop {
+           ignore inc();
+          }
+        } catch (e) {
+        }
+      };
+    }
+    ```
+
+    In previous releases of Motoko, calling `repeat()` and `repeatUntil()` would trap, leaving `count` at `0`, because
+    each infinite loop would eventually exhaust the message queue and issue a trap, rolling back the effects of each call.
+    With this release of Motoko, calling `repeat()` will enqueue several `inc()` messages (around 500), then `throw` an `Error`
+    and exit with the error result, incrementing the `count` several times (asynchronously).
+    Calling `repeatUntil()` will also enqueue several `inc()` messages (around 500) but the error is caught so the call returns,
+    still incrementing `count` several times (asynchronously).
+
+    The previous semantics of trapping on call errors can be enabled with compiler option `--trap-on-call-error`, if desired,
+    or selectively emulated by forcing a trap (e.g. `assert false`) when an error is caught.
+
+    For example,
+
+    ``` motoko
+      public func allOrNothing() : async () {
+        try {
+          loop {
+           ignore inc();
+          }
+        } catch (e) {
+          assert false; // trap!
+        }
+      };
+    ```
+
+    Calling `allOrNothing()` will not send any messages: the loop exits with an error on queue full,
+    the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
+
 ## 0.7.5 (2022-12-23)
 
 * motoko (`moc`)
