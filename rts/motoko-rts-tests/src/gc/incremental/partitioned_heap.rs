@@ -13,8 +13,8 @@ use motoko_rts::{
 
 use crate::gc::utils::WORD_SIZE;
 
-const HEAP_SIZE: usize = 2 * PARTITION_SIZE;
-const NUMBER_OF_OBJECTS: usize = HEAP_SIZE / 16;
+const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / 16;
+const HEAP_SIZE: usize = 3 * PARTITION_SIZE;
 
 pub unsafe fn test() {
     println!("  Testing partitioned heap...");
@@ -23,6 +23,9 @@ pub unsafe fn test() {
     let occupied_partitions = 1 + heap.heap_pointer as usize / PARTITION_SIZE;
     test_allocation_partitions(&heap.inner, occupied_partitions);
     test_iteration(&heap.inner, 1024, occupied_partitions);
+    test_evacuation_plan(&mut heap.inner, occupied_partitions);
+    test_freeing_partitions(&mut heap.inner, occupied_partitions);
+    test_reallocations(&mut heap);
     test_evacuation_plan(&mut heap.inner, occupied_partitions);
     test_freeing_partitions(&mut heap.inner, occupied_partitions);
 }
@@ -70,7 +73,7 @@ unsafe fn test_iteration(
         }
     }
     assert_eq!(count, NUMBER_OF_OBJECTS);
-    print!("\r");
+    reset_progress();
 }
 
 unsafe fn test_evacuation_plan(heap: &mut PartitionedHeap, occupied_partitions: usize) {
@@ -110,13 +113,48 @@ unsafe fn test_freeing_partitions(heap: &mut PartitionedHeap, occupied_partition
     assert!(heap.occupied_size().as_usize() < PARTITION_SIZE);
 }
 
+const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
+
+unsafe fn test_reallocations(heap: &mut PartitionedTestHeap) {
+    println!("    Test reallocations...");
+    let remaining_objects = count_objects(&heap.inner);
+    allocate_objects(heap);
+    assert!(heap.inner.occupied_size().as_usize() >= NUMBER_OF_OBJECTS * OBJECT_SIZE);
+    let final_objects = count_objects(&heap.inner);
+    assert_eq!(final_objects, remaining_objects + NUMBER_OF_OBJECTS);
+}
+
+unsafe fn count_objects(heap: &PartitionedHeap) -> usize {
+    let mut count = 0;
+    let mut iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);
+    while iterator.current_object().is_some() {
+        assert!(iterator.current_partition().is_some());
+        let object = iterator.current_object().unwrap();
+        let array = Value::from_ptr(object as usize).as_array();
+        let content = array.get(0).get_scalar() as usize;
+        assert!(content < NUMBER_OF_OBJECTS);
+        count += 1;
+        if count <= NUMBER_OF_OBJECTS {
+            progress(count, NUMBER_OF_OBJECTS);
+        }
+        let partition = iterator.current_partition().unwrap();
+        assert!(!partition.is_free());
+        assert!(!partition.to_be_evacuated());
+        assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
+        iterator.next_object();
+    }
+    assert!(iterator.current_partition().is_none());
+    reset_progress();
+    count
+}
+
 fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
     allocate_objects(&mut heap);
     let heap_size = heap.inner.occupied_size().as_usize();
     assert_eq!(heap_size, heap.heap_pointer as usize);
-    const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
     assert_eq!(
         heap_size,
         heap.heap_base as usize + NUMBER_OF_OBJECTS * OBJECT_SIZE
@@ -130,15 +168,20 @@ fn allocate_objects(heap: &mut PartitionedTestHeap) {
         let value = Value::from_scalar(index as u32);
         heap.allocate_array(&[value]);
     }
-    print!("\r");
+    reset_progress();
 }
 
 fn progress(count: usize, max: usize) {
     if count % (max / 100) == 0 || count == max {
         let percentage = count * 100 / max;
-        print!("\r{percentage}/100");
+        print!("{percentage}/100\r");
         Write::flush(&mut stdout()).unwrap();
     }
+}
+
+fn reset_progress() {
+    print!("       \r");
+    Write::flush(&mut stdout()).unwrap();
 }
 
 pub struct PartitionedTestHeap {
@@ -174,16 +217,15 @@ impl PartitionedTestHeap {
 
 impl Memory for PartitionedTestHeap {
     unsafe fn alloc_words(&mut self, size: Words<u32>) -> Value {
-        let before = self.heap_pointer;
         self.inner
             .prepare_allocation_partition(&mut self.heap_pointer, size.to_bytes());
-        assert_eq!(before, self.heap_pointer);
-        let bytes = size.to_bytes().as_u32();
-        if bytes > self.heap_base + self.memory.len() as u32 {
-            panic!("Test heap is too small");
-        }
+        assert!(self.heap_pointer >= self.heap_base);
+        assert!(
+            self.heap_pointer + size.to_bytes().as_u32()
+                <= self.heap_base + self.memory.len() as u32
+        );
         let result = Value::from_ptr(self.heap_pointer as usize);
-        self.heap_pointer += bytes;
+        self.heap_pointer += size.to_bytes().as_u32();
         result
     }
 }

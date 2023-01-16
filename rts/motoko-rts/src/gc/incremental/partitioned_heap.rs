@@ -355,7 +355,7 @@ impl PartitionedHeap {
             (*heap_pointer as usize) >= allocation_partition.dynamic_space_start()
                 && (*heap_pointer as usize) <= allocation_partition.dynamic_space_end()
         );
-        assert!(allocation_size.as_usize() < allocation_partition.end_address());
+        assert!(allocation_size.as_usize() <= allocation_partition.end_address());
         if *heap_pointer as usize > allocation_partition.end_address() - allocation_size.as_usize()
         {
             self.open_new_allocation_partition(heap_pointer);
