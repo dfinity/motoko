@@ -282,7 +282,6 @@ impl MotokoHeapInner {
 
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
-
         Value::from_ptr(old_hp)
     }
 
