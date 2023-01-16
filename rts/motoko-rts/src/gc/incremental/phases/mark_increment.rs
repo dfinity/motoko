@@ -36,9 +36,12 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     pub unsafe fn mark_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self.heap.base_address(), self, |gc, object| {
-            gc.mark_object(object);
-            *gc.steps += 1;
+        visit_roots(roots, self.heap.base_address(), self, |gc, field| {
+            let value = *field;
+            if value.is_ptr() && value.get_ptr() >= gc.heap.base_address() {
+                gc.mark_object(value);
+                *gc.steps += 1;
+            }
         });
     }
 

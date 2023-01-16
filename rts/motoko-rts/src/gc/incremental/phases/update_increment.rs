@@ -29,8 +29,12 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn update_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self.heap_base, self, |gc, object| {
-            gc.update_fields(object.get_ptr() as *mut Obj, false);
+        visit_roots(roots, self.heap_base, self, |gc, field| {
+            let value = *field;
+            if value.is_ptr() && value.is_forwarded() {
+                assert!(value.get_ptr() >= gc.heap_base);
+                *field = value.forward_if_possible();
+            }
         });
     }
 
@@ -39,7 +43,7 @@ impl<'a> UpdateIncrement<'a> {
             let partition = self.heap_iterator.current_partition().unwrap();
             if !partition.to_be_evacuated() {
                 assert!(!partition.is_free());
-                self.update_partition();
+                self.update_partition(partition.get_index());
                 if *self.steps > INCREMENT_LIMIT {
                     return;
                 }
@@ -49,11 +53,18 @@ impl<'a> UpdateIncrement<'a> {
         }
     }
 
-    unsafe fn update_partition(&mut self) {
-        while self.heap_iterator.current_object().is_some() && *self.steps <= INCREMENT_LIMIT {
+    unsafe fn update_partition(&mut self, partition_index: usize) {
+        while self
+            .heap_iterator
+            .current_partition()
+            .map(|partition| partition.get_index() == partition_index)
+            .unwrap_or(false)
+            && *self.steps <= INCREMENT_LIMIT
+        {
             let object = self.heap_iterator.current_object().unwrap();
             if object.is_marked() {
-                self.update_fields(object, true);
+                assert!(!object.is_forwarded());
+                self.update_fields(object);
                 if *self.steps > INCREMENT_LIMIT {
                     // Keep mark bit and later resume updating more slices of this array
                     return;
@@ -65,10 +76,10 @@ impl<'a> UpdateIncrement<'a> {
         }
     }
 
-    unsafe fn update_fields(&mut self, object: *mut Obj, use_slicing: bool) {
+    unsafe fn update_fields(&mut self, object: *mut Obj) {
         assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         loop {
-            // Loop over potential array slices and return if GC increment is exceeded.
+            // Loop over potentially multiple array slices and return if the GC increment limit is exceeded.
             visit_pointer_fields(
                 self,
                 object,
@@ -79,11 +90,7 @@ impl<'a> UpdateIncrement<'a> {
                 },
                 |gc, _, array| {
                     debug_assert!(array.is_marked());
-                    let length = if use_slicing {
-                        slice_array(array)
-                    } else {
-                        array.len()
-                    };
+                    let length = slice_array(array);
                     *gc.steps += length as usize;
                     length
                 },

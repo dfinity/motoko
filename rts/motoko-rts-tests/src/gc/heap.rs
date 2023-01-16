@@ -2,6 +2,7 @@ use super::utils::{
     make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
+use motoko_rts::gc::incremental::PARTITIONED_HEAP;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
@@ -275,11 +276,17 @@ impl MotokoHeapInner {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
 
+        if let Some(partitioned_heap) = &mut PARTITIONED_HEAP {
+            let mut heap_pointer = self.heap_ptr_address() as u32;
+            partitioned_heap.prepare_allocation_partition(&mut heap_pointer, bytes);
+            self.set_heap_ptr_address(heap_pointer as usize);
+        }
+
         // Update heap pointer
         let old_hp = self.heap_ptr_address();
         let new_hp = old_hp + bytes.as_usize();
         self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
-
+            
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
         Value::from_ptr(old_hp)

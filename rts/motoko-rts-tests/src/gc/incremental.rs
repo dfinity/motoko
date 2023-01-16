@@ -4,11 +4,13 @@ mod mark_stack;
 mod partitioned_heap;
 mod roots;
 
-pub unsafe fn test() {
+pub fn test() {
     println!("Testing incremental GC ...");
-    array_slicing::test();
-    mark_bit::test();
-    mark_stack::test();
-    partitioned_heap::test();
-    roots::test();
+    unsafe {
+        array_slicing::test();
+        mark_bit::test();
+        mark_stack::test();
+        partitioned_heap::test();
+        roots::test();
+    }
 }

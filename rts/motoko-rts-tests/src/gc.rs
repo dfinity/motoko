@@ -15,6 +15,7 @@ mod utils;
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
+use motoko_rts::gc::incremental::PARTITIONED_HEAP;
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
 };
@@ -30,10 +31,6 @@ use std::fmt::Write;
 use fxhash::{FxHashMap, FxHashSet};
 
 pub fn test() {
-    unsafe {
-        incremental::test();
-    }
-
     println!("Testing garbage collection ...");
 
     println!("  Testing pre-defined heaps...");
@@ -52,6 +49,7 @@ pub fn test() {
 
     compacting::test();
     generational::test();
+    incremental::test();
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -122,11 +120,7 @@ fn test_gc(
     continuation_table: &[ObjectIdx],
 ) {
     let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
-    if gc == GC::Incremental {
-        unsafe {
-            IncrementalGC::<MotokoHeap>::initialize(heap.heap_base_address());
-        }
-    }
+    initialize_gc_state(&heap, gc);
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         false, // before gc
@@ -158,11 +152,31 @@ fn test_gc(
             gc == GC::Incremental,
         );
     }
-    if gc == GC::Incremental {
-        unsafe {
-            IncrementalGC::<MotokoHeap>::initialize(heap.heap_base_address());
+    initialize_gc_state(&heap, gc);
+}
+
+fn initialize_gc_state(heap: &MotokoHeap, gc: GC) {
+    unsafe {
+        match gc {
+            GC::Incremental => initialize_incremental_gc(heap),
+            _ => PARTITIONED_HEAP = None,
         }
     }
+}
+
+unsafe fn initialize_incremental_gc(heap: &MotokoHeap) {
+    IncrementalGC::<MotokoHeap>::initialize(heap.heap_base_address());
+    let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
+
+    // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
+    let mut heap_pointer = heap.heap_base_address() as u32; 
+    PARTITIONED_HEAP
+        .as_mut()
+        .unwrap()
+        .prepare_allocation_partition(&mut heap_pointer, Bytes(allocation_size as u32));
+    // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
+    // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
+    assert_eq!(heap_pointer as usize, heap.heap_base_address());
 }
 
 /// Check the dynamic heap:
@@ -463,7 +477,7 @@ impl GC {
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
                     let roots = motoko_rts::gc::incremental::roots::Roots {
                         static_roots,
-                        continuation_table: *continuation_table_ptr_address,
+                        continuation_table_location: continuation_table_ptr_address,
                     };
                     IncrementalGC::instance(heap).empty_call_stack_increment(roots);
                 }

@@ -54,14 +54,14 @@ static mut LAST_HEAP_OCCUPATION: usize = 0;
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    use crate::gc::incremental::partitioned_heap::PARTITION_SIZE;
-    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.75;
-    const CRITICAL_LIMIT: usize = usize::MAX - 256 * 1024 * 1024;
+    use self::partitioned_heap::PARTITION_SIZE;
+    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.33;
+    const CRITICAL_LIMIT: usize = usize::MAX - 2 * PARTITION_SIZE;
     let occupation = heap_occupation();
     debug_assert!(occupation >= LAST_HEAP_OCCUPATION);
     let absolute_growth = occupation - LAST_HEAP_OCCUPATION;
     let relative_growth = absolute_growth as f64 / occupation as f64;
-    relative_growth > RELATIVE_GROWTH_THRESHOLD && absolute_growth >= PARTITION_SIZE
+    relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation >= PARTITION_SIZE
         || occupation >= CRITICAL_LIMIT
 }
 
@@ -119,7 +119,7 @@ pub struct MarkState {
 
 /// GC state retained over multiple GC increments.
 static mut PHASE: Phase = Phase::Pause;
-pub(crate) static mut PARTITIONED_HEAP: Option<PartitionedHeap> = None;
+pub static mut PARTITIONED_HEAP: Option<PartitionedHeap> = None;
 
 /// Limit on the number of steps performed in a GC increment.
 const INCREMENT_LIMIT: usize = 500_000;

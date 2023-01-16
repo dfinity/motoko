@@ -343,6 +343,8 @@ impl PartitionedHeap {
         let address = object as usize;
         let size = block_size(address);
         let partition = &mut self.partitions[address / PARTITION_SIZE];
+        assert!(address >= partition.dynamic_space_start());
+        assert!(address + size.to_bytes().as_usize() <= partition.dynamic_space_end());
         partition.marked_space += size.to_bytes().as_usize();
     }
 
