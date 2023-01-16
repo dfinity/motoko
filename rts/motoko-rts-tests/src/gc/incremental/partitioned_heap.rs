@@ -7,8 +7,8 @@ use motoko_rts::{
     gc::incremental::partitioned_heap::{
         HeapIteratorState, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
     },
-    memory::{alloc_array, Memory},
-    types::{Array, Value, Words},
+    memory::{alloc_array, Memory, alloc_blob},
+    types::{Array, Value, Words, TAG_FREE_SPACE, FreeSpace, Bytes, OneWordFiller, TAG_ONE_WORD_FILLER, Blob},
 };
 
 use crate::gc::utils::WORD_SIZE;
@@ -28,6 +28,7 @@ pub unsafe fn test() {
     test_reallocations(&mut heap);
     test_evacuation_plan(&mut heap.inner, occupied_partitions);
     test_freeing_partitions(&mut heap.inner, occupied_partitions);
+    test_close_partition(&mut heap);
 }
 
 fn test_allocation_partitions(heap: &PartitionedHeap, number_of_partitions: usize) {
@@ -149,6 +150,43 @@ unsafe fn count_objects(heap: &PartitionedHeap) -> usize {
     count
 }
 
+fn test_close_partition(heap: &mut PartitionedTestHeap) {
+    println!("    Test close partition...");
+    test_close_partition_with_free_space(heap);
+    test_close_partition_with_one_wordfiller(heap);
+}
+
+fn test_close_partition_with_free_space(heap: &mut PartitionedTestHeap) {
+    let old_heap_pointer = heap.heap_pointer as usize;
+    let old_partition = old_heap_pointer / PARTITION_SIZE;
+    let remainder = PARTITION_SIZE - old_heap_pointer % PARTITION_SIZE;
+    let blob = heap.allocate_blob(remainder);
+    assert_ne!(heap.heap_pointer as usize / PARTITION_SIZE, old_partition);
+    assert_ne!(blob.get_ptr(), old_heap_pointer);
+    unsafe {
+        let free_space = old_heap_pointer as *const FreeSpace;
+        assert_eq!((*free_space).tag, TAG_FREE_SPACE);
+        assert_eq!((*free_space).words.to_bytes().as_usize(), remainder);
+    }
+}
+
+fn test_close_partition_with_one_wordfiller(heap: &mut PartitionedTestHeap) {
+    let old_heap_pointer = heap.heap_pointer as usize;
+    let old_partition = old_heap_pointer / PARTITION_SIZE;
+    let remainder = PARTITION_SIZE - old_heap_pointer % PARTITION_SIZE;
+    assert!(remainder > size_of::<Blob>());
+    let old_partition_blob = heap.allocate_blob(remainder - size_of::<Blob>() - WORD_SIZE);
+    assert_eq!(old_partition_blob.get_ptr(), old_heap_pointer);
+    let filler_address = heap.heap_pointer as usize;
+    let new_partition_blob = heap.allocate_blob(0);
+    assert_ne!(heap.heap_pointer as usize / PARTITION_SIZE, old_partition);
+    assert_ne!(new_partition_blob.get_ptr(), filler_address);
+    unsafe {
+        let filler = filler_address as *const OneWordFiller;
+        assert_eq!((*filler).tag, TAG_ONE_WORD_FILLER);
+    }
+}
+
 fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
@@ -211,6 +249,12 @@ impl PartitionedTestHeap {
                 raw_array.set_scalar(index as u32, elements[index]);
             }
             array
+        }
+    }
+
+    pub fn allocate_blob(&mut self, size: usize) -> Value {
+        unsafe {
+            alloc_blob(self, Bytes(size as u32))
         }
     }
 }
