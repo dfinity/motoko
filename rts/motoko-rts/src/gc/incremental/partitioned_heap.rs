@@ -285,8 +285,12 @@ impl PartitionedHeap {
             partition.evacuate = self.allocation_index != partition.index
                 && !partition.is_free()
                 && partition.dynamic_space_start() < partition.end_address()
-                && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD
+                && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD;
         }
+    }
+
+    pub fn has_planned_evacuations(&self) -> bool {
+        self.partitions.iter().any(|partition| partition.evacuate)
     }
 
     pub unsafe fn free_evacuated_partitions(&mut self) {

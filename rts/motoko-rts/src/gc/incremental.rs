@@ -232,8 +232,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_evacuating(&mut self) {
         debug_assert!(self.mark_completed());
         let state = HeapIteratorState::new();
-        *self.phase = Phase::Evacuate(state);
         self.heap.plan_evacuations();
+        if self.heap.has_planned_evacuations() {
+            *self.phase = Phase::Evacuate(state);
+        } else {
+            *self.phase = Phase::Pause;
+        }
     }
 
     unsafe fn evacuation_completed(&self) -> bool {
