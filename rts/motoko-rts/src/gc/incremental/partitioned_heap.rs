@@ -32,6 +32,8 @@ use crate::types::*;
 pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
+pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
+
 /// Heap partition of size `PARTITION_SIZE`.
 pub struct Partition {
     index: usize,
@@ -278,7 +280,6 @@ impl PartitionedHeap {
     }
 
     pub fn plan_evacuations(&mut self) {
-        const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
         for partition in &mut self.partitions {
             assert!(!partition.evacuate);
             partition.evacuate = self.allocation_index != partition.index

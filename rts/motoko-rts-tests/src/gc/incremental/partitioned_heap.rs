@@ -5,10 +5,14 @@ use std::{
 
 use motoko_rts::{
     gc::incremental::partitioned_heap::{
-        HeapIteratorState, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
+        HeapIteratorState, Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
+        SURVIVAL_RATE_THRESHOLD,
     },
-    memory::{alloc_array, Memory, alloc_blob},
-    types::{Array, Value, Words, TAG_FREE_SPACE, FreeSpace, Bytes, OneWordFiller, TAG_ONE_WORD_FILLER, Blob},
+    memory::{alloc_array, alloc_blob, Memory},
+    types::{
+        is_marked, unmark, Array, Blob, Bytes, FreeSpace, OneWordFiller, Tag, Value, Words,
+        TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER,
+    },
 };
 
 use crate::gc::utils::WORD_SIZE;
@@ -29,6 +33,7 @@ pub unsafe fn test() {
     test_evacuation_plan(&mut heap.inner, occupied_partitions);
     test_freeing_partitions(&mut heap.inner, occupied_partitions);
     test_close_partition(&mut heap);
+    test_survival_rate(&mut heap.inner);
 }
 
 fn test_allocation_partitions(heap: &PartitionedHeap, number_of_partitions: usize) {
@@ -187,6 +192,66 @@ fn test_close_partition_with_one_wordfiller(heap: &mut PartitionedTestHeap) {
     }
 }
 
+unsafe fn mark_all_objects(heap: &mut PartitionedHeap) {
+    let mut all_objects = vec![];
+    let mut count = 0;
+    let mut iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);
+    while iterator.current_object().is_some() {
+        assert!(iterator.current_partition().is_some());
+        let object = iterator.current_object().unwrap();
+        all_objects.push(object);
+        count += 1;
+        if count <= NUMBER_OF_OBJECTS {
+            progress(count, NUMBER_OF_OBJECTS);
+        }
+        iterator.next_object();
+    }
+    assert!(iterator.current_partition().is_none());
+    reset_progress();
+    for object in all_objects.iter() {
+        object.mark();
+        heap.record_marked_space(*object);
+    }
+}
+
+unsafe fn test_survival_rate(heap: &mut PartitionedHeap) {
+    println!("    Test survival rate...");
+    mark_all_objects(heap);
+    heap.plan_evacuations();
+    let mut iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);
+    while iterator.current_partition().is_some() {
+        let partition = iterator.current_partition().unwrap();
+        let dynamic_partition_size =
+            PARTITION_SIZE - partition.dynamic_space_start() % PARTITION_SIZE;
+        let expected_survival_rate =
+            occupied_space(partition) as f64 / dynamic_partition_size as f64;
+        assert!(f64::abs(partition.survival_rate() - expected_survival_rate) < 1e6);
+        let expected_evacuation = !heap.is_allocation_partition(partition.get_index())
+            && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD;
+        assert_eq!(partition.to_be_evacuated(), expected_evacuation);
+        iterator.next_partition();
+    }
+}
+
+unsafe fn occupied_space(partition: &Partition) -> usize {
+    let mut sweep_line = partition.dynamic_space_start();
+    let mut occupied_space = 0;
+    while sweep_line < partition.dynamic_space_end() {
+        let block = sweep_line as *const Tag;
+        let size = block_size(block);
+        let tag = *block;
+        if tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE {
+            assert!(is_marked(tag));
+            occupied_space += size;
+        }
+        sweep_line += size;
+        assert!(sweep_line <= partition.dynamic_space_end());
+    }
+    occupied_space
+}
+
 fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
@@ -253,9 +318,20 @@ impl PartitionedTestHeap {
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe {
-            alloc_blob(self, Bytes(size as u32))
+        unsafe { alloc_blob(self, Bytes(size as u32)) }
+    }
+}
+
+unsafe fn block_size(block: *const Tag) -> usize {
+    let tag = unmark(*block);
+    match tag {
+        TAG_ARRAY => {
+            size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }
+        TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
+        TAG_FREE_SPACE => (*(block as *const FreeSpace)).words.to_bytes().as_usize(),
+        TAG_ONE_WORD_FILLER => WORD_SIZE,
+        _ => unimplemented!(),
     }
 }
 
