@@ -32,7 +32,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         while self.heap_iterator.current_partition().is_some() {
             let partition = self.heap_iterator.current_partition().unwrap();
             if partition.to_be_evacuated() {
-                self.evacuate_partition();
+                self.evacuate_partition(partition.get_index());
                 if *self.steps > INCREMENT_LIMIT {
                     return;
                 }
@@ -42,8 +42,14 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         }
     }
 
-    unsafe fn evacuate_partition(&mut self) {
-        while self.heap_iterator.current_object().is_some() && *self.steps <= INCREMENT_LIMIT {
+    unsafe fn evacuate_partition(&mut self, partition_index: usize) {
+        while self
+            .heap_iterator
+            .current_partition()
+            .map(|partition| partition.get_index() == partition_index)
+            .unwrap_or(false)
+            && *self.steps <= INCREMENT_LIMIT
+        {
             let original = self.heap_iterator.current_object().unwrap();
             if original.is_marked() {
                 self.evacuate_object(original);
