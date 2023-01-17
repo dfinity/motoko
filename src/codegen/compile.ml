@@ -1394,6 +1394,17 @@ module Tagged = struct
 
   let load_forwarding_pointer env =
     Heap.load_field forwarding_pointer_field
+
+  let forward_if_possible env =
+    let (set_value, get_value) = new_local env "forward_if_possible" in
+    set_value ^^ get_value ^^
+    (if !Flags.gc_strategy = Flags.Incremental then
+      BitTagged.is_pointer env ^^
+      E.if_ env [I32Type] 
+        ( get_value ^^ load_forwarding_pointer env )
+        ( get_value )
+    else
+      G.nop)
       
   let store_unmarked_tag env tag =
     load_forwarding_pointer env ^^
@@ -3636,6 +3647,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
+    Tagged.forward_if_possible env ^^
 
     (* Allocate *)
     BigNum.to_word32 env ^^
@@ -3678,6 +3690,7 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
+      Tagged.forward_if_possible env ^^
       store_ptr ^^
 
       (* Increment index *)
