@@ -43,11 +43,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_partition(&mut self, partition_index: usize) {
-        while self
-            .heap_iterator
-            .current_partition()
-            .map(|partition| partition.get_index() == partition_index)
-            .unwrap_or(false)
+        while self.heap_iterator.is_inside_partition(partition_index)
             && *self.steps <= INCREMENT_LIMIT
         {
             let original = self.heap_iterator.current_object().unwrap();

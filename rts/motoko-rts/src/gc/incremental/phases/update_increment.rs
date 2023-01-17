@@ -54,11 +54,7 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     unsafe fn update_partition(&mut self, partition_index: usize) {
-        while self
-            .heap_iterator
-            .current_partition()
-            .map(|partition| partition.get_index() == partition_index)
-            .unwrap_or(false)
+        while self.heap_iterator.is_inside_partition(partition_index)
             && *self.steps <= INCREMENT_LIMIT
         {
             let object = self.heap_iterator.current_object().unwrap();

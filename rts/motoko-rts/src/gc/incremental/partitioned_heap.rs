@@ -186,6 +186,11 @@ impl<'a> PartitionedHeapIterator<'a> {
         }
     }
 
+    pub fn is_inside_partition(&self, partition_index: usize) -> bool {
+        self.current_partition().is_some()
+            && self.current_partition().unwrap().get_index() == partition_index
+    }
+
     fn partition_scan_start(&self) -> usize {
         self.current_partition().unwrap().dynamic_space_start()
     }
