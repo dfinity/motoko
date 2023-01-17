@@ -41,8 +41,8 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn run(&mut self) {
         while self.heap_iterator.current_partition().is_some() {
             let partition = self.heap_iterator.current_partition().unwrap();
-            if !partition.to_be_evacuated() {
-                assert!(!partition.is_free());
+            if partition.to_be_updated() {
+                assert!(!partition.is_free() && !partition.to_be_evacuated());
                 self.update_partition(partition.get_index());
                 if *self.steps > INCREMENT_LIMIT {
                     return;
@@ -62,11 +62,11 @@ impl<'a> UpdateIncrement<'a> {
                 assert!(!object.is_forwarded());
                 self.update_fields(object);
                 if *self.steps > INCREMENT_LIMIT {
-                    // Keep mark bit and later resume updating more slices of this array
+                    // Keep mark bit and later resume updating more slices of this array.
                     return;
                 }
+                object.unmark();
             }
-            object.unmark();
             self.heap_iterator.next_object();
             *self.steps += 1;
         }
