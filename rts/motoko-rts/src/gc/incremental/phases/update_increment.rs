@@ -65,8 +65,8 @@ impl<'a> UpdateIncrement<'a> {
                     // Keep mark bit and later resume updating more slices of this array
                     return;
                 }
+                object.unmark();
             }
-            object.unmark();
             self.heap_iterator.next_object();
             *self.steps += 1;
         }
