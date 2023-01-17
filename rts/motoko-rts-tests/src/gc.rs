@@ -169,7 +169,7 @@ unsafe fn initialize_incremental_gc(heap: &MotokoHeap) {
     let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
     // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
-    let mut heap_pointer = heap.heap_base_address() as u32; 
+    let mut heap_pointer = heap.heap_base_address() as u32;
     PARTITIONED_HEAP
         .as_mut()
         .unwrap()

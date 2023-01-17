@@ -37,11 +37,8 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn mark_roots(&mut self, roots: Roots) {
         visit_roots(roots, self.heap.base_address(), self, |gc, field| {
-            let value = *field;
-            if value.is_ptr() && value.get_ptr() >= gc.heap.base_address() {
-                gc.mark_object(value);
-                *gc.steps += 1;
-            }
+            gc.mark_object(*field);
+            *gc.steps += 1;
         });
     }
 
@@ -107,10 +104,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     unsafe fn complete_marking(&mut self) {
         debug_assert!(!*self.complete);
         *self.complete = true;
-
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "ic")]
-        crate::gc::incremental::sanity_checks::check_mark_completeness(self.mem);
 
         #[cfg(debug_assertions)]
         self.mark_stack.assert_is_garbage();

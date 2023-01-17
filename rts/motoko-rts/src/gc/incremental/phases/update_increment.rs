@@ -31,10 +31,10 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn update_roots(&mut self, roots: Roots) {
         visit_roots(roots, self.heap_base, self, |gc, field| {
             let value = *field;
-            if value.is_ptr() && value.is_forwarded() {
-                assert!(value.get_ptr() >= gc.heap_base);
+            if value.is_forwarded() {
                 *field = value.forward_if_possible();
             }
+            *gc.steps += 1;
         });
     }
 

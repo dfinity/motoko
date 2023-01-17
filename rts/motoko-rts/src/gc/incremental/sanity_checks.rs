@@ -4,221 +4,144 @@
 use core::ptr::null;
 
 use crate::gc::generational::remembered_set::RememberedSet;
+use crate::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use crate::memory::Memory;
+use crate::types::*;
 use crate::visitor::visit_pointer_fields;
-use crate::{types::*, visitor::pointer_to_dynamic_heap};
 
 use super::mark_stack::MarkStack;
+use super::partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator};
+use super::roots::{visit_roots, Roots};
+use super::PARTITIONED_HEAP;
 
-#[cfg(feature = "ic")]
-pub unsafe fn check_mark_completeness<M: Memory>(mem: &mut M) {
-    let heap = get_heap();
+pub unsafe fn check_memory<M: Memory>(mem: &mut M, roots: Roots, mode: CheckerMode) {
+    let heap = PARTITIONED_HEAP.as_ref().unwrap();
     let mark_stack = MarkStack::new(mem);
     let visited = RememberedSet::new(mem);
-    let mut checker = MarkPhaseChecker {
+    let mut checker = MemoryChecker {
+        mode,
         mem,
         heap,
+        roots,
         mark_stack,
         visited,
     };
-    checker.check_mark_completeness();
+    checker.run();
 }
 
-#[cfg(feature = "ic")]
-pub unsafe fn check_memory(allow_marked_objects: bool, allow_forwarded_pointers: bool) {
-    let heap = get_heap();
-    let checker = MemoryChecker {
-        heap,
-        allow_marked_objects,
-        allow_forwarded_pointers,
-    };
-    checker.check_memory();
+/// Sanity check modes.
+pub enum CheckerMode {
+    MarkCompletion,   // Check mark phase completion.
+    UpdateCompletion, // Check update phase completion.
 }
 
-#[cfg(feature = "ic")]
-unsafe fn get_heap() -> Heap {
-    use crate::memory::ic;
-    let limits = Limits {
-        base: ic::get_aligned_heap_base() as usize,
-        free: ic::HP as usize,
-    };
-    let roots = Roots {
-        static_roots: ic::get_static_roots(),
-        continuation_table: *crate::continuation_table::continuation_table_loc(),
-    };
-    Heap { limits, roots }
-}
-
-struct Limits {
-    pub base: usize,
-    pub free: usize,
-}
-
-struct Roots {
-    pub static_roots: Value,
-    pub continuation_table: Value,
-}
-
-struct Heap {
-    limits: Limits,
-    roots: Roots,
-}
-
-struct MarkPhaseChecker<'a, M: Memory> {
+struct MemoryChecker<'a, M: Memory> {
+    mode: CheckerMode,
     mem: &'a mut M,
-    heap: Heap,
+    heap: &'a PartitionedHeap,
+    roots: Roots,
     mark_stack: MarkStack,
     visited: RememberedSet,
 }
 
-impl<'a, M: Memory> MarkPhaseChecker<'a, M> {
-    // Check that the set of marked objects by the incremental GC is the same set or a
-    // subset of the objects being marked by a conventional stop-the-world mark phase.
-    // The incremental GC may mark more objects due to concurrent allocations and
-    // concurrent pointer modifications.
-    unsafe fn check_mark_completeness(&mut self) {
-        self.mark_roots();
-        self.mark_all_reachable();
+impl<'a, M: Memory> MemoryChecker<'a, M> {
+    // Check whether all reachable objects and pointers in the memory have a plausible state.
+    // Note: The heap may contain garbage objects with stale pointers that are no longer valid.
+    // Various check modes:
+    // * MarkCompletion:
+    ///  Check that the set of marked objects by the incremental GC is the same set or a subset
+    ///  of the objects being marked by a conventional stop-the-world mark phase. The incremental
+    ///  GC may mark more objects due to concurrent allocations and concurrent pointer modifications.
+    // * UpdateCompletion:
+    //   Check that the update phase left the heap in a consistent state, with no forwarded objects,
+    //   all reachable pointers referring to valid non-moved locations, and all mark bits been cleared.
+    unsafe fn run(&mut self) {
+        self.check_roots();
+        self.check_all_reachable();
+        self.check_heap();
     }
 
-    unsafe fn mark_roots(&mut self) {
-        self.mark_static_roots();
-        self.mark_continuation_table();
+    unsafe fn check_roots(&mut self) {
+        visit_roots(self.roots, self.heap.base_address(), self, |gc, field| {
+            gc.check_object(*field);
+        });
     }
 
-    unsafe fn mark_static_roots(&mut self) {
-        let root_array = self.heap.roots.static_roots.as_array();
-        for i in 0..root_array.len() {
-            let mutbox = root_array.get(i).as_mutbox();
-            let value = (*mutbox).field;
-            if value.is_ptr() && value.get_ptr() >= self.heap.limits.base {
-                assert_ne!(value.get_raw(), 0);
-                self.mark_object(value);
-            }
-        }
-    }
-
-    unsafe fn mark_continuation_table(&mut self) {
-        if self.heap.roots.continuation_table.is_ptr() {
-            assert_ne!(self.heap.roots.continuation_table.get_raw(), 0);
-            self.mark_object(self.heap.roots.continuation_table);
-        }
-    }
-
-    unsafe fn mark_object(&mut self, value: Value) {
-        assert_ne!(value.get_raw(), 0);
+    unsafe fn check_object(&mut self, value: Value) {
+        self.check_object_header(value);
+        assert!(value.get_ptr() >= self.heap.base_address());
         let object = value.as_obj();
-        // The incremental GC must also have marked this object.
-        assert!(object.is_marked());
+        if let CheckerMode::MarkCompletion = self.mode {
+            // The incremental GC have marked this reachable object.
+            assert!(object.is_marked());
+        }
         if !self.visited.contains(value) {
             self.visited.insert(self.mem, value);
             self.mark_stack.push(self.mem, value);
         }
     }
 
-    unsafe fn mark_all_reachable(&mut self) {
+    unsafe fn check_all_reachable(&mut self) {
         while let Some(object) = self.mark_stack.pop() {
-            self.mark_fields(object.get_ptr() as *mut Obj);
+            self.check_fields(object.get_ptr() as *mut Obj);
         }
     }
 
-    unsafe fn mark_fields(&mut self, object: *mut Obj) {
+    unsafe fn check_fields(&mut self, object: *mut Obj) {
         visit_pointer_fields(
             self,
             object,
             object.tag(),
-            self.heap.limits.base,
+            0,
             |gc, field_address| {
-                assert_ne!((*field_address).get_raw(), 0);
-                gc.mark_object(*field_address);
+                let value = *field_address;
+                // Ignore null pointers used in text_iter.
+                if value.get_ptr() as *const Obj != null() {
+                    if value.get_ptr() >= gc.heap.base_address() {
+                        gc.check_object(value);
+                    } else {
+                        gc.check_object_header(value);
+                    }
+                }
             },
             |_, _, array| array.len(),
         );
     }
 
     unsafe fn check_object_header(&self, object: Value) {
-        assert!(object.is_ptr());
-        let pointer = object.get_ptr();
-        assert!(pointer < self.heap.limits.free);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
-    }
-}
-
-struct MemoryChecker {
-    heap: Heap,
-    allow_marked_objects: bool,
-    allow_forwarded_pointers: bool,
-}
-
-impl MemoryChecker {
-    /// Check whether all objects and pointers in the memory have plausible values.
-    unsafe fn check_memory(&self) {
-        self.check_static_roots();
-        self.check_continuation_table();
-        self.check_heap();
-    }
-
-    unsafe fn check_static_roots(&self) {
-        let root_array = self.heap.roots.static_roots.as_array();
-        for i in 0..root_array.len() {
-            let mutbox = root_array.get(i).as_mutbox();
-            assert!((mutbox as usize) < self.heap.limits.base);
-            let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(field_addr, self.heap.limits.base) {
-                let object = *field_addr;
-                self.check_object(object);
-            }
+        object.check_forwarding_pointer();
+        if let CheckerMode::UpdateCompletion = self.mode {
+            // Forwarding no longer allowed on completed GC.
+            assert!(!object.is_forwarded());
+            assert!(!(object.get_ptr() as *const Obj).is_marked());
         }
+        let address = object.get_ptr();
+        self.check_valid_address(address);
     }
 
-    unsafe fn check_continuation_table(&self) {
-        if self.heap.roots.continuation_table.is_ptr() {
-            self.check_object(self.heap.roots.continuation_table);
+    unsafe fn check_valid_address(&self, address: usize) {
+        let partition_index = address / PARTITION_SIZE;
+        let partition = self.heap.get_partition(partition_index);
+        if address >= self.heap.base_address() {
+            assert!(!partition.is_free());
+            assert!(address >= partition.dynamic_space_start());
         }
-    }
-
-    unsafe fn check_object(&self, object: Value) {
-        self.check_object_header(object);
-        visit_pointer_fields(
-            &mut (),
-            object.as_obj(),
-            object.tag(),
-            0,
-            |_, field_address| {
-                // Ignore null pointers used in text_iter.
-                if (*field_address).get_ptr() as *const Obj != null() {
-                    (&self).check_object_header(*field_address);
-                }
-            },
-            |_, _, arr| arr.len(),
+        assert!(
+            address + block_size(address).to_bytes().as_usize() <= partition.dynamic_space_end()
         );
     }
 
-    unsafe fn check_object_header(&self, object: Value) {
-        assert!(object.is_ptr());
-        object.check_forwarding_pointer();
-        if !self.allow_forwarded_pointers {
-            assert!(!object.is_forwarded());
-        }
-        let pointer = object.get_ptr();
-        assert_ne!(pointer as *const Obj, null());
-        assert!(pointer < self.heap.limits.free);
-        let tag = object.tag();
-        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
-        if !self.allow_marked_objects {
-            assert!(!(pointer as *const Obj).is_marked());
-        }
-    }
-
     unsafe fn check_heap(&self) {
-        let mut pointer = self.heap.limits.base;
-        while pointer < self.heap.limits.free {
-            let block = Value::from_ptr(pointer as usize);
-            if block.tag() != TAG_ONE_WORD_FILLER {
-                self.check_object(block);
-            }
-            pointer += block_size(pointer as usize).to_bytes().as_usize();
+        let mut iterator_state = HeapIteratorState::new();
+        let mut iterator = PartitionedHeapIterator::resume(self.heap, &mut iterator_state);
+        while iterator.current_object().is_some() {
+            let object = iterator.current_object().unwrap();
+            let value = Value::from_ptr(object as usize);
+            // Note: Only check the header, as the object may be garbage and thus contain stale pointers.
+            self.check_object_header(value);
+            iterator.next_object();
         }
     }
 }

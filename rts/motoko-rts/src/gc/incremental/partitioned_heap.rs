@@ -275,7 +275,7 @@ impl PartitionedHeap {
         self.heap_base
     }
 
-    fn get_partition(&self, index: usize) -> &Partition {
+    pub fn get_partition(&self, index: usize) -> &Partition {
         &self.partitions[index]
     }
 

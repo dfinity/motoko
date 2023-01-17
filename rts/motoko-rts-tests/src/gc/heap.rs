@@ -286,7 +286,7 @@ impl MotokoHeapInner {
         let old_hp = self.heap_ptr_address();
         let new_hp = old_hp + bytes.as_usize();
         self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
-            
+
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
         Value::from_ptr(old_hp)

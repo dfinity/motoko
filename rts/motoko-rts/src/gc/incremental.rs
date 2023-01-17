@@ -162,6 +162,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
         self.increment();
         if self.mark_completed() {
+            #[cfg(debug_assertions)]
+            self.check_mark_completion(roots);
+
             self.start_evacuating();
             self.increment();
         }
@@ -171,6 +174,9 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
         if self.updating_completed() {
             self.complete_run();
+
+            #[cfg(debug_assertions)]
+            self.check_update_completion(roots);
         }
     }
 
@@ -200,10 +206,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_marking(&mut self, roots: Roots) {
         debug_assert!(self.pausing());
 
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "ic")]
-        sanity_checks::check_memory(false, false);
-
         let mark_stack = MarkStack::new(self.mem);
         let state = MarkState {
             mark_stack,
@@ -227,6 +229,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             }
             _ => false,
         }
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn check_mark_completion(&mut self, roots: Roots) {
+        sanity_checks::check_memory(self.mem, roots, sanity_checks::CheckerMode::MarkCompletion);
     }
 
     unsafe fn start_evacuating(&mut self) {
@@ -271,12 +278,15 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(self.updating_completed());
         self.heap.free_evacuated_partitions();
         *self.phase = Phase::Pause;
+    }
 
-        // Note: The memory check only works if the free space is cleared in `PartitionedHeap`.
-        // Otherwise, there exist the remainder of garbage objects that have been conceptually freed.
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "ic")]
-        sanity_checks::check_memory(false, false);
+    #[cfg(debug_assertions)]
+    unsafe fn check_update_completion(&mut self, roots: Roots) {
+        sanity_checks::check_memory(
+            self.mem,
+            roots,
+            sanity_checks::CheckerMode::UpdateCompletion,
+        );
     }
 }
 

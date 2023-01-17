@@ -1,4 +1,4 @@
-use crate::types::Value;
+use crate::{types::Value, visitor::pointer_to_dynamic_heap};
 
 /// GC root set.
 #[derive(Clone, Copy)]
@@ -24,7 +24,12 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
     visit_field: V,
 ) {
     visit_static_roots(roots.static_roots, heap_base, context, &visit_field);
-    visit_field(context, roots.continuation_table_location);
+    visit_continuation_table(
+        roots.continuation_table_location,
+        heap_base,
+        context,
+        &visit_field,
+    );
 }
 
 unsafe fn visit_static_roots<C, V: Fn(&mut C, *mut Value)>(
@@ -37,6 +42,20 @@ unsafe fn visit_static_roots<C, V: Fn(&mut C, *mut Value)>(
     for index in 0..root_array.len() {
         let mutbox = root_array.get(index).as_mutbox();
         debug_assert!((mutbox as usize) < heap_base);
-        visit_field(context, &mut (*mutbox).field);
+        let field = &mut (*mutbox).field;
+        if pointer_to_dynamic_heap(field, heap_base) {
+            visit_field(context, field);
+        }
+    }
+}
+
+unsafe fn visit_continuation_table<C, V: Fn(&mut C, *mut Value)>(
+    continuation_table_location: *mut Value,
+    heap_base: usize,
+    context: &mut C,
+    visit_field: &V,
+) {
+    if pointer_to_dynamic_heap(continuation_table_location, heap_base) {
+        visit_field(context, continuation_table_location);
     }
 }
