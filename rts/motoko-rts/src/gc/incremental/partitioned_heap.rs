@@ -73,10 +73,6 @@ impl Partition {
         self.evacuate
     }
 
-    pub fn to_be_updated(&self) -> bool {
-        !self.free && !self.evacuate && self.marked_space > 0
-    }
-
     #[cfg(debug_assertions)]
     unsafe fn clear_free_remainder(&self) {
         use crate::constants::WORD_SIZE;

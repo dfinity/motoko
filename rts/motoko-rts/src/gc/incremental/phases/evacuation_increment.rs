@@ -67,6 +67,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         (*original).forward = new_address;
         assert!(!copy.is_forwarded());
         assert!(original.is_forwarded());
+        assert!(copy.is_marked()); // Necessary to ensure field updates in the copy.
 
         #[cfg(debug_assertions)]
         Self::clear_object_content(original);
