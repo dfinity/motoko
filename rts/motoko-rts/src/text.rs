@@ -110,8 +110,8 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     r_concat.initialize_tag(TAG_CONCAT);
     (*r_concat).header.forward = r;
     (*r_concat).n_bytes = new_len;
-    (*r_concat).text1 = s1;
-    (*r_concat).text2 = s2;
+    (*r_concat).text1 = s1.forward_if_possible();
+    (*r_concat).text2 = s2.forward_if_possible();
 
     r
 }
