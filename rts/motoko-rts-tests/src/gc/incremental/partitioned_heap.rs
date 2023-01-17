@@ -53,6 +53,7 @@ unsafe fn test_iteration(
     println!("    Test heap iteration...");
     let mut iterator_state = HeapIteratorState::new();
     let mut count = 0;
+    let mut previous_partition = None;
     loop {
         let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);
         while iterator.current_object().is_some() {
@@ -68,6 +69,11 @@ unsafe fn test_iteration(
             assert!(!partition.to_be_evacuated());
             assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
             assert!(partition.get_index() < occupied_partitions);
+            if previous_partition.is_none() || partition.get_index() != previous_partition.unwrap()
+            {
+                check_partition_index(&iterator, Some(partition.get_index()));
+                previous_partition = Some(partition.get_index());
+            }
             iterator.next_object();
             if count % break_step_size == 0 {
                 break;
@@ -75,11 +81,28 @@ unsafe fn test_iteration(
         }
         if iterator.current_object().is_none() {
             assert!(iterator.current_partition().is_none());
+            assert!(!iterator.is_inside_partition(0));
+            assert!(!iterator.is_inside_partition(usize::MAX / PARTITION_SIZE));
             break;
         }
     }
     assert_eq!(count, NUMBER_OF_OBJECTS);
     reset_progress();
+}
+
+unsafe fn check_partition_index(
+    iterator: &PartitionedHeapIterator,
+    expected_partition_index: Option<usize>,
+) {
+    for index in 0..usize::MAX / PARTITION_SIZE {
+        if iterator.is_inside_partition(index) {
+            assert_eq!(expected_partition_index.unwrap(), index);
+        } else {
+            assert!(
+                expected_partition_index.is_none() || expected_partition_index.unwrap() != index
+            );
+        }
+    }
 }
 
 unsafe fn test_evacuation_plan(heap: &mut PartitionedHeap, occupied_partitions: usize) {
