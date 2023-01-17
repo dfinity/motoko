@@ -62,7 +62,7 @@ unsafe fn should_start() -> bool {
     let absolute_growth = occupation - LAST_HEAP_OCCUPATION;
     let relative_growth = absolute_growth as f64 / occupation as f64;
     relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation >= PARTITION_SIZE
-        || occupation >= CRITICAL_LIMIT
+        || occupation > CRITICAL_LIMIT
 }
 
 #[cfg(feature = "ic")]
@@ -122,7 +122,7 @@ static mut PHASE: Phase = Phase::Pause;
 pub static mut PARTITIONED_HEAP: Option<PartitionedHeap> = None;
 
 /// Limit on the number of steps performed in a GC increment.
-const INCREMENT_LIMIT: usize = 500_000;
+const INCREMENT_LIMIT: usize = 2_000_000;
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC states `PHASE` and `PARTITIONED_HEAP`.
@@ -298,33 +298,49 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value: Value) {
     if let Phase::Mark(state) = &mut PHASE {
         let heap = PARTITIONED_HEAP.as_mut().unwrap();
-        if overwritten_value.points_to_or_beyond(heap.base_address()) && !state.complete {
-            let mut steps = 0;
-            MarkIncrement::instance(mem, &mut steps, state, heap).mark_object(overwritten_value);
+        if overwritten_value.points_to_or_beyond(heap.base_address()) {
+            if !state.complete {
+                let mut steps = 0;
+                MarkIncrement::instance(mem, &mut steps, state, heap).mark_object(overwritten_value);
+            } else {
+                assert!(overwritten_value.as_obj().is_marked());
+            }
         }
     }
 }
 
 /// Incremental GC allocation scheme:
-/// * During pause:
+/// * During the pause:
 ///   - New objects are not marked. Can be reclaimed on the next GC run.
-/// * During mark phase:
+/// * During the mark phase:
 ///   - New allocated objects are conservatively marked and cannot be reclaimed in the
 ///     current GC run. This is necessary because the incremental GC does neither scan
-///     nor use write barriers on the call stack.
-/// * During evacuation and updating phase:
-///   - New allocated objects do not need to be marked since the allocation partition
-///     will not be evacuated and reclaimed in the current GC run.
+///     nor use write barriers on the call stack. The fields in the new allocated array
+///     do not need to be visited during the mark phase due to the snapshot-at-the-beginning
+///     consistency.
+/// * During the evacuation phase:
+///   - Mark new objects such that their fields are updated in the subsequent 
+///     update phase. The fields may point to old object locations that are forwarded.
+/// * During the update phase
+///   - New objects must not be marked as the mark bits is reset by the update phase and
+///     the update phase may have passed the location of allocation due to the partitioning.
 /// * When GC is stopped on canister upgrade:
 ///   - The GC will not resume and thus marking is irrelevant.
-/// Summary: New allocated objects are conservatively retained during an active GC run.
-/// `new_object` is the unskewed object pointer.
+/// 
+/// `new_object` is the unskewed pointer of a newly allocated object. 
+/// The object may not yet be fully initialized. The object length may not yet been set in the object.
+/// 
+/// Note: The mark space statistics is not updated on the allocation partition for newly allocated objects.
+/// This is not critical as the allocation partition is not chosen for evacuation, and if the allocation
+/// partition would switch during marking, the partition with young objects would even be preferred 
+/// for evacuation which can be beneficial.
+/// 
 /// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
 #[no_mangle]
 pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
     debug_assert!(!is_skewed(new_object as u32));
     let should_mark = match &PHASE {
-        Phase::Mark(_) => true,
+        Phase::Mark(_) | Phase::Evacuate(_) => true,
         _ => false,
     };
     if should_mark {

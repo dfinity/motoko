@@ -29,7 +29,8 @@ use core::array::from_fn;
 
 use crate::types::*;
 
-pub const PARTITION_SIZE: usize = 128 * 1024 * 1024;
+pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
+// For simplicity, leave the last partition unused, to avoid partition end address overflow
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
 pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
