@@ -66,6 +66,7 @@ impl<'a> UpdateIncrement<'a> {
                     return;
                 }
                 object.unmark();
+                assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
             }
             self.heap_iterator.next_object();
             *self.steps += 1;
@@ -73,7 +74,6 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     unsafe fn update_fields(&mut self, object: *mut Obj) {
-        assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         loop {
             // Loop over potentially multiple array slices and return if the GC increment limit is exceeded.
             visit_pointer_fields(
