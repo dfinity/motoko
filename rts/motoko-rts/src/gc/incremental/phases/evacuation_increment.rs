@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
         partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
-        BoundedTime,
+        time::BoundedTime,
     },
     mem_utils::memcpy_words,
     memory::Memory,

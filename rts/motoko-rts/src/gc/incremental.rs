@@ -12,6 +12,7 @@ use self::{
         update_increment::UpdateIncrement,
     },
     roots::Roots,
+    time::BoundedTime,
 };
 
 pub mod array_slicing;
@@ -22,6 +23,7 @@ mod phases;
 pub mod roots;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
+pub mod time;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
@@ -121,43 +123,6 @@ pub struct MarkState {
 /// GC state retained over multiple GC increments.
 static mut PHASE: Phase = Phase::Pause;
 pub static mut PARTITIONED_HEAP: Option<PartitionedHeap> = None;
-
-/// Limits on the number of steps performed in a GC increment.
-const LONG_INCREMENT_TIME_LIMIT: usize = 1_000_000;
-const SHORT_INCREMENT_TIME_LIMIT: usize = 50_000;
-
-// Bounded time of the GC increment.
-// Deterministically measured in synthetic steps.
-pub struct BoundedTime {
-    steps: usize,
-    limit: usize,
-}
-
-impl BoundedTime {
-    pub fn long_interval() -> BoundedTime {
-        Self::new(LONG_INCREMENT_TIME_LIMIT)
-    }
-
-    pub fn short_interval() -> BoundedTime {
-        Self::new(SHORT_INCREMENT_TIME_LIMIT)
-    }
-
-    fn new(limit: usize) -> BoundedTime {
-        BoundedTime { steps: 0, limit }
-    }
-
-    pub fn tick(&mut self) {
-        self.steps += 1;
-    }
-
-    pub fn advance(&mut self, amount: usize) {
-        self.steps += amount;
-    }
-
-    pub fn is_over(&self) -> bool {
-        self.steps > self.limit
-    }
-}
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC states `PHASE` and `PARTITIONED_HEAP`.
