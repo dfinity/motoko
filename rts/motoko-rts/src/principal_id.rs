@@ -1,6 +1,6 @@
 //! Principal ID encoding and decoding, with integrity checking
 
-use crate::gc::incremental::barriers::post_allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;

@@ -22,7 +22,7 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::gc::incremental::barriers::post_allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::Value;

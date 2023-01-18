@@ -26,7 +26,7 @@
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
-use crate::gc::incremental::barriers::post_allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;

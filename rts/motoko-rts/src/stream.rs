@@ -32,7 +32,7 @@
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
-use crate::gc::incremental::barriers::post_allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;

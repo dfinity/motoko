@@ -1,7 +1,6 @@
 use crate::{
-    gc::incremental::{
-        partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
-        INCREMENT_LIMIT,
+    gc::incremental::partitioned_heap::{
+        HeapIteratorState, PartitionedHeap, PartitionedHeapIterator,
     },
     mem_utils::memcpy_words,
     memory::Memory,
@@ -11,6 +10,7 @@ use crate::{
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: &'a mut usize,
+    limit: usize,
     heap_iterator: PartitionedHeapIterator<'a>,
 }
 
@@ -18,12 +18,14 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn instance(
         mem: &'a mut M,
         steps: &'a mut usize,
+        limit: usize,
         state: &'a mut HeapIteratorState,
         heap: &'a PartitionedHeap,
     ) -> EvacuationIncrement<'a, M> {
         EvacuationIncrement {
             mem,
             steps,
+            limit,
             heap_iterator: PartitionedHeapIterator::resume(heap, state),
         }
     }
@@ -33,7 +35,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             let partition = self.heap_iterator.current_partition().unwrap();
             if partition.to_be_evacuated() {
                 self.evacuate_partition(partition.get_index());
-                if *self.steps > INCREMENT_LIMIT {
+                if *self.steps > self.limit {
                     return;
                 }
             } else {
@@ -43,9 +45,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_partition(&mut self, partition_index: usize) {
-        while self.heap_iterator.is_inside_partition(partition_index)
-            && *self.steps <= INCREMENT_LIMIT
-        {
+        while self.heap_iterator.is_inside_partition(partition_index) && *self.steps <= self.limit {
             let original = self.heap_iterator.current_object().unwrap();
             if original.is_marked() {
                 self.evacuate_object(original);

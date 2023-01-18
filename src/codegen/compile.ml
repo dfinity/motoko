@@ -958,7 +958,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "post_allocation_barrier" [I32Type] [];
+    E.add_func_import env "rts" "allocation_barrier" [I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
@@ -1479,7 +1479,7 @@ module Tagged = struct
     G.concat_mapi init_elem element_instructions ^^
     (if !Flags.gc_strategy = Flags.Incremental then
       get_object ^^
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_object
     else
       get_object)
@@ -1767,7 +1767,7 @@ module BoxedWord64 = struct
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     (if !Flags.gc_strategy = Flags.Incremental then
       get_i ^^
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_i
     else
       get_i)
@@ -1890,7 +1890,7 @@ module BoxedSmallWord = struct
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     (if !Flags.gc_strategy = Flags.Incremental then
       get_i ^^
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_i
     else
       get_i)
@@ -2134,7 +2134,7 @@ module Float = struct
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     (if !Flags.gc_strategy = Flags.Incremental then
       get_i ^^
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_i
     else
       get_i)
@@ -3177,7 +3177,7 @@ module Object = struct
     (* Return the pointer to the object *)
     (if !Flags.gc_strategy = Flags.Incremental then
       get_ri ^^
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_ri
     else
       get_ri)
@@ -3310,7 +3310,7 @@ module Blob = struct
       set_blob ^^
       get_blob ^^
       (* uninitialized blob payload is allowed by the barrier *)
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_blob
     else
       G.nop)
@@ -3681,7 +3681,7 @@ module Arr = struct
 
     (if !Flags.gc_strategy = Flags.Incremental then
       get_r ^^
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_r
     else
       get_r)
@@ -3723,7 +3723,7 @@ module Arr = struct
     ) ^^
     (if !Flags.gc_strategy = Flags.Incremental then
       get_r ^^
-      E.call_import env "rts" "post_allocation_barrier" ^^
+      E.call_import env "rts" "allocation_barrier" ^^
       get_r
     else
       get_r)
@@ -3748,7 +3748,7 @@ module Arr = struct
 
       (if !Flags.gc_strategy = Flags.Incremental then
         get_r ^^
-        E.call_import env "rts" "post_allocation_barrier" ^^
+        E.call_import env "rts" "allocation_barrier" ^^
         get_r
       else
         get_r)
@@ -6006,7 +6006,7 @@ module MakeSerialization (Strm : Stream) = struct
           ) ^^
           (if !Flags.gc_strategy = Flags.Incremental then
             get_x ^^
-            E.call_import env "rts" "post_allocation_barrier" ^^
+            E.call_import env "rts" "allocation_barrier" ^^
             get_x
           else
             get_x)
@@ -6027,7 +6027,7 @@ module MakeSerialization (Strm : Stream) = struct
         ) ^^
         (if !Flags.gc_strategy = Flags.Incremental then
           get_x ^^
-          E.call_import env "rts" "post_allocation_barrier" ^^
+          E.call_import env "rts" "allocation_barrier" ^^
           get_x
         else
           get_x)
@@ -7362,7 +7362,7 @@ module FuncDec = struct
 
         (if !Flags.gc_strategy = Flags.Incremental then
           get_clos ^^
-          E.call_import env "rts" "post_allocation_barrier"
+          E.call_import env "rts" "allocation_barrier"
         else
           G.nop)
       in

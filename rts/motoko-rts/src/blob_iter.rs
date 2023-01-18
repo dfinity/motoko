@@ -1,5 +1,5 @@
 use crate::{
-    gc::incremental::barriers::post_allocation_barrier,
+    gc::incremental::post_allocation_barrier,
     types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
 };
 

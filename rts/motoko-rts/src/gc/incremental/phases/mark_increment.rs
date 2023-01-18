@@ -4,7 +4,7 @@ use crate::{
         mark_stack::MarkStack,
         partitioned_heap::PartitionedHeap,
         roots::{visit_roots, Roots},
-        MarkState, INCREMENT_LIMIT,
+        MarkState,
     },
     memory::Memory,
     types::*,
@@ -14,6 +14,7 @@ use crate::{
 pub struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
     steps: &'a mut usize,
+    limit: usize,
     heap: &'a mut PartitionedHeap,
     mark_stack: &'a mut MarkStack,
     complete: &'a mut bool,
@@ -23,12 +24,14 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     pub unsafe fn instance(
         mem: &'a mut M,
         steps: &'a mut usize,
+        limit: usize,
         state: &'a mut MarkState,
         heap: &'a mut PartitionedHeap,
     ) -> MarkIncrement<'a, M> {
         MarkIncrement {
             mem,
             steps,
+            limit,
             heap,
             mark_stack: &mut state.mark_stack,
             complete: &mut state.complete,
@@ -54,7 +57,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             self.mark_fields(value.as_obj());
 
             *self.steps += 1;
-            if *self.steps > INCREMENT_LIMIT {
+            if *self.steps > self.limit {
                 return;
             }
         }

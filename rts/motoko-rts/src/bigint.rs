@@ -32,7 +32,7 @@ This scheme makes the following assumptions:
 */
 
 use crate::buf::{read_byte, Buf};
-use crate::gc::incremental::barriers::post_allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;

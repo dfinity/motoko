@@ -15,7 +15,7 @@ mod utils;
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
-use motoko_rts::gc::incremental::PARTITIONED_HEAP;
+use motoko_rts::gc::incremental::{LARGE_INCREMENT_LIMIT, PARTITIONED_HEAP};
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
 };
@@ -479,7 +479,8 @@ impl GC {
                         static_roots,
                         continuation_table_location: continuation_table_ptr_address,
                     };
-                    IncrementalGC::instance(heap).empty_call_stack_increment(roots);
+                    IncrementalGC::instance(heap, LARGE_INCREMENT_LIMIT)
+                        .empty_call_stack_increment(roots);
                 }
                 false
             },

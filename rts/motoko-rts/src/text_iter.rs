@@ -12,7 +12,7 @@
 
 use core::ptr::null_mut;
 
-use crate::gc::incremental::barriers::post_allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;

@@ -1,5 +1,6 @@
-//! Write barrier for the incremental GC.
-//! Pre-update, field-level barrier used for snapshot-at-the-beginning marking.
+//! Barriers for the incremental GC used by the compiler:
+//! * Write barrier
+//! * Allocation barrier
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -9,7 +10,7 @@ use crate::{
     types::{is_skewed, Value},
 };
 
-use super::{mark_new_allocation, update_new_allocation, Phase, PHASE};
+use super::{allocation_increment, post_allocation_barrier};
 
 /// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
 /// Used for the incremental GC.
@@ -27,18 +28,15 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
     *location = value.forward_if_possible();
 }
 
-/// Allocation barrier to be called AFTER a new object allocation.
+/// Allocation barrier to be called after a new object allocation.
 /// The new object needs to be fully initialized, except fot the payload of a blob.
 /// Used for the incremental GC.
 /// `new_object` is the skewed pointer of the newly allocated and initialized object.
 /// Effects:
 /// * Mark new allocations during the GC mark and evacuation phases.
 /// * Resolve pointer forwarding during the GC update phase.
-#[no_mangle]
-pub unsafe extern "C" fn post_allocation_barrier(new_object: Value) {
-    match &PHASE {
-        Phase::Mark(_) | Phase::Evacuate(_) => mark_new_allocation(new_object),
-        Phase::Update(_) => update_new_allocation(new_object),
-        Phase::Pause | Phase::Stop => {}
-    }
+#[ic_mem_fn]
+pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
+    post_allocation_barrier(new_object);
+    allocation_increment(mem);
 }

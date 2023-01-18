@@ -3,7 +3,7 @@ use crate::{
         array_slicing::slice_array,
         partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
         roots::visit_roots,
-        Roots, INCREMENT_LIMIT,
+        Roots,
     },
     types::*,
     visitor::visit_pointer_fields,
@@ -11,6 +11,7 @@ use crate::{
 
 pub struct UpdateIncrement<'a> {
     steps: &'a mut usize,
+    limit: usize,
     heap_base: usize,
     heap_iterator: PartitionedHeapIterator<'a>,
 }
@@ -18,11 +19,13 @@ pub struct UpdateIncrement<'a> {
 impl<'a> UpdateIncrement<'a> {
     pub unsafe fn instance(
         steps: &'a mut usize,
+        limit: usize,
         state: &'a mut HeapIteratorState,
         heap: &'a PartitionedHeap,
     ) -> UpdateIncrement<'a> {
         UpdateIncrement {
             steps,
+            limit,
             heap_base: heap.base_address(),
             heap_iterator: PartitionedHeapIterator::resume(heap, state),
         }
@@ -44,7 +47,7 @@ impl<'a> UpdateIncrement<'a> {
             if !partition.to_be_evacuated() {
                 assert!(!partition.is_free());
                 self.update_partition(partition.get_index());
-                if *self.steps > INCREMENT_LIMIT {
+                if *self.steps > self.limit {
                     return;
                 }
             } else {
@@ -54,14 +57,12 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     unsafe fn update_partition(&mut self, partition_index: usize) {
-        while self.heap_iterator.is_inside_partition(partition_index)
-            && *self.steps <= INCREMENT_LIMIT
-        {
+        while self.heap_iterator.is_inside_partition(partition_index) && *self.steps <= self.limit {
             let object = self.heap_iterator.current_object().unwrap();
             if object.is_marked() {
                 assert!(!object.is_forwarded());
                 self.update_fields(object);
-                if *self.steps > INCREMENT_LIMIT {
+                if *self.steps > self.limit {
                     // Keep mark bit and later resume updating more slices of this array
                     return;
                 }
@@ -91,7 +92,7 @@ impl<'a> UpdateIncrement<'a> {
                     length
                 },
             );
-            if object.tag() < TAG_ARRAY_SLICE_MIN || *self.steps > INCREMENT_LIMIT {
+            if object.tag() < TAG_ARRAY_SLICE_MIN || *self.steps > self.limit {
                 return;
             }
         }
