@@ -4,7 +4,7 @@ use crate::{
         mark_stack::MarkStack,
         partitioned_heap::PartitionedHeap,
         roots::{visit_roots, Roots},
-        MarkState,
+        BoundedTime, MarkState,
     },
     memory::Memory,
     types::*,
@@ -13,8 +13,7 @@ use crate::{
 
 pub struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
-    steps: &'a mut usize,
-    limit: usize,
+    time: &'a mut BoundedTime,
     heap: &'a mut PartitionedHeap,
     mark_stack: &'a mut MarkStack,
     complete: &'a mut bool,
@@ -23,15 +22,13 @@ pub struct MarkIncrement<'a, M: Memory> {
 impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     pub unsafe fn instance(
         mem: &'a mut M,
-        steps: &'a mut usize,
-        limit: usize,
+        time: &'a mut BoundedTime,
         state: &'a mut MarkState,
         heap: &'a mut PartitionedHeap,
     ) -> MarkIncrement<'a, M> {
         MarkIncrement {
             mem,
-            steps,
-            limit,
+            time,
             heap,
             mark_stack: &mut state.mark_stack,
             complete: &mut state.complete,
@@ -41,7 +38,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     pub unsafe fn mark_roots(&mut self, roots: Roots) {
         visit_roots(roots, self.heap.base_address(), self, |gc, field| {
             gc.mark_object(*field);
-            *gc.steps += 1;
+            gc.time.tick();
         });
     }
 
@@ -56,8 +53,8 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(value.as_obj().is_marked());
             self.mark_fields(value.as_obj());
 
-            *self.steps += 1;
-            if *self.steps > self.limit {
+            self.time.tick();
+            if self.time.is_over() {
                 return;
             }
         }
@@ -65,7 +62,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     pub unsafe fn mark_object(&mut self, value: Value) {
-        *self.steps += 1;
+        self.time.tick();
         debug_assert!(!*self.complete);
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         assert!(!value.is_forwarded());
@@ -98,7 +95,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 if array.tag() >= TAG_ARRAY_SLICE_MIN {
                     gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
                 }
-                *gc.steps += length as usize;
+                gc.time.advance(length as usize);
                 length
             },
         );

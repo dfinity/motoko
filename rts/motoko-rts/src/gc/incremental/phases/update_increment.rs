@@ -3,29 +3,26 @@ use crate::{
         array_slicing::slice_array,
         partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
         roots::visit_roots,
-        Roots,
+        BoundedTime, Roots,
     },
     types::*,
     visitor::visit_pointer_fields,
 };
 
 pub struct UpdateIncrement<'a> {
-    steps: &'a mut usize,
-    limit: usize,
+    time: &'a mut BoundedTime,
     heap_base: usize,
     heap_iterator: PartitionedHeapIterator<'a>,
 }
 
 impl<'a> UpdateIncrement<'a> {
     pub unsafe fn instance(
-        steps: &'a mut usize,
-        limit: usize,
+        time: &'a mut BoundedTime,
         state: &'a mut HeapIteratorState,
         heap: &'a PartitionedHeap,
     ) -> UpdateIncrement<'a> {
         UpdateIncrement {
-            steps,
-            limit,
+            time,
             heap_base: heap.base_address(),
             heap_iterator: PartitionedHeapIterator::resume(heap, state),
         }
@@ -37,7 +34,7 @@ impl<'a> UpdateIncrement<'a> {
             if value.is_forwarded() {
                 *field = value.forward_if_possible();
             }
-            *gc.steps += 1;
+            gc.time.tick();
         });
     }
 
@@ -47,7 +44,7 @@ impl<'a> UpdateIncrement<'a> {
             if !partition.to_be_evacuated() {
                 assert!(!partition.is_free());
                 self.update_partition(partition.get_index());
-                if *self.steps > self.limit {
+                if self.time.is_over() {
                     return;
                 }
             } else {
@@ -57,12 +54,12 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     unsafe fn update_partition(&mut self, partition_index: usize) {
-        while self.heap_iterator.is_inside_partition(partition_index) && *self.steps <= self.limit {
+        while self.heap_iterator.is_inside_partition(partition_index) && !self.time.is_over() {
             let object = self.heap_iterator.current_object().unwrap();
             if object.is_marked() {
                 assert!(!object.is_forwarded());
                 self.update_fields(object);
-                if *self.steps > self.limit {
+                if self.time.is_over() {
                     // Keep mark bit and later resume updating more slices of this array
                     return;
                 }
@@ -70,7 +67,7 @@ impl<'a> UpdateIncrement<'a> {
                 assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
             }
             self.heap_iterator.next_object();
-            *self.steps += 1;
+            self.time.tick();
         }
     }
 
@@ -88,11 +85,11 @@ impl<'a> UpdateIncrement<'a> {
                 |gc, _, array| {
                     debug_assert!(array.is_marked());
                     let length = slice_array(array);
-                    *gc.steps += length as usize;
+                    gc.time.advance(length as usize);
                     length
                 },
             );
-            if object.tag() < TAG_ARRAY_SLICE_MIN || *self.steps > self.limit {
+            if object.tag() < TAG_ARRAY_SLICE_MIN || self.time.is_over() {
                 return;
             }
         }

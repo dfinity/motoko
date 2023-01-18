@@ -1,6 +1,7 @@
 use crate::{
-    gc::incremental::partitioned_heap::{
-        HeapIteratorState, PartitionedHeap, PartitionedHeapIterator,
+    gc::incremental::{
+        partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
+        BoundedTime,
     },
     mem_utils::memcpy_words,
     memory::Memory,
@@ -9,23 +10,20 @@ use crate::{
 
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
-    steps: &'a mut usize,
-    limit: usize,
+    time: &'a mut BoundedTime,
     heap_iterator: PartitionedHeapIterator<'a>,
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn instance(
         mem: &'a mut M,
-        steps: &'a mut usize,
-        limit: usize,
+        time: &'a mut BoundedTime,
         state: &'a mut HeapIteratorState,
         heap: &'a PartitionedHeap,
     ) -> EvacuationIncrement<'a, M> {
         EvacuationIncrement {
             mem,
-            steps,
-            limit,
+            time,
             heap_iterator: PartitionedHeapIterator::resume(heap, state),
         }
     }
@@ -35,7 +33,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             let partition = self.heap_iterator.current_partition().unwrap();
             if partition.to_be_evacuated() {
                 self.evacuate_partition(partition.get_index());
-                if *self.steps > self.limit {
+                if self.time.is_over() {
                     return;
                 }
             } else {
@@ -45,13 +43,13 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_partition(&mut self, partition_index: usize) {
-        while self.heap_iterator.is_inside_partition(partition_index) && *self.steps <= self.limit {
+        while self.heap_iterator.is_inside_partition(partition_index) && !self.time.is_over() {
             let original = self.heap_iterator.current_object().unwrap();
             if original.is_marked() {
                 self.evacuate_object(original);
             }
             self.heap_iterator.next_object();
-            *self.steps += 1;
+            self.time.tick();
         }
     }
 
