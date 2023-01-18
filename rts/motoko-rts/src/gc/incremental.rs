@@ -123,7 +123,7 @@ pub static mut PARTITIONED_HEAP: Option<PartitionedHeap> = None;
 
 /// Limits on the number of steps performed in a GC increment.
 pub const LARGE_INCREMENT_LIMIT: usize = 2_000_000;
-const SMALL_INCREMENT_LIMIT: usize = 100_000;
+const SMALL_INCREMENT_LIMIT: usize = 50_000;
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC states `PHASE` and `PARTITIONED_HEAP`.
@@ -413,7 +413,7 @@ unsafe fn update_new_allocation(new_object: Value) {
     );
 }
 
-const ALLOCATION_INTERVAL: usize = 10_000;
+const ALLOCATION_INCREMENT_INTERVAL: usize = 1000;
 static mut ALLOCATION_COUNT: usize = 0;
 
 /// Small increment, performed at certain allocation intervals to keep up with a high allocation rate.
@@ -424,7 +424,7 @@ unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
     };
     if running {
         ALLOCATION_COUNT += 1;
-        if ALLOCATION_COUNT % ALLOCATION_INTERVAL == 0 {
+        if ALLOCATION_COUNT % ALLOCATION_INCREMENT_INTERVAL == 0 {
             ALLOCATION_COUNT = 0;
             IncrementalGC::instance(mem, SMALL_INCREMENT_LIMIT).increment();
         }
