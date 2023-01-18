@@ -20,7 +20,6 @@
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
 use crate::gc::generational::write_barrier::post_write_barrier;
-use crate::gc::incremental::mark_new_allocation;
 use crate::gc::incremental::pre_write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
@@ -485,8 +484,6 @@ impl Obj {
     pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
         debug_assert!(!is_marked(tag));
         (*self).raw_tag = tag;
-        mark_new_allocation(self);
-        debug_assert_eq!(unmark((*self).raw_tag), tag);
     }
 
     pub unsafe fn is_marked(self: *const Self) -> bool {

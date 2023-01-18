@@ -1,4 +1,7 @@
-use crate::types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY};
+use crate::{
+    gc::incremental::barriers::post_allocation_barrier,
+    types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
+};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -19,6 +22,8 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
 
     iter_array.initialize(ITER_BLOB_IDX, blob, mem);
     iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
+
+    post_allocation_barrier(iter_ptr);
 
     iter_ptr
 }

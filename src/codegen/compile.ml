@@ -957,8 +957,8 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
-    E.add_func_import env "rts" "mark_new_allocation" [I32Type] [];
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "post_allocation_barrier" [I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
@@ -1375,6 +1375,7 @@ module Tagged = struct
 
   let mark_bit_mask = Int32.shift_left 1l 31
   
+  (* Note: Post allocation barrier must be applied after initialization *)
   let alloc env size tag =
     let (set_object, get_object) = new_local env "new_object" in
     Heap.alloc env size ^^
@@ -1384,28 +1385,11 @@ module Tagged = struct
     get_object ^^ (* object pointer *)
     get_object ^^ (* forwarding pointer *)
     Heap.store_field forwarding_pointer_field ^^
-    get_object ^^ 
-    (if !Flags.gc_strategy = Flags.Incremental then
-      compile_add_const ptr_unskew ^^
-      E.call_import env "rts" "mark_new_allocation" ^^
-      get_object
-    else
-      G.nop)
+    get_object
 
   let load_forwarding_pointer env =
     Heap.load_field forwarding_pointer_field
-
-  let forward_if_possible env =
-    let (set_value, get_value) = new_local env "forward_if_possible" in
-    set_value ^^ get_value ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      BitTagged.is_pointer env ^^
-      E.if_ env [I32Type] 
-        ( get_value ^^ load_forwarding_pointer env )
-        ( get_value )
-    else
-      G.nop)
-      
+  
   let store_unmarked_tag env tag =
     load_forwarding_pointer env ^^
     compile_unboxed_const (int_of_tag tag) ^^
@@ -1493,7 +1477,12 @@ module Tagged = struct
       Heap.store_field (Int32.add (Wasm.I32.of_int_u idx) header_size)
     in
     G.concat_mapi init_elem element_instructions ^^
-    get_object
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_object ^^
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_object
+    else
+      get_object)
 
   let new_static_obj env tag payload =
     let payload = StaticBytes.as_bytes payload in
@@ -1776,7 +1765,12 @@ module BoxedWord64 = struct
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
-    get_i
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_i ^^
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_i
+    else
+      get_i)
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -1894,7 +1888,12 @@ module BoxedSmallWord = struct
     Tagged.alloc env 3l Tagged.Bits32 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
-    get_i
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_i ^^
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_i
+    else
+      get_i)
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const 30l ^^
@@ -2133,7 +2132,12 @@ module Float = struct
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
-    get_i
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_i ^^
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_i
+    else
+      get_i)
   )
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
@@ -3171,7 +3175,12 @@ module Object = struct
     G.concat_map init_field fs ^^
 
     (* Return the pointer to the object *)
-    get_ri
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_ri ^^
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_ri
+    else
+      get_ri)
 
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
@@ -3295,7 +3304,16 @@ module Blob = struct
     compile_unboxed_const (Int32.of_int (String.length s))
 
   let alloc env = 
-    E.call_import env "rts" "alloc_blob"
+    let (set_blob, get_blob) = new_local env "new_blob" in
+    E.call_import env "rts" "alloc_blob" ^^ 
+    (if !Flags.gc_strategy = Flags.Incremental then
+      set_blob ^^
+      get_blob ^^
+      (* uninitialized blob payload is allowed by the barrier *)
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_blob
+    else
+      G.nop)
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   
@@ -3602,6 +3620,7 @@ module Arr = struct
       ] @ element_instructions)
 
   (* Does not initialize the fields! *)
+  (* Note: Post allocation barrier must be applied after initialization *)
   let alloc env = 
     E.call_import env "rts" "alloc_array"
 
@@ -3647,8 +3666,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    Tagged.forward_if_possible env ^^
-
+    
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
@@ -3660,7 +3678,13 @@ module Arr = struct
       get_x ^^
       store_ptr
     ) ^^
-    get_r
+
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_r ^^
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_r
+    else
+      get_r)
 
   let tabulate env =
     let (set_f, get_f) = new_local env "f" in
@@ -3690,7 +3714,6 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
-      Tagged.forward_if_possible env ^^
       store_ptr ^^
 
       (* Increment index *)
@@ -3698,7 +3721,12 @@ module Arr = struct
       compile_add_const 1l ^^
       set_i
     ) ^^
-    get_r
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_r ^^
+      E.call_import env "rts" "post_allocation_barrier" ^^
+      get_r
+    else
+      get_r)
 
   let ofBlob env =
     Func.share_code1 env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
@@ -3718,7 +3746,12 @@ module Arr = struct
         store_ptr
       ) ^^
 
-      get_r
+      (if !Flags.gc_strategy = Flags.Incremental then
+        get_r ^^
+        E.call_import env "rts" "post_allocation_barrier" ^^
+        get_r
+      else
+        get_r)
     )
 
   let toBlob env =
@@ -5970,7 +6003,13 @@ module MakeSerialization (Strm : Stream) = struct
             get_arg_typ ^^ go env t ^^ set_val ^^
             remember_failure get_val ^^
             get_val ^^ store_ptr
-          )
+          ) ^^
+          (if !Flags.gc_strategy = Flags.Incremental then
+            get_x ^^
+            E.call_import env "rts" "post_allocation_barrier" ^^
+            get_x
+          else
+            get_x)
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -5986,7 +6025,12 @@ module MakeSerialization (Strm : Stream) = struct
           remember_failure get_val ^^
           get_val ^^ store_ptr
         ) ^^
-        get_x
+        (if !Flags.gc_strategy = Flags.Incremental then
+          get_x ^^
+          E.call_import env "rts" "post_allocation_barrier" ^^
+          get_x
+        else
+          get_x)
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if1 I32Type (Opt.null_lit env)
@@ -6339,7 +6383,7 @@ module BlobStream : Stream = struct
   let create env get_data_size set_token get_token header =
     let header_size = Int32.of_int (String.length header) in
     get_data_size ^^ compile_add_const header_size ^^
-    E.call_import env "rts" "alloc_stream" ^^ set_token ^^
+    E.call_import env "rts" "alloc_stream" ^^ set_token ^^ (* allocation barrier called in alloc_stream *)
     get_token ^^
     Blob.lit env header ^^
     E.call_import env "rts" "stream_write_text"
@@ -7314,7 +7358,13 @@ module FuncDec = struct
         Heap.store_field Closure.len_field ^^
 
         (* Store all captured values *)
-        store_env
+        store_env ^^
+
+        (if !Flags.gc_strategy = Flags.Incremental then
+          get_clos ^^
+          E.call_import env "rts" "post_allocation_barrier"
+        else
+          G.nop)
       in
 
       if is_local

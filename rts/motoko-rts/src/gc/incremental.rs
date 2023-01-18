@@ -2,7 +2,7 @@ use core::borrow::Borrow;
 
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{memory::Memory, types::*};
+use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
     mark_stack::MarkStack,
@@ -15,13 +15,13 @@ use self::{
 };
 
 pub mod array_slicing;
+pub mod barriers;
 pub mod mark_stack;
 pub mod partitioned_heap;
 mod phases;
 pub mod roots;
 #[cfg(debug_assertions)]
 pub mod sanity_checks;
-pub mod write_barrier;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
@@ -301,7 +301,8 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
         if overwritten_value.points_to_or_beyond(heap.base_address()) {
             if !state.complete {
                 let mut steps = 0;
-                MarkIncrement::instance(mem, &mut steps, state, heap).mark_object(overwritten_value);
+                MarkIncrement::instance(mem, &mut steps, state, heap)
+                    .mark_object(overwritten_value);
             } else {
                 assert!(overwritten_value.as_obj().is_marked());
             }
@@ -309,9 +310,12 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
     }
 }
 
+/// Mark a new object during the mark phase and evacuation phase.
+/// `new_object` is the skewed pointer of a newly allocated object.
+///
 /// Incremental GC allocation scheme:
 /// * During the pause:
-///   - New objects are not marked. Can be reclaimed on the next GC run.
+///   - No marking. New objects can be reclaimed in the next GC round if they become garbage by then.
 /// * During the mark phase:
 ///   - New allocated objects are conservatively marked and cannot be reclaimed in the
 ///     current GC run. This is necessary because the incremental GC does neither scan
@@ -319,34 +323,67 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
 ///     do not need to be visited during the mark phase due to the snapshot-at-the-beginning
 ///     consistency.
 /// * During the evacuation phase:
-///   - Mark new objects such that their fields are updated in the subsequent 
-///     update phase. The fields may point to old object locations that are forwarded.
+///   - Mark new objects such that their fields are updated in the subsequent
+///     update phase. The fields may still point to old object locations that are forwarded.
 /// * During the update phase
-///   - New objects must not be marked as the mark bits is reset by the update phase and
-///     the update phase may have passed the location of allocation due to the partitioning.
+///   - New objects must not be marked in this phase as the mark bits are reset.
 /// * When GC is stopped on canister upgrade:
 ///   - The GC will not resume and thus marking is irrelevant.
-/// 
-/// `new_object` is the unskewed pointer of a newly allocated object. 
-/// The object may not yet be fully initialized. The object length may not yet been set in the object.
-/// 
-/// Note: The mark space statistics is not updated on the allocation partition for newly allocated objects.
-/// This is not critical as the allocation partition is not chosen for evacuation, and if the allocation
-/// partition would switch during marking, the partition with young objects would even be preferred 
-/// for evacuation which can be beneficial.
-/// 
-/// Also import for compiler-generated code to situatively set the mark bit for new heap allocations.
-#[no_mangle]
-pub unsafe extern "C" fn mark_new_allocation(new_object: *mut Obj) {
-    debug_assert!(!is_skewed(new_object as u32));
-    let should_mark = match &PHASE {
-        Phase::Mark(_) | Phase::Evacuate(_) => true,
-        _ => false,
-    };
-    if should_mark {
-        debug_assert!(!new_object.is_marked());
-        new_object.mark();
+unsafe fn mark_new_allocation(new_object: Value) {
+    #[cfg(debug_assertions)]
+    match &PHASE {
+        Phase::Mark(_) | Phase::Evacuate(_) => {}
+        _ => assert!(false),
     }
+
+    let object = new_object.get_ptr() as *mut Obj;
+    assert!(!object.is_marked());
+    object.mark();
+    PARTITIONED_HEAP
+        .as_mut()
+        .unwrap()
+        .record_marked_space(object);
+}
+
+/// Update the pointer fields during the update phase.
+/// This is to ensure that new allocation do not contain any old pointers referring to
+/// forwarded objects.
+/// The object must be fully initialized, except for the payload of a blob.
+/// `new_object` is the skewed pointer of a newly allocated and initialized object.
+///
+/// Incremental GC update scheme:
+/// * During the mark phase and a pause:
+///   - No pointers to forwarded pointers exist in alive objects.
+/// * During the evacuation phase:
+///   - The fields may point to old locations that are forwarded.
+/// * During the update phase:
+///   - All old pointers to forwarded objects must be updated to refer to the corresponding
+///     new object locations. Since the mutator may copy old pointers around, all allocations
+///     and pointer writes must be handled by barriers.
+///   - Allocation barrier: Resolve the forwarding for all pointers in the new allocation.
+///   - Write barrier: Resolve forwarding for the written pointer value.
+/// * When the GC is stopped on canister upgrade:
+///   - The GC will not resume and thus pointer updates are irrelevant. The runtime system
+///     continues to resolve the forwarding for all remaining old pointers.
+unsafe fn update_new_allocation(new_object: Value) {
+    #[cfg(debug_assertions)]
+    match &PHASE {
+        Phase::Update(_) => {}
+        _ => assert!(false),
+    }
+
+    let object = new_object.get_ptr() as *mut Obj;
+    let heap = PARTITIONED_HEAP.as_ref().unwrap();
+    visit_pointer_fields(
+        &mut (),
+        object,
+        object.tag(),
+        heap.base_address(),
+        |_, field| {
+            *field = (*field).forward_if_possible();
+        },
+        |_, _, array| array.len(),
+    );
 }
 
 /// Stop the GC before performing upgrade. Otherwise, GC increments

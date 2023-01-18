@@ -32,6 +32,7 @@ This scheme makes the following assumptions:
 */
 
 use crate::buf::{read_byte, Buf};
+use crate::gc::incremental::barriers::post_allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
@@ -50,6 +51,7 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
+    post_allocation_barrier(ptr);
     blob.payload_addr() as *mut u8
 }
 
