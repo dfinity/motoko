@@ -349,8 +349,8 @@ fn heap_size_for_gc(
             size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
         }
         GC::Incremental => {
-            const MARK_STACK_SIZE: usize = 1024 * 1024;
-            total_heap_size_bytes + MARK_STACK_SIZE
+            const ADDITIONAL_MEMORY: usize = 2 * 1024 * 1024; // mark stack and additional remembered set used in memory sanity check
+            total_heap_size_bytes + ADDITIONAL_MEMORY
         }
     }
 }

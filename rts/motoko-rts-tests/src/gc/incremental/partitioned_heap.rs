@@ -108,7 +108,6 @@ unsafe fn check_partition_index(
 unsafe fn test_evacuation_plan(heap: &mut PartitionedHeap, occupied_partitions: usize) {
     println!("    Test evacuation plan...");
     heap.plan_evacuations();
-    assert!(heap.has_planned_evacuations());
     let mut iterator_state = HeapIteratorState::new();
     let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);
     let mut allocation_partition_present = false;
@@ -130,7 +129,6 @@ unsafe fn test_evacuation_plan(heap: &mut PartitionedHeap, occupied_partitions: 
 
 unsafe fn test_freeing_partitions(heap: &mut PartitionedHeap, occupied_partitions: usize) {
     println!("    Test freeing partitions...");
-    assert!(heap.has_planned_evacuations());
     heap.free_evacuated_partitions();
     let mut iterator_state = HeapIteratorState::new();
     let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);

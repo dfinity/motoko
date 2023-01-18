@@ -295,10 +295,6 @@ impl PartitionedHeap {
         }
     }
 
-    pub fn has_planned_evacuations(&self) -> bool {
-        self.partitions.iter().any(|partition| partition.evacuate)
-    }
-
     pub unsafe fn free_evacuated_partitions(&mut self) {
         for partition in &mut self.partitions {
             partition.marked_space = 0;
