@@ -43,7 +43,7 @@ impl<'a> UpdateIncrement<'a> {
         while self.heap_iterator.current_partition().is_some() {
             let partition = self.heap_iterator.current_partition().unwrap();
             if !partition.to_be_evacuated() {
-                assert!(!partition.is_free());
+                debug_assert!(!partition.is_free());
                 self.update_partition(partition.get_index());
                 if self.time.is_over() {
                     return;
@@ -58,14 +58,14 @@ impl<'a> UpdateIncrement<'a> {
         while self.heap_iterator.is_inside_partition(partition_index) && !self.time.is_over() {
             let object = self.heap_iterator.current_object().unwrap();
             if object.is_marked() {
-                assert!(!object.is_forwarded());
+                debug_assert!(!object.is_forwarded());
                 self.update_fields(object);
                 if self.time.is_over() {
                     // Keep mark bit and later resume updating more slices of this array
                     return;
                 }
                 object.unmark();
-                assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
+                debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
             }
             self.heap_iterator.next_object();
             self.time.tick();

@@ -9,7 +9,7 @@ use crate::types::*;
 pub unsafe fn slice_array(array: *mut Array) -> u32 {
     let is_marked = array.is_marked();
     const SLICE_INCREMENT: u32 = 128;
-    assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
+    debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
     let tag = array.tag();
     let slice_start = if tag >= TAG_ARRAY_SLICE_MIN { tag } else { 0 };
     if array.len() - slice_start > SLICE_INCREMENT {
@@ -23,7 +23,7 @@ pub unsafe fn slice_array(array: *mut Array) -> u32 {
 }
 
 fn tag_with_mark(tag: Tag, to_be_marked: bool) -> Tag {
-    assert!(!is_marked(tag));
+    debug_assert!(!is_marked(tag));
     if to_be_marked {
         mark(tag)
     } else {

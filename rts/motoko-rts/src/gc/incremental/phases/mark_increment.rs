@@ -66,7 +66,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         self.time.tick();
         debug_assert!(!*self.complete);
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
-        assert!(!value.is_forwarded());
+        debug_assert!(!value.is_forwarded());
         let object = value.as_obj();
         if object.is_marked() {
             return;

@@ -77,9 +77,9 @@ impl Partition {
     #[cfg(debug_assertions)]
     unsafe fn clear_free_remainder(&self) {
         use crate::constants::WORD_SIZE;
-        assert!(self.dynamic_space_end() <= self.end_address());
+        debug_assert!(self.dynamic_space_end() <= self.end_address());
         let remaining_space = self.end_address() - self.dynamic_space_end();
-        assert!(remaining_space % WORD_SIZE as usize == 0);
+        debug_assert!(remaining_space % WORD_SIZE as usize == 0);
         if remaining_space == 0 {
             return;
         }
@@ -99,9 +99,9 @@ impl Partition {
     }
 
     pub unsafe fn free(&mut self) {
-        assert!(!self.free);
-        assert!(self.evacuate);
-        assert_eq!(self.marked_space, 0);
+        debug_assert!(!self.free);
+        debug_assert!(self.evacuate);
+        debug_assert_eq!(self.marked_space, 0);
         self.free = true;
         self.dynamic_size = 0;
         self.evacuate = false;
@@ -112,7 +112,7 @@ impl Partition {
 
     pub fn survival_rate(&self) -> f64 {
         let dynamic_heap_space = PARTITION_SIZE - self.static_size;
-        assert!(self.marked_space <= dynamic_heap_space);
+        debug_assert!(self.marked_space <= dynamic_heap_space);
         self.marked_space as f64 / dynamic_heap_space as f64
     }
 }
@@ -132,7 +132,7 @@ impl HeapIteratorState {
     }
 
     pub fn completed(&self) -> bool {
-        assert!(self.partition_index <= MAX_PARTITIONS);
+        debug_assert!(self.partition_index <= MAX_PARTITIONS);
         self.partition_index == MAX_PARTITIONS
     }
 }
@@ -173,7 +173,7 @@ impl<'a> PartitionedHeapIterator<'a> {
         if *self.partition_index < MAX_PARTITIONS {
             Some(self.heap.get_partition(*self.partition_index))
         } else {
-            assert_eq!(*self.current_address, usize::MAX);
+            debug_assert_eq!(*self.current_address, usize::MAX);
             None
         }
     }
@@ -182,7 +182,7 @@ impl<'a> PartitionedHeapIterator<'a> {
         if *self.current_address < usize::MAX {
             Some(*self.current_address as *mut Obj)
         } else {
-            assert_eq!(*self.partition_index, MAX_PARTITIONS);
+            debug_assert_eq!(*self.partition_index, MAX_PARTITIONS);
             None
         }
     }
@@ -222,7 +222,7 @@ impl<'a> PartitionedHeapIterator<'a> {
     }
 
     fn start_next_partition(&mut self) {
-        assert!(*self.partition_index < MAX_PARTITIONS);
+        debug_assert!(*self.partition_index < MAX_PARTITIONS);
         *self.partition_index += 1;
         if *self.partition_index < MAX_PARTITIONS {
             *self.current_address = self.partition_scan_start();
@@ -237,11 +237,11 @@ impl<'a> PartitionedHeapIterator<'a> {
     }
 
     pub unsafe fn next_object(&mut self) {
-        assert!(*self.current_address >= self.partition_scan_start());
-        assert!(*self.current_address < self.partition_scan_end());
+        debug_assert!(*self.current_address >= self.partition_scan_start());
+        debug_assert!(*self.current_address < self.partition_scan_end());
         let size = block_size(*self.current_address);
         *self.current_address += size.to_bytes().as_usize();
-        assert!(*self.current_address <= self.partition_scan_end());
+        debug_assert!(*self.current_address <= self.partition_scan_end());
         self.skip_free_space();
     }
 }
@@ -287,7 +287,7 @@ impl PartitionedHeap {
 
     pub fn plan_evacuations(&mut self) {
         for partition in &mut self.partitions {
-            assert!(!partition.evacuate);
+            debug_assert!(!partition.evacuate);
             partition.evacuate = self.allocation_index != partition.index
                 && !partition.is_free()
                 && partition.dynamic_space_start() < partition.end_address()
@@ -299,7 +299,7 @@ impl PartitionedHeap {
         for partition in &mut self.partitions {
             partition.marked_space = 0;
             if partition.to_be_evacuated() {
-                assert!(partition.index != self.allocation_index);
+                debug_assert!(partition.index != self.allocation_index);
                 partition.free();
             }
         }
@@ -316,7 +316,7 @@ impl PartitionedHeap {
     fn allocate_free_partition(&mut self) -> &Partition {
         for partition in &mut self.partitions {
             if partition.free {
-                assert_eq!(partition.dynamic_size, 0);
+                debug_assert_eq!(partition.dynamic_size, 0);
                 partition.free = false;
                 return partition;
             }
@@ -345,8 +345,8 @@ impl PartitionedHeap {
         let address = object as usize;
         let size = block_size(address);
         let partition = &mut self.partitions[address / PARTITION_SIZE];
-        assert!(address >= partition.dynamic_space_start());
-        assert!(address + size.to_bytes().as_usize() <= partition.dynamic_space_end());
+        debug_assert!(address >= partition.dynamic_space_start());
+        debug_assert!(address + size.to_bytes().as_usize() <= partition.dynamic_space_end());
         partition.marked_space += size.to_bytes().as_usize();
     }
 
@@ -359,12 +359,12 @@ impl PartitionedHeap {
             panic!("Allocation exceeds partition size");
         }
         let mut allocation_partition = self.allocation_partition();
-        assert!(!allocation_partition.free);
-        assert!(
+        debug_assert!(!allocation_partition.free);
+        debug_assert!(
             (*heap_pointer as usize) >= allocation_partition.dynamic_space_start()
                 && (*heap_pointer as usize) <= allocation_partition.dynamic_space_end()
         );
-        assert!(allocation_size.as_usize() <= allocation_partition.end_address());
+        debug_assert!(allocation_size.as_usize() <= allocation_partition.end_address());
         if *heap_pointer as usize > allocation_partition.end_address() - allocation_size.as_usize()
         {
             self.open_new_allocation_partition(heap_pointer);
@@ -375,7 +375,7 @@ impl PartitionedHeap {
 
     unsafe fn open_new_allocation_partition(&mut self, heap_pointer: &mut u32) {
         let old_partition = self.allocation_partition();
-        assert_eq!(*heap_pointer as usize, old_partition.dynamic_space_end());
+        debug_assert_eq!(*heap_pointer as usize, old_partition.dynamic_space_end());
 
         #[cfg(debug_assertions)]
         old_partition.clear_free_remainder();

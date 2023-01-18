@@ -54,18 +54,18 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {
-        assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
-        assert!(!original.is_forwarded());
-        assert!(original.is_marked());
+        debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+        debug_assert!(!original.is_forwarded());
+        debug_assert!(original.is_marked());
         let size = block_size(original as usize);
         let new_address = self.mem.alloc_words(size);
         let copy = new_address.get_ptr() as *mut Obj;
         memcpy_words(copy as usize, original as usize, size);
         (*copy).forward = new_address;
         (*original).forward = new_address;
-        assert!(!copy.is_forwarded());
-        assert!(original.is_forwarded());
-        assert!(copy.is_marked()); // Necessary to ensure field updates in the copy.
+        debug_assert!(!copy.is_forwarded());
+        debug_assert!(original.is_forwarded());
+        debug_assert!(copy.is_marked()); // Necessary to ensure field updates in the copy.
 
         #[cfg(debug_assertions)]
         Self::clear_object_content(original);

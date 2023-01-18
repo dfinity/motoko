@@ -299,7 +299,7 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
                 let mut time = BoundedTime::new(0);
                 MarkIncrement::instance(mem, &mut time, state, heap).mark_object(overwritten_value);
             } else {
-                assert!(overwritten_value.as_obj().is_marked());
+                debug_assert!(overwritten_value.as_obj().is_marked());
             }
         }
     }
@@ -344,7 +344,7 @@ unsafe fn mark_new_allocation(new_object: Value) {
     }
 
     let object = new_object.get_ptr() as *mut Obj;
-    assert!(!object.is_marked());
+    debug_assert!(!object.is_marked());
     object.mark();
     PARTITIONED_HEAP
         .as_mut()
