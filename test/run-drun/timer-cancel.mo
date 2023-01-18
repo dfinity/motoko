@@ -19,7 +19,7 @@ actor {
 
   let second : Nat64 = 1_000_000_000;
 
-  ignore setTimer(2 * second, false,
+  ignore setTimer(3 * second, false,
     func () : async () {
       t := setTimer(2 * second, true, remind);
       await remind();
