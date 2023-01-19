@@ -29,6 +29,7 @@ pub mod time;
 unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
     use crate::memory::ic;
     ic::initialize_memory(true);
+    assert_eq!(ic::HP, ic::get_aligned_heap_base()); // No dynamic heap allocations so far.
     IncrementalGC::<M>::initialize(ic::get_aligned_heap_base() as usize);
 }
 
