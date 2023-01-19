@@ -33,10 +33,7 @@ unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    let running = match &PHASE {
-        Phase::Pause | Phase::Stop => false,
-        _ => true,
-    };
+    let running = PHASE != Phase::Pause && PHASE != Phase::Stop;
     if running || should_start() {
         incremental_gc(mem);
     }
@@ -69,7 +66,7 @@ unsafe fn should_start() -> bool {
 
 #[cfg(feature = "ic")]
 unsafe fn record_increment_start<M: Memory>() {
-    if let Phase::Pause = &PHASE {
+    if PHASE == Phase::Pause {
         LAST_HEAP_OCCUPATION = heap_occupation();
     }
 }
@@ -86,7 +83,7 @@ unsafe fn heap_occupation() -> usize {
 #[cfg(feature = "ic")]
 unsafe fn record_increment_stop<M: Memory>() {
     use crate::memory::ic;
-    if let Phase::Pause = &PHASE {
+    if PHASE == Phase::Pause {
         let occupation = PARTITIONED_HEAP.as_ref().unwrap().occupied_size();
         ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, occupation);
     }
@@ -295,7 +292,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 /// `overwritten_value` (skewed if a pointer) denotes the value that will be overwritten.
 /// The barrier can be conservatively called even if the overwritten value is not a pointer.
 /// The barrier is only effective while the GC is in the mark phase.
-#[inline]
+#[inline(never)]
 pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value: Value) {
     if PHASE == Phase::Mark {
         let heap = PARTITIONED_HEAP.as_mut().unwrap();
