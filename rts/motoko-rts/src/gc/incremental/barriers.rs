@@ -5,12 +5,11 @@
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
-    gc::incremental::{pre_write_barrier, Phase, PHASE},
     memory::Memory,
     types::{is_skewed, Value},
 };
 
-use super::{allocation_increment, post_allocation_barrier};
+use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Phase, PHASE};
 
 /// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
 /// Used for the incremental GC.
@@ -39,6 +38,9 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
     }
 }
 
+const ALLOCATION_INCREMENT_INTERVAL: usize = 100;
+static mut ALLOCATION_COUNT: usize = 0;
+
 /// Allocation barrier to be called after a new object allocation.
 /// The new object needs to be fully initialized, except fot the payload of a blob.
 /// Used for the incremental GC.
@@ -48,6 +50,16 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 /// * Resolve pointer forwarding during the GC update phase.
 #[ic_mem_fn]
 pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
+    // Optimization: Early exit on pause.
+    if PHASE == Phase::Pause {
+        return;
+    }
+
     post_allocation_barrier(new_object);
-    allocation_increment(mem);
+
+    ALLOCATION_COUNT += 1;
+    if ALLOCATION_COUNT == ALLOCATION_INCREMENT_INTERVAL {
+        ALLOCATION_COUNT = 0;
+        allocation_increment(mem);
+    }
 }

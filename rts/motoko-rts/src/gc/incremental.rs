@@ -314,10 +314,10 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
 /// The new object needs to be fully initialized, except fot the payload of a blob.
 /// The barrier is only effective during a running GC.
 pub(crate) unsafe fn post_allocation_barrier(new_object: Value) {
-    match PHASE {
-        Phase::Mark | Phase::Evacuate => mark_new_allocation(new_object),
-        Phase::Update => update_new_allocation(new_object),
-        Phase::Pause | Phase::Stop => {}
+    if PHASE == Phase::Mark || PHASE == Phase::Evacuate {
+        mark_new_allocation(new_object);
+    } else if PHASE == Phase::Update {
+        update_new_allocation(new_object);
     }
 }
 
@@ -387,18 +387,9 @@ unsafe fn update_new_allocation(new_object: Value) {
     );
 }
 
-const ALLOCATION_INCREMENT_INTERVAL: usize = 100;
-static mut ALLOCATION_COUNT: usize = 0;
-
 /// Small increment, performed at certain allocation intervals to keep up with a high allocation rate.
 unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
-    if PHASE != Phase::Pause && PHASE != Phase::Stop {
-        ALLOCATION_COUNT += 1;
-        if ALLOCATION_COUNT == ALLOCATION_INCREMENT_INTERVAL {
-            ALLOCATION_COUNT = 0;
-            IncrementalGC::instance(mem, BoundedTime::short_interval()).increment();
-        }
-    }
+    IncrementalGC::instance(mem, BoundedTime::short_interval()).increment();
 }
 
 /// Stop the GC before performing upgrade. Otherwise, GC increments
