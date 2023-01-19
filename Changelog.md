@@ -18,10 +18,18 @@
 
   * Add `Array.size` (#486, #494).
 
+  * Add `TrieSet` methods `isEmpty, `isSubset` (dfinity/motoko-base#503).
+
   * BREAKING CHANGES (Minor):
     - renamed `Float.neq` to `Float.neg` (this was a misspelling)
     - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
     - removed second argument from `bitnot` (this was an oversight)
+
+  * bugfix: `Random.Finite.coin` did't use entropy correctly (dfinity/motoko-base#500).
+
+  * bugfix: `Trie.mergeDisjoint` (dfinity/motoko-base#505).
+
+  * bugfix: `TrieSet.equals` (dfinity/motoko-base#503).
 
   * Various documentation fixes and API usage examples.
 
