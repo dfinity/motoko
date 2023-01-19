@@ -25,7 +25,7 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
     debug_assert!(!is_skewed(location as u32));
     debug_assert_ne!(location, core::ptr::null_mut());
     pre_write_barrier(mem, *location);
-    if let Phase::Update(_) = &PHASE {
+    if PHASE == Phase::Update {
         *location = value.forward_if_possible();
     } else {
         *location = value;
