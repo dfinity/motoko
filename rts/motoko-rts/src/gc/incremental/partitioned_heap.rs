@@ -374,11 +374,13 @@ impl PartitionedHeap {
     }
 
     unsafe fn open_new_allocation_partition(&mut self, heap_pointer: &mut u32) {
-        let old_partition = self.allocation_partition();
-        debug_assert_eq!(*heap_pointer as usize, old_partition.dynamic_space_end());
+        debug_assert_eq!(
+            *heap_pointer as usize,
+            self.allocation_partition().dynamic_space_end()
+        );
 
         #[cfg(debug_assertions)]
-        old_partition.clear_free_remainder();
+        self.allocation_partition().clear_free_remainder();
 
         let new_partition = self.allocate_free_partition();
         *heap_pointer = new_partition.dynamic_space_start() as u32;
