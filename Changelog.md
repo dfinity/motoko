@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.7.6 (2023-01-18)
+## 0.7.6 (2023-01-19)
 
 * motoko (`moc`)
 
@@ -15,6 +15,8 @@
 * motoko-base
 
   * Add user-facing timer functionality (dfinity/motoko-base#474).
+
+  * Add `Array.size` (#486, #494).
 
   * BREAKING CHANGES (Minor):
     - renamed `Float.neq` to `Float.neg` (this was a misspelling)
