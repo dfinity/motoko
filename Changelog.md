@@ -25,7 +25,7 @@
     - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
     - removed second argument from `bitnot` (this was an oversight)
 
-  * bugfix: `Random.Finite.coin` did't use entropy correctly (dfinity/motoko-base#500).
+  * bugfix: `Random.Finite.coin` didn't use entropy correctly (dfinity/motoko-base#500).
 
   * bugfix: `Trie.mergeDisjoint` (dfinity/motoko-base#505).
 
