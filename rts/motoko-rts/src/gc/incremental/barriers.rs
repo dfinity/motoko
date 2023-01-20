@@ -38,7 +38,7 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
     }
 }
 
-const ALLOCATION_INCREMENT_INTERVAL: usize = 100;
+const ALLOCATION_INCREMENT_INTERVAL: usize = 250_000;
 static mut ALLOCATION_COUNT: usize = 0;
 
 /// Allocation barrier to be called after a new object allocation.

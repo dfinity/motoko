@@ -90,13 +90,13 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
             },
-            |gc, _, array| {
+            |gc, slice_start, array| {
                 debug_assert!(array.is_marked());
                 let length = slice_array(array);
                 if array.tag() >= TAG_ARRAY_SLICE_MIN {
                     gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
                 }
-                gc.time.advance(length as usize);
+                gc.time.advance((length - slice_start) as usize);
                 length
             },
         );

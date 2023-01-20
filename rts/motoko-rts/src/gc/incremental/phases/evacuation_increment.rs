@@ -66,6 +66,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         debug_assert!(!copy.is_forwarded());
         debug_assert!(original.is_forwarded());
         debug_assert!(copy.is_marked()); // Necessary to ensure field updates in the copy.
+        self.time.advance(size.as_usize());
 
         #[cfg(debug_assertions)]
         Self::clear_object_content(original);

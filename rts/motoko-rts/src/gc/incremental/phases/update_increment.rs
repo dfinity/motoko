@@ -60,6 +60,7 @@ impl<'a> UpdateIncrement<'a> {
             if object.is_marked() {
                 debug_assert!(!object.is_forwarded());
                 self.update_fields(object);
+                self.time.tick();
                 if self.time.is_over() {
                     // Keep mark bit and later resume updating more slices of this array
                     return;
@@ -80,13 +81,14 @@ impl<'a> UpdateIncrement<'a> {
                 object,
                 object.tag(),
                 self.heap_base,
-                |_, field_address| {
+                |gc, field_address| {
                     *field_address = (*field_address).forward_if_possible();
+                    gc.time.tick();
                 },
-                |gc, _, array| {
+                |gc, slice_start, array| {
                     debug_assert!(array.is_marked());
                     let length = slice_array(array);
-                    gc.time.advance(length as usize);
+                    gc.time.advance((length - slice_start) as usize);
                     length
                 },
             );

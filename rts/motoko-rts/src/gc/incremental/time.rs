@@ -1,6 +1,6 @@
 /// Limits on the number of steps performed in a GC increment.
-const LONG_INCREMENT_TIME_LIMIT: usize = 1_000_000;
-const SHORT_INCREMENT_TIME_LIMIT: usize = 50_000;
+const LONG_INCREMENT_TIME_LIMIT: usize = 5_000_000;
+const SHORT_INCREMENT_TIME_LIMIT: usize = 1_000_000;
 
 // Bounded time of the GC increment.
 // Deterministically measured in synthetic steps.

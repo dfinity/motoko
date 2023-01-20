@@ -54,7 +54,7 @@ static mut LAST_HEAP_OCCUPATION: usize = 0;
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.33;
+    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
     const CRITICAL_LIMIT: usize = usize::MAX - 2 * PARTITION_SIZE;
     let occupation = heap_occupation();
     debug_assert!(occupation >= LAST_HEAP_OCCUPATION);
