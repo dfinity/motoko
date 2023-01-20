@@ -66,6 +66,10 @@ impl Partition {
         self.dynamic_space_start() + self.dynamic_size
     }
 
+    pub fn free_space(&self) -> usize {
+        self.end_address() - self.dynamic_space_end()
+    }
+
     pub fn is_free(&self) -> bool {
         self.free
     }
@@ -322,15 +326,15 @@ impl PartitionedHeap {
         self.allocation_index == index
     }
 
-    fn allocate_free_partition(&mut self) -> &Partition {
+    fn allocate_free_partition(&mut self, allocation_size: Bytes<u32>) -> &Partition {
         for partition in &mut self.partitions {
-            if partition.free {
+            if partition.free && partition.free_space() >= allocation_size.as_usize() {
                 debug_assert_eq!(partition.dynamic_size, 0);
                 partition.free = false;
                 return partition;
             }
         }
-        panic!("Out of memory, no free partition available");
+        panic!("Out of memory");
     }
 
     pub fn occupied_size(&self) -> Bytes<u32> {
@@ -372,7 +376,7 @@ impl PartitionedHeap {
         let mut heap_pointer = allocation_partition.dynamic_space_end();
         debug_assert!(allocation_size.as_usize() <= allocation_partition.end_address());
         if heap_pointer > allocation_partition.end_address() - allocation_size.as_usize() {
-            self.open_new_allocation_partition(mem);
+            self.open_new_allocation_partition(mem, allocation_size);
             allocation_partition = self.allocation_partition();
             heap_pointer = allocation_partition.dynamic_space_end();
         }
@@ -380,11 +384,15 @@ impl PartitionedHeap {
         Value::from_ptr(heap_pointer)
     }
 
-    unsafe fn open_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
+    unsafe fn open_new_allocation_partition<M: Memory>(
+        &mut self,
+        mem: &mut M,
+        allocation_size: Bytes<u32>,
+    ) {
         #[cfg(debug_assertions)]
         self.allocation_partition().clear_free_remainder();
 
-        let new_partition = self.allocate_free_partition();
+        let new_partition = self.allocate_free_partition(allocation_size);
         let end_address = new_partition.end_address();
         self.allocation_index = new_partition.index;
 
