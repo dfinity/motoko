@@ -32,11 +32,12 @@ jobs:
         perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
         cat changelog-extract.md
         # need to mangle to use with $GITHUB_OUTPUT (previously: set-output),
-        # see https://github.com/svenstaro/upload-release-action/pull/49/files
-        echo "release_body=$(perl -0777 -p -e 's/%/%25/g' changelog-extract.md)" >> "$GITHUB_OUTPUT"
+        # see https://github.com/svenstaro/upload-release-action/blob/master/README.md
+        # under "Example for feeding a file from repo to the body tag"
+        echo "RELEASE_BODY=$(perl -0777 -p -e 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g' changelog-extract.md)" >> "$GITHUB_OUTPUT"
 
     outputs:
-      release_body: ${{ steps.read_changelog.outputs.release_body }}
+      release_body: ${{ steps.read_changelog.outputs.RELEASE_BODY }}
 
   # Now build the release on both linux and darwin
   build:
@@ -85,7 +86,7 @@ jobs:
     - run: nix-build --max-jobs 1 --arg officialRelease true release-files.nix
 
     - name: Upload Release Assets
-      uses: svenstaro/upload-release-action@v2
+      uses: svenstaro/upload-release-action@2.4.0
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
