@@ -36,7 +36,7 @@
 
 use core::array::from_fn;
 
-use crate::{memory::Memory, types::*};
+use crate::{memory::Memory, rts_trap_with, types::*};
 
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 // For simplicity, leave the last partition unused, to avoid partition end address overflow
@@ -365,7 +365,7 @@ impl PartitionedHeap {
         self.allocation_index == index
     }
 
-    fn allocate_free_partition(&mut self, requested_space: usize) -> &Partition {
+    unsafe fn allocate_free_partition(&mut self, requested_space: usize) -> &Partition {
         for partition in &mut self.partitions {
             if partition.free && partition.free_space() >= requested_space {
                 debug_assert_eq!(partition.dynamic_size, 0);
@@ -373,7 +373,7 @@ impl PartitionedHeap {
                 return partition;
             }
         }
-        panic!("Out of memory");
+        rts_trap_with("Cannot grow memory");
     }
 
     pub fn occupied_size(&self) -> Bytes<u32> {
@@ -479,10 +479,11 @@ impl PartitionedHeap {
         Value::from_ptr(first_partition.dynamic_space_start())
     }
 
-    fn find_large_space(&self, number_of_partitions: usize) -> usize {
+    unsafe fn find_large_space(&self, number_of_partitions: usize) -> usize {
         for index in 0..MAX_PARTITIONS {
             let mut count = 0;
             while count < number_of_partitions
+                && index + count < MAX_PARTITIONS
                 && self.get_partition(index + count).is_completely_free()
             {
                 count += 1;
@@ -491,7 +492,7 @@ impl PartitionedHeap {
                 return index;
             }
         }
-        panic!("Out of memory for large allocation");
+        rts_trap_with("Cannot grow memory");
     }
 
     pub unsafe fn collect_large_objects(&mut self) {
