@@ -18,7 +18,7 @@
 
   * Add `Array.size` (#486, #494).
 
-  * Add `TrieSet` methods `isEmpty, `isSubset` (dfinity/motoko-base#503).
+  * Add `TrieSet` methods `isEmpty`, `isSubset` (dfinity/motoko-base#503).
 
   * BREAKING CHANGES (Minor):
     - renamed `Float.neq` to `Float.neg` (this was a misspelling)
