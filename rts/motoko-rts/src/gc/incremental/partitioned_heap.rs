@@ -287,6 +287,7 @@ pub struct PartitionedHeap {
     heap_base: usize,
     allocation_index: usize, // Index of the partition currently used for allocations.
     evacuating: bool,
+    reclaimed: u64,
 }
 
 impl PartitionedHeap {
@@ -313,6 +314,7 @@ impl PartitionedHeap {
             heap_base,
             allocation_index,
             evacuating: false,
+            reclaimed: 0,
         }
     }
 
@@ -344,6 +346,7 @@ impl PartitionedHeap {
             partition.marked_space = 0;
             if partition.to_be_evacuated() {
                 debug_assert!(partition.index != self.allocation_index);
+                self.reclaimed += partition.dynamic_size as u64;
                 partition.free();
             }
         }
@@ -388,6 +391,10 @@ impl PartitionedHeap {
             })
             .sum();
         Bytes(occupied_size as u32)
+    }
+
+    pub fn reclaimed_size(&self) -> Bytes<u64> {
+        Bytes(self.reclaimed)
     }
 
     pub unsafe fn record_marked_space(&mut self, object: *mut Obj) {
@@ -511,7 +518,9 @@ impl PartitionedHeap {
         for index in start_partition..start_partition + number_of_partitions {
             let partition = self.mutable_partition(index);
             debug_assert!(partition.large_content);
+            let size = partition.dynamic_size;
             partition.free();
+            self.reclaimed += size as u64;
         }
     }
 }
