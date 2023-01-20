@@ -5,12 +5,15 @@ use crate::{
         partitioned_heap::PartitionedHeap,
         roots::{visit_roots, Roots},
         time::BoundedTime,
-        MarkState,
+        MarkState, PARTITIONED_HEAP,
     },
     memory::Memory,
     types::*,
     visitor::visit_pointer_fields,
 };
+
+// State shared over multiple increment calls.
+static mut MARK_STATE: Option<MarkState> = None;
 
 pub struct MarkIncrement<'a, M: Memory> {
     mem: &'a mut M,
@@ -21,12 +24,30 @@ pub struct MarkIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
-    pub unsafe fn instance(
-        mem: &'a mut M,
-        time: &'a mut BoundedTime,
-        state: &'a mut MarkState,
-        heap: &'a mut PartitionedHeap,
-    ) -> MarkIncrement<'a, M> {
+    pub unsafe fn start_phase(mem: &mut M) {
+        debug_assert!(MARK_STATE.is_none());
+        let mark_stack = MarkStack::new(mem);
+        let state = MarkState {
+            mark_stack,
+            complete: false,
+        };
+        MARK_STATE = Some(state);
+    }
+
+    pub unsafe fn complete_phase() {
+        debug_assert!(Self::mark_completed());
+        MARK_STATE = None;
+    }
+
+    pub unsafe fn mark_completed() -> bool {
+        let state = MARK_STATE.as_ref().unwrap();
+        debug_assert!(!state.complete || state.mark_stack.is_empty());
+        state.complete
+    }
+
+    pub unsafe fn instance(mem: &'a mut M, time: &'a mut BoundedTime) -> MarkIncrement<'a, M> {
+        let heap = PARTITIONED_HEAP.as_mut().unwrap();
+        let state = MARK_STATE.as_mut().unwrap();
         MarkIncrement {
             mem,
             time,

@@ -1,12 +1,15 @@
 use crate::{
     gc::incremental::{
-        partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
+        partitioned_heap::{HeapIteratorState, PartitionedHeapIterator},
         time::BoundedTime,
+        PARTITIONED_HEAP,
     },
     mem_utils::memcpy_words,
     memory::Memory,
     types::*,
 };
+
+static mut EVACUATION_STATE: Option<HeapIteratorState> = None;
 
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
@@ -15,12 +18,26 @@ pub struct EvacuationIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
+    pub unsafe fn start_phase() {
+        debug_assert!(EVACUATION_STATE.is_none());
+        EVACUATION_STATE = Some(HeapIteratorState::new());
+    }
+
+    pub unsafe fn complete_phase() {
+        debug_assert!(Self::evacuation_completed());
+        EVACUATION_STATE = None;
+    }
+
+    pub unsafe fn evacuation_completed() -> bool {
+        EVACUATION_STATE.as_ref().unwrap().completed()
+    }
+
     pub unsafe fn instance(
         mem: &'a mut M,
         time: &'a mut BoundedTime,
-        state: &'a mut HeapIteratorState,
-        heap: &'a PartitionedHeap,
     ) -> EvacuationIncrement<'a, M> {
+        let heap = PARTITIONED_HEAP.as_ref().unwrap();
+        let state = EVACUATION_STATE.as_mut().unwrap();
         EvacuationIncrement {
             mem,
             time,

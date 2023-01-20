@@ -1,14 +1,16 @@
 use crate::{
     gc::incremental::{
         array_slicing::slice_array,
-        partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator},
+        partitioned_heap::{HeapIteratorState, PartitionedHeapIterator},
         roots::visit_roots,
         time::BoundedTime,
-        Roots,
+        Roots, PARTITIONED_HEAP,
     },
     types::*,
     visitor::visit_pointer_fields,
 };
+
+static mut UPDATE_STATE: Option<HeapIteratorState> = None;
 
 pub struct UpdateIncrement<'a> {
     time: &'a mut BoundedTime,
@@ -18,11 +20,23 @@ pub struct UpdateIncrement<'a> {
 }
 
 impl<'a> UpdateIncrement<'a> {
-    pub unsafe fn instance(
-        time: &'a mut BoundedTime,
-        state: &'a mut HeapIteratorState,
-        heap: &'a PartitionedHeap,
-    ) -> UpdateIncrement<'a> {
+    pub unsafe fn start_phase() {
+        debug_assert!(UPDATE_STATE.is_none());
+        UPDATE_STATE = Some(HeapIteratorState::new());
+    }
+
+    pub unsafe fn complete_phase() {
+        debug_assert!(Self::update_completed());
+        UPDATE_STATE = None;
+    }
+
+    pub unsafe fn update_completed() -> bool {
+        UPDATE_STATE.as_ref().unwrap().completed()
+    }
+
+    pub unsafe fn instance(time: &'a mut BoundedTime) -> UpdateIncrement<'a> {
+        let heap = PARTITIONED_HEAP.as_ref().unwrap();
+        let state = UPDATE_STATE.as_mut().unwrap();
         let updates_needed = heap.updates_needed();
         UpdateIncrement {
             time,
