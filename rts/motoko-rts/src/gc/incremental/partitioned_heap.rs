@@ -251,6 +251,7 @@ pub struct PartitionedHeap {
     partitions: [Partition; MAX_PARTITIONS],
     heap_base: usize,
     allocation_index: usize, // Index of the partition currently used for allocations.
+    evacuating: bool,
 }
 
 impl PartitionedHeap {
@@ -274,6 +275,7 @@ impl PartitionedHeap {
             partitions,
             heap_base,
             allocation_index,
+            evacuating: false,
         }
     }
 
@@ -292,6 +294,7 @@ impl PartitionedHeap {
                 && !partition.is_free()
                 && partition.dynamic_space_start() < partition.end_address()
                 && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD;
+            self.evacuating |= partition.evacuate;
         }
     }
 
@@ -303,6 +306,11 @@ impl PartitionedHeap {
                 partition.free();
             }
         }
+        self.evacuating = false;
+    }
+
+    pub fn updates_needed(&self) -> bool {
+        self.evacuating
     }
 
     fn allocation_partition(&mut self) -> &mut Partition {

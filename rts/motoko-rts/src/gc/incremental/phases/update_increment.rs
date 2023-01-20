@@ -14,6 +14,7 @@ pub struct UpdateIncrement<'a> {
     time: &'a mut BoundedTime,
     heap_base: usize,
     heap_iterator: PartitionedHeapIterator<'a>,
+    updates_needed: bool,
 }
 
 impl<'a> UpdateIncrement<'a> {
@@ -22,10 +23,12 @@ impl<'a> UpdateIncrement<'a> {
         state: &'a mut HeapIteratorState,
         heap: &'a PartitionedHeap,
     ) -> UpdateIncrement<'a> {
+        let updates_needed = heap.updates_needed();
         UpdateIncrement {
             time,
             heap_base: heap.base_address(),
             heap_iterator: PartitionedHeapIterator::resume(heap, state),
+            updates_needed,
         }
     }
 
@@ -59,7 +62,9 @@ impl<'a> UpdateIncrement<'a> {
             let object = self.heap_iterator.current_object().unwrap();
             if object.is_marked() {
                 debug_assert!(!object.is_forwarded());
-                self.update_fields(object);
+                if self.updates_needed {
+                    self.update_fields(object);
+                }
                 self.time.tick();
                 if self.time.is_over() {
                     // Keep mark bit and later resume updating more slices of this array

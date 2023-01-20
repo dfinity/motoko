@@ -373,18 +373,20 @@ unsafe fn mark_new_allocation(new_object: Value) {
 ///     continues to resolve the forwarding for all remaining old pointers.
 unsafe fn update_new_allocation(new_object: Value) {
     debug_assert!(PHASE == Phase::Update);
-    let object = new_object.get_ptr() as *mut Obj;
     let heap = PARTITIONED_HEAP.as_ref().unwrap();
-    visit_pointer_fields(
-        &mut (),
-        object,
-        object.tag(),
-        heap.base_address(),
-        |_, field| {
-            *field = (*field).forward_if_possible();
-        },
-        |_, _, array| array.len(),
-    );
+    if heap.updates_needed() {
+        let object = new_object.get_ptr() as *mut Obj;
+        visit_pointer_fields(
+            &mut (),
+            object,
+            object.tag(),
+            heap.base_address(),
+            |_, field| {
+                *field = (*field).forward_if_possible();
+            },
+            |_, _, array| array.len(),
+        );
+    }
 }
 
 /// Small increment, performed at certain allocation intervals to keep up with a high allocation rate.
