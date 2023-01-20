@@ -206,7 +206,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_evacuating(&mut self) {
         debug_assert!(self.mark_completed());
         MarkIncrement::<M>::complete_phase();
-        PARTITIONED_HEAP.as_mut().unwrap().plan_evacuations();
         PHASE = Phase::Evacuate;
         EvacuationIncrement::<M>::start_phase();
     }
@@ -232,10 +231,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn complete_run(&mut self) {
         debug_assert!(self.updating_completed());
         UpdateIncrement::complete_phase();
-        PARTITIONED_HEAP
-            .as_mut()
-            .unwrap()
-            .free_evacuated_partitions();
         PHASE = Phase::Pause;
     }
 

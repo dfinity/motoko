@@ -22,7 +22,11 @@ const HEAP_SIZE: usize = 3 * PARTITION_SIZE;
 
 pub unsafe fn test() {
     println!("  Testing partitioned heap...");
+    test_normal_size_scenario();
+    test_large_size_scenario();
+}
 
+unsafe fn test_normal_size_scenario() {
     let mut heap = create_test_heap();
     let occupied_partitions = 1 + heap.heap_pointer() / PARTITION_SIZE;
     test_allocation_partitions(&heap.inner, occupied_partitions);
@@ -67,6 +71,7 @@ unsafe fn test_iteration(
             let partition = iterator.current_partition().unwrap();
             assert!(!partition.is_free());
             assert!(!partition.to_be_evacuated());
+            assert!(!partition.has_large_content());
             assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
             assert!(partition.get_index() < occupied_partitions);
             if previous_partition.is_none() || partition.get_index() != previous_partition.unwrap()
@@ -255,6 +260,73 @@ unsafe fn test_survival_rate(heap: &mut PartitionedHeap) {
             && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD;
         assert_eq!(partition.to_be_evacuated(), expected_evacuation);
         iterator.next_partition();
+    }
+}
+
+unsafe fn test_large_size_scenario() {
+    println!("    Test large allocations...");
+    const LARGE: usize = PARTITION_SIZE + WORD_SIZE;
+    const EXTRA_LARGE: usize = 2 * PARTITION_SIZE;
+    test_allocation_sizes(&[32, PARTITION_SIZE, 16], 3);
+    test_allocation_sizes(&[28, LARGE, 20], 3);
+    test_allocation_sizes(&[24, LARGE, LARGE, 36], 5);
+    test_allocation_sizes(&[24, EXTRA_LARGE, 16], 3);
+    test_allocation_sizes(&[24, EXTRA_LARGE, LARGE, 16], 6);
+}
+
+unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
+    let mut heap = PartitionedTestHeap::new(number_of_partitions * PARTITION_SIZE);
+    assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE);
+    for size in sizes.iter() {
+        assert_eq!(*size % WORD_SIZE, 0);
+        assert!(*size >= size_of::<Blob>());
+        heap.allocate_blob(*size - size_of::<Blob>());
+    }
+    assert!(heap.inner.occupied_size().as_usize() >= sizes.iter().sum());
+    iterate_objects(&heap.inner, sizes);
+    iterate_partitions(&heap.inner);
+    heap.inner.plan_evacuations();
+    heap.inner.collect_large_objects();
+    heap.inner.free_evacuated_partitions();
+    assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE)
+}
+
+unsafe fn iterate_objects(heap: &PartitionedHeap, expected_sizes: &[usize]) {
+    let mut detected_sizes = vec![];
+    let mut iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::resume(&heap, &mut iterator_state);
+    while iterator.current_object().is_some() {
+        let object = iterator.current_object().unwrap();
+        assert_eq!(object.tag(), TAG_BLOB);
+        let size = block_size(object as *const Tag);
+        detected_sizes.push(size);
+        iterator.next_object();
+    }
+    detected_sizes.sort();
+    let mut expected_sorted = expected_sizes.to_vec();
+    expected_sorted.sort();
+    assert_eq!(detected_sizes, expected_sorted);
+}
+
+unsafe fn iterate_partitions(heap: &PartitionedHeap) {
+    let mut iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::resume(&heap, &mut iterator_state);
+    while iterator.current_partition().is_some() {
+        let partition = iterator.current_partition().unwrap();
+        if partition.has_large_content() {
+            let object = iterator.current_object().unwrap();
+            assert_eq!(object.tag(), TAG_BLOB);
+            let size = block_size(object as *const Tag);
+            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+            let next_partition = partition.get_index() + number_of_partitions;
+            iterator.next_partition();
+            assert!(
+                iterator.current_partition().is_none()
+                    || iterator.current_partition().unwrap().get_index() == next_partition
+            );
+        } else {
+            iterator.next_partition();
+        }
     }
 }
 

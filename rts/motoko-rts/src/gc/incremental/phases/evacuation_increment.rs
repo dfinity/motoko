@@ -21,6 +21,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn start_phase() {
         debug_assert!(EVACUATION_STATE.is_none());
         EVACUATION_STATE = Some(HeapIteratorState::new());
+        PARTITIONED_HEAP.as_mut().unwrap().plan_evacuations();
     }
 
     pub unsafe fn complete_phase() {

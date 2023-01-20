@@ -22,8 +22,17 @@
 //! their live objects are moved out to other remaining partitions (through allocation).
 //! Therefore, allocation partitions must not be evacuated.
 //!
-//! Open aspect:
-//! * Huge objects: Large allocations > `PARTITION_SIZE` are not yet supported.
+//! Large allocations:
+//! Huge objects with a size > PARTITION_SIZE are allocated across multiple contiguous free
+//! partitions. For this purpose, a corresponding sequence of contiguous free partitions needs
+//! to be searched. Huge objects stay in their partitions for their entire lifetime, i.e. they
+//! are never evacuated. When becoming garbage, the underlying partitions of a huge blocks are
+//! immediately freed. Large object allocation may be prone to external fragmentation problems,
+//! i.e. that no sufficient contiguous free partitions are available on allocation. Currently,
+//! this external fragmentation problem is not handled by moving other partitions which would
+//! require a special blocking full GC collection. Moreover, for simplicity, the remainder
+//! of the last partition of a huge object is not used for further small object allocations,
+//! which implies limited internal fragmentation.
 
 use core::array::from_fn;
 
@@ -37,12 +46,13 @@ pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
 
 /// Heap partition of size `PARTITION_SIZE`.
 pub struct Partition {
-    index: usize,
-    free: bool,
-    marked_space: usize,
-    static_size: usize,
-    dynamic_size: usize,
-    evacuate: bool,
+    index: usize,        // Index of the partition 0..MAX_PARTITIONS.
+    free: bool,          // Denotes a free partition (which may still contain static space).
+    large_content: bool, // Specifies whether a large object is contained that spans multiple partitions.
+    marked_space: usize, // Total amount marked object space in the dynamic space.
+    static_size: usize,  // Size of the static space.
+    dynamic_size: usize, // Size of the dynamic space.
+    evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
 }
 
 impl Partition {
@@ -109,6 +119,7 @@ impl Partition {
         self.free = true;
         self.dynamic_size = 0;
         self.evacuate = false;
+        self.large_content = false;
 
         #[cfg(debug_assertions)]
         self.clear_free_remainder();
@@ -118,6 +129,14 @@ impl Partition {
         let dynamic_heap_space = PARTITION_SIZE - self.static_size;
         debug_assert!(self.marked_space <= dynamic_heap_space);
         self.marked_space as f64 / dynamic_heap_space as f64
+    }
+
+    pub fn has_large_content(&self) -> bool {
+        self.large_content
+    }
+
+    pub fn is_completely_free(&self) -> bool {
+        self.free && self.free_space() == PARTITION_SIZE
     }
 }
 
@@ -208,7 +227,7 @@ impl<'a> PartitionedHeapIterator<'a> {
         self.skip_free_blocks();
         // Implicitly also skips free partitions as the dynamic size is zero.
         while *self.current_address == self.partition_scan_end() {
-            self.start_next_partition();
+            self.skip_partitions(1);
             if *self.partition_index == MAX_PARTITIONS {
                 return;
             }
@@ -222,12 +241,13 @@ impl<'a> PartitionedHeapIterator<'a> {
         {
             let size = block_size(*self.current_address);
             *self.current_address += size.to_bytes().as_usize();
+            debug_assert!(*self.current_address <= self.partition_scan_end());
         }
     }
 
-    fn start_next_partition(&mut self) {
+    fn skip_partitions(&mut self, number_of_partitions: usize) {
         debug_assert!(*self.partition_index < MAX_PARTITIONS);
-        *self.partition_index += 1;
+        *self.partition_index += number_of_partitions;
         if *self.partition_index < MAX_PARTITIONS {
             *self.current_address = self.partition_scan_start();
         } else {
@@ -236,16 +256,27 @@ impl<'a> PartitionedHeapIterator<'a> {
     }
 
     pub unsafe fn next_partition(&mut self) {
-        self.start_next_partition();
+        let number_of_partitions = if self.current_partition().unwrap().has_large_content() {
+            let size = block_size(*self.current_address).to_bytes().as_usize();
+            (size + PARTITION_SIZE - 1) / PARTITION_SIZE
+        } else {
+            1
+        };
+        self.skip_partitions(number_of_partitions);
         self.skip_free_space();
     }
 
     pub unsafe fn next_object(&mut self) {
         debug_assert!(*self.current_address >= self.partition_scan_start());
         debug_assert!(*self.current_address < self.partition_scan_end());
-        let size = block_size(*self.current_address);
-        *self.current_address += size.to_bytes().as_usize();
-        debug_assert!(*self.current_address <= self.partition_scan_end());
+        let size = block_size(*self.current_address).to_bytes().as_usize();
+        if size > PARTITION_SIZE {
+            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+            self.skip_partitions(number_of_partitions);
+        } else {
+            *self.current_address += size;
+            debug_assert!(*self.current_address <= self.partition_scan_end());
+        }
         self.skip_free_space();
     }
 }
@@ -265,6 +296,7 @@ impl PartitionedHeap {
         let partitions = from_fn(|index| Partition {
             index,
             free: index > allocation_index,
+            large_content: false,
             marked_space: 0,
             static_size: if index < allocation_index {
                 PARTITION_SIZE
@@ -290,6 +322,10 @@ impl PartitionedHeap {
 
     pub fn get_partition(&self, index: usize) -> &Partition {
         &self.partitions[index]
+    }
+
+    fn mutable_partition(&mut self, index: usize) -> &mut Partition {
+        &mut self.partitions[index]
     }
 
     pub fn plan_evacuations(&mut self) {
@@ -326,9 +362,9 @@ impl PartitionedHeap {
         self.allocation_index == index
     }
 
-    fn allocate_free_partition(&mut self, allocation_size: Bytes<u32>) -> &Partition {
+    fn allocate_free_partition(&mut self, requested_space: usize) -> &Partition {
         for partition in &mut self.partitions {
-            if partition.free && partition.free_space() >= allocation_size.as_usize() {
+            if partition.free && partition.free_space() >= requested_space {
                 debug_assert_eq!(partition.dynamic_size, 0);
                 partition.free = false;
                 return partition;
@@ -363,39 +399,119 @@ impl PartitionedHeap {
         partition.marked_space += size.to_bytes().as_usize();
     }
 
-    pub unsafe fn allocate<M: Memory>(
-        &mut self,
-        mem: &mut M,
-        allocation_size: Bytes<u32>,
-    ) -> Value {
-        if allocation_size.as_usize() > PARTITION_SIZE {
-            panic!("Allocation exceeds partition size");
+    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
+        if size.as_usize() <= PARTITION_SIZE {
+            self.allocate_normal_object(mem, size.as_usize())
+        } else {
+            self.allocate_large_object(mem, size.as_usize())
         }
+    }
+
+    unsafe fn allocate_normal_object<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
+        debug_assert!(size <= PARTITION_SIZE);
         let mut allocation_partition = self.allocation_partition();
         debug_assert!(!allocation_partition.free);
         let mut heap_pointer = allocation_partition.dynamic_space_end();
-        debug_assert!(allocation_size.as_usize() <= allocation_partition.end_address());
-        if heap_pointer > allocation_partition.end_address() - allocation_size.as_usize() {
-            self.open_new_allocation_partition(mem, allocation_size);
+        debug_assert!(size <= allocation_partition.end_address());
+        if heap_pointer > allocation_partition.end_address() - size {
+            self.open_new_allocation_partition(mem, size);
             allocation_partition = self.allocation_partition();
             heap_pointer = allocation_partition.dynamic_space_end();
         }
-        (*allocation_partition).dynamic_size += allocation_size.as_usize();
+        (*allocation_partition).dynamic_size += size;
         Value::from_ptr(heap_pointer)
     }
 
+    // Significant performance gain by not inlining.
+    #[inline(never)]
     unsafe fn open_new_allocation_partition<M: Memory>(
         &mut self,
         mem: &mut M,
-        allocation_size: Bytes<u32>,
+        requested_space: usize,
     ) {
         #[cfg(debug_assertions)]
         self.allocation_partition().clear_free_remainder();
 
-        let new_partition = self.allocate_free_partition(allocation_size);
+        let new_partition = self.allocate_free_partition(requested_space);
         let end_address = new_partition.end_address();
         self.allocation_index = new_partition.index;
 
         mem.grow_memory(end_address as u64);
+    }
+
+    // Significant performance gain by not inlining.
+    #[inline(never)]
+    unsafe fn allocate_large_object<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
+        if size > usize::MAX - PARTITION_SIZE {
+            panic!("Too large allocation");
+        }
+        let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+        debug_assert!(number_of_partitions > 0);
+        let first_index = self.find_large_space(number_of_partitions);
+        let last_index = first_index + number_of_partitions - 1;
+        let end_address = self.get_partition(last_index).end_address();
+        mem.grow_memory(end_address as u64);
+        for index in first_index..last_index + 1 {
+            let partition = self.mutable_partition(index);
+            debug_assert!(partition.free);
+            debug_assert!(!partition.large_content);
+            partition.free = false;
+            partition.large_content = true;
+            debug_assert_eq!(partition.static_size, 0);
+            debug_assert_eq!(partition.dynamic_size, 0);
+            if index == last_index {
+                partition.dynamic_size = size % PARTITION_SIZE;
+
+                #[cfg(debug_assertions)]
+                partition.clear_free_remainder();
+            } else {
+                partition.dynamic_size = PARTITION_SIZE;
+            }
+        }
+        let first_partition = self.get_partition(first_index);
+        Value::from_ptr(first_partition.dynamic_space_start())
+    }
+
+    fn find_large_space(&self, number_of_partitions: usize) -> usize {
+        for index in 0..MAX_PARTITIONS {
+            let mut count = 0;
+            while count < number_of_partitions
+                && self.get_partition(index + count).is_completely_free()
+            {
+                count += 1;
+            }
+            if count == number_of_partitions {
+                return index;
+            }
+        }
+        panic!("Out of memory for large allocation");
+    }
+
+    pub unsafe fn collect_large_objects(&mut self) {
+        let mut index = 0;
+        while index < MAX_PARTITIONS {
+            let partition = self.get_partition(index);
+            if partition.has_large_content() {
+                let object = partition.dynamic_space_start() as *mut Obj;
+                let size = block_size(object as usize).to_bytes().as_usize();
+                debug_assert!(size > PARTITION_SIZE);
+                let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+                if !object.is_marked() {
+                    let start_partition = object as usize / PARTITION_SIZE;
+                    self.free_large_space(start_partition, number_of_partitions);
+                }
+                index += number_of_partitions;
+            } else {
+                index += 1;
+            }
+        }
+    }
+
+    unsafe fn free_large_space(&mut self, start_partition: usize, number_of_partitions: usize) {
+        for index in start_partition..start_partition + number_of_partitions {
+            let partition = self.mutable_partition(index);
+            debug_assert!(partition.large_content);
+            partition.free();
+        }
     }
 }

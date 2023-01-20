@@ -23,11 +23,16 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn start_phase() {
         debug_assert!(UPDATE_STATE.is_none());
         UPDATE_STATE = Some(HeapIteratorState::new());
+        PARTITIONED_HEAP.as_mut().unwrap().collect_large_objects();
     }
 
     pub unsafe fn complete_phase() {
         debug_assert!(Self::update_completed());
         UPDATE_STATE = None;
+        PARTITIONED_HEAP
+            .as_mut()
+            .unwrap()
+            .free_evacuated_partitions();
     }
 
     pub unsafe fn update_completed() -> bool {
