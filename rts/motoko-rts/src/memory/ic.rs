@@ -73,26 +73,15 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
 
-impl Memory for IcMemory {
+impl IcMemory {
     #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
-
-        // Select partition, if incremental GC is enabled
-        if let Some(heap) = &mut PARTITIONED_HEAP {
-            heap.prepare_allocation_partition(&mut HP, bytes);
-        }
-
-        // Update ALLOCATED
-        let delta = u64::from(bytes.as_u32());
-        ALLOCATED += Bytes(delta);
-
+    unsafe fn linear_allocation(&mut self, delta: u64) -> Value {
         // Update heap pointer
         let old_hp = u64::from(HP);
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        grow_memory(new_hp);
+        self.grow_memory(new_hp);
 
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
         HP = new_hp as u32;
@@ -101,17 +90,35 @@ impl Memory for IcMemory {
     }
 }
 
-/// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
-#[inline(never)]
-unsafe fn grow_memory(ptr: u64) {
-    debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
-    let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
-    let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
-    let current_pages = wasm32::memory_size(0);
-    if total_pages_needed > current_pages {
-        #[allow(clippy::collapsible_if)] // faster by 1% if not colapsed with &&
-        if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
-            rts_trap_with("Cannot grow memory");
+impl Memory for IcMemory {
+    #[inline]
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+        let bytes = n.to_bytes();
+
+        // Update ALLOCATED
+        let delta = u64::from(bytes.as_u32());
+        ALLOCATED += Bytes(delta);
+
+        // Select partition, if incremental GC is enabled
+        if let Some(heap) = &mut PARTITIONED_HEAP {
+            heap.allocate(self, bytes)
+        } else {
+            self.linear_allocation(delta)
+        }
+    }
+
+    /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
+    #[inline(never)]
+    unsafe fn grow_memory(&mut self, ptr: u64) {
+        debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
+        let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
+        let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
+        let current_pages = wasm32::memory_size(0);
+        if total_pages_needed > current_pages {
+            #[allow(clippy::collapsible_if)] // faster by 1% if not colapsed with &&
+            if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
+                rts_trap_with("Cannot grow memory");
+            }
         }
     }
 }

@@ -27,7 +27,7 @@
 
 use core::array::from_fn;
 
-use crate::types::*;
+use crate::{memory::Memory, types::*};
 
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 // For simplicity, leave the last partition unused, to avoid partition end address overflow
@@ -255,8 +255,9 @@ pub struct PartitionedHeap {
 }
 
 impl PartitionedHeap {
-    pub fn new(heap_base: usize) -> PartitionedHeap {
+    pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
         let allocation_index = heap_base / PARTITION_SIZE;
+        mem.grow_memory(((allocation_index + 1) * PARTITION_SIZE) as u64);
         let partitions = from_fn(|index| Partition {
             index,
             free: index > allocation_index,
@@ -358,40 +359,35 @@ impl PartitionedHeap {
         partition.marked_space += size.to_bytes().as_usize();
     }
 
-    pub unsafe fn prepare_allocation_partition(
+    pub unsafe fn allocate<M: Memory>(
         &mut self,
-        heap_pointer: &mut u32,
+        mem: &mut M,
         allocation_size: Bytes<u32>,
-    ) {
+    ) -> Value {
         if allocation_size.as_usize() > PARTITION_SIZE {
             panic!("Allocation exceeds partition size");
         }
         let mut allocation_partition = self.allocation_partition();
         debug_assert!(!allocation_partition.free);
-        debug_assert!(
-            (*heap_pointer as usize) >= allocation_partition.dynamic_space_start()
-                && (*heap_pointer as usize) <= allocation_partition.dynamic_space_end()
-        );
+        let mut heap_pointer = allocation_partition.dynamic_space_end();
         debug_assert!(allocation_size.as_usize() <= allocation_partition.end_address());
-        if *heap_pointer as usize > allocation_partition.end_address() - allocation_size.as_usize()
-        {
-            self.open_new_allocation_partition(heap_pointer);
+        if heap_pointer > allocation_partition.end_address() - allocation_size.as_usize() {
+            self.open_new_allocation_partition(mem);
             allocation_partition = self.allocation_partition();
+            heap_pointer = allocation_partition.dynamic_space_end();
         }
         (*allocation_partition).dynamic_size += allocation_size.as_usize();
+        Value::from_ptr(heap_pointer)
     }
 
-    unsafe fn open_new_allocation_partition(&mut self, heap_pointer: &mut u32) {
-        debug_assert_eq!(
-            *heap_pointer as usize,
-            self.allocation_partition().dynamic_space_end()
-        );
-
+    unsafe fn open_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
         #[cfg(debug_assertions)]
         self.allocation_partition().clear_free_remainder();
 
         let new_partition = self.allocate_free_partition();
-        *heap_pointer = new_partition.dynamic_space_start() as u32;
+        let end_address = new_partition.end_address();
         self.allocation_index = new_partition.index;
+
+        mem.grow_memory(end_address as u64);
     }
 }

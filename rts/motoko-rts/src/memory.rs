@@ -27,6 +27,7 @@ use motoko_rts_macros::ic_mem_fn;
 /// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+    unsafe fn grow_memory(&mut self, ptr: u64);
 }
 
 /// Allocate a new blob.

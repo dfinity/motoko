@@ -120,7 +120,7 @@ fn test_gc(
     continuation_table: &[ObjectIdx],
 ) {
     let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
-    initialize_gc_state(&heap, gc);
+    initialize_gc_state(&mut heap, gc);
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         false, // before gc
@@ -152,10 +152,10 @@ fn test_gc(
             gc == GC::Incremental,
         );
     }
-    initialize_gc_state(&heap, gc);
+    initialize_gc_state(&mut heap, gc);
 }
 
-fn initialize_gc_state(heap: &MotokoHeap, gc: GC) {
+fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
     unsafe {
         match gc {
             GC::Incremental => initialize_incremental_gc(heap),
@@ -164,19 +164,18 @@ fn initialize_gc_state(heap: &MotokoHeap, gc: GC) {
     }
 }
 
-unsafe fn initialize_incremental_gc(heap: &MotokoHeap) {
-    IncrementalGC::<MotokoHeap>::initialize(heap.heap_base_address());
+unsafe fn initialize_incremental_gc(heap: &mut MotokoHeap) {
+    IncrementalGC::<MotokoHeap>::initialize(heap, heap.heap_base_address());
     let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
     // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
-    let mut heap_pointer = heap.heap_base_address() as u32;
-    PARTITIONED_HEAP
+    let result = PARTITIONED_HEAP
         .as_mut()
         .unwrap()
-        .prepare_allocation_partition(&mut heap_pointer, Bytes(allocation_size as u32));
+        .allocate(heap, Bytes(allocation_size as u32));
     // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
     // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
-    assert_eq!(heap_pointer as usize, heap.heap_base_address());
+    assert_eq!(result.get_ptr(), heap.heap_base_address());
 }
 
 /// Check the dynamic heap:

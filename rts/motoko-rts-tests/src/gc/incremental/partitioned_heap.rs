@@ -15,7 +15,7 @@ use motoko_rts::{
     },
 };
 
-use crate::gc::utils::WORD_SIZE;
+use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 
 const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / 16;
 const HEAP_SIZE: usize = 3 * PARTITION_SIZE;
@@ -24,7 +24,7 @@ pub unsafe fn test() {
     println!("  Testing partitioned heap...");
 
     let mut heap = create_test_heap();
-    let occupied_partitions = 1 + heap.heap_pointer as usize / PARTITION_SIZE;
+    let occupied_partitions = 1 + heap.heap_pointer() / PARTITION_SIZE;
     test_allocation_partitions(&heap.inner, occupied_partitions);
     test_iteration(&heap.inner, 1024, occupied_partitions);
     test_evacuation_plan(&mut heap.inner, occupied_partitions);
@@ -185,11 +185,11 @@ fn test_close_partition(heap: &mut PartitionedTestHeap) {
 }
 
 fn test_close_partition_with_free_space(heap: &mut PartitionedTestHeap) {
-    let old_heap_pointer = heap.heap_pointer as usize;
+    let old_heap_pointer = heap.heap_pointer();
     let old_partition = old_heap_pointer / PARTITION_SIZE;
     let remainder = PARTITION_SIZE - old_heap_pointer % PARTITION_SIZE;
     let blob = heap.allocate_blob(remainder);
-    assert_ne!(heap.heap_pointer as usize / PARTITION_SIZE, old_partition);
+    assert_ne!(heap.heap_pointer() / PARTITION_SIZE, old_partition);
     assert_ne!(blob.get_ptr(), old_heap_pointer);
     unsafe {
         let free_space = old_heap_pointer as *const FreeSpace;
@@ -199,15 +199,15 @@ fn test_close_partition_with_free_space(heap: &mut PartitionedTestHeap) {
 }
 
 fn test_close_partition_with_one_wordfiller(heap: &mut PartitionedTestHeap) {
-    let old_heap_pointer = heap.heap_pointer as usize;
+    let old_heap_pointer = heap.heap_pointer();
     let old_partition = old_heap_pointer / PARTITION_SIZE;
     let remainder = PARTITION_SIZE - old_heap_pointer % PARTITION_SIZE;
     assert!(remainder > size_of::<Blob>());
     let old_partition_blob = heap.allocate_blob(remainder - size_of::<Blob>() - WORD_SIZE);
     assert_eq!(old_partition_blob.get_ptr(), old_heap_pointer);
-    let filler_address = heap.heap_pointer as usize;
+    let filler_address = heap.heap_pointer();
     let new_partition_blob = heap.allocate_blob(0);
-    assert_ne!(heap.heap_pointer as usize / PARTITION_SIZE, old_partition);
+    assert_ne!(heap.heap_pointer() / PARTITION_SIZE, old_partition);
     assert_ne!(new_partition_blob.get_ptr(), filler_address);
     unsafe {
         let filler = filler_address as *const OneWordFiller;
@@ -280,10 +280,10 @@ fn create_test_heap() -> PartitionedTestHeap {
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
     allocate_objects(&mut heap);
     let heap_size = heap.inner.occupied_size().as_usize();
-    assert_eq!(heap_size, heap.heap_pointer as usize);
+    assert_eq!(heap_size, heap.heap_pointer());
     assert_eq!(
         heap_size,
-        heap.heap_base as usize + NUMBER_OF_OBJECTS * OBJECT_SIZE
+        heap.heap_base() + NUMBER_OF_OBJECTS * OBJECT_SIZE
     );
     heap
 }
@@ -311,22 +311,24 @@ fn reset_progress() {
 }
 
 pub struct PartitionedTestHeap {
-    memory: Box<[u8]>,
-    heap_base: u32,
-    heap_pointer: u32,
+    memory: TestMemory,
     inner: PartitionedHeap,
 }
 
 impl PartitionedTestHeap {
     pub fn new(size: usize) -> PartitionedTestHeap {
-        let memory = vec![0u8; size].into_boxed_slice();
-        let heap_base = memory.as_ptr() as u32;
-        PartitionedTestHeap {
-            memory,
-            heap_base,
-            heap_pointer: heap_base,
-            inner: PartitionedHeap::new(heap_base as usize),
-        }
+        let mut memory = TestMemory::new(Bytes(size as u32).to_words());
+        let heap_base = memory.heap_base();
+        let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
+        PartitionedTestHeap { memory, inner }
+    }
+
+    pub fn heap_base(&self) -> usize {
+        self.memory.heap_base()
+    }
+
+    pub fn heap_pointer(&self) -> usize {
+        self.memory.heap_pointer()
     }
 
     pub fn allocate_array(&mut self, elements: &[Value]) -> Value {
@@ -360,15 +362,13 @@ unsafe fn block_size(block: *const Tag) -> usize {
 
 impl Memory for PartitionedTestHeap {
     unsafe fn alloc_words(&mut self, size: Words<u32>) -> Value {
-        self.inner
-            .prepare_allocation_partition(&mut self.heap_pointer, size.to_bytes());
-        assert!(self.heap_pointer >= self.heap_base);
-        assert!(
-            self.heap_pointer + size.to_bytes().as_u32()
-                <= self.heap_base + self.memory.len() as u32
-        );
-        let result = Value::from_ptr(self.heap_pointer as usize);
-        self.heap_pointer += size.to_bytes().as_u32();
+        let result = self.inner.allocate(&mut self.memory, size.to_bytes());
+        self.memory
+            .set_heap_pointer(result.get_ptr() + size.to_bytes().as_usize());
         result
+    }
+
+    unsafe fn grow_memory(&mut self, _ptr: u64) {
+        unreachable!();
     }
 }

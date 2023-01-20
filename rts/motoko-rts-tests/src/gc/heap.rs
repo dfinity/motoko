@@ -2,6 +2,7 @@ use super::utils::{
     make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
+use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use motoko_rts::gc::incremental::PARTITIONED_HEAP;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
@@ -23,6 +24,10 @@ pub struct MotokoHeap {
 impl Memory for MotokoHeap {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         self.inner.borrow_mut().alloc_words(n)
+    }
+
+    unsafe fn grow_memory(&mut self, ptr: u64) {
+        self.inner.borrow_mut().grow_memory(ptr as usize);
     }
 }
 
@@ -277,9 +282,9 @@ impl MotokoHeapInner {
         let bytes = n.to_bytes();
 
         if let Some(partitioned_heap) = &mut PARTITIONED_HEAP {
-            let mut heap_pointer = self.heap_ptr_address() as u32;
-            partitioned_heap.prepare_allocation_partition(&mut heap_pointer, bytes);
-            self.set_heap_ptr_address(heap_pointer as usize);
+            let mut dummy_memory = DummyMemory {};
+            let result = partitioned_heap.allocate(&mut dummy_memory, bytes);
+            self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
         }
 
         // Update heap pointer
@@ -302,6 +307,16 @@ impl MotokoHeapInner {
             );
         }
     }
+}
+
+struct DummyMemory {}
+
+impl Memory for DummyMemory {
+    unsafe fn alloc_words(&mut self, _n: Words<u32>) -> Value {
+        unreachable!()
+    }
+
+    unsafe fn grow_memory(&mut self, _ptr: u64) {}
 }
 
 /// Compute the size of the heap to be allocated for the GC test.
@@ -348,10 +363,7 @@ fn heap_size_for_gc(
             );
             size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
         }
-        GC::Incremental => {
-            const ADDITIONAL_MEMORY: usize = 2 * 1024 * 1024; // mark stack and additional remembered set used in memory sanity check
-            total_heap_size_bytes + ADDITIONAL_MEMORY
-        }
+        GC::Incremental => PARTITION_SIZE,
     }
 }
 

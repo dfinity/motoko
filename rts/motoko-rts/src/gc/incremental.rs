@@ -24,11 +24,11 @@ pub mod sanity_checks;
 pub mod time;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
+unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     ic::initialize_memory(true);
     assert_eq!(ic::HP, ic::get_aligned_heap_base()); // No dynamic heap allocations so far.
-    IncrementalGC::<M>::initialize(ic::get_aligned_heap_base() as usize);
+    IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base() as usize);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -135,9 +135,9 @@ pub struct IncrementalGC<'a, M: Memory> {
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
-    pub unsafe fn initialize(heap_base: usize) {
+    pub unsafe fn initialize(mem: &'a mut M, heap_base: usize) {
         PHASE = Phase::Pause;
-        PARTITIONED_HEAP = Some(PartitionedHeap::new(heap_base));
+        PARTITIONED_HEAP = Some(PartitionedHeap::new(mem, heap_base));
     }
 
     /// Each GC schedule point can get a new GC instance that shares the common GC state.
