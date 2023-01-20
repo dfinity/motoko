@@ -42,7 +42,6 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
-    record_increment_start::<M>();
     IncrementalGC::instance(mem, BoundedTime::long_interval())
         .empty_call_stack_increment(root_set());
     record_increment_stop::<M>();
@@ -65,13 +64,6 @@ unsafe fn should_start() -> bool {
 }
 
 #[cfg(feature = "ic")]
-unsafe fn record_increment_start<M: Memory>() {
-    if PHASE == Phase::Pause {
-        LAST_HEAP_OCCUPATION = heap_occupation();
-    }
-}
-
-#[cfg(feature = "ic")]
 unsafe fn heap_occupation() -> usize {
     PARTITIONED_HEAP
         .as_ref()
@@ -84,8 +76,9 @@ unsafe fn heap_occupation() -> usize {
 unsafe fn record_increment_stop<M: Memory>() {
     use crate::memory::ic;
     if PHASE == Phase::Pause {
-        let occupation = PARTITIONED_HEAP.as_ref().unwrap().occupied_size();
-        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, occupation);
+        let occupation = heap_occupation();
+        LAST_HEAP_OCCUPATION = occupation;
+        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, Bytes(occupation as u32));
     }
 }
 
