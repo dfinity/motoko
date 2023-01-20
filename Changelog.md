@@ -1,10 +1,16 @@
 # Motoko compiler changelog
 
+## 0.7.6 (2023-01-18)
+
 * motoko (`moc`)
+
+  * Added support for `ManagementCanister.raw_rand` in interpreters (#3693).
 
   * Added preliminary Viper support for `old` expressions in specifications and calls to private methods (#3675).
 
   * bugfix: in the default timer mechanism `cancelTimer` sometimes wouldn't actually stop a recurring timer (#3695).
+
+  * bugfix: zero negation for floating point numbers in compiled code (#3676).
 
 * motoko-base
 
@@ -14,6 +20,8 @@
     - renamed `Float.neq` to `Float.neg` (this was a misspelling)
     - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
     - removed second argument from `bitnot` (this was an oversight)
+
+  * Various documentation fixes and API usage examples.
 
 ## 0.7.5 (2022-12-23)
 
