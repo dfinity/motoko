@@ -86,7 +86,7 @@ jobs:
     - run: nix-build --max-jobs 1 --arg officialRelease true release-files.nix
 
     - name: Upload Release Assets
-      uses: svenstaro/upload-release-action@2.4.0
+      uses: svenstaro/upload-release-action@74f6bde645a3f5f70c0311ede61fb790fd79441a
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
