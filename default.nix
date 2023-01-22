@@ -66,7 +66,7 @@ let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
-    pkgs.dune_2
+    pkgs.dune_3
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.checkseum
@@ -775,7 +775,7 @@ rec {
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
   };
 
-  shell = stdenv.mkDerivation {
+  shell = nixpkgs.mkShell {
     name = "motoko-shell";
 
     #
@@ -806,7 +806,7 @@ rec {
           nixpkgs.rlwrap # for `rlwrap moc`
           nixpkgs.difftastic
           nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
-        ]
+        ] ++ nixpkgs.lib.optional stdenv.isDarwin nixpkgs.darwin.apple_sdk.frameworks.Security
       ));
 
     shellHook = llvmEnv + ''
