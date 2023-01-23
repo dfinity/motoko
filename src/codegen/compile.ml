@@ -6009,10 +6009,9 @@ module MakeSerialization (Strm : Stream) = struct
           ) ^^
           (if !Flags.gc_strategy = Flags.Incremental then
             get_x ^^
-            E.call_import env "rts" "allocation_barrier" ^^
-            get_x
+            E.call_import env "rts" "allocation_barrier"
           else
-            get_x)
+            G.nop)
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
