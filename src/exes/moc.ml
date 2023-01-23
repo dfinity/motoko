@@ -109,7 +109,7 @@ let argspec = [
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
   "-ref-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
+  Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
       " use the reference implementation of the Internet Computer system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
@@ -139,7 +139,7 @@ let argspec = [
     stable_types := true;
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
- 
+
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
   " use generational GC";
