@@ -1388,7 +1388,10 @@ module Tagged = struct
     get_object
 
   let load_forwarding_pointer env =
-    Heap.load_field forwarding_pointer_field
+    (if !Flags.gc_strategy = Flags.Incremental then
+      Heap.load_field forwarding_pointer_field
+    else
+      G.nop)
   
   let store_unmarked_tag env tag =
     load_forwarding_pointer env ^^
