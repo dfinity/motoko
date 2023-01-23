@@ -40,7 +40,6 @@ actor a {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
 
 //CALL ingress foo "DIDL\x00\x00"
 //CALL ingress check_A "DIDL\x00\x00"

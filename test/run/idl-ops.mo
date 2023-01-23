@@ -42,12 +42,14 @@ func deserArrayNat(b: Blob) : ?[Nat] = from_candid(b);
 func serArrayInt(a: [Int]) : Blob = to_candid(a);
 func deserArrayInt(b: Blob) : ?[Int] = from_candid(b);
 
+let started_with = Prim.rts_heap_size();
 assert((?arrayNat) == deserArrayNat (serArrayNat arrayNat));
 assert((?arrayNat) == deserArrayInt (serArrayNat arrayNat));
 assert((?arrayNat) == deserArrayInt (serArrayInt arrayNat));
 assert((?arrayNat) == deserArrayInt (serArrayInt arrayNat));
 assert(null == deserArrayNat (serArrayInt arrayInt));
 assert((?arrayInt) == deserArrayInt (serArrayInt arrayInt));
+Prim.debugPrint(debug_show (Prim.rts_heap_size() : Int - started_with));
 
 //SKIP run
 //SKIP run-ir

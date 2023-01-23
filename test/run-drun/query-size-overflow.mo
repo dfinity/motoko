@@ -22,7 +22,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
 
 //OR-CALL query overflow "DIDL\x00\x00"
 //OR-CALL query overflowOpt "DIDL\x00\x00"

@@ -80,4 +80,3 @@ actor a {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP ic-ref-run

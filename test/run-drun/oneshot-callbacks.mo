@@ -53,4 +53,3 @@ await a.go(true); //OR-CALL ingress go "DIDL\x00\x01\x7E\x01"
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
