@@ -14,9 +14,9 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┐
-//      │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴
+// ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
+// │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+// └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:

@@ -445,9 +445,9 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 // Incremental GC Mark Bit
 // Stored in the most significant bit 31 of the raw tag:
 //
-// ------------------------------------
+// ┌──────┬───────────────────────────┐
 // | Mark |          Tag              |
-// ------------------------------------
+// └──────┴───────────────────────────┘
 //  Bit 31        Bits 30..0
 //
 // Used for in-place marking of object during incremental GC.

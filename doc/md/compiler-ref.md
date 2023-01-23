@@ -34,9 +34,9 @@ You can use the following options with the `moc` command.
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
-| `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
 | `--incremental-gc`                        | Use incremental GC                                                                                                                                    |
 | `--idl`                                   | Compile binary and emit Candid IDL specification to `.did` file.                                                                                      |
+| `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |
 | `--max-stable-pages <n>`                  | Set maximum number of pages available for library `ExperimentStableMemory.mo` (default 65536).                                                        |
 | `-no-system-api`                          | Disables system API imports.                                                                                                                          |

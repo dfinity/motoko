@@ -130,7 +130,6 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
     }
 
     post_allocation_barrier(r);
-
     r
 }
 
@@ -209,7 +208,6 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     blob.shrink(new_len);
 
     post_allocation_barrier(r);
-
     r
 }
 

@@ -18,9 +18,9 @@
 
 // Layout of a concat node:
 //
-//      ┌────────────┬─────────┬───────┬───────┐
-//      │ obj header │ n_bytes │ text1 │ text2 │
-//      └────────────┴─────────┴───────┴───────┘
+// ┌────────────┬─────────┬───────┬───────┐
+// │ obj header │ n_bytes │ text1 │ text2 │
+// └────────────┴─────────┴───────┴───────┘
 //
 // The object header includes tag (`TAG_CONCAT`) and forwarding pointer.
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
@@ -116,7 +116,6 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     (*r_concat).text1 = s1.forward_if_possible();
     (*r_concat).text2 = s2.forward_if_possible();
     post_allocation_barrier(r);
-
     r
 }
 
@@ -422,6 +421,5 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
     }
 
     post_allocation_barrier(blob_ptr);
-
     blob_ptr
 }
