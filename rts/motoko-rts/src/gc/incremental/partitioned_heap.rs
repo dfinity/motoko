@@ -93,7 +93,8 @@ impl Partition {
         use crate::constants::WORD_SIZE;
         debug_assert!(self.dynamic_space_end() <= self.end_address());
         let remaining_space = self.end_address() - self.dynamic_space_end();
-        debug_assert!(remaining_space % WORD_SIZE as usize == 0);
+        debug_assert_eq!(remaining_space % WORD_SIZE as usize, 0);
+        debug_assert!(remaining_space <= PARTITION_SIZE);
         if remaining_space == 0 {
             return;
         }
@@ -116,7 +117,7 @@ impl Partition {
 
     pub unsafe fn free(&mut self) {
         debug_assert!(!self.free);
-        debug_assert!(self.evacuate);
+        debug_assert!(self.evacuate || self.large_content);
         debug_assert_eq!(self.marked_space, 0);
         self.free = true;
         self.dynamic_size = 0;
@@ -337,6 +338,7 @@ impl PartitionedHeap {
             debug_assert!(!partition.evacuate);
             partition.evacuate = self.allocation_index != partition.index
                 && !partition.is_free()
+                && !partition.has_large_content()
                 && partition.dynamic_space_start() < partition.end_address()
                 && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD;
             self.evacuating |= partition.evacuate;
@@ -399,13 +401,18 @@ impl PartitionedHeap {
         Bytes(self.reclaimed)
     }
 
+    #[inline]
     pub unsafe fn record_marked_space(&mut self, object: *mut Obj) {
         let address = object as usize;
-        let size = block_size(address);
-        let partition = &mut self.partitions[address / PARTITION_SIZE];
-        debug_assert!(address >= partition.dynamic_space_start());
-        debug_assert!(address + size.to_bytes().as_usize() <= partition.dynamic_space_end());
-        partition.marked_space += size.to_bytes().as_usize();
+        let size = block_size(address).to_bytes().as_usize();
+        if size <= PARTITION_SIZE {
+            let partition = &mut self.partitions[address / PARTITION_SIZE];
+            debug_assert!(address >= partition.dynamic_space_start());
+            partition.marked_space += size;
+            debug_assert!(address + size <= partition.dynamic_space_end());
+        } else {
+            self.mark_large_object(object);
+        }
     }
 
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
@@ -525,5 +532,20 @@ impl PartitionedHeap {
             partition.free();
             self.reclaimed += size as u64;
         }
+    }
+
+    // Significant performance gain by not inlining.
+    #[inline(never)]
+    unsafe fn mark_large_object(&mut self, object: *mut Obj) {
+        let object_size = block_size(object as usize).to_bytes().as_usize();
+        debug_assert!(object_size > PARTITION_SIZE);
+        let number_of_partitions = (object_size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+        debug_assert!(number_of_partitions > 1);
+        let start_partition = object as usize / PARTITION_SIZE;
+        let end_partition = start_partition + number_of_partitions - 1;
+        for index in start_partition..end_partition {
+            self.partitions[index].marked_space = PARTITION_SIZE;
+        }
+        self.partitions[end_partition].marked_space = object_size % PARTITION_SIZE;
     }
 }
