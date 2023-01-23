@@ -61,11 +61,6 @@ pub unsafe fn copying_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    #[cfg(debug_assertions)]
-    {
-        crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
-    }
-
     let begin_from_space = heap_base as usize;
     let end_from_space = get_hp();
     let begin_to_space = end_from_space;
@@ -111,11 +106,6 @@ pub unsafe fn copying_gc_internal<
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
     set_hp(new_hp as u32);
-
-    #[cfg(debug_assertions)]
-    {
-        crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
-    }
 }
 
 /// Evacuate (copy) an object in from-space to to-space.

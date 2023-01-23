@@ -191,20 +191,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     pub unsafe fn run(&mut self) {
-        #[cfg(debug_assertions)]
-        {
-            crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
-        }
-
         self.alloc_mark_structures();
         self.mark_phase();
         self.compact_phase();
         self.free_mark_structures();
-
-        #[cfg(debug_assertions)]
-        {
-            crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
-        }
     }
 
     unsafe fn alloc_mark_structures(&mut self) {
