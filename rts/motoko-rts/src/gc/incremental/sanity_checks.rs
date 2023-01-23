@@ -128,9 +128,18 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             assert!(!partition.is_free());
             assert!(address >= partition.dynamic_space_start());
         }
-        assert!(
-            address + block_size(address).to_bytes().as_usize() <= partition.dynamic_space_end()
-        );
+        let size = block_size(address).to_bytes().as_usize();
+        if size > PARTITION_SIZE {
+            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+            for index in partition_index..partition_index + number_of_partitions {
+                assert!(self.heap.get_partition(index).has_large_content());
+            }
+        } else {
+            assert!(
+                address + block_size(address).to_bytes().as_usize()
+                    <= partition.dynamic_space_end()
+            );
+        }
     }
 
     unsafe fn check_heap(&self) {
