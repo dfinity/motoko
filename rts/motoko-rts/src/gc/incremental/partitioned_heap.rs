@@ -36,13 +36,15 @@
 
 use core::array::from_fn;
 
-use crate::{memory::Memory, rts_trap_with, types::*};
+use crate::{
+    gc::incremental::configuration::SURVIVAL_RATE_THRESHOLD, memory::Memory, rts_trap_with,
+    types::*,
+};
 
-pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
+use super::configuration::PARTITION_SIZE;
+
 // For simplicity, leave the last partition unused, to avoid partition end address overflow
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
-
-pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
 
 /// Heap partition of size `PARTITION_SIZE`.
 pub struct Partition {

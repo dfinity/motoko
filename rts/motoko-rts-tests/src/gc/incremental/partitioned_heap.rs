@@ -4,9 +4,9 @@ use std::{
 };
 
 use motoko_rts::{
+    gc::incremental::configuration::{PARTITION_SIZE, SURVIVAL_RATE_THRESHOLD},
     gc::incremental::partitioned_heap::{
-        HeapIteratorState, Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
-        SURVIVAL_RATE_THRESHOLD,
+        HeapIteratorState, Partition, PartitionedHeap, PartitionedHeapIterator,
     },
     memory::{alloc_array, alloc_blob, Memory},
     types::{

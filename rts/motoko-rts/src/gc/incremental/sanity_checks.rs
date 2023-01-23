@@ -4,11 +4,11 @@
 use core::ptr::null;
 
 use crate::gc::generational::remembered_set::RememberedSet;
-use crate::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
+use super::configuration::PARTITION_SIZE;
 use super::mark_stack::MarkStack;
 use super::partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator};
 use super::roots::{visit_roots, Roots};

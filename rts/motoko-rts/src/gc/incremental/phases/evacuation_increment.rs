@@ -88,12 +88,11 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         self.time.advance(size.as_usize());
 
         #[cfg(debug_assertions)]
-        Self::clear_object_content(original);
+        Self::clear_object_content(original, size);
     }
 
     #[cfg(debug_assertions)]
-    unsafe fn clear_object_content(original: *mut Obj) {
-        let object_size = block_size(original as usize);
+    unsafe fn clear_object_content(original: *mut Obj, object_size: Words<u32>) {
         let header_size = size_of::<Obj>();
         let payload_address = original as usize + header_size.to_bytes().as_usize();
         let payload_size = object_size - header_size;

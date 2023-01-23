@@ -15,6 +15,7 @@ use self::{
 
 pub mod array_slicing;
 pub mod barriers;
+pub mod configuration;
 pub mod mark_stack;
 pub mod partitioned_heap;
 mod phases;
@@ -52,15 +53,14 @@ static mut LAST_HEAP_OCCUPATION: usize = 0;
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    use self::partitioned_heap::PARTITION_SIZE;
-    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
-    const CRITICAL_LIMIT: usize = usize::MAX - 2 * PARTITION_SIZE;
+    use self::configuration::*;
+
     let occupation = heap_occupation();
     debug_assert!(occupation >= LAST_HEAP_OCCUPATION);
     let absolute_growth = occupation - LAST_HEAP_OCCUPATION;
     let relative_growth = absolute_growth as f64 / occupation as f64;
-    relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation >= PARTITION_SIZE
-        || occupation > CRITICAL_LIMIT
+    relative_growth > HEAP_GROWTH_THRESHOLD && occupation >= PARTITION_SIZE
+        || occupation > CRITICAL_MEMORY_LIMIT
 }
 
 #[cfg(feature = "ic")]
