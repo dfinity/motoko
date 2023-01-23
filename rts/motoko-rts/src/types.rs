@@ -748,10 +748,11 @@ impl Blob {
                 as *mut OneWordFiller;
             (*filler).tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
+            debug_assert!(slop >= size_of::<FreeSpace>());
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
             (*filler).tag = TAG_FREE_SPACE;
-            (*filler).words = slop - Words(1);
+            (*filler).words = slop - size_of::<FreeSpace>();
         }
 
         (*self).len = new_len;

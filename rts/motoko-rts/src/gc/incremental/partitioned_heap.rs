@@ -102,13 +102,15 @@ impl Partition {
             *block = TAG_ONE_WORD_FILLER;
         } else {
             *block = TAG_FREE_SPACE;
-            let free_space = block as *mut FreeSpace;
-            (*free_space).words = Bytes(remaining_space as u32).to_words(); // includes header
-                                                                            // Clear the remainder of the free space.
             let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
+            debug_assert!(remaining_space >= header_size);
+            let free_space = block as *mut FreeSpace;
+            (*free_space).words = Bytes((remaining_space - header_size) as u32).to_words();
+            // Clear the remainder of the free space.
             let clear_start = free_space as usize + header_size;
             let clear_length = Bytes((remaining_space - header_size) as u32);
             crate::mem_utils::memzero(clear_start, clear_length.to_words());
+            debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
         }
     }
 

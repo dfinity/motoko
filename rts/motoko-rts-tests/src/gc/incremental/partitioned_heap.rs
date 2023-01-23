@@ -197,9 +197,9 @@ fn test_close_partition_with_free_space(heap: &mut PartitionedTestHeap) {
     assert_ne!(heap.heap_pointer() / PARTITION_SIZE, old_partition);
     assert_ne!(blob.get_ptr(), old_heap_pointer);
     unsafe {
-        let free_space = old_heap_pointer as *const FreeSpace;
+        let free_space = old_heap_pointer as *mut FreeSpace;
         assert_eq!((*free_space).tag, TAG_FREE_SPACE);
-        assert_eq!((*free_space).words.to_bytes().as_usize(), remainder);
+        assert_eq!(free_space.size().to_bytes().as_usize(), remainder);
     }
 }
 
@@ -426,7 +426,7 @@ unsafe fn block_size(block: *const Tag) -> usize {
             size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }
         TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
-        TAG_FREE_SPACE => (*(block as *const FreeSpace)).words.to_bytes().as_usize(),
+        TAG_FREE_SPACE => (block as *mut FreeSpace).size().to_bytes().as_usize(),
         TAG_ONE_WORD_FILLER => WORD_SIZE,
         _ => unimplemented!(),
     }
