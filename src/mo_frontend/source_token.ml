@@ -58,6 +58,7 @@ type token =
   | AND
   | OR
   | IMPLIES
+  | OLD
   | NOT
   | IMPORT
   | MODULE
@@ -184,6 +185,7 @@ let to_parser_token :
   | AND -> Ok Parser.AND
   | OR -> Ok Parser.OR
   | IMPLIES -> Ok Parser.IMPLIES
+  | OLD -> Ok Parser.OLD
   | NOT -> Ok Parser.NOT
   | IMPORT -> Ok Parser.IMPORT
   | MODULE -> Ok Parser.MODULE
@@ -373,6 +375,7 @@ let string_of_parser_token = function
   | Parser.UNDERSCORE -> "UNDERSCORE"
   | Parser.INVARIANT -> "INVARIANT"
   | Parser.IMPLIES -> "IMPLIES"
+  | Parser.OLD -> "OLD"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

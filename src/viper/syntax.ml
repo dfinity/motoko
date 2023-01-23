@@ -1,4 +1,8 @@
-type info = NoInfo
+type info =
+  | NoInfo
+  | ActorInit
+  | PublicFunction of string
+  | PrivateFunction of string
 
 type id = (string, info) Source.annotated_phrase
 
@@ -41,6 +45,7 @@ and exp' =
   | AndE of exp * exp
   | OrE of exp * exp
   | Implies of exp * exp
+  | Old of exp
   | FldAcc of fldacc
   | PermE of perm          (* perm_amount *)
   | AccE of fldacc * exp   (* acc((rcvr: exp).field, (exp: perm_amount)) *)
@@ -64,7 +69,7 @@ and tmpl' = (Mo_def.Syntax.exp -> exp) -> exp
 and fldacc = exp * id
 
 and stmt' =
-  | MethodCallS of id * exp list * id list
+  | MethodCallS of id list * id * exp list
   | ExhaleS of exp
   | InhaleS of exp
   | AssertS of exp
