@@ -704,9 +704,10 @@ type ErrorCode = {
   #canister_reject;
   // Canister trapped.
   #canister_error;
-  // Future error code (with unrecognized numeric code)
+  // Future error code (with unrecognized numeric code).
   #future : Nat32;
   // Error issuing inter-canister call
+  // (indicating destination queue full or freezing threshold crossed).
   #call_error : { err_code : Nat32 }
 };
 ```
