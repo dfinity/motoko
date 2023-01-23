@@ -304,6 +304,8 @@ impl Value {
         }
     }
 
+    /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
+    /// Returns `false` for pointers to special `OneWordFiller` and `FreeSpace` blocks that have no regular object header.
     pub unsafe fn is_obj(self) -> bool {
         let tag = self.tag();
         tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
