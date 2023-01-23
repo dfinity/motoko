@@ -363,7 +363,7 @@ fn heap_size_for_gc(
             );
             size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
         }
-        GC::Incremental => PARTITION_SIZE,
+        GC::Incremental => 2 * PARTITION_SIZE,
     }
 }
 

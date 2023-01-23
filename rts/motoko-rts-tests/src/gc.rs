@@ -15,6 +15,7 @@ mod utils;
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
+use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use motoko_rts::gc::incremental::{time::BoundedTime, PARTITIONED_HEAP};
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
@@ -29,6 +30,8 @@ use motoko_rts::types::*;
 use std::fmt::Write;
 
 use fxhash::{FxHashMap, FxHashSet};
+
+use crate::memory::TestMemory;
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -111,6 +114,7 @@ fn test_gcs(heap_descr: &TestHeap) {
             &heap_descr.continuation_table,
         );
     }
+    reset_partitioned_heap();
 }
 
 fn test_gc(
@@ -152,7 +156,6 @@ fn test_gc(
             gc == GC::Incremental,
         );
     }
-    initialize_gc_state(&mut heap, gc);
 }
 
 fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
@@ -165,7 +168,7 @@ fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
 }
 
 unsafe fn initialize_incremental_gc(heap: &mut MotokoHeap) {
-    IncrementalGC::<MotokoHeap>::initialize(heap, heap.heap_base_address());
+    IncrementalGC::initialize(heap, heap.heap_base_address());
     let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
     // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
@@ -176,6 +179,13 @@ unsafe fn initialize_incremental_gc(heap: &mut MotokoHeap) {
     // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
     // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
     assert_eq!(result.get_ptr(), heap.heap_base_address());
+}
+
+fn reset_partitioned_heap() {
+    let mut memory = TestMemory::new(Words(PARTITION_SIZE as u32));
+    unsafe {
+        IncrementalGC::initialize(&mut memory, 0);
+    }
 }
 
 /// Check the dynamic heap:
@@ -244,6 +254,7 @@ fn check_dynamic_heap(
             let is_fowarded = forward != make_pointer(address as u32);
 
             if incremental && tag == TAG_BLOB {
+                assert!(!is_fowarded);
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
                 offset += WORD_SIZE + length as usize;
@@ -254,20 +265,27 @@ fn check_dynamic_heap(
                     assert_eq!(tag, TAG_ARRAY);
                 }
 
-                let n_fields = read_word(heap, offset);
-                offset += WORD_SIZE;
-
-                // There should be at least one field for the index
-                assert!(n_fields >= 1);
-
-                let object_idx = get_scalar_value(read_word(heap, offset));
-                offset += WORD_SIZE;
-
                 if is_fowarded {
                     assert!(incremental);
+
+                    let forward_offset = forward as usize - heap.as_ptr() as usize;
+                    let length = read_word(
+                        heap,
+                        forward_offset + size_of::<Obj>().to_bytes().as_usize(),
+                    );
+
                     // Skip stale object version that has been relocated during incremental GC.
-                    offset += n_fields as usize * WORD_SIZE;
+                    offset += length as usize * WORD_SIZE;
                 } else {
+                    let n_fields = read_word(heap, offset);
+                    offset += WORD_SIZE;
+
+                    // There should be at least one field for the index
+                    assert!(n_fields >= 1);
+
+                    let object_idx = get_scalar_value(read_word(heap, offset));
+                    offset += WORD_SIZE;
+
                     let old = seen.insert(object_idx, address);
                     if let Some(old) = old {
                         panic!(
