@@ -42,14 +42,6 @@ let argspec = Arg.align
 
 module Pretty = Type.MakePretty(Type.ElideStamps)
 
-let load_file f =
-  let ic = open_in_bin f in
-  let n = in_channel_length ic in
-  let s = Bytes.create n in
-  really_input ic s 0 n;
-  close_in ic;
-  Bytes.to_string s
-
 let write_file f s =
   let oc_ = open_out f in
   output_string oc_ s;
