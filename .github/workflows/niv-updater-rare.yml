@@ -5,7 +5,7 @@ on:
   #  -H "Authorization: token <your-token-here>" \
   #  --request POST \
   #  --data '{"event_type": "niv-updater-nudge", "client_payload": {}}' \
-  #  https://api.github.com/repos/dfinity-lab/motoko/dispatches
+  #  https://api.github.com/repos/dfinity/motoko/dispatches
   # https://help.github.com/en/actions/reference/events-that-trigger-workflows#external-events-repository_dispatch
   repository_dispatch:
     types: niv-updater-nudge
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
-        uses: knl/niv-updater-action@v11
+        uses: knl/niv-updater-action@v12
         with:
           # might be too noisy
           whitelist: 'ic-ref,musl-wasi'

@@ -74,19 +74,38 @@
     Calling `allOrNothing()` will not send any messages: the loop exits with an error on queue full,
     the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
 
+## 0.7.6 (2023-01-20)
+
+* motoko (`moc`)
+
+  * Added support for `ManagementCanister.raw_rand` in interpreters (#3693).
+
   * Added preliminary Viper support for `old` expressions in specifications and calls to private methods (#3675).
 
   * bugfix: in the default timer mechanism `cancelTimer` sometimes wouldn't actually stop a recurring timer (#3695).
 
+  * bugfix: zero negation for floating point numbers in compiled code (#3676).
+
 * motoko-base
 
   * Add user-facing timer functionality (dfinity/motoko-base#474).
+
+  * Add `Array.size` (#486, #494).
+
+  * Add `TrieSet` methods `isEmpty`, `isSubset` (dfinity/motoko-base#503).
 
   * BREAKING CHANGES (Minor):
     - renamed `Float.neq` to `Float.neg` (this was a misspelling)
     - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
     - removed second argument from `bitnot` (this was an oversight)
 
+  * bugfix: `Random.Finite.coin` didn't use entropy correctly (dfinity/motoko-base#500).
+
+  * bugfix: `Trie.mergeDisjoint` (dfinity/motoko-base#505).
+
+  * bugfix: `TrieSet.equals` (dfinity/motoko-base#503).
+
+  * Various documentation fixes and API usage examples.
 
 ## 0.7.5 (2022-12-23)
 
