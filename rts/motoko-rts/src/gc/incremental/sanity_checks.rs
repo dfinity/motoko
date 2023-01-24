@@ -10,7 +10,7 @@ use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
 use super::mark_stack::MarkStack;
-use super::partitioned_heap::{HeapIteratorState, PartitionedHeap, PartitionedHeapIterator};
+use super::partitioned_heap::PartitionedHeap;
 use super::roots::{visit_roots, Roots};
 use super::PARTITIONED_HEAP;
 
@@ -58,7 +58,6 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
     unsafe fn run(&mut self) {
         self.check_roots();
         self.check_all_reachable();
-        self.check_heap();
     }
 
     unsafe fn check_roots(&mut self) {
@@ -110,6 +109,9 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
 
     unsafe fn check_object_header(&self, object: Value) {
         let tag = object.tag();
+        if tag == TAG_FREE_SPACE {
+            println!(100, "ERROR {:#x} {tag}", object.get_ptr());
+        }
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         object.check_forwarding_pointer();
         if let CheckerMode::UpdateCompletion = self.mode {
@@ -139,18 +141,6 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
                 address + block_size(address).to_bytes().as_usize()
                     <= partition.dynamic_space_end()
             );
-        }
-    }
-
-    unsafe fn check_heap(&self) {
-        let mut iterator_state = HeapIteratorState::new();
-        let mut iterator = PartitionedHeapIterator::resume(self.heap, &mut iterator_state);
-        while iterator.current_object().is_some() {
-            let object = iterator.current_object().unwrap();
-            let value = Value::from_ptr(object as usize);
-            // Note: Only check the header, as the object may be garbage and thus contain stale pointers.
-            self.check_object_header(value);
-            iterator.next_object();
         }
     }
 }

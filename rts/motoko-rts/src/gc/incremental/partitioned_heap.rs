@@ -164,6 +164,7 @@ impl HeapIteratorState {
 }
 
 /// Instantiated per GC increment, operating on a stored `HeapIteratorState`.
+/// Iterates over all marked objects.
 pub struct PartitionedHeapIterator<'a> {
     heap: &'a PartitionedHeap,
     partition_index: &'a mut usize,
@@ -191,7 +192,7 @@ impl<'a> PartitionedHeapIterator<'a> {
             *self.current_address = self.heap.base_address();
         }
         if *self.partition_index < MAX_PARTITIONS {
-            self.skip_free_space();
+            self.skip_unmarked_space();
         }
     }
 
@@ -226,24 +227,33 @@ impl<'a> PartitionedHeapIterator<'a> {
         self.current_partition().unwrap().dynamic_space_end()
     }
 
-    unsafe fn skip_free_space(&mut self) {
-        self.skip_free_blocks();
+    unsafe fn skip_unmarked_space(&mut self) {
+        self.skip_unmarked_blocks();
         // Implicitly also skips free partitions as the dynamic size is zero.
         while *self.current_address == self.partition_scan_end() {
             self.skip_partitions(1);
             if *self.partition_index == MAX_PARTITIONS {
                 return;
             }
-            self.skip_free_blocks();
+            self.skip_unmarked_blocks();
         }
     }
 
-    unsafe fn skip_free_blocks(&mut self) {
+    unsafe fn skip_unmarked_blocks(&mut self) {
         while *self.current_address < self.partition_scan_end()
-            && !Value::from_ptr(*self.current_address).is_obj()
+            && !is_marked(*(*self.current_address as *mut Tag))
         {
-            let size = block_size(*self.current_address);
-            *self.current_address += size.to_bytes().as_usize();
+            self.skip_object();
+        }
+    }
+
+    unsafe fn skip_object(&mut self) {
+        let size = block_size(*self.current_address).to_bytes().as_usize();
+        if size > PARTITION_SIZE {
+            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+            self.skip_partitions(number_of_partitions);
+        } else {
+            *self.current_address += size;
             debug_assert!(*self.current_address <= self.partition_scan_end());
         }
     }
@@ -266,21 +276,14 @@ impl<'a> PartitionedHeapIterator<'a> {
             1
         };
         self.skip_partitions(number_of_partitions);
-        self.skip_free_space();
+        self.skip_unmarked_space();
     }
 
     pub unsafe fn next_object(&mut self) {
         debug_assert!(*self.current_address >= self.partition_scan_start());
         debug_assert!(*self.current_address < self.partition_scan_end());
-        let size = block_size(*self.current_address).to_bytes().as_usize();
-        if size > PARTITION_SIZE {
-            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
-            self.skip_partitions(number_of_partitions);
-        } else {
-            *self.current_address += size;
-            debug_assert!(*self.current_address <= self.partition_scan_end());
-        }
-        self.skip_free_space();
+        self.skip_object();
+        self.skip_unmarked_space();
     }
 }
 
@@ -469,7 +472,7 @@ impl PartitionedHeap {
             debug_assert_eq!(partition.static_size, 0);
             debug_assert_eq!(partition.dynamic_size, 0);
             if index == last_index {
-                partition.dynamic_size = size % PARTITION_SIZE;
+                partition.dynamic_size = size - (number_of_partitions - 1) * PARTITION_SIZE;
 
                 #[cfg(debug_assertions)]
                 partition.clear_free_remainder();

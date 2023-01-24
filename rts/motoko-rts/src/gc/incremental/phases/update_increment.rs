@@ -77,24 +77,30 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     unsafe fn update_partition(&mut self, partition_index: usize) {
-        while self.heap_iterator.is_inside_partition(partition_index) && !self.time.is_over() {
+        while self.heap_iterator.is_inside_partition(partition_index) {
             let object = self.heap_iterator.current_object().unwrap();
-            if object.is_marked() {
-                debug_assert!(!object.is_forwarded());
-                if self.updates_needed {
-                    self.update_fields(object);
-                }
-                self.time.tick();
-                if self.time.is_over() {
-                    // Keep mark bit and later resume updating more slices of this array
-                    return;
-                }
-                object.unmark();
-                debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
+            self.update_object(object);
+            if self.time.is_over() {
+                // Resume updating more slices of this array.
+                return;
             }
             self.heap_iterator.next_object();
-            self.time.tick();
         }
+    }
+
+    unsafe fn update_object(&mut self, object: *mut Obj) {
+        debug_assert!(object.is_marked());
+        debug_assert!(!object.is_forwarded());
+        if self.updates_needed {
+            self.update_fields(object);
+        }
+        if self.time.is_over() {
+            // Keep mark bit and later resume updating more slices of this array.
+            return;
+        }
+        object.unmark();
+        debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
+        self.time.tick();
     }
 
     unsafe fn update_fields(&mut self, object: *mut Obj) {

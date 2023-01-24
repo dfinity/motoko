@@ -10,7 +10,7 @@ use motoko_rts::{
     },
     memory::{alloc_array, alloc_blob, Memory},
     types::{
-        is_marked, unmark, Array, Blob, Bytes, FreeSpace, OneWordFiller, Tag, Value, Words,
+        is_marked, unmark, Array, Blob, Bytes, FreeSpace, Obj, OneWordFiller, Tag, Value, Words,
         TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER,
     },
 };
@@ -63,6 +63,8 @@ unsafe fn test_iteration(
         while iterator.current_object().is_some() {
             assert!(iterator.current_partition().is_some());
             let object = iterator.current_object().unwrap();
+            assert!(object.is_marked());
+            object.unmark();
             let array = Value::from_ptr(object as usize).as_array();
             let content = array.get(0).get_scalar();
             assert_eq!(content as usize, count);
@@ -115,21 +117,18 @@ unsafe fn test_evacuation_plan(heap: &mut PartitionedHeap, occupied_partitions: 
     heap.plan_evacuations();
     let mut iterator_state = HeapIteratorState::new();
     let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);
-    let mut allocation_partition_present = false;
     while iterator.current_partition().is_some() {
         assert!(iterator.current_object().is_some());
         let partition = iterator.current_partition().unwrap();
         assert!(partition.get_index() < occupied_partitions);
         assert!(!partition.is_free());
         if heap.is_allocation_partition(partition.get_index()) {
-            allocation_partition_present = true;
             assert!(!partition.to_be_evacuated());
         } else {
             assert!(partition.to_be_evacuated());
         }
         iterator.next_partition();
     }
-    assert!(allocation_partition_present);
 }
 
 unsafe fn test_freeing_partitions(heap: &mut PartitionedHeap, occupied_partitions: usize) {
@@ -137,12 +136,14 @@ unsafe fn test_freeing_partitions(heap: &mut PartitionedHeap, occupied_partition
     heap.free_evacuated_partitions();
     let mut iterator_state = HeapIteratorState::new();
     let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state);
-    let partition = iterator.current_partition().unwrap();
-    assert!(partition.get_index() < occupied_partitions);
-    assert!(!partition.is_free());
-    assert!(!partition.to_be_evacuated());
-    assert!(heap.is_allocation_partition(partition.get_index()));
-    iterator.next_partition();
+    while iterator.current_partition().is_some() {
+        let partition = iterator.current_partition().unwrap();
+        assert!(partition.get_index() < occupied_partitions);
+        assert!(!partition.is_free());
+        assert!(!partition.to_be_evacuated());
+        assert!(heap.is_allocation_partition(partition.get_index()));
+        iterator.next_partition();
+    }
     assert!(iterator.current_partition().is_none());
     assert!(heap.occupied_size().as_usize() < PARTITION_SIZE + heap.base_address());
 }
@@ -282,7 +283,8 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     for size in sizes.iter() {
         assert_eq!(*size % WORD_SIZE, 0);
         assert!(*size >= size_of::<Blob>());
-        heap.allocate_blob(*size - size_of::<Blob>());
+        let blob = heap.allocate_blob(*size - size_of::<Blob>());
+        (blob.get_ptr() as *mut Obj).mark();
     }
     assert!(
         heap.inner.occupied_size().as_usize() >= sizes.iter().sum::<usize>() + heap.heap_base()
@@ -301,6 +303,8 @@ unsafe fn iterate_objects(heap: &PartitionedHeap, expected_sizes: &[usize]) {
     let mut iterator = PartitionedHeapIterator::resume(&heap, &mut iterator_state);
     while iterator.current_object().is_some() {
         let object = iterator.current_object().unwrap();
+        assert!(object.is_marked());
+        object.unmark();
         assert_eq!(object.tag(), TAG_BLOB);
         let size = block_size(object as *const Tag);
         detected_sizes.push(size);
@@ -368,7 +372,11 @@ fn allocate_objects(heap: &mut PartitionedTestHeap) {
     for index in 0..NUMBER_OF_OBJECTS {
         progress(index + 1, NUMBER_OF_OBJECTS);
         let value = Value::from_scalar(index as u32);
-        heap.allocate_array(&[value]);
+        let array = heap.allocate_array(&[value]);
+        unsafe {
+            let object = array.get_ptr() as *mut Obj;
+            object.mark();
+        }
     }
     reset_progress();
 }

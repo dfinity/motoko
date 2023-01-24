@@ -65,9 +65,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             let original = self.heap_iterator.current_object().unwrap();
             // Advance the iterator before the evacuation clears the original object content in debug mode.
             self.heap_iterator.next_object();
-            if original.is_marked() {
-                self.evacuate_object(original);
-            }
+            self.evacuate_object(original);
             self.time.tick();
         }
     }
