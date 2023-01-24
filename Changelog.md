@@ -4,6 +4,16 @@
 
   * BREAKING CHANGE
 
+    Motoko Candid de-serialization now checks that the actual type of a deserialized actor or shared function is a subtype of the expected type.
+
+    Under an option type, failure of subtyping will cause the nearest enclosing value of optional type to be deserialized as `null`.
+
+    Outside any option type, failure of subtyping will cause deserialization to fail with a trap, or, when using, `from_candid b`, return `null`.
+
+    In particular, deserializing an optional variant type will succeed if the actual variant value is compatible with the expected variant type (even if the actual variant type is not a subtype of the expected type).
+
+  * BREAKING CHANGE
+
     On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
     This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
     or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
