@@ -78,6 +78,7 @@ end
 
 val is_shared_sort : 'a shared -> bool
 
+
 (* Short-hands *)
 
 val unit : typ
@@ -198,7 +199,9 @@ val opaque : typ -> bool
 val concrete : typ -> bool
 val shared : typ -> bool
 val find_unshared : typ -> typ option
+
 val is_shared_func : typ -> bool
+val is_local_async_func : typ -> bool
 
 val stable : typ -> bool
 

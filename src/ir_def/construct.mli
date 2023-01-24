@@ -62,6 +62,7 @@ val optE : exp -> exp
 val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
 val natE : Mo_values.Numerics.Nat.t -> exp
+val nat32E : Mo_values.Numerics.Nat32.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
@@ -145,3 +146,7 @@ val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
 (* Records *)
 
 val recordE : (lab * exp) list -> exp
+
+(* IC ic0.call_perform status checking *)
+
+val check_call_perform_status : exp -> (exp -> exp) -> exp
