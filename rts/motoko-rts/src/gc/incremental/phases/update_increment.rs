@@ -46,7 +46,7 @@ impl<'a> UpdateIncrement<'a> {
         UpdateIncrement {
             time,
             heap_base: heap.base_address(),
-            heap_iterator: PartitionedHeapIterator::resume(heap, state),
+            heap_iterator: PartitionedHeapIterator::resume(heap, state, false),
             updates_needed,
         }
     }
@@ -62,22 +62,12 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn run(&mut self) {
-        while self.heap_iterator.current_partition().is_some() {
-            let partition = self.heap_iterator.current_partition().unwrap();
-            if !partition.to_be_evacuated() {
-                debug_assert!(!partition.is_free());
-                self.update_partition(partition.get_index());
-                if self.time.is_over() {
-                    return;
-                }
-            } else {
-                self.heap_iterator.next_partition();
-            }
-        }
-    }
-
-    unsafe fn update_partition(&mut self, partition_index: usize) {
-        while self.heap_iterator.is_inside_partition(partition_index) {
+        while self.heap_iterator.current_object().is_some() {
+            debug_assert!(!self
+                .heap_iterator
+                .current_partition()
+                .unwrap()
+                .to_be_evacuated());
             let object = self.heap_iterator.current_object().unwrap();
             self.update_object(object);
             if self.time.is_over() {

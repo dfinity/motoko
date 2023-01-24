@@ -42,26 +42,17 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         EvacuationIncrement {
             mem,
             time,
-            heap_iterator: PartitionedHeapIterator::resume(heap, state),
+            heap_iterator: PartitionedHeapIterator::resume(heap, state, true),
         }
     }
 
     pub unsafe fn run(&mut self) {
-        while self.heap_iterator.current_partition().is_some() {
-            let partition = self.heap_iterator.current_partition().unwrap();
-            if partition.to_be_evacuated() {
-                self.evacuate_partition(partition.get_index());
-                if self.time.is_over() {
-                    return;
-                }
-            } else {
-                self.heap_iterator.next_partition();
-            }
-        }
-    }
-
-    unsafe fn evacuate_partition(&mut self, partition_index: usize) {
-        while self.heap_iterator.is_inside_partition(partition_index) && !self.time.is_over() {
+        while self.heap_iterator.current_object().is_some() && !self.time.is_over() {
+            debug_assert!(self
+                .heap_iterator
+                .current_partition()
+                .unwrap()
+                .to_be_evacuated());
             let original = self.heap_iterator.current_object().unwrap();
             // Advance the iterator before the evacuation clears the original object content in debug mode.
             self.heap_iterator.next_object();
