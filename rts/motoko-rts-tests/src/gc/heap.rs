@@ -26,6 +26,10 @@ impl Memory for MotokoHeap {
         self.inner.borrow_mut().alloc_words(n)
     }
 
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
+        self.alloc_words(n)
+    }
+
     unsafe fn grow_memory(&mut self, ptr: u64) {
         self.inner.borrow_mut().grow_memory(ptr as usize);
     }
@@ -311,6 +315,10 @@ struct DummyMemory {}
 
 impl Memory for DummyMemory {
     unsafe fn alloc_words(&mut self, _n: Words<u32>) -> Value {
+        unreachable!()
+    }
+
+    unsafe fn linear_alloc_words(&mut self, _n: Words<u32>) -> Value {
         unreachable!()
     }
 

@@ -48,6 +48,10 @@ impl Memory for TestMemory {
         Value::from_ptr(old_hp)
     }
 
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
+        self.alloc_words(n)
+    }
+
     unsafe fn grow_memory(&mut self, ptr: u64) {
         let heap_end = self.heap.as_ptr() as usize + self.heap.len();
         if ptr as usize > heap_end {

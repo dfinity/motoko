@@ -26,7 +26,11 @@ use motoko_rts_macros::ic_mem_fn;
 ///
 /// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
+    // General allocator working for all GC variants.
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+    // Optimized version, only to be used by non-incremental GC runtimes.
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value;
+    // Grow the allocated memory size to at leat the address of `ptr`.
     unsafe fn grow_memory(&mut self, ptr: u64);
 }
 

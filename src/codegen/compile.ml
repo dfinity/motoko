@@ -943,7 +943,8 @@ module RTS = struct
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "schedule_generational_gc" [] [];
     E.add_func_import env "rts" "schedule_incremental_gc" [] [];
-    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "linear_alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "partitioned_alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
@@ -1037,7 +1038,10 @@ module Heap = struct
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
     compile_unboxed_const n  ^^
-    E.call_import env "rts" "alloc_words"
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.call_import env "rts" "partitioned_alloc_words"
+    else
+      E.call_import env "rts" "linear_alloc_words")
 
   (* Heap objects *)
 

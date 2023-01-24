@@ -102,6 +102,24 @@ impl Memory for IcMemory {
         }
     }
 
+    #[inline]
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
+        let bytes = n.to_bytes();
+        let delta = u64::from(bytes.as_u32());
+
+        // Update heap pointer
+        let old_hp = u64::from(HP);
+        let new_hp = old_hp + delta;
+
+        // Grow memory if needed
+        self.grow_memory(new_hp);
+
+        debug_assert!(new_hp <= u64::from(core::u32::MAX));
+        HP = new_hp as u32;
+
+        Value::from_ptr(old_hp as usize)
+    }
+
     /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: u64) {
