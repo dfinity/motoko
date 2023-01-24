@@ -384,15 +384,7 @@ impl PartitionedHeap {
         let occupied_size: usize = self
             .partitions
             .iter()
-            .map(|partition| {
-                if partition.free {
-                    partition.static_size
-                } else if partition.index == self.allocation_index {
-                    partition.static_size + partition.dynamic_size
-                } else {
-                    PARTITION_SIZE
-                }
-            })
+            .map(|partition| partition.static_size + partition.dynamic_size)
             .sum();
         Bytes(occupied_size as u32)
     }
@@ -436,6 +428,10 @@ impl PartitionedHeap {
         } else {
             self.allocate_in_new_partition(mem, size)
         }
+    }
+
+    pub unsafe fn start_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
+        self.allocate_in_new_partition(mem, 0);
     }
 
     // Significant performance gain by not inlining.

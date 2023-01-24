@@ -25,6 +25,10 @@ pub struct MarkIncrement<'a, M: Memory> {
 
 impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     pub unsafe fn start_phase(mem: &mut M) {
+        PARTITIONED_HEAP
+            .as_mut()
+            .unwrap()
+            .start_new_allocation_partition(mem);
         debug_assert!(MARK_STATE.is_none());
         let mark_stack = MarkStack::new(mem);
         let state = MarkState {
