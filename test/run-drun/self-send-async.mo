@@ -8,7 +8,6 @@ actor a {
   public func test1() : async () {
     var n = 0;
     while (n < 1000) {
-//      Prim.debugPrint(debug_show n);
       ignore async ();
       n += 1;
     }
@@ -19,7 +18,6 @@ actor a {
     try {
       var n = 0;
       while (n < 1000) {
-//        Prim.debugPrint(debug_show n);
         ignore async ();
         n += 1;
       }

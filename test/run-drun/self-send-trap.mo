@@ -21,7 +21,6 @@ actor self {
   public func test1() : async () {
     var n = 0;
     while (n < DOUBLE_CAPACITY) {
-//      Prim.debugPrint(debug_show n);
       ignore request();
       n += 1;
     }
@@ -32,7 +31,6 @@ actor self {
     try {
       var n = 0;
       while (n < DOUBLE_CAPACITY) {
-//        Prim.debugPrint(debug_show n);
         ignore request();
         n += 1;
       }
@@ -45,7 +43,6 @@ actor self {
   public func test3() : async () {
     var n = 0;
     while (n < DOUBLE_CAPACITY) {
-//      Prim.debugPrint(debug_show n);
       oneway(); // never trap
       n += 1;
     }
@@ -56,7 +53,6 @@ actor self {
     try {
       var n = 0;
       while (n < DOUBLE_CAPACITY) {
-//        Prim.debugPrint(debug_show n);
         oneway();
         n += 1;
       }
@@ -70,14 +66,13 @@ actor self {
   public func test5() : async () {
     var n = 0;
     while (n < DOUBLE_CAPACITY) {
-//    Prim.debugPrint(debug_show n);
       // NB: calling
       // ignore Prim.call_raw(Prim.principalOfActor(self),"request", to_candid ());
       // is not enough to trigger message send failure, because the Prim.call_raw is an
       // eta-expansion of prim "call_raw", and introduces an additional await, draining the queue.
       // Instead, we need to call the raw primitive:
       ignore (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (Prim.principalOfActor(self),"request", to_candid ());
-      //ignore request();
+
       n += 1;
     }
 
@@ -87,7 +82,6 @@ actor self {
     try {
       var n = 0;
       while (n < DOUBLE_CAPACITY) {
-//        Prim.debugPrint(debug_show n);
       // NB: calling
       // ignore Prim.call_raw(Prim.principalOfActor(self),"request", to_candid ());
       // is not enough to trigger message send failure, because the Prim.call_raw is an
@@ -107,7 +101,6 @@ actor self {
     var a = async ();
     await a;
     while (n < PRED_MAX_SELF_QUEUE_CAPACITY) {
-//      Prim.debugPrint(debug_show n);
       ignore request();
       n += 1;
     };
@@ -139,7 +132,6 @@ actor self {
   public func test9() : async () {
     var n = 0;
     while (n < DOUBLE_CAPACITY) {
-//      Prim.debugPrint(debug_show n);
       ignore local();
       n += 1;
     }
@@ -150,7 +142,6 @@ actor self {
     try {
       var n = 0;
       while (n < DOUBLE_CAPACITY) {
-//        Prim.debugPrint(debug_show n);
         ignore local();
         n += 1;
       }
