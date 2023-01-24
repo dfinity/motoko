@@ -275,6 +275,7 @@ unsafe fn test_large_size_scenario() {
     test_allocation_sizes(&[24, LARGE, LARGE, 36], 5);
     test_allocation_sizes(&[24, EXTRA_LARGE, 16], 3);
     test_allocation_sizes(&[24, EXTRA_LARGE, LARGE, 16], 6);
+    test_allocation_sizes(&[24, EXTRA_LARGE, 32, LARGE, 16], 6);
 }
 
 unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
@@ -294,6 +295,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     heap.inner.plan_evacuations();
     heap.inner.collect_large_objects();
     heap.inner.free_evacuated_partitions();
+    iterate_objects(&heap.inner, &[]);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
 }
 
