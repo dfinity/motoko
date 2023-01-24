@@ -867,12 +867,12 @@ let find_unshared t =
   in go t
 
 let is_shared_func typ =
-  match normalize typ with
+  match promote typ with
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
 let is_local_async_func typ =
-  match normalize typ with
+  match promote typ with
   | Func
       (Local, Returns,
        { sort = Scope; _ }::_,
