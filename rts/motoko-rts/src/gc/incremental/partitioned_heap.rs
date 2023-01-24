@@ -240,24 +240,27 @@ impl<'a> PartitionedHeapIterator<'a> {
     }
 
     unsafe fn skip_unmarked_blocks(&mut self) {
-        while *self.current_address < self.partition_scan_end()
+        let end_address = self.partition_scan_end();
+        while *self.current_address < end_address
             && !is_marked(*(*self.current_address as *mut Tag))
         {
             self.skip_object();
         }
     }
 
+    #[inline]
     unsafe fn skip_object(&mut self) {
         let size = block_size(*self.current_address).to_bytes().as_usize();
-        if size > PARTITION_SIZE {
-            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
-            self.skip_partitions(number_of_partitions);
-        } else {
+        if size <= PARTITION_SIZE {
             *self.current_address += size;
             debug_assert!(*self.current_address <= self.partition_scan_end());
+        } else {
+            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
+            self.skip_partitions(number_of_partitions);
         }
     }
 
+    #[inline(never)]
     fn skip_partitions(&mut self, number_of_partitions: usize) {
         debug_assert!(*self.partition_index < MAX_PARTITIONS);
         *self.partition_index += number_of_partitions;
