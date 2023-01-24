@@ -175,7 +175,7 @@ unsafe fn initialize_incremental_gc(heap: &mut MotokoHeap) {
     let result = PARTITIONED_HEAP
         .as_mut()
         .unwrap()
-        .allocate(heap, Bytes(allocation_size as u32));
+        .allocate(heap, Bytes(allocation_size as u32).to_words());
     // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
     // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
     assert_eq!(result.get_ptr(), heap.heap_base_address());

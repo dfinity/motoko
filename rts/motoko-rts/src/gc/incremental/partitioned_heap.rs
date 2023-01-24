@@ -415,11 +415,12 @@ impl PartitionedHeap {
         }
     }
 
-    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, size: Bytes<u32>) -> Value {
-        if size.as_usize() <= PARTITION_SIZE {
-            self.allocate_normal_object(mem, size.as_usize())
+    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {
+        let size = words.to_bytes().as_usize();
+        if size <= PARTITION_SIZE {
+            self.allocate_normal_object(mem, size)
         } else {
-            self.allocate_large_object(mem, size.as_usize())
+            self.allocate_large_object(mem, size)
         }
     }
 

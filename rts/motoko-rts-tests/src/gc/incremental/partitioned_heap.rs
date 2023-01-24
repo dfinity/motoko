@@ -438,7 +438,7 @@ unsafe fn block_size(block: *const Tag) -> usize {
 
 impl Memory for PartitionedTestHeap {
     unsafe fn alloc_words(&mut self, size: Words<u32>) -> Value {
-        let result = self.inner.allocate(&mut self.memory, size.to_bytes());
+        let result = self.inner.allocate(&mut self.memory, size);
         self.memory
             .set_heap_pointer(result.get_ptr() + size.to_bytes().as_usize());
         result

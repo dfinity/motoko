@@ -14,9 +14,6 @@ pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
-/// Counter for total allocations
-pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
-
 /// Heap pointer
 pub(crate) static mut HP: u32 = 0;
 
@@ -58,7 +55,7 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    ALLOCATED
+    Bytes(get_heap_size().as_usize() as u64) + RECLAIMED
 }
 
 #[no_mangle]
@@ -75,7 +72,10 @@ pub struct IcMemory;
 
 impl IcMemory {
     #[inline]
-    unsafe fn linear_allocation(&mut self, delta: u64) -> Value {
+    unsafe fn linear_allocation(&mut self, n: Words<u32>) -> Value {
+        let bytes = n.to_bytes();
+        let delta = u64::from(bytes.as_u32());
+
         // Update heap pointer
         let old_hp = u64::from(HP);
         let new_hp = old_hp + delta;
@@ -93,17 +93,12 @@ impl IcMemory {
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
-
-        // Update ALLOCATED
-        let delta = u64::from(bytes.as_u32());
-        ALLOCATED += Bytes(delta);
-
-        // Select partition, if incremental GC is enabled
-        if let Some(heap) = &mut PARTITIONED_HEAP {
-            heap.allocate(self, bytes)
+        // Select partition, if incremental GC is enabled.
+        // Comparison with `is_some()` is faster than using pattern matching with `if let`.
+        if PARTITIONED_HEAP.is_some() {
+            PARTITIONED_HEAP.as_mut().unwrap().allocate(self, n)
         } else {
-            self.linear_allocation(delta)
+            self.linear_allocation(n)
         }
     }
 

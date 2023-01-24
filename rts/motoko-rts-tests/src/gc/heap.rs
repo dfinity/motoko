@@ -279,17 +279,15 @@ impl MotokoHeapInner {
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
-
         if let Some(partitioned_heap) = &mut PARTITIONED_HEAP {
             let mut dummy_memory = DummyMemory {};
-            let result = partitioned_heap.allocate(&mut dummy_memory, bytes);
+            let result = partitioned_heap.allocate(&mut dummy_memory, n);
             self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
         }
 
         // Update heap pointer
         let old_hp = self.heap_ptr_address();
-        let new_hp = old_hp + bytes.as_usize();
+        let new_hp = old_hp + n.to_bytes().as_usize();
         self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
 
         // Grow memory if needed
