@@ -1,5 +1,5 @@
 use crate::{
-    gc::incremental::post_allocation_barrier,
+    gc::incremental::barriers::allocation_barrier,
     types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
 };
 
@@ -23,8 +23,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     iter_array.initialize(ITER_BLOB_IDX, blob, mem);
     iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-    post_allocation_barrier(iter_ptr);
-
+    allocation_barrier(mem, iter_ptr);
     iter_ptr
 }
 
