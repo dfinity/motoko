@@ -369,7 +369,7 @@ impl PartitionedHeap {
         self.allocation_index == index
     }
 
-    unsafe fn allocate_free_partition(&mut self, requested_space: usize) -> &Partition {
+    unsafe fn allocate_free_partition(&mut self, requested_space: usize) -> &mut Partition {
         for partition in &mut self.partitions {
             if partition.free && partition.free_space() >= requested_space {
                 debug_assert_eq!(partition.dynamic_size, 0);
@@ -428,32 +428,28 @@ impl PartitionedHeap {
         debug_assert!(size <= PARTITION_SIZE);
         let mut allocation_partition = self.allocation_partition();
         debug_assert!(!allocation_partition.free);
-        let mut heap_pointer = allocation_partition.dynamic_space_end();
+        let heap_pointer = allocation_partition.dynamic_space_end();
         debug_assert!(size <= allocation_partition.end_address());
-        if heap_pointer > allocation_partition.end_address() - size {
-            self.open_new_allocation_partition(mem, size);
-            allocation_partition = self.allocation_partition();
-            heap_pointer = allocation_partition.dynamic_space_end();
+        if heap_pointer <= allocation_partition.end_address() - size {
+            (*allocation_partition).dynamic_size += size;
+            Value::from_ptr(heap_pointer)
+        } else {
+            self.allocate_in_new_partition(mem, size)
         }
-        (*allocation_partition).dynamic_size += size;
-        Value::from_ptr(heap_pointer)
     }
 
     // Significant performance gain by not inlining.
     #[inline(never)]
-    unsafe fn open_new_allocation_partition<M: Memory>(
-        &mut self,
-        mem: &mut M,
-        requested_space: usize,
-    ) {
+    unsafe fn allocate_in_new_partition<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
         #[cfg(debug_assertions)]
         self.allocation_partition().clear_free_remainder();
 
-        let new_partition = self.allocate_free_partition(requested_space);
-        let end_address = new_partition.end_address();
+        let new_partition = self.allocate_free_partition(size);
+        mem.grow_memory(new_partition.end_address() as u64);
+        let heap_pointer = new_partition.dynamic_space_end();
+        new_partition.dynamic_size += size;
         self.allocation_index = new_partition.index;
-
-        mem.grow_memory(end_address as u64);
+        Value::from_ptr(heap_pointer)
     }
 
     // Significant performance gain by not inlining.
