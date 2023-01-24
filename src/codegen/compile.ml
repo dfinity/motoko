@@ -39,7 +39,6 @@ let ptr_unskew = 1l
 (* Generating function names for functions parametrized by prim types *)
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
-
 (* Helper functions to produce annotated terms (Wasm.AST) *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 
@@ -574,10 +573,11 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying") "_gc" *)
+    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational") "_gc" *)
     let gc_fn = match !Flags.gc_strategy with
-    | Mo_config.Flags.MarkCompact -> "compacting"
-    | Mo_config.Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
     in
     let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
     call_import env "rts" (gc_fn ^ "_gc")
@@ -682,10 +682,6 @@ let new_local env name =
 
 let new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
-  in (set_i, get_i)
-
-let new_float_local env name =
-  let (set_i, get_i, _) = new_local_ env F64Type name
   in (set_i, get_i)
 
 (* Some common code macros *)
@@ -965,8 +961,10 @@ module RTS = struct
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
+    E.add_func_import env "rts" "generational_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
+    E.add_func_import env "rts" "schedule_generational_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
@@ -981,6 +979,8 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "init_write_barrier" [] [];
+    E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -2052,9 +2052,7 @@ module Float = struct
   let payload_field = Tagged.header_size
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
-  let lit f = compile_unboxed_const (Wasm.F64.of_float f)
-  let compile_unboxed_zero = lit 0.0
-
+  
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Bits64);
@@ -3506,17 +3504,17 @@ module Arr = struct
   (* Does not initialize the fields! *)
   let alloc env = E.call_import env "rts" "alloc_array"
 
-  let iterate env get_array body = 
+  let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
-    
+
     (* Initial element pointer, skewed *)
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
     get_array ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
-    
+
     (* Upper pointer boundary, skewed *)
     get_array ^^ Heap.load_field len_field ^^
     compile_mul_const element_size ^^
@@ -3530,7 +3528,7 @@ module Arr = struct
       get_boundary ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU))
     ) (
-      body get_pointer ^^      
+      body get_pointer ^^
 
       (* Next element pointer, skewed *)
       get_pointer ^^
@@ -3544,14 +3542,14 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
     set_r ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer -> 
+    iterate env get_r (fun get_pointer ->
       get_pointer ^^
       get_x ^^
       store_ptr
@@ -3563,7 +3561,7 @@ module Arr = struct
     let (set_r, get_r) = new_local env "r" in
     let (set_i, get_i) = new_local env "i" in
     set_f ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
@@ -3574,7 +3572,7 @@ module Arr = struct
     set_i ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer -> 
+    iterate env get_r (fun get_pointer ->
       get_pointer ^^
       (* The closure *)
       get_f ^^
@@ -3775,7 +3773,27 @@ end (* Lifecycle *)
 
 
 module IC = struct
+
   (* IC-specific stuff: System imports, databufs etc. *)
+
+  let register_globals env =
+    (* result of last ic0.call_perform  *)
+    E.add_global32 env "__call_perform_status" Mutable 0l;
+    E.add_global32 env "__call_perform_message" Mutable 0l
+    (* NB: __call_perform_message is not a root so text contents *must* be static *)
+
+  let get_call_perform_status env =
+    G.i (GlobalGet (nr (E.get_global env "__call_perform_status")))
+  let set_call_perform_status env =
+    G.i (GlobalSet (nr (E.get_global env "__call_perform_status")))
+  let get_call_perform_message env =
+    G.i (GlobalGet (nr (E.get_global env "__call_perform_message")))
+  let set_call_perform_message env =
+    G.i (GlobalSet (nr (E.get_global env "__call_perform_message")))
+
+  let init_globals env =
+    Blob.lit env "" ^^
+    set_call_perform_message env
 
   let i32s n = Lib.List.make n I32Type
   let i64s n = Lib.List.make n I64Type
@@ -3818,6 +3836,8 @@ module IC = struct
       E.add_func_import env "ic0" "stable64_size" [] [I64Type];
       E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
+      if !Flags.global_timer then
+        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type];
       ()
 
   let system_imports env =
@@ -3964,10 +3984,31 @@ module IC = struct
     let fi = E.add_fun env "canister_heartbeat"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
-        GC.collect_garbage env))
+        (* TODO(3622)
+           Until DTS is implemented for heartbeats, don't collect garbage here,
+           just record mutator_instructions and leave GC scheduling to the
+           already scheduled async message running `system` function `heartbeat` *)
+        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_heartbeat";
+      edesc = nr (FuncExport (nr fi))
+    })
+
+  let export_timer env =
+    assert !Flags.global_timer;
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_global_timer"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "timer_exp"))) ^^
+        (* TODO(3622)
+           Until DTS is implemented for timers, don't collect garbage here,
+           just record mutator_instructions and leave GC scheduling to the
+           already scheduled async message running `system` function `timer` *)
+        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
+    in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_global_timer";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -6485,8 +6526,8 @@ module Stabilization = struct
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       compile_add64_const 4L ^^ (* `N` is now on the stack *)
-      set_dst ^^ 
-      
+      set_dst ^^
+
       get_dst ^^
       extend64 get_len ^^
       StableMem.ensure env ^^
@@ -7052,11 +7093,25 @@ module Var = struct
     | Some (HeapInd i) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      Heap.store_field MutBox.field ^^
+      (if !Flags.gc_strategy = Flags.Generational
+        then
+         G.i (LocalGet (nr i)) ^^
+         compile_add_const ptr_unskew ^^
+         compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+         E.call_import env "rts" "write_barrier"
+        else G.nop)
     | Some (HeapStatic ptr) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field MutBox.field
+      Heap.store_field MutBox.field ^^
+      (if !Flags.gc_strategy = Flags.Generational
+        then
+         compile_unboxed_const ptr ^^
+         compile_add_const ptr_unskew ^^
+         compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+         E.call_import env "rts" "write_barrier"
+        else G.nop)
     | Some (Const _) -> fatal "set_val: %s is const" var
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
     | None   -> fatal "set_val: %s missing" var
@@ -7434,10 +7489,12 @@ module FuncDec = struct
         G.i Drop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call_threaded env purpose get_meth_pair push_continuations add_data add_cycles =
+  let ic_call_threaded env purpose get_meth_pair push_continuations
+    add_data add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      let message = Printf.sprintf "could not perform %s" purpose in
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
@@ -7457,9 +7514,25 @@ module FuncDec = struct
       add_cycles ^^
       (* done! *)
       IC.system_call env "call_perform" ^^
-      (* Check error code *)
+      IC.set_call_perform_status env ^^
+      Blob.lit env message ^^
+      IC.set_call_perform_message env ^^
+      IC.get_call_perform_status env ^^
+      (* save error code, cleanup on error *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-      E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
+      G.if0
+      begin
+        G.nop
+      end
+      begin
+        if !Flags.trap_on_call_error then
+          E.trap_with env message
+        else
+        (* Recall (don't leak) continuations *)
+        get_cb_index ^^
+        ContinuationTable.recall env ^^
+        G.i Drop
+      end
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
@@ -7512,8 +7585,19 @@ module FuncDec = struct
       (* the cycles *)
       add_cycles ^^
       IC.system_call env "call_perform" ^^
-      (* This is a one-shot function: Ignore error code *)
-      G.i Drop
+      (* This is a one-shot function: just remember error code *)
+      (if !Flags.trap_on_call_error then
+         (* legacy: discard status, proceed as if all well *)
+         G.i Drop ^^
+         compile_unboxed_zero ^^
+         Blob.lit env "" ^^
+         IC.set_call_perform_message env ^^
+         IC.set_call_perform_status env
+       else
+         IC.set_call_perform_status env ^^
+         Blob.lit env "could not perform oneway" ^^
+         IC.set_call_perform_message env)
+
     | _ -> assert false
 
   let equate_msgref env =
@@ -7881,8 +7965,7 @@ let compile_unop env t op =
     )
   | NegOp, Type.(Prim Float) ->
     SR.UnboxedFloat64, SR.UnboxedFloat64,
-    let (set_f, get_f) = new_float_local env "f" in
-    set_f ^^ Float.compile_unboxed_zero ^^ get_f ^^ G.i (Binary (Wasm.Values.F64 F64Op.Sub))
+    G.i (Unary (Wasm.Values.F64 F64Op.Neg))
   | NotOp, Type.(Prim (Nat64|Int64)) ->
      SR.UnboxedWord64, SR.UnboxedWord64,
      compile_xor64_const (-1L)
@@ -8455,20 +8538,43 @@ let compile_load_field env typ name =
    Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
 let rec compile_lexp (env : E.t) ae lexp =
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
-  match lexp.it with
-  | VarLE var -> Var.set_val env ae var
-  | IdxLE (e1, e2) ->
-     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-     compile_exp_vanilla env ae e2 ^^ (* idx *)
-     Arr.idx_bigint env,
-     SR.Vanilla,
-     store_ptr
-  | DotLE (e, n) ->
-     compile_exp_vanilla env ae e ^^
-     (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env e.note.Note.typ n,
-     SR.Vanilla,
-     store_ptr
+  match lexp.it, !Flags.gc_strategy with
+  | VarLE var, _ -> Var.set_val env ae var
+  | IdxLE (e1, e2), Flags.Generational ->
+    let (set_field, get_field) = new_local env "field" in
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    set_field ^^ (* peepholes to tee *)
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "write_barrier"
+  | IdxLE (e1, e2), _ ->
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env,
+    SR.Vanilla,
+    store_ptr
+  | DotLE (e, n), Flags.Generational ->
+    let (set_field, get_field) = new_local env "field" in
+    compile_exp_vanilla env ae e ^^
+    Object.idx env e.note.Note.typ n ^^
+    set_field ^^ (* peepholes to tee *)
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    compile_add_const ptr_unskew ^^
+    E.call_import env "rts" "write_barrier"
+  | DotLE (e, n), _ ->
+    compile_exp_vanilla env ae e ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    Object.idx env e.note.Note.typ n,
+    SR.Vanilla,
+    store_ptr
 
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
@@ -9032,6 +9138,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64,
     IC.get_system_time env
 
+  | OtherPrim "call_perform_status", [] ->
+    SR.UnboxedWord32,
+    IC.get_call_perform_status env
+
+  | OtherPrim "call_perform_message", [] ->
+    SR.Vanilla,
+    IC.get_call_perform_message env
+
   | OtherPrim "rts_version", [] ->
     SR.Vanilla,
     E.call_import env "rts" "version"
@@ -9071,6 +9185,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_collector_instructions", [] ->
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
+
+  (* Other prims, unary *)
+
+  | OtherPrim ("global_timer_set"), [e] ->
+    SR.UnboxedWord64,
+    compile_exp_as env ae SR.UnboxedWord64 e ^^
+    IC.system_call env "global_timer_set"
 
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
@@ -9174,6 +9295,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Int8
+
+  (* Other prims, binary *)
 
   | OtherPrim ("stableMemoryStoreNat8"), [e1; e2] ->
     SR.unit,
@@ -10074,6 +10197,15 @@ and main_actor as_opt mod_env ds fs up =
        IC.export_heartbeat env;
     end;
 
+    (* Export timer (but only when required) *)
+    begin match up.timer.it with
+     | Ir.PrimE (Ir.TupPrim, []) -> ()
+     | _ ->
+       Func.define_built_in env "timer_exp" [] [] (fun env ->
+         compile_exp_as env ae2 SR.unit up.timer);
+       IC.export_timer env;
+    end;
+
     (* Export inspect (but only when required) *)
     begin match up.inspect.it with
      | Ir.PrimE (Ir.TupPrim, []) -> ()
@@ -10100,6 +10232,16 @@ and main_actor as_opt mod_env ds fs up =
         Serialization.deserialize env arg_tys ^^
         G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
     end ^^
+    begin
+      if up.timer.at <> no_region then
+        (* initiate a timer pulse *)
+        compile_const_64 1L ^^
+        IC.system_call env "global_timer_set" ^^
+        G.i Drop
+      else
+        G.nop
+    end ^^
+    IC.init_globals env ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
@@ -10134,8 +10276,13 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Mo_config.Flags.MarkCompact) ^^
+    Bool.lit (!Flags.gc_strategy = Flags.MarkCompact || !Flags.gc_strategy = Flags.Generational) ^^
     E.call_import env "rts" "init" ^^
+    (if !Flags.gc_strategy = Flags.Generational
+     then
+      E.call_import env "rts" "init_write_barrier"
+     else
+      G.nop) ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
@@ -10209,6 +10356,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
+  IC.register_globals env;
   Stack.register_globals env;
   GC.register_globals env;
   StableMem.register_globals env;

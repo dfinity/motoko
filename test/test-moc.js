@@ -15,6 +15,24 @@ moc.Motoko.saveFile(
   "actor.mo",
   'actor { type A<B> = B; public query func main() : async A<Text> { "abc" } }'
 );
+moc.Motoko.saveFile(
+  "ast.mo",
+  `
+  /// Module
+  module {
+    /// Variable
+    let x = 0;
+    /// Type
+    public type A<B> = B;
+    /** Function */
+    public query func main() {};
+    /// Sub-module
+    module M {
+      /// Class
+      public class C() {};
+    };
+  }`
+);
 
 assert.equal(moc.Motoko.readFile("empty.mo"), "");
 assert.equal(moc.Motoko.readFile("ok.mo"), "1");
@@ -117,7 +135,19 @@ assert.deepStrictEqual(moc.Motoko.check("bad.mo"), {
   code: null,
 });
 
-// // Check WASM reproducibility
+const astString = JSON.stringify(
+  moc.Motoko.parseMotoko(moc.Motoko.readFile("ast.mo"))
+);
+
+// Check doc comments
+assert.match(astString, /"name":"\*","args":\["Module"/);
+assert.match(astString, /"name":"\*","args":\["Variable"/);
+assert.match(astString, /"name":"\*","args":\["Type"/);
+assert.match(astString, /"name":"\*","args":\["Function"/);
+assert.match(astString, /"name":"\*","args":\["Sub-module"/);
+assert.match(astString, /"name":"\*","args":\["Class"/);
+
+// // Check Wasm reproducibility
 // assert.deepStrictEqual(
 //   moc.Motoko.compileWasm("ic", "actor.mo").code.wasm,
 //   moc.Motoko.compileWasm("ic", "actor.mo").code.wasm

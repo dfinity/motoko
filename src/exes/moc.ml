@@ -101,6 +101,7 @@ let argspec = [
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
+  "-no-timer", Arg.Clear Flags.global_timer, " do not create a global timer expiration endpoint";
   "-no-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WasmMode)),
       " do not import any system API";
@@ -108,7 +109,7 @@ let argspec = [
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
   "-ref-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
+  Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
       " use the reference implementation of the Internet Computer system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
@@ -139,6 +140,10 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
+  "--generational-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
+  " use generational GC";
+
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
   " use compacting GC";
@@ -157,10 +162,14 @@ let argspec = [
 
   "--experimental-field-aliasing",
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
-  " enable experimental support for aliasing of var fields"
+  " enable experimental support for aliasing of var fields";
+
+  "--trap-on-call-error",
+  Arg.Unit (fun () -> Flags.trap_on_call_error := true),
+  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."
   ]
 
-  @  Args.inclusion_args
+  @ Args.inclusion_args
 
 
 

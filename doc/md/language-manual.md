@@ -83,7 +83,7 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-actor and assert async await break case catch class continue debug
+actor and assert async async* await await* break case catch class continue debug
 debug_show do else flexible false for from_candid func if ignore import
 in module not null object or label let loop private public query return
 shared stable switch system throw to_candid true try type var while with
@@ -341,7 +341,7 @@ Note that the parameters (if any) of an actor class must have shared type (see [
 The syntax of an *import* `<imp>` is as follows:
 
 ``` bnf
-<imp> ::= imports
+<imp> ::=                           imports
   import <pat> =? <url>
 
 <url> ::=
@@ -378,7 +378,7 @@ Libraries stored in `.mo` files may be referenced by `import` declarations.
 
 In a module library, the optional name `<id>?` is only significant within the library and does not determine the name of the library when imported. Instead, the imported name of a library is determined by the `import` declaration, giving clients of the library the freedom to choose library names (e.g. to avoid clashes).
 
-An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`. The name `<id>` is mandatory and cannot be omitted. An actor class constructor is always asynchronous, with return type `async T` where `T` is the inferred type of the class body. Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
+An actor class library, because it defines both a type constructor and a function with name `<id>`, is imported as a module defining both a type and a function named `<id>`. The name `<id>` is mandatory and cannot be omitted. An actor class constructor is always asynchronous, with return type `async T` where `T` is the inferred type of the class body. Because actor construction is asynchronous, an instance of an imported actor class can only be created in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, asynchronous function, `async` expression or `async*` expression).
 
 ### Declaration syntax
 
@@ -491,6 +491,8 @@ The syntax of an *expression* is as follows:
   return <exp>?                                  return
   async <block-or-exp>                           async expression
   await <block-or-exp>                           await future (only in async)
+  async* <block-or-exp>                          delay an asynchronous computation
+  await* <block-or-exp>                          await a delayed computation (only in async)
   throw <exp>                                    raise an error (only in async)
   try <block-or-exp> catch <pat> <block-or-exp>  catch an error (only in async)
   assert <block-or-exp>                          assertion
@@ -551,6 +553,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
   ? <typ>                                       option
   <shared>? <typ-params>? <typ> -> <typ>        function
   async <typ>                                   future
+  async* <typ>                                  delayed, asynchronous computation
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
@@ -701,8 +704,11 @@ type ErrorCode = {
   #canister_reject;
   // Canister trapped.
   #canister_error;
-  // Future error code (with unrecognized numeric code)
+  // Future error code (with unrecognized numeric code).
   #future : Nat32;
+  // Error issuing inter-canister call
+  // (indicating destination queue full or freezing threshold crossed).
+  #call_error : { err_code : Nat32 }
 };
 ```
 
@@ -715,6 +721,16 @@ Errors with codes other than `#canister_reject` (i.e. *system* errors) may be ca
 :::note
 
 Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original `Text` message. This prevents programmatic forgery of system errors.
+
+:::
+
+:::note
+
+On the Internet Computer, the act of issuing a call to a canister function can fail, so that the call cannot (and will not be) performed.
+This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
+or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
+Such call failures are reported by throwing an `Error` with code `#call_error { err_code = n }`, where `n` is the non-zero `err_code` value returned by the Internet Computer.
+Like other errors, call errors can be caught and handled using `try ... catch ...` expressions, if desired.
 
 :::
 
@@ -775,6 +791,14 @@ The optional `<shared>` qualifier specifies whether the function value is shared
 `async <typ>` specifies a future producing a value of type `<typ>`.
 
 Future types typically appear as the result type of a `shared` function that produces an `await`-able value.
+
+### Async* types
+
+`async* <typ>` specifies a delayed, asynchronous computation producing a value of type `<typ>`.
+
+Computation types typically appear as the result type of a `local` function that produces an `await*`-able value.
+
+(They cannot be used as the return types of `shared` functions.)
 
 ### Tuple types
 
@@ -1209,11 +1233,14 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 | name          | type                                                          | description         |
 |---------------|---------------------------------------------------------------|---------------------|
 | `heartbeat`   | `() -> async ()`                                              | heartbeat action    |
+| `timer`       | `(Nat64 -> ()) -> async ()`                                   | timer action        |
 | `inspect`     | `{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool` | message predicate   |
 | `preupgrade`  | `() -> ()`                                                    | pre upgrade action  |
 | `postupgrade` | `() -> ()`                                                    | post upgrade action |
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
+
+-   `timer`, when declared, is called as a response of the canister global timer's expiration. The canister's global timer can be manipulated with the passed-in function argument of type `Nat64 -> ()` (taking an absolute time in nanoseconds) upon which libraries can build their own abstractions. When not declared (and in absence of the `-no-timer` flag), this system action is provided with default implementation by the compiler (additionally `setTimer` and `cancelTimer` are available as primitives).
 
 -   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 
@@ -1498,7 +1525,7 @@ Note that requirement 1. imposes further constraints on the field types of `T`. 
 
 -   all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions);
 
-Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function or `async` expression).
+Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, `async` expression or `async*` expression).
 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
 
@@ -1917,6 +1944,16 @@ The exhaustiveness side condition on `shared` function expressions ensures that 
 
 :::
 
+:::note
+
+Calls to local functions with `async` return type and `shared` functions can fail due to a lack of canister resources.
+Such failures will result in the call immediately throwing an error with  `code` `#call_error { err_code = n }`,
+where `n` is the non-zero `err_code` value returned by the Internet Computer.
+Earlier versions of Motoko would trap in such situations, making it difficult for the calling canister to mitigate such failures.
+Now, a caller can handle these errors using enclosing `try ... catch ...` expressions, if desired.
+
+:::
+
 ### Functions
 
 The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the assumption that `X0 <: T0, …​, Xn <: Tn`:
@@ -2152,7 +2189,7 @@ The expression `return <exp>` has type `None` provided:
 
 -   `async T` is the type of the nearest enclosing (perhaps implicit) `async` expression (with no intervening function declaration)
 
-The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic async expression with the result of `<exp>`.
+The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic `async` or `async*` expression with the result of `<exp>`.
 
 ### Async
 
@@ -2167,6 +2204,17 @@ Any control-flow label in scope for `async <block-or-exp>` is not in scope for `
 The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <block-or-exp>` queues a message to evaluate `<block-or-exp>` in the nearest enclosing or top-level actor. It immediately returns a future of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
+
+:::note
+
+Because it involves messaging, evaluating an `async` expression can fail due to a lack of canister resources.
+Such failures will result in the call immediately throwing an error with  `code` `#call_error { err_code = n }`,
+where `n` is the non-zero `err_code` value returned by the Internet Computer.
+Earlier version of Motoko would trap in such situations, making it difficult for the producer of the async expression to mitigate such failures.
+Now, the producer can handle these errors using an enclosing `try ... catch ...` expression, if desired.
+
+:::
+
 
 ### Await
 
@@ -2186,6 +2234,89 @@ Note: suspending computation on `await`, regardless of the dynamic status of the
 
 Between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer’s responsibility to guard against non-synchronized state changes.
 
+Using `await` signals that the computation *will* commit its current state and suspend execution.
+
+:::
+
+:::note
+
+Because it involves additional messaging, an `await` on a completed future can, in rare circumstances, fail due to a lack of canister resources.
+Such failures will result in the call immediately throwing an error with `code` `#call_error { err_code = n }`,
+where `n` is the non-zero `err_code` value returned by the Internet Computer
+The error is produced eagerly, without suspending nor committing state.
+Earlier versions of Motoko would trap in such situations, making it difficult for the consumer of the `await` to mitigate such failures.
+Now, the consumer can handle these errors by using an enclosing `try ... catch ...` expression, if desired.
+
+:::
+
+
+### Async*
+
+The async expression `async* <block-or-exp>` has type `async* T` provided:
+
+-   `<block-or-exp>` has type `T`;
+
+-   `T` is shared.
+
+Any control-flow label in scope for `async* <block-or-exp>` is not in scope for `<block-or-exp>`. However, `<block-or-exp>` may declare and use its own, local, labels.
+
+The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
+
+Evaluation of `async* <block-or-exp>` produces a delayed computation to evaluate `<block-or-exp>`. It immediately returns a value of type `async* T`.
+The delayed computation can be executed using `await*`, producing one evaluation
+of the computation `<block-or-exp>`.
+
+:::danger
+
+Note that `async <block-or-exp>` has the effect of scheduling a single asynchronous computation of `<exp>`, regardless of whether its result, a future, is consumed with an `await`.
+Moreover, each additional consumption by an `await` just returns the previous result, without repeating the computation.
+
+In comparison, `async* <block-or_exp>`,  has *no effect* until its value is consumed by an `await*`.
+Moreover, each additional consumption by an `await*` will trigger a new evaluation of `<block-or-exp>`, including repeated effects.
+
+Be careful of this distinction, and other differences, when refactoring code.
+
+:::
+
+:::note
+
+The `async*` and corresponding `await*` constructs are useful for efficiently abstracting asynchronous code into re-useable functions.
+In comparison, calling a local function that returns a proper `async` type requires committing state and suspending execution with each `await` of its result, which can be undesirable.
+
+:::
+
+
+### Await*
+
+The `await*` expression `await* <exp>` has type `T` provided:
+
+-   `<exp>` has type `async* T`,
+
+-   `T` is shared,
+
+-   the `await*` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
+
+Expression `await* <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a delayed computation `<block-or-exp>`. The evaluation of `await* <exp>` proceeds with the evaluation of `<block-or-exp>`, executing the delayed computation.
+
+:::danger
+
+During the evaluation of `<block-or-exp>`, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer’s responsibility to guard against non-synchronized state changes.
+
+:::
+
+:::note
+
+Unlike `await`, which, regardless of the dynamic status of the future, ensures that all tentative state changes and message sends prior to the `await` are committed and irrevocable, `await*` does not, in itself, commit any state changes, nor does it suspend computation.
+Instead, evaluation proceeds immediately according to `<block-or-exp>` (the value of `<exp>`), committing state and suspending execution whenever `<block-or-exp>` does (but not otherwise).
+
+:::
+
+:::note
+
+Evaluation of a delayed `async*` block is synchronous while possible, switching to asynchronous when necessary due to a proper `await`.
+
+Using `await*` signals that the computation *may* commit state and suspend execution during the evaluation of `<block-or-exp>`, that is, that evaluation of `<block-or-exp>` may perform zero or more proper `await`s and may be interleaved with the execution of other, concurrent messages.
+
 :::
 
 ### Throw
@@ -2196,7 +2327,7 @@ The `throw` expression `throw <exp>` has type `None` provided:
 
 -   the `throw` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <block-or-exp1> catch <pat> <block-or-exp2>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invocation.
+Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <block-or-exp1> catch <pat> <block-or-exp2>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async`, `async*` expression or `shared` function invocation.
 
 ### Try
 

@@ -45,6 +45,7 @@ actor a {
         case (#canister_error) { assert false};
         case (#canister_reject) { assert false};
         case (#future (n : Nat32)) {assert false};
+        case (#call_error {err_code : Nat32}) {assert false};
       };
     };
 

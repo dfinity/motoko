@@ -1,13 +1,13 @@
 # Index
 
-* [Array](Array.md) Functions on Arrays
-* [AssocList](AssocList.md) Lists of key-value entries ("associations").
+* [Array](Array.md) Provides extended utility functions on Arrays.
+* [AssocList](AssocList.md) Map implemented as a linked-list of key-value pairs ("Associations").
 * [Blob](Blob.md) Binary blobs
 * [Bool](Bool.md) Boolean type and operations.
 * [Buffer](Buffer.md) Class `Buffer<X>` provides a mutable list of elements of type `X`.
 * [CertifiedData](CertifiedData.md) Certified data.
 * [Char](Char.md) Characters
-* [Debug](Debug.md) Debugging aids
+* [Debug](Debug.md) Utility functions for debugging.
 * [Deque](Deque.md) Functions for persistent, double-ended queues.
 * [Error](Error.md) Error values and inspection.
 * [ExperimentalCycles](ExperimentalCycles.md) Managing cycles
@@ -43,5 +43,5 @@
 * [Text](Text.md) Text values
 * [Time](Time.md) System time
 * [Trie](Trie.md) Functional key-value hash maps.
-* [TrieMap](TrieMap.md) Key-value hash maps.
+* [TrieMap](TrieMap.md) Class `TrieMap<K, V>` provides a map from keys of type `K` to values of type `V`.
 * [TrieSet](TrieSet.md) Functional set

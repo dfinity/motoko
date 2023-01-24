@@ -83,10 +83,10 @@ Equality function for two `Key<K>`s, in terms of equality of `K`'s.
 
 ## Function `isValid`
 ``` motoko no-repl
-func isValid<K, V>(t : Trie<K, V>, enforceNormal : Bool) : Bool
+func isValid<K, V>(t : Trie<K, V>, _enforceNormal : Bool) : Bool
 ```
 
-Checks the invariants of the trie structure, including the placement of keys at trie paths
+@deprecated `isValid` is an internal predicate and will be removed in future.
 
 ## Type `Trie2D`
 ``` motoko no-repl
@@ -186,7 +186,7 @@ Find the given key's value in the trie, or return null if nonexistent
 func merge<K, V>(tl : Trie<K, V>, tr : Trie<K, V>, k_eq : (K, K) -> Bool) : Trie<K, V>
 ```
 
-Merge tries, preferring the right trie where there are collisions
+Merge tries, preferring the left trie where there are collisions
 in common keys.
 
 note: the `disj` operation generalizes this `merge`

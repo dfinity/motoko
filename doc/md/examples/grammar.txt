@@ -43,6 +43,7 @@
 <typ_pre> ::= 
     <typ_un>
     'async' <typ_pre>
+    'async*' <typ_pre>
     <obj_sort> <typ_obj>
 
 <typ_nobin> ::= 
@@ -190,7 +191,9 @@
     <exp_bin> <binassign> <exp>
     'return' <exp>?
     'async' <exp_nest>
+    'async*' <block>
     'await' <exp_nest>
+    'await*' <exp_nest>
     'assert' <exp_nest>
     'label' <id> (':' <typ>)? <exp_nest>
     'break' <id> <exp_nullary>?

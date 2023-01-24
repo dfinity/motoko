@@ -112,7 +112,7 @@ let rec exp e : f = match e.it with
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | LoopE e1            -> exp e1
   | LabelE (i, t, e)    -> exp e
-  | AsyncE (_, e, _)    -> exp e
+  | AsyncE (_, _, e, _) -> exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
@@ -123,10 +123,11 @@ let rec exp e : f = match e.it with
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
-and system {meta; preupgrade; postupgrade; heartbeat; inspect} =
+and system {meta; preupgrade; postupgrade; heartbeat; timer; inspect} =
   under_lambda (exp preupgrade) ++
   under_lambda (exp postupgrade) ++
   under_lambda (exp heartbeat) ++
+  under_lambda (exp timer) ++
   under_lambda (exp inspect)
 
 and exps es : f = unions exp es
