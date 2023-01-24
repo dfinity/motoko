@@ -1401,7 +1401,10 @@ module Tagged = struct
   let load_tag env =
     load_forwarding_pointer env ^^
     Heap.load_field raw_tag_field ^^
-    compile_bitand_const (Int32.lognot mark_bit_mask)
+    (if !Flags.gc_strategy = Flags.Incremental then
+      compile_bitand_const (Int32.lognot mark_bit_mask)
+    else
+      G.nop)
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
