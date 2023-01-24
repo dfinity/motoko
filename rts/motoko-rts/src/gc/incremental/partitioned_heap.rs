@@ -228,35 +228,23 @@ impl<'a> PartitionedHeapIterator<'a> {
     }
 
     unsafe fn skip_unmarked_space(&mut self) {
-        self.skip_unmarked_blocks();
-        // Implicitly also skips free partitions as the dynamic size is zero.
-        while *self.current_address == self.partition_scan_end() {
+        loop {
+            let end_address = self.partition_scan_end();
+            let mut address = *self.current_address;
+            // Implicitly also skips free partitions as the dynamic size is zero.
+            while address < end_address && !is_marked(*(address as *mut Tag)) {
+                let size = block_size(address).to_bytes().as_usize();
+                address += size; // Potentially skips even a large object.
+            }
+            *self.current_address = address;
+            *self.partition_index = address / PARTITION_SIZE;
+            if address < self.partition_scan_end() {
+                return;
+            }
             self.skip_partitions(1);
             if *self.partition_index == MAX_PARTITIONS {
                 return;
             }
-            self.skip_unmarked_blocks();
-        }
-    }
-
-    unsafe fn skip_unmarked_blocks(&mut self) {
-        self.skip_unmarked_large_objects();
-        let end_address = self.partition_scan_end();
-        let mut address = *self.current_address;
-        while address < end_address && !is_marked(*(address as *mut Tag)) {
-            let size = block_size(address).to_bytes().as_usize();
-            debug_assert!(size <= PARTITION_SIZE);
-            address += size;
-            debug_assert!(address <= end_address);
-        }
-        *self.current_address = address;
-    }
-
-    unsafe fn skip_unmarked_large_objects(&mut self) {
-        while self.current_partition().unwrap().has_large_content()
-            && !is_marked(*(*self.current_address as *mut Tag))
-        {
-            self.skip_object();
         }
     }
 
