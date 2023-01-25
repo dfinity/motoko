@@ -158,30 +158,36 @@ unsafe fn test_reallocations(heap: &mut PartitionedTestHeap) {
 
 unsafe fn count_objects(heap: &PartitionedHeap) -> usize {
     let mut count = 0;
-    let iterator_state = HeapIteratorState::new();
-    let mut heap_iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
-    while heap_iterator.current_partition().is_some() {
-        let partition = heap_iterator.current_partition().unwrap();
+    let state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::load_from(heap, &state);
+    while iterator.current_partition().is_some() {
+        let partition = iterator.current_partition().unwrap();
         assert!(!partition.is_free());
         assert!(!partition.to_be_evacuated());
-        let mut time = BoundedTime::new(0);
-        let mut partition_iterator =
-            PartitionIterator::load_from(partition, &iterator_state, &mut time);
-        while partition_iterator.current_object().is_some() {
-            let object = partition_iterator.current_object().unwrap();
-            assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
-            let array = Value::from_ptr(object as usize).as_array();
-            let content = array.get(0).get_scalar() as usize;
-            assert!(content < NUMBER_OF_OBJECTS);
-            count += 1;
-            if count <= NUMBER_OF_OBJECTS {
-                progress(count, NUMBER_OF_OBJECTS);
-            }
-            partition_iterator.next_object(&mut time);
-        }
-        heap_iterator.next_partition();
+        count += count_objects_in_partition(partition);
+        iterator.next_partition();
     }
     reset_progress();
+    count
+}
+
+unsafe fn count_objects_in_partition(partition: &Partition) -> usize {
+    let mut count = 0;
+    let mut time = BoundedTime::new(0);
+    let state = HeapIteratorState::new();
+    let mut iterator = PartitionIterator::load_from(partition, &state, &mut time);
+    while iterator.current_object().is_some() {
+        let object = iterator.current_object().unwrap();
+        assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
+        let array = Value::from_ptr(object as usize).as_array();
+        let content = array.get(0).get_scalar() as usize;
+        assert!(content < NUMBER_OF_OBJECTS);
+        count += 1;
+        if count <= NUMBER_OF_OBJECTS {
+            progress(count, NUMBER_OF_OBJECTS);
+        }
+        iterator.next_object(&mut time);
+    }
     count
 }
 
@@ -274,28 +280,32 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
 
 unsafe fn iterate_large_objects(heap: &PartitionedHeap, expected_sizes: &[usize]) {
     let mut detected_sizes = vec![];
-    let iterator_state = HeapIteratorState::new();
-    let mut heap_iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
-    while heap_iterator.current_partition().is_some() {
-        let partition = heap_iterator.current_partition().unwrap();
-        let mut time = BoundedTime::new(0);
-        let mut partition_iterator =
-            PartitionIterator::load_from(partition, &iterator_state, &mut time);
-        while partition_iterator.current_object().is_some() {
-            let object = partition_iterator.current_object().unwrap();
-            assert!(object.is_marked());
-            object.unmark();
-            assert_eq!(object.tag(), TAG_BLOB);
-            let size = block_size(object as *const Tag);
-            detected_sizes.push(size);
-            partition_iterator.next_object(&mut time);
-        }
-        heap_iterator.next_partition();
+    let state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::load_from(heap, &state);
+    while iterator.current_partition().is_some() {
+        let partition = iterator.current_partition().unwrap();
+        iterate_large_partition(partition, &mut detected_sizes);
+        iterator.next_partition();
     }
     detected_sizes.sort();
     let mut expected_sorted = expected_sizes.to_vec();
     expected_sorted.sort();
     assert_eq!(detected_sizes, expected_sorted);
+}
+
+unsafe fn iterate_large_partition(partition: &Partition, detected_sizes: &mut Vec<usize>) {
+    let mut time = BoundedTime::new(0);
+    let state = HeapIteratorState::new();
+    let mut iterator = PartitionIterator::load_from(partition, &state, &mut time);
+    while iterator.current_object().is_some() {
+        let object = iterator.current_object().unwrap();
+        assert!(object.is_marked());
+        object.unmark();
+        assert_eq!(object.tag(), TAG_BLOB);
+        let size = block_size(object as *const Tag);
+        detected_sizes.push(size);
+        iterator.next_object(&mut time);
+    }
 }
 
 unsafe fn occupied_space(partition: &Partition) -> usize {
