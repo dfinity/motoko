@@ -51,6 +51,20 @@ func size<T>(s : Set<T>) : Nat
 
 The number of set elements, set's cardinality.
 
+## Function `isEmpty`
+``` motoko no-repl
+func isEmpty<T>(s : Set<T>) : Bool
+```
+
+Test if `s` is the empty set.
+
+## Function `isSubset`
+``` motoko no-repl
+func isSubset<T>(s1 : Set<T>, s2 : Set<T>, eq : (T, T) -> Bool) : Bool
+```
+
+Test if `s1` is a subset of `s2`.
+
 ## Function `mem`
 ``` motoko no-repl
 func mem<T>(s : Set<T>, x : T, xh : Hash, eq : (T, T) -> Bool) : Bool
