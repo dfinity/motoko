@@ -4,16 +4,13 @@
 
   * BREAKING CHANGE
 
-    Motoko Candid de-serialization now checks that the actual type of a deserialized actor or function reference is a subtype of the expected type (#3171),
-    finally fully implementing Candid 1.4 (dfinity/candid#311). In summary:
+    Motoko now implements Candid 1.4 (dfinity/candid#311).
 
-    * Within an expected option type, failure of subtyping on actor or function references will cause the nearest enclosing value of optional type to be deserialized as `null`.
+    In particular, when deserializing an actor or function reference,
+    Motoko will now first check that the type of the deserialized reference
+    is a subtype of the expected type and act accordingly.
 
-    * Outside of any expected option type, failure of subtyping on actor or function references will cause deserialization to fail with a trap,
-      while deseriazing using `from_candid` will return `null`.
-
-    In particular (and as before), deserializing an optional variant type will succeed if the actual variant value is compatible with the expected variant type
-    (even if the actual variant type is not a subtype of the expected type).
+    Very few users should be affected by this change in behaviour.
 
   * BREAKING CHANGE
 
