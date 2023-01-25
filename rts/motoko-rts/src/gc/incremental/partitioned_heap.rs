@@ -76,7 +76,11 @@ impl Partition {
         self.dynamic_space_start() + self.dynamic_size
     }
 
-    pub fn free_space(&self) -> usize {
+    pub fn dynamic_size(&self) -> usize {
+        self.dynamic_size
+    }
+
+    pub fn free_size(&self) -> usize {
         self.end_address() - self.dynamic_space_end()
     }
 
@@ -139,7 +143,7 @@ impl Partition {
     }
 
     pub fn is_completely_free(&self) -> bool {
-        self.free && self.free_space() == PARTITION_SIZE
+        self.free && self.free_size() == PARTITION_SIZE
     }
 }
 
@@ -363,7 +367,7 @@ impl PartitionedHeap {
 
     unsafe fn allocate_free_partition(&mut self, requested_space: usize) -> &mut Partition {
         for partition in &mut self.partitions {
-            if partition.free && partition.free_space() >= requested_space {
+            if partition.free && partition.free_size() >= requested_space {
                 debug_assert_eq!(partition.dynamic_size, 0);
                 partition.free = false;
                 return partition;

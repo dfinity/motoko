@@ -61,6 +61,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
                     // Resume evacuation of the same partition later.
                     break;
                 }
+                self.time.advance(partition.dynamic_size());
             }
             iterator.next_partition();
         }
@@ -78,7 +79,6 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             self.evacuate_object(object);
         }
         iterator.save_to(&mut self.state);
-        self.time.advance(partition.dynamic_space_end());
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {
