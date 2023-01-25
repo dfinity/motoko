@@ -38,6 +38,8 @@ use core::{array::from_fn, ops::Range};
 
 use crate::{memory::Memory, rts_trap_with, types::*};
 
+use super::time::BoundedTime;
+
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 // For simplicity, leave the last partition unused, to avoid partition end address overflow
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
@@ -232,7 +234,11 @@ pub struct PartitionIterator {
 }
 
 impl PartitionIterator {
-    pub unsafe fn load_from(partition: &Partition, state: &HeapIteratorState) -> PartitionIterator {
+    pub unsafe fn load_from(
+        partition: &Partition,
+        state: &HeapIteratorState,
+        time: &mut BoundedTime,
+    ) -> PartitionIterator {
         let start_address = partition.dynamic_space_start();
         let end_address = partition.dynamic_space_end();
         let current_address = state.current_address.unwrap_or(start_address);
@@ -241,7 +247,7 @@ impl PartitionIterator {
             end_address,
             current_address,
         };
-        iterator.skip_unmarked_space();
+        iterator.skip_unmarked_space(time);
         iterator
     }
 
@@ -254,13 +260,14 @@ impl PartitionIterator {
         };
     }
 
-    unsafe fn skip_unmarked_space(&mut self) {
+    unsafe fn skip_unmarked_space(&mut self, time: &mut BoundedTime) {
         // Also considers free partitions that have zero dynamic space.
         while self.current_address < self.end_address
             && !is_marked(*(self.current_address as *mut Tag))
         {
             let size = block_size(self.current_address).to_bytes().as_usize();
             self.current_address += size; // Potentially skips even a large object.
+            time.tick();
         }
     }
 
@@ -272,11 +279,11 @@ impl PartitionIterator {
         }
     }
 
-    pub unsafe fn next_object(&mut self) {
+    pub unsafe fn next_object(&mut self, time: &mut BoundedTime) {
         debug_assert!(self.current_address >= self.start_address);
         let size = block_size(self.current_address).to_bytes().as_usize();
         self.current_address += size;
-        self.skip_unmarked_space();
+        self.skip_unmarked_space(time);
     }
 }
 

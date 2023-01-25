@@ -9,7 +9,7 @@ use crate::{
     },
     mem_utils::memcpy_words,
     memory::Memory,
-    types::*, constants::WORD_SIZE,
+    types::*,
 };
 
 static mut EVACUATION_STATE: Option<HeapIteratorState> = None;
@@ -61,7 +61,6 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
                     // Resume evacuation of the same partition later.
                     break;
                 }
-                self.time.advance(partition.dynamic_size() / WORD_SIZE as usize);
             }
             iterator.next_partition();
         }
@@ -71,11 +70,11 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn evacuate_partition(&mut self, partition: &Partition) {
         debug_assert!(!partition.is_free());
         debug_assert!(!partition.has_large_content());
-        let mut iterator = PartitionIterator::load_from(partition, &self.state);
+        let mut iterator = PartitionIterator::load_from(partition, &self.state, &mut self.time);
         while iterator.current_object().is_some() && !self.time.is_over() {
             let object = iterator.current_object().unwrap();
             // Advance the iterator before evacuation since the debug mode clears the evacuating object.
-            iterator.next_object();
+            iterator.next_object(&mut self.time);
             self.evacuate_object(object);
         }
         iterator.save_to(&mut self.state);

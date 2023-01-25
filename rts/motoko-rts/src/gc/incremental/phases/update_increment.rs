@@ -10,7 +10,7 @@ use crate::{
         Roots, PARTITIONED_HEAP,
     },
     types::*,
-    visitor::visit_pointer_fields, constants::WORD_SIZE,
+    visitor::visit_pointer_fields,
 };
 
 static mut UPDATE_STATE: Option<HeapIteratorState> = None;
@@ -74,7 +74,6 @@ impl<'a> UpdateIncrement<'a> {
                     // Resume updating the same partition later.
                     break;
                 }
-                self.time.advance(partition.dynamic_size() / WORD_SIZE as usize);
             }
             iterator.next_partition();
         }
@@ -83,7 +82,7 @@ impl<'a> UpdateIncrement<'a> {
 
     pub unsafe fn update_partition(&mut self, partition: &Partition) {
         debug_assert!(!partition.is_free());
-        let mut iterator = PartitionIterator::load_from(partition, &self.state);
+        let mut iterator = PartitionIterator::load_from(partition, &self.state, &mut self.time);
         while iterator.current_object().is_some() {
             let object = iterator.current_object().unwrap();
             self.update_object(object);
@@ -91,7 +90,7 @@ impl<'a> UpdateIncrement<'a> {
                 // Resume updating the same object later.
                 break;
             }
-            iterator.next_object();
+            iterator.next_object(&mut self.time);
         }
         iterator.save_to(&mut self.state);
     }
