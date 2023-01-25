@@ -1,24 +1,25 @@
 ## Nix setup
 
 The Motoko build system relies on [Nix](https://nixos.org/) to manage
-dependencies, drive the build and run the test suite. You should install nix by
+dependencies, drive the build and run the test suite. You should install `nix` by
 running, as a normal user with `sudo` permissions,
 ```
-curl -L https://nixos.org/nix/install | sh
+sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
 
 You should also enable a nix cache to get all dependencies pre-built.
+
 The `cachix` command also requires `sudo` permissions.
 ```
 nix-env -iA cachix -f https://cachix.org/api/v1/install
 cachix use ic-hs-test
 ```
 Technically, this is optional, but without this you will build lots of build
-dependencies manually, which takes several hours.
+dependencies manually, which can take several hours.
 
 ## Installation using Nix
 
-If you want just to _use_ `moc`, you can install the `moc` binary into your nix
+If you want just to _use_ `moc`, you can install the `moc` binary into your `nix`
 environment with
 ```
 $ nix-env -i -f . -A moc
