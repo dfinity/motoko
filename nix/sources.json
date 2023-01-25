@@ -1,15 +1,15 @@
 {
     "candid": {
-        "branch": "claudio/candid-subtype-check",
+        "branch": "master",
         "builtin": false,
         "description": "Candid Library for the Internet Computer",
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "0889e288c8c44ce36682ffa67df010c83e912a33",
-        "sha256": "122v440prlcr0z6zj1a7j0rjpk1a2xwpvj8vxrdbldl6ss1krbff",
+        "rev": "fa27eef96c96c2f774a479622996b42c7ae6c1bd",
+        "sha256": "18zhn0iyakq1212jizc406v9x275nivdnnwx5h2130ci10d7f1ah",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/0889e288c8c44ce36682ffa67df010c83e912a33.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/fa27eef96c96c2f774a479622996b42c7ae6c1bd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
