@@ -4,6 +4,16 @@
 
   * BREAKING CHANGE
 
+    Motoko now implements Candid 1.4 (dfinity/candid#311).
+
+    In particular, when deserializing an actor or function reference,
+    Motoko will now first check that the type of the deserialized reference
+    is a subtype of the expected type and act accordingly.
+
+    Very few users should be affected by this change in behaviour.
+
+  * BREAKING CHANGE
+    
     Failure to send a message no longer traps but, instead, throws a catchable `Error` with new error code `#call_error` (#3630).
 
     On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
