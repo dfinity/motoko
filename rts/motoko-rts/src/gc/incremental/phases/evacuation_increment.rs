@@ -9,7 +9,7 @@ use crate::{
     },
     mem_utils::memcpy_words,
     memory::Memory,
-    types::*,
+    types::*, constants::WORD_SIZE,
 };
 
 static mut EVACUATION_STATE: Option<HeapIteratorState> = None;
@@ -61,7 +61,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
                     // Resume evacuation of the same partition later.
                     break;
                 }
-                self.time.advance(partition.dynamic_size());
+                self.time.advance(partition.dynamic_size() / WORD_SIZE as usize);
             }
             iterator.next_partition();
         }

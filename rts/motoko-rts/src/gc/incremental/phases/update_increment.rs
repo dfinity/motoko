@@ -10,7 +10,7 @@ use crate::{
         Roots, PARTITIONED_HEAP,
     },
     types::*,
-    visitor::visit_pointer_fields,
+    visitor::visit_pointer_fields, constants::WORD_SIZE,
 };
 
 static mut UPDATE_STATE: Option<HeapIteratorState> = None;
@@ -74,7 +74,7 @@ impl<'a> UpdateIncrement<'a> {
                     // Resume updating the same partition later.
                     break;
                 }
-                self.time.advance(partition.dynamic_size());
+                self.time.advance(partition.dynamic_size() / WORD_SIZE as usize);
             }
             iterator.next_partition();
         }
