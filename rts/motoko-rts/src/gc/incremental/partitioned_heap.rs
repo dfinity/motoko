@@ -153,14 +153,14 @@ impl Partition {
 /// Keeps the state of a `PartitionedHeapIterator` with an inner `PartititionIterator`.
 pub struct HeapIteratorState {
     partition_index: usize,
-    current_address: Option<usize>,
+    current_address: usize,
 }
 
 impl HeapIteratorState {
     pub fn new() -> HeapIteratorState {
         HeapIteratorState {
             partition_index: 0,
-            current_address: None,
+            current_address: 0,
         }
     }
 
@@ -241,7 +241,12 @@ impl PartitionIterator {
     ) -> PartitionIterator {
         let start_address = partition.dynamic_space_start();
         let end_address = partition.dynamic_space_end();
-        let current_address = state.current_address.unwrap_or(start_address);
+        let current_address =
+            if state.current_address < start_address || state.current_address > end_address {
+                start_address
+            } else {
+                state.current_address
+            };
         let mut iterator = PartitionIterator {
             start_address,
             end_address,
@@ -253,11 +258,7 @@ impl PartitionIterator {
 
     pub fn save_to(&self, state: &mut HeapIteratorState) {
         debug_assert!(self.current_address >= self.start_address);
-        state.current_address = if self.current_address < self.end_address {
-            Some(self.current_address)
-        } else {
-            None
-        };
+        state.current_address = self.current_address;
     }
 
     unsafe fn skip_unmarked_space(&mut self, time: &mut BoundedTime) {
