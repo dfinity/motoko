@@ -5,13 +5,13 @@ use std::{
 
 use motoko_rts::{
     gc::incremental::partitioned_heap::{
-        HeapIteratorState, Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
-        SURVIVAL_RATE_THRESHOLD,
+        HeapIteratorState, Partition, PartitionIterator, PartitionedHeap, PartitionedHeapIterator,
+        PARTITION_SIZE, SURVIVAL_RATE_THRESHOLD,
     },
     memory::{alloc_array, alloc_blob, Memory},
     types::{
-        unmark, Array, Blob, Bytes, FreeSpace, Obj, OneWordFiller, Tag, Value, Words,
-        TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER,
+        unmark, Array, Blob, Bytes, FreeSpace, Obj, OneWordFiller, Tag, Value, Words, TAG_ARRAY,
+        TAG_BLOB, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER,
     },
 };
 
@@ -30,7 +30,7 @@ unsafe fn test_normal_size_scenario() {
     let mut heap = create_test_heap();
     let occupied_partitions = 1 + heap.heap_pointer() / PARTITION_SIZE;
     test_allocation_partitions(&heap.inner, occupied_partitions);
-    test_iteration(&heap.inner, 1024, occupied_partitions);
+    test_iteration(&heap.inner, 1024);
     test_evacuation_plan(&mut heap.inner, occupied_partitions);
     test_freeing_partitions(&mut heap.inner, occupied_partitions);
     test_reallocations(&mut heap);
@@ -49,79 +49,92 @@ fn test_allocation_partitions(heap: &PartitionedHeap, number_of_partitions: usiz
     }
 }
 
-unsafe fn test_iteration(
-    heap: &PartitionedHeap,
-    break_step_size: usize,
-    occupied_partitions: usize,
-) {
+unsafe fn test_iteration(heap: &PartitionedHeap, break_step_size: usize) {
     println!("    Test heap iteration...");
     let mut iterator_state = HeapIteratorState::new();
     let mut count = 0;
-    let mut previous_partition = None;
-    loop {
-        let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state, false);
-        while iterator.current_object().is_some() {
-            assert!(iterator.current_partition().is_some());
-            let object = iterator.current_object().unwrap();
-            assert!(object.is_marked());
-            object.unmark();
-            let array = Value::from_ptr(object as usize).as_array();
-            let content = array.get(0).get_scalar();
-            assert_eq!(content as usize, count);
-            count += 1;
-            progress(count, NUMBER_OF_OBJECTS);
-            let partition = iterator.current_partition().unwrap();
-            assert!(!partition.is_free());
-            assert!(!partition.to_be_evacuated());
-            assert!(!partition.has_large_content());
-            assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
-            assert!(partition.get_index() < occupied_partitions);
-            if previous_partition.is_none() || partition.get_index() != previous_partition.unwrap()
-            {
-                previous_partition = Some(partition.get_index());
-            }
-            iterator.next_object();
-            if count % break_step_size == 0 {
-                break;
-            }
-        }
-        if iterator.current_object().is_none() {
-            assert!(iterator.current_partition().is_none());
-            break;
-        }
+    while count < NUMBER_OF_OBJECTS {
+        let count_before = count;
+        iterate_heap(heap, &mut iterator_state, &mut count, break_step_size);
+        assert!(count > count_before);
     }
     assert_eq!(count, NUMBER_OF_OBJECTS);
     reset_progress();
 }
 
+unsafe fn iterate_heap(
+    heap: &PartitionedHeap,
+    state: &mut HeapIteratorState,
+    count: &mut usize,
+    break_step_size: usize,
+) {
+    let mut iterator = PartitionedHeapIterator::load_from(heap, state);
+    while iterator.current_partition().is_some() {
+        let partition = iterator.current_partition().unwrap();
+        assert!(!partition.is_free());
+        assert!(!partition.to_be_evacuated());
+        assert!(!partition.has_large_content());
+        iterate_partition(partition, state, count, break_step_size);
+        if *count % break_step_size == 0 {
+            break;
+        }
+        iterator.next_partition();
+    }
+    iterator.save_to(state);
+}
+
+unsafe fn iterate_partition(
+    partition: &Partition,
+    state: &mut HeapIteratorState,
+    count: &mut usize,
+    break_step_size: usize,
+) {
+    let mut iterator = PartitionIterator::load_from(partition, state);
+    while iterator.current_object().is_some() {
+        let object = iterator.current_object().unwrap();
+        assert!(object.is_marked());
+        object.unmark();
+        let array = Value::from_ptr(object as usize).as_array();
+        let content = array.get(0).get_scalar();
+        assert_eq!(content as usize, *count);
+        *count += 1;
+        progress(*count, NUMBER_OF_OBJECTS);
+        assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
+        iterator.next_object();
+        if *count % break_step_size == 0 {
+            break;
+        }
+    }
+    iterator.save_to(state);
+}
+
 unsafe fn test_evacuation_plan(heap: &mut PartitionedHeap, occupied_partitions: usize) {
     println!("    Test evacuation plan...");
     heap.plan_evacuations();
-    let mut iterator_state = HeapIteratorState::new();
-    let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state, true);
+    let iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
     while iterator.current_partition().is_some() {
         let partition = iterator.current_partition().unwrap();
         assert!(partition.get_index() < occupied_partitions);
         assert!(!partition.is_free());
-        assert!(partition.to_be_evacuated());
-        next_partition(&mut iterator);
+        assert!(partition.to_be_evacuated() || heap.is_allocation_partition(partition.get_index()));
+        iterator.next_partition();
     }
 }
 
 unsafe fn test_freeing_partitions(heap: &mut PartitionedHeap, occupied_partitions: usize) {
     println!("    Test freeing partitions...");
     heap.free_evacuated_partitions();
-    let mut iterator_state = HeapIteratorState::new();
-    let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state, false);
+    let iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
     while iterator.current_partition().is_some() {
         let partition = iterator.current_partition().unwrap();
         assert!(partition.get_index() < occupied_partitions);
         assert!(!partition.is_free());
         assert!(!partition.to_be_evacuated());
         assert!(heap.is_allocation_partition(partition.get_index()));
-        next_partition(&mut iterator);
+        iterator.next_partition();
     }
-    assert!(iterator.current_partition().is_none());
     assert!(heap.occupied_size().as_usize() < PARTITION_SIZE + heap.base_address());
 }
 
@@ -140,25 +153,27 @@ unsafe fn test_reallocations(heap: &mut PartitionedTestHeap) {
 
 unsafe fn count_objects(heap: &PartitionedHeap) -> usize {
     let mut count = 0;
-    let mut iterator_state = HeapIteratorState::new();
-    let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state, false);
-    while iterator.current_object().is_some() {
-        assert!(iterator.current_partition().is_some());
-        let object = iterator.current_object().unwrap();
-        let array = Value::from_ptr(object as usize).as_array();
-        let content = array.get(0).get_scalar() as usize;
-        assert!(content < NUMBER_OF_OBJECTS);
-        count += 1;
-        if count <= NUMBER_OF_OBJECTS {
-            progress(count, NUMBER_OF_OBJECTS);
-        }
-        let partition = iterator.current_partition().unwrap();
+    let iterator_state = HeapIteratorState::new();
+    let mut heap_iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
+    while heap_iterator.current_partition().is_some() {
+        let partition = heap_iterator.current_partition().unwrap();
         assert!(!partition.is_free());
         assert!(!partition.to_be_evacuated());
-        assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
-        iterator.next_object();
+        let mut partition_iterator = PartitionIterator::load_from(partition, &iterator_state);
+        while partition_iterator.current_object().is_some() {
+            let object = partition_iterator.current_object().unwrap();
+            assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
+            let array = Value::from_ptr(object as usize).as_array();
+            let content = array.get(0).get_scalar() as usize;
+            assert!(content < NUMBER_OF_OBJECTS);
+            count += 1;
+            if count <= NUMBER_OF_OBJECTS {
+                progress(count, NUMBER_OF_OBJECTS);
+            }
+            partition_iterator.next_object();
+        }
+        heap_iterator.next_partition();
     }
-    assert!(iterator.current_partition().is_none());
     reset_progress();
     count
 }
@@ -202,8 +217,8 @@ fn test_close_partition_with_one_wordfiller(heap: &mut PartitionedTestHeap) {
 
 unsafe fn test_survival_rate(heap: &mut PartitionedHeap) {
     println!("    Test survival rate...");
-    let mut iterator_state = HeapIteratorState::new();
-    let mut iterator = PartitionedHeapIterator::resume(heap, &mut iterator_state, true);
+    let iterator_state = HeapIteratorState::new();
+    let mut iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
     while iterator.current_partition().is_some() {
         let partition = iterator.current_partition().unwrap();
         let dynamic_partition_size =
@@ -214,7 +229,7 @@ unsafe fn test_survival_rate(heap: &mut PartitionedHeap) {
         let expected_evacuation = !heap.is_allocation_partition(partition.get_index())
             && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD;
         assert_eq!(partition.to_be_evacuated(), expected_evacuation);
-        next_partition(&mut iterator);
+        iterator.next_partition();
     }
 }
 
@@ -242,63 +257,36 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     assert!(
         heap.inner.occupied_size().as_usize() >= sizes.iter().sum::<usize>() + heap.heap_base()
     );
-    iterate_objects(&heap.inner, sizes);
-    iterate_partitions(&heap.inner);
+    iterate_large_objects(&heap.inner, sizes);
     heap.inner.plan_evacuations();
     heap.inner.collect_large_objects();
     heap.inner.free_evacuated_partitions();
-    iterate_objects(&heap.inner, &[]);
+    iterate_large_objects(&heap.inner, &[]);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
 }
 
-unsafe fn iterate_objects(heap: &PartitionedHeap, expected_sizes: &[usize]) {
+unsafe fn iterate_large_objects(heap: &PartitionedHeap, expected_sizes: &[usize]) {
     let mut detected_sizes = vec![];
-    let mut iterator_state = HeapIteratorState::new();
-    let mut iterator = PartitionedHeapIterator::resume(&heap, &mut iterator_state, false);
-    while iterator.current_object().is_some() {
-        let object = iterator.current_object().unwrap();
-        assert!(object.is_marked());
-        object.unmark();
-        assert_eq!(object.tag(), TAG_BLOB);
-        let size = block_size(object as *const Tag);
-        detected_sizes.push(size);
-        iterator.next_object();
+    let iterator_state = HeapIteratorState::new();
+    let mut heap_iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
+    while heap_iterator.current_partition().is_some() {
+        let partition = heap_iterator.current_partition().unwrap();
+        let mut partition_iterator = PartitionIterator::load_from(partition, &iterator_state);
+        while partition_iterator.current_object().is_some() {
+            let object = partition_iterator.current_object().unwrap();
+            assert!(object.is_marked());
+            object.unmark();
+            assert_eq!(object.tag(), TAG_BLOB);
+            let size = block_size(object as *const Tag);
+            detected_sizes.push(size);
+            partition_iterator.next_object();
+        }
+        heap_iterator.next_partition();
     }
     detected_sizes.sort();
     let mut expected_sorted = expected_sizes.to_vec();
     expected_sorted.sort();
     assert_eq!(detected_sizes, expected_sorted);
-}
-
-unsafe fn iterate_partitions(heap: &PartitionedHeap) {
-    let mut iterator_state = HeapIteratorState::new();
-    let mut iterator = PartitionedHeapIterator::resume(&heap, &mut iterator_state, false);
-    while iterator.current_partition().is_some() {
-        let partition = iterator.current_partition().unwrap();
-        if partition.has_large_content() {
-            let object = iterator.current_object().unwrap();
-            assert_eq!(object.tag(), TAG_BLOB);
-            let size = block_size(object as *const Tag);
-            let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
-            let following_partition = partition.get_index() + number_of_partitions;
-            next_partition(&mut iterator);
-            assert!(
-                iterator.current_partition().is_none()
-                    || iterator.current_partition().unwrap().get_index() == following_partition
-            );
-        } else {
-            next_partition(&mut iterator);
-        }
-    }
-}
-
-unsafe fn next_partition(iterator: &mut PartitionedHeapIterator) {
-    let partition_index = iterator.current_partition().unwrap().get_index();
-    while iterator.current_partition().is_some()
-        && iterator.current_partition().unwrap().get_index() == partition_index
-    {
-        iterator.next_object();
-    }
 }
 
 unsafe fn occupied_space(partition: &Partition) -> usize {
