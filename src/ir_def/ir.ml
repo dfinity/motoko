@@ -78,10 +78,11 @@ and exp' =
 
 and system = {
   meta : meta;
+  (* TODO: use option expressions for (some or all of) these *)
   preupgrade : exp;
   postupgrade : exp;
   heartbeat : exp;
-  timer : exp;
+  timer : exp; (* TODO: use an option type: (Default of exp | UserDefined of exp) option *)
   inspect : exp
 }
 

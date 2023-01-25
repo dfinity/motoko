@@ -43,3 +43,4 @@ let force_gc = ref false
 let global_timer = ref true
 let experimental_field_aliasing = ref false
 let ocaml_js = ref false
+let trap_on_call_error = ref false

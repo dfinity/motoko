@@ -3926,7 +3926,27 @@ end (* Lifecycle *)
 
 
 module IC = struct
+
   (* IC-specific stuff: System imports, databufs etc. *)
+
+  let register_globals env =
+    (* result of last ic0.call_perform  *)
+    E.add_global32 env "__call_perform_status" Mutable 0l;
+    E.add_global32 env "__call_perform_message" Mutable 0l
+    (* NB: __call_perform_message is not a root so text contents *must* be static *)
+
+  let get_call_perform_status env =
+    G.i (GlobalGet (nr (E.get_global env "__call_perform_status")))
+  let set_call_perform_status env =
+    G.i (GlobalSet (nr (E.get_global env "__call_perform_status")))
+  let get_call_perform_message env =
+    G.i (GlobalGet (nr (E.get_global env "__call_perform_message")))
+  let set_call_perform_message env =
+    G.i (GlobalSet (nr (E.get_global env "__call_perform_message")))
+
+  let init_globals env =
+    Blob.lit env "" ^^
+    set_call_perform_message env
 
   let i32s n = Lib.List.make n I32Type
   let i64s n = Lib.List.make n I64Type
@@ -7505,10 +7525,12 @@ module FuncDec = struct
         G.i Drop);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
-  let ic_call_threaded env purpose get_meth_pair push_continuations add_data add_cycles =
+  let ic_call_threaded env purpose get_meth_pair push_continuations
+    add_data add_cycles =
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      let message = Printf.sprintf "could not perform %s" purpose in
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
       get_meth_pair ^^ Arr.load_field env 0l ^^ Blob.as_ptr_len env ^^
@@ -7528,9 +7550,25 @@ module FuncDec = struct
       add_cycles ^^
       (* done! *)
       IC.system_call env "call_perform" ^^
-      (* Check error code *)
+      IC.set_call_perform_status env ^^
+      Blob.lit env message ^^
+      IC.set_call_perform_message env ^^
+      IC.get_call_perform_status env ^^
+      (* save error code, cleanup on error *)
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-      E.else_trap_with env (Printf.sprintf "could not perform %s" purpose)
+      G.if0
+      begin
+        G.nop
+      end
+      begin
+        if !Flags.trap_on_call_error then
+          E.trap_with env message
+        else
+        (* Recall (don't leak) continuations *)
+        get_cb_index ^^
+        ContinuationTable.recall env ^^
+        G.i Drop
+      end
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
@@ -7583,8 +7621,19 @@ module FuncDec = struct
       (* the cycles *)
       add_cycles ^^
       IC.system_call env "call_perform" ^^
-      (* This is a one-shot function: Ignore error code *)
-      G.i Drop
+      (* This is a one-shot function: just remember error code *)
+      (if !Flags.trap_on_call_error then
+         (* legacy: discard status, proceed as if all well *)
+         G.i Drop ^^
+         compile_unboxed_zero ^^
+         Blob.lit env "" ^^
+         IC.set_call_perform_message env ^^
+         IC.set_call_perform_status env
+       else
+         IC.set_call_perform_status env ^^
+         Blob.lit env "could not perform oneway" ^^
+         IC.set_call_perform_message env)
+
     | _ -> assert false
 
   let equate_msgref env =
@@ -9146,6 +9195,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64,
     IC.get_system_time env
 
+  | OtherPrim "call_perform_status", [] ->
+    SR.UnboxedWord32,
+    IC.get_call_perform_status env
+
+  | OtherPrim "call_perform_message", [] ->
+    SR.Vanilla,
+    IC.get_call_perform_message env
+
   | OtherPrim "rts_version", [] ->
     SR.Vanilla,
     E.call_import env "rts" "version"
@@ -10235,13 +10292,16 @@ and main_actor as_opt mod_env ds fs up =
         Serialization.deserialize env arg_tys ^^
         G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
     end ^^
-    begin if up.timer.at <> no_region then
-      (* initiate a timer pulse *)
-      compile_const_64 1L ^^
-      IC.system_call env "global_timer_set" ^^
-      G.i Drop
-      else G.nop
+    begin
+      if up.timer.at <> no_region then
+        (* initiate a timer pulse *)
+        compile_const_64 1L ^^
+        IC.system_call env "global_timer_set" ^^
+        G.i Drop
+      else
+        G.nop
     end ^^
+    IC.init_globals env ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
@@ -10346,6 +10406,7 @@ and conclude_module env start_fi_o =
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
 
+  IC.register_globals env;
   Stack.register_globals env;
   GC.register_globals env;
   StableMem.register_globals env;

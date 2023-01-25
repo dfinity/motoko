@@ -44,11 +44,11 @@ let ( -@- ) k exp2 =
   match k with
   | ContVar v ->
      varE v -*- exp2
-  | MetaCont (typ, k) ->
+  | MetaCont (typ0, k) ->
      match exp2.it with
-     | VarE v -> k (var v exp2.note.Note.typ)
+     | VarE v -> k (var v (typ exp2))
      | _ ->
-        let u = fresh_var "u" typ in
+        let u = fresh_var "u" typ0 in
         letE u exp2 (k u)
 
 (* Label environments *)
@@ -61,15 +61,30 @@ type label_sort = Cont of kont | Label
 
 let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
-(* Trivial translation of pure terms (eff = T.Triv) *)
+let rec t_async context exp =
+  match exp.it with
+  | AsyncE (s, tb, exp1, typ1) ->
+   let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *) (*Why?*)
+   (* add the implicit return label *)
+   let k_ret = fresh_cont (typ exp1) T.unit in
+   let k_fail = fresh_err_cont T.unit in
+   let context' =
+     LabelEnv.add Return (Cont (ContVar k_ret))
+       (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+   in
+     cps_asyncE s typ1 (typ exp1)
+       (forall [tb] ([k_ret; k_fail] -->*
+          (c_exp context' exp1 (ContVar k_ret))))
+ |  _ -> assert false
 
-let rec t_exp context exp =
+(* Trivial translation of pure terms (eff = T.Triv) *)
+and t_exp context exp =
   assert (eff exp = T.Triv);
-  { exp with it = t_exp' context exp.it }
-and t_exp' context exp' =
-  match exp' with
+  { exp with it = t_exp' context exp }
+and t_exp' context exp =
+  match exp.it with
   | VarE _
-  | LitE _ -> exp'
+  | LitE _ -> exp.it
   | AssignE (exp1, exp2) ->
     AssignE (t_lexp context exp1, t_exp context exp2)
   | BlockE b ->
@@ -78,9 +93,9 @@ and t_exp' context exp' =
     IfE (t_exp context exp1, t_exp context exp2, t_exp context exp3)
   | SwitchE (exp1, cases) ->
     let cases' = List.map
-                  (fun {it = {pat;exp}; at; note} ->
-                     {it = {pat;exp = t_exp context exp}; at; note})
-                  cases
+      (fun {it = {pat;exp}; at; note} ->
+        {it = {pat;exp = t_exp context exp}; at; note})
+      cases
     in
     SwitchE (t_exp context exp1, cases')
   | LoopE exp1 ->
@@ -102,24 +117,36 @@ and t_exp' context exp' =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE (s, tb, exp1, typ1) ->
-    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
-    (* add the implicit return/throw label *)
-    let k_ret = fresh_cont (typ exp1) T.unit in
-    let k_fail = fresh_err_cont T.unit in
-    let context' =
-      LabelEnv.add Return (Cont (ContVar k_ret))
-        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
-    in
-    (cps_asyncE s typ1 (typ exp1)
-      (forall [tb] ([k_ret; k_fail] -->*
-        c_exp context' exp1 (ContVar k_ret)))).it
+  | AsyncE (T.Cmp, _, _, _) ->
+     (t_async context exp).it
+  | AsyncE (T.Fut, _, _, _) ->
+     assert false  (* must have effect T.Await *)
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
+  | FuncE (x, (T.Local as s1), c, typbinds, pat, typs,
+      ({ it = AsyncE _; _} as body)) ->
+    FuncE (x, s1, c, typbinds, pat, typs,
+      t_async context body)
+  | FuncE (x, (T.Shared _ as s1), c, typbinds, pat, typs,
+      ({ it = AsyncE _;_ } as body)) ->
+    FuncE (x, s1, c, typbinds, pat, typs,
+      t_async context body)
+  | FuncE (x, (T.Shared _ as s1), c, typbinds, pat, typs,
+      { it = BlockE ([
+         { it = LetD (
+            { it = WildP; _} as wild_pat,
+            ({ it = AsyncE _; _} as body)); _ }],
+                     ({ it = PrimE (TupPrim, []); _ } as unitE));
+        _
+      }) ->
+    FuncE (x, s1, c, typbinds, pat, typs,
+      blockE [letP wild_pat (t_async context body)] unitE)
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
+    assert (not (T.is_local_async_func (typ exp)));
+    assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
   | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
@@ -127,14 +154,16 @@ and t_exp' context exp' =
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
-        heartbeat = t_exp LabelEnv.empty heartbeat;
-        timer = t_exp LabelEnv.empty timer;
+        heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
+        timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect
       },
       t)
-  | NewObjE (sort, ids, typ) -> exp'
+  | NewObjE (sort, ids, typ) -> exp.it
   | SelfCallE _ -> assert false
   | PrimE (p, exps) ->
+    (* async calls have effect T.Await, not T.Triv *)
+    assert (not (is_async_call p exps));
     PrimE (p, List.map (t_exp context) exps)
 
 and t_lexp context lexp =
@@ -353,18 +382,32 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     end
-  | AsyncE (s, tb, exp1, typ1) ->
-     (* add the implicit return label *)
+  | AsyncE (T.Cmp, tb, exp1, typ1) ->
+    assert false (* must have effect T.Triv, handled by first case *)
+  | AsyncE (T.Fut, tb, exp1, typ1) ->
+    (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
-    k -@-
-      (cps_asyncE s typ1 (typ exp1)
+    let r = match LabelEnv.find_opt Throw context with
+      | Some (Cont r) -> r
+      | Some Label
+      | None -> assert false
+    in
+    let cps_async =
+      cps_asyncE T.Fut typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
-          (c_exp context' exp1 (ContVar k_ret)))))
+          (c_exp context' exp1 (ContVar k_ret)))) in
+    let k' = meta (typ cps_async)
+      (fun v ->
+        check_call_perform_status
+          (k -@- varE v)
+          (fun e -> r -@- e))
+    in
+    k' -@- cps_async
   | PrimE (AwaitPrim s, [exp1]) ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
@@ -372,21 +415,34 @@ and c_exp' context exp k =
       | None -> assert false
     in
     letcont r (fun r ->
-     letcont k (fun k ->
-       let kr = tupE [varE k; varE r] in
-       match eff exp1 with
-       | T.Triv ->
-          cps_awaitE s (typ_of_var k) (t_exp context exp1) kr
-       | T.Await ->
-          c_exp context  exp1
-            (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) kr)))
-     ))
+    letcont k (fun k ->
+      let kr = tupE [varE k; varE r] in
+      match eff exp1 with
+      | T.Triv ->
+        cps_awaitE s (typ_of_var k) (t_exp context exp1) kr
+      | T.Await ->
+        c_exp context exp1
+          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) kr)))
+    ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
   | DefineE (id, mut, exp1) ->
     unary context k (fun v1 -> e (DefineE (id, mut, varE v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
+  | PrimE (p, exps) when is_async_call p exps ->
+    let r = match LabelEnv.find_opt Throw context with
+      | Some (Cont r) -> r
+      | Some Label
+      | None -> assert false
+    in
+    let k' = meta (typ exp)
+      (fun v ->
+        check_call_perform_status
+          (k -@- varE v)
+          (fun e -> r -@- e))
+    in
+    nary context k' (fun vs -> e (PrimE (p, vs))) exps
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
 
@@ -536,16 +592,34 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
+  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
     ActorU (as_opt, t_decs context ds, ids,
-      { meta;
+      { meta = m;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
-        heartbeat = t_exp LabelEnv.empty heartbeat;
-        timer = t_exp LabelEnv.empty timer;
+        heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
+        timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
       },
       t)
+
+and t_ignore_throw context exp =
+  match exp.it with
+  | Ir.PrimE (Ir.TupPrim, []) ->
+     exp
+  | _ ->
+     let throw = fresh_err_cont T.unit in
+     let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+     let e = fresh_var "e" T.catch in
+     { (blockE [
+          funcD throw e (tupE[]);
+        ]
+        (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
+       (* timer logic requires us to preserve any source location,
+          or timer won't be initialized in compile.ml *)
+       with at = exp.at
+     }
+
 
 and t_prog (prog, flavor) =
   (t_comp_unit LabelEnv.empty prog, { flavor with has_await = false })

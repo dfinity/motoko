@@ -166,10 +166,14 @@ let argspec = [
 
   "--experimental-field-aliasing",
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
-  " enable experimental support for aliasing of var fields"
+  " enable experimental support for aliasing of var fields";
+
+  "--trap-on-call-error",
+  Arg.Unit (fun () -> Flags.trap_on_call_error := true),
+  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."
   ]
 
-  @  Args.inclusion_args
+  @ Args.inclusion_args
 
 
 

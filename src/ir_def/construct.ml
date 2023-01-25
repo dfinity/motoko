@@ -109,6 +109,8 @@ let primE prim es =
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
+    | OtherPrim "call_perform_status" -> T.(Prim Nat32)
+    | OtherPrim "call_perform_message" -> T.text
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -135,7 +137,9 @@ let assertE e =
 let asyncE s typ_bind e typ1 =
   { it = AsyncE (s, typ_bind, e, typ1);
     at = no_region;
-    note = Note.{ def with typ = T.Async (s, typ1, typ e); eff = T.Triv }
+    note =
+      Note.{ def with typ = T.Async (s, typ1, typ e);
+                      eff = if s = T.Fut then T.Await else T.Triv }
   }
 
 let awaitE s e =
@@ -245,6 +249,12 @@ let blockE decs exp =
       note = Note.{ def with typ; eff }
     }
 
+let nat32E n =
+  { it = LitE (Nat32Lit n);
+    at = no_region;
+    note = Note.{ def with typ = T.Prim (T.Nat32) }
+  }
+
 let natE n =
   { it = LitE (NatLit n);
     at = no_region;
@@ -299,13 +309,16 @@ let callE exp1 typs exp2 =
     | T.Non -> T.Non
     | _ -> raise (Invalid_argument "callE expect a function")
   in
+  let p = CallPrim typs in
+  let es = [exp1; exp2] in
   { it = PrimE (CallPrim typs, [exp1; exp2]);
     at = no_region;
     note = Note.{ def with
      typ;
-     eff = max_eff (eff exp1) (eff exp2)
+     eff = Ir_effect.infer_effect_prim p es
     }
   }
+
 
 let ifE exp1 exp2 exp3 =
   { it = IfE (exp1, exp2, exp3);
@@ -727,3 +740,16 @@ let objE sort typ_flds flds =
   go [] [] [] flds
 
 let recordE flds = objE T.Object [] flds
+
+let check_call_perform_status success mk_failure =
+  ifE
+    (callE
+      (varE (var "@call_succeeded"
+        T.(Func (Local, Returns, [], [], [bool]))))
+      [] (unitE ()))
+    success
+    (mk_failure
+      (callE
+        (varE (var "@call_error"
+          T.(Func (Local, Returns, [], [], [T.error]))))
+        [] (unitE ())))

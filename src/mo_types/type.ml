@@ -328,6 +328,8 @@ let throwErrorCodes = List.sort compare_field [
   { lab = "canister_reject"; typ = unit; depr = None}
 ]
 
+let call_error = Obj(Object,[{ lab = "err_code"; typ = Prim Nat32; depr = None }])
+
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
     { lab = "system_fatal"; typ = unit; depr = None};
@@ -335,6 +337,7 @@ let catchErrorCodes = List.sort compare_field (
     { lab = "destination_invalid"; typ = unit; depr = None};
     { lab = "canister_error"; typ = unit; depr = None};
     { lab = "future"; typ = Prim Nat32; depr = None};
+    { lab = "call_error"; typ = call_error; depr = None};
   ])
 
 let throw = Prim Error
@@ -863,10 +866,21 @@ let find_unshared t =
     end
   in go t
 
-let is_shared_func t =
-  match normalize t with
+let is_shared_func typ =
+  match promote typ with
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
+
+let is_local_async_func typ =
+  match promote typ with
+  | Func
+      (Local, Returns,
+       { sort = Scope; _ }::_,
+       _,
+       [Async (Fut, Var (_ ,0), _)]) ->
+    true
+  | _ ->
+    false
 
 let shared t = serializable false t
 let stable t = serializable true t
