@@ -4,6 +4,8 @@
 
   * BREAKING CHANGE
 
+    Failure to send a message no longer traps but, instead, throws a catchable `Error` with new error code `#call_error` (#3630).
+
     On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
     This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
     or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
