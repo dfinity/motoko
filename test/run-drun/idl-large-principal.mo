@@ -1,7 +1,7 @@
 actor {
   public query func fun1(_: Principal) : async () {};
   public query func fun2(_: actor {}) : async () {};
-  public query func fun3(_: shared () -> ()) : async () {};
+  public query func fun3(_: shared () -> async ()) : async () {};
 }
 
 

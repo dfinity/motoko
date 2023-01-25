@@ -2,6 +2,7 @@
 
 mod bigint;
 mod bitmap;
+mod bitrel;
 mod continuation_table;
 mod crc32;
 mod gc;
@@ -24,6 +25,7 @@ fn main() {
     unsafe {
         bigint::test();
         bitmap::test();
+        bitrel::test();
         continuation_table::test();
         crc32::test();
         gc::test();

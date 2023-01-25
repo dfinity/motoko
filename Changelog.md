@@ -4,6 +4,16 @@
 
   * BREAKING CHANGE
 
+    Motoko now implements Candid 1.4 (dfinity/candid#311).
+
+    In particular, when deserializing an actor or function reference,
+    Motoko will now first check that the type of the deserialized reference
+    is a subtype of the expected type and act accordingly.
+
+    Very few users should be affected by this change in behaviour.
+
+  * BREAKING CHANGE
+
     On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
     This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
     or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
