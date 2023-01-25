@@ -76,9 +76,9 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             // Advance the iterator before evacuation since the debug mode clears the evacuating object.
             iterator.next_object();
             self.evacuate_object(object);
-            self.time.tick();
         }
         iterator.save_to(&mut self.state);
+        self.time.advance(partition.dynamic_space_end());
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {

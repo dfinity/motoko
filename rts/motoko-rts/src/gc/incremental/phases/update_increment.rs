@@ -93,6 +93,7 @@ impl<'a> UpdateIncrement<'a> {
             iterator.next_object();
         }
         iterator.save_to(&mut self.state);
+        self.time.advance(partition.dynamic_space_end());
     }
 
     unsafe fn update_object(&mut self, object: *mut Obj) {
