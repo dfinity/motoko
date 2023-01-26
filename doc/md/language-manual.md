@@ -1220,11 +1220,14 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 | name          | type                                                          | description         |
 |---------------|---------------------------------------------------------------|---------------------|
 | `heartbeat`   | `() -> async ()`                                              | heartbeat action    |
+| `timer`       | `(Nat64 -> ()) -> async ()`                                   | timer action        |
 | `inspect`     | `{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool` | message predicate   |
 | `preupgrade`  | `() -> ()`                                                    | pre upgrade action  |
 | `postupgrade` | `() -> ()`                                                    | post upgrade action |
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
+
+-   `timer`, when declared, is called as a response of the canister global timer's expiration. The canister's global timer can be manipulated with the passed-in function argument of type `Nat64 -> ()` (taking an absolute time in nanoseconds) upon which libraries can build their own abstractions. When not declared (and in absence of the `-no-timer` flag), this system action is provided with default implementation by the compiler (additionally `setTimer` and `cancelTimer` are available as primitives).
 
 -   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 
@@ -2246,8 +2249,8 @@ The `await*` expression `await* <exp>` has type `T` provided:
 -   `T` is shared,
 
 -   the `await*` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
-Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a delayed computation `<block-or-exp>`. The evaluation of `await* <exp>` proceeds
-with the evaluation of `<block-or-exp>`, executing the delayed computation.
+
+Expression `await* <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a delayed computation `<block-or-exp>`. The evaluation of `await* <exp>` proceeds with the evaluation of `<block-or-exp>`, executing the delayed computation.
 
 :::danger
 
