@@ -285,13 +285,17 @@ module E = struct
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
 
+    (* Types accumulated in global typtbl (for candid subtype checks)
+       See Note [Candid subtype checks]
+    *)
+    typtbl_typs : Type.typ list ref;
+
     (* Metadata *)
     args : (bool * string) option ref;
     service : (bool * string) option ref;
     stable_types : (bool * string) option ref;
     labs : LabSet.t ref; (* Used labels (fields and variants),
                             collected for Motoko custom section 0 *)
-
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -326,6 +330,7 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
     service = ref None;
@@ -362,11 +367,11 @@ module E = struct
   let mode (env : t) = env.mode
 
   let add_anon_local (env : t) ty =
-      let i = reg env.locals ty in
-      Wasm.I32.add env.n_param i
+    let i = reg env.locals ty in
+    Wasm.I32.add env.n_param i
 
   let add_local_name (env : t) li name =
-      let _ = reg env.local_names (li, name) in ()
+    let _ = reg env.local_names (li, name) in ()
 
   let get_locals (env : t) = !(env.locals)
   let get_local_names (env : t) : (int32 * string) list = !(env.local_names)
@@ -554,6 +559,9 @@ module E = struct
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
 
+  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
+    Int32.add (add_static env data) ptr_unskew
+
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
     
@@ -588,6 +596,16 @@ module E = struct
     let name = gc_strategy_name !Flags.gc_strategy in
     let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
     call_import env "rts" (gc_fn ^ "_gc")
+
+  (* See Note [Candid subtype checks] *)
+  (* NB: we don't bother detecting duplicate registrations here because the code sharing machinery
+     ensures that `add_typtbl_typ t` is called at most once for any `t` with a distinct type hash *)
+  let add_typtbl_typ (env : t) ty : Int32.t =
+    reg env.typtbl_typs ty
+
+  let get_typtbl_typs (env : t) : Type.typ list =
+    !(env.typtbl_typs)
+
 end
 
 
@@ -820,7 +838,16 @@ module Func = struct
         (G.i (LocalGet (nr 2l)))
         (G.i (LocalGet (nr 3l)))
     )
-  let share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
+  let share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
+        (G.i (LocalGet (nr 0l)))
+        (G.i (LocalGet (nr 1l)))
+        (G.i (LocalGet (nr 2l)))
+        (G.i (LocalGet (nr 3l)))
+        (G.i (LocalGet (nr 4l)))
+        (G.i (LocalGet (nr 5l)))
+    )
+  let _share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -829,6 +856,18 @@ module Func = struct
         (G.i (LocalGet (nr 4l)))
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
+    )
+  let share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6; p7; p8; p9] retty (fun env -> mk_body env
+        (G.i (LocalGet (nr 0l)))
+        (G.i (LocalGet (nr 1l)))
+        (G.i (LocalGet (nr 2l)))
+        (G.i (LocalGet (nr 3l)))
+        (G.i (LocalGet (nr 4l)))
+        (G.i (LocalGet (nr 5l)))
+        (G.i (LocalGet (nr 6l)))
+        (G.i (LocalGet (nr 7l)))
+        (G.i (LocalGet (nr 8l)))
     )
 
 end (* Func *)
@@ -840,6 +879,10 @@ module RTS = struct
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "idl_sub_buf_init" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "idl_sub"
+      [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -1116,7 +1159,7 @@ module Stack = struct
      All pointers here are unskewed.
   *)
 
-  let end_ = page_size (* 64k of stack *)
+  let end_ = Int32.mul 2l page_size (* 128k of stack *)
 
   let register_globals env =
     (* stack pointer *)
@@ -1128,6 +1171,7 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
+  (* TODO: check for overflow *)
   let alloc_words env n =
     get_stack_ptr env ^^
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
@@ -1141,11 +1185,41 @@ module Stack = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_stack_ptr env
 
+  (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also below *)
   let with_words env name n f =
     let (set_x, get_x) = new_local env name in
     alloc_words env n ^^ set_x ^^
     f get_x ^^
     free_words env n
+
+  let dynamic_alloc_words env get_n =
+    get_stack_ptr env ^^
+    compile_divU_const Heap.word_size ^^
+    get_n ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.then_trap_with env "RTS Stack underflow" ^^
+    get_stack_ptr env ^^
+    get_n ^^
+    compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+    set_stack_ptr env ^^
+    get_stack_ptr env
+
+  let dynamic_free_words env get_n =
+    get_stack_ptr env ^^
+    get_n ^^
+    compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_stack_ptr env
+
+  (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also above*)
+  let dynamic_with_words env name f =
+    let (set_n, get_n) = new_local env "n" in
+    let (set_x, get_x) = new_local env name in
+    set_n ^^
+    dynamic_alloc_words env get_n ^^ set_x ^^
+    f get_x ^^
+    dynamic_free_words env get_n
 
 end (* Stack *)
 
@@ -5034,6 +5108,24 @@ module MakeSerialization (Strm : Stream) = struct
 
   module Strm = Strm
 
+  (* Globals recording known Candid types
+     See Note [Candid subtype checks]
+  *)
+  let register_delayed_globals env =
+    (E.add_global32_delayed env "__typtbl" Immutable,
+     E.add_global32_delayed env "__typtbl_end" Immutable,
+     E.add_global32_delayed env "__typtbl_size" Immutable,
+     E.add_global32_delayed env "__typtbl_idltyps" Immutable)
+
+  let get_typtbl env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl")))
+  let get_typtbl_size env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl_size")))
+  let get_typtbl_end env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl_end")))
+  let get_typtbl_idltyps env =
+    G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
+
   open Typ_hash
 
   let sort_by_hash fs =
@@ -5081,8 +5173,10 @@ module MakeSerialization (Strm : Stream) = struct
   let idl_service   = -23l
   let idl_alias     = 1l (* see Note [mutable stable values] *)
 
-
-  let type_desc env ts : string =
+  (* TODO: use record *)
+  let type_desc env ts :
+     string * int list * int32 list  (* type_desc, (relative offsets), indices of ts *)
+    =
     let open Type in
 
     (* Type traversal *)
@@ -5155,6 +5249,12 @@ module MakeSerialization (Strm : Stream) = struct
       | Some i -> add_sleb128 (Int32.neg i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
 
+    let idx t =
+      let t = Type.normalize t in
+      match to_idl_prim t with
+      | Some i -> Int32.neg i
+      | None -> TM.find (normalize t) idx in
+
     let rec add_typ t =
       match t with
       | Non -> assert false
@@ -5218,10 +5318,35 @@ module MakeSerialization (Strm : Stream) = struct
 
     Buffer.add_string buf "DIDL";
     add_leb128 (List.length typs);
-    List.iter add_typ typs;
+    let offsets = List.map (fun typ ->
+      let offset = Buffer.length buf in
+      add_typ typ;
+      offset)
+      typs
+    in
     add_leb128 (List.length ts);
     List.iter add_idx ts;
-    Buffer.contents buf
+    (Buffer.contents buf,
+     offsets,
+     List.map idx ts)
+
+  (* See Note [Candid subtype checks] *)
+  let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
+    let typdesc, offsets, idltyps = type_desc env (E.get_typtbl_typs env) in
+    let static_typedesc = E.add_static_unskewed env [StaticBytes.Bytes typdesc] in
+    let static_typtbl =
+      let bytes = StaticBytes.i32s
+        (List.map (fun offset ->
+          Int32.(add static_typedesc (of_int(offset))))
+        offsets)
+      in
+      E.add_static_unskewed env [bytes]
+    in
+    let static_idltyps = E.add_static_unskewed env [StaticBytes.i32s idltyps] in
+    set_typtbl static_typtbl;
+    set_typtbl_end Int32.(add static_typedesc (of_int (String.length typdesc)));
+    set_typtbl_size (Int32.of_int (List.length offsets));
+    set_typtbl_idltyps static_idltyps
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
@@ -5553,8 +5678,48 @@ module MakeSerialization (Strm : Stream) = struct
   let coercion_error_value env : int32 =
     Tagged.shared_static_obj env Tagged.CoercionFailure []
 
+  (* See Note [Candid subtype checks] *)
+  let with_rel_buf_opt env extended get_typtbl_size1 f =
+    if extended then
+      f (compile_unboxed_const 0l)
+    else
+      get_typtbl_size1 ^^ get_typtbl_size env ^^
+      E.call_import env "rts" "idl_sub_buf_words" ^^
+      Stack.dynamic_with_words env "rel_buf" (fun get_ptr ->
+        get_ptr ^^ get_typtbl_size1 ^^ get_typtbl_size env ^^
+        E.call_import env "rts" "idl_sub_buf_init" ^^
+        f get_ptr)
+
+  (* See Note [Candid subtype checks] *)
+  let idl_sub env t2 =
+    let idx = E.add_typtbl_typ env t2 in
+    get_typtbl_idltyps env ^^
+    G.i (Load {ty = I32Type; align = 0; offset = Int32.mul idx 4l (*!*); sz = None}) ^^
+    Func.share_code6 env ("idl_sub")
+      (("rel_buf", I32Type),
+       ("typtbl1", I32Type),
+       ("typtbl_end1", I32Type),
+       ("typtbl_size1", I32Type),
+       ("idltyp1", I32Type),
+       ("idltyp2", I32Type)
+      )
+      [I32Type]
+      (fun env get_rel_buf get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
+        get_rel_buf ^^
+        E.else_trap_with env "null rel_buf" ^^
+        get_rel_buf ^^
+        get_typtbl1 ^^
+        get_typtbl env ^^
+        get_typtbl_end1 ^^
+        get_typtbl_end env ^^
+        get_typtbl_size1 ^^
+        get_typtbl_size env ^^
+        get_idltyp1 ^^
+        get_idltyp2 ^^
+        E.call_import env "rts" "idl_sub")
+
   (* The main deserialization function, generated once per type hash.
-     Is parameters are:
+     Its parameters are:
        * data_buffer: The current position of the input data buffer
        * ref_buffer:  The current position of the input references buffer
        * typtbl:      The type table, as returned by parse_idl_header
@@ -5570,16 +5735,18 @@ module MakeSerialization (Strm : Stream) = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code7 env name
-      (("data_buffer", I32Type),
+    Func.share_code9 env name
+      (("rel_buf_opt", I32Type),
+       ("data_buffer", I32Type),
        ("ref_buffer", I32Type),
        ("typtbl", I32Type),
-       ("idltyp", I32Type),
+       ("typtbl_end", I32Type),
        ("typtbl_size", I32Type),
+       ("idltyp", I32Type),
        ("depth", I32Type),
        ("can_recover", I32Type)
       ) [I32Type]
-    (fun env get_data_buf get_ref_buf get_typtbl get_idltyp get_typtbl_size get_depth get_can_recover ->
+    (fun env get_rel_buf_opt get_data_buf get_ref_buf get_typtbl get_typtbl_end get_typtbl_size get_idltyp get_depth get_can_recover ->
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -5597,11 +5764,13 @@ module MakeSerialization (Strm : Stream) = struct
       let go' can_recover env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
+        get_rel_buf_opt ^^
         get_data_buf ^^
         get_ref_buf ^^
         get_typtbl ^^
-        get_idlty ^^
+        get_typtbl_end ^^
         get_typtbl_size ^^
+        get_idlty ^^
         ( (* Reset depth counter if we made progress *)
           ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -6144,16 +6313,46 @@ module MakeSerialization (Strm : Stream) = struct
             ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
-        with_composite_typ idl_func (fun _get_typ_buf ->
-          read_byte_tagged
-            [ E.trap_with env "IDL error: unexpected function reference"
-            ; read_actor_data () ^^
-              read_text () ^^
-              Tuple.from_stack env 2
-            ]
-        );
+        (* See Note [Candid subtype checks] *)
+        get_rel_buf_opt ^^
+        G.if1 I32Type
+          begin
+            get_rel_buf_opt ^^
+            get_typtbl ^^
+            get_typtbl_end ^^
+            get_typtbl_size ^^
+            get_idltyp ^^
+            idl_sub env t
+          end
+          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
+        G.if1 I32Type
+          (with_composite_typ idl_func (fun _get_typ_buf ->
+            read_byte_tagged
+              [ E.trap_with env "IDL error: unexpected function reference"
+              ; read_actor_data () ^^
+                read_text () ^^
+                Tuple.from_stack env 2
+              ]))
+          (skip get_idltyp ^^
+           coercion_failed "IDL error: incompatible function type")
       | Obj (Actor, _) ->
-        with_composite_typ idl_service (fun _get_typ_buf -> read_actor_data ())
+        (* See Note [Candid subtype checks] *)
+        get_rel_buf_opt ^^
+        G.if1 I32Type
+          begin
+            get_rel_buf_opt ^^
+            get_typtbl ^^
+            get_typtbl_end ^^
+            get_typtbl_size ^^
+            get_idltyp ^^
+            idl_sub env t
+          end
+          (Bool.lit true) ^^
+        G.if1 I32Type
+          (with_composite_typ idl_service
+             (fun _get_typ_buf -> read_actor_data ()))
+          (skip get_idltyp ^^
+           coercion_failed "IDL error: incompatible actor type")
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
@@ -6164,7 +6363,8 @@ module MakeSerialization (Strm : Stream) = struct
           MutBox.store_field env
         )
       | Non ->
-        E.trap_with env "IDL error: deserializing value of type None"
+        skip get_idltyp ^^
+        coercion_failed "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
       (* Parsed value on the stack, return that, unless the failure flag is set *)
@@ -6178,7 +6378,7 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-      let tydesc = type_desc env ts in
+      let (tydesc, _offsets, _idltyps) = type_desc env ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
       (* Get object sizes *)
@@ -6221,9 +6421,13 @@ module MakeSerialization (Strm : Stream) = struct
       Strm.terminate env get_data_start get_data_size tydesc_len
     )
 
+
   let deserialize_from_blob extended env ts =
     let ts_name = typ_seq_hash ts in
     let name =
+      (* TODO(#3185): this specialization on `extended` seems redundant,
+         removing it might simplify things *and* share more code in binaries.
+         The only tricky bit might be the conditional Stack.dynamic_with_words bit... *)
       if extended
       then "@deserialize_extended<" ^ ts_name ^ ">"
       else "@deserialize<" ^ ts_name ^ ">" in
@@ -6258,48 +6462,68 @@ module MakeSerialization (Strm : Stream) = struct
       Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
+      (* Allocate memo table, if necessary *)
+      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
         ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
-        get_arg_count ^^
-        compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
-        E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
-
         G.concat_map (fun t ->
-          get_data_buf ^^ get_ref_buf ^^
-          get_typtbl_ptr ^^ load_unskewed_ptr ^^
-          ReadBuf.read_sleb128 env get_main_typs_buf ^^
-          get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
-          compile_unboxed_const 0l ^^ (* initial depth *)
-          get_can_recover ^^
-          deserialize_go env t ^^ set_val ^^
-          get_can_recover ^^
-          G.if0
-            (G.nop)
-            (get_val ^^ compile_eq_const (coercion_error_value env) ^^
-             E.then_trap_with env ("IDL error: coercion failure encountered")) ^^
-          get_val
+          let can_recover, default_or_trap = Type.(
+            match normalize t with
+            | Opt _ | Any ->
+              (Bool.lit true, fun msg -> Opt.null_lit env)
+            | _ ->
+              (get_can_recover, fun msg ->
+                get_can_recover ^^
+                G.if1 I32Type
+                   (compile_unboxed_const (coercion_error_value env))
+                   (E.trap_with env msg)))
+          in
+          get_arg_count ^^
+          compile_eq_const 0l ^^
+          G.if1 I32Type
+           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
+           (begin
+             get_rel_buf_opt ^^
+             get_data_buf ^^ get_ref_buf ^^
+             get_typtbl_ptr ^^ load_unskewed_ptr ^^
+             get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
+             get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
+             ReadBuf.read_sleb128 env get_main_typs_buf ^^
+             compile_unboxed_const 0l ^^ (* initial depth *)
+             can_recover ^^
+             deserialize_go env t ^^ set_val ^^
+             get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
+             get_val ^^ compile_eq_const (coercion_error_value env) ^^
+             (G.if1 I32Type
+               (default_or_trap "IDL error: coercion failure encountered")
+               get_val)
+            end)
         ) ts ^^
 
         (* Skip any extra arguments *)
-        get_arg_count ^^ compile_sub_const (Int32.of_int (List.length ts)) ^^
-        from_0_to_n env (fun _ ->
-          get_data_buf ^^
-          get_typtbl_ptr ^^ load_unskewed_ptr ^^
-          ReadBuf.read_sleb128 env get_main_typs_buf ^^
-          compile_unboxed_const 0l ^^
-          E.call_import env "rts" "skip_any"
-        ) ^^
+        compile_while env
+         (get_arg_count ^^ compile_rel_const I32Op.GtU 0l)
+         begin
+           get_data_buf ^^
+           get_typtbl_ptr ^^ load_unskewed_ptr ^^
+           ReadBuf.read_sleb128 env get_main_typs_buf ^^
+           compile_unboxed_const 0l ^^
+           E.call_import env "rts" "skip_any" ^^
+           get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count
+         end ^^
 
         ReadBuf.is_empty env get_data_buf ^^
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
         ReadBuf.is_empty env get_ref_buf ^^
         E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
       ))))))
-    )
+
+    ))
 
   let deserialize env ts =
     IC.arg_data env ^^
@@ -6402,6 +6626,53 @@ To detect and preserve aliasing, these steps are taken:
    after checking the type hash field to make sure we are aliasing at the same
    type.
 
+ *)
+
+(*
+Note [Candid subtype checks]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deserializing Candid values requires a Candid subtype check when
+deserializing values of reference types (actors and functions).
+
+The subtype test is performed directly on the expected and actual
+candid type tables using RTS functions `idl_sub_buf_words`,
+`idl_sub_buf_init` and `idl_sub`.  One type table and vector of types
+is generated statically from the list of statically known types
+encountered during code generation, the other is determined
+dynamically by, e.g. message payload. The latter will vary with
+each payload to decode.
+
+The known Motoko types are accumulated in a global list as required
+and then, in a final compilation step, encoded to global type table
+and sequence of type indices. The encoding is stored as static
+data referenced by dedicated wasm globals so that we can generate
+code that references the globals before their final definitions are
+known.
+
+Deserializing a proper (not extended) Candid value stack allocates a
+mutable word buffer, of size determined by `idl_sub_buf_words`.
+The word buffer is used to initialize and provide storage for a
+Rust memo table (see bitrel.rs) memoizing the result of sub and
+super type tests performed during deserialization of a given Candid
+value sequence.  The memo table is initialized once, using `idl_sub_buf_init`,
+then shared between recursive calls to deserialize, by threading the (possibly
+null) wasm address of the word buffer as an optional argument.  The
+word buffer is stack allocated in generated code, not Rust, because
+it's size is dynamic and Rust doesn't seem to support dynamically-sized
+stack allocation.
+
+Currently, we only perform Candid subtype checks when decoding proper
+(not extended) Candid values. Extended values are required for
+stable variables only: we can omit the check, because compatibility
+should already be enforced by the static signature compatibility
+check.  We use the `null`-ness of the word buffer pointer to
+dynamically determine whether to omit or perform Candid subtype checks.
+
+NB: Extending `idl_sub` to support extended, "stable" types (with mutable,
+invariant type constructors) would require extending the polarity argument
+from a Boolean to a three-valued argument to efficiently check equality for
+invariant type constructors in a single pass.
 *)
 
 end (* MakeSerialization *)
@@ -9024,7 +9295,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,
-    let tydesc = Serialization.type_desc env [t] in
+    let (tydesc, _, _) = Serialization.type_desc env [t] in
     let tydesc_len = Int32.of_int (String.length tydesc) in
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
@@ -9778,7 +10049,7 @@ The compilation of declarations (and patterns!) needs to handle mutual recursion
 This requires conceptually three passes:
  1. First we need to collect all names bound in a block,
     and find locations for then (which extends the environment).
-    The environment is extended monotonously: The type-checker ensures that
+    The environment is extended monotonically: The type-checker ensures that
     a Block does not bind the same name twice.
     We would not need to pass in the environment, just out ... but because
     it is bundled in the E.t type, threading it through is also easy.
@@ -10312,11 +10583,15 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env start_fi_o =
+and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
 
+  (* See Note [Candid subtype checks] *)
+  Serialization.set_delayed_globals env set_serialization_globals;
+
   let static_roots = GCRoots.store_static_roots env in
+
   (* declare before building GC *)
 
   (* add beginning-of-heap pointer, may be changed by linker *)
@@ -10411,6 +10686,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
 
+  (* See Note [Candid subtype checks] *)
+  let set_serialization_globals = Serialization.register_delayed_globals env in
+
   IC.system_imports env;
   RTS.system_imports env;
   RTS_Exports.system_exports env;
@@ -10427,4 +10705,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env start_fi_o
+  conclude_module env set_serialization_globals start_fi_o

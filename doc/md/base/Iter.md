@@ -20,7 +20,11 @@ for (x in i) {
 }
 ```
 
-## `class range`
+## Class `range`
+
+``` motoko no-repl
+class range(x : Nat, y : Int)
+```
 
 Creates an iterator that produces all `Nat`s from `x` to `y` including
 both of the bounds.
@@ -39,7 +43,11 @@ func next() : ?Nat
 ```
 
 
-## `class revRange`
+## Class `revRange`
+
+``` motoko no-repl
+class revRange(x : Int, y : Int)
+```
 
 Like `range` but produces the values in the opposite
 order.

@@ -240,11 +240,18 @@ let rec declaration_header :
       end_block buf;
       doc_comment ()
   | Class class_doc ->
-      title buf lvl "`";
+      title buf lvl "";
       plain_of_obj_sort buf class_doc.sort;
+      bprintf buf "Class `%s" class_doc.name;
+      plain_of_typ_binders buf plain_render_functions class_doc.type_args;
+      bprintf buf "`\n";
+      begin_block buf;
       bprintf buf "class %s" class_doc.name;
       plain_of_typ_binders buf plain_render_functions class_doc.type_args;
-      bprintf buf "`\n\n";
+      bprintf buf "(";
+      sep_by buf ", " (function_arg buf) class_doc.constructor;
+      bprintf buf ")";
+      end_block buf;
       doc_comment ();
       sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields
   | Unknown u ->
