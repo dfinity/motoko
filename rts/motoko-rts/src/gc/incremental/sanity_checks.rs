@@ -109,9 +109,6 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
 
     unsafe fn check_object_header(&self, object: Value) {
         let tag = object.tag();
-        if tag == TAG_FREE_SPACE {
-            println!(100, "ERROR {:#x} {tag}", object.get_ptr());
-        }
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         object.check_forwarding_pointer();
         if let CheckerMode::UpdateCompletion = self.mode {
