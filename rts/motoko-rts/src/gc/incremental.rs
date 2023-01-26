@@ -20,7 +20,7 @@ pub mod partitioned_heap;
 mod phases;
 pub mod roots;
 #[cfg(debug_assertions)]
-pub mod sanity_checks;
+mod sanity_checks;
 pub mod time;
 
 #[ic_mem_fn(ic_only)]
@@ -31,11 +31,24 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
     IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base() as usize);
 }
 
+#[cfg(debug_assertions)]
+static mut RUN_MEMORY_CHECKS: bool = false;
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     let running = PHASE != Phase::Pause && PHASE != Phase::Stop;
     if running || should_start() {
+        #[cfg(debug_assertions)]
+        {
+            RUN_MEMORY_CHECKS = true;
+        }
+
         incremental_gc(mem);
+
+        #[cfg(debug_assertions)]
+        {
+            RUN_MEMORY_CHECKS = false;
+        }
     }
 }
 
@@ -205,7 +218,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     #[cfg(debug_assertions)]
     unsafe fn check_mark_completion(&mut self, roots: Roots) {
-        sanity_checks::check_memory(self.mem, roots, sanity_checks::CheckerMode::MarkCompletion);
+        if RUN_MEMORY_CHECKS {
+            sanity_checks::check_memory(
+                self.mem,
+                roots,
+                sanity_checks::CheckerMode::MarkCompletion,
+            );
+        }
     }
 
     unsafe fn start_evacuating(&mut self) {
@@ -241,11 +260,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     #[cfg(debug_assertions)]
     unsafe fn check_update_completion(&mut self, roots: Roots) {
-        sanity_checks::check_memory(
-            self.mem,
-            roots,
-            sanity_checks::CheckerMode::UpdateCompletion,
-        );
+        if RUN_MEMORY_CHECKS {
+            sanity_checks::check_memory(
+                self.mem,
+                roots,
+                sanity_checks::CheckerMode::UpdateCompletion,
+            );
+        }
     }
 }
 
