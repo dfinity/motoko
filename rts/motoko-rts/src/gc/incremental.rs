@@ -65,22 +65,11 @@ unsafe fn should_start() -> bool {
 
     let current_allocations = ic::get_total_allocations();
     let occupation = ic::get_heap_size();
-    assert!(current_allocations >= LAST_ALLOCATIONS);
+    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let absolute_growth = current_allocations - LAST_ALLOCATIONS;
     let relative_growth = absolute_growth.0 as f64 / occupation.as_usize() as f64;
-    let schedule = relative_growth > RELATIVE_GROWTH_THRESHOLD
-        && occupation.as_usize() >= PARTITION_SIZE
-        || occupation.as_usize() > CRITICAL_HEAP_LIMIT;
-    if schedule {
-        println!(
-            100,
-            "SCHEDULE GC GROWTH {} MB {:.2} HEAP {} MB",
-            absolute_growth.0 / 1024u64 / 1024u64,
-            relative_growth,
-            occupation.as_usize() / 1024 / 1024
-        )
-    }
-    schedule
+    relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation.as_usize() >= PARTITION_SIZE
+        || occupation.as_usize() > CRITICAL_HEAP_LIMIT
 }
 
 #[cfg(feature = "ic")]
@@ -93,10 +82,10 @@ unsafe fn record_gc_start<M: Memory>() {
 unsafe fn record_gc_stop<M: Memory>() {
     use crate::memory::ic;
     let current_allocations = ic::get_total_allocations();
-    assert!(current_allocations >= LAST_ALLOCATIONS);
+    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let growth_during_gc = current_allocations - LAST_ALLOCATIONS;
     let heap_size = ic::get_heap_size();
-    assert!(growth_during_gc.0 <= heap_size.as_usize() as u64);
+    debug_assert!(growth_during_gc.0 <= heap_size.as_usize() as u64);
     let live_set = heap_size - Bytes(growth_during_gc.0 as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
 }
