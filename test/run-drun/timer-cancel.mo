@@ -1,20 +1,20 @@
 import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
 
 actor {
-
-  let seconds = 5;
   var counter = 0;
   var t : Nat = 0;
 
   private func remind() : async () {
     debugPrint("TICK!");
     counter += 1;
+    if (counter == 3) {
+      cancel();
+    }
   };
 
-  public func get() : async Int {
-    // cancel exactly once
-    if (t > 0 and counter == 3) { debugPrint("CANCELLING!"); cancelTimer t; t := 0 };
-    return counter
+  func cancel() {
+    debugPrint("CANCELLING!"); 
+    cancelTimer t;
   };
 
   let second : Nat64 = 1_000_000_000;
@@ -32,10 +32,9 @@ actor {
      var attempts = 0;
 
      while (counter < max) {
-       ignore await get();
        ignore await raw_rand(); // yield to scheduler
        if (counter == 3) attempts += 1;
-       if (attempts >= 200)
+       if (attempts >= 10)
          counter += 1;
      };
      debugPrint(debug_show {counter});
