@@ -3,9 +3,6 @@
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
 => update go()
-debug.print: TICK!
-debug.print: TICK!
-debug.print: TICK!
 debug.print: CANCELLING!
-debug.print: {counter = 4}
+debug.print: {attempts = 200; counter = 4}
 <= replied: ()
