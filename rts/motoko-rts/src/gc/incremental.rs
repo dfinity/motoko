@@ -42,44 +42,56 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
+    if PHASE == Phase::Pause {
+        record_gc_start::<M>();
+    }
     IncrementalGC::instance(mem, BoundedTime::long_interval())
         .empty_call_stack_increment(root_set());
-    record_increment_stop::<M>();
+    if PHASE == Phase::Pause {
+        record_gc_stop::<M>();
+    }
 }
 
 #[cfg(feature = "ic")]
-static mut LAST_HEAP_OCCUPATION: usize = 0;
+static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
-    const CRITICAL_LIMIT: usize = usize::MAX - 2 * PARTITION_SIZE;
-    let occupation = heap_occupation();
-    debug_assert!(occupation >= LAST_HEAP_OCCUPATION);
-    let absolute_growth = occupation - LAST_HEAP_OCCUPATION;
-    let relative_growth = absolute_growth as f64 / occupation as f64;
-    relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation >= PARTITION_SIZE
-        || occupation > CRITICAL_LIMIT
-}
-
-#[cfg(feature = "ic")]
-unsafe fn heap_occupation() -> usize {
-    PARTITIONED_HEAP
-        .as_ref()
-        .unwrap()
-        .occupied_size()
-        .as_usize()
-}
-
-#[cfg(feature = "ic")]
-unsafe fn record_increment_stop<M: Memory>() {
     use crate::memory::ic;
-    if PHASE == Phase::Pause {
-        let occupation = heap_occupation();
-        LAST_HEAP_OCCUPATION = occupation;
-        ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, Bytes(occupation as u32));
+
+    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
+    const CRITICAL_HEAP_LIMIT: usize = usize::MAX - 256 * 1024 * 1024;
+
+    let current_allocations = ic::get_total_allocations();
+    let occupation = ic::get_heap_size();
+    assert!(current_allocations >= LAST_ALLOCATIONS);
+    let absolute_growth = current_allocations - LAST_ALLOCATIONS;
+    let relative_growth = absolute_growth.0 as f64 / occupation.as_usize() as f64;
+    let schedule = relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation.as_usize() >= PARTITION_SIZE
+        || occupation.as_usize() > CRITICAL_HEAP_LIMIT;
+    if schedule {
+        println!(100, "SCHEDULE GC GROWTH {} MB {:.2} HEAP {} MB", absolute_growth.0 / 1024u64 / 1024u64, relative_growth, occupation.as_usize() / 1024 / 1024)
     }
+    schedule
+}
+
+#[cfg(feature = "ic")]
+unsafe fn record_gc_start<M: Memory>() {
+    use crate::memory::ic;
+    LAST_ALLOCATIONS = ic::get_total_allocations();
+}
+
+#[cfg(feature = "ic")]
+unsafe fn record_gc_stop<M: Memory>() {
+    use crate::memory::ic;
+    let current_allocations = ic::get_total_allocations();
+    assert!(current_allocations >= LAST_ALLOCATIONS);
+    let growth_during_gc = current_allocations - LAST_ALLOCATIONS;
+    let heap_size = ic::get_heap_size();
+    assert!(growth_during_gc.0 <= heap_size.as_usize() as u64);
+    let live_set = heap_size - Bytes(growth_during_gc.0 as u32);
+    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.

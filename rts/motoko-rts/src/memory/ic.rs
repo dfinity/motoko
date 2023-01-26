@@ -54,12 +54,12 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 }
 
 #[no_mangle]
-unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
+pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
     Bytes(get_heap_size().as_usize() as u64) + get_reclaimed()
 }
 
 #[no_mangle]
-unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
+pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     match &PARTITIONED_HEAP {
         None => Bytes(HP - get_aligned_heap_base()),
         Some(heap) => heap.occupied_size(),
