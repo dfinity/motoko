@@ -7,7 +7,6 @@ actor {
   var t : Nat = 0;
 
   private func remind() : async () {
-    debugPrint("TICK!");
     counter += 1;
   };
 
