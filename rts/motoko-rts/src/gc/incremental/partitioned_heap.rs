@@ -55,6 +55,7 @@ pub struct Partition {
     static_size: usize,  // Size of the static space.
     dynamic_size: usize, // Size of the dynamic space.
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
+    update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
 
 impl Partition {
@@ -92,6 +93,10 @@ impl Partition {
 
     pub fn to_be_evacuated(&self) -> bool {
         self.evacuate
+    }
+
+    pub fn to_be_updated(&self) -> bool {
+        self.update
     }
 
     #[cfg(debug_assertions)]
@@ -315,6 +320,7 @@ impl PartitionedHeap {
             },
             dynamic_size: 0,
             evacuate: false,
+            update: false,
         });
         PartitionedHeap {
             partitions,
@@ -349,8 +355,16 @@ impl PartitionedHeap {
         }
     }
 
-    pub unsafe fn free_evacuated_partitions(&mut self) {
+    pub fn plan_updates(&mut self) {
         for partition in &mut self.partitions {
+            debug_assert!(!partition.update);
+            partition.update = !partition.is_free() && !partition.evacuate;
+        }
+    }
+
+    pub unsafe fn complete_collection(&mut self) {
+        for partition in &mut self.partitions {
+            partition.update = false;
             partition.marked_space = 0;
             if partition.to_be_evacuated() {
                 debug_assert!(partition.index != self.allocation_index);

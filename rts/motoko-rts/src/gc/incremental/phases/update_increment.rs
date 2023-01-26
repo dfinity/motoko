@@ -26,16 +26,15 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn start_phase() {
         debug_assert!(UPDATE_STATE.is_none());
         UPDATE_STATE = Some(HeapIteratorState::new());
-        PARTITIONED_HEAP.as_mut().unwrap().collect_large_objects();
+        let heap = PARTITIONED_HEAP.as_mut().unwrap();
+        heap.collect_large_objects();
+        heap.plan_updates();
     }
 
     pub unsafe fn complete_phase() {
         debug_assert!(Self::update_completed());
         UPDATE_STATE = None;
-        PARTITIONED_HEAP
-            .as_mut()
-            .unwrap()
-            .free_evacuated_partitions();
+        PARTITIONED_HEAP.as_mut().unwrap().complete_collection();
     }
 
     pub unsafe fn update_completed() -> bool {
@@ -68,7 +67,7 @@ impl<'a> UpdateIncrement<'a> {
         let mut iterator = PartitionedHeapIterator::load_from(self.heap, &self.state);
         while iterator.current_partition().is_some() {
             let partition = iterator.current_partition().unwrap();
-            if !partition.to_be_evacuated() {
+            if partition.to_be_updated() {
                 self.update_partition(partition);
                 if self.time.is_over() {
                     // Resume updating the same partition later.
@@ -82,6 +81,7 @@ impl<'a> UpdateIncrement<'a> {
 
     pub unsafe fn update_partition(&mut self, partition: &Partition) {
         debug_assert!(!partition.is_free());
+        debug_assert!(!partition.to_be_evacuated());
         let mut iterator = PartitionIterator::load_from(partition, &self.state, &mut self.time);
         while iterator.current_object().is_some() {
             let object = iterator.current_object().unwrap();
