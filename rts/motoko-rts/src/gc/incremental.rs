@@ -357,7 +357,6 @@ const ALLOCATION_INCREMENT_INTERVAL: usize = INCREMENT_TIME_LIMIT / 5;
 unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
     ALLOCATION_COUNT += 1;
     if ALLOCATION_COUNT == ALLOCATION_INCREMENT_INTERVAL {
-        println!(100, "ALLOCATION INCREMENT");
         ALLOCATION_COUNT = 0;
         IncrementalGC::instance(mem, BoundedTime::new(INCREMENT_TIME_LIMIT)).increment();
     }
