@@ -29,7 +29,7 @@ let selfcallE ts e1 e2 e3 =
     at = no_region;
     note = Note.{ def with typ = T.unit } }
 
-let error_rep_ty = T.(Tup [ Variant T.catchErrorCodes; text])
+let error_rep_ty = T.(Tup [Variant T.catchErrorCodes; text])
 
 let errorMessageE e =
   projE (primE (CastPrim (T.error, error_rep_ty)) [e]) 1
