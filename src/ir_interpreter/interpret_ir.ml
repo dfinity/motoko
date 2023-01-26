@@ -335,7 +335,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let fs = V.as_obj v1 in
         k (try find n fs with _ -> assert false)
       | ActorDotPrim n, [v1] ->
-        let id = V.as_text v1 in
+        let id = V.as_blob v1 in
         begin match V.Env.find_opt id !(env.actor_env) with
         (* not quite correct: On the platform, you can invoke and get a reject *)
         | None -> trap exp.at "Unkown actor \"%s\"" id
@@ -462,7 +462,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ICStableWrite _, [v1] ->
         k V.unit (* faking it *)
       | SelfRef _, [] ->
-        k (V.Text env.self)
+        k (V.Blob env.self)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Numerics.Nat64.of_int 42))
       | SystemCyclesRefundedPrim, [] -> (* faking it *)
@@ -567,7 +567,7 @@ and interpret_actor env ds fs k =
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
-      k (V.Text self)
+      k (V.Blob self)
     )
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
@@ -875,8 +875,8 @@ and interpret_comp_unit env cu k = match cu with
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
   | ActorU (None, ds, fs, _, _)
-  | ActorU (Some [], ds, fs, _, _)  (* to match semantics of installation with empty argument *)
-  ->
+  | ActorU (Some [], ds, fs, _, _) ->
+    (* to match semantics of installation with empty argument *)
     interpret_actor env ds fs (fun _ -> k ())
   | ActorU (Some as_, ds, fs, up, t) ->
     (* create the closure *)
@@ -895,9 +895,25 @@ let interpret_prog flags (cu, flavor) =
   let state = initial_state () in
   let scope = empty_scope in
   let env =
-    { (env_of_scope flags flavor state scope) with
-      throws = Some (fun v -> trap !last_region "uncaught throw") }
+    { (env_of_scope flags flavor state scope)
+      with throws = Some (fun v -> trap !last_region "uncaught throw") }
   in
+  env.actor_env :=
+    (* ManagementCanister with raw_rand (only) *)
+    V.Env.singleton "" (V.Obj
+       (V.Env.singleton "raw_rand"
+         (make_message env "rand" CC.{
+             sort = T.Shared T.Write;
+             control = if env.flavor.has_async_typ then T.Promises else T.Replies;
+             n_args = 0;
+             n_res = 1
+           }
+           (fun c v k ->
+              async env
+                Source.no_region
+                  (fun k' r ->
+                    k' (V.Blob (V.Blob.rand32 ())))
+                    k))));
   trace_depth := 0;
   try
     Scheduler.queue (fun () ->

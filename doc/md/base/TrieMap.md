@@ -19,7 +19,11 @@ import Iter "mo:base/Iter";
 let map = TrieMap.TrieMap<Nat, Nat>(Nat.equal, Hash.hash)
 ```
 
-## `class TrieMap<K, V>`
+## Class `TrieMap<K, V>`
+
+``` motoko no-repl
+class TrieMap<K, V>(isEq : (K, K) -> Bool, hashOf : K -> Hash.Hash)
+```
 
 
 ### Function `size`

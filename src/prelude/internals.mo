@@ -359,7 +359,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
           @reset_refund();
           r(e)
         };
-	#suspend
+        #suspend
       };
       case (? (#ok (r, t))) {
         #schedule (func () { @refund := r; k(t) });
@@ -436,6 +436,20 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
 
+
+// helpers for reifying ic0.call_perform failures as errors
+func @call_succeeded() : Bool {
+  (prim "call_perform_status" : () -> Nat32) () == 0;
+};
+
+func @call_error() : Error {
+  let status = (prim "call_perform_status" : () -> Nat32) ();
+  let message = (prim "call_perform_message" : () -> Text) ();
+  let code = #call_error({err_code = status});
+  (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error)
+    (code, message)
+};
+
 // default timer mechanism implementation
 // fundamental node invariant: max_exp pre <= expire <= min_exp post
 // corollary: if expire == 0 then the pre is completely expired
@@ -503,7 +517,8 @@ func @timer_helper() : async () {
           case (?delay) if (delay != 0) {
             // re-add the node
             let expire = n.expire[0] + delay;
-            // N.B. insert only works on pruned nodes
+            n.expire[0] := 0;
+            // N.B. reinsert only works on pruned nodes
             func reinsert(m : ?@Node) : @Node = switch m {
               case null ({ n with expire = [var expire]; pre = null; post = null });
               case (?m) {
@@ -586,3 +601,4 @@ func @cancelTimer(id : Nat) {
 };
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
+

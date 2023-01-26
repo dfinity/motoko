@@ -51,7 +51,7 @@ let
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
               obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) lib fetchFromGitHub ocaml dune_2;
+                inherit (self) lib fetchFromGitHub ocaml dune_3;
                 inherit (self) ocamlPackages;
                 inherit (self.stdenv) mkDerivation;
               };
