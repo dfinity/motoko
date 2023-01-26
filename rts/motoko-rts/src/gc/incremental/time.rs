@@ -1,6 +1,5 @@
 /// Limits on the number of steps performed in a GC increment.
-const LONG_INCREMENT_TIME_LIMIT: usize = 1_500_000;
-const SHORT_INCREMENT_TIME_LIMIT: usize = 500_000;
+const GC_INCREMENT_TIME_LIMIT: usize = 1_500_000;
 
 // Bounded time of the GC increment.
 // Deterministically measured in synthetic steps.
@@ -10,12 +9,8 @@ pub struct BoundedTime {
 }
 
 impl BoundedTime {
-    pub fn long_interval() -> BoundedTime {
-        Self::new(LONG_INCREMENT_TIME_LIMIT)
-    }
-
-    pub fn short_interval() -> BoundedTime {
-        Self::new(SHORT_INCREMENT_TIME_LIMIT)
+    pub fn increment_time() -> BoundedTime {
+        Self::new(GC_INCREMENT_TIME_LIMIT)
     }
 
     pub fn new(limit: usize) -> BoundedTime {

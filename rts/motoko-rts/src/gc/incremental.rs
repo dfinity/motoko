@@ -45,7 +45,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     if PHASE == Phase::Pause {
         record_gc_start::<M>();
     }
-    IncrementalGC::instance(mem, BoundedTime::long_interval())
+    IncrementalGC::instance(mem, BoundedTime::increment_time())
         .empty_call_stack_increment(root_set());
     if PHASE == Phase::Pause {
         record_gc_stop::<M>();
@@ -68,10 +68,17 @@ unsafe fn should_start() -> bool {
     assert!(current_allocations >= LAST_ALLOCATIONS);
     let absolute_growth = current_allocations - LAST_ALLOCATIONS;
     let relative_growth = absolute_growth.0 as f64 / occupation.as_usize() as f64;
-    let schedule = relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation.as_usize() >= PARTITION_SIZE
+    let schedule = relative_growth > RELATIVE_GROWTH_THRESHOLD
+        && occupation.as_usize() >= PARTITION_SIZE
         || occupation.as_usize() > CRITICAL_HEAP_LIMIT;
     if schedule {
-        println!(100, "SCHEDULE GC GROWTH {} MB {:.2} HEAP {} MB", absolute_growth.0 / 1024u64 / 1024u64, relative_growth, occupation.as_usize() / 1024 / 1024)
+        println!(
+            100,
+            "SCHEDULE GC GROWTH {} MB {:.2} HEAP {} MB",
+            absolute_growth.0 / 1024u64 / 1024u64,
+            relative_growth,
+            occupation.as_usize() / 1024 / 1024
+        )
     }
     schedule
 }
@@ -273,7 +280,7 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
 /// `new_object` is the skewed pointer of the newly allocated and initialized object.
 /// The new object needs to be fully initialized, except fot the payload of a blob.
 /// The barrier is only effective during a running GC.
-pub(crate) unsafe fn post_allocation_barrier(new_object: Value) {
+unsafe fn post_allocation_barrier(new_object: Value) {
     if PHASE == Phase::Mark || PHASE == Phase::Evacuate {
         mark_new_allocation(new_object);
     } else if PHASE == Phase::Update {
@@ -347,11 +354,6 @@ unsafe fn update_new_allocation(new_object: Value) {
             |_, _, array| array.len(),
         );
     }
-}
-
-/// Small increment, performed at certain allocation intervals to keep up with a high allocation rate.
-unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
-    IncrementalGC::instance(mem, BoundedTime::short_interval()).increment();
 }
 
 /// Stop the GC before performing upgrade. Otherwise, GC increments

@@ -514,7 +514,7 @@ impl GC {
                         static_roots,
                         continuation_table_location: continuation_table_ptr_address,
                     };
-                    IncrementalGC::instance(heap, BoundedTime::long_interval())
+                    IncrementalGC::instance(heap, BoundedTime::increment_time())
                         .empty_call_stack_increment(roots);
                 }
                 false

@@ -23,7 +23,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     iter_array.initialize(ITER_BLOB_IDX, blob, mem);
     iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-    allocation_barrier(mem, iter_ptr);
+    allocation_barrier(iter_ptr);
     iter_ptr
 }
 
