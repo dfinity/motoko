@@ -51,7 +51,7 @@ pub struct Partition {
     index: usize,        // Index of the partition 0..MAX_PARTITIONS.
     free: bool,          // Denotes a free partition (which may still contain static space).
     large_content: bool, // Specifies whether a large object is contained that spans multiple partitions.
-    marked_space: usize, // Total amount marked object space in the dynamic space.
+    marked_size: usize,  // Total amount marked object space in the dynamic space.
     static_size: usize,  // Size of the static space.
     dynamic_size: usize, // Size of the dynamic space.
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
@@ -129,7 +129,7 @@ impl Partition {
     pub unsafe fn free(&mut self) {
         debug_assert!(!self.free);
         debug_assert!(self.evacuate || self.large_content);
-        debug_assert_eq!(self.marked_space, 0);
+        debug_assert_eq!(self.marked_size, 0);
         self.free = true;
         self.dynamic_size = 0;
         self.evacuate = false;
@@ -141,8 +141,8 @@ impl Partition {
 
     pub fn survival_rate(&self) -> f64 {
         let dynamic_heap_space = PARTITION_SIZE - self.static_size;
-        debug_assert!(self.marked_space <= dynamic_heap_space);
-        self.marked_space as f64 / dynamic_heap_space as f64
+        debug_assert!(self.marked_size <= dynamic_heap_space);
+        self.marked_size as f64 / dynamic_heap_space as f64
     }
 
     pub fn has_large_content(&self) -> bool {
@@ -310,7 +310,7 @@ impl PartitionedHeap {
             index,
             free: index > allocation_index,
             large_content: false,
-            marked_space: 0,
+            marked_size: 0,
             static_size: if index < allocation_index {
                 PARTITION_SIZE
             } else if index == allocation_index {
@@ -364,11 +364,13 @@ impl PartitionedHeap {
 
     pub unsafe fn complete_collection(&mut self) {
         for partition in &mut self.partitions {
+            let marked_size = partition.marked_size;
             partition.update = false;
-            partition.marked_space = 0;
+            partition.marked_size = 0;
             if partition.to_be_evacuated() {
                 debug_assert!(partition.index != self.allocation_index);
-                self.reclaimed += partition.dynamic_size as u64;
+                debug_assert!(partition.dynamic_size >= marked_size);
+                self.reclaimed += (partition.dynamic_size - marked_size) as u64;
                 partition.free();
             }
         }
@@ -418,7 +420,7 @@ impl PartitionedHeap {
         if size <= PARTITION_SIZE {
             let partition = &mut self.partitions[address / PARTITION_SIZE];
             debug_assert!(address >= partition.dynamic_space_start());
-            partition.marked_space += size;
+            partition.marked_size += size;
             debug_assert!(address + size <= partition.dynamic_space_end());
         } else {
             self.mark_large_object(object);
@@ -561,9 +563,9 @@ impl PartitionedHeap {
     unsafe fn mark_large_object(&mut self, object: *mut Obj) {
         let range = Self::occupied_partition_range(object);
         for index in range.start..range.end - 1 {
-            self.partitions[index].marked_space = PARTITION_SIZE;
+            self.partitions[index].marked_size = PARTITION_SIZE;
         }
         let object_size = block_size(object as usize).to_bytes().as_usize();
-        self.partitions[range.end - 1].marked_space = object_size % PARTITION_SIZE;
+        self.partitions[range.end - 1].marked_size = object_size % PARTITION_SIZE;
     }
 }
