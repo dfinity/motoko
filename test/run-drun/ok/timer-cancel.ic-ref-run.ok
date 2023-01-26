@@ -4,5 +4,5 @@
 <= replied: ()
 => update go()
 debug.print: CANCELLING!
-debug.print: {counter = 4}
+debug.print: {attempts = 200; counter = 4}
 <= replied: ()

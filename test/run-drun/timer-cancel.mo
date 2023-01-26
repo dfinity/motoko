@@ -37,7 +37,7 @@ actor {
        if (attempts >= 200)
          counter += 1;
      };
-     debugPrint(debug_show {counter});
+     debugPrint(debug_show {attempts; counter});
   };
 };
 
