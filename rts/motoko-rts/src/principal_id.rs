@@ -1,6 +1,6 @@
 //! Principal ID encoding and decoding, with integrity checking
 
-use crate::gc::incremental::barriers::allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -129,7 +129,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
         blob.shrink(new_len);
     }
 
-    allocation_barrier(r);
+    post_allocation_barrier(r);
     r
 }
 
@@ -207,7 +207,7 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let new_len = Bytes(pump.dest.offset_from(dest) as u32);
     blob.shrink(new_len);
 
-    allocation_barrier(r);
+    post_allocation_barrier(r);
     r
 }
 
@@ -256,7 +256,7 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
     // Adjust result length
     let new_len = Bytes(dest as u32 - blob.payload_addr() as u32);
     blob.shrink(new_len);
-    allocation_barrier(r);
+    post_allocation_barrier(r);
     r
 }
 
@@ -285,6 +285,6 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
         rts_trap_with("blob_of_principal: invalid principal");
     }
 
-    allocation_barrier(stripped);
+    post_allocation_barrier(stripped);
     stripped
 }

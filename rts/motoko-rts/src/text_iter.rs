@@ -12,7 +12,7 @@
 
 use core::ptr::null_mut;
 
-use crate::gc::incremental::barriers::allocation_barrier;
+use crate::gc::incremental::post_allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
@@ -35,7 +35,7 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
         // No pre-update barrier for object initialization, but do perform post-update barrier.
         new_todo_array.initialize(TODO_TEXT_IDX, (*concat).text2, mem);
         new_todo_array.initialize(TODO_LINK_IDX, *todo, mem);
-        allocation_barrier(new_todo);
+        post_allocation_barrier(new_todo);
         *todo = new_todo;
 
         // Follow left node
@@ -69,7 +69,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
         find_leaf(mem, text, todo_addr as *mut _),
         mem,
     );
-    allocation_barrier(iter);
+    post_allocation_barrier(iter);
     iter
 }
 

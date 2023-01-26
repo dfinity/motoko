@@ -269,7 +269,7 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
 /// `new_object` is the skewed pointer of the newly allocated and initialized object.
 /// The new object needs to be fully initialized, except fot the payload of a blob.
 /// The barrier is only effective during a running GC.
-unsafe fn post_allocation_barrier(new_object: Value) {
+pub(crate) unsafe fn post_allocation_barrier(new_object: Value) {
     if PHASE == Phase::Mark || PHASE == Phase::Evacuate {
         mark_new_allocation(new_object);
     } else if PHASE == Phase::Update {
