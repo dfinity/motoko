@@ -250,7 +250,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 /// The barrier can be conservatively called even if the overwritten value is not a pointer.
 /// The barrier is only effective while the GC is in the mark phase.
 #[inline(never)]
-unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value: Value) {
+pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value: Value) {
     if PHASE == Phase::Mark {
         let heap = PARTITIONED_HEAP.as_ref().unwrap();
         if overwritten_value.points_to_or_beyond(heap.base_address()) {
