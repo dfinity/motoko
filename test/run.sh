@@ -373,9 +373,9 @@ do
             if [ $HAVE_drun = yes ]; then
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
             fi
-            # if [ $HAVE_ic_ref_run = yes ]; then
-            #   run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
-            # fi
+            if [ $HAVE_ic_ref_run = yes ]; then
+              run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
+            fi
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
