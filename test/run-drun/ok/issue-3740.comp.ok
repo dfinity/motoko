@@ -1,0 +1,5 @@
+Ill-typed intermediate code after Async Lowering (use -v to see dumped IR):
+issue-3740.mo:8.11-8.14: IR type error [M0000], subtype violation:
+  (Unit__2 -> (), Error -> ()) -> {#schedule : () -> (); #suspend}
+  (() -> (), Error -> ()) -> {#schedule : () -> (); #suspend}
+
