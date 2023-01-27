@@ -39,16 +39,13 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     }
 }
 
-/// Limit on the number of steps performed in a GC increment.
-pub const INCREMENT_TIME_LIMIT: usize = 1_500_000;
-
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
     if PHASE == Phase::Pause {
         record_gc_start::<M>();
     }
-    IncrementalGC::instance(mem, BoundedTime::new(INCREMENT_TIME_LIMIT))
+    IncrementalGC::instance(mem, BoundedTime::increment_time())
         .empty_call_stack_increment(root_set());
     if PHASE == Phase::Pause {
         record_gc_stop::<M>();
@@ -64,7 +61,7 @@ unsafe fn should_start() -> bool {
     use crate::memory::ic;
 
     const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
-    const CRITICAL_HEAP_LIMIT: usize = usize::MAX - 512 * 1024 * 1024;
+    const CRITICAL_HEAP_LIMIT: usize = usize::MAX - 256 * 1024 * 1024;
 
     let current_allocations = ic::get_total_allocations();
     let occupation = ic::get_heap_size();
@@ -172,7 +169,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
             #[cfg(debug_assertions)]
             self.check_update_completion(roots);
-            ALLOCATION_COUNT = 0;
         }
     }
 
@@ -346,19 +342,6 @@ unsafe fn update_new_allocation(new_object: Value) {
             },
             |_, _, array| array.len(),
         );
-    }
-}
-
-/// Number of allocations during a GC run.
-static mut ALLOCATION_COUNT: usize = 0;
-const ALLOCATION_INCREMENT_INTERVAL: usize = INCREMENT_TIME_LIMIT / 5;
-
-/// Additional increment, performed at certain allocation intervals to keep up with a high allocation rate.
-unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
-    ALLOCATION_COUNT += 1;
-    if ALLOCATION_COUNT == ALLOCATION_INCREMENT_INTERVAL {
-        ALLOCATION_COUNT = 0;
-        IncrementalGC::instance(mem, BoundedTime::new(INCREMENT_TIME_LIMIT)).increment();
     }
 }
 

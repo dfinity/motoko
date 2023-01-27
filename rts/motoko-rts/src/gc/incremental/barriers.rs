@@ -9,7 +9,7 @@ use crate::{
     types::{is_skewed, Value},
 };
 
-use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Phase, PHASE};
+use super::{post_allocation_barrier, pre_write_barrier, Phase, PHASE};
 
 /// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
 /// Used for the incremental GC.
@@ -45,13 +45,12 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 /// Effects:
 /// * Mark new allocations during the GC mark and evacuation phases.
 /// * Resolve pointer forwarding during the GC update phase.
-#[ic_mem_fn]
-pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
+#[no_mangle]
+pub unsafe extern "C" fn allocation_barrier(new_object: Value) {
     // Optimization: Early exit on pause.
     if PHASE == Phase::Pause {
         return;
     }
 
     post_allocation_barrier(new_object);
-    allocation_increment(mem);
 }
