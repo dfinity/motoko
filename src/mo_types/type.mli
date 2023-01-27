@@ -62,6 +62,7 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+
 (* Syntactic orderings *)
 
 module Ord : sig
@@ -73,6 +74,7 @@ module OrdPair : sig
   type t = typ * typ
   val compare : t -> t -> int
 end
+
 
 (* Function sorts *)
 
@@ -255,6 +257,7 @@ val match_stab_sig : field list -> field list -> bool
 
 val string_of_stab_sig : field list -> string
 
+
 (* Well-known fields *)
 
 val motoko_async_helper_fld : field
@@ -267,6 +270,7 @@ val decode_msg_typ : field list -> typ
 val canister_settings_typ : typ
 val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
+
 
 (* Pretty printing *)
 

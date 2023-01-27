@@ -29,7 +29,7 @@ let selfcallE ts e1 e2 e3 =
     at = no_region;
     note = Note.{ def with typ = T.unit } }
 
-let error_rep_ty = T.(Tup [ Variant T.catchErrorCodes; text])
+let error_rep_ty = T.(Tup [Variant T.catchErrorCodes; text])
 
 let errorMessageE e =
   projE (primE (CastPrim (T.error, error_rep_ty)) [e]) 1
@@ -252,7 +252,7 @@ let transform prog =
                  (let v = fresh_var "call" T.unit in
                   letE v
                     (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))
-                    (check_call_perform_status (varE v) (fun e -> ((projE (varE vkr) 1) -*- e)))))
+                    (check_call_perform_status (varE v) (fun e -> projE (varE vkr) 1 -*- e))))
               ]
               T.unit
           )).it
