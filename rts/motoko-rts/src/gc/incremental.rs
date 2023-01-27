@@ -45,11 +45,28 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     if PHASE == Phase::Pause {
         record_gc_start::<M>();
     }
-    IncrementalGC::instance(mem, BoundedTime::increment_time())
-        .empty_call_stack_increment(root_set());
+    let time = increment_time();
+    IncrementalGC::instance(mem, time).empty_call_stack_increment(root_set());
     if PHASE == Phase::Pause {
         record_gc_stop::<M>();
     }
+}
+
+#[cfg(feature = "ic")]
+unsafe fn increment_time() -> BoundedTime {
+    use crate::memory::ic;
+    // Heuristic, to be tuned by measurements.
+    // The GC increment time here depends on the heap size to cope with
+    // high allocation rates and large heaps. The increment has still a
+    // an upper bound implied by the maximum possible heap size in the
+    // 32-bit address space.
+    // Alternativels, GC increments could also be performed on allocations.
+    // This however showed a worse performance. Moreover, allocation
+    // increments cannot start or finish the GC run, as the call stack
+    // cannot be accessed for collecting or updating pointers.
+    const GC_INCREMENT_DIVISOR: usize = 10;
+    let limit = ic::get_heap_size().to_words().as_usize() / GC_INCREMENT_DIVISOR;
+    BoundedTime::new(limit)
 }
 
 #[cfg(feature = "ic")]

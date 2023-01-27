@@ -514,8 +514,9 @@ impl GC {
                         static_roots,
                         continuation_table_location: continuation_table_ptr_address,
                     };
-                    IncrementalGC::instance(heap, BoundedTime::increment_time())
-                        .empty_call_stack_increment(roots);
+                    const INCREMENT_LIMIT: usize = 100_000;
+                    let time = BoundedTime::new(INCREMENT_LIMIT);
+                    IncrementalGC::instance(heap, time).empty_call_stack_increment(roots);
                 }
                 false
             },
