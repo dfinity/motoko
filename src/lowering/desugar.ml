@@ -358,7 +358,7 @@ and call_system_func_opt name es obj_typ =
                   match tf.T.typ with
                   | T.Func(T.Local, _, [], [], ts) ->
                     tagE tf.T.lab
-                      (funcE ("$"^tf.T.lab) T.Local T.Returns [] [] ts
+                      T.(funcE ("$"^tf.lab) Local Returns [] [] ts
                         (primE (Ir.DeserializePrim ts) [varE arg]))
                   | _ -> assert false))
                 (T.as_variant msg_typ))
