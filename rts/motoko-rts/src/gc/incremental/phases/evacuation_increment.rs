@@ -57,10 +57,10 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             let partition = iterator.current_partition().unwrap();
             if partition.to_be_evacuated() {
                 self.evacuate_partition(partition);
-                if self.time.is_over() {
-                    // Resume evacuation of the same partition later.
-                    break;
-                }
+            }
+            if self.time.is_over() {
+                // Resume potential evacuation of the same partition later.
+                break;
             }
             iterator.next_partition();
         }
