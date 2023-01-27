@@ -9,6 +9,7 @@ on:
 
 jobs:
   examine-author:
+    if: github.actor != "kentosugama"
     runs-on: ubuntu-latest
     steps:
     - name: View PR author
