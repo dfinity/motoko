@@ -480,3 +480,23 @@ sum
 Runtime: O(1)
 
 Space: O(1)
+
+## Function `size`
+``` motoko no-repl
+func size<X>(array : [X]) : Nat
+```
+
+Returns the size of `array`.
+
+NOTE: You can also use `array.size()` instead of this function. See example
+below.
+
+```motoko include=import
+
+let array = [10, 11, 12];
+let size = Array.size(array);
+```
+
+Runtime: O(1)
+
+Space: O(1)
