@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.8.0 (2023-01-27)
+
 * motoko (`moc`)
 
   * BREAKING CHANGE
