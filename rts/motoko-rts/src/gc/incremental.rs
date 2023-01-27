@@ -64,7 +64,7 @@ unsafe fn increment_time() -> BoundedTime {
     // This however showed a worse performance. Moreover, allocation
     // increments cannot start or finish the GC run, as the call stack
     // cannot be accessed for collecting or updating pointers.
-    const GC_INCREMENT_DIVISOR: usize = 10;
+    const GC_INCREMENT_DIVISOR: usize = 20;
     let limit = ic::get_heap_size().to_words().as_usize() / GC_INCREMENT_DIVISOR;
     BoundedTime::new(limit)
 }
@@ -78,7 +78,7 @@ unsafe fn should_start() -> bool {
     use crate::memory::ic;
 
     const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
-    const CRITICAL_HEAP_LIMIT: usize = usize::MAX - 256 * 1024 * 1024;
+    const CRITICAL_HEAP_LIMIT: usize = usize::MAX - 512 * 1024 * 1024;
 
     let current_allocations = ic::get_total_allocations();
     let occupation = ic::get_heap_size();
