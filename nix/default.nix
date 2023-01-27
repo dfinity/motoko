@@ -78,7 +78,7 @@ let
 
         # Rust nightly
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-09-30"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-10-30"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
