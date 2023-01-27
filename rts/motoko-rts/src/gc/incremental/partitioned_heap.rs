@@ -83,6 +83,10 @@ impl Partition {
         self.dynamic_size
     }
 
+    pub fn marked_size(&self) -> usize {
+        self.marked_size
+    }
+
     pub fn free_size(&self) -> usize {
         self.end_address() - self.dynamic_space_end()
     }

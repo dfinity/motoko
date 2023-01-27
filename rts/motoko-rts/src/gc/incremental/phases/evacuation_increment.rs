@@ -70,6 +70,9 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn evacuate_partition(&mut self, partition: &Partition) {
         debug_assert!(!partition.is_free());
         debug_assert!(!partition.has_large_content());
+        if partition.marked_size() == 0 {
+            return;
+        }
         let mut iterator = PartitionIterator::load_from(partition, &self.state, &mut self.time);
         while iterator.current_object().is_some() && !self.time.is_over() {
             let object = iterator.current_object().unwrap();
@@ -92,7 +95,12 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         (*original).forward = new_address;
         debug_assert!(!copy.is_forwarded());
         debug_assert!(original.is_forwarded());
-        debug_assert!(copy.is_marked()); // Necessary to ensure field updates in the copy.
+        // The mark bit is necessary to ensure field updates in the copy.
+        debug_assert!(copy.is_marked());
+        // However, updating the marked size statistics of target partition
+        // can be skipped, since that partition will not be considered for
+        // evacuation during the current GC run.
+
         self.time.advance(size.as_usize());
 
         #[cfg(debug_assertions)]
