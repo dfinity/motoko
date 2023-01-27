@@ -5,7 +5,6 @@ actor {
   var t : Nat = 0;
 
   private func remind() : async () {
-    debugPrint("TICK!");
     counter += 1;
     if (counter == 3) {
       cancel();
@@ -37,7 +36,7 @@ actor {
        if (attempts >= 10)
          counter += 1;
      };
-     debugPrint(debug_show {counter});
+     debugPrint(debug_show {attempts; counter});
   };
 };
 

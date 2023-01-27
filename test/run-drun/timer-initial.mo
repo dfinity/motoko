@@ -7,7 +7,6 @@ actor {
   system func timer(setGlobalTimer : Nat64 -> ()) : async () {
       count += 1;
       setGlobalTimer 0; // FIXME: this shouldn't be necessary for recent `drun`, but we might run an outdated version...
-      debugPrint "INITIAL!";
   };
 
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
