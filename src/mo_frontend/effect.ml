@@ -46,7 +46,7 @@ let is_async_call exp1 inst exp2 =
 
 let effect_exp (exp:Syntax.exp) : T.eff = eff exp
 
-(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
+(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
   | CallE (exp1, inst, exp2) when is_async_call exp1 inst exp2 ->

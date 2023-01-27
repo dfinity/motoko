@@ -139,7 +139,7 @@ let asyncE s typ_bind e typ1 =
     at = no_region;
     note =
       Note.{ def with typ = T.Async (s, typ1, typ e);
-                      eff = if s = T.Fut then T.Await else T.Triv }
+                      eff = T.(if s = Fut then Await else Triv) }
   }
 
 let awaitE s e =
@@ -252,7 +252,7 @@ let blockE decs exp =
 let nat32E n =
   { it = LitE (Nat32Lit n);
     at = no_region;
-    note = Note.{ def with typ = T.Prim (T.Nat32) }
+    note = Note.{ def with typ = T.(Prim Nat32) }
   }
 
 let natE n =
@@ -311,7 +311,7 @@ let callE exp1 typs exp2 =
   in
   let p = CallPrim typs in
   let es = [exp1; exp2] in
-  { it = PrimE (CallPrim typs, [exp1; exp2]);
+  { it = PrimE (p, es);
     at = no_region;
     note = Note.{ def with
      typ;
@@ -751,5 +751,5 @@ let check_call_perform_status success mk_failure =
     (mk_failure
       (callE
         (varE (var "@call_error"
-          T.(Func (Local, Returns, [], [], [T.error]))))
+          T.(Func (Local, Returns, [], [], [error]))))
         [] (unitE ())))
