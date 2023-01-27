@@ -89,6 +89,8 @@ do step 3.
    value of `rustStdDepsHash`.
 4. Update `rustStdDepsHash` with the expected value in the error message.
 
+(Can this be automated?)
+
 --------
 **The above doesn't always work**
 
@@ -96,13 +98,9 @@ Sometimes you want to also bump the  `.toml` dependencies...
 
 E.g. when you get `perhaps a crate was updated and forgotten to be
 re-vendored?`, proceed as follows:
- - comment out the line `outputHashMode = "recursive";`
- - `nix-build -A rts`
- - update `cargoVendorTools.cargoSha256` based on the mismatch error message
- - revert the line `outputHashMode = "recursive";`
- - `nix-build -A rts`
- - now fix `rustStdDepsHash` based on the new error message
- - `nix-build -A rts` again, this should go through
+[Invalid recipe deleted. Try `cabal update in `rts/motoko-rts*`,
+ invalidate hashes: {`cargoVendorTools.cargoSha256`, `rustStdDepsHash`, `rtsDeps.sha256`}
+ all at the same time and then `nix-build -A rts -K` to examine the build products.]
 
 Running RTS tests
 -----------------
