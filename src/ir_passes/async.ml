@@ -252,7 +252,7 @@ let transform prog =
                  (let v = fresh_var "call" T.unit in
                   letE v
                     (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))
-                    (check_call_perform_status (varE v) (fun e -> ((projE (varE vkr) 1) -*- e)))))
+                    (check_call_perform_status (varE v) (fun e -> projE (varE vkr) 1 -*- e))))
               ]
               T.unit
           )).it
