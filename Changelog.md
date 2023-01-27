@@ -86,6 +86,8 @@
     Calling `allOrNothing()` will not send any messages: the loop exits with an error on queue full,
     the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
 
+  * bugfix: system method `inspect` involving message with single tuple argument no longer crashes the compiler (#3732, #3733).
+
 ## 0.7.6 (2023-01-20)
 
 * motoko (`moc`)
