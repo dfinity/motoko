@@ -8,11 +8,11 @@ on:
       - '**'
 
 jobs:
-  examine-author: 
+  examine-author:
     runs-on: ubuntu-latest
     steps:
     - name: View PR author
-      run: echo "This PR is opened by ${{ github.event.pull_request.user.login }} ."
+      run: echo "This PR is opened by ${{ github.actor }} ."
   update-hash:
     runs-on: ubuntu-latest
     steps:
