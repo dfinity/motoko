@@ -2,7 +2,7 @@
 
 * [Array](Array.md) Provides extended utility functions on Arrays.
 * [AssocList](AssocList.md) Map implemented as a linked-list of key-value pairs ("Associations").
-* [Blob](Blob.md) Binary blobs
+* [Blob](Blob.md) Module for working with Blobs: immutable sequence of bytes.
 * [Bool](Bool.md) Boolean type and operations.
 * [Buffer](Buffer.md) Class `Buffer<X>` provides a mutable list of elements of type `X`.
 * [CertifiedData](CertifiedData.md) Certified data.
@@ -17,7 +17,7 @@
 * [Func](Func.md) Functions on functions, creating functions from simpler inputs.
 * [Hash](Hash.md) Hash values
 * [HashMap](HashMap.md) Class `HashMap<K, V>` provides a hashmap from keys of type `K` to values of type `V`.
-* [Heap](Heap.md) Priority Queue
+* [Heap](Heap.md) Class `Heap<X>` provides a priority queue of elements of type `X`.
 * [Int](Int.md) Signed integer numbers with infinite precision (also called big integers).
 * [Int16](Int16.md) 16-bit signed integers with checked arithmetic.
 * [Int32](Int32.md) 32-bit signed integers with checked arithmetic.
@@ -35,7 +35,7 @@
 * [Option](Option.md) Typesafe nulls
 * [Order](Order.md) Order
 * [Prelude](Prelude.md) General utilities
-* [Principal](Principal.md) IC principals (user and canister smart contract IDs)
+* [Principal](Principal.md) Module for interacting with Principals (users and canisters).
 * [RBTree](RBTree.md) Key-value map implemented as a red-black tree (RBTree) with nodes storing key-value pairs.
 * [Random](Random.md) A module for obtaining randomness on the Internet Computer (IC).
 * [Result](Result.md) Error handling with the Result type.
