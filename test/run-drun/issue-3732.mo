@@ -1,6 +1,6 @@
 // test endpoints taking a single arg that is a tuple
 actor class TestAPI() {
-  public func endpoint1(x: (Nat,Nat)) : async () {}; // compiler bug
+  public func endpoint1(x: (Nat, Nat)) : async () {}; // compiler bug
   public func endpoint2(x:Nat, y: Nat) : async () {}; // works
 
   system func inspect(
