@@ -66,7 +66,7 @@ let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
-    pkgs.dune_2
+    pkgs.dune_3
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.checkseum
@@ -364,13 +364,24 @@ rec {
 
     compacting_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+          EXTRA_MOC_ARGS = "--compacting-gc";
       });
 
     generational_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--generational-gc";
+      });
+
+    snty_compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      });
+
+    snty_generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
       });
+
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -487,8 +498,8 @@ rec {
       ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-generational-gc = generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -764,7 +775,7 @@ rec {
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
   };
 
-  shell = stdenv.mkDerivation {
+  shell = nixpkgs.mkShell {
     name = "motoko-shell";
 
     #
@@ -795,7 +806,7 @@ rec {
           nixpkgs.rlwrap # for `rlwrap moc`
           nixpkgs.difftastic
           nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
-        ]
+        ] ++ nixpkgs.lib.optional stdenv.isDarwin nixpkgs.darwin.apple_sdk.frameworks.Security
       ));
 
     shellHook = llvmEnv + ''

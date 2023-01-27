@@ -9,7 +9,11 @@ type Tree<T> = ?(Int, T, Tree<T>, Tree<T>)
 ```
 
 
-## `class Heap<T>`
+## Class `Heap<T>`
+
+``` motoko no-repl
+class Heap<T>(ord : (T, T) -> O.Order)
+```
 
 
 ### Function `share`

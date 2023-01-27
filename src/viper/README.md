@@ -111,7 +111,7 @@ Contributing to _Motoko-san_
 <a name="Running"></a>
 
 ```bash
-[nix-shell:motoko] moc -viper input.mo > output.vpr
+[nix-shell:motoko] moc --viper input.mo > output.vpr
 ```
 
 You may then verify the `output.vpr` file using [Viper](https://viper.ethz.ch/). Soon, there will be an interactive IDE integration for VS Code, s.t. the outputs do not need to be verified by manually invoking Viper.
@@ -185,13 +185,13 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
         * Immutable: `let y = ...`
         * Fields may _not_ be initialized via block expressions: `let z = { ... };`
 
-    * **Public functions** — Only functions of `async ()` type with no arguments are supported:
+    * **Functions** — Only functions of `()` and `async ()` type with no arguments are supported:
 
-        `public func claim() : async () = { ... };`
+        `public shared func claim() : async () = { ... };`
+
+        `private func reward() : () = { ... };`
 
         Supporting function arguments and return values is _simple_.
-
-    * **Private functions** — Currently not supported (extension is _simple_).
 
     * **Local declarations** — Only local variable declarations with trivial left-hand side are supported:
 
@@ -239,13 +239,34 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
     
     * `assert:func` — Function preconditions
     
-    * `assert:return` — Function postconditions
+    * `assert:return` — Function postconditions. 
+    
+        * These may refer to variables in the _initial_ state of the function call using the syntax `(old <exp>)`, for example:
+
+            ```motoko
+            var x : Int;
+            private func dec() : () {
+                x -= 1;
+                assert:return x < old(x);
+            };
+            ```
+
+            is equivalent to
+
+            ```motoko
+            var x : Int;
+            private func dec() : () {
+                let old_x = x;
+                x -= 1;
+                assert:return x < old_x;
+            };
+            ```
     
     * `assert:system` — Compile-time assertions
     
     **Loop invariants** — Extension is _simple_.
     
-    **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`. This feature requires private functions.
+    **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`.
 
 Further information
 -------------------

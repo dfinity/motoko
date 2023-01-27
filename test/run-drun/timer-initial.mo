@@ -6,8 +6,7 @@ actor {
 
   system func timer(setGlobalTimer : Nat64 -> ()) : async () {
       count += 1;
-      setGlobalTimer 0; // FIXME: this shouldn't be necessary for recent `drun`, but `ic-ref` needs it!
-      debugPrint "INITIAL!";
+      setGlobalTimer 0; // FIXME: this shouldn't be necessary for recent `drun`, but we might run an outdated version...
   };
 
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
@@ -27,6 +26,5 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
 
 //CALL ingress go "DIDL\x00\x00"

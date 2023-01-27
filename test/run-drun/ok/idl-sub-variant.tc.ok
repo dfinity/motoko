@@ -1,0 +1,4 @@
+idl-sub-variant.mo:29.13-29.19: warning [M0145], this pattern of type
+  Enum1 = {#A : Int; #B}
+does not cover value
+  #B

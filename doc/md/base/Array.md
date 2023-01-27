@@ -1,6 +1,7 @@
 # Array
-Provides extended utility functions on Arrays. Note the difference between
-mutable and non-mutable arrays below.
+Provides extended utility functions on Arrays.
+
+Note the difference between mutable and non-mutable arrays below.
 
 WARNING: If you are looking for a list that can grow and shrink in size,
 it is recommended you use either the Buffer class or the List class for
@@ -474,6 +475,26 @@ for (element in array.keys()) {
   sum += element;
 };
 sum
+```
+
+Runtime: O(1)
+
+Space: O(1)
+
+## Function `size`
+``` motoko no-repl
+func size<X>(array : [X]) : Nat
+```
+
+Returns the size of `array`.
+
+NOTE: You can also use `array.size()` instead of this function. See example
+below.
+
+```motoko include=import
+
+let array = [10, 11, 12];
+let size = Array.size(array);
 ```
 
 Runtime: O(1)
