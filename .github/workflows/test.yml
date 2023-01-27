@@ -39,7 +39,7 @@ jobs:
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
-      if: runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
       run: |
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
@@ -50,14 +50,14 @@ jobs:
           --argstr to "$to"
 
     - name: Read performance delta
-      if: runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
       id: perf
       uses: juliangruber/read-file-action@v1.1.5
       with:
         path: ./perf-delta.txt
 
     - name: Find performance comment
-      if: runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
       uses: peter-evans/find-comment@v2.0.1
       id: fc
       with:
@@ -68,7 +68,7 @@ jobs:
     # Forks can't add comments so this job does not run on forks, see
     # motoko#2864.
     - name: Create or update performance comment
-      if: runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       uses: peter-evans/create-or-update-comment@v2.1.0
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
