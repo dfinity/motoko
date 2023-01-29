@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.8.0 (2023-01-27)
+
 * motoko (`moc`)
 
   * BREAKING CHANGE
@@ -13,7 +15,7 @@
     Very few users should be affected by this change in behaviour.
 
   * BREAKING CHANGE
-    
+
     Failure to send a message no longer traps but, instead, throws a catchable `Error` with new error code `#call_error` (#3630).
 
     On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
