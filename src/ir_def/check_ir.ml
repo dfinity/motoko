@@ -364,7 +364,15 @@ let store_typ t  =
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
-  let (<:) t1 t2 = check_sub env exp.at t1 t2 in
+  let (<:) t1 t2 =
+    try
+      check_sub env exp.at t1 t2
+    with e ->
+     ( 
+      Printf.eprintf "(in here):\n%s"
+        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+      raise e)
+  in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
   then
@@ -592,7 +600,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
-        typ k <: T.Func (T.Local, T.Returns, [], ret_tys, []);
+        typ k <: T.Func (T.Local, T.Returns, [], T.as_seq (T.seq ret_tys), []);
         typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->

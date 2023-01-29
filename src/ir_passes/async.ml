@@ -93,10 +93,10 @@ let new_nary_async_reply ts =
     let vs, seq_of_vs =
       match ts with
       | [t1] ->
-        let v = fresh_var "rep" t1 in
+        let v = fresh_var "rep1" t1 in
         [v], varE v
       | ts1 ->
-        let vs = fresh_vars "rep" ts1 in
+        let vs = fresh_vars "rep2" ts1 in
         vs, tupE (List.map varE vs)
     in
     vs -->* (varE unary_fulfill -*- seq_of_vs)
@@ -308,10 +308,12 @@ let transform prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
+      let ts2 = T.as_seq (T.seq ts2) in
       let ((nary_async, nary_reply, reject), def) =
         new_nary_async_reply ts2
       in
       (blockE (
+        letP (wildP) (textE "crap"):: (* TBD *)
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
