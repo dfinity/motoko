@@ -113,7 +113,7 @@ Finally tag the base release (so the documentation interpreter can do the right 
 * git tag moc-0.8.$MOC_MINOR
 * git push origin moc-0.8.$MOC_MINOR
 
-If you want to update the portal documentation, typically to keep in sync with a dfx release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
+If you want to update the portal documentation, typically to keep in sync with a `dfx` release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
 
 ## Coverage report
 
