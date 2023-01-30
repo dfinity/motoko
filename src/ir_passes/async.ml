@@ -104,7 +104,7 @@ let new_nary_async_reply ts =
         let v = fresh_var "rep" t1 in
         [v], varE v
       | ts1 ->
-        let vs = fresh_vars "rep2" ts1 in
+        let vs = fresh_vars "rep" ts1 in
         vs, tupE (List.map varE vs)
     in
     vs -->* (varE unary_fulfill -*- seq_of_vs)
