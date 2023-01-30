@@ -98,13 +98,8 @@ let new_nary_async_reply ts =
   (* construct the n-ary reply callback that take a *sequence* of values to fulfill the async *)
   let nary_reply =
     let vs, seq_of_vs =
-      match ts with
-      | [t1] ->
-        let v = fresh_var "rep" t1 in
-        [v], varE v
-      | ts1 ->
-        let vs = fresh_vars "rep" ts1 in
-        vs, tupE (List.map varE vs)
+      let vs = fresh_vars "rep" ts1 in
+      vs, seqE (List.map varE vs)
     in
     vs -->* (varE unary_fulfill -*- seq_of_vs)
   in
