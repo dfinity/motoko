@@ -51,7 +51,7 @@ and infer_effect_exp (exp: exp) : T.eff =
   | LoopE exp1
   | AssignE (_, exp1) ->
     effect_exp exp1
-  | PrimE (p, exps)->
+  | PrimE (p, exps) ->
     infer_effect_prim p exps
   | BlockE (ds, exp) ->
     let es = List.map effect_dec ds in

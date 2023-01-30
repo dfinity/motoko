@@ -7519,12 +7519,8 @@ module FuncDec = struct
       IC.set_call_perform_message env ^^
       IC.get_call_perform_status env ^^
       (* save error code, cleanup on error *)
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       G.if0
-      begin
-        G.nop
-      end
-      begin
+      begin (* send failed *)
         if !Flags.trap_on_call_error then
           E.trap_with env message
         else
@@ -7532,6 +7528,9 @@ module FuncDec = struct
         get_cb_index ^^
         ContinuationTable.recall env ^^
         G.i Drop
+      end
+      begin (* send succeeded *)
+        G.nop
       end
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
@@ -7590,9 +7589,9 @@ module FuncDec = struct
          (* legacy: discard status, proceed as if all well *)
          G.i Drop ^^
          compile_unboxed_zero ^^
+         IC.set_call_perform_status env ^^
          Blob.lit env "" ^^
-         IC.set_call_perform_message env ^^
-         IC.set_call_perform_status env
+         IC.set_call_perform_message env
        else
          IC.set_call_perform_status env ^^
          Blob.lit env "could not perform oneway" ^^
