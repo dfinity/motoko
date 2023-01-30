@@ -600,7 +600,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
-        typ k <: T.Func (T.Local, T.Returns, [], T.as_seq (T.seq ret_tys), []);
+        typ k <: T.Func (T.Local, T.Returns, [], ret_tys (* T.as_seq (T.seq ret_tys)*), []);
         typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->

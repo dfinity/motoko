@@ -80,9 +80,17 @@ let new_nary_async_reply ts =
   let nary_async =
     match ts with
     | [t1] ->
-      varE unary_async
+       if T.eq t1 T.unit then
+        (
+        let k' = fresh_var "k" (T.(Func(Local, Returns, [], [], []))) in
+        let r' = fresh_var "r" (err_contT T.unit) in
+        [k';r'] -->* (
+          varE unary_async -*- (tupE[([v'] -->* (varE k' -*- tupE[])); varE r'])
+        ))
+      else
+        varE unary_async
     | ts1 ->
-      let k' = fresh_var "k" (contT t T.unit) in
+      let k' = fresh_var "k" (T.(Func(Local, Returns, [], ts1, []))) in
       let r' = fresh_var "r" (err_contT T.unit) in
       [k';r'] -->* (
         varE unary_async -*- (tupE[([v'] -->* (varE k' -*- varE v')); varE r'])
@@ -93,6 +101,10 @@ let new_nary_async_reply ts =
     let vs, seq_of_vs =
       match ts with
       | [t1] ->
+(*         if T.eq t1 T.unit then
+          let v = fresh_var "rep1" t1 in           
+          [v], tupE [] 
+        else*)
         let v = fresh_var "rep1" t1 in
         [v], varE v
       | ts1 ->
@@ -308,12 +320,12 @@ let transform prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let ts2 = T.as_seq (T.seq ts2) in
+      (*      let ts2 = T.as_seq (T.seq ts2) in *)
       let ((nary_async, nary_reply, reject), def) =
         new_nary_async_reply ts2
       in
       (blockE (
-        letP (wildP) (textE "crap"):: (* TBD *)
+           (*        letP (wildP) (textE "crap"):: (* TBD *) *)
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
