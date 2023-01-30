@@ -68,8 +68,8 @@ unsafe fn should_start() -> bool {
     use crate::memory::ic;
 
     const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 1024 * 1024 * 1024);
-    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.15;
-    const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
+    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.1;
+    const NORMAL_GROWTH_THRESHOLD: f64 = 0.5;
 
     let heap_size = ic::get_heap_size();
     let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
