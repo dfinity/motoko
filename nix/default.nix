@@ -43,7 +43,7 @@ let
         })
 
         # Selecting the ocaml version
-        # Also update ocmal-version in src/*/.ocamlformat!
+        # Also update ocaml-version in src/*/.ocamlformat!
         (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
 
         (
