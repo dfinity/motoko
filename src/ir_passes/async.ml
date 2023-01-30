@@ -101,7 +101,7 @@ let new_nary_async_reply ts =
     let vs, seq_of_vs =
       match ts with
       | [t1] ->
-        let v = fresh_var "rep1" t1 in
+        let v = fresh_var "rep" t1 in
         [v], varE v
       | ts1 ->
         let vs = fresh_vars "rep2" ts1 in
