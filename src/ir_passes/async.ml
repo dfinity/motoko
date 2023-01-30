@@ -80,13 +80,12 @@ let new_nary_async_reply ts =
   let nary_async =
     match ts with
     | [t1] ->
-       if T.eq t1 T.unit then
-        (
+      if T.eq t1 T.unit then
         let k' = fresh_var "k" (contT t1 T.unit) in
         let r' = fresh_var "r" (err_contT T.unit) in
         [k';r'] -->* (
           varE unary_async -*- (tupE[([v'] -->* (varE k' -*- tupE[])); varE r'])
-        ))
+        )
       else
         varE unary_async
     | ts1 ->
