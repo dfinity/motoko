@@ -39,8 +39,12 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     }
 }
 
-/// Limit on the number of steps performed in a GC increment.
-pub const INCREMENT_TIME_LIMIT: usize = 2_500_000;
+/// Limits on the number of steps performed in a GC increment.
+/// Distinguishing between two types of GC increments:
+/// * Scheduled increments: Compiler-instrumented GC calls.
+/// * Allocation increments: GC increment at periodic allocations.
+pub const SCHEDULED_INCREMENT_LIMIT: usize = 2_500_000;
+const ALLOCATION_INCREMENT_LIMIT: usize = 1_500_000;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
@@ -48,7 +52,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     if PHASE == Phase::Pause {
         record_gc_start::<M>();
     }
-    let time = BoundedTime::new(INCREMENT_TIME_LIMIT);
+    let time = BoundedTime::new(SCHEDULED_INCREMENT_LIMIT);
     IncrementalGC::instance(mem, time).empty_call_stack_increment(root_set());
     if PHASE == Phase::Pause {
         record_gc_stop::<M>();
@@ -59,7 +63,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
 
 #[cfg(feature = "ic")]
-const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 512 * 1024 * 1024);
+const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
 
 #[cfg(feature = "ic")]
 static mut PASSED_CRITICAL_LIMIT: bool = false;
@@ -74,7 +78,7 @@ unsafe fn should_start() -> bool {
         PASSED_CRITICAL_LIMIT = true;
         true
     } else {
-        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
+        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.5;
         let current_allocations = ic::get_total_allocations();
         debug_assert!(current_allocations >= LAST_ALLOCATIONS);
         let absolute_growth = current_allocations - LAST_ALLOCATIONS;
@@ -167,23 +171,22 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if self.pausing() {
             self.start_marking(roots);
         }
-        self.increment();
-        if self.mark_completed() {
-            #[cfg(debug_assertions)]
-            self.check_mark_completion(roots);
+        self.general_increment(roots);
+        if self.updating_completed() {
+            self.complete_run(roots);
+        }
+    }
 
-            self.start_evacuating();
-            self.increment();
+    /// General GC increment that can be called regardless of the call stack depth.
+    unsafe fn general_increment(&mut self, roots: Roots) {
+        self.run();
+        if self.mark_completed() {
+            self.start_evacuating(roots);
+            self.run();
         }
         if self.evacuation_completed() {
             self.start_updating(roots);
-            self.increment();
-        }
-        if self.updating_completed() {
-            self.complete_run();
-
-            #[cfg(debug_assertions)]
-            self.check_update_completion(roots);
+            self.run();
         }
     }
 
@@ -191,7 +194,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         PHASE == Phase::Pause
     }
 
-    unsafe fn increment(&mut self) {
+    unsafe fn run(&mut self) {
         match PHASE {
             Phase::Pause | Phase::Stop => {}
             Phase::Mark => MarkIncrement::instance(self.mem, &mut self.time).run(),
@@ -214,12 +217,19 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         PHASE == Phase::Mark && MarkIncrement::<M>::mark_completed()
     }
 
-    #[cfg(debug_assertions)]
-    unsafe fn check_mark_completion(&mut self, roots: Roots) {
-        sanity_checks::check_memory(self.mem, roots, sanity_checks::CheckerMode::MarkCompletion);
+    unsafe fn check_mark_completion(&mut self, _roots: Roots) {
+        #[cfg(debug_assertions)]
+        {
+            sanity_checks::check_memory(
+                self.mem,
+                _roots,
+                sanity_checks::CheckerMode::MarkCompletion,
+            );
+        }
     }
 
-    unsafe fn start_evacuating(&mut self) {
+    unsafe fn start_evacuating(&mut self, roots: Roots) {
+        self.check_mark_completion(roots);
         debug_assert!(self.mark_completed());
         MarkIncrement::<M>::complete_phase();
         PHASE = Phase::Evacuate;
@@ -244,20 +254,23 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     /// Only to be called when the call stack is empty as pointers on stack are not updated.
-    unsafe fn complete_run(&mut self) {
+    unsafe fn complete_run(&mut self, roots: Roots) {
         debug_assert!(self.updating_completed());
         UpdateIncrement::complete_phase();
         PHASE = Phase::Pause;
         ALLOCATION_COUNT = 0;
+        self.check_update_completion(roots);
     }
 
-    #[cfg(debug_assertions)]
-    unsafe fn check_update_completion(&mut self, roots: Roots) {
-        sanity_checks::check_memory(
-            self.mem,
-            roots,
-            sanity_checks::CheckerMode::UpdateCompletion,
-        );
+    unsafe fn check_update_completion(&mut self, _roots: Roots) {
+        #[cfg(debug_assertions)]
+        {
+            sanity_checks::check_memory(
+                self.mem,
+                _roots,
+                sanity_checks::CheckerMode::UpdateCompletion,
+            );
+        }
     }
 }
 
@@ -363,16 +376,16 @@ unsafe fn update_new_allocation(new_object: Value) {
 
 /// Number of allocations during a GC run.
 static mut ALLOCATION_COUNT: usize = 0;
-const ALLOCATION_INCREMENT_INTERVAL: usize = 500_000;
-const STEPS_PER_ALLOCATION: usize = 3;
+/// Number of allocations during a GC run that triggers an additional GC allocation increment.
+const ALLOCATION_INCREMENT_INTERVAL: usize = 5_000;
 
 /// Additional increment, performed at certain allocation intervals to keep up with a high allocation rate.
-unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
+pub unsafe fn allocation_increment<M: Memory>(mem: &mut M, roots: Roots) {
     ALLOCATION_COUNT += 1;
     if ALLOCATION_COUNT == ALLOCATION_INCREMENT_INTERVAL {
         ALLOCATION_COUNT = 0;
-        let time = BoundedTime::new(ALLOCATION_COUNT * STEPS_PER_ALLOCATION);
-        IncrementalGC::instance(mem, time).increment();
+        let time = BoundedTime::new(ALLOCATION_INCREMENT_LIMIT);
+        IncrementalGC::instance(mem, time).general_increment(roots);
     }
 }
 
