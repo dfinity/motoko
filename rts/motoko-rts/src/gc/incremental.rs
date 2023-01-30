@@ -44,7 +44,7 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 /// * Scheduled increments: Compiler-instrumented GC calls.
 /// * Allocation increments: GC increment at periodic allocations.
 pub const SCHEDULED_INCREMENT_LIMIT: usize = 2_500_000;
-const ALLOCATION_INCREMENT_LIMIT: usize = 500_000;
+const ALLOCATION_INCREMENT_LIMIT: usize = 250_000;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
@@ -78,7 +78,7 @@ unsafe fn should_start() -> bool {
         PASSED_CRITICAL_LIMIT = true;
         true
     } else {
-        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.5;
+        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
         let current_allocations = ic::get_total_allocations();
         debug_assert!(current_allocations >= LAST_ALLOCATIONS);
         let absolute_growth = current_allocations - LAST_ALLOCATIONS;
@@ -373,7 +373,7 @@ unsafe fn update_new_allocation(new_object: Value) {
 static mut ALLOCATION_COUNT: usize = 0;
 
 /// Number of allocations that triggers an additional GC allocation increment.
-const ALLOCATION_INCREMENT_INTERVAL: usize = 10_000;
+const ALLOCATION_INCREMENT_INTERVAL: usize = 5_000;
 
 /// Additional increment, performed at certain allocation intervals to keep up with a high allocation rate.
 unsafe fn allocation_increment<M: Memory>(_mem: &mut M) {
