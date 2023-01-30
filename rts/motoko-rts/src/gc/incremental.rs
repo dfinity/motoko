@@ -39,13 +39,17 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     }
 }
 
+/// Limit on the number of steps performed in a GC increment.
+pub const INCREMENT_TIME_LIMIT: usize = 2_500_000;
+
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
     if PHASE == Phase::Pause {
         record_gc_start::<M>();
     }
-    IncrementalGC::instance(mem).empty_call_stack_increment(root_set());
+    let time = BoundedTime::new(INCREMENT_TIME_LIMIT);
+    IncrementalGC::instance(mem, time).empty_call_stack_increment(root_set());
     if PHASE == Phase::Pause {
         record_gc_stop::<M>();
     }
@@ -70,7 +74,7 @@ unsafe fn should_start() -> bool {
         PASSED_CRITICAL_LIMIT = true;
         true
     } else {
-        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.5;
+        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
         let current_allocations = ic::get_total_allocations();
         debug_assert!(current_allocations >= LAST_ALLOCATIONS);
         let absolute_growth = current_allocations - LAST_ALLOCATIONS;
@@ -151,11 +155,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     /// Each GC schedule point can get a new GC instance that shares the common GC state.
     /// This is because the memory implementation is not stored as global variable.
-    pub unsafe fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
-        // According to measurements, this limit corresponds to about 1_000_000_000
-        // instructions per increment.
-        const INCREMENT_LIMIT: usize = 5_000_000;
-        let time = BoundedTime::new(INCREMENT_LIMIT);
+    pub unsafe fn instance(mem: &'a mut M, time: BoundedTime) -> IncrementalGC<'a, M> {
         IncrementalGC { mem, time }
     }
 
@@ -248,6 +248,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(self.updating_completed());
         UpdateIncrement::complete_phase();
         PHASE = Phase::Pause;
+        ALLOCATION_COUNT = 0;
     }
 
     #[cfg(debug_assertions)]
@@ -357,6 +358,21 @@ unsafe fn update_new_allocation(new_object: Value) {
             },
             |_, _, array| array.len(),
         );
+    }
+}
+
+/// Number of allocations during a GC run.
+static mut ALLOCATION_COUNT: usize = 0;
+const ALLOCATION_INCREMENT_INTERVAL: usize = 500_000;
+const STEPS_PER_ALLOCATION: usize = 3;
+
+/// Additional increment, performed at certain allocation intervals to keep up with a high allocation rate.
+unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
+    ALLOCATION_COUNT += 1;
+    if ALLOCATION_COUNT == ALLOCATION_INCREMENT_INTERVAL {
+        ALLOCATION_COUNT = 0;
+        let time = BoundedTime::new(ALLOCATION_COUNT * STEPS_PER_ALLOCATION);
+        IncrementalGC::instance(mem, time).increment();
     }
 }
 

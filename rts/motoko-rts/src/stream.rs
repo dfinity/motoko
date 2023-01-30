@@ -32,6 +32,7 @@
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
+use crate::gc::incremental::barriers::allocation_barrier;
 use crate::gc::incremental::post_allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
@@ -62,7 +63,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     (*stream).limit64 = 0;
     (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
-    post_allocation_barrier(ptr);
+    allocation_barrier(mem, ptr);
     stream
 }
 
