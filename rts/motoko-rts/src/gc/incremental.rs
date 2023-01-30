@@ -63,28 +63,26 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
 
 #[cfg(feature = "ic")]
-const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 1024 * 1024 * 1024);
-
-#[cfg(feature = "ic")]
-static mut PASSED_CRITICAL_LIMIT: bool = false;
-
-#[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic;
 
+    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 1024 * 1024 * 1024);
+    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.15;
+    const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
+
     let heap_size = ic::get_heap_size();
-    if heap_size > CRITICAL_HEAP_LIMIT && !PASSED_CRITICAL_LIMIT {
-        PASSED_CRITICAL_LIMIT = true;
-        true
+    let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
+        CRITICAL_GROWTH_THRESHOLD
     } else {
-        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
-        let current_allocations = ic::get_total_allocations();
-        debug_assert!(current_allocations >= LAST_ALLOCATIONS);
-        let absolute_growth = current_allocations - LAST_ALLOCATIONS;
-        let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
-        relative_growth > RELATIVE_GROWTH_THRESHOLD && heap_size.as_usize() >= PARTITION_SIZE
-    }
+        NORMAL_GROWTH_THRESHOLD
+    };
+
+    let current_allocations = ic::get_total_allocations();
+    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
+    let absolute_growth = current_allocations - LAST_ALLOCATIONS;
+    let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
+    relative_growth > growth_threshold && heap_size.as_usize() >= PARTITION_SIZE
 }
 
 #[cfg(feature = "ic")]
@@ -104,9 +102,6 @@ unsafe fn record_gc_stop<M: Memory>() {
     debug_assert!(growth_during_gc.0 <= heap_size.as_usize() as u64);
     let live_set = heap_size - Bytes(growth_during_gc.0 as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
-    if heap_size < CRITICAL_HEAP_LIMIT {
-        PASSED_CRITICAL_LIMIT = false;
-    }
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
