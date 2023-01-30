@@ -40,11 +40,17 @@ use crate::{memory::Memory, rts_trap_with, types::*};
 
 use super::time::BoundedTime;
 
+/// Size of each parition.
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
-// For simplicity, leave the last partition unused, to avoid partition end address overflow
+
+/// Total number of partitions in the memory.
+/// For simplicity, the last partition is left unused, to avoid numeric overflow when
+/// computing the end address of the last partition.
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
-pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.35;
+/// Partitions are only evacuated if the space occupation of alive object in the partition
+/// is greater than this threshold.
+pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.75;
 
 /// Heap partition of size `PARTITION_SIZE`.
 pub struct Partition {

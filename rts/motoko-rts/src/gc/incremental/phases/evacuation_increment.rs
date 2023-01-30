@@ -101,7 +101,9 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         // can be skipped, since that partition will not be considered for
         // evacuation during the current GC run.
 
-        self.time.advance(size.as_usize());
+        // Determined by measurements in comparison to the mark and update phases.
+        const TIME_FRACTION_PER_WORD: usize = 3;
+        self.time.advance(size.as_usize() / TIME_FRACTION_PER_WORD);
 
         #[cfg(debug_assertions)]
         Self::clear_object_content(original);

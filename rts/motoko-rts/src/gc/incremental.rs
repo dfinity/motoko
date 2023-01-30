@@ -45,48 +45,38 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     if PHASE == Phase::Pause {
         record_gc_start::<M>();
     }
-    let time = increment_time();
-    IncrementalGC::instance(mem, time).empty_call_stack_increment(root_set());
+    IncrementalGC::instance(mem).empty_call_stack_increment(root_set());
     if PHASE == Phase::Pause {
         record_gc_stop::<M>();
     }
 }
 
 #[cfg(feature = "ic")]
-unsafe fn increment_time() -> BoundedTime {
-    use crate::memory::ic;
-    // Heuristic, to be tuned by measurements.
-    // The GC increment time here depends on the heap size to cope with
-    // high allocation rates and large heaps. The increment has still a
-    // an upper bound implied by the maximum possible heap size in the
-    // 32-bit address space.
-    // Alternativels, GC increments could also be performed on allocations.
-    // This however showed a worse performance. Moreover, allocation
-    // increments cannot start or finish the GC run, as the call stack
-    // cannot be accessed for collecting or updating pointers.
-    const GC_INCREMENT_DIVISOR: usize = 20;
-    let limit = ic::get_heap_size().to_words().as_usize() / GC_INCREMENT_DIVISOR;
-    BoundedTime::new(limit)
-}
+static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
 
 #[cfg(feature = "ic")]
-static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
+const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 512 * 1024 * 1024);
+
+#[cfg(feature = "ic")]
+static mut PASSED_CRITICAL_LIMIT: bool = false;
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic;
 
-    const RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
-    const CRITICAL_HEAP_LIMIT: usize = usize::MAX - 512 * 1024 * 1024;
-
-    let current_allocations = ic::get_total_allocations();
-    let occupation = ic::get_heap_size();
-    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
-    let absolute_growth = current_allocations - LAST_ALLOCATIONS;
-    let relative_growth = absolute_growth.0 as f64 / occupation.as_usize() as f64;
-    relative_growth > RELATIVE_GROWTH_THRESHOLD && occupation.as_usize() >= PARTITION_SIZE
-        || occupation.as_usize() > CRITICAL_HEAP_LIMIT
+    let heap_size = ic::get_heap_size();
+    if heap_size > CRITICAL_HEAP_LIMIT && !PASSED_CRITICAL_LIMIT {
+        PASSED_CRITICAL_LIMIT = true;
+        true
+    } else {
+        const RELATIVE_GROWTH_THRESHOLD: f64 = 0.5;
+        let current_allocations = ic::get_total_allocations();
+        debug_assert!(current_allocations >= LAST_ALLOCATIONS);
+        let absolute_growth = current_allocations - LAST_ALLOCATIONS;
+        let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
+        relative_growth > RELATIVE_GROWTH_THRESHOLD && heap_size.as_usize() >= PARTITION_SIZE
+    }
 }
 
 #[cfg(feature = "ic")]
@@ -98,6 +88,7 @@ unsafe fn record_gc_start<M: Memory>() {
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
     use crate::memory::ic;
+
     let current_allocations = ic::get_total_allocations();
     debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let growth_during_gc = current_allocations - LAST_ALLOCATIONS;
@@ -105,6 +96,9 @@ unsafe fn record_gc_stop<M: Memory>() {
     debug_assert!(growth_during_gc.0 <= heap_size.as_usize() as u64);
     let live_set = heap_size - Bytes(growth_during_gc.0 as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
+    if heap_size < CRITICAL_HEAP_LIMIT {
+        PASSED_CRITICAL_LIMIT = false;
+    }
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
@@ -157,7 +151,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     /// Each GC schedule point can get a new GC instance that shares the common GC state.
     /// This is because the memory implementation is not stored as global variable.
-    pub unsafe fn instance(mem: &'a mut M, time: BoundedTime) -> IncrementalGC<'a, M> {
+    pub unsafe fn instance(mem: &'a mut M) -> IncrementalGC<'a, M> {
+        // According to measurements, this limit corresponds to about 1_000_000_000
+        // instructions per increment.
+        const INCREMENT_LIMIT: usize = 5_000_000;
+        let time = BoundedTime::new(INCREMENT_LIMIT);
         IncrementalGC { mem, time }
     }
 
