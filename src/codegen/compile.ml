@@ -590,12 +590,16 @@ module E = struct
     | Flags.Copying -> "copying"
     | Flags.Generational -> "generational"
     | Flags.Incremental -> "incremental"  
+    | Flags.No -> assert false
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
-    let name = gc_strategy_name !Flags.gc_strategy in
-    let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
-    call_import env "rts" (gc_fn ^ "_gc")
+    (if !Flags.gc_strategy = Flags.No then
+      G.nop
+    else
+      (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
+      let name = gc_strategy_name !Flags.gc_strategy in
+      let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
+      call_import env "rts" (gc_fn ^ "_gc"))
 
   (* See Note [Candid subtype checks] *)
   (* NB: we don't bother detecting duplicate registrations here because the code sharing machinery
@@ -10606,7 +10610,10 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
+    (if !Flags.gc_strategy = Flags.No then
+      E.call_import env "rts" ("initialize_copying_gc")
+    else
+      E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc")) ^^  
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
