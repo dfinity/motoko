@@ -19,7 +19,7 @@ pub mod mark_stack;
 pub mod partitioned_heap;
 mod phases;
 pub mod roots;
-#[cfg(debug_assertions)]
+#[cfg(feature = "memory_check")]
 pub mod sanity_checks;
 pub mod time;
 
@@ -208,7 +208,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn check_mark_completion(&mut self, _roots: Roots) {
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "memory_check")]
         {
             sanity_checks::check_memory(
                 self.mem,
@@ -253,7 +253,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     }
 
     unsafe fn check_update_completion(&mut self, _roots: Roots) {
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "memory_check")]
         {
             sanity_checks::check_memory(
                 self.mem,
