@@ -12,10 +12,7 @@ use motoko_rts::{
         time::BoundedTime,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{
-        unmark, Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY,
-        TAG_BLOB,
-    },
+    types::{unmark, Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
