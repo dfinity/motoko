@@ -44,7 +44,7 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 /// * Scheduled increments: Compiler-instrumented GC calls.
 /// * Allocation increments: GC increment at periodic allocations.
 pub const SCHEDULED_INCREMENT_LIMIT: usize = 2_500_000;
-const ALLOCATION_INCREMENT_LIMIT: usize = 250_000;
+const ALLOCATION_INCREMENT_LIMIT: usize = 500_000;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
@@ -68,8 +68,8 @@ unsafe fn should_start() -> bool {
     use crate::memory::ic;
 
     const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 1024 * 1024 * 1024);
-    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.1;
-    const NORMAL_GROWTH_THRESHOLD: f64 = 0.5;
+    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.15;
+    const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
 
     let heap_size = ic::get_heap_size();
     let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
