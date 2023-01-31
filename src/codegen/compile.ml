@@ -573,14 +573,18 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational") "_gc" *)
-    let gc_fn = match !Flags.gc_strategy with
-    | Flags.Generational -> "generational"
-    | Flags.MarkCompact -> "compacting"
-    | Flags.Copying -> "copying"
-    in
-    let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
-    call_import env "rts" (gc_fn ^ "_gc")
+    (if !Flags.gc_strategy = Flags.No then
+      G.nop
+    else
+      (* GC function name = "schedule_"? ("compacting" | "copying" | "generational") "_gc" *)
+      let gc_fn = match !Flags.gc_strategy with
+      | Flags.Generational -> "generational"
+      | Flags.MarkCompact -> "compacting"
+      | Flags.Copying -> "copying"
+      | Flags.No -> assert false
+      in
+      let gc_fn = if !Flags.force_gc then gc_fn else "schedule_" ^ gc_fn in
+      call_import env "rts" (gc_fn ^ "_gc"))
 
   (* See Note [Candid subtype checks] *)
   (* NB: we don't bother detecting duplicate registrations here because the code sharing machinery

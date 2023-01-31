@@ -4,7 +4,7 @@ module M = Map.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
-type gc_strategy = Generational | MarkCompact | Copying
+type gc_strategy = Generational | MarkCompact | Copying | No
 
 let trace = ref false
 let verbose = ref false
