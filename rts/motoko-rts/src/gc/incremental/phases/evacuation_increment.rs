@@ -105,11 +105,11 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         const TIME_FRACTION_PER_WORD: usize = 3;
         self.time.advance(size.as_usize() / TIME_FRACTION_PER_WORD);
 
-        #[cfg(debug_assertions)]
+        #[cfg(feature="memory_check")]
         Self::clear_object_content(original);
     }
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature="memory_check")]
     unsafe fn clear_object_content(original: *mut Obj) {
         let object_size = block_size(original as usize);
         let header_size = size_of::<Obj>();
