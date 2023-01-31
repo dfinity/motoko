@@ -16,16 +16,12 @@ actor {
   public shared func go() : async () {
      var attempts = 0;
 
-     var last = 0;
      let id1 = setTimer(1 * second, false, func () : async () { count += 1; debugPrint "YEP!" });
      let id2 = setTimer(2 * second, true, func () : async () { count += 1; debugPrint "DIM!" });
      let id3 = setTimer(3 * second, false, func () : async () {
          count += 1;
          debugPrint "ROOK!";
-         last := setTimer(1 * second, true, func () : async () { 
-           count += 1; debugPrint "BATT!"; 
-           if (count == max) { cancelTimer last; } 
-         });
+         ignore setTimer(1 * second, true, func () : async () { count += 1; debugPrint "BATT!" })
      });
 
      while (count < max) {
