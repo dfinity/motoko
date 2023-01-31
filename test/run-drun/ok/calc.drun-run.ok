@@ -5,7 +5,7 @@ debug.print: +528
 debug.print: +2_048
 ingress Completed: Reply: 0x4449444c0000
 debug.print: Async
-debug.print: +136
+debug.print: +528
 debug.print: +2_048
 ingress Completed: Reply: 0x4449444c0000
 debug.print: AsyncStar

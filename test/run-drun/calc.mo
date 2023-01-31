@@ -65,7 +65,7 @@ actor a {
 
   public func evaluateAsync() : async () {
     P.debugPrint "Async";
-    P.debugPrint (debug_show(await (evalAsync(sum(16)))));
+    P.debugPrint (debug_show(await (evalAsync(sum(32)))));
     P.debugPrint (debug_show(await (evalAsync(#pow(#const 2,#const 10)))));
   };
 
