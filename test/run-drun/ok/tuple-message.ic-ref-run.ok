@@ -11,4 +11,12 @@ debug.print: f
 debug.print: g
 debug.print: i
 debug.print: f
+debug.print: fp
+debug.print: gp
+debug.print: i
+debug.print: fp
+debug.print: fp
+debug.print: gp
+debug.print: i
+debug.print: fp
 <= replied: ()
