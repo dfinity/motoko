@@ -13,8 +13,8 @@ use motoko_rts::{
     },
     memory::{alloc_array, alloc_blob, Memory},
     types::{
-        unmark, Array, Blob, Bytes, FreeSpace, Obj, OneWordFiller, Tag, Value, Words, TAG_ARRAY,
-        TAG_BLOB, TAG_FREE_SPACE, TAG_ONE_WORD_FILLER,
+        unmark, Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY,
+        TAG_BLOB,
     },
 };
 
@@ -193,25 +193,20 @@ unsafe fn count_objects_in_partition(partition: &Partition) -> usize {
 
 fn test_close_partition(heap: &mut PartitionedTestHeap) {
     println!("    Test close partition...");
-    test_close_partition_with_free_space(heap);
-    test_close_partition_with_one_wordfiller(heap);
+    test_close_partition_multi_word(heap);
+    test_close_partition_single_word(heap);
 }
 
-fn test_close_partition_with_free_space(heap: &mut PartitionedTestHeap) {
+fn test_close_partition_multi_word(heap: &mut PartitionedTestHeap) {
     let old_heap_pointer = heap.heap_pointer();
     let old_partition = old_heap_pointer / PARTITION_SIZE;
     let remainder = PARTITION_SIZE - old_heap_pointer % PARTITION_SIZE;
     let blob = heap.allocate_blob(remainder);
     assert_ne!(heap.heap_pointer() / PARTITION_SIZE, old_partition);
     assert_ne!(blob.get_ptr(), old_heap_pointer);
-    unsafe {
-        let free_space = old_heap_pointer as *mut FreeSpace;
-        assert_eq!((*free_space).tag, TAG_FREE_SPACE);
-        assert_eq!(free_space.size().to_bytes().as_usize(), remainder);
-    }
 }
 
-fn test_close_partition_with_one_wordfiller(heap: &mut PartitionedTestHeap) {
+fn test_close_partition_single_word(heap: &mut PartitionedTestHeap) {
     let old_heap_pointer = heap.heap_pointer();
     let old_partition = old_heap_pointer / PARTITION_SIZE;
     let remainder = PARTITION_SIZE - old_heap_pointer % PARTITION_SIZE;
@@ -222,10 +217,6 @@ fn test_close_partition_with_one_wordfiller(heap: &mut PartitionedTestHeap) {
     let new_partition_blob = heap.allocate_blob(0);
     assert_ne!(heap.heap_pointer() / PARTITION_SIZE, old_partition);
     assert_ne!(new_partition_blob.get_ptr(), filler_address);
-    unsafe {
-        let filler = filler_address as *const OneWordFiller;
-        assert_eq!((*filler).tag, TAG_ONE_WORD_FILLER);
-    }
 }
 
 unsafe fn test_survival_rate(heap: &mut PartitionedHeap) {
@@ -314,10 +305,7 @@ unsafe fn occupied_space(partition: &Partition) -> usize {
     while sweep_line < partition.dynamic_space_end() {
         let block = sweep_line as *const Tag;
         let size = block_size(block);
-        let tag = *block;
-        if tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE {
-            occupied_space += size;
-        }
+        occupied_space += size;
         sweep_line += size;
         assert!(sweep_line <= partition.dynamic_space_end());
     }
@@ -407,8 +395,6 @@ unsafe fn block_size(block: *const Tag) -> usize {
             size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }
         TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
-        TAG_FREE_SPACE => (block as *mut FreeSpace).size().to_bytes().as_usize(),
-        TAG_ONE_WORD_FILLER => WORD_SIZE,
         _ => unimplemented!(),
     }
 }
