@@ -321,11 +321,7 @@ and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
-(* <<<<<<< gabor/let-else *)
-        S.dec = { it = S.LetD( { it = S.VarP id; note; _ } as p, _, None); at; _ };
-(** =======
-        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _); at; _ };
- >>>>>>> master **)
+        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _, None); at; _ };
         _ }
       when id.it = name ->
       Some (
