@@ -1,7 +1,7 @@
 //! Partitioned heap used in incremental GC for compacting evacuation.
 //! The heap is divided in equal sized partitions of a large size `PARTITION_SIZE`.
 //! The first partition(s) may contains a static heap space with static objects that are never moved.
-//! Beyond the static objects of a partition, the dyanmic heap space starts with `dynamic_size`.
+//! Beyond the static objects of a partition, the dynamic heap space starts with `dynamic_size`.
 //!
 //! Heap layout, with N = `MAX_PARTITIONS`:
 //! ┌───────────────┬───────────────┬───────────────┬───────────────┐
@@ -15,7 +15,7 @@
 //!
 //! The heap defines an allocation partition that is the target for subsequent object allocations
 //! by using efficient bump allocation inside the allocation partition.
-//! Whenever a partition is full or has insufficient space to accomodate a new allocation,
+//! Whenever a partition is full or has insufficient space to accommodate a new allocation,
 //! a new empty partition is selected for allocation.
 //!
 //! On garbage collection, the high-garbage partitions are selected for evacuation, such that
@@ -44,7 +44,7 @@ use super::time::BoundedTime;
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 
 /// Total number of partitions in the memory.
-/// For simplicity, the last partition is left unused, to avoid numeric overflow when
+/// For simplicity, the last partition is left unused, to avoid a numeric overflow when
 /// computing the end address of the last partition.
 const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
@@ -54,10 +54,10 @@ pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.85;
 
 /// Heap partition of size `PARTITION_SIZE`.
 pub struct Partition {
-    index: usize,        // Index of the partition 0..MAX_PARTITIONS.
+    index: usize,        // Index of the partition `0..MAX_PARTITIONS`.
     free: bool,          // Denotes a free partition (which may still contain static space).
     large_content: bool, // Specifies whether a large object is contained that spans multiple partitions.
-    marked_size: usize,  // Total amount marked object space in the dynamic space.
+    marked_size: usize,  // Total amount of marked object space in the dynamic space.
     static_size: usize,  // Size of the static space.
     dynamic_size: usize, // Size of the dynamic space.
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
@@ -185,8 +185,8 @@ impl HeapIteratorState {
     }
 }
 
-/// Iterates over all partitions, by skippinjg free partitions and the subsequent partitions of large objects.
-/// Instantiated per GC increment, operating on a stored `HeapIteratorState`.
+/// Iterates over all partitions, by skipping free partitions and the subsequent partitions
+/// of large objects. Instantiated per GC increment, operating on a stored `HeapIteratorState`.
 /// Due to borrow checker restrictions, the iterator does not directly reference the state
 /// but needs to be explicitly loaded and stored from the state by the GC increments.
 pub struct PartitionedHeapIterator<'a> {
@@ -303,7 +303,7 @@ impl PartitionIterator {
     }
 }
 
-/// Partitioned heap used with the incremental GC.
+/// Partitioned heap used by the incremental GC.
 pub struct PartitionedHeap {
     partitions: [Partition; MAX_PARTITIONS],
     heap_base: usize,

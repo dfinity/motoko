@@ -117,12 +117,12 @@ unsafe fn record_gc_stop<M: Memory>() {
 ///    Must start on empty call stack.
 ///     * Concurrent allocations are conservatively marked.
 ///     * Concurrent pointer writes are handled by the write barrier.
-/// 2. Evacuation: Incremental compacting evacuation of high-garbage partitions.
+/// 2. Evacuation: Incremental evacuation-compaction of high-garbage partitions.
 ///     * Copying live objects out of the selected partitions to new partitions.
 ///     * Concurrent accesses to old object locations are handled by pointer forwarding.
 /// 3. Updating: Incremental updates of all old pointers to their new forwarded addresses.
 ///    Must complete on empty call stack.
-///     * Also clearing mark bit of all alive objects.
+///     * Also clearing the mark bit of all alive objects.
 ///     * Concurrent copying of old pointer values is intercepted to resolve forwarding.
 /// Finally, all the evacuated partitions are freed.
 
@@ -131,7 +131,7 @@ unsafe fn record_gc_stop<M: Memory>() {
 enum Phase {
     Pause,    // Inactive, waiting for the next GC run.
     Mark,     // Incremental marking.
-    Evacuate, // Incremental evacuation compact.
+    Evacuate, // Incremental evacuation compaction.
     Update,   // Incremental pointer updates.
     Stop,     // GC stopped on canister upgrade.
 }
@@ -168,7 +168,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     /// Special GC increment invoked when the call stack is guaranteed to be empty.
     /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
-    /// * The mark phase is only be started on an empty call stack.
+    /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
         if self.pausing() {
@@ -313,16 +313,17 @@ pub(crate) unsafe fn post_allocation_barrier(new_object: Value) {
 /// * During the mark phase:
 ///   - New allocated objects are conservatively marked and cannot be reclaimed in the
 ///     current GC run. This is necessary because the incremental GC does neither scan
-///     nor use write barriers on the call stack. The fields in the new allocated array
+///     nor use write barriers on the call stack. The fields in the newly allocated array
 ///     do not need to be visited during the mark phase due to the snapshot-at-the-beginning
 ///     consistency.
 /// * During the evacuation phase:
-///   - Mark new objects such that their fields are updated in the subsequent
-///     update phase. The fields may still point to old object locations that are forwarded.
+///   - Mark new objects such that their fields are updated in the subsequent update phase.
+///     The fields may still point to old object locations that are forwarded.
 /// * During the update phase
 ///   - New objects must not be marked in this phase as the mark bits are reset.
 /// * When GC is stopped on canister upgrade:
 ///   - The GC will not resume and thus marking is irrelevant.
+///   - This is necessary because the upgrade serialization alters tags to store other information.
 unsafe fn mark_new_allocation(new_object: Value) {
     debug_assert!(PHASE == Phase::Mark || PHASE == Phase::Evacuate);
     let object = new_object.get_ptr() as *mut Obj;
@@ -372,13 +373,14 @@ unsafe fn update_new_allocation(new_object: Value) {
     }
 }
 
-/// Number of allocations during a GC run.
+/// Number of allocations during an active GC run.
 static mut ALLOCATION_COUNT: usize = 0;
 
 /// Number of allocations that triggers an additional GC allocation increment.
 const ALLOCATION_INCREMENT_INTERVAL: usize = 5_000;
 
-/// Additional increment, performed at certain allocation intervals to keep up with a high allocation rate.
+/// Additional increment, performed at certain allocation intervals to keep up with a
+/// high allocation rate.
 unsafe fn allocation_increment<M: Memory>(_mem: &mut M) {
     ALLOCATION_COUNT += 1;
     if ALLOCATION_COUNT == ALLOCATION_INCREMENT_INTERVAL {
@@ -388,9 +390,9 @@ unsafe fn allocation_increment<M: Memory>(_mem: &mut M) {
     }
 }
 
-/// Stop the GC before performing upgrade. Otherwise, GC increments
-/// on allocation and writes may interfere with the upgrade mechanism
-/// that invalidates object tags during stream serialization.
+/// Stop the GC before performing upgrade. Otherwise, GC increments on allocation
+/// and writes may interfere with the upgrade mechanism that invalidates object tags
+/// during stream serialization.
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
     PHASE = Phase::Stop;
