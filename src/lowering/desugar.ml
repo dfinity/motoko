@@ -911,19 +911,12 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
-let actor_class_mod_exp id class_typ install =
-  let install_typ = install.note.Note.typ in
+let actor_class_mod_exp id class_typ install install_new =
   let class_con = Cons.fresh id (T.Def([], class_typ)) in
-  let install_var = fresh_var id install_typ in
-  let install_new =
-    (varE install_var) -*- (tagE "new" (recordE ["settings", nullE()]))
-  in
-  blockE
-    [ letD install_var install ]
-    (objE T.Module
-      [(id, class_con)]
-      [(id, install_new);
-       ("system", objE T.Module [] [(id, varE install_var)])])
+  (objE T.Module
+     [(id, class_con)]
+     [(id, install_new);
+      ("system", objE T.Module [] [(id, install)])])
 
 let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in
@@ -950,8 +943,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let accepted = fresh_var "accepted" T.nat in
   let cycles = var "@cycles" (T.Mut (T.nat)) in
   let install_arg =
-    fresh_var "install_arg" T.install_arg_typ
-  in
+    fresh_var "install_arg" T.install_arg_typ  in
   let installBody =
     let vs = fresh_vars "param" ts1' in
     let principal = fresh_var "principal" T.principal in
@@ -995,7 +987,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
-    (asyncE T.Fut (* TBR *)
+    (asyncE T.Fut (* TBR *) (* make this T.Cmp *) 
       (typ_arg c' T.Scope T.scope_bound)
       (blockE
         [ letD modeprincipal
@@ -1042,9 +1034,31 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
       [installBody.note.Note.typ]
     installBody
   in
-  let mod_exp = actor_class_mod_exp id class_typ install in
+  let install_var = fresh_var "install" install.note.Note.typ in
+  (* eta-expansion of
+     `install { new = { setting = null} }: ts1 -> async class_typ`, i.e.
+     `func vs = async await (install { new = { setting = null} } vs`
+     This must be pure to allow dead-coding of unused classes, hence the eta-expansion
+   *)
+  let install_new =
+    let vs = fresh_vars "param" ts1' in
+    funcE id T.Local T.Returns
+      [typ_arg c T.Scope T.scope_bound]
+      (List.map arg_of_var vs)
+      ts2'
+      (asyncE
+         T.Fut
+         (typ_arg c' T.Scope T.scope_bound)
+         (awaitE T.Fut
+            (callE (callE (varE install_var) [] (tagE "new" (recordE ["settings", nullE()])))
+               cs'
+               (seqE (List.map varE vs))))
+         (List.hd cs))
+  in
+  let mod_exp = actor_class_mod_exp id class_typ (varE install_var) install_new in
   let mod_typ = mod_exp.note.Note.typ in
-  [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
+  [ letD install_var install;
+    letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 let import_prelude prelude : import_declaration =
   decs prelude.it
@@ -1187,7 +1201,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
              (primE (Ir.OtherPrim "trap")
                [textE "actor class configuration not supported in interpreter"]))
       in
-      actor_class_mod_exp id class_typ install
+      actor_class_mod_exp id class_typ install install (* FIX ME *)
     | I.ProgU ds ->
       raise (Invalid_argument "Desugar: Cannot import program")
   in
