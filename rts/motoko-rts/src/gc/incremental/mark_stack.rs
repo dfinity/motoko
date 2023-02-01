@@ -20,7 +20,7 @@
 //! a next table. Only the last table can have free entry space.
 //!
 //! The entries represent pointers to objects to be visited by the GC.
-//! (being conceptually gray in the incremental tree-color mark scheme).
+//! (being conceptually gray in the incremental tri-color mark scheme).
 //!
 //! NOTES:
 //! * The tables are blobs, as their entries must not be analyzed by the GC.

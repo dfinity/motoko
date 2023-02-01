@@ -71,7 +71,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
         assert!(value.get_ptr() >= self.heap.base_address());
         let object = value.as_obj();
         if let CheckerMode::MarkCompletion = self.mode {
-            // The incremental GC have marked this reachable object.
+            // The incremental GC must have marked this reachable object.
             assert!(object.is_marked());
         }
         if !self.visited.contains(value) {
@@ -94,7 +94,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             0,
             |gc, field_address| {
                 let value = *field_address;
-                // Ignore null pointers used in text_iter.
+                // Ignore null pointers used in `text_iter`.
                 if value.get_ptr() as *const Obj != null() {
                     if value.get_ptr() >= gc.heap.base_address() {
                         gc.check_object(value);
@@ -112,7 +112,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         object.check_forwarding_pointer();
         if let CheckerMode::UpdateCompletion = self.mode {
-            // Forwarding no longer allowed on completed GC.
+            // Forwarding is no longer allowed on a completed GC.
             assert!(!object.is_forwarded());
             assert!(!(object.get_ptr() as *const Obj).is_marked());
         }
