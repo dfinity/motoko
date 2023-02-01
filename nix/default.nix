@@ -51,7 +51,7 @@ let
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
               obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) lib fetchFromGitHub ocaml dune_2;
+                inherit (self) lib fetchFromGitHub ocaml dune_3;
                 inherit (self) ocamlPackages;
                 inherit (self.stdenv) mkDerivation;
               };
@@ -95,9 +95,9 @@ let
           };
         })
 
-        # Rust 1.62
+        # Rust 1.66
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-06-30"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-12-15"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform {
             rustc = rust-channel.rust;

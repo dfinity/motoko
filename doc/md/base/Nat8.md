@@ -147,7 +147,7 @@ Returns `x` to the power of `y`, `x ** y`. Traps on overflow.
 
 ## Function `bitnot`
 ``` motoko no-repl
-func bitnot(x : Nat8, y : Nat8) : Nat8
+func bitnot(x : Nat8) : Nat8
 ```
 
 Returns the bitwise negation of `x`, `^x`.

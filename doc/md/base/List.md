@@ -214,9 +214,6 @@ func equal<T>(l1 : List<T>, l2 : List<T>, eq : (T, T) -> Bool) : Bool
 
 Compare two lists for equality as specified by the given relation `eq` on the elements.
 
-The function `isEq(l1, l2)` is equivalent to `lessThanEq(l1, l2) && lessThanEq(l2, l1)`,
-but the former is more efficient.
-
 ## Function `tabulate`
 ``` motoko no-repl
 func tabulate<T>(n : Nat, f : Nat -> T) : List<T>

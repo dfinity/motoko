@@ -3,6 +3,7 @@ open Idllib.Exception
 open Source
 module T = Mo_types.Type
 
+module Pretty = T.MakePretty(T.ElideStamps)
 (*
 This module can translate Candid values (as parsed from the textual
 representation) into Motoko values. This is a pragmatic translation which is
@@ -71,7 +72,7 @@ let rec value v t =
     Printf.sprintf "(actor %s : actor { %s : %s }).%s"
       (text_lit s)
       (Idllib.Escape.escape_method Source.no_region m)
-      (T.string_of_typ t)
+      (Pretty.string_of_typ t)
       (Idllib.Escape.escape_method Source.no_region m)
   | PrincipalV s, _ ->
     "Prim.principalOfActor" ^ parens ("actor " ^ text_lit s ^ " : actor {}")
