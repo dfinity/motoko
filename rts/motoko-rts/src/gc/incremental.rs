@@ -1,3 +1,11 @@
+//! Incremental evacuation-compacting GC.
+//!
+//! Properties:
+//! - All GC pauses have bounded short time.
+//! - Full-heap snapshot-at-the-beginning marking.
+//! - Focus on reclaiming high-garbage partitions.
+//! - Compacting heap space with partition evacuations.
+//! - Incremental copying enabled by forwarding pointers.
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
@@ -286,7 +294,7 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
 
 /// Allocation barrier to be called AFTER a new object allocation.
 /// `new_object` is the skewed pointer of the newly allocated and initialized object.
-/// The new object needs to be fully initialized, except fot the payload of a blob.
+/// The new object needs to be fully initialized, except for the payload of a blob.
 /// The barrier is only effective during a running GC.
 pub(crate) unsafe fn post_allocation_barrier(new_object: Value) {
     if PHASE == Phase::Mark || PHASE == Phase::Evacuate {
