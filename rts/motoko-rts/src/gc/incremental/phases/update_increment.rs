@@ -13,6 +13,7 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
+// State shared over multiple increment calls.
 static mut UPDATE_STATE: Option<HeapIteratorState> = None;
 
 pub struct UpdateIncrement<'a> {

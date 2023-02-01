@@ -70,7 +70,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn run(&mut self) {
         if *self.complete {
-            // Allocation after complete marking: Wait until the next empty call stack increment.
+            // Allocation after complete marking: Wait until the next GC increment.
             debug_assert!(self.mark_stack.is_empty());
             return;
         }

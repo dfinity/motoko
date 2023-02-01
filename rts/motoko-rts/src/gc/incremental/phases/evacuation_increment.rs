@@ -12,6 +12,7 @@ use crate::{
     types::*,
 };
 
+// State shared over multiple increment calls.
 static mut EVACUATION_STATE: Option<HeapIteratorState> = None;
 
 pub struct EvacuationIncrement<'a, M: Memory> {
@@ -97,9 +98,8 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         debug_assert!(original.is_forwarded());
         // The mark bit is necessary to ensure field updates in the copy.
         debug_assert!(copy.is_marked());
-        // However, updating the marked size statistics of target partition
-        // can be skipped, since that partition will not be considered for
-        // evacuation during the current GC run.
+        // However, updating the marked size statistics of the target partition can be skipped,
+        // since that partition will not be considered for evacuation during the current GC run.
 
         // Determined by measurements in comparison to the mark and update phases.
         const TIME_FRACTION_PER_WORD: usize = 3;
