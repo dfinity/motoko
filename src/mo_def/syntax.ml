@@ -217,7 +217,7 @@ and case' = {pat : pat; exp : exp}
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
   | ExpD of exp                                (* plain unit expression *)
-  | LetD of pat * exp                          (* immutable *)
+  | LetD of pat * exp * exp option             (* immutable, with an optional fail block *)
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)

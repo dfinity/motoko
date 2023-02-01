@@ -228,7 +228,12 @@ and dec_field' ctxt d =
   (* async functions *)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
+(* FIXME gabor/let-else *)
+                       {it = AsyncE (_, e); _} );_},
+             None)) -> (* ignore async *)
+(** FIXME
                        {it = AsyncE (T.Fut, _, e); _} );_})) -> (* ignore async *)
+FIXME master **)
       { ctxt with ids = Env.add f.it Method ctxt.ids },
       None,
       fun ctxt' ->
@@ -302,7 +307,7 @@ and dec ctxt d =
     fun ctxt' ->
       ([ !!(id x, tr_typ e.note.M.note_typ) ],
        [ !!(VarAssignS (id x, exp ctxt' e)) ])
-  | M.(LetD ({it=VarP x;_}, e)) ->
+  | M.(LetD ({it=VarP x;_}, e, None)) ->
      { ctxt with ids = Env.add x.it Local ctxt.ids },
      fun ctxt' ->
        ([ !!(id x, tr_typ e.note.M.note_typ) ],

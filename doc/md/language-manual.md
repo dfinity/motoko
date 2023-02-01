@@ -1394,6 +1394,15 @@ The declaration `let <pat> = <exp>` evaluates `<exp>` to a result `r`. If `r` is
 
 All bindings declared by a `let` (if any) are *immutable*.
 
+#### Handling pattern match failures
+
+In the presence of of refutable patterns a `let` declaration may fail to bind the expression. The default consequence of such a failure is trapping. The compiler will additionally emit a warning if a pattern match failure is a possibility.
+
+There are cases, however, when the user wants to explicitly handle such pattern match failures. For such cases
+the let declaration `let <pat> = <exp> else <fail-expr>` is provided, and has identical static and dynamic semantics with
+the difference that instead of trapping, the canister evaluates the `<fail-expr>` to redirect the program's control flow.
+Thus `<fail-expr>` must have type `Non` (i.e. being non-returning), and as such `throw`, `return` or other jumps are permitted besides (eventually) aborting calls. The compilation warning is suppressed when the user chooses to handle the potential pattern-match failure.
+
 ### Var declaration
 
 The variable declaration `var <id> (: <typ>)? = <exp>` declares a *mutable* variable `<id>` with initial value `<exp>`. The variable’s value can be updated by assignment.

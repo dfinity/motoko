@@ -770,40 +770,43 @@ and declare_pat_fields pfs ve : val_env =
 and define_id env id v =
   Lib.Promise.fulfill (find id.it env.vals) v
 
-and define_pat env pat v =
-  let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
+and define_pat env (k : V.value V.cont) err pat v =
   match pat.it with
-  | WildP -> ()
+  | WildP -> k v 
   | LitP _ | SignP _ | AltP _ ->
     if match_pat pat v = None
     then err ()
-    else ()
-  | VarP id -> define_id env id v
-  | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
+    else k v
+  | VarP id -> 
+    define_id env id v;
+    k v
+  | TupP pats ->
+    define_pats env k err pats (V.as_tup v)
+  | ObjP pfs -> 
+    define_pat_fields env k err pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
-    | V.Opt v1 -> define_pat env pat1 v1
+    | V.Opt v1 -> define_pat env k err pat1 v1
     | V.Null -> err ()
     | _ -> assert false
     )
   | TagP (i, pat1) ->
     let lab, v1 = V.as_variant v in
     if lab = i.it
-    then define_pat env pat1 v1
+    then define_pat env k err pat1 v1
     else err ()
   | AnnotP (pat1, _)
-  | ParP pat1 -> define_pat env pat1 v
+  | ParP pat1 -> define_pat env k err pat1 v
 
-and define_pats env pats vs =
-  List.iter2 (define_pat env) pats vs
+and define_pats env (k : V.value V.cont) err pats vs  =
+  List.iter2 (define_pat env k err) pats vs
 
-and define_pat_fields env pfs vs =
-  List.iter (define_pat_field env vs) pfs
+and define_pat_fields env k err pfs vs =
+  List.iter (define_pat_field env k err vs) pfs
 
-and define_pat_field env vs pf =
+and define_pat_field env k err vs pf =
   let v = V.Env.find pf.it.id.it vs in
-  define_pat env pf.it.pat v
+  define_pat env k err pf.it.pat v
 
 and match_lit lit v : bool =
   match !lit, v with
@@ -939,7 +942,8 @@ and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
   | TypD _ -> V.Env.empty
-  | LetD (pat, _) -> declare_pat pat
+  | LetD (pat, _, None) -> declare_pat pat
+  | LetD (pat, _, Some _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
@@ -955,10 +959,13 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
-  | LetD (pat, exp) ->
-    interpret_exp env exp (fun v ->
-      define_pat env pat v;
-      k v
+  | LetD (pat, exp, fail) -> 
+    interpret_exp env exp (fun v -> 
+      let err () = match fail with
+        | Some fail -> interpret_exp env fail (fun _ -> assert false)
+        | None -> trap pat.at "value %s does not match pattern" (string_of_val env v)
+      in
+      define_pat env k err pat v
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
