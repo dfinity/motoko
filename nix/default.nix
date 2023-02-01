@@ -49,12 +49,60 @@ let
         (
           self: super: {
             # Additional ocaml package
-            ocamlPackages = super.ocamlPackages // {
+            ocamlPackages = super.ocamlPackages // rec {
               obelisk = import ./ocaml-obelisk.nix {
                 inherit (self) lib fetchFromGitHub ocaml dune_3;
                 inherit (self) ocamlPackages;
                 inherit (self.stdenv) mkDerivation;
               };
+
+              js_of_ocaml-compilerX = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
+                version = "4.0.0";
+                src = self.fetchFromGitHub {
+                  owner = "ocsigen";
+                  repo = "js_of_ocaml";
+                  rev = "${version}";
+                  sha256 = "sha256-7uqpPQlV8UfrUkApgJ6hQ/i9YK+cYb+lkKPIU36i0Ec=";
+                };
+              });
+
+              js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
+                version = "4.0.0";
+                src = self.fetchurl {
+                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
+                  sha256 = "sha256-3wL4GeWy9II0rys+PnyXga+oIS+L7Ofrz72DWLOUSV4=";
+                };
+              });
+
+
+
+
+
+              js_of_ocaml = with super.ocamlPackages; buildDunePackage {
+              pname = "js_of_ocaml";
+
+              inherit (js_of_ocaml-compiler) version src;
+
+              buildInputs = [ ppxlib ];
+
+              propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
+
+              meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
+              };
+
+
+
+
+
+
+
+              js_of_ocaml-ppx4 = super.ocamlPackages.js_of_ocaml-ppx.overrideAttrs (_: rec {
+                version = "4.0.0";
+                src = self.fetchurl {
+                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
+                  sha256 = "sha256-3wL4GeWy9II0rys+PnyXga+oIS+L7Ofrz72DWLOUSV4=";
+                };
+              });
 
               # downgrade wasm until we have support for 2.0.0
               # (https://github.com/dfinity/motoko/pull/3364)
