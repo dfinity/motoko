@@ -552,7 +552,7 @@ rec {
           cp --verbose --dereference ${n}.js $out/bin
           cp --verbose --dereference ${n}.min.js $out/bin
         '';
-        # doInstallCheck = true;
+        doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
           NODE_PATH=$out/bin node $test

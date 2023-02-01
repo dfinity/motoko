@@ -74,27 +74,18 @@ let
                 };
               });
 
-
-
-
-
               js_of_ocaml = with super.ocamlPackages; buildDunePackage {
-              pname = "js_of_ocaml";
+                pname = "js_of_ocaml";
 
-              inherit (js_of_ocaml-compiler) version src;
+                inherit (js_of_ocaml-compiler) version src;
+                duneVersion = "3";
 
-              buildInputs = [ ppxlib ];
+                buildInputs = [ ppxlib ];
 
-              propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
+                propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
 
-              meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
+                meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
-
-
-
-
-
-
 
               js_of_ocaml-ppx4 = super.ocamlPackages.js_of_ocaml-ppx.overrideAttrs (_: rec {
                 version = "4.0.0";
