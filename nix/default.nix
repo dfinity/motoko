@@ -56,16 +56,7 @@ let
                 inherit (self.stdenv) mkDerivation;
               };
 
-              js_of_ocaml-compilerX = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
-                version = "4.0.0";
-                src = self.fetchFromGitHub {
-                  owner = "ocsigen";
-                  repo = "js_of_ocaml";
-                  rev = "${version}";
-                  sha256 = "sha256-7uqpPQlV8UfrUkApgJ6hQ/i9YK+cYb+lkKPIU36i0Ec=";
-                };
-              });
-
+              # downgrade `wasmjs_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0
               js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
                 version = "4.0.0";
                 src = self.fetchurl {
@@ -74,6 +65,7 @@ let
                 };
               });
 
+              # inline recipe from https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/ocaml/js_of_ocaml/default.nix
               js_of_ocaml = with super.ocamlPackages; buildDunePackage {
                 pname = "js_of_ocaml";
 
@@ -86,14 +78,6 @@ let
 
                 meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
-
-              js_of_ocaml-ppx4 = super.ocamlPackages.js_of_ocaml-ppx.overrideAttrs (_: rec {
-                version = "4.0.0";
-                src = self.fetchurl {
-                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
-                  sha256 = "sha256-3wL4GeWy9II0rys+PnyXga+oIS+L7Ofrz72DWLOUSV4=";
-                };
-              });
 
               # downgrade wasm until we have support for 2.0.0
               # (https://github.com/dfinity/motoko/pull/3364)
