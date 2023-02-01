@@ -36,7 +36,7 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build"
-      run: nix-build-uncached --max-jobs 4 -A rts -build-flags -L
+      run: nix-build-uncached --max-jobs 1 -A tests -build-flags -L
 
     - name: Calculate performance delta
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
