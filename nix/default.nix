@@ -43,17 +43,40 @@ let
         })
 
         # Selecting the ocaml version
-        # Also update ocmal-version in src/*/.ocamlformat!
+        # Also update ocaml-version in src/*/.ocamlformat!
         (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
 
         (
           self: super: {
             # Additional ocaml package
-            ocamlPackages = super.ocamlPackages // {
+            ocamlPackages = super.ocamlPackages // rec {
               obelisk = import ./ocaml-obelisk.nix {
                 inherit (self) lib fetchFromGitHub ocaml dune_3;
                 inherit (self) ocamlPackages;
                 inherit (self.stdenv) mkDerivation;
+              };
+
+              # downgrade `wasmjs_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0
+              js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
+                version = "4.0.0";
+                src = self.fetchurl {
+                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
+                  sha256 = "sha256-3wL4GeWy9II0rys+PnyXga+oIS+L7Ofrz72DWLOUSV4=";
+                };
+              });
+
+              # inline recipe from https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/ocaml/js_of_ocaml/default.nix
+              js_of_ocaml = with super.ocamlPackages; buildDunePackage {
+                pname = "js_of_ocaml";
+
+                inherit (js_of_ocaml-compiler) version src;
+                duneVersion = "3";
+
+                buildInputs = [ ppxlib ];
+
+                propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
+
+                meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
 
               # downgrade wasm until we have support for 2.0.0

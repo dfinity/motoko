@@ -97,16 +97,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-22.05",
+        "branch": "release-22.11",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "0874168639713f547c05947c76124f78441ea46c",
-        "sha256": "0gw5l5bj3zcgxhp7ki1jafy6sl5nk4vr43hal94lhi15kg2vfmfy",
+        "rev": "a3a1400571e3b9ccc270c2e8d36194cf05aab6ce",
+        "sha256": "1mqq54izbxvr243mzskr32123rlzsy32a1yvw3vi8kb7hrrnm4rx",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/0874168639713f547c05947c76124f78441ea46c.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/a3a1400571e3b9ccc270c2e8d36194cf05aab6ce.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
