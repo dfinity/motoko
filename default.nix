@@ -532,7 +532,6 @@ rec {
         name = "${n}.js";
         src = subpath ./src;
         buildInputs = commonBuildInputs nixpkgs ++ [
-          nixpkgs.ocamlPackages.js_of_ocaml-compiler
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
           nixpkgs.nodejs-16_x
