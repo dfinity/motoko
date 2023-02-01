@@ -286,7 +286,7 @@ impl Value {
         unmark(*(self.get_ptr() as *const Tag))
     }
 
-    /// Get the forwarding pointer. Used in incremental GC.
+    /// Get the forwarding pointer. Used by the incremental GC.
     pub unsafe fn forward(self) -> Value {
         debug_assert!(self.is_obj());
         debug_assert!(self.get_ptr() as *const Obj != null());
@@ -294,7 +294,7 @@ impl Value {
         (*obj).forward
     }
 
-    /// Resolve forwarding if the value is pointer. Otherwise, return the same value.
+    /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
     pub unsafe fn forward_if_possible(self) -> Value {
         if self.is_ptr() && self.get_ptr() as *const Obj != null() {
             // Ignore null pointers used in text_iter.
@@ -305,7 +305,8 @@ impl Value {
     }
 
     /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
-    /// Returns `false` for pointers to special `OneWordFiller` and `FreeSpace` blocks that have no regular object header.
+    /// Returns `false` for pointers to special `OneWordFiller`, `FwdPtr`, and `FreeSpace` blocks that do not have
+    /// a regular object header.
     pub unsafe fn is_obj(self) -> bool {
         let tag = self.tag();
         tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
@@ -425,7 +426,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // only used in copying GC - not to be confused with forwarding pointer in the header used for incremental GC
+pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -449,9 +450,9 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 // └──────┴───────────────────────────┘
 //  Bit 31        Bits 30..0
 //
-// Used for in-place marking of object during incremental GC.
-// Note: A bitmap cannot be used for marking in incremental GC
-// as the size cannot be fixed due to possible allocations during the GC run.
+// Used for in-place marking of object during the incremental GC.
+// Note: A single bitmap for the full heap cannot be used for marking in incremental GC
+// as the size cannot be fixed due to possible concurrent allocations during the GC run.
 
 const MARK_BIT_MASK: u32 = 1 << 31;
 
@@ -473,9 +474,9 @@ pub fn unmark(tag: Tag) -> Tag {
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
-    /// Raw tag encoding the object tag together with the mark bit
+    /// Raw tag encoding the object tag together with the mark bit.
     pub raw_tag: Tag,
-    /// Forwarding pointer to support object moving in the incremental GC
+    /// Forwarding pointer to support object moving in the incremental GC.
     pub forward: Value,
 }
 
@@ -550,7 +551,7 @@ impl Array {
         *(slot_addr as *const Value)
     }
 
-    /// Initialize the element of a new created array.
+    /// Initialize the element of a newly created array.
     /// Uses a generational post-update barrier on pointer writes.
     /// No incremental pre-update barrier as the previous value is undefined.
     /// Resolve pointer forwarding for the written value if necessary.
@@ -699,7 +700,7 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
-    pub padding: u32, // insertion of forwarding pointer in the header implies 1 word padding to 64-bit
+    pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -718,7 +719,7 @@ impl Stream {
     }
 }
 
-/// Only used in copying GC - not to be confused with the forwarding pointer in the general object header
+/// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
 /// that is used in the incremental GC.
 /// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
