@@ -75,32 +75,33 @@ let new_nary_async_reply ts =
   (* The async implementation isn't n-ary *)
   let t = T.seq ts in
   let (unary_async, unary_fulfill, fail), call_new_async = new_async t in
-  let v' = fresh_var "v" t in
   (* construct the n-ary async value, coercing the continuation, if necessary *)
   let nary_async =
+    let coerce u =
+      let v = fresh_var "v" u in
+      let k = fresh_var "k" (contT u T.unit) in
+      let r = fresh_var "r" (err_contT T.unit) in
+      [k; r] -->* (
+        varE unary_async -*-
+          (tupE [
+             [v] -->* (varE k -*- varE v);
+             varE r
+          ])
+      )
+    in
     match ts with
     | [t1] ->
       begin
       match T.normalize t1 with
-      | T.Tup ts1 ->
-        let k' = fresh_var "k" (contT t1 T.unit) in
-        let r' = fresh_var "r" (err_contT T.unit) in
-        [k';r'] -->* (
-          varE unary_async -*-
-            (tupE [
-               ([v'] -->* (varE k' -*- varE v'));
-               varE r'
-             ])
-        )
+      | T.Tup _ ->
+        (* TODO(#3740): find a better fix than PR #3741 *)
+        (* HACK *)
+        coerce t1
       | _ ->
         varE unary_async
       end
     | ts1 ->
-      let k' = fresh_var "k" (contT t T.unit) in
-      let r' = fresh_var "r" (err_contT T.unit) in
-      [k';r'] -->* (
-        varE unary_async -*- (tupE[([v'] -->* (varE k' -*- varE v')); varE r'])
-      )
+      coerce t
   in
   (* construct the n-ary reply callback that take a *sequence* of values to fulfill the async *)
   let nary_reply =
