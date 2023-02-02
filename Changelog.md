@@ -1,5 +1,95 @@
 # Motoko compiler changelog
 
+## 0.8.0 (2023-01-27)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE
+
+    Motoko now implements Candid 1.4 (dfinity/candid#311).
+
+    In particular, when deserializing an actor or function reference,
+    Motoko will now first check that the type of the deserialized reference
+    is a subtype of the expected type and act accordingly.
+
+    Very few users should be affected by this change in behaviour.
+
+  * BREAKING CHANGE
+
+    Failure to send a message no longer traps but, instead, throws a catchable `Error` with new error code `#call_error` (#3630).
+
+    On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
+    This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
+    or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
+    Such call failures are now reported by throwing an `Error` with new `ErrorCode` `#call_error { err_code = n }`,
+    where `n` is the non-zero `err_code` value returned by the IC.
+    Like other errors, call errors can be caught and handled using `try ... catch ...` expressions, if desired.
+
+    The constructs that now throw call errors, instead of trapping as with previous version of Motoko are:
+    * calls to `shared` functions (including oneway functions that return `()`).
+      These involve sending a message to another canister, and can fail when the queue for the destination canister is full.
+    * calls to local functions with return type `async`. These involve sending a message to self, and can fail when the local queue for sends to self is full.
+    * `async` expressions. These involve sending a message to self, and can fail when the local queue for sends to self is full.
+    * `await` expressions. These can fail on awaiting an already completed future, which requires sending a message to self to suspend and commit state.
+
+    (On the other hand, `async*` (being delayed) cannot throw, and evaluating `await*` will at most propagate an error from its argument but not, in itself, throw.)
+
+    Note that exiting a function call via an uncaught throw, rather than a trap, will commit any state changes and currently queued messages.
+    The previous behaviour of trapping would, instead, discard, such changes.
+
+    To appreciate the change in semantics, consider the following example:
+
+    ``` motoko
+    actor {
+      var count = 0;
+      public func inc() : async () {
+        count += 1;
+      };
+      public func repeat() : async () {
+        loop {
+          ignore inc();
+        }
+      };
+      public func repeatUntil() : async () {
+        try {
+          loop {
+           ignore inc();
+          }
+        } catch (e) {
+        }
+      };
+    }
+    ```
+
+    In previous releases of Motoko, calling `repeat()` and `repeatUntil()` would trap, leaving `count` at `0`, because
+    each infinite loop would eventually exhaust the message queue and issue a trap, rolling back the effects of each call.
+    With this release of Motoko, calling `repeat()` will enqueue several `inc()` messages (around 500), then `throw` an `Error`
+    and exit with the error result, incrementing the `count` several times (asynchronously).
+    Calling `repeatUntil()` will also enqueue several `inc()` messages (around 500) but the error is caught so the call returns,
+    still incrementing `count` several times (asynchronously).
+
+    The previous semantics of trapping on call errors can be enabled with compiler option `--trap-on-call-error`, if desired,
+    or selectively emulated by forcing a trap (e.g. `assert false`) when an error is caught.
+
+    For example,
+
+    ``` motoko
+      public func allOrNothing() : async () {
+        try {
+          loop {
+           ignore inc();
+          }
+        } catch (e) {
+          assert false; // trap!
+        }
+      };
+    ```
+
+    Calling `allOrNothing()` will not send any messages: the loop exits with an error on queue full,
+    the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
+
+  * bugfix: system method `inspect` involving message with single tuple argument no longer crashes the compiler (#3732, #3733).
+
 ## 0.7.6 (2023-01-20)
 
 * motoko (`moc`)

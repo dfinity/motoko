@@ -356,10 +356,10 @@ and call_system_func_opt name es obj_typ =
               (List.map (fun tf ->
                 (tf.T.lab,
                   match tf.T.typ with
-                  | T.Func(T.Local, _,  [], [], ts) ->
-                    let unit = fresh_var "unit" T.unit in
-                    tagE tf.T.lab (unit -->
-                      (primE (Ir.DeserializePrim ts) [varE arg]))
+                  | T.Func(T.Local, _, [], [], ts) ->
+                    tagE tf.T.lab
+                      T.(funcE ("$"^tf.lab) Local Returns [] [] ts
+                        (primE (Ir.DeserializePrim ts) [varE arg]))
                   | _ -> assert false))
                 (T.as_variant msg_typ))
                (* Trap early, refusing all other messages,

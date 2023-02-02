@@ -288,6 +288,10 @@ let prim trap =
 
   | "cast" -> fun _ v k -> k v
 
+  (* calls never fail in the interpreter *)
+  | "call_perform_status" -> fun _ v k -> k (Nat32 Nat32.zero)
+  | "call_perform_message" -> fun _ v k -> k (Value.Text "")
+
   | p when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
     | [_;_;s1;s2] ->

@@ -243,6 +243,7 @@ type ErrorCode = {
   #canister_reject;
   #canister_error;
   #future : Nat32;
+  #call_error : { err_code :  Nat32 }
 };
 
 // creation and inspection of abstract error

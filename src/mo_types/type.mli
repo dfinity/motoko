@@ -62,6 +62,7 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+
 (* Syntactic orderings *)
 
 module Ord : sig
@@ -74,9 +75,11 @@ module OrdPair : sig
   val compare : t -> t -> int
 end
 
+
 (* Function sorts *)
 
 val is_shared_sort : 'a shared -> bool
+
 
 (* Short-hands *)
 
@@ -198,7 +201,9 @@ val opaque : typ -> bool
 val concrete : typ -> bool
 val shared : typ -> bool
 val find_unshared : typ -> typ option
+
 val is_shared_func : typ -> bool
+val is_local_async_func : typ -> bool
 
 val stable : typ -> bool
 
@@ -252,6 +257,7 @@ val match_stab_sig : field list -> field list -> bool
 
 val string_of_stab_sig : field list -> string
 
+
 (* Well-known fields *)
 
 val motoko_async_helper_fld : field
@@ -264,6 +270,7 @@ val decode_msg_typ : field list -> typ
 val canister_settings_typ : typ
 val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
+
 
 (* Pretty printing *)
 

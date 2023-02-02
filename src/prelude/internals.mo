@@ -436,6 +436,21 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
 
+
+// helpers for reifying ic0.call_perform failures as errors
+func @call_succeeded() : Bool {
+  (prim "call_perform_status" : () -> Nat32) () == 0;
+};
+
+func @call_error() : Error {
+  let status = (prim "call_perform_status" : () -> Nat32) ();
+  let message = (prim "call_perform_message" : () -> Text) ();
+  let code = #call_error({err_code = status});
+  (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error)
+    (code, message)
+};
+
+
 // default timer mechanism implementation
 // fundamental node invariant: max_exp pre <= expire <= min_exp post
 // corollary: if expire == 0 then the pre is completely expired
@@ -587,3 +602,4 @@ func @cancelTimer(id : Nat) {
 };
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
+
