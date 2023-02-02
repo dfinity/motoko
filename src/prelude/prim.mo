@@ -36,6 +36,7 @@ module Types = {
   public type Blob = prim "Blob";
   public type Error = prim "Error";
   public type Principal = prim "Principal";
+  public type Memory = prim "Memory";
 };
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
@@ -369,6 +370,77 @@ func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
 // Returns a query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
 func stableVarQuery() : shared query () -> async {size : Nat64} =
   (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
+
+// multiple-stable memory
+
+func multStableMemoryNew() : Memory =
+  (prim "multStableMemoryNew" : () -> Memory) ();
+
+func multStableMemorySize(Memory : m) : Nat64 =
+  (prim "multStableMemorySize" : Memory -> Nat64) m;
+
+func multStableMemoryGrow(Memory : m, pages : Nat64) : Nat64 =
+  (prim "multStableMemoryGrow" : (Memory, Nat64) -> Nat64) (m, pages);
+
+func multStableMemoryLoadNat32(Memory : m, offset : Nat64) : Nat32 =
+  (prim "multStableMemoryLoadNat32" : (Memory, Nat64) -> Nat32) (m, offset);
+
+func multStableMemoryStoreNat32(Memory : m, offset : Nat64, val : Nat32) : () =
+  (prim "multStableMemoryStoreNat32" : (Memory, Nat64, Nat32) -> ()) (m, offset, val);
+
+func multStableMemoryLoadNat8(Memory : m, offset : Nat64) : Nat8 =
+  (prim "multStableMemoryLoadNat8" : (Memory, Nat64) -> Nat8) (m, offset);
+
+func multStableMemoryStoreNat8(Memory : m, offset : Nat64, val : Nat8) : () =
+  (prim "multStableMemoryStoreNat8" : (Memory, Nat64, Nat8) -> ()) (m, offset, val);
+
+func multStableMemoryLoadNat16(Memory : m, offset : Nat64) : Nat16 =
+  (prim "multStableMemoryLoadNat16" : (Memory, Nat64) -> Nat16) (m, offset);
+
+func multStableMemoryStoreNat16(Memory : m, offset : Nat64, val : Nat16) : () =
+  (prim "multStableMemoryStoreNat16" : (Memory, Nat64, Nat16) -> ()) (m, offset, val);
+
+func multStableMemoryLoadNat64(Memory : m, offset : Nat64) : Nat64 =
+  (prim "multStableMemoryLoadNat64" : (Memory, Nat64) -> Nat64) (m, offset);
+
+func multStableMemoryStoreNat64(Memory : m, offset : Nat64, val : Nat64) : () =
+  (prim "multStableMemoryStoreNat64" : (Memory, Nat64, Nat64) -> ()) (m, offset, val);
+
+func multStableMemoryLoadInt32(Memory : m, offset : Nat64) : Int32 =
+  (prim "multStableMemoryLoadInt32" : (Memory, Nat64) -> Int32) (m, offset);
+
+func multStableMemoryStoreInt32(Memory : m, offset : Nat64, val : Int32) : () =
+  (prim "multStableMemoryStoreInt32" : (Memory, Nat64, Int32) -> ()) (m, offset, val);
+
+func multStableMemoryLoadInt8(Memory : m, offset : Nat64) : Int8 =
+  (prim "multStableMemoryLoadInt8" : (Memory, Nat64) -> Int8) (m, offset);
+
+func multStableMemoryStoreInt8(Memory : m, offset : Nat64, val : Int8) : () =
+  (prim "multStableMemoryStoreInt8" : (Memory, Nat64, Int8) -> ()) (m, offset, val);
+
+func multStableMemoryLoadInt16(Memory : m, offset : Nat64) : Int16 =
+  (prim "multStableMemoryLoadInt16" : (Memory, Nat64) -> Int16) (m, offset);
+
+func multStableMemoryStoreInt16(Memory : m, offset : Nat64, val : Int16) : () =
+  (prim "multStableMemoryStoreInt16" : (Memory, Nat64, Int16) -> ()) (m, offset, val);
+
+func multStableMemoryLoadInt64(Memory : m, offset : Nat64) : Int64 =
+  (prim "multStableMemoryLoadInt64" : (Memory, Nat64) -> Int64) (m, offset);
+
+func multStableMemoryStoreInt64(Memory : m, offset : Nat64, val : Int64) : () =
+  (prim "multStableMemoryStoreInt64" : (Memory, Nat64, Int64) -> ()) (m, offset, val);
+
+func multStableMemoryLoadFloat(Memory : m, offset : Nat64) : Float =
+  (prim "multStableMemoryLoadFloat" : (Memory, Nat64) -> Float) (m, offset);
+
+func multStableMemoryStoreFloat(Memory : m, offset : Nat64, val :  Float) : () =
+  (prim "multStableMemoryStoreFloat" : (Memory, Nat64, Float) -> ()) (m, offset, val);
+
+func multStableMemoryLoadBlob(Memory : m, offset : Nat64, size : Nat) : Blob =
+  (prim "multStableMemoryLoadBlob" : (Memory, Nat64, Nat) -> Blob) (m, offset, size);
+
+func multStableMemoryStoreBlob(Memory : m, offset : Nat64, val :  Blob) : () =
+  (prim "multStableMemoryStoreBlob" : (Memory, Nat64, Blob) -> ()) (m, offset, val);
 
 
 let call_raw = @call_raw;
