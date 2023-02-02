@@ -412,6 +412,48 @@ func @ic00_install_code() : shared {
   @ic00.install_code
 };
 
+func @install_actor_helper(
+    install_arg: {
+      #new : { settings : ?@ManagementCanister.canister_settings } ;
+      #install : Principal;
+      #reinstall : actor {} ;
+      #upgrade : actor {}
+    },
+    wasm_module : Blob,
+    arg : Blob)
+  : async* Principal = async* {
+  let (mode, canister_id) =
+    switch install_arg {
+      case (#new settings) {
+        let available = (prim "cyclesAvailable" : () -> Nat) ();
+        let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+        @cycles += accepted;
+        let { canister_id } =
+          await @ic00.create_canister(settings);
+        (#install,
+          canister_id)
+      };
+      case (#install principal1) {
+        (#install, principal1)
+      };
+      case (#reinstall actor1) {
+        (#reinstall,
+          (prim "cast" : (actor {}) -> Principal) actor1)
+      };
+      case (#upgrade actor2) {
+        (#upgrade,
+          (prim "cast" : (actor {}) -> Principal) actor2)
+      }
+    };
+  await @ic00.install_code({
+    mode = #install;
+    canister_id;
+    wasm_module;
+    arg
+  });
+  return canister_id;
+};
+
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 // TODO: This helper is now only used by Prim.createActor and could be removed, except
