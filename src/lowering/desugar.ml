@@ -911,12 +911,12 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
-let actor_class_mod_exp id class_typ install install_new =
+let actor_class_mod_exp id class_typ default system =
   let class_con = Cons.fresh id (T.Def([], class_typ)) in
   (objE T.Module
      [(id, class_con)]
-     [(id, install_new);
-      ("system", objE T.Module [] [(id, install)])])
+     [(id, default);
+      ("system", objE T.Module [] [(id, system)])])
 
 let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in
@@ -970,7 +970,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let default =
     system_body (tagE "new" (recordE ["settings", nullE()]))
   in
-  let mod_exp = actor_class_mod_exp id class_typ system default in
+  let mod_exp = actor_class_mod_exp id class_typ default system in
   let mod_typ = mod_exp.note.Note.typ in
   [ letD wasm_blob (blobE wasm);
     letD (var (id_of_full_path f) mod_typ) mod_exp ]
@@ -1111,7 +1111,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
     let system = install_arg --> (system_body (varE install_arg)) in
     let system_var = fresh_var "system" system.note.Note.typ in
     let default = (varE system_var) -*- (tagE "new" (recordE ["settings", nullE()])) in
-    let mod_exp = actor_class_mod_exp id class_typ (varE system_var) default in
+    let mod_exp = actor_class_mod_exp id class_typ default (varE system_var) in
     let mod_typ = mod_exp.note.Note.typ in
     [ letD system_var system;
       letD (var (id_of_full_path f) mod_typ) mod_exp ]
