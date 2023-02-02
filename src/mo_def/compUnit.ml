@@ -30,7 +30,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let rec go imports ds : comp_unit =
     match ds with
     (* imports *)
-    | {it = LetD (p, ({it = ImportE (url, ri); _} as e), _); _} :: ds' ->
+    | {it = LetD (p, ({it = ImportE (url, ri); _} as e), None); _} :: ds' ->
       let i : import = { it = (p, url, ri); note = e.note.note_typ; at = e.at } in
       go (i :: imports) ds'
 
