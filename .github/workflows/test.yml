@@ -34,11 +34,15 @@ jobs:
 
     - name: "nix-build"
       run: |
-        nix-build-uncached --max-jobs 1 -A rts -build-flags -L
+        nix-build-uncached --max-jobs 1 -A rts -build-flags -L || nix-store --optimise
+        nix-store --gc
         nix-store --optimise
-        nix-build -A tests.ic-ref-run
+        nix-build-uncached --max-jobs 1 -A tests.ic-ref-run -build-flags -L || nix-store --optimise
+        nix-store --gc
         nix-store --optimise
-        nix-build-uncached --max-jobs 2 -A all-systems-go -build-flags -L || nix-store --optimise
+        nix-build-uncached --max-jobs 1 -A all-systems-go -build-flags -L || nix-store --optimise
+        nix-store --gc
+        nix-store --optimise
         nix-build-uncached --max-jobs 1 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
