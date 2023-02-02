@@ -33,7 +33,10 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build"
-      run: nix-build-uncached --max-jobs 1 -A rts -build-flags -L || nix-store --optimise; nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
+      run: |
+        nix-build-uncached --max-jobs 1 -A rts -build-flags -L
+        nix-store --optimise
+        nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
