@@ -37,6 +37,9 @@ jobs:
         nix-build-uncached --max-jobs 1 -A rts -build-flags -L || nix-store --optimise
         nix-store --gc
         nix-store --optimise
+        nix-build-uncached --max-jobs 1 -A ic-ref-run -build-flags -L || nix-store --optimise
+        nix-store --gc
+        nix-store --optimise
         nix-build-uncached --max-jobs 1 -A tests.ic-ref-run -build-flags -L || nix-store --optimise
         nix-store --gc
         nix-store --optimise
