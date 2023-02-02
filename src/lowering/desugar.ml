@@ -707,7 +707,7 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (decs prefix, exp e)
-  | false, S.LetD ({it = S.VarP x; _}, e, None) -> (* FIXME need this case for Some fail? *)
+  | false, S.LetD ({it = S.VarP x; _}, e, _) -> (* Fail block dead, pattern match irrefutable *)
     (decs ds, varE (var x.it e.note.S.note_typ))
   | false, S.LetD (p, e, None) ->
     let x = fresh_var "x" (e.note.S.note_typ) in
@@ -727,18 +727,17 @@ and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
-  | S.LetD (p, e, None) ->
+  | S.LetD (p, e, f) ->
     let p' = pat p in
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
-    begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (ds, fs, u, t) ->
+    begin match p'.it, e'.it, f with
+    | I.VarP i, I.ActorE (ds, fs, u, t), None ->
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
-    | _ -> I.LetD (p', e')
+    | _, I.ActorE _, Some _ -> assert false
+    | _, _, None -> I.LetD (p', e')
+    | _, _, Some f -> I.LetD (p', let_else_switch p e f)
     end
-  | S.LetD (p, e, Some f) ->
-    (* FIXME check for recursive actors here too? *)
-    I.LetD (pat p, let_else_switch p e f)
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
   | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
