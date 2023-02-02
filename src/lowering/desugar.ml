@@ -947,7 +947,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let wasm_blob = fresh_var "wasm_blob" T.blob in
   let install_arg =
     fresh_var "install_arg" T.install_arg_typ  in
-  let installBody =
+  let system_body install_arg =
     let vs = fresh_vars "param" ts1' in
     let principal = fresh_var "principal" T.principal in
     funcE id T.Local T.Returns
@@ -957,42 +957,20 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     (asyncE T.Fut
       (typ_arg c' T.Scope T.scope_bound)
       (letE principal
-         (awaitE T.Cmp
-           (callE (varE install_actor_helper) cs'
-              (tupE [
-                 varE install_arg;
-                 varE wasm_blob;
-                 primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
-         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
-      (List.hd cs))
-  in
-  let install =
-    funcE id T.Local T.Returns
-      []
-      ([arg_of_var install_arg])
-      [installBody.note.Note.typ]
-    installBody
-  in
-  let install_new =
-    let vs = fresh_vars "param" ts1' in
-    let principal = fresh_var "principal" T.principal in
-    funcE id T.Local T.Returns
-      [typ_arg c T.Scope T.scope_bound]
-      (List.map arg_of_var vs)
-      ts2'
-      (asyncE T.Fut
-        (typ_arg c' T.Scope T.scope_bound)
-        (letE principal
-           (awaitE T.Cmp
-              (callE (varE install_actor_helper) cs'
-                 (tupE [
-                   tagE "new" (recordE ["settings", nullE()]);
-                   varE wasm_blob;
-                   primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
+        (awaitE T.Cmp
+          (callE (varE install_actor_helper) cs'
+            (tupE [
+              install_arg;
+              varE wasm_blob;
+              primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs))
   in
-  let mod_exp = actor_class_mod_exp id class_typ install install_new in
+  let system = install_arg --> (system_body (varE install_arg)) in
+  let default =
+    system_body (tagE "new" (recordE ["settings", nullE()]))
+  in
+  let mod_exp = actor_class_mod_exp id class_typ system default in
   let mod_typ = mod_exp.note.Note.typ in
   [ letD wasm_blob (blobE wasm);
     letD (var (id_of_full_path f) mod_typ) mod_exp ]
