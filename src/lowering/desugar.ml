@@ -1117,5 +1117,3 @@ let import_unit (u : S.comp_unit) : import_declaration =
       letD (var (id_of_full_path f) mod_typ) mod_exp ]
   | I.ProgU ds ->
     raise (Invalid_argument "Desugar: Cannot import program")
-
-
