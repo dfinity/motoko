@@ -987,7 +987,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
-    (asyncE T.Fut (* TBR *) (* make this T.Cmp *) 
+    (asyncE T.Fut (* TBR *) (* make this T.Cmp *)
       (typ_arg c' T.Scope T.scope_bound)
       (blockE
         [ letD modeprincipal
@@ -1049,10 +1049,15 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
       (asyncE
          T.Fut
          (typ_arg c' T.Scope T.scope_bound)
-         (awaitE T.Fut
-            (callE (callE (varE install_var) [] (tagE "new" (recordE ["settings", nullE()])))
+         (blockE [
+           (* pass on cycles *)
+           letD available (primE Ir.SystemCyclesAvailablePrim []);
+           letD accepted (primE Ir.SystemCyclesAcceptPrim [varE available]);
+           expD (assignE cycles (varE accepted)) ]
+           (awaitE T.Fut
+             (callE (callE (varE install_var) [] (tagE "new" (recordE ["settings", nullE()])))
                cs'
-               (seqE (List.map varE vs))))
+               (seqE (List.map varE vs)))))
          (List.hd cs))
   in
   let mod_exp = actor_class_mod_exp id class_typ (varE install_var) install_new in
@@ -1154,55 +1159,83 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   let prog = inject_decs imports' body' in
-  let exp = match prog with
-    | I.LibU (ds, e) -> blockE ds e
-    | I.ActorU (None, ds, fs, up, t) ->
-      raise (Invalid_argument "Desugar: Cannot import actor")
-    | I.ActorU (Some as_, ds, fs, up, actor_t) ->
-      let id = match body.it with
-        | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
-        | _ -> assert false
-      in
-      let s, cntrl, tbs, ts1, ts2 = T.as_func t in
-      let cs = T.open_binds [T.scope_bind] in
-      let c, _ = T.as_con (List.hd cs) in
-      let cs' = T.open_binds [T.scope_bind] in
-      let c', _ = T.as_con (List.hd cs') in
-      let body =
-        asyncE
-          T.Fut
-          (typ_arg c' T.Scope T.scope_bound)
-          { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
-          (List.hd cs)
-      in
-      let class_typ = match List.map T.normalize ts2 with
-        | [ T.Async(_, _, t2) ] -> t2
-        | _ -> assert false in
-      let install_arg =
-        fresh_var "install_arg" T.install_arg_typ
-      in
-      let installBody =
-        funcE id T.Local T.Returns
-          [typ_arg c T.Scope T.scope_bound]
-          as_
-          [T.Async (T.Fut, List.hd cs, actor_t)]
-          body
-      in
-      let install =
-        funcE id T.Local T.Returns
-          []
-          ([arg_of_var install_arg])
-          [installBody.note.Note.typ]
-          (ifE
-             (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
-               [ varE install_arg;
-                 tagE "new" (recordE ["settings", nullE()]) ])
-             installBody
-             (primE (Ir.OtherPrim "trap")
-               [textE "actor class configuration not supported in interpreter"]))
-      in
-      actor_class_mod_exp id class_typ install install (* FIX ME *)
-    | I.ProgU ds ->
-      raise (Invalid_argument "Desugar: Cannot import program")
-  in
-  [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
+  match prog with
+  | I.LibU (ds, e) ->
+    let exp = blockE ds e in
+    [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
+  | I.ActorU (None, ds, fs, up, t) ->
+    raise (Invalid_argument "Desugar: Cannot import actor")
+  | I.ActorU (Some as_, ds, fs, up, actor_t) ->
+    let id = match body.it with
+      | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
+      | _ -> assert false
+    in
+    let s, cntrl, tbs, ts1, ts2 = T.as_func t in
+    let cs = T.open_binds [T.scope_bind] in
+    let c, _ = T.as_con (List.hd cs) in
+    let ts1' = List.map (T.open_ cs) ts1 in
+    let ts2' = List.map (T.open_ cs) ts2 in
+    let cs' = T.open_binds [T.scope_bind] in
+    let c', _ = T.as_con (List.hd cs') in
+    let body =
+      asyncE
+        T.Fut
+        (typ_arg c' T.Scope T.scope_bound)
+        { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
+        (List.hd cs)
+    in
+    let class_typ = match List.map T.normalize ts2 with
+      | [ T.Async(_, _, t2) ] -> t2
+      | _ -> assert false in
+    let install_arg =
+      fresh_var "install_arg" T.install_arg_typ
+    in
+    let installBody =
+      funcE id T.Local T.Returns
+        [typ_arg c T.Scope T.scope_bound]
+        as_
+        [T.Async (T.Fut, List.hd cs, actor_t)]
+        body
+    in
+    let install =
+      funcE id T.Local T.Returns
+        []
+        ([arg_of_var install_arg])
+        [installBody.note.Note.typ]
+        (ifE
+           (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
+             [ varE install_arg;
+               tagE "new" (recordE ["settings", nullE()]) ])
+           installBody
+           (primE (Ir.OtherPrim "trap")
+             [textE "actor class configuration not supported in interpreter"]))
+    in
+    let install_var = fresh_var "install" install.note.Note.typ in
+    (* eta-expansion of
+       `install { new = { setting = null} }: ts1 -> async class_typ`, i.e.
+       `func vs = async await (install { new = { setting = null} } vs`
+       This must be pure to allow dead-coding of unused classes, hence the eta-expansion
+     *)
+    let install_new =
+      let vs = fresh_vars "param" ts1' in
+      funcE id T.Local T.Returns
+        [typ_arg c T.Scope T.scope_bound]
+        (List.map arg_of_var vs)
+        ts2'
+        (asyncE
+           T.Fut
+           (typ_arg c' T.Scope T.scope_bound)
+           (awaitE T.Fut
+              (callE (callE (varE install_var) [] (tagE "new" (recordE ["settings", nullE()])))
+                 cs'
+                 (seqE (List.map varE vs))))
+           (List.hd cs))
+    in
+    let mod_exp = actor_class_mod_exp id class_typ (varE install_var) install_new in
+    let mod_typ = mod_exp.note.Note.typ in
+    [ letD install_var install;
+      letD (var (id_of_full_path f) mod_typ) mod_exp ]
+  | I.ProgU ds ->
+    raise (Invalid_argument "Desugar: Cannot import program")
+
+
