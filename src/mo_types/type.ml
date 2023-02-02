@@ -11,7 +11,7 @@ type obj_sort =
    Object
  | Actor
  | Module
- | Memory          (* (codegen only): stable memory serialization format *)
+ | Memory_         (* (codegen only): stable memory serialization format *)
 
 type async_sort = Fut | Cmp
 type shared_sort = Query | Write
@@ -38,6 +38,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
+  | Memory
 
 type t = typ
 and typ =
@@ -313,6 +314,7 @@ let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
 let principal = Prim Principal
+let memory = Prim Memory
 
 let fields flds =
   List.sort compare_field
