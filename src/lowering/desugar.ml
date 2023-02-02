@@ -1083,67 +1083,37 @@ let import_unit (u : S.comp_unit) : import_declaration =
     let s, cntrl, tbs, ts1, ts2 = T.as_func t in
     let cs = T.open_binds [T.scope_bind] in
     let c, _ = T.as_con (List.hd cs) in
-    let ts1' = List.map (T.open_ cs) ts1 in
-    let ts2' = List.map (T.open_ cs) ts2 in
     let cs' = T.open_binds [T.scope_bind] in
     let c', _ = T.as_con (List.hd cs') in
-    let body =
-      asyncE
-        T.Fut
-        (typ_arg c' T.Scope T.scope_bound)
-        { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
-        (List.hd cs)
-    in
     let class_typ = match List.map T.normalize ts2 with
       | [ T.Async(_, _, t2) ] -> t2
       | _ -> assert false in
     let install_arg =
       fresh_var "install_arg" T.install_arg_typ
     in
-    let installBody =
+    let system_body install_arg =
       funcE id T.Local T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (T.Fut, List.hd cs, actor_t)]
-        body
-    in
-    let install =
-      funcE id T.Local T.Returns
-        []
-        ([arg_of_var install_arg])
-        [installBody.note.Note.typ]
-        (ifE
-           (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
-             [ varE install_arg;
-               tagE "new" (recordE ["settings", nullE()]) ])
-           installBody
-           (primE (Ir.OtherPrim "trap")
-             [textE "actor class configuration not supported in interpreter"]))
-    in
-    let install_var = fresh_var "install" install.note.Note.typ in
-    (* eta-expansion of
-       `install { new = { setting = null} }: ts1 -> async class_typ`, i.e.
-       `func vs = async await (install { new = { setting = null} } vs`
-       This must be pure to allow dead-coding of unused classes, hence the eta-expansion
-     *)
-    let install_new =
-      let vs = fresh_vars "param" ts1' in
-      funcE id T.Local T.Returns
-        [typ_arg c T.Scope T.scope_bound]
-        (List.map arg_of_var vs)
-        ts2'
         (asyncE
-           T.Fut
-           (typ_arg c' T.Scope T.scope_bound)
-           (awaitE T.Fut
-              (callE (callE (varE install_var) [] (tagE "new" (recordE ["settings", nullE()])))
-                 cs'
-                 (seqE (List.map varE vs))))
-           (List.hd cs))
+          T.Fut
+          (typ_arg c' T.Scope T.scope_bound)
+          (ifE
+            (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
+              [ install_arg;
+                tagE "new" (recordE ["settings", nullE()]) ])
+             { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
+             (primE (Ir.OtherPrim "trap")
+               [textE "actor class configuration not supported in interpreter"]))
+          (List.hd cs))
     in
-    let mod_exp = actor_class_mod_exp id class_typ (varE install_var) install_new in
+    let system = install_arg --> (system_body (varE install_arg)) in
+    let system_var = fresh_var "system" system.note.Note.typ in
+    let default = (varE system_var) -*- (tagE "new" (recordE ["settings", nullE()])) in
+    let mod_exp = actor_class_mod_exp id class_typ (varE system_var) default in
     let mod_typ = mod_exp.note.Note.typ in
-    [ letD install_var install;
+    [ letD system_var system;
       letD (var (id_of_full_path f) mod_typ) mod_exp ]
   | I.ProgU ds ->
     raise (Invalid_argument "Desugar: Cannot import program")
