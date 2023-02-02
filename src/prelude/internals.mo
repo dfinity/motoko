@@ -397,12 +397,14 @@ let @ic00 = actor "aaaaa-aa" :
     } -> async ()
  };
 
+// TBD
 func @ic00_create_canister() : shared {
       settings : ?@ManagementCanister.canister_settings
     } -> async { canister_id : Principal } {
   @ic00.create_canister
 };
 
+// TBD
 func @ic00_install_code() : shared {
     mode : { #install; #reinstall; #upgrade };
     canister_id : Principal;
@@ -430,23 +432,20 @@ func @install_actor_helper(
         @cycles += accepted;
         let { canister_id } =
           await @ic00.create_canister(settings);
-        (#install,
-          canister_id)
+        (#install, canister_id)
       };
       case (#install principal1) {
         (#install, principal1)
       };
       case (#reinstall actor1) {
-        (#reinstall,
-          (prim "cast" : (actor {}) -> Principal) actor1)
+        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
       };
       case (#upgrade actor2) {
-        (#upgrade,
-          (prim "cast" : (actor {}) -> Principal) actor2)
+        (#upgrade, (prim "cast" : (actor {}) -> Principal) actor2)
       }
     };
   await @ic00.install_code({
-    mode = #install;
+    mode;
     canister_id;
     wasm_module;
     arg
