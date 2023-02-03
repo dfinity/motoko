@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+## 0.8.1 (2023-02-03)
+
+* motoko (`moc`)
+
+  * Performance improvement: faster heap allocation (#3765).
+
+  * bugfix: `async` returns involving abbreviated tuple types no longer crash the compiler (#3740, #3741).
+
+  * bugfix: avoid quadratic code expansion due to imported, but unused, actor classes (#3758).
+
 ## 0.8.0 (2023-01-27)
 
 * motoko (`moc`)
@@ -89,10 +99,6 @@
     the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
 
   * bugfix: system method `inspect` involving message with single tuple argument no longer crashes the compiler (#3732, #3733).
-
-  * bugfix: async returns involving abbreviated tuple types no longer crash the compiler (#3740, #3741).
-    
-  * bugfix: avoid quadratic code expansion due to imported, but unused, actor classes (#3758).
 
 ## 0.7.6 (2023-01-20)
 
