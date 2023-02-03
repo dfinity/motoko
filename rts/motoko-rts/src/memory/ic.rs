@@ -55,7 +55,7 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    Bytes(get_heap_size().as_usize() as u64) + get_reclaimed()
+    Bytes(u64::from(get_heap_size().as_u32())) + get_reclaimed()
 }
 
 #[no_mangle]
