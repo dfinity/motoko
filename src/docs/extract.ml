@@ -131,7 +131,7 @@ struct
   let rec extract_doc mk_xref = function
     | Source.
         {
-          it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs, None);
+          it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs, _);
           _;
         } ->
         Some (mk_xref (Xref.XValue name), extract_let_doc rhs name)

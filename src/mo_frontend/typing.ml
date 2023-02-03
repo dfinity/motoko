@@ -791,8 +791,7 @@ let rec is_explicit_exp e =
 
 and is_explicit_dec d =
   match d.it with
-  | ExpD e | LetD (_, e, None) | VarD (_, e) -> is_explicit_exp e
-  | LetD (_, e, Some f) -> is_explicit_exp e || is_explicit_exp f
+  | ExpD e | LetD (_, e, _) | VarD (_, e) -> is_explicit_exp e
   | TypD _ -> true
   | ClassD (_, _, _, p, _, _, _, dfs) ->
     is_explicit_pat p &&
@@ -2287,7 +2286,8 @@ and check_stab env sort scope dec_fields =
       let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
-    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> [] (* FIXME This matches the Some _ case too. Check for other pattern matches that match LetD _ *)
+    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD (_, _, None)) -> []
+    | T.Actor, Some {it = Flexible; _} , LetD (_, _, Some _) -> assert false
     | T.Actor, Some stab, _ ->
       local_error env stab.at "M0133"
         "misplaced stability modifier: allowed on var or simple let declarations only";
@@ -2467,7 +2467,7 @@ and gather_dec env scope dec : Scope.t =
       {it = VarP id; _},
       ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
        {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
-       None
+       None (* FIXME ?? *)
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
