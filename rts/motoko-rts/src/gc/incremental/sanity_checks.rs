@@ -49,7 +49,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
     // Note: The heap may contain garbage objects with stale pointers that are no longer valid.
     // Various check modes:
     // * MarkCompletion:
-    ///  Check that the set of marked objects by the incremental GC is the same set or a subset
+    ///  Check that the set of marked objects by the incremental GC is the same set or a superset
     ///  of the objects being marked by a conventional stop-the-world mark phase. The incremental
     ///  GC may mark more objects due to concurrent allocations and concurrent pointer modifications.
     // * UpdateCompletion:
