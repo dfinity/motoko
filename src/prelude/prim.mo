@@ -371,76 +371,76 @@ func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
 func stableVarQuery() : shared query () -> async {size : Nat64} =
   (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
 
-// multiple-stable memory
+// multiple stable memory regions
 
-func regionNew() : Memory =
-  (prim "regionNew" : () -> Memory) ();
+func regionNew() : Region =
+  (prim "regionNew" : () -> Region) ();
 
-func regionSize(Memory : m) : Nat64 =
-  (prim "regionSize" : Memory -> Nat64) m;
+func regionSize(Region : m) : Nat64 =
+  (prim "regionSize" : Region -> Nat64) m;
 
-func regionGrow(Memory : m, pages : Nat64) : Nat64 =
-  (prim "regionGrow" : (Memory, Nat64) -> Nat64) (m, pages);
+func regionGrow(Region : m, pages : Nat64) : Nat64 =
+  (prim "regionGrow" : (Region, Nat64) -> Nat64) (m, pages);
 
-func regionLoadNat32(Memory : m, offset : Nat64) : Nat32 =
-  (prim "regionLoadNat32" : (Memory, Nat64) -> Nat32) (m, offset);
+func regionLoadNat32(Region : m, offset : Nat64) : Nat32 =
+  (prim "regionLoadNat32" : (Region, Nat64) -> Nat32) (m, offset);
 
-func regionStoreNat32(Memory : m, offset : Nat64, val : Nat32) : () =
-  (prim "regionStoreNat32" : (Memory, Nat64, Nat32) -> ()) (m, offset, val);
+func regionStoreNat32(Region : m, offset : Nat64, val : Nat32) : () =
+  (prim "regionStoreNat32" : (Region, Nat64, Nat32) -> ()) (m, offset, val);
 
-func regionLoadNat8(Memory : m, offset : Nat64) : Nat8 =
-  (prim "regionLoadNat8" : (Memory, Nat64) -> Nat8) (m, offset);
+func regionLoadNat8(Region : m, offset : Nat64) : Nat8 =
+  (prim "regionLoadNat8" : (Region, Nat64) -> Nat8) (m, offset);
 
-func regionStoreNat8(Memory : m, offset : Nat64, val : Nat8) : () =
-  (prim "regionStoreNat8" : (Memory, Nat64, Nat8) -> ()) (m, offset, val);
+func regionStoreNat8(Region : m, offset : Nat64, val : Nat8) : () =
+  (prim "regionStoreNat8" : (Region, Nat64, Nat8) -> ()) (m, offset, val);
 
-func regionLoadNat16(Memory : m, offset : Nat64) : Nat16 =
-  (prim "regionLoadNat16" : (Memory, Nat64) -> Nat16) (m, offset);
+func regionLoadNat16(Region : m, offset : Nat64) : Nat16 =
+  (prim "regionLoadNat16" : (Region, Nat64) -> Nat16) (m, offset);
 
-func regionStoreNat16(Memory : m, offset : Nat64, val : Nat16) : () =
-  (prim "regionStoreNat16" : (Memory, Nat64, Nat16) -> ()) (m, offset, val);
+func regionStoreNat16(Region : m, offset : Nat64, val : Nat16) : () =
+  (prim "regionStoreNat16" : (Region, Nat64, Nat16) -> ()) (m, offset, val);
 
-func regionLoadNat64(Memory : m, offset : Nat64) : Nat64 =
-  (prim "regionLoadNat64" : (Memory, Nat64) -> Nat64) (m, offset);
+func regionLoadNat64(Region : m, offset : Nat64) : Nat64 =
+  (prim "regionLoadNat64" : (Region, Nat64) -> Nat64) (m, offset);
 
-func regionStoreNat64(Memory : m, offset : Nat64, val : Nat64) : () =
-  (prim "regionStoreNat64" : (Memory, Nat64, Nat64) -> ()) (m, offset, val);
+func regionStoreNat64(Region : m, offset : Nat64, val : Nat64) : () =
+  (prim "regionStoreNat64" : (Region, Nat64, Nat64) -> ()) (m, offset, val);
 
-func regionLoadInt32(Memory : m, offset : Nat64) : Int32 =
-  (prim "regionLoadInt32" : (Memory, Nat64) -> Int32) (m, offset);
+func regionLoadInt32(Region : m, offset : Nat64) : Int32 =
+  (prim "regionLoadInt32" : (Region, Nat64) -> Int32) (m, offset);
 
-func regionStoreInt32(Memory : m, offset : Nat64, val : Int32) : () =
-  (prim "regionStoreInt32" : (Memory, Nat64, Int32) -> ()) (m, offset, val);
+func regionStoreInt32(Region : m, offset : Nat64, val : Int32) : () =
+  (prim "regionStoreInt32" : (Region, Nat64, Int32) -> ()) (m, offset, val);
 
-func regionLoadInt8(Memory : m, offset : Nat64) : Int8 =
-  (prim "regionLoadInt8" : (Memory, Nat64) -> Int8) (m, offset);
+func regionLoadInt8(Region : m, offset : Nat64) : Int8 =
+  (prim "regionLoadInt8" : (Region, Nat64) -> Int8) (m, offset);
 
-func regionStoreInt8(Memory : m, offset : Nat64, val : Int8) : () =
-  (prim "regionStoreInt8" : (Memory, Nat64, Int8) -> ()) (m, offset, val);
+func regionStoreInt8(Region : m, offset : Nat64, val : Int8) : () =
+  (prim "regionStoreInt8" : (Region, Nat64, Int8) -> ()) (m, offset, val);
 
-func regionLoadInt16(Memory : m, offset : Nat64) : Int16 =
-  (prim "regionLoadInt16" : (Memory, Nat64) -> Int16) (m, offset);
+func regionLoadInt16(Region : m, offset : Nat64) : Int16 =
+  (prim "regionLoadInt16" : (Region, Nat64) -> Int16) (m, offset);
 
-func regionStoreInt16(Memory : m, offset : Nat64, val : Int16) : () =
-  (prim "regionStoreInt16" : (Memory, Nat64, Int16) -> ()) (m, offset, val);
+func regionStoreInt16(Region : m, offset : Nat64, val : Int16) : () =
+  (prim "regionStoreInt16" : (Region, Nat64, Int16) -> ()) (m, offset, val);
 
-func regionLoadInt64(Memory : m, offset : Nat64) : Int64 =
-  (prim "regionLoadInt64" : (Memory, Nat64) -> Int64) (m, offset);
+func regionLoadInt64(Region : m, offset : Nat64) : Int64 =
+  (prim "regionLoadInt64" : (Region, Nat64) -> Int64) (m, offset);
 
-func regionStoreInt64(Memory : m, offset : Nat64, val : Int64) : () =
-  (prim "regionStoreInt64" : (Memory, Nat64, Int64) -> ()) (m, offset, val);
+func regionStoreInt64(Region : m, offset : Nat64, val : Int64) : () =
+  (prim "regionStoreInt64" : (Region, Nat64, Int64) -> ()) (m, offset, val);
 
-func regionLoadFloat(Memory : m, offset : Nat64) : Float =
-  (prim "regionLoadFloat" : (Memory, Nat64) -> Float) (m, offset);
+func regionLoadFloat(Region : m, offset : Nat64) : Float =
+  (prim "regionLoadFloat" : (Region, Nat64) -> Float) (m, offset);
 
-func regionStoreFloat(Memory : m, offset : Nat64, val :  Float) : () =
-  (prim "regionStoreFloat" : (Memory, Nat64, Float) -> ()) (m, offset, val);
+func regionStoreFloat(Region : m, offset : Nat64, val :  Float) : () =
+  (prim "regionStoreFloat" : (Region, Nat64, Float) -> ()) (m, offset, val);
 
-func regionLoadBlob(Memory : m, offset : Nat64, size : Nat) : Blob =
-  (prim "regionLoadBlob" : (Memory, Nat64, Nat) -> Blob) (m, offset, size);
+func regionLoadBlob(Region : m, offset : Nat64, size : Nat) : Blob =
+  (prim "regionLoadBlob" : (Region, Nat64, Nat) -> Blob) (m, offset, size);
 
-func regionStoreBlob(Memory : m, offset : Nat64, val :  Blob) : () =
-  (prim "regionStoreBlob" : (Memory, Nat64, Blob) -> ()) (m, offset, val);
+func regionStoreBlob(Region : m, offset : Nat64, val :  Blob) : () =
+  (prim "regionStoreBlob" : (Region, Nat64, Blob) -> ()) (m, offset, val);
 
 
 let call_raw = @call_raw;
