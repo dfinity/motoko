@@ -85,7 +85,7 @@ let plain_of_obj_sort : Buffer.t -> Syntax.obj_sort -> unit =
       | Object -> ""
       | Actor -> "actor "
       | Module -> "module "
-      | Memory_ -> "memory ")
+      | Memory -> "memory ")
 
 let rec plain_of_typ : Buffer.t -> render_functions -> Syntax.typ -> unit =
  fun buf rf typ ->

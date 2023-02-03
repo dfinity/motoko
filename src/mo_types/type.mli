@@ -4,7 +4,7 @@ type lab = string
 type var = string
 
 type control = Returns | Promises | Replies
-type obj_sort = Object | Actor | Module | Memory_
+type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
@@ -30,7 +30,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
-  | Memory
+  | Region
 
 type t = typ
 
@@ -94,7 +94,7 @@ val blob : typ
 val error : typ
 val char : typ
 val principal : typ
-val memory : typ
+val region : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ

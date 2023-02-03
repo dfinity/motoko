@@ -213,7 +213,7 @@ let structural_equality t =
               (match (v1, v2) with
                | Blob s1, Blob s2 -> Bool (s1 = s2)
                | _, _ -> Bool (v1 == v2) (* HACK *))
-        | T.Module | T.Memory_ -> assert false
+        | T.Module | T.Memory -> assert false
         | T.Object ->
             fun v1 v2 ->
               let v1 = as_obj v1 in

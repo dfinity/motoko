@@ -177,7 +177,7 @@ module Make (Cfg : Config) = struct
     | Type.Object -> Atom "Object"
     | Type.Actor -> Atom "Actor"
     | Type.Module -> Atom "Module"
-    | Type.Memory_ -> Atom "Memory_"
+    | Type.Memory -> Atom "Memory"
 
   and shared_pat sp = match sp.it with
     | Type.Local -> Atom "Local"

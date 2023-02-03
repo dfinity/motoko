@@ -91,7 +91,7 @@ let prim = function
   | Blob -> "B"
   | Error -> "E"
   | Principal -> "P"
-  | Memory -> "M"
+  | Region -> "R"
 
 let rec go = function
   | Prim p -> ((Nullary, prim p), [])
@@ -109,7 +109,7 @@ let rec go = function
 
   | Obj (s, fs) ->
     ( ( Labeled (List.map (fun f -> f.lab ^ if is_mut f.typ then "!" else "") fs),
-        (match s with Object -> "r" | Module -> "rm" | Memory_ -> "rs" | Actor -> "ra")
+        (match s with Object -> "r" | Module -> "rm" | Memory -> "rs" | Actor -> "ra")
       )
     , List.map (fun f -> as_immut f.typ) fs
     )

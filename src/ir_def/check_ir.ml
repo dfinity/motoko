@@ -265,7 +265,7 @@ and check_con env c =
 
 and check_typ_field env s tf : unit =
   match tf.T.typ, s with
-  | T.Mut t, Some (T.Object | T.Memory_) -> check_typ env t
+  | T.Mut t, Some (T.Object | T.Memory) -> check_typ env t
   | T.Typ c, Some _ ->
     check env no_region env.flavor.Ir.has_typ_field
      "typ field in non-typ_field flavor";
@@ -357,7 +357,7 @@ let isAsyncE exp =
 let store_typ t  =
   T.stable t &&
   match t with
-  | T.Obj(T.Memory_, fts) ->
+  | T.Obj(T.Memory, fts) ->
     List.for_all (fun f -> T.is_opt f.T.typ) fts
   | _ -> false
 

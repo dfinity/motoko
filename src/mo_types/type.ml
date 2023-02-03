@@ -11,7 +11,7 @@ type obj_sort =
    Object
  | Actor
  | Module
- | Memory_         (* (codegen only): stable memory serialization format *)
+ | Memory          (* (codegen only): stable memory serialization format *)
 
 type async_sort = Fut | Cmp
 type shared_sort = Query | Write
@@ -38,7 +38,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
-  | Memory
+  | Region
 
 type t = typ
 and typ =
@@ -89,7 +89,7 @@ let tag_prim = function
   | Blob -> 15
   | Error -> 16
   | Principal -> 17
-  | Memory -> 18
+  | Region -> 18
 
 let tag_func_sort = function
   | Local -> 0
@@ -100,7 +100,7 @@ let tag_obj_sort = function
   | Object -> 0
   | Module -> 1
   | Actor -> 2
-  | Memory_ -> 3
+  | Memory -> 3
 
 let tag_control = function
   | Returns -> 0
@@ -315,7 +315,7 @@ let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
 let principal = Prim Principal
-let memory = Prim Memory
+let region = Prim Region
 
 let fields flds =
   List.sort compare_field
@@ -370,7 +370,7 @@ let prim = function
   | "Blob" -> Blob
   | "Error" -> Error
   | "Principal" -> Principal
-  | "Memory" -> Memory
+  | "Region" -> Region
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
@@ -707,7 +707,7 @@ let rec span = function
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
-  | Prim (Nat | Int | Float | Text | Blob | Error | Principal | Memory) -> None
+  | Prim (Nat | Int | Float | Text | Blob | Error | Principal | Region) -> None
   | Prim (Nat8 | Int8) -> Some 0x100
   | Prim (Nat16 | Int16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Nat64 | Int64 | Char) -> None  (* for all practical purposes *)
@@ -830,7 +830,7 @@ let serializable allow_mut t =
         (match s with
          | Actor -> true
          | Module -> false (* TODO(1452) make modules sharable *)
-         | Object | Memory_ -> List.for_all (fun f -> go f.typ) fs)
+         | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
@@ -861,7 +861,7 @@ let find_unshared t =
          | Module -> Some t (* TODO(1452) make modules sharable *)
          | Object ->
            List.find_map (fun f -> go f.typ) fs
-         | Memory_ -> assert false)
+         | Memory -> assert false)
       | Variant fs -> List.find_map (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         if is_shared_sort s
@@ -1179,7 +1179,7 @@ let rec singleton_typ co t =
   | Pre -> assert false
   | Prim Null | Any -> true
   | Tup ts -> List.for_all (singleton_typ co) ts
-  | Obj ((Object|Memory_|Module), fs) -> List.for_all (singleton_field co) fs
+  | Obj ((Object|Memory|Module), fs) -> List.for_all (singleton_field co) fs
   | Variant [f] -> singleton_field co f
 
   | Non -> false
@@ -1421,13 +1421,13 @@ let string_of_prim = function
   | Blob -> "Blob"
   | Error -> "Error"
   | Principal -> "Principal"
-  | Memory -> "Memory"
+  | Region -> "Region"
 
 let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
-  | Memory_ -> "memory "
+  | Memory -> "memory "
 
 let string_of_func_sort = function
   | Local -> ""
@@ -1575,7 +1575,7 @@ and pp_typ_pre vs ppf t =
           (pp_typ' vs) t1
           (pp_typ_pre vs) t2
     else fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
-  | Obj ((Module | Actor | Memory_) as os, fs) ->
+  | Obj ((Module | Actor | Memory) as os, fs) ->
     pp_typ_obj vs ppf (os, fs)
   | t ->
     pp_typ_un vs ppf t

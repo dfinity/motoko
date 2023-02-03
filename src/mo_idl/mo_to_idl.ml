@@ -71,7 +71,7 @@ let prim p =
   | Text -> I.PrimT I.Text
   | Blob -> I.BlobT
   | Principal -> I.PrincipalT
-  | Memory -> assert false
+  | Region -> assert false
   | Error -> assert false
 
 let rec typ t =
@@ -109,7 +109,7 @@ let rec typ t =
      I.RecordT (fields fs)
   | Obj (Actor, fs) -> I.ServT (meths fs)
   | Obj (Module, _) -> assert false
-  | Obj (Memory_, _) -> assert false
+  | Obj (Memory, _) -> assert false
   | Variant fs ->
      I.VariantT (fields fs)
   | Func (Shared s, c, tbs, ts1, ts2) ->
