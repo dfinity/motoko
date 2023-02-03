@@ -23,3 +23,4 @@ type Text = prim "Text";
 type Blob = prim "Blob";
 type Error = prim "Error";
 type Principal = prim "Principal";
+type Memory = prim "Memory";

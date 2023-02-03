@@ -370,6 +370,7 @@ let prim = function
   | "Blob" -> Blob
   | "Error" -> Error
   | "Principal" -> Principal
+  | "Memory" -> Memory
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
