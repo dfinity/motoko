@@ -940,9 +940,9 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
   let install_actor_helper = var "@install_actor_helper"
-    (T.Func (T.Local, T.Returns, [T.scope_bind],
-      [T.install_arg_typ; T.blob; T.blob],
-      [T.Async(T.Cmp, T.Var (T.default_scope_var, 0), T.principal)]))
+    T.(Func (Local, Returns, [scope_bind],
+      [install_arg_typ; blob; blob],
+      [Async(Cmp, Var (default_scope_var, 0), principal)]))
   in
   let wasm_blob = fresh_var "wasm_blob" T.blob in
   let install_arg =
