@@ -36,7 +36,7 @@ module Types = {
   public type Blob = prim "Blob";
   public type Error = prim "Error";
   public type Principal = prim "Principal";
-  public type Memory = prim "Memory";
+  public type Region = prim "Region";
 };
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
