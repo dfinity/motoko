@@ -91,6 +91,8 @@
   * bugfix: system method `inspect` involving message with single tuple argument no longer crashes the compiler (#3732, #3733).
 
   * bugfix: async returns involving abbreviated tuple types no longer crash the compiler (#3740, #3741).
+    
+  * bugfix: avoid quadratic code expansion due to imported, but unused, actor classes (#3758).
 
 ## 0.7.6 (2023-01-20)
 
