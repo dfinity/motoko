@@ -53,3 +53,11 @@ a.go() //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
+
+// check exactly 4 embedded wasms
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK-NOT:  canister_update __motoko_async_helper
