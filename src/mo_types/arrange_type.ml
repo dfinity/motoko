@@ -12,7 +12,7 @@ let obj_sort = function
   | Object -> Atom "Object"
   | Actor -> Atom "Actor"
   | Module -> Atom "Module"
-  | Memory -> Atom "Memory"
+  | Memory_ -> Atom "Memory_"
 
 let func_sort = function
   | Local -> "Local"
@@ -38,6 +38,7 @@ let prim = function
   | Blob -> Atom "Blob"
   | Error -> Atom "Error"
   | Principal -> Atom "Principal"
+  | Memory -> Atom "Memory"
 
 let con c = Atom (Type.string_of_con c)
 

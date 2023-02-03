@@ -296,7 +296,7 @@ and obj_block at s self_id dfs obj_typ =
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
     build_actor at [] self_id dfs obj_typ
-  | T.Memory -> assert false
+  | T.Memory_ -> assert false
 
 and build_field {T.lab; T.typ;_} =
   { it = I.{ name = lab
@@ -454,7 +454,7 @@ and build_actor at ts self_id es obj_typ =
   in
   let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); depr = None}) ids in
   let mk_ds = List.map snd pairs in
-  let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
+  let ty = T.Obj (T.Memory_, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
@@ -488,7 +488,7 @@ and build_actor at ts self_id es obj_typ =
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
       (wrap
-         (newObjE T.Memory
+         (newObjE T.Memory_
             (List.map2 (fun f v ->
                  { it = I.{name = f.T.lab; var = id_of_var v};
                    at = no_region;

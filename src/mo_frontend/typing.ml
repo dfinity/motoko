@@ -1919,7 +1919,7 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
     if mode = T.Query then
       error env shared_pat.at "M0109" "class cannot be a query";
     check_pat_exhaustive local_error env T.ctxt pat
-  | _, T.Memory -> assert false
+  | _, T.Memory_ -> assert false
 
 
 and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
@@ -2383,7 +2383,7 @@ and infer_dec env dec : T.typ =
             display_typ_expand t''
       | Some typ, T.Actor ->
         local_error env dec.at "M0135" "actor class has non-async return type"
-      | _, T.Memory -> assert false
+      | _, T.Memory_ -> assert false
     end;
     T.normalize t
   | TypD _ ->

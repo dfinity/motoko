@@ -5041,7 +5041,7 @@ module MakeSerialization (Strm : Stream) = struct
           add_leb128 i;
           add_idx t;
         ) ts
-      | Obj ((Object | Memory), fs) ->
+      | Obj ((Object | Memory_), fs) ->
         add_sleb128 idl_record;
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
@@ -5202,7 +5202,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           size env t
           ) ts
-      | Obj ((Object | Memory), fs) ->
+      | Obj ((Object | Memory_), fs) ->
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           size env f.typ
@@ -5361,7 +5361,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           write env t
         ) ts
-      | Obj ((Object | Memory), fs) ->
+      | Obj ((Object | Memory_), fs) ->
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
@@ -5909,7 +5909,7 @@ module MakeSerialization (Strm : Stream) = struct
 
           Tuple.from_stack env (List.length ts)
         )
-      | Obj ((Object | Memory), fs) ->
+      | Obj ((Object | Memory_), fs) ->
         with_record_typ (fun get_typ_buf get_n_ptr ->
           let (set_val, get_val) = new_local env "val" in
 
@@ -9637,7 +9637,7 @@ and compile_exp (env : E.t) ae exp =
       add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
-  | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
+  | NewObjE (Type.(Object | Module | Memory_) as _sort, fs, _) ->
     (*
     We can enable this warning once we treat everything as static that
     mo_frontend/static.ml accepts, including _all_ literals.
@@ -10043,7 +10043,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/VarE: \"%s\" not found" v
     in
     (c, fun _ _ -> ())
-  | NewObjE (Type.(Object | Module | Memory), fs, _) ->
+  | NewObjE (Type.(Object | Module | Memory_), fs, _) ->
     let static_fs = List.map (fun f ->
           let st =
             match VarEnv.lookup_var pre_ae f.it.var with

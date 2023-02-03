@@ -87,7 +87,7 @@ let html_of_obj_sort : Syntax.obj_sort -> t =
     | Object -> empty
     | Actor -> keyword "actor "
     | Module -> keyword "module "
-    | Memory -> keyword "memory ")
+    | Memory_ -> keyword "memory ")
 
 let rec html_of_type : env -> Syntax.typ -> t =
  fun env typ ->
