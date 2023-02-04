@@ -45,6 +45,10 @@ Each region heap object consists of the following fields:
  - number of allocated pages (4 bytes).
  - P = number of allocated page blocks (2 bytes).
  - capacity of allocated page blocks (2 bytes).
+ - pointer to page block index vector (P * 2 bytes long).
+
+Vector of indices (growable by doubling):
+
  - page block index 0 (2 bytes).
  - ...
  - page block index P-1 (2 bytes).
