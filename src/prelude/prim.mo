@@ -376,71 +376,71 @@ func stableVarQuery() : shared query () -> async {size : Nat64} =
 func regionNew() : Region =
   (prim "regionNew" : () -> Region) ();
 
-func regionSize(Region : m) : Nat64 =
-  (prim "regionSize" : Region -> Nat64) m;
+func regionSize(r : Region) : Nat64 =
+  (prim "regionSize" : Region -> Nat64) r;
 
-func regionGrow(Region : m, pages : Nat64) : Nat64 =
-  (prim "regionGrow" : (Region, Nat64) -> Nat64) (m, pages);
+func regionGrow(r : Region, pages : Nat64) : Nat64 =
+  (prim "regionGrow" : (Region, Nat64) -> Nat64) (r, pages);
 
-func regionLoadNat32(Region : m, offset : Nat64) : Nat32 =
-  (prim "regionLoadNat32" : (Region, Nat64) -> Nat32) (m, offset);
+func regionLoadNat32(r : Region, offset : Nat64) : Nat32 =
+  (prim "regionLoadNat32" : (Region, Nat64) -> Nat32) (r, offset);
 
-func regionStoreNat32(Region : m, offset : Nat64, val : Nat32) : () =
-  (prim "regionStoreNat32" : (Region, Nat64, Nat32) -> ()) (m, offset, val);
+func regionStoreNat32(r : Region, offset : Nat64, val : Nat32) : () =
+  (prim "regionStoreNat32" : (Region, Nat64, Nat32) -> ()) (r, offset, val);
 
-func regionLoadNat8(Region : m, offset : Nat64) : Nat8 =
-  (prim "regionLoadNat8" : (Region, Nat64) -> Nat8) (m, offset);
+func regionLoadNat8(r : Region, offset : Nat64) : Nat8 =
+  (prim "regionLoadNat8" : (Region, Nat64) -> Nat8) (r, offset);
 
-func regionStoreNat8(Region : m, offset : Nat64, val : Nat8) : () =
-  (prim "regionStoreNat8" : (Region, Nat64, Nat8) -> ()) (m, offset, val);
+func regionStoreNat8(r : Region, offset : Nat64, val : Nat8) : () =
+  (prim "regionStoreNat8" : (Region, Nat64, Nat8) -> ()) (r, offset, val);
 
-func regionLoadNat16(Region : m, offset : Nat64) : Nat16 =
-  (prim "regionLoadNat16" : (Region, Nat64) -> Nat16) (m, offset);
+func regionLoadNat16(r : Region, offset : Nat64) : Nat16 =
+  (prim "regionLoadNat16" : (Region, Nat64) -> Nat16) (r, offset);
 
-func regionStoreNat16(Region : m, offset : Nat64, val : Nat16) : () =
-  (prim "regionStoreNat16" : (Region, Nat64, Nat16) -> ()) (m, offset, val);
+func regionStoreNat16(r : Region, offset : Nat64, val : Nat16) : () =
+  (prim "regionStoreNat16" : (Region, Nat64, Nat16) -> ()) (r, offset, val);
 
-func regionLoadNat64(Region : m, offset : Nat64) : Nat64 =
-  (prim "regionLoadNat64" : (Region, Nat64) -> Nat64) (m, offset);
+func regionLoadNat64(r : Region, offset : Nat64) : Nat64 =
+  (prim "regionLoadNat64" : (Region, Nat64) -> Nat64) (r, offset);
 
-func regionStoreNat64(Region : m, offset : Nat64, val : Nat64) : () =
-  (prim "regionStoreNat64" : (Region, Nat64, Nat64) -> ()) (m, offset, val);
+func regionStoreNat64(r : Region, offset : Nat64, val : Nat64) : () =
+  (prim "regionStoreNat64" : (Region, Nat64, Nat64) -> ()) (r, offset, val);
 
-func regionLoadInt32(Region : m, offset : Nat64) : Int32 =
-  (prim "regionLoadInt32" : (Region, Nat64) -> Int32) (m, offset);
+func regionLoadInt32(r : Region, offset : Nat64) : Int32 =
+  (prim "regionLoadInt32" : (Region, Nat64) -> Int32) (r, offset);
 
-func regionStoreInt32(Region : m, offset : Nat64, val : Int32) : () =
-  (prim "regionStoreInt32" : (Region, Nat64, Int32) -> ()) (m, offset, val);
+func regionStoreInt32(r : Region, offset : Nat64, val : Int32) : () =
+  (prim "regionStoreInt32" : (Region, Nat64, Int32) -> ()) (r, offset, val);
 
-func regionLoadInt8(Region : m, offset : Nat64) : Int8 =
-  (prim "regionLoadInt8" : (Region, Nat64) -> Int8) (m, offset);
+func regionLoadInt8(r : Region, offset : Nat64) : Int8 =
+  (prim "regionLoadInt8" : (Region, Nat64) -> Int8) (r, offset);
 
-func regionStoreInt8(Region : m, offset : Nat64, val : Int8) : () =
-  (prim "regionStoreInt8" : (Region, Nat64, Int8) -> ()) (m, offset, val);
+func regionStoreInt8(r : Region, offset : Nat64, val : Int8) : () =
+  (prim "regionStoreInt8" : (Region, Nat64, Int8) -> ()) (r, offset, val);
 
-func regionLoadInt16(Region : m, offset : Nat64) : Int16 =
-  (prim "regionLoadInt16" : (Region, Nat64) -> Int16) (m, offset);
+func regionLoadInt16(r : Region, offset : Nat64) : Int16 =
+  (prim "regionLoadInt16" : (Region, Nat64) -> Int16) (r, offset);
 
-func regionStoreInt16(Region : m, offset : Nat64, val : Int16) : () =
-  (prim "regionStoreInt16" : (Region, Nat64, Int16) -> ()) (m, offset, val);
+func regionStoreInt16(r : Region, offset : Nat64, val : Int16) : () =
+  (prim "regionStoreInt16" : (Region, Nat64, Int16) -> ()) (r, offset, val);
 
-func regionLoadInt64(Region : m, offset : Nat64) : Int64 =
-  (prim "regionLoadInt64" : (Region, Nat64) -> Int64) (m, offset);
+func regionLoadInt64(r : Region, offset : Nat64) : Int64 =
+  (prim "regionLoadInt64" : (Region, Nat64) -> Int64) (r, offset);
 
-func regionStoreInt64(Region : m, offset : Nat64, val : Int64) : () =
-  (prim "regionStoreInt64" : (Region, Nat64, Int64) -> ()) (m, offset, val);
+func regionStoreInt64(r : Region, offset : Nat64, val : Int64) : () =
+  (prim "regionStoreInt64" : (Region, Nat64, Int64) -> ()) (r, offset, val);
 
-func regionLoadFloat(Region : m, offset : Nat64) : Float =
-  (prim "regionLoadFloat" : (Region, Nat64) -> Float) (m, offset);
+func regionLoadFloat(r : Region, offset : Nat64) : Float =
+  (prim "regionLoadFloat" : (Region, Nat64) -> Float) (r, offset);
 
-func regionStoreFloat(Region : m, offset : Nat64, val :  Float) : () =
-  (prim "regionStoreFloat" : (Region, Nat64, Float) -> ()) (m, offset, val);
+func regionStoreFloat(r : Region, offset : Nat64, val :  Float) : () =
+  (prim "regionStoreFloat" : (Region, Nat64, Float) -> ()) (r, offset, val);
 
-func regionLoadBlob(Region : m, offset : Nat64, size : Nat) : Blob =
-  (prim "regionLoadBlob" : (Region, Nat64, Nat) -> Blob) (m, offset, size);
+func regionLoadBlob(r : Region, offset : Nat64, size : Nat) : Blob =
+  (prim "regionLoadBlob" : (Region, Nat64, Nat) -> Blob) (r, offset, size);
 
-func regionStoreBlob(Region : m, offset : Nat64, val :  Blob) : () =
-  (prim "regionStoreBlob" : (Region, Nat64, Blob) -> ()) (m, offset, val);
+func regionStoreBlob(r : Region, offset : Nat64, val :  Blob) : () =
+  (prim "regionStoreBlob" : (Region, Nat64, Blob) -> ()) (r, offset, val);
 
 
 let call_raw = @call_raw;
