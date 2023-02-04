@@ -13,9 +13,6 @@ pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
-/// Counter for total allocations
-pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
-
 /// Heap pointer
 pub(crate) static mut HP: u32 = 0;
 
@@ -55,7 +52,7 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    ALLOCATED
+    Bytes(u64::from(get_heap_size().as_u32())) + RECLAIMED
 }
 
 #[no_mangle]
@@ -71,9 +68,7 @@ impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
-        // Update ALLOCATED
         let delta = u64::from(bytes.as_u32());
-        ALLOCATED += Bytes(delta);
 
         // Update heap pointer
         let old_hp = u64::from(HP);
