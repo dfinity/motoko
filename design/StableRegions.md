@@ -49,6 +49,7 @@ Each region heap object consists of the following fields:
 
 Vector of indices (growable by doubling):
 
+ - (special GC header for vector?)
  - page block index 0 (2 bytes).
  - ...
  - page block index P-1 (2 bytes).
