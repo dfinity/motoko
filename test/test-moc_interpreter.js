@@ -12,19 +12,27 @@ moc.Motoko.saveFile('bad.mo', '1+');
 moc.Motoko.saveFile('limit.mo', 'var i = 0; while (i < 10000) { i += 1 }; i');
 
 assert.deepStrictEqual(moc.Motoko.run([], 'ok.mo'), {
-  result: 0,
+  result: {
+    error: null,
+  },
   stderr: '',
   stdout: '1 : Nat\n'
 });
 
 assert.deepStrictEqual(moc.Motoko.run([], 'bad.mo'), {
-  result: 0,
+  result: {
+    error: {
+      message: '...',
+    },
+  },
   stderr: 'bad.mo:1.3: syntax error [M0001], unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>\n',
   stdout: '',
 });
 
 assert.deepStrictEqual(moc.Motoko.run([], 'limit.mo'), {
-  result: 0,
+  result: {
+    error: null,
+  },
   stderr: '',
   stdout: '10_000 : Nat\n'
 });
@@ -32,7 +40,11 @@ assert.deepStrictEqual(moc.Motoko.run([], 'limit.mo'), {
 moc.Motoko.setRunStepLimit(5000);
 
 assert.deepStrictEqual(moc.Motoko.run([], 'limit.mo'), {
-  result: 0,
+  result: {
+    error: {
+      message: '...',
+    },
+  },
   stderr: 'cancelled: interpreter reached step limit\n',
   stdout: ''
 });
