@@ -2,3 +2,5 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
+thread 'TipThread' panicked at 'Failed to defrag tip @19: /run/user/1000/ic_configio8U0Y/state/tip/canister_states/00000000000000000101/stable_memory.bin: failed to defrag file: No space left on device (os error 28)', state_manager/src/tip.rs:247:33
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
