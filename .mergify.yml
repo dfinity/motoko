@@ -60,6 +60,8 @@ pull_request_rules:
         message: A change to `Changelog.md`? I can handle that!
   - name: Auto-approve dependabot PR
     conditions:
+      - -merged
+      - -closed
       - files=doc/docusaurus/package-lock.json
       - "#files=1"
     actions:

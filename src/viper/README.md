@@ -150,7 +150,7 @@ Currently supported language features
 -------------------------------------
 <a name="Subset"></a>
 
-_Motoko-san_ is an early prototype. The tool supports only a modest subset of [_Motoko proper_](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/about-this-guide), which is not sufficient for most real-world applications. However, we hope that _Motoko-san_ will enable the community to build more sophisticated Motoko code-level verifiers, simply by extending this prototype. In particular, the tool enables verifying _reentrancy safety_ in simple (asynchronous) smart contracts (e.g., `test/viper/claim.mo`).
+_Motoko-san_ is an early prototype. While the tool supports only a modest subset of [_Motoko proper_](https://internetcomputer.org/docs/current/motoko/main/about-this-guide), we hope that _Motoko-san_ will enable the community to build more sophisticated Motoko code-level verifiers, simply by extending this prototype. In particular, the tool enables verifying _reentrancy safety_ in simple (asynchronous) smart contracts (e.g., `test/viper/claim.mo`).
 
 Below, we summarize the language features that _Motoko-san_ currently supports. For each feature, we try to estimate the complexity of its natural generalization. For that purpose, we use the terms _trivial_ (e.g., extending code by analogy), _simple_ (we already know how to do it), _hard_ (more discussions would be needed to figure out the exact approach or feasible level of generality).
 
