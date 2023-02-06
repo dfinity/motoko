@@ -4935,6 +4935,7 @@ module MakeSerialization (Strm : Stream) = struct
     | Any -> Some 16l
     | Non -> Some 17l
     | Prim Principal -> Some 24l
+    | Prim Region -> Some 25l
     | _ -> None
 
   (* some constants, also see rts/idl.c *)
