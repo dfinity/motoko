@@ -375,7 +375,7 @@ pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
 pub const TAG_REGION_OBJ: Tag = 33;
-pub const TAG_REGION_VEC: TAG = 35;
+pub const TAG_REGION_VEC: Tag = 35;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
