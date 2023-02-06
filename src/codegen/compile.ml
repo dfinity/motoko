@@ -3381,7 +3381,7 @@ end (* Blob *)
 
 module Region = struct
   (*
-  Most of the heavy lifting around text values is in rts/motoko-rts/src/region.rs
+    See rts/motoko-rts/src/region.rs
   *)
   let new_ env =
     E.call_import env "rts" "region_new"
