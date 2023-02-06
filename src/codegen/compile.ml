@@ -933,6 +933,11 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "region_new" [] [I32Type];
+    E.add_func_import env "rts" "region_size" [I32Type] [I32Type];
+    E.add_func_import env "rts" "region_grow" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "region_load_blob" [I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "region_store_blob" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
     E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
@@ -3373,6 +3378,20 @@ module Blob = struct
         set_ptr))
 
 end (* Blob *)
+
+module Region = struct
+  (*
+  Most of the heavy lifting around text values is in rts/motoko-rts/src/region.rs
+  *)
+  let new_ env =
+    E.call_import env "rts" "region_new"
+  let size env =
+    E.call_import env "rts" "region_size"
+  let grow env =
+    E.call_import env "rts" "region_grow"
+  let load_blob env = E.call_import env "rts" "region_load_blob"
+  let store_blob env = E.call_import env "rts" "region_store_blob"
+end
 
 module Text = struct
   (*
@@ -9185,6 +9204,39 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_collector_instructions", [] ->
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
+
+  (* Regions *)
+
+  | OtherPrim "regionNew", [] ->
+    SR.Vanilla,
+    Region.new_ env
+
+  | OtherPrim ("regionGrow"), [e0; e1] ->
+    SR.UnboxedWord64,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.grow env
+
+  | OtherPrim "regionSize", [e0] ->
+    SR.UnboxedWord32,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    Region.size env
+
+  | OtherPrim ("regionLoadBlob"), [e0; e1; e2] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    Blob.lit env "Blob size out of bounds" ^^
+    BigNum.to_word32_with env ^^
+    Region.load_blob env
+
+  | OtherPrim ("regionStoreBlob"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    Region.store_blob env
 
   (* Other prims, unary *)
 

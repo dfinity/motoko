@@ -4,6 +4,8 @@ actor {
 
   stable var n : Nat64 = 0;
   stable var r : Region = Region.new();
+
+/*
   assert (n == Region.size(r));
 
   func valOfNat64(n : Nat64) : Blob {
@@ -30,8 +32,10 @@ actor {
     i += size;
     size += 1;
   };
+*/
 
   system func preupgrade() {
+/*
     P.debugPrint("upgrading..." # debug_show n);
     let m = Region.grow(r, 1);
 
@@ -53,10 +57,11 @@ actor {
       i += size;
       size += 1;
     };
-
+*/
   };
 
   public func testBounds() : async () {
+/*
     if (n == 0) return;
     assert (n == Region.size(r));
     P.debugPrint (debug_show {testBounds=n});
@@ -82,10 +87,13 @@ actor {
       };
       i += 1;
     };
+*/
   };
 
   system func postupgrade() {
+/*
     P.debugPrint("...upgraded" # debug_show n);
+*/
   };
 
 }

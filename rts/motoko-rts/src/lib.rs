@@ -34,6 +34,7 @@ mod tommath_bindings;
 pub mod types;
 pub mod utf8;
 mod visitor;
+pub mod region;
 
 use types::Bytes;
 
