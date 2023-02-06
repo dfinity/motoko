@@ -11,9 +11,11 @@ let shorten_test pkg_map aliases base path expected =
   else true
 
 let%test "it shortens to a relative path" =
-  shorten_test [ ("std", "/pkgs/std") ] [] "/project/src/file.mo"
-    "/project/src/lib/hello.mo" "lib/hello"
+  shorten_test
+    [ ("std", "/pkgs/std") ]
+    [] "/project/src/file.mo" "/project/src/lib/hello.mo" "lib/hello"
 
 let%test "it shortens to a package path" =
-  shorten_test [ ("std", "/pkgs/std") ] [] "/project/src/file.mo"
-    "/pkgs/std/list.mo" "mo:std/list"
+  shorten_test
+    [ ("std", "/pkgs/std") ]
+    [] "/project/src/file.mo" "/pkgs/std/list.mo" "mo:std/list"

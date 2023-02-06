@@ -4,9 +4,7 @@ module VfsStore = Map.Make (String)
 (* TODO(Christoph): Terrible format, ideally we want some RRB or HAMT
    backed vector type with a zipper *)
 type virtual_file = string list
-
 type t = virtual_file VfsStore.t
-
 type uri = string
 
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"

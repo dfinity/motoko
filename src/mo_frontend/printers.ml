@@ -14,8 +14,7 @@ let unop = abstract "<unop>"
 let unassign = abstract "<unassign>"
 
 
-let string_of_symbol symbol : string =
-  match symbol with
+let string_of_symbol = function
   | X (T T_error) -> "error"
   | X (T T_XOROP) -> unop "^"
   | X (T T_XORASSIGN) -> unassign "^="
@@ -38,6 +37,7 @@ let string_of_symbol symbol : string =
   | X (T T_SEMICOLON_EOL) -> ";" (* suppress the \n *)
   | X (T T_SEMICOLON) -> ";"
   | X (T T_SYSTEM) -> "system"
+  | X (T T_WITH) -> "with"
   | X (T T_RPAR) -> ")"
   | X (T T_ROTROP) -> binop "<>>"
   | X (T T_ROTRASSIGN) -> binassign "<>>="
@@ -124,15 +124,20 @@ let string_of_symbol symbol : string =
   | X (T T_BREAK) -> "break"
   | X (T T_BOOL) -> "<bool>"
   | X (T T_AWAIT) -> "await"
+  | X (T T_AWAITSTAR) -> "await*"
   | X (T T_ASYNC) -> "async"
+  | X (T T_ASYNCSTAR) -> "async*"
   | X (T T_ASSIGN) -> binassign "assign"
   | X (T T_ASSERT) -> "assert"
   | X (T T_ARROW) -> "->"
   | X (T T_ANDOP) -> binop "&"
   | X (T T_ANDASSIGN) -> binassign "&="
   | X (T T_AND) -> "and"
+  | X (T T_IMPLIES) -> "implies"
+  | X (T T_OLD) -> "old"
   | X (T T_ADDOP) -> unop "+"
   | X (T T_ACTOR) -> "actor"
+  | X (T T_INVARIANT) -> "invariant"
   (* non-terminals *)
   | X (N N_bl) -> "<bl>"
   | X (N N_case) -> "<case>"
@@ -190,6 +195,8 @@ let string_of_symbol symbol : string =
   | X (N N_seplist_dec_field_semicolon_) -> "seplist(<dec_field>,<semicolon>)"
   | X (N N_seplist_exp_ob__COMMA_) -> "seplist(<exp(ob)>,,)"
   | X (N N_seplist_exp_field_semicolon_) -> "seplist(<exp_field>,<semicolon>)"
+  | X (N N_seplist1_exp_field_semicolon_) -> "seplist1(<exp_field>,<semicolon>)"
+  | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)"
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> "seplist(<exp_nonvar(ob)>,,)"
   | X (N N_seplist_imp_SEMICOLON_) -> "seplist(<imp>,;)"
   | X (N N_seplist_imp_semicolon_) -> "seplist(<imp>,<semicolon>)"

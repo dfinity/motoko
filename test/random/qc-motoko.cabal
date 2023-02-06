@@ -15,7 +15,7 @@ executable qc-motoko
   other-modules:       Embedder, Turtle.Pipe
   other-extensions:    ConstraintKinds, StandaloneDeriving, DataKinds, KindSignatures, GADTs, MultiParamTypeClasses
   ghc-options:         -O -threaded -with-rtsopts=-N2
-  build-depends:       base ^>=4.14.0.0
+  build-depends:       base ^>=4.15
                      , text ^>=1.2.3.1
                      , process
                      , exceptions

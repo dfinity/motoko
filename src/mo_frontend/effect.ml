@@ -17,18 +17,40 @@ let max_eff e1 e2 =
   | _ , T.Await -> T.Await
   | T.Await,_ -> T.Await
 
+let max_effs = List.fold_left max_eff T.Triv
+let map_max_effs f l = max_effs (List.map f l)
+
 let typ phrase = phrase.note.note_typ
 
 let eff phrase = phrase.note.note_eff
 
 let is_triv phrase  =
-    eff phrase = T.Triv
+  eff phrase = T.Triv
+
+let is_shared_func exp =
+  T.(match typ exp with
+    | Func (Shared _, _, _, _, _) -> true
+    | _ -> false)
+
+let is_local_async_func exp =
+ T.(match typ exp with
+   | Func (Local, Returns,
+      { sort = Scope; _ }::_,
+       _,
+      [Async (Fut, Var (_ ,0), _)]) -> true
+   | _ -> false)
+
+let is_async_call exp1 inst exp2 =
+   is_shared_func exp1 ||
+   is_local_async_func exp1
 
 let effect_exp (exp:Syntax.exp) : T.eff = eff exp
 
-(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
+(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
+  | CallE (exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
+    T.Await
   | PrimE _
   | VarE _
   | LitE _
@@ -46,7 +68,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | TagE (_, exp1)
   | DotE (exp1, _)
   | NotE exp1
-  | AssertE exp1
+  | OldE (exp1)
+  | AssertE (_, exp1)
   | LabelE (_, _, exp1)
   | BreakE (_, exp1)
   | RetE exp1
@@ -61,6 +84,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | CallE (exp1, _, exp2)
   | AndE (exp1, exp2)
   | OrE (exp1, exp2)
+  | ImpliesE (exp1, exp2)
   | WhileE (exp1, exp2)
   | LoopE (exp1, Some exp2)
   | ForE (_, exp1, exp2) ->
@@ -72,25 +96,24 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | ToCandidE exps
   | TupE exps
   | ArrayE (_, exps) ->
-    let es = List.map effect_exp exps in
-    List.fold_left max_eff T.Triv es
+    map_max_effs effect_exp exps
   | BlockE decs ->
-    let es = List.map effect_dec decs in
-    List.fold_left max_eff T.Triv es
+    map_max_effs effect_dec decs
   | ObjBlockE (sort, dfs) ->
     infer_effect_dec_fields dfs
-  | ObjE efs ->
-    infer_effect_exp_fields efs
+  | ObjE (bases, efs) ->
+    let bases = map_max_effs effect_exp bases in
+    let fields = infer_effect_exp_fields efs in
+    max_eff fields bases
   | IfE (exp1, exp2, exp3) ->
-    let e1 = effect_exp exp1 in
-    let e2 = effect_exp exp2 in
-    let e3 = effect_exp exp3 in
-    max_eff e1 (max_eff e2 e3)
+    map_max_effs effect_exp [exp1; exp2; exp3]
   | SwitchE (exp1, cases) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE _ ->
+  | AsyncE (T.Fut, _, _) ->
+    T.Await
+  | AsyncE (T.Cmp, _, _) ->
     T.Triv
   | ThrowE _
   | TryE _

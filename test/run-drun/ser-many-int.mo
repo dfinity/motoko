@@ -13,7 +13,7 @@ public func go() : async () {
    if (n != deserInt(serInt(n))) {
      Prim.debugPrint(debug_show {failure = n});
    };
-   n -= 7919;
+   n -= 104729;
    c -= 1;
    if (c % 1024 == 0) {
        await async (); // trigger gc

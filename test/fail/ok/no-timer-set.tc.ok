@@ -1,0 +1,2 @@
+no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not contained in expected type
+  module {}

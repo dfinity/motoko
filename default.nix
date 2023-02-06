@@ -66,7 +66,7 @@ let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
-    pkgs.dune_2
+    pkgs.dune_3
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.checkseum
@@ -313,7 +313,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x sources.esm ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
       [ filecheck wasmtime ];
 
 
@@ -350,6 +350,7 @@ rec {
             patchShebangs .
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
+            export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
             make -C ${dir}
           '';
@@ -363,8 +364,24 @@ rec {
 
     compacting_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--compacting-gc";
+      });
+
+    generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--generational-gc";
+      });
+
+    snty_compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
       });
+
+    snty_generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
+      });
+
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -478,9 +495,11 @@ rec {
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -489,6 +508,8 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
@@ -514,6 +535,7 @@ rec {
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
           nixpkgs.nodejs-16_x
+          nixpkgs.nodePackages.uglify-js
         ];
         buildPhase = ''
           patchShebangs .
@@ -521,11 +543,13 @@ rec {
           ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
+          uglifyjs ${n}.js -o ${n}.min.js -c -m
         '';
         installPhase = ''
           mkdir -p $out
           mkdir -p $out/bin
           cp --verbose --dereference ${n}.js $out/bin
+          cp --verbose --dereference ${n}.min.js $out/bin
         '';
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
@@ -554,16 +578,10 @@ rec {
   docs = stdenv.mkDerivation {
     name = "docs";
     src = subpath ./doc;
-    buildInputs = with nixpkgs; [ pandoc bash antora gitMinimal ];
+    buildInputs = with nixpkgs; [ pandoc bash gitMinimal ];
 
     buildPhase = ''
       patchShebangs .
-      # Make this a git repo, to please antora
-      git -C .. init
-      git add .
-      git config user.name "Nobody"
-      git config user.email "nobody@example.com"
-      git commit -m 'Dummy commit for antora'
       export HOME=$PWD
       export MOC_JS=${js.moc}/bin/moc.js
       export MOTOKO_BASE=${base-src}
@@ -573,16 +591,16 @@ rec {
     installPhase = ''
       mkdir -p $out
       mv overview-slides.html $out/
-      mv build/site/* $out/
+      mv html $out/
       mkdir -p $out/nix-support
-      echo "report guide $out docs/language-guide/motoko.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out html/motoko.html" >> $out/nix-support/hydra-build-products
       echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
   check-formatting = stdenv.mkDerivation {
     name = "check-formatting";
-    buildInputs = with nixpkgs; [ ocamlformat ];
+    buildInputs = [ nixpkgs.ocamlformat ];
     src = subpath ./src;
     doCheck = true;
     phases = "unpackPhase checkPhase installPhase";
@@ -633,7 +651,7 @@ rec {
 
   guide-examples-tc =  stdenv.mkDerivation {
     name = "guid-examples-tc";
-    src = subpath ./doc/modules/language-guide/examples;
+    src = subpath ./doc/md/examples;
     phases = "unpackPhase checkPhase installPhase";
     doCheck = true;
     MOTOKO_BASE = base-src;
@@ -676,7 +694,7 @@ rec {
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
-      echo docs/docs/language-guide/motoko.html;
+      echo docs/html/motoko.html;
       echo base-doc/
       echo coverage/
       echo flamegraphs/ ) | \
@@ -692,7 +710,7 @@ rec {
       touch $out
     '';
 
-  # Checks that doc/modules/language-guide/examples/grammar.txt is up-to-date
+  # Checks that doc/md/examples/grammar.txt is up-to-date
   check-grammar = stdenv.mkDerivation {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
@@ -703,7 +721,7 @@ rec {
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
         echo "If the following fails, please run:"
         echo "nix-shell --command 'make -C src grammar'"
-        diff -r -U 3 ${./doc/modules/language-guide/examples/grammar.txt} expected
+        diff -r -U 3 ${./doc/md/examples/grammar.txt} expected
         echo "ok, all good"
       '';
       installPhase = ''
@@ -752,7 +770,12 @@ rec {
     builtins.attrValues js;
   };
 
-  shell = stdenv.mkDerivation {
+  viperServer = nixpkgs.fetchurl {
+    url = https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar;
+    sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
+  };
+
+  shell = nixpkgs.mkShell {
     name = "motoko-shell";
 
     #
@@ -781,7 +804,9 @@ rec {
           nixpkgs.niv
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
-        ]
+          nixpkgs.difftastic
+          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
+        ] ++ nixpkgs.lib.optional stdenv.isDarwin nixpkgs.darwin.apple_sdk.frameworks.Security
       ));
 
     shellHook = llvmEnv + ''
@@ -798,6 +823,7 @@ rec {
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
+    VIPER_SERVER = "${viperServer}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.

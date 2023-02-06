@@ -1,5 +1,6 @@
 open Extract
 open Mo_def
+open Mo_types
 open Cow.Html
 open Common
 
@@ -12,17 +13,11 @@ let rec join_with : t -> t list -> t =
   | x :: xs -> x ++ sep ++ join_with sep xs
 
 let space : t = string "\u{00A0}"
-
 let cls_span : string -> string -> t = fun cls s -> span ~cls (string s)
-
 let fn_name : string -> t = cls_span "fnname"
-
 let class_name : string -> t = cls_span "classname"
-
 let keyword : string -> t = cls_span "keyword"
-
 let parameter : string -> t = cls_span "parameter"
-
 let html_type : string -> t = cls_span "type"
 
 let rec string_of_path : Syntax.path -> string =
@@ -129,7 +124,10 @@ let rec html_of_type : env -> Syntax.typ -> t =
       ++ html_of_type env res
   | Syntax.ArrayT (mut, ty) ->
       string "[" ++ html_of_mut mut ++ html_of_type env ty ++ string "]"
-  | Syntax.AsyncT (_scope, typ) -> keyword "async " ++ html_of_type env typ
+  | Syntax.AsyncT (Type.Fut, _scope, typ) ->
+      keyword "async " ++ html_of_type env typ
+  | Syntax.AsyncT (Type.Cmp, _scope, typ) ->
+      keyword "async* " ++ html_of_type env typ
   | Syntax.AndT (typ1, typ2) ->
       html_of_type env typ1 ++ string " and " ++ html_of_type env typ2
   | Syntax.OrT (typ1, typ2) ->
@@ -169,9 +167,16 @@ and html_of_typ_binders : env -> Syntax.typ_bind list -> t =
 and html_of_typ_field : env -> Syntax.typ_field -> t =
  fun env field ->
   (* TODO mut might be wrong here *)
-  html_of_mut field.Source.it.Syntax.mut
-  ++ string (field.Source.it.Syntax.id.Source.it ^ " : ")
-  ++ html_of_type env field.Source.it.Syntax.typ
+  match field.Source.it with
+  | Syntax.ValF (id, typ, mut) ->
+      html_of_mut mut ++ string (id.Source.it ^ " : ") ++ html_of_type env typ
+  | Syntax.TypF (id, tbs, typ) ->
+      let ty_args = html_of_typ_binders env tbs in
+      string "type "
+      ++ string id.Source.it
+      ++ ty_args
+      ++ string " = "
+      ++ html_of_type env typ
 
 and html_of_typ_item : env -> Syntax.typ_item -> t =
  fun env (oid, t) ->
@@ -286,7 +291,8 @@ let html_of_docs : render_input -> Cow.Html.t =
     |> String.concat ""
   in
   let header =
-    head ~attrs:[ ("title", "Doc") ]
+    head
+      ~attrs:[ ("title", "Doc") ]
       (meta ~charset:"UTF-8" []
       ++ link ~rel:"stylesheet" (Uri.of_string (path_to_root ^ "styles.css")))
   in

@@ -51,7 +51,7 @@ let transform prog =
       Func (s, c, List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
-    | Async (t1, t2) -> Async (t_typ t1, t_typ t2)
+    | Async (s, t1, t2) -> Async (s, t_typ t1, t_typ t2)
     | Mut t -> Mut (t_typ t)
     | Any -> Any
     | Non -> Non
@@ -116,8 +116,8 @@ let transform prog =
       LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
       LabelE (id, t_typ typ, t_exp exp1)
-    | AsyncE (tb, exp1, typ) ->
-      AsyncE (t_typ_bind tb, t_exp exp1, t_typ typ)
+    | AsyncE (s, tb, exp1, typ) ->
+      AsyncE (s, t_typ_bind tb, t_exp exp1, t_typ typ)
     | TryE (exp1, cases) ->
       TryE (t_exp exp1, List.map t_case cases)
     | DeclareE (id, typ, exp1) ->
@@ -126,12 +126,13 @@ let transform prog =
       DefineE (id, mut, t_exp exp1)
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
       ActorE (t_decs ds, t_fields fs,
        {meta;
         preupgrade = t_exp preupgrade;
         postupgrade = t_exp postupgrade;
         heartbeat = t_exp heartbeat;
+        timer = t_exp timer;
         inspect = t_exp inspect;
        }, t_typ typ)
     | NewObjE (sort, ids, t) ->
@@ -160,6 +161,7 @@ let transform prog =
     match dec' with
     | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
     | VarD (id, t, exp) -> VarD (id, t_typ t, t_exp exp)
+    | RefD (id, t, lexp) -> RefD (id, t_typ t, t_lexp lexp)
 
   and t_decs decs = List.map t_dec decs
 
@@ -205,12 +207,13 @@ let transform prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; inspect}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
         { meta;
           preupgrade = t_exp preupgrade;
           postupgrade = t_exp postupgrade;
           heartbeat = t_exp heartbeat;
+          timer = t_exp timer;
           inspect = t_exp inspect;
         }, t_typ t)
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_typ_field = false } )

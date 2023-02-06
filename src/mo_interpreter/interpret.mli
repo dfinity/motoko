@@ -18,6 +18,8 @@ type scope =
 val empty_scope : scope
 val adjoin_scope : scope -> scope -> scope
 
+val step_limit : int ref
+
 exception Trap of Source.region * string
 
 val interpret_prog : flags -> scope -> Syntax.prog -> (V.value * scope) option

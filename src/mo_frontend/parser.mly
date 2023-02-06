@@ -45,7 +45,7 @@ let ensure_async_typ t_opt =
   match t_opt with
   | None -> t_opt
   | Some { it = AsyncT _; _} -> t_opt
-  | Some t -> Some (AsyncT(scopeT no_region, t) @! no_region)
+  | Some t -> Some (AsyncT(Type.Fut, scopeT no_region, t) @! no_region)
 
 let funcT (sort, tbs, t1, t2) =
   match sort.it, t2.it with
@@ -132,8 +132,8 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
     false, e (* body declared as EQ e *)
   else (* body declared as immediate block *)
     match sp.it, t_opt with
-    | _, Some {it = AsyncT _; _} ->
-      true, asyncE (scope_bind x.it e.at) e
+    | _, Some {it = AsyncT (s, _, _); _} ->
+      true, asyncE s (scope_bind x.it e.at) e
     | Type.Shared _, (None | Some { it = TupT []; _}) ->
       true, ignore_asyncE (scope_bind x.it e.at) e
     | _, _ -> (true, e)
@@ -145,8 +145,11 @@ let share_typ t =
     { t with it = funcT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
-let share_typfield (tf : typ_field) =
-  {tf with it = {tf.it with typ = share_typ tf.it.typ}}
+let share_typfield' = function
+  | TypF (c, tps, t) -> TypF (c, tps, t)
+  | ValF (x, t, m) -> ValF (x, share_typ t, m)
+
+let share_typfield (tf : typ_field) = { tf with it = share_typfield' tf.it }
 
 let share_exp e =
   match e.it with
@@ -202,8 +205,8 @@ and objblock s dec_fields =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
+%token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
+%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -232,6 +235,8 @@ and objblock s dec_fields =
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
+
+%nonassoc IMPLIES (* see assertions.mly *)
 
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
@@ -267,7 +272,8 @@ and objblock s dec_fields =
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
-%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.exp_field list> seplist1(exp_field,semicolon) seplist(exp_field,semicolon)
+%type<Mo_def.Syntax.exp list> separated_nonempty_list(AND, exp_post(ob))
 %type<Mo_def.Syntax.dec_field list> seplist(dec_field,semicolon) obj_body
 %type<Mo_def.Syntax.case list> seplist(case,semicolon)
 %type<Mo_def.Syntax.typ option> annot_opt
@@ -413,7 +419,9 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(scopeT (at $sloc), t) @! at $sloc }
+    { AsyncT(Type.Fut, scopeT (at $sloc), t) @! at $sloc }
+  | ASYNCSTAR t=typ_pre
+    { AsyncT(Type.Cmp, scopeT (at $sloc), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -452,12 +460,14 @@ inst :
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
 typ_field :
+  | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
+    { TypF (c, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
-    { {id = x; typ = t; mut} @@ at $sloc }
+    { ValF (x, t, mut) @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
     { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
-      {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
+      ValF (x, t, Const @@ no_region) @@ at $sloc }
 
 typ_tag :
   | HASH x=id t=annot_opt
@@ -544,11 +554,15 @@ lit :
 
 
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
-ob : e=exp_obj { e }
+%public ob : e=exp_obj { e }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE efs @? at $sloc }
+    { ObjE ([], efs) @? at $sloc }
+  | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
+    { ObjE (base :: bases, []) @? at $sloc }
+  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist1(exp_field, semicolon) RCURLY
+    { ObjE (bases, efs) @? at $sloc }
 
 exp_plain :
   | l=lit
@@ -558,7 +572,6 @@ exp_plain :
 
 exp_nullary(B) :
   | e=B
-    { e }
   | e=exp_plain
     { e }
   | x=id
@@ -581,6 +594,10 @@ exp_post(B) :
     { CallE(e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
+  | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
+    { DotE(
+        DotE(e1, "system" @@ at ($startpos($1),$endpos($1))) @? at $sloc,
+        x) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -611,7 +628,7 @@ exp_un(B) :
   | FROM_CANDID e=exp_un(ob)
     { FromCandidE e @? at $sloc }
 
-exp_bin(B) :
+%public exp_bin(B) :
   | e=exp_un(B)
     { e }
   | e1=exp_bin(B) op=binop e2=exp_bin(ob)
@@ -625,7 +642,7 @@ exp_bin(B) :
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
 
-exp_nondec(B) :
+%public exp_nondec(B) :
   | e=exp_bin(B)
     { e }
   | e1=exp_bin(B) ASSIGN e2=exp(ob)
@@ -637,11 +654,15 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
-    { AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+  | ASYNCSTAR e=block
+    { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
-    { AwaitE(e) @? at $sloc }
+    { AwaitE(Type.Fut, e) @? at $sloc }
+  | AWAITSTAR e=exp_nest
+    { AwaitE(Type.Cmp, e) @? at $sloc }
   | ASSERT e=exp_nest
-    { AssertE(e) @? at $sloc }
+    { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
     { let x' = ("continue " ^ x.it) @@ x.at in
       let unit () = TupT [] @! at $sloc in
@@ -690,7 +711,6 @@ exp_nondec(B) :
   | DO QUEST e=block
     { DoOptE(e) @? at $sloc }
 
-
 exp_nonvar(B) :
   | e=exp_nondec(B)
     { e }
@@ -703,9 +723,8 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp_nest :
+%public exp_nest :
   | e=block
-    { e }
   | e=exp(bl)
     { e }
 
@@ -826,7 +845,8 @@ dec_nonvar :
       let e =
         if s.it = Type.Actor then
           AwaitE
-            (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+            (Type.Fut,
+             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
               (objblock s (List.map share_dec_field efs) @? (at $sloc)))
              @? at $sloc)
         else objblock s efs
@@ -911,7 +931,7 @@ typ_dec :
 
 stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
-    { {id = x; typ = t; mut} @@ at $sloc }
+    { ValF (x, t, mut) @@ at $sloc }
 
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY

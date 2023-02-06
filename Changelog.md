@@ -1,5 +1,336 @@
 # Motoko compiler changelog
 
+## 0.8.1 (2023-02-03)
+
+* motoko (`moc`)
+
+  * Performance improvement: faster heap allocation (#3765).
+
+  * bugfix: `async` returns involving abbreviated tuple types no longer crash the compiler (#3740, #3741).
+
+  * bugfix: avoid quadratic code expansion due to imported, but unused, actor classes (#3758).
+
+## 0.8.0 (2023-01-27)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE
+
+    Motoko now implements Candid 1.4 (dfinity/candid#311).
+
+    In particular, when deserializing an actor or function reference,
+    Motoko will now first check that the type of the deserialized reference
+    is a subtype of the expected type and act accordingly.
+
+    Very few users should be affected by this change in behaviour.
+
+  * BREAKING CHANGE
+
+    Failure to send a message no longer traps but, instead, throws a catchable `Error` with new error code `#call_error` (#3630).
+
+    On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
+    This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
+    or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
+    Such call failures are now reported by throwing an `Error` with new `ErrorCode` `#call_error { err_code = n }`,
+    where `n` is the non-zero `err_code` value returned by the IC.
+    Like other errors, call errors can be caught and handled using `try ... catch ...` expressions, if desired.
+
+    The constructs that now throw call errors, instead of trapping as with previous version of Motoko are:
+    * calls to `shared` functions (including oneway functions that return `()`).
+      These involve sending a message to another canister, and can fail when the queue for the destination canister is full.
+    * calls to local functions with return type `async`. These involve sending a message to self, and can fail when the local queue for sends to self is full.
+    * `async` expressions. These involve sending a message to self, and can fail when the local queue for sends to self is full.
+    * `await` expressions. These can fail on awaiting an already completed future, which requires sending a message to self to suspend and commit state.
+
+    (On the other hand, `async*` (being delayed) cannot throw, and evaluating `await*` will at most propagate an error from its argument but not, in itself, throw.)
+
+    Note that exiting a function call via an uncaught throw, rather than a trap, will commit any state changes and currently queued messages.
+    The previous behaviour of trapping would, instead, discard, such changes.
+
+    To appreciate the change in semantics, consider the following example:
+
+    ``` motoko
+    actor {
+      var count = 0;
+      public func inc() : async () {
+        count += 1;
+      };
+      public func repeat() : async () {
+        loop {
+          ignore inc();
+        }
+      };
+      public func repeatUntil() : async () {
+        try {
+          loop {
+           ignore inc();
+          }
+        } catch (e) {
+        }
+      };
+    }
+    ```
+
+    In previous releases of Motoko, calling `repeat()` and `repeatUntil()` would trap, leaving `count` at `0`, because
+    each infinite loop would eventually exhaust the message queue and issue a trap, rolling back the effects of each call.
+    With this release of Motoko, calling `repeat()` will enqueue several `inc()` messages (around 500), then `throw` an `Error`
+    and exit with the error result, incrementing the `count` several times (asynchronously).
+    Calling `repeatUntil()` will also enqueue several `inc()` messages (around 500) but the error is caught so the call returns,
+    still incrementing `count` several times (asynchronously).
+
+    The previous semantics of trapping on call errors can be enabled with compiler option `--trap-on-call-error`, if desired,
+    or selectively emulated by forcing a trap (e.g. `assert false`) when an error is caught.
+
+    For example,
+
+    ``` motoko
+      public func allOrNothing() : async () {
+        try {
+          loop {
+           ignore inc();
+          }
+        } catch (e) {
+          assert false; // trap!
+        }
+      };
+    ```
+
+    Calling `allOrNothing()` will not send any messages: the loop exits with an error on queue full,
+    the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
+
+  * bugfix: system method `inspect` involving message with single tuple argument no longer crashes the compiler (#3732, #3733).
+
+## 0.7.6 (2023-01-20)
+
+* motoko (`moc`)
+
+  * Added support for `ManagementCanister.raw_rand` in interpreters (#3693).
+
+  * Added preliminary Viper support for `old` expressions in specifications and calls to private methods (#3675).
+
+  * bugfix: in the default timer mechanism `cancelTimer` sometimes wouldn't actually stop a recurring timer (#3695).
+
+  * bugfix: zero negation for floating point numbers in compiled code (#3676).
+
+* motoko-base
+
+  * Add user-facing timer functionality (dfinity/motoko-base#474).
+
+  * Add `Array.size` (#486, #494).
+
+  * Add `TrieSet` methods `isEmpty`, `isSubset` (dfinity/motoko-base#503).
+
+  * BREAKING CHANGES (Minor):
+    - renamed `Float.neq` to `Float.neg` (this was a misspelling)
+    - renamed `Nat.neq` to `Nat.neg` (this was a misspelling)
+    - removed second argument from `bitnot` (this was an oversight)
+
+  * bugfix: `Random.Finite.coin` didn't use entropy correctly (dfinity/motoko-base#500).
+
+  * bugfix: `Trie.mergeDisjoint` (dfinity/motoko-base#505).
+
+  * bugfix: `TrieSet.equals` (dfinity/motoko-base#503).
+
+  * Various documentation fixes and API usage examples.
+
+## 0.7.5 (2022-12-23)
+
+* motoko (`moc`)
+
+  * Add new primitives for a default timer mechanism (#3542). These are
+    ``` Motoko
+    setTimer : (delayNanos : Nat64, recurring : Bool, job : () -> async ()) -> (id : Nat)
+    cancelTimer : (id : Nat) -> ()
+    ```
+    By defining a `system func timer` the default mechanism can now be overridden by a custom
+    implementation. Additionally by supplying the command-line flag `-no-timer` all aspects
+    of timers can be suppressed, e.g. for space- or security-sensitive purposes, thus effectively
+    reverting canisters to the pre-timers era.
+
+  * bugfix: silence bogus cascading errors in stable compatibility check (#3645).
+
+## 0.7.4 (2022-12-07)
+
+* motoko (`moc`)
+
+  * Add new keywords `async*` and `await*` (note the `*`) for efficient abstraction of asynchronous code (#3609).
+    ```
+      <typ> ::= ...
+        async* <typ>             delayed, asynchronous computation
+      <exp> ::= ...
+        async* <block-or-exp>    delay an asynchronous computation
+        await* <block-or-exp>    execute a delayed computation (only in async, async*)
+    ```
+    This avoids the resource consumption and latency of `async`/`await` by only committing state and suspending execution
+    when necessary in the `await*`-ed computation, not necessarily at the `await*` itself.
+
+    WARNING: Unlike `async`/`await`:
+    *  an `async*` value has no effect unless `await*`-ed;
+    *  each `await*` of the same `async*` value repeats its effects.
+
+    This feature is experimental and may evolve in future. Use with discretion.
+    See the [manual](doc/md/language-manual.md) for details.
+
+  * Suppress GC during IC `canister_heartbeat`, deferring any GC to the scheduled Motoko `heartbeat` `system` method (#3623).
+    This is a temporary workaround, to be removed once DTS is supported for `canister_heartbeat` itself (#3622).
+
+  * Add a new _generational_ GC, enabled with new moc flag `--generational-gc` (#3495).
+    The generational garbage collector optimizes for fast reclamation of short-lived objects.
+    New objects are allocated in a young generation that is more frequently collected than the older objects
+    that have already survived a GC run.
+
+    For many cases, the generational GC is more efficient than the existing compacting GC and copying GCs:
+    * Lower runtimes: Less number of executed instructions on average.
+    * Shorter interruptions: Young generation collection entails shorter program interruptions.
+
+    To activate the generational GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--generational-gc"
+    ...
+    ```
+
+  * `moc.js` : add trampoline and step limiter to interpreter, avoiding (some) stackoverflows and
+    hangs (#3618, #3541).
+    Enables execution of larger examples on web pages.
+
+  * BREAKING CHANGE (Minor):
+
+    Consider records with mutable fields as non-static (#3586).
+    Consequently, an imported library declaring a mutable record is now
+    rejected, not accepted, to be consistent with the declarations of
+    mutable fields and mutable objects.
+
+  * Experimental Viper integration by compiling a very narrow subset of
+    Motoko to the verification intermediate language. See `src/viper/README.md`
+    and the PR for details. (#3477).
+
+* motoko-base
+
+  * Unit tests for Trie and fix for `disj` (dfinity/motoko-base#438).
+
+  * Respect Trie structure in `filter` (dfinity/motoko-base#431, dfinity/motoko-base#438).
+
+  * Array module reimplementation, tests and documentation (dfinity/motoko-base#425,dfinity/motoko-base#432).
+
+## 0.7.3 (2022-11-01)
+
+* motoko (`moc`)
+
+  * Statically reject shared functions and function types with type parameters (#3519, #3522).
+
+  * Performance improvement: `Array.init` and `Array.tabulate` (#3526).
+
+* motoko-base
+
+  * Add some examples to `Buffer` library documentation (dfinity/motoko-base#420).
+
+  * Fix another bug in `Buffer` library affecting `filterEntries` (dfinity/motoko-base#422).
+
+## 0.7.2 (2022-10-25)
+
+* motoko-base
+
+  * Fix bugs in `Buffer` library affecting `remove` and `filterEntries` (dfinity/motoko-base#419).
+
+## 0.7.1 (2022-10-24)
+
+* motoko (`moc`)
+
+    * Halve (default ir-checking) compilation times by optimizing type comparison and hashing (#3463)
+
+    * Add support for type components in object type syntax (#3457, also fixes #3449)
+    ``` motoko
+      type Record = { type T = Nat; x : Nat};
+    ```
+    is now legal.
+    Note the definition of `T` is neither recursive, nor bound in `x : Nat`,
+    but can refer to an existing recursive type declared in an outer scope.
+
+* motoko-base
+
+  * Optimized and extended `Buffer` library (dfinity/motoko-base#417).
+
+## 0.7.0 (2022-08-25)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+    Adds new syntax for merging records (objects) and
+    adding/overwriting fields. The expression
+    ``` motoko
+    { baseA and baseB with field1 = val1; field2 = val2 }
+    ```
+    creates a new record by joining all (statically known) fields from
+    `baseA/B` and the explicitly specified `field1/2`.
+    This is a _breaking change_, as a new keyword `with` has been added.
+    Restrictions for ambiguous and `var` fields from bases apply. (#3084)
+
+  * Add new support for installing actor class instances on the IC,
+    enabling specification of canister settings, install, upgrade and
+    reinstall. (#3386)
+
+    A new expression
+
+    ``` bnf
+      (system <exp> . <id>)
+    ```
+    where `<exp>` is an imported library and `<id>` is the name of
+    an actor class, accesses a secondary constructor of the class
+    that takes an additional argument controlling the installation.
+
+    For example,
+    ``` motoko
+      await (system Lib.Node)(#upgrade a)(i);
+    ```
+    upgrades actor `a` with the code for a new instance of class `Lib.Node`,
+    passing constructor argument `(i)`.
+
+  * Performance improvements for assigment-heavy code (thanks to nomeata) (#3406)
+
+## 0.6.30 (2022-08-11)
+
+* motoko (`moc`)
+
+  * add primitives
+    ```motoko
+    shiftLeft : (Nat, Nat32) -> Nat
+    shiftRight : (Nat, Nat32) -> Nat
+    ```
+    for efficiently multiplying/dividing a `Nat` by a power of 2
+    (#3112)
+
+  * add primitives
+    ```motoko
+    rts_mutator_instructions : () -> Nat
+    rts_collector_instructions : () -> Nat
+    ```
+    to report approximate IC instruction costs of the last message
+    due to mutation (computation) and collection (GC), respectively (#3381)
+
+* motoko-base
+
+  * Add
+    ```motoko
+    Buffer.fromArray
+    Buffer.fromVarArray
+    ```
+    for efficiently adding an array to a `Buffer`
+    (dfinity/motoko-base#389)
+
+  * Add
+    ```motoko
+    Iter.sort : (xs : Iter<A>, compare : (A, A) -> Order) : Iter<A>
+    ```
+    for sorting an `Iter` given a comparison function
+    (dfinity/motoko-base#406)
+
+  * Performance: `HashMap` now avoids re-computing hashes on `resize`
+    (dfinity/motoko-base#394)
+
 ## 0.6.29 (2022-06-10)
 
 * motoko (`moc`)

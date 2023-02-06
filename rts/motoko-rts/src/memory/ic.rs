@@ -13,9 +13,6 @@ pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
-/// Counter for total allocations
-pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
-
 /// Heap pointer
 pub(crate) static mut HP: u32 = 0;
 
@@ -57,7 +54,7 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    ALLOCATED
+    Bytes(u64::from(get_heap_size().as_u32())) + RECLAIMED
 }
 
 #[no_mangle]
@@ -73,9 +70,7 @@ impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
-        // Update ALLOCATED
         let delta = u64::from(bytes.as_u32());
-        ALLOCATED += Bytes(delta);
 
         // Update heap pointer
         let old_hp = u64::from(HP);
@@ -108,6 +103,7 @@ unsafe fn grow_memory(ptr: u64) {
     let total_pages_needed = (ptr >> 16) as usize + 1 - (ptr >> 32) as usize;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
+        #[allow(clippy::collapsible_if)] // faster by 1% if not colapsed with &&
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
             rts_trap_with("Cannot grow memory");
         }

@@ -30,6 +30,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SEMICOLON -> SEMICOLON
       | T_STABLE -> STABLE
       | T_SYSTEM -> SYSTEM
+      | T_WITH -> WITH
       | T_RPAR -> RPAR
       | T_ROTROP -> ROTROP
       | T_ROTRASSIGN -> ROTRASSIGN
@@ -108,15 +109,20 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_BREAK -> BREAK
       | T_BOOL -> BOOL false
       | T_AWAIT -> AWAIT
+      | T_AWAITSTAR -> AWAITSTAR
       | T_ASYNC -> ASYNC
+      | T_ASYNCSTAR -> ASYNCSTAR
       | T_ASSIGN -> ASSIGN
       | T_ASSERT -> ASSERT
       | T_ARROW -> ARROW
       | T_ANDOP -> ANDOP
       | T_ANDASSIGN -> ANDASSIGN
       | T_AND -> AND
+      | T_IMPLIES -> IMPLIES
+      | T_OLD -> OLD
       | T_ADDOP -> ADDOP
       | T_ACTOR -> ACTOR
+      | T_INVARIANT -> INVARIANT
       | T_WRAPADDOP -> WRAPADDOP
       | T_WRAPSUBOP -> WRAPSUBOP
       | T_WRAPMULOP -> WRAPMULOP

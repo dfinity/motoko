@@ -45,7 +45,7 @@ let rec exp m e = match e.it with
       | Var -> err m e.at
     end
   | ObjBlockE (_, dfs) -> dec_fields m dfs
-  | ObjE efs -> exp_fields m efs
+  | ObjE (bases, efs) -> List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()
@@ -56,7 +56,7 @@ let rec exp m e = match e.it with
   | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
-  | AnnotE (exp1, _) | IgnoreE exp1   | DoOptE exp1 -> exp m exp1
+  | AnnotE (exp1, _) | IgnoreE exp1 | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
 
   (* Clearly non-static *)
@@ -69,7 +69,7 @@ let rec exp m e = match e.it with
   | LabelE _
   | BreakE _
   | RetE _
-  | AsyncE _
+  | AsyncE _ (* TBR - Cmp could be static *)
   | AwaitE _
   | LoopE _
   | BinE _
@@ -86,11 +86,15 @@ let rec exp m e = match e.it with
   | ThrowE _
   | TryE _
   | BangE _
+  | ImpliesE _
+  | OldE _
   -> err m e.at
 
 and dec_fields m dfs = List.iter (fun df -> dec m df.it.dec) dfs
 
-and exp_fields m efs = List.iter (fun (ef : exp_field) -> exp m ef.it.exp) efs
+and exp_fields m efs = List.iter (fun (ef : exp_field) ->
+  if ef.it.mut.it = Var then err m ef.at;
+  exp m ef.it.exp) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()

@@ -241,7 +241,7 @@ and t_exp' env = function
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
     LabelE (id, typ, t_exp env exp1)
-  | AsyncE (tb, e, typ) -> AsyncE (tb, t_exp env e, typ)
+  | AsyncE (s, tb, e, typ) -> AsyncE (s, tb, t_exp env e, typ)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp env exp1)
   | DefineE (id, mut ,exp1) ->
@@ -250,7 +250,7 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
+  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
@@ -258,6 +258,7 @@ and t_exp' env = function
     let preupgrade' = t_exp env1 preupgrade in
     let postupgrade' = t_exp env1 postupgrade in
     let heartbeat' = t_exp env1 heartbeat in
+    let timer' = t_exp env1 timer in
     let inspect' = t_exp env1 inspect in
     let decls = eq_decls !(env1.params) in
     ActorE (decls @ ds', fields,
@@ -265,6 +266,7 @@ and t_exp' env = function
        preupgrade = preupgrade';
        postupgrade = postupgrade';
        heartbeat = heartbeat';
+       timer = timer';
        inspect = inspect'
       }, typ)
 
@@ -282,6 +284,7 @@ and t_dec' env dec' =
   match dec' with
   | LetD (pat,exp) -> LetD (pat,t_exp env exp)
   | VarD (id, typ, exp) -> VarD (id, typ, t_exp env exp)
+  | RefD (id, typ, lexp) -> RefD (id, typ, t_lexp env lexp)
 
 and t_decs env decs = List.map (t_dec env) decs
 
@@ -294,12 +297,13 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = eq_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; inspect}, typ) ->
+  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
     let preupgrade' = t_exp env preupgrade in
     let postupgrade' = t_exp env postupgrade in
     let heartbeat' = t_exp env heartbeat in
+    let timer' = t_exp env timer in
     let inspect' = t_exp env inspect in
     let decls = eq_decls !(env.params) in
     ActorU (as_opt, decls @ ds', fields,
@@ -307,6 +311,7 @@ and t_comp_unit = function
        preupgrade = preupgrade';
        postupgrade = postupgrade';
        heartbeat = heartbeat';
+       timer = timer';
        inspect = inspect'
       }, typ)
 

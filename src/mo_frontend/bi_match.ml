@@ -24,7 +24,7 @@ let display_rel = Lib.Format.display pp_rel
 
 exception Bimatch of string
 
-module SS = Set.Make (struct type t = typ * typ let compare = compare end)
+module SS = Set.Make (OrdPair)
 
 (* Types that are denotable (ranged over) by type variables *)
 let denotable t =
@@ -175,11 +175,13 @@ let bi_match_subs scope_opt tbs subs typ_opt =
        | None -> None
       )
       else None
-    | Async (t11, t12), Async (t21, t22) ->
-      (match bi_equate_typ rel eq inst any t11 t21  with
-       | Some inst ->
-         bi_match_typ rel eq inst any t12 t22
-       | None -> None)
+    | Async (s1, t11, t12), Async (s2, t21, t22) ->
+      if s1 = s2 then
+        (match bi_equate_typ rel eq inst any t11 t21  with
+         | Some inst ->
+           bi_match_typ rel eq inst any t12 t22
+         | None -> None)
+      else None
     | Mut t1', Mut t2' ->
       bi_equate_typ rel eq inst any t1' t2'
     | Typ c1, Typ c2 ->

@@ -15,13 +15,13 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | TagE (x, exp1) -> f { exp with it = TagE (x, over_exp f exp1) }
   | DotE (exp1, x) -> f { exp with it = DotE (over_exp f exp1, x) }
   | NotE exp1 -> f { exp with it = NotE (over_exp f exp1) }
-  | AssertE exp1 -> f { exp with it = AssertE (over_exp f exp1) }
+  | AssertE (how, exp1) -> f { exp with it = AssertE (how, over_exp f exp1) }
   | LabelE (x, y, exp1) -> f { exp with it = LabelE (x, y, over_exp f exp1) }
   | BreakE (x, exp1) -> f { exp with it = BreakE (x, over_exp f exp1) }
   | RetE exp1 -> f { exp with it = RetE (over_exp f exp1) }
   | AnnotE (exp1, x) -> f { exp with it = AnnotE (over_exp f exp1, x) }
-  | AsyncE (tb, exp1) -> f { exp with it = AsyncE (tb, over_exp f exp1) }
-  | AwaitE exp1 -> f { exp with it = AwaitE (over_exp f exp1) }
+  | AsyncE (s, tb, exp1) -> f { exp with it = AsyncE (s, tb, over_exp f exp1) }
+  | AwaitE (s, exp1) -> f { exp with it = AwaitE (s, over_exp f exp1) }
   | ThrowE exp1 -> f { exp with it = ThrowE (over_exp f exp1) }
   | BinE (x, exp1, y, exp2) ->
      f { exp with it = BinE (x, over_exp f exp1, y, over_exp f exp2) }
@@ -37,6 +37,9 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = AndE (over_exp f exp1, over_exp f exp2) }
   | OrE (exp1, exp2) ->
      f { exp with it = OrE (over_exp f exp1, over_exp f exp2) }
+  | ImpliesE (exp1, exp2) ->
+     f { exp with it = ImpliesE (over_exp f exp1, over_exp f exp2) }
+  | OldE exp1 -> f { exp with it = OldE (over_exp f exp1) }
   | WhileE (exp1, exp2) ->
      f { exp with it = WhileE (over_exp f exp1, over_exp f exp2) }
   | LoopE (exp1, exp2_opt) ->
@@ -53,8 +56,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = BlockE (List.map (over_dec f) ds) }
   | ObjBlockE (x, dfs) ->
      f { exp with it = ObjBlockE (x, List.map (over_dec_field f) dfs) }
-  | ObjE efs ->
-     f { exp with it = ObjE (List.map (over_exp_field f) efs) }
+  | ObjE (bases, efs) ->
+     f { exp with it = ObjE (List.map (over_exp f) bases, List.map (over_exp_field f) efs) }
   | IfE (exp1, exp2, exp3) ->
      f { exp with it = IfE(over_exp f exp1, over_exp f exp2, over_exp f exp3) }
   | TryE (exp1, cases) ->

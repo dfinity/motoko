@@ -5,11 +5,16 @@ _out-dbg
 _output
 _build
 target
+node_modules
+.docusaurus
 
 **/*~
 result*
 
 /samples/**/*.txt
+
+**/*.mo.vpr
+test/viper/tmp
 
 enable-internals
 

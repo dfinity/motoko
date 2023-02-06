@@ -1,0 +1,7 @@
+(lang dune 3.0)
+
+(env
+ (_
+  (js_of_ocaml
+    (flags --no-extern-fs --no-source-map --target-env browser)
+    (link_flags))))

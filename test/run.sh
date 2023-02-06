@@ -13,6 +13,7 @@
 #    -i: Only check mo to idl generation
 #    -p: Produce perf statistics
 #        only compiles and runs drun, writes stats to $PERF_OUT
+#    -v: Translate to Viper
 #
 
 function realpath() {
@@ -24,7 +25,8 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-WASMTIME_OPTIONS="--disable-cache --cranelift"
+VIPER=no
+WASMTIME_OPTIONS="--disable-cache"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -35,7 +37,7 @@ ECHO=echo
 # Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
 EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
 
-while getopts "adpstir" o; do
+while getopts "adpstirv" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -55,6 +57,9 @@ while getopts "adpstir" o; do
         i)
             IDL=yes
             ;;
+        v)
+            VIPER=yes
+            ;;
     esac
 done
 
@@ -66,6 +71,7 @@ function normalize () {
   if [ -e "$1" ]
   then
     grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
+    grep -a -E -v 'note: using the' |
     sed -e 's/\x00//g' \
         -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
         -e 's/^.*[IW], hypervisor:/hypervisor:/g' \
@@ -81,7 +87,10 @@ function normalize () {
     sed -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
         -e 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' \
         -e 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
+    sed -e 's/^  \(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations (later version)
+    sed -e 's/wasm `unreachable` instruction executed/unreachable/g' | # cross-version normalisation
     sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
     # Normalize canister id prefixes in debug prints
@@ -89,7 +98,9 @@ function normalize () {
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
-    sed -e '/RTS error: Cannot grow memory/q' \
+    sed -e '/RTS error: Cannot grow memory/q' |
+    # Delete Viper meta-output
+    sed -e '/^Silicon /d' \
         > $1.norm
     mv $1.norm $1
   fi
@@ -259,6 +270,20 @@ do
         if [ "$idl_succeeded" -eq 0 ]
         then
           run didc didc --check $out/$base.did
+        fi
+      elif [ $VIPER = 'yes' ]
+      then
+        run vpr $moc_with_flags --viper $base.mo -o $out/$base.vpr
+        vpr_succeeded=$?
+
+        normalize $out/$base.vpr
+        diff_files="$diff_files $base.vpr"
+
+        if [ "$vpr_succeeded" -eq 0 ]
+        then
+	  run silicon java -Xmx2048m -Xss16m -cp $VIPER_SERVER \
+	    viper.silicon.SiliconRunner --logLevel OFF --z3Exe $(which z3) \
+	    $out/$base.vpr
         fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]

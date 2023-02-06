@@ -11,7 +11,7 @@ let
   };
 
   # dump nixpkgs patches here
-  nixpkgs-patches = [];
+  nixpkgs-patches = [ ];
 
   nixpkgs-patched =
     if nixpkgs-patches == []
@@ -36,18 +36,37 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
+        # wasmtime not broken
+        # (was marked broken on darwin in https://github.com/NixOS/nixpkgs/pull/173671)
+        (self: super: {
+           wasmtime = super.wasmtime.overrideAttrs (o: { meta = o.meta // { broken = false; };});
+        })
+
         # Selecting the ocaml version
-        # (self: super: { ocamlPackages = super.ocamlPackages; })
+        # Also update ocmal-version in src/*/.ocamlformat!
+        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
 
         (
           self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // {
               obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) lib fetchFromGitHub ocaml dune_2;
+                inherit (self) lib fetchFromGitHub ocaml dune_3;
                 inherit (self) ocamlPackages;
                 inherit (self.stdenv) mkDerivation;
               };
+
+              # downgrade wasm until we have support for 2.0.0
+              # (https://github.com/dfinity/motoko/pull/3364)
+              wasm = super.ocamlPackages.wasm.overrideAttrs (_: rec {
+                version = "1.1.1";
+                src = self.fetchFromGitHub {
+                  owner = "WebAssembly";
+                  repo = "spec";
+                  rev = "opam-${version}";
+                  sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
+                };
+              });
             };
           }
         )
@@ -76,9 +95,9 @@ let
           };
         })
 
-        # Rust 1.62
+        # Rust 1.66
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-06-30"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-12-15"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform {
             rustc = rust-channel.rust;
@@ -100,9 +119,6 @@ let
             sha256 = "0gjahsqqq99dc4bjcx9p3z8adpwy51w3mzrf57nib856jlvlfmv5";
           };
         })
-
-        # get nix-build-uncached 1.1.1 (can be removed once that’s in our nixpkgs)
-        (self: super: { nix-build-uncached = self.callPackage ./nix-build-uncached.nix {}; })
       ];
     };
 in

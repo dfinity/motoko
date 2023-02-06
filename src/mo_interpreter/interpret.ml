@@ -1,6 +1,7 @@
 open Mo_def
 open Mo_values
 open Mo_types
+open Mo_config
 
 open Syntax
 open Source
@@ -16,6 +17,12 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
+type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
+
+(* The actor heap. 
+    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities. 
+*)
+let state = ref V.Env.empty
 
 type flags =
   { trace : bool;
@@ -35,6 +42,7 @@ type env =
     rets : ret_env;
     throws : throw_env;
     self : V.actor_id;
+    actor_env : actor_env;
   }
 
 let adjoin_scope scope1 scope2 =
@@ -49,7 +57,7 @@ let empty_scope = { val_env = V.Env.empty; lib_env = V.Env.empty }
 let lib_scope f v scope : scope =
   { scope with lib_env = V.Env.add f v scope.lib_env }
 
-let env_of_scope flags scope =
+let env_of_scope flags ae scope =
   { flags;
     vals = scope.val_env;
     libs = scope.lib_env;
@@ -57,6 +65,7 @@ let env_of_scope flags scope =
     rets = None;
     throws = None;
     self = V.top_id;
+    actor_env = ae;
   }
 
 let context env = V.Blob env.self
@@ -64,6 +73,7 @@ let context env = V.Blob env.self
 (* Error handling *)
 
 exception Trap of Source.region * string
+exception Cancel of string
 
 let trap at fmt = Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 
@@ -91,7 +101,7 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope {trace = false; print_depth = 2} empty_scope)
+let last_env = ref (env_of_scope {trace = false; print_depth = 2} state empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
@@ -108,6 +118,9 @@ let print_exn flags exn =
 
 (* Scheduling *)
 
+let step_total = ref 0
+let step_limit = ref 0
+
 module Scheduler =
 struct
   let q : (unit -> unit) Queue.t = Queue.create ()
@@ -119,6 +132,30 @@ struct
       Printf.eprintf "%s: execution error, %s\n" (Source.string_of_region at) msg
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
+
+  let tmp : (unit -> unit) Queue.t = Queue.create ()
+  let bounce work =
+    (* add work to *front* of queue *)
+    Queue.transfer q tmp;
+    Queue.add work q;
+    Queue.transfer tmp q
+
+  let interval = 128
+  let count = ref interval
+  let trampoline3 f x y z =
+    if !Flags.ocaml_js then begin
+        step_total := (!step_total) + 1;
+        if !step_total = !step_limit then raise (Cancel "interpreter reached step limit");
+        if !count <= 0 then begin
+            count := interval;
+            bounce (fun () -> f x y z);
+          end
+        else begin
+            count := (!count) - 1;
+            f x y z
+          end
+      end
+    else f x y z
 end
 
 
@@ -363,7 +400,8 @@ let check_call_conv_arg env exp v call_conv =
     )
 
 let rec interpret_exp env exp (k : V.value V.cont) =
-  interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
+  Scheduler.trampoline3
+    interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
@@ -371,9 +409,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
-    k (V.Func (CC.call_conv_of_typ exp.note.note_typ, fun env v k ->
-      try Prim.prim s env v k
-      with Invalid_argument s -> trap exp.at "%s" s
+    k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
+       Prim.prim { Prim.trap = trap exp.at "%s" } s
     ))
   | VarE id ->
     begin match Lib.Promise.value_opt (find id.it env.vals) with
@@ -392,7 +429,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_lit env lit)
   | ActorUrlE url ->
     interpret_exp env url (fun v1 ->
-      match Ic.Url.decode_principal (V.as_text v1) with
+      let url_text = V.as_text v1 in
+      match Ic.Url.decode_principal url_text with
+      (* create placeholder functions (see #3683) *)
       | Ok bytes -> k (V.Blob bytes)
       | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
@@ -437,8 +476,23 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjBlockE (obj_sort, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
-  | ObjE exp_fields ->
-    interpret_exp_fields env exp_fields V.Env.empty (fun env -> k (V.Obj env))
+  | ObjE (exp_bases, exp_fields) ->
+    let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
+    let open V.Env in
+    let merges =
+      List.fold_left
+        (merge (fun _ l r -> match l, r with | l, None -> l | None, r -> r | _ -> assert false))
+        empty in
+    (* remove dynamic fields not present in the type as well as overwritten fields *)
+    let labs = List.map (fun (f : Syntax.exp_field) -> f.it.id.it) exp_fields in
+    let tys = List.(map (fun b ->
+                         T.as_obj b.note.note_typ |>
+                         snd |>
+                         filter (fun f -> not (mem f.T.lab labs)))) exp_bases in
+    let strip vs =
+      let known fs k _ = List.exists (fun { T.lab; _ } -> k = lab) fs in
+      List.map2 (fun fs v -> filter (known fs) (V.as_obj v)) tys vs in
+    interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -446,6 +500,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       match v1 with
       | V.Obj fs ->
         k (find id.it fs)
+      | V.Blob aid when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
+        begin match V.Env.find_opt aid !(env.actor_env) with
+        (* not quite correct: On the platform, you can invoke and get a reject *)
+        | None -> trap exp.at "Unkown actor \"%s\"" aid
+        | Some actor_value ->
+          let fs = V.as_obj actor_value in
+          match V.Env.find_opt id.it fs with
+          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" aid id.it
+          | Some field_value -> k field_value
+        end
       | V.Array vs ->
         let f = match id.it with
           | "size" -> array_size
@@ -453,19 +517,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | "put" -> array_put
           | "keys" -> array_keys
           | "vals" -> array_vals
-          | _ -> assert false
+          | s -> assert false
         in k (f vs exp.at)
       | V.Text s ->
         let f = match id.it with
           | "size" -> text_len
           | "chars" -> text_chars
-          | _ -> assert false
+          | s -> assert false
         in k (f s exp.at)
-      | V.Blob b ->
+      | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
           | "vals" -> blob_vals
-          | _ -> assert false
+          | s -> assert false
         in k (f b exp.at)
       | _ -> assert false
     )
@@ -530,6 +594,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       then k v1
       else interpret_exp env exp2 k
     )
+  | ImpliesE (exp1, exp2) ->
+    interpret_exp env exp1 (fun v1 ->
+      interpret_exp env exp2 (fun v2 ->
+        k V.(Bool (as_bool v1 <= as_bool v2))
+      )
+    )
+  | OldE exp1 ->
+    interpret_exp env exp1 (fun v1 -> k v1)
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
@@ -594,22 +666,30 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | AsyncE (_, exp1) ->
+  | AsyncE (T.Fut, _, exp1) ->
     async env
       exp.at
       (fun k' r ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
         in interpret_exp env' exp1 k')
       k
-  | AwaitE exp1 ->
+  | AsyncE (T.Cmp, _, exp1) ->
+    k (V.Comp (fun k' r ->
+      let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
+      in interpret_exp env' exp1 k'))
+  | AwaitE (T.Fut, exp1) ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)
-  | AssertE exp1 ->
+  | AwaitE (T.Cmp, exp1) ->
+    interpret_exp env exp1
+      (fun v1 -> (V.as_comp v1) k (Option.get env.throws))
+  | AssertE (Runtime, exp1) ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
       then k V.unit
       else trap exp.at "assertion failure"
     )
+  | AssertE (_, exp1) -> k V.unit
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
   | IgnoreE exp1 ->
@@ -620,6 +700,8 @@ and interpret_exps env exps vs (k : V.value list V.cont) =
   | [] -> k (List.rev vs)
   | exp::exps' ->
     interpret_exp env exp (fun v -> interpret_exps env exps' (v::vs) k)
+
+(* Objects *)
 
 and interpret_exp_fields env exp_fields fld_env (k : V.value V.Env.t V.cont) =
   match exp_fields with
@@ -813,10 +895,19 @@ and match_shared_pat env shared_pat c =
 (* Objects *)
 
 and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
-  let self = if obj_sort = T.Actor then V.fresh_id() else env.self in
-  let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
-  let env' = adjoin_vals { env with self = self } ve_in in
-  interpret_dec_fields env' dec_fields ve_ex k
+  match obj_sort with
+  | T.Actor ->
+     let self = V.fresh_id() in
+     let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
+     let env' = adjoin_vals { env with self = self } ve_in in
+     interpret_dec_fields env' dec_fields ve_ex
+     (fun obj ->
+        (env.actor_env := V.Env.add self obj !(env.actor_env);
+          k (V.Blob self)))
+  | _ ->
+     let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
+     let env' = adjoin_vals env ve_in in
+     interpret_dec_fields env' dec_fields ve_ex k
 
 and declare_dec_fields dec_fields ve_ex ve_in : val_env * val_env =
   match dec_fields with
@@ -933,11 +1024,33 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
 
 (* Programs *)
 
+let ensure_management_canister env =
+  if V.Env.mem "" (!(env.actor_env))
+  then ()
+  else
+    env.actor_env :=
+      V.Env.add
+        (* ManagementCanister with raw_rand (only) *)
+        ""
+        (V.Obj
+           (V.Env.singleton "raw_rand"
+              (V.async_func (T.Write) 0 1
+                 (fun c v k ->
+                   async env
+                     Source.no_region
+                     (fun k' r ->
+                       k' (V.Blob (V.Blob.rand32 ())))
+                     k))))
+        !(env.actor_env)
+
 let interpret_prog flags scope p : (V.value * scope) option =
+  step_total := 0;
+  let state = state in
   try
     let env =
-      { (env_of_scope flags scope) with
-          throws = Some (fun v -> trap !last_region "uncaught throw") } in
+      { (env_of_scope flags state scope) with
+        throws = Some (fun v -> trap !last_region "uncaught throw") } in
+    ensure_management_canister env;
     trace_depth := 0;
     let vo = ref None in
     let ve = ref V.Env.empty in
@@ -949,7 +1062,11 @@ let interpret_prog flags scope p : (V.value * scope) option =
     match !vo with
     | Some v -> Some (v, scope)
     | None -> None
-  with exn ->
+  with
+  | Cancel s ->
+    Printf.eprintf "cancelled: %s\n" s;
+    None
+  | exn ->
     (* For debugging, should never happen. *)
     print_exn flags exn;
     None
@@ -965,12 +1082,21 @@ let import_lib env lib =
   | Syntax.ModuleU _ ->
     fun v -> v
   | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
-    fun v -> V.Obj (V.Env.singleton id.it v)
+    fun v -> V.Obj (V.Env.from_list
+      [ (id.it, v);
+        ("system",
+         V.Obj (V.Env.singleton id.it (
+          V.local_func 1 1 (fun c w k ->
+            let tag, w1 = V.as_variant w in
+            let o = V.as_obj w1 in
+            if tag = "new" && V.Env.find "settings" o = V.Null
+            then k v
+            else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | _ -> assert false
 
 
 let interpret_lib flags scope lib : scope =
-  let env = env_of_scope flags scope in
+  let env = env_of_scope flags state scope in
   trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in
