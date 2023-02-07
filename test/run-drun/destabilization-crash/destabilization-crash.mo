@@ -33,7 +33,8 @@ actor a {
    };
 
    system func postupgrade() {
-     Prim.debugPrint "postupgrade!"
+     Prim.debugPrint "postupgrade!";
+     assert false; // trap to avoid saving state to disk
    }
 
 }
