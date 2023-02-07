@@ -1153,7 +1153,7 @@ module Stack = struct
   *)
 
   (*  let end_ = Int32.mul 2l page_size (* 128k of stack *) *)
-  let end_ = Int32.mul 32l page_size (* 128k of stack *)
+  let end_ = Int32.mul 32l page_size (* 2MB of stack *)
 
   let register_globals env =
     (* stack pointer *)
@@ -1165,15 +1165,14 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
-  (* TODO: check for overflow *)
   let alloc_words env n =
-    (* first, check for underflow *)
+    (* first, check for stack underflow *)
+    (* optimize me *)
     get_stack_ptr env ^^
-    compile_divU_const Heap.word_size ^^
-    compile_unboxed_const n ^^
+    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
     E.then_trap_with env "RTS Stack underflow" ^^
-    (* alloc works *)
+    (* alloc words *)
     get_stack_ptr env ^^
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
