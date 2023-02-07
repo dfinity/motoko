@@ -19,8 +19,8 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
-(* The actor heap. 
-    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities. 
+(* The actor heap.
+    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities.
 *)
 let state = ref V.Env.empty
 
@@ -770,43 +770,40 @@ and declare_pat_fields pfs ve : val_env =
 and define_id env id v =
   Lib.Promise.fulfill (find id.it env.vals) v
 
-and define_pat env (k : V.value V.cont) err pat v =
+and define_pat env pat v =
   match pat.it with
-  | WildP -> k v 
-  | LitP _ | SignP _ | AltP _ ->
-    if match_pat pat v = None
-    then err ()
-    else k v
-  | VarP id -> 
+  | WildP -> true
+  | LitP _ | SignP _ | AltP _ -> match_pat pat v = None
+  | VarP id ->
     define_id env id v;
-    k v
+    true
   | TupP pats ->
-    define_pats env k err pats (V.as_tup v)
-  | ObjP pfs -> 
-    define_pat_fields env k err pfs (V.as_obj v)
+    define_pats env pats (V.as_tup v)
+  | ObjP pfs ->
+    define_pat_fields env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
-    | V.Opt v1 -> define_pat env k err pat1 v1
-    | V.Null -> err ()
+    | V.Opt v1 -> define_pat env pat1 v1
+    | V.Null -> false
     | _ -> assert false
     )
   | TagP (i, pat1) ->
     let lab, v1 = V.as_variant v in
     if lab = i.it
-    then define_pat env k err pat1 v1
-    else err ()
+    then define_pat env pat1 v1
+    else false
   | AnnotP (pat1, _)
-  | ParP pat1 -> define_pat env k err pat1 v
+  | ParP pat1 -> define_pat env pat1 v
 
-and define_pats env (k : V.value V.cont) err pats vs  =
-  List.iter2 (define_pat env k err) pats vs
+and define_pats env pats vs =
+  List.fold_left (fun acc (pat, v) -> acc && define_pat env pat v) true (List.combine pats vs)
 
-and define_pat_fields env k err pfs vs =
-  List.iter (define_pat_field env k err vs) pfs
+and define_pat_fields env pfs vs =
+  List.fold_left (fun acc pf -> acc && define_pat_field env vs pf) true pfs
 
-and define_pat_field env k err vs pf =
+and define_pat_field env vs pf =
   let v = V.Env.find pf.it.id.it vs in
-  define_pat env k err pf.it.pat v
+  define_pat env pf.it.pat v
 
 and match_lit lit v : bool =
   match !lit, v with
@@ -959,13 +956,14 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
-  | LetD (pat, exp, fail) -> 
-    interpret_exp env exp (fun v -> 
-      let err () = match fail with
+  | LetD (pat, exp, fail) ->
+    interpret_exp env exp (fun v ->
+      if define_pat env pat v then
+        k v
+      else
+        match fail with
         | Some fail -> interpret_exp env fail (fun _ -> assert false)
         | None -> trap pat.at "value %s does not match pattern" (string_of_val env v)
-      in
-      define_pat env k err pat v
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
