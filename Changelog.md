@@ -1,5 +1,17 @@
 # Motoko compiler changelog
 
+## 0.8.1 (2023-02-03)
+
+* motoko (`moc`)
+
+  * Performance improvement: faster heap allocation (#3765).
+
+  * bugfix: `async` returns involving abbreviated tuple types no longer crash the compiler (#3740, #3741).
+
+  * bugfix: avoid quadratic code expansion due to imported, but unused, actor classes (#3758).
+
+## 0.8.0 (2023-01-27)
+
 * motoko (`moc`)
 
   * BREAKING CHANGE
@@ -13,6 +25,8 @@
     Very few users should be affected by this change in behaviour.
 
   * BREAKING CHANGE
+
+    Failure to send a message no longer traps but, instead, throws a catchable `Error` with new error code `#call_error` (#3630).
 
     On the IC, the act of making a call to a canister function can fail, so that the call cannot (and will not be) performed.
     This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
@@ -83,6 +97,8 @@
 
     Calling `allOrNothing()` will not send any messages: the loop exits with an error on queue full,
     the error is caught, but `assert false` traps so all queued `inc()` messages are aborted.
+
+  * bugfix: system method `inspect` involving message with single tuple argument no longer crashes the compiler (#3732, #3733).
 
 ## 0.7.6 (2023-01-20)
 

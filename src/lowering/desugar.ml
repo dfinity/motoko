@@ -356,10 +356,10 @@ and call_system_func_opt name es obj_typ =
               (List.map (fun tf ->
                 (tf.T.lab,
                   match tf.T.typ with
-                  | T.Func(T.Local, _,  [], [], ts) ->
-                    let unit = fresh_var "unit" T.unit in
-                    tagE tf.T.lab (unit -->
-                      (primE (Ir.DeserializePrim ts) [varE arg]))
+                  | T.Func(T.Local, _, [], [], ts) ->
+                    tagE tf.T.lab
+                      T.(funcE ("$"^tf.lab) Local Returns [] [] ts
+                        (primE (Ir.DeserializePrim ts) [varE arg]))
                   | _ -> assert false))
                 (T.as_variant msg_typ))
                (* Trap early, refusing all other messages,
@@ -911,19 +911,12 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
 type import_declaration = Ir.dec list
 
-let actor_class_mod_exp id class_typ install =
-  let install_typ = install.note.Note.typ in
+let actor_class_mod_exp id class_typ default system =
   let class_con = Cons.fresh id (T.Def([], class_typ)) in
-  let install_var = fresh_var id install_typ in
-  let install_new =
-    (varE install_var) -*- (tagE "new" (recordE ["settings", nullE()]))
-  in
-  blockE
-    [ letD install_var install ]
-    (objE T.Module
-      [(id, class_con)]
-      [(id, install_new);
-       ("system", objE T.Module [] [(id, varE install_var)])])
+  (objE T.Module
+     [(id, class_con)]
+     [(id, default);
+      ("system", objE T.Module [] [(id, system)])])
 
 let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in
@@ -946,105 +939,41 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let _, _, t_actor = T.as_async (T.normalize t_async) in
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
-  let available = fresh_var "available" T.nat in
-  let accepted = fresh_var "accepted" T.nat in
-  let cycles = var "@cycles" (T.Mut (T.nat)) in
-  let install_arg =
-    fresh_var "install_arg" T.install_arg_typ
+  let install_actor_helper = var "@install_actor_helper"
+    T.(Func (Local, Returns, [scope_bind],
+      [install_arg_typ; blob; blob],
+      [Async(Cmp, Var (default_scope_var, 0), principal)]))
   in
-  let installBody =
+  let wasm_blob = fresh_var "wasm_blob" T.blob in
+  let install_arg =
+    fresh_var "install_arg" T.install_arg_typ  in
+  let system_body install_arg =
     let vs = fresh_vars "param" ts1' in
     let principal = fresh_var "principal" T.principal in
-    let principal1 = fresh_var "principal1" T.principal in
-    let actor1 = fresh_var "actor1" T.(obj Actor []) in
-    let actor2 = fresh_var "actor2" T.(obj Actor []) in
-    let mode_typ = T.(sum [
-      ("install", unit);
-      ("reinstall", unit);
-      ("upgrade",  unit) ])
-    in
-    let record_typ = T.(obj Object [
-      ("mode", mode_typ);
-      ("canister_id", principal);
-      ("wasm_module", blob);
-      ("arg", blob)])
-    in
-    let ic00_install_code = var "@ic00_install_code"
-      T.(Func (Local, Returns, [],
-          [],
-          [Func (Shared Write, Promises, [scope_bind],
-            [record_typ],
-            [])]))
-    in
-    let ic00_create_canister = var "@ic00_create_canister"
-      T.(Func (Local, Returns, [],
-          [],
-          [Func (Shared Write, Promises, [scope_bind],
-            [canister_settings_typ],
-            [obj Object ["canister_id", principal]])]))
-    in
-    let modeprincipal =
-      fresh_var "modeprincipal" T.(Tup [mode_typ; principal])
-    in
-    let record =
-      fresh_var "record" record_typ in
-    let settings =
-      fresh_var "settings" T.canister_settings_typ
-    in
     funcE id T.Local T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
-    (asyncE T.Fut (* TBR *)
+    (asyncE T.Fut
       (typ_arg c' T.Scope T.scope_bound)
-      (blockE
-        [ letD modeprincipal
-            (switch_variantE (varE install_arg) [
-               ("new", varP settings,
-                tupE [
-                  tagE "install" (unitE());
-                  blockE
-                    [ (* pass on cycles *)
-                      letD available (primE Ir.SystemCyclesAvailablePrim []);
-                      letD accepted (primE Ir.SystemCyclesAcceptPrim [varE available]);
-                      expD (assignE cycles (varE accepted)) ]
-                      (dotE
-                         (awaitE T.Fut
-                           (callE (callE (varE ic00_create_canister) [] (unitE()))
-                              cs' (varE settings)))
-                         "canister_id" T.principal)]);
-               ("install", varP principal1,
-                tupE [tagE "install" (unitE());
-                      varE principal1]);
-               ("reinstall", varP actor1,
-                tupE [tagE "reinstall" (unitE());
-                      primE (Ir.CastPrim (T.(obj Actor []), T.principal)) [varE actor1]]);
-               ("upgrade", varP actor2,
-                tupE [tagE "upgrade" (unitE());
-                      primE (Ir.CastPrim (T.(obj Actor []), T.principal)) [varE actor2]])]
-               (T.(Tup [mode_typ; principal])));
-          letD principal (projE (varE modeprincipal) 1);
-          letD record (recordE [
-            ("mode", projE (varE modeprincipal) 0);
-            ("canister_id", varE principal);
-            ("wasm_module", blobE wasm);
-            ("arg", primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)])
-          ]);
-          expD (awaitE T.Fut (callE (callE (varE ic00_install_code) [] (unitE()) ) cs' (varE record)))
-        ]
+      (letE principal
+        (awaitE T.Cmp
+          (callE (varE install_actor_helper) cs'
+            (tupE [
+              install_arg;
+              varE wasm_blob;
+              primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
       (List.hd cs))
   in
-  let install =
-    funcE id T.Local T.Returns
-      []
-      ([arg_of_var install_arg])
-      [installBody.note.Note.typ]
-    installBody
+  let system = install_arg --> (system_body (varE install_arg)) in
+  let default =
+    system_body (tagE "new" (recordE ["settings", nullE()]))
   in
-  let mod_exp = actor_class_mod_exp id class_typ install in
+  let mod_exp = actor_class_mod_exp id class_typ default system in
   let mod_typ = mod_exp.note.Note.typ in
-  [ letD (var (id_of_full_path f) mod_typ) mod_exp ]
+  [ letD wasm_blob (blobE wasm);
+    letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 let import_prelude prelude : import_declaration =
   decs prelude.it
@@ -1065,7 +994,6 @@ let inject_decs extra_ds u =
 
 let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
-
 
 let transform_import (i : S.import) : import_declaration =
   let (p, f, ir) = i.it in
@@ -1140,55 +1068,51 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let imports' = List.concat_map transform_import imports in
   let body' = transform_unit_body body in
   let prog = inject_decs imports' body' in
-  let exp = match prog with
-    | I.LibU (ds, e) -> blockE ds e
-    | I.ActorU (None, ds, fs, up, t) ->
-      raise (Invalid_argument "Desugar: Cannot import actor")
-    | I.ActorU (Some as_, ds, fs, up, actor_t) ->
-      let id = match body.it with
-        | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
-        | _ -> assert false
-      in
-      let s, cntrl, tbs, ts1, ts2 = T.as_func t in
-      let cs = T.open_binds [T.scope_bind] in
-      let c, _ = T.as_con (List.hd cs) in
-      let cs' = T.open_binds [T.scope_bind] in
-      let c', _ = T.as_con (List.hd cs') in
-      let body =
-        asyncE
+  match prog with
+  | I.LibU (ds, e) ->
+    let exp = blockE ds e in
+    [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
+  | I.ActorU (None, ds, fs, up, t) ->
+    raise (Invalid_argument "Desugar: Cannot import actor")
+  | I.ActorU (Some as_, ds, fs, up, actor_t) ->
+    let id = match body.it with
+      | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
+      | _ -> assert false
+    in
+    let s, cntrl, tbs, ts1, ts2 = T.as_func t in
+    let cs = T.open_binds [T.scope_bind] in
+    let c, _ = T.as_con (List.hd cs) in
+    let cs' = T.open_binds [T.scope_bind] in
+    let c', _ = T.as_con (List.hd cs') in
+    let class_typ = match List.map T.normalize ts2 with
+      | [ T.Async(_, _, t2) ] -> t2
+      | _ -> assert false in
+    let install_arg =
+      fresh_var "install_arg" T.install_arg_typ
+    in
+    let system_body install_arg =
+      funcE id T.Local T.Returns
+        [typ_arg c T.Scope T.scope_bound]
+        as_
+        [T.Async (T.Fut, List.hd cs, actor_t)]
+        (asyncE
           T.Fut
           (typ_arg c' T.Scope T.scope_bound)
-          { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
-          (List.hd cs)
-      in
-      let class_typ = match List.map T.normalize ts2 with
-        | [ T.Async(_, _, t2) ] -> t2
-        | _ -> assert false in
-      let install_arg =
-        fresh_var "install_arg" T.install_arg_typ
-      in
-      let installBody =
-        funcE id T.Local T.Returns
-          [typ_arg c T.Scope T.scope_bound]
-          as_
-          [T.Async (T.Fut, List.hd cs, actor_t)]
-          body
-      in
-      let install =
-        funcE id T.Local T.Returns
-          []
-          ([arg_of_var install_arg])
-          [installBody.note.Note.typ]
           (ifE
-             (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
-               [ varE install_arg;
-                 tagE "new" (recordE ["settings", nullE()]) ])
-             installBody
+            (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
+              [ install_arg;
+                tagE "new" (recordE ["settings", nullE()]) ])
+             { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
              (primE (Ir.OtherPrim "trap")
                [textE "actor class configuration not supported in interpreter"]))
-      in
-      actor_class_mod_exp id class_typ install
-    | I.ProgU ds ->
-      raise (Invalid_argument "Desugar: Cannot import program")
-  in
-  [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
+          (List.hd cs))
+    in
+    let system = install_arg --> (system_body (varE install_arg)) in
+    let system_var = fresh_var "system" system.note.Note.typ in
+    let default = (varE system_var) -*- (tagE "new" (recordE ["settings", nullE()])) in
+    let mod_exp = actor_class_mod_exp id class_typ default (varE system_var) in
+    let mod_typ = mod_exp.note.Note.typ in
+    [ letD system_var system;
+      letD (var (id_of_full_path f) mod_typ) mod_exp ]
+  | I.ProgU ds ->
+    raise (Invalid_argument "Desugar: Cannot import program")
