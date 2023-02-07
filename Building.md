@@ -109,6 +109,12 @@ Make a PR off of that branch and merge it using a _normal merge_ (not
 squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
 
+Finally tag the base release (so the documentation interpreter can do the right thing):
+* git tag moc-0.8.$MOC_MINOR
+* git push origin moc-0.8.$MOC_MINOR
+
+If you want to update the portal documentation, typically to keep in sync with a `dfx` release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
+
 ## Coverage report
 
 To build with coverage enabled, compile the binaries in `src/` with

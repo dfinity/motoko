@@ -35,5 +35,5 @@ mkDerivation {
   ];
   description = "Integration tests for the language server";
   license = "unknown";
-  hydraPlatforms = lib.platforms.none;
+  mainProgram = "lsp-int";
 }
