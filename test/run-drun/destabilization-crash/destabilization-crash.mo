@@ -29,6 +29,7 @@ actor a {
    };
 
    system func preupgrade() {
+     Prim.debugPrint "postupgrade!";
      fillMB(768);
    };
 
