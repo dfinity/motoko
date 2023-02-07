@@ -1152,7 +1152,8 @@ module Stack = struct
      All pointers here are unskewed.
   *)
 
-  let end_ = Int32.mul 2l page_size (* 128k of stack *)
+  (*  let end_ = Int32.mul 2l page_size (* 128k of stack *) *)
+  let end_ = Int32.mul 32l page_size (* 128k of stack *)
 
   let register_globals env =
     (* stack pointer *)
@@ -1166,6 +1167,13 @@ module Stack = struct
 
   (* TODO: check for overflow *)
   let alloc_words env n =
+    (* first, check for underflow *)
+    get_stack_ptr env ^^
+    compile_divU_const Heap.word_size ^^
+    compile_unboxed_const n ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.then_trap_with env "RTS Stack underflow" ^^
+    (* alloc works *)
     get_stack_ptr env ^^
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
@@ -3931,7 +3939,7 @@ module IC = struct
     )
 
   (* For debugging *)
-  let _compile_static_print env s =
+  let trace env s =
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
   let ic_trap env = system_call env "trap"
@@ -5597,6 +5605,7 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let read_blob () =
+        IC.trace env "b" ^^
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
@@ -5861,6 +5870,7 @@ module MakeSerialization (Strm : Stream) = struct
             ]
         end
       | Prim Null ->
+        IC.trace env "n" ^^                              
         with_prim_typ t (Opt.null_lit env)
       | Any ->
         skip get_idltyp ^^
@@ -5882,6 +5892,7 @@ module MakeSerialization (Strm : Stream) = struct
         with_prim_typ t (Tuple.from_stack env 0)
       (* Composite types *)
       | Tup ts ->
+        IC.trace env "t" ^^
         with_record_typ (fun get_typ_buf get_n_ptr ->
           let (set_val, get_val) = new_local env "val" in
 
@@ -6730,7 +6741,7 @@ module Stabilization = struct
               (* restore mem_size *)
               get_M ^^
               compile_add64_const (Int64.sub page_size64 12L) ^^
-              extend64 (StableMem.read_and_clear_word32 env) ^^ (*TODO: use 64 bits *)
+              extend64 (StableMem.read_and_clear_word32 env) ^^ (*TODO: use 64 bits *) (* THIS TODO NEEDS REVIEW!*)
               StableMem.set_mem_size env ^^
 
               StableMem.get_mem_size env ^^
@@ -6762,6 +6773,7 @@ module Stabilization = struct
               set_offset
             end ^^ (* if_ *)
 
+          IC.trace env "read blob from stable memory" ^^
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
           get_len ^^ Blob.alloc env ^^ set_blob ^^
@@ -6770,6 +6782,12 @@ module Stabilization = struct
           extend64 get_len ^^
           IC.system_call env "stable64_read" ^^
 
+          IC.trace env "grow memory" ^^            
+          compile_unboxed_const 65000l ^^
+            G.i MemoryGrow ^^
+          G.i Drop ^^
+              
+          IC.trace env "deserialize blob to val" ^^
           let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
           get_blob ^^
@@ -6777,16 +6795,19 @@ module Stabilization = struct
           Serialization.deserialize_from_blob true env [ty] ^^
           set_val ^^
 
+          IC.trace env "clear blob contents" ^^
           (* clear blob contents *)
           get_blob ^^
           Blob.clear env ^^
 
+          IC.trace env "copy zeros from blob to stable memory" ^^
           (* copy zeros from blob to stable memory *)
           get_offset ^^
           extend64 (get_blob ^^ Blob.payload_ptr_unskewed) ^^
           extend64 (get_blob ^^ Blob.len env) ^^
           IC.system_call env "stable64_write" ^^
 
+          IC.trace env "return val" ^^
           (* return val *)
           get_val
         end
