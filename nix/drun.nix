@@ -49,6 +49,7 @@ EOF
         llvmPackages_13.libclang
         lmdb
         libunwind
+        libiconv
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];
