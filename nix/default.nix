@@ -11,7 +11,7 @@ let
   };
 
   # dump nixpkgs patches here
-  nixpkgs-patches = [ ];
+  nixpkgs-patches = [ ./wasmtime.diff ];
 
   nixpkgs-patched =
     if nixpkgs-patches == []
@@ -43,8 +43,8 @@ let
         })
 
         # Selecting the ocaml version
-        # Also update ocmal-version in src/*/.ocamlformat!
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
+        # Also update ocaml-version in src/*/.ocamlformat!
+        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_13; })
 
         (
           self: super: {
@@ -58,15 +58,15 @@ let
 
               # downgrade wasm until we have support for 2.0.0
               # (https://github.com/dfinity/motoko/pull/3364)
-              wasm = super.ocamlPackages.wasm.overrideAttrs (_: rec {
-                version = "1.1.1";
-                src = self.fetchFromGitHub {
-                  owner = "WebAssembly";
-                  repo = "spec";
-                  rev = "opam-${version}";
-                  sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
-                };
-              });
+              #wasm = super.ocamlPackages.wasm.overrideAttrs (_: rec {
+              #  version = "1.1.1";
+              #  src = self.fetchFromGitHub {
+              #    owner = "WebAssembly";
+              #    repo = "spec";
+              #    rev = "opam-${version}";
+              #    sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
+              #  };
+              #});
             };
           }
         )

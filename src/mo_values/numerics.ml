@@ -69,10 +69,12 @@ let bigint_of_double (f : Wasm.F64.t) : Big_int.big_int =
   else
     a
 
-(* a mild extension over Was.Int.RepType *)
+(* a mild extension over Wasm.Ixx.RepType *)
 module type WordRepType =
 sig
-  include Wasm.Int.RepType
+  include Wasm.Ixx.RepType
+  val of_int64 : int64 -> t
+  val to_int64 : t -> int64
   val of_big_int : Big_int.big_int -> t (* wrapping *)
   val to_big_int : t -> Big_int.big_int
 end
@@ -82,6 +84,10 @@ struct
   include Int64
   let bitwidth = 64
   let to_hex_string = Printf.sprintf "%Lx"
+
+  let to_int64 i = i
+
+  let of_int64 i = i
 
   let of_big_int i =
     let open Big_int in
@@ -115,6 +121,7 @@ struct
   let minus_one = inj Rep.minus_one
   let max_int = inj (Rep.shift_right_logical Rep.max_int bitdiff)
   let min_int = inj (Rep.shift_right_logical Rep.min_int bitdiff)
+  let abs i = inj (Rep.abs (proj i))
   let neg i = inj (Rep.neg (proj i))
   let add i j = inj (Rep.add (proj i) (proj j))
   let sub i j = inj (Rep.sub (proj i) (proj j))
@@ -132,6 +139,8 @@ struct
   let to_int i = Rep.to_int (proj i)
   let to_string i = group_num (Rep.to_string (proj i))
   let to_hex_string i = group_num (Rep.to_hex_string (proj i))
+  let of_int64 i = inj (Rep.of_int64 i)
+  let to_int64 i = Rep.to_int64 (proj i)
   let of_big_int i = inj (Rep.of_big_int i)
   let to_big_int i = Rep.to_big_int (proj i)
 end
@@ -147,7 +156,7 @@ or wrapping operations on NatN and IntN (see module Ranged)
 
 module type WordType =
 sig
-  include Wasm.Int.S
+  include Wasm.Ixx.S
   val neg : t -> t
   val not : t -> t
   val pow : t -> t -> t
@@ -159,7 +168,7 @@ end
 
 module MakeWord (Rep : WordRepType) : WordType =
 struct
-  module WasmInt = Wasm.Int.Make (Rep)
+  module WasmInt = Wasm.Ixx.Make (Rep)
   include WasmInt
   let neg w = sub zero w
   let not w = xor w (of_int_s (-1))
@@ -184,13 +193,13 @@ module Word64Rep = MakeWord (Int64Rep)
 
 module type FloatType =
 sig
-  include Wasm.Float.S
+  include Wasm.Fxx.S
   val rem : t -> t -> t
   val pow : t -> t -> t
   val to_pretty_string : t -> string
 end
 
-module MakeFloat(WasmFloat : Wasm.Float.S) =
+module MakeFloat(WasmFloat : Wasm.Fxx.S) =
 struct
   include WasmFloat
   let rem x y = of_float (Float.rem (to_float x) (to_float y))
