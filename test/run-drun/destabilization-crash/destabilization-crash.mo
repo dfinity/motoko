@@ -1,6 +1,6 @@
 import Prim = "mo:prim";
 
-
+// test desabilization of stabilized data, without rts stack overflow.
 actor a {
 
    stable let x = Prim.stableMemoryGrow(1);
@@ -29,11 +29,12 @@ actor a {
    };
 
    system func preupgrade() {
-     Prim.debugPrint "postupgrade!";
+     Prim.debugPrint "preupgrade!";
      fillMB(768);
    };
 
    system func postupgrade() {
+     // if we get hear, destabilization has succeeded
      Prim.debugPrint "postupgrade!";
      assert false; // trap to avoid saving state to disk
    }
