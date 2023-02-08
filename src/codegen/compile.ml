@@ -1155,7 +1155,7 @@ module Stack = struct
      grows downwards.)
   *)
 
-  let end_ env = Int32.mul (Int32.of_int (!Flags.rts_stack_pages)) page_size
+  let end_ () = Int32.mul (Int32.of_int (!Flags.rts_stack_pages)) page_size
 
   let register_globals env =
     (* stack pointer *)
@@ -3734,8 +3734,8 @@ module Lifecycle = struct
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
 
-  let ptr env = Stack.end_ env
-  let end_ env = Int32.add (Stack.end_ env) Heap.word_size
+  let ptr () = Stack.end_ ()
+  let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
 
   (* Which states may come before this *)
   let pre_states = function
@@ -3754,11 +3754,11 @@ module Lifecycle = struct
     | InPostUpgrade -> [InInit]
 
   let get env =
-    compile_unboxed_const (ptr env) ^^
+    compile_unboxed_const (ptr ()) ^^
     load_unskewed_ptr
 
   let set env new_state =
-    compile_unboxed_const (ptr env) ^^
+    compile_unboxed_const (ptr ()) ^^
     compile_unboxed_const (int_of_state new_state) ^^
     store_unskewed_ptr
 
@@ -10362,7 +10362,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ env) in
+  let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
 
   IC.register_globals env;
   Stack.register_globals env;
