@@ -344,7 +344,7 @@ rec {
     test_subdir = dir: deps:
       testDerivation {
         src = test_src dir;
-        buildInputs = deps ++ testDerivationDeps;
+        buildInputs = deps ++ testDerivationDeps ++ rtsBuildInputs;
 
         checkPhase = ''
             patchShebangs .

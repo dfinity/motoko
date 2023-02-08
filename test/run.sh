@@ -550,6 +550,18 @@ do
     done
   fi
   popd >/dev/null
+  
+  if [ -e core.* ]
+  then
+    echo "Printing core dumps"
+    ls -la core.*
+    cd tool
+    cargo build --release
+    cd ..
+    cp tool/target/release/core-dump .
+    ./core-dump
+    exit 1
+  fi
 done
 
 if [ ${#failures[@]} -gt 0  ]
