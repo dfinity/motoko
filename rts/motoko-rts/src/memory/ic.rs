@@ -79,7 +79,7 @@ impl Memory for IcMemory {
         // Grow memory if needed
         if (old_hp ^ new_hp) >> 16 != 0 {
             grow_memory(new_hp);
-            debug_assert!(new_hp <= u64::from(core::u32::MAX));
+            assert!(new_hp <= 0xFFFF0000); // spare the last wasm page
         }
 
         HP = new_hp as u32;
@@ -89,9 +89,8 @@ impl Memory for IcMemory {
 }
 
 /// Page allocation. Ensures that the memory up to, and including, the given pointer is allocated,
-/// with the slight exception of not allocating the extra page for 0x100_000_000. For all
-/// `ptr > 0x100_000_000` the call to `wasm32::memory_grow` will trap.
-/// Invariant: ptr must be a reasonable pointer (i.e. less than 0x200_000_000).
+/// with the slight exception of not allocating the extra page for addresses 0xNNNN_0000.
+/// Invariant: ptr must be a pointer less than or equal 0xFFFF0000.
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
     debug_assert!(ptr < 2 * u64::from(core::u32::MAX));
@@ -100,7 +99,7 @@ unsafe fn grow_memory(ptr: u64) {
     //       for ptr (even when it points exactly to its start) and
     //       the correction `ptr >> 32` is a branchless way to undo this
     //       behaviour when ptr points beyond the first 4 GiB of memory.
-    let total_pages_needed = (ptr >> 16) as usize + 1 - (ptr >> 32) as usize;
+    let total_pages_needed = (ptr >> 16) as usize + (ptr < 0xFFFF0000) as usize;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
         #[allow(clippy::collapsible_if)] // faster by 1% if not collapsed with &&
