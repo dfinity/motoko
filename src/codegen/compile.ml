@@ -1150,9 +1150,13 @@ module Stack = struct
      We sometimes use the stack space if we need small amounts of scratch space.
 
      All pointers here are unskewed.
+
+     (We report logical stack overflow as "RTS Stack underflow" as the stack
+     grows downwards.)
   *)
 
-  let end_ = Int32.mul 2l page_size (* 128k of stack *)
+  let stack_pages = 32l (* 2MiB of stack *)
+  let end_ = Int32.mul stack_pages page_size
 
   let register_globals env =
     (* stack pointer *)
@@ -1164,8 +1168,14 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
-  (* TODO: check for overflow *)
   let alloc_words env n =
+    (* first, check for stack underflow *)
+    (* optimize me *)
+    get_stack_ptr env ^^
+    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.then_trap_with env "RTS Stack underflow" ^^
+    (* alloc words *)
     get_stack_ptr env ^^
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
