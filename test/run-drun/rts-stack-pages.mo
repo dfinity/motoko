@@ -1,6 +1,6 @@
 //MOC-FLAG --rts-stack-pages 2
 import Prim = "mo:prim";
-// tests --rts-stack-pages adjust stack limit
+// tests --rts-stack-pages adjusts stack limit
 // test fails with RTS stack underflow with just 2 pages,
 // but succeeds with 32 pages (the default).
 actor a {
