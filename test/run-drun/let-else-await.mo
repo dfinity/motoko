@@ -1,6 +1,6 @@
 actor {
     public func go() : async Nat {
-        let 2 = 3 else { return 4 };
+        let 2 = 3 else { return await async 4 };
         5;
     };
 };
