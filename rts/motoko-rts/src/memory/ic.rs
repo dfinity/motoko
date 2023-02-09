@@ -89,7 +89,7 @@ impl Memory for IcMemory {
 
 /// Page allocation. Ensures that the memory up to, and including, the given pointer is allocated,
 /// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
-/// Invariant: ptr must be a pointer less than or equal 0xFFFF_0000.
+/// Enforced precondition: `ptr` must be a pointer less than or equal to 0xFFFF_0000.
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
     if ptr > 0xFFFF_0000 {
