@@ -78,10 +78,6 @@ impl Memory for IcMemory {
 
         // Grow memory if needed
         if (old_hp ^ new_hp) >> 16 != 0 {
-            if new_hp > 0xFFFF_0000 {
-                // spare the last wasm memory page
-                rts_trap_with("Cannot grow memory")
-            };
             grow_memory(new_hp)
         }
 
@@ -96,7 +92,10 @@ impl Memory for IcMemory {
 /// Invariant: ptr must be a pointer less than or equal 0xFFFF_0000.
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
-    debug_assert!(ptr < 2 * u64::from(core::u32::MAX));
+    if ptr > 0xFFFF_0000 {
+        // spare the last wasm memory page
+        rts_trap_with("Cannot grow memory")
+    };
     let total_pages_needed = (ptr >> 16) as usize + (ptr < 0xFFFF_0000) as usize;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
