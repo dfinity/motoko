@@ -100,5 +100,6 @@ unsafe fn grow_memory(ptr: u64) {
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
         wasm32::memory_grow(0, total_pages_needed - current_pages);
+        debug_assert!(wasm32::memory_size(0) <= 65535)
     }
 }
