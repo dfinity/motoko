@@ -103,7 +103,7 @@ unsafe fn grow_memory(ptr: u64) {
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
         #[allow(clippy::collapsible_if)] // faster by 1% if not collapsed with &&
-        if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
+        if wasm32::memory_grow(0, total_pages_needed - current_pages) == 0xFFFF0000 {
             rts_trap_with("Cannot grow memory");
         }
     }
