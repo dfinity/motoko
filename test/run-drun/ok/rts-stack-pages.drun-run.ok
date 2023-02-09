@@ -12,4 +12,4 @@ debug.print: {heap_MB = 640}
 debug.print: {heap_MB = 704}
 debug.print: serializing
 debug.print: serialized
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS Stack underflow
+ingress Err: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: heap out of bounds

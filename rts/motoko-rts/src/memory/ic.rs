@@ -96,5 +96,9 @@ unsafe fn grow_memory(ptr: u64) {
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
             rts_trap_with("Cannot grow memory");
         }
+        if wasm32::memory_size(0) == 65536 {
+            // last page is reserved for Rust/C stack guard
+            rts_trap_with("Cannot grow memory");
+        }
     }
 }
