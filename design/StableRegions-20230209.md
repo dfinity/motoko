@@ -35,7 +35,7 @@ tensions:
 
 On the other hand, during ordinary canister execution, we *do* want to rely on the heap (not stable memory) for meta data to avoid its higher access costs for load and store operations, and thus we need meta data in two places, both heap and stable memory.
 
-**Tension 1** is resolved by storing certain meta data twice, just as with the Rust implemetation that serves as our basis.
+Tension 1 is resolved by storing certain meta data twice, just as with the Rust implemetation that serves as our basis.
 
 The main difference is that in our case, we store enough extra meta data to permit:
 
