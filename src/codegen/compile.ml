@@ -1155,6 +1155,8 @@ module Stack = struct
      grows downwards.)
   *)
 
+  let reserved_words = 1024l (* words to reserve for C/Rust stack *)
+
   let end_ () = Int32.mul (Int32.of_int (!Flags.rts_stack_pages)) page_size
 
   let register_globals env =
@@ -1171,7 +1173,8 @@ module Stack = struct
     (* first, check for stack underflow *)
     (* optimize me *)
     get_stack_ptr env ^^
-    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    compile_unboxed_const  (* leave reserve for C/Rust code *)
+      (Int32.mul (Int32.add n reserved_words) Heap.word_size) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
     E.then_trap_with env "RTS Stack underflow" ^^
     (* alloc words *)
@@ -1198,6 +1201,7 @@ module Stack = struct
     get_stack_ptr env ^^
     compile_divU_const Heap.word_size ^^
     get_n ^^
+    compile_add_const reserved_words ^^ (* leave reserve for C/Rust code *)
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
     E.then_trap_with env "RTS Stack underflow" ^^
     get_stack_ptr env ^^
