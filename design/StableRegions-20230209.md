@@ -18,7 +18,7 @@ Stable regions address the problem that today's `ExperimentalStableMemory` modul
 
 Stable regions permit a new API that supports composable use cases.
 
-Stable regions also bring Motoko closer to parity with Rust canister development support today, by giving a run-time-system-based analogue of a special Rust library for stable data structures that allocates “pages” for them from stable memory in separate memory regions.
+Stable regions also bring Motoko closer to parity with Rust canister development support today, by giving a run-time-system-based analog of a special Rust library for stable data structures that allocates “pages” for them from stable memory in separate memory regions.
 
 
 ## Design space
@@ -35,7 +35,7 @@ tensions:
 
 On the other hand, during ordinary canister execution, we *do* want to rely on the heap (not stable memory) for meta data to avoid its higher access costs for load and store operations, and thus we need meta data in two places, both heap and stable memory.
 
-Tension 1 is resolved by storing certain meta data twice, just as with the Rust implemetation that serves as our basis.
+Tension 1 is resolved by storing certain meta data twice, just as with the Rust implementation that serves as our basis.
 
 The main difference is that in our case, we store enough extra meta data to permit:
 
@@ -45,7 +45,7 @@ The main difference is that in our case, we store enough extra meta data to perm
  - 32767 Regions max (instead of 255 Regions max).
 
 We want to permit arbitrary page block orders to make a smooth
-transition to region reclaimation and re-allocation in the near
+transition to region reclamation and re-allocation in the near
 future, with potential integration into the Motoko GC.  The
 extra complexity is modest, and seems "worth" the cost.
 
@@ -71,7 +71,7 @@ reasons.  See Q&A for more discussion.
 
 ## Questions and answers
 
-### Q: What determines the 8MB non-empty region mimimum?
+### Q: What determines the 8MB non-empty region minimum?
 
 This size comes from wanting to grow a region by more than one page at
 a time (in terms of the way that the canister interacts with the
@@ -79,7 +79,7 @@ system API, at least).  Rather than actually grow by a single page,
 the implementation grows by a "page block" (8MB) at a time.
 
 This choice means that there are 120 pages per page block, and that
-the maximum number of regions and region blocks are eacg relatively
+the maximum number of regions and region blocks are each relatively
 small (32k each).  Consequently, they can each be identified with a
 2-byte identifier, and we can pre-allocate tables to store certain
 relations about them, which is critical.
