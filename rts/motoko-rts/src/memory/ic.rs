@@ -78,11 +78,11 @@ impl Memory for IcMemory {
 
         // Grow memory if needed
         if (old_hp ^ new_hp) >> 16 != 0 {
-            grow_memory(new_hp);
             if new_hp > 0xFFFF_0000 {
                 // spare the last wasm memory page
                 rts_trap_with("Cannot grow memory")
-            }
+            };
+            grow_memory(new_hp)
         }
 
         HP = new_hp as u32;
