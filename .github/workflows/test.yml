@@ -49,7 +49,7 @@ jobs:
     - name: Read performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
       id: perf
-      uses: juliangruber/read-file-action@v1.1.5
+      uses: juliangruber/read-file-action@v1
       with:
         path: ./perf-delta.txt
 
