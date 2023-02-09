@@ -30,7 +30,8 @@ tensions:
 
  2. Total scaling capacity **versus** minimum footprint for meta data.
 
-Tension 1 is introduced because we want to avoid relying on the Motoko heap as the "ground truth" about the allocator's state.  If this heap is lost, as it is during an upgrade, then a developer may still want to recover all of the regions' data and meta data.
+
+**Tension 1** is introduced because we want to avoid relying on the Motoko heap as the "ground truth" about the allocator's state.  If this heap is lost, as it is during an upgrade, then a developer may still want to recover all of the regions' data and meta data.
 
 On the other hand, during ordinary canister execution, we *do* want to rely on the heap (not stable memory) for meta data to avoid its higher access costs for load and store operations, and thus we need meta data in two places, both heap and stable memory.
 
@@ -52,9 +53,13 @@ We change the maximum region limit because 255 may be too small in
 some extreme cases.  
 
 We address the question of whether the new limit of 32k regions is
-"enough" in the Q&A section (it is, for all practical purposes).
+"enough" in the Q&A section (it is, for all practical purposes)
 
-**Tension 2** is resolved by making prudent representation choices.  
+
+**Tension 2** is introduced because we want a design that will continue
+to work even when canisters can store more stable data than today (32GB).
+
+Tension 2 is resolved by making prudent representation choices.  
 
 The representations we choose for regions and region identifiers
 permit a scaling to 256GB of stable data while still permitting meta
@@ -87,9 +92,6 @@ control the minimal footprint of a region (8MB) and dictate the
 maximum size of stable memory for a canister today (32GB).  With 32k
 regions at 8MB each, well over the maximum stable memory size is used
 (256GB compared to 32GB, the limit today)
-
-Tension 2 is introduced because we want a design that will continue
-to work even when canisters can store more stable data than today (32GB).
 
 
 ## Design details
