@@ -1,5 +1,4 @@
 use motoko_rts::bitrel::BitRel;
-use motoko_rts::types::{Value, Words};
 
 pub unsafe fn test() {
     println!("Testing bitrel ...");
