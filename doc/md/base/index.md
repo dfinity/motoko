@@ -26,7 +26,7 @@
 * [Iter](Iter.md) Iterators
 * [IterType](IterType.md) The Iterator type
 * [List](List.md) Purely-functional, singly-linked lists.
-* [Nat](Nat.md) Natural numbers
+* [Nat](Nat.md) Natural numbers with infinite precision.
 * [Nat16](Nat16.md) 16-bit unsigned integers with checked arithmetic
 * [Nat32](Nat32.md) 32-bit unsigned integers with checked arithmetic
 * [Nat64](Nat64.md) 64-bit unsigned integers with checked arithmetic
