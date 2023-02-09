@@ -675,28 +675,106 @@ and text_dotE proj e =
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
-and let_else_switch p e f =
-  let v = fresh_var "v" (e.note.S.note_typ) in
+    (* FIXME remove type annotations on e and f *)
+    (* Move to construct.ml? *)
+and let_else_switch p (e : (S.exp', S.typ_note) Source.annotated_phrase) (f : (S.exp', S.typ_note) Source.annotated_phrase) (note : S.typ_note) =
+  (* (match note.note_typ with
+  | T.Prim T.Nat -> print_string "hi kento: note has type Nat\n"
+  | T.Non -> print_string "hi kento: note has type None\n"
+  | _ -> ()
+  );
+  (match note.note_eff with
+  | T.Triv -> print_string "hi kento: note has effect Triv\n"
+  | T.Await -> print_string "hi kento: note has effect Await\n"
+  | _ -> ()
+  );
+  (match e.note.note_typ with
+  | T.Prim T.Nat -> print_string "hi kento: e has type Nat\n"
+  | T.Non -> print_string "hi kento: e has type None\n"
+  | _ -> ()
+  );
+  (match e.note.note_eff with
+  | T.Triv -> print_string "hi kento: e has effect Triv\n"
+  | T.Await -> print_string "hi kento: e has effect Await\n"
+  | _ -> ()
+  );
+  let v = fresh_id "v" () in
+  let v_exp = { e with it = S.VarE { e with it = v; note = () }} in
+  let bind_v =
+    { e with
+      it =
+        S.LetD(
+          { e with it = S.VarP { e with it = v; note = () }; note = e.note.note_typ },
+          e,
+          None
+        );
+        note
+    } in
+  let match_p =
+    { e with it =
+      S.SwitchE(
+        v_exp,
+        S.[
+          { e with it = { pat = p; exp = v_exp }; note = () };
+          { f with it = {
+              pat = { f with it = WildP; note = f.note.note_typ };
+              exp = f
+            };
+            note = ()
+          }
+        ]
+      );
+      note
+    } in
+
+  let lowered = exp {
+    e with
+    it = S.BlockE [
+      bind_v;
+      { e with it = S.ExpD(match_p) }
+    ];
+    note
+  } in *)
+
+  (* (match e.note.note_eff with
+  | T.Triv -> print_string "hi kento: triv\n"
+  | T.Await -> print_string "hi kento: await\n"
+  ); *)
+
+  let v = fresh_var "v" (e.note.note_typ) in
   let e', p', f' = exp e, pat p, exp f in
   (* Evaluate e once, assign it to variable v, and pattern match on v. If v
      matches p, expression evaluates to v. Otherwise evaluate f. *)
-  {
+  blockE
+    [letD v e']
+    {
+      e' with
+      it = I.SwitchE(
+        varE v,
+        I.[
+          { it = { pat = p'; exp = varE v }; at = e'.at; note = () };
+          { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
+        ]
+      );
+      note = { Note.def with typ = note.note_typ; eff = note.note_eff };
+    }
+
+  (* {
     e' with
-    it =
-    I.BlockE(
-      [letD v e'],
-      {
-        e' with
-        it = I.SwitchE(
-          varE v,
-          I.[
-            { it = { pat = p'; exp = varE v }; at = e'.at; note = () };
-            { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
-          ]
-        )
-      }
-    )
-  }
+      it = I.SwitchE(
+        it = {
+          e' with
+            it = I.BlockE(
+              [letD v e'],
+              { varE v }
+            )
+          },
+        I.[
+          { it = { pat = p'; exp = varE v }; at = e'.at; note = () };
+          { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
+        ]
+      )
+  } *)
 
 and block force_unit ds =
   match ds with
@@ -714,7 +792,7 @@ and block force_unit ds =
     (decs prefix @ [letD x (exp e); letP (pat p) (varE x)], varE x)
   | false, S.LetD (p, e, Some f) ->
     let x = fresh_var "x" (e.note.S.note_typ) in
-    (decs prefix @ [letD x (let_else_switch p e f); letP (pat p) (varE x)], varE x)
+    (decs prefix @ [letD x (let_else_switch p e f last.note); letP (pat p) (varE x)], varE x)
   | _, _ ->
     (decs ds, tupE [])
 
@@ -723,7 +801,13 @@ and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
 and decs ds =
   List.map dec (List.filter is_not_typD ds)
 
-and dec d = { (phrase' dec' d) with note = () }
+and dec d =
+  (* (match d.it, d.note.note_typ with
+  | S.LetD (_, _, Some _), T.Prim T.Nat -> print_string "hi kento: Nat\n"
+  | S.LetD (_, _, Some _), T.Non -> print_string "hi kento: None\n"
+  | _, _ -> ()
+  ); *)
+  { (phrase' dec' d) with note = () }
 
 and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
@@ -736,7 +820,7 @@ and dec' at n = function
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
     | _, I.ActorE _, Some _ -> assert false
     | _, _, None -> I.LetD (p', e')
-    | _, _, Some f -> I.LetD (p', let_else_switch p e f)
+    | _, _, Some f -> I.LetD (p', let_else_switch p e f n)
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
