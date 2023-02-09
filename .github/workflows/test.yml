@@ -91,7 +91,7 @@ jobs:
     - name: Resolve symlinks
       run: cp -rL report-site report-site-copy
     - name: Push report to GitHub pages
-      uses: JamesIves/github-pages-deploy-action@v4.2.5
+      uses: JamesIves/github-pages-deploy-action@v4
       with:
         branch: gh-pages
         folder: report-site-copy
