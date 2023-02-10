@@ -126,7 +126,7 @@ unsafe fn test_evacuation_plan(heap: &mut PartitionedHeap, occupied_partitions: 
 
 unsafe fn test_freeing_partitions(heap: &mut PartitionedHeap, occupied_partitions: usize) {
     println!("    Test freeing partitions...");
-    heap.complete_collection();
+    heap.free_evacuated_partitions();
     let iterator_state = HeapIteratorState::new();
     let mut iterator = PartitionedHeapIterator::load_from(heap, &iterator_state);
     while iterator.current_partition().is_some() {
@@ -261,7 +261,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     iterate_large_objects(&heap.inner, sizes);
     heap.inner.plan_evacuations();
     heap.inner.collect_large_objects();
-    heap.inner.complete_collection();
+    heap.inner.free_evacuated_partitions();
     iterate_large_objects(&heap.inner, &[]);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
 }

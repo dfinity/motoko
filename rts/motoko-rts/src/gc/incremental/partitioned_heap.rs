@@ -372,7 +372,7 @@ impl PartitionedHeap {
         }
     }
 
-    pub unsafe fn complete_collection(&mut self) {
+    pub unsafe fn free_evacuated_partitions(&mut self) {
         for partition in &mut self.partitions {
             let marked_size = partition.marked_size;
             partition.update = false;
