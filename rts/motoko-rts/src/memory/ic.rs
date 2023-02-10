@@ -38,6 +38,8 @@ unsafe extern "C" fn init(align: bool) {
         get_heap_base()
     };
     LAST_HP = HP;
+    // make sure that the page HP points to is allocated too
+    grow_memory(u64::from(HP))
 }
 
 #[no_mangle]
@@ -75,30 +77,31 @@ impl Memory for IcMemory {
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        grow_memory(new_hp);
+        if (old_hp ^ new_hp) / WASM_PAGE_SIZE.as_u32() as u64 != 0 {
+            // Page boundary crossed, make sure that pages are allocated
+            grow_memory(new_hp)
+        }
 
-        debug_assert!(new_hp <= u64::from(core::u32::MAX));
         HP = new_hp as u32;
 
         Value::from_ptr(old_hp as usize)
     }
 }
 
-/// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
+/// Page allocation. Ensures that the memory up to, and including, the given pointer is allocated,
+/// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
+/// Enforced precondition: `ptr` must be a pointer less than or equal to 0xFFFF_0000.
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
-    debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
-    let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
-    let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
+    debug_assert_eq!(0xFFFF_0000, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
+    if ptr > 0xFFFF_0000 {
+        // spare the last wasm memory page
+        rts_trap_with("Cannot grow memory")
+    };
+    let total_pages_needed = (ptr >> 16) as usize + (ptr < 0xFFFF_0000) as usize;
     let current_pages = wasm32::memory_size(0);
-    if total_pages_needed > 65535 {
-        // last page is reserved for Rust/C stack guard
-        rts_trap_with("Cannot grow memory");
-    }
     if total_pages_needed > current_pages {
-        #[allow(clippy::collapsible_if)] // faster by 1% if not colapsed with &&
-        if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
-            rts_trap_with("Cannot grow memory");
-        }
+        wasm32::memory_grow(0, total_pages_needed - current_pages);
+        debug_assert!(wasm32::memory_size(0) <= 65535)
     }
 }
