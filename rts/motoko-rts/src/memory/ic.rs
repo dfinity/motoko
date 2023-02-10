@@ -1,7 +1,7 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
-//use crate::constants::WASM_PAGE_SIZE;
+use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -77,7 +77,8 @@ impl Memory for IcMemory {
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        if (old_hp ^ new_hp) >> 16 != 0 {
+        if (old_hp ^ new_hp) / WASM_PAGE_SIZE.as_u32() as u64 != 0 {
+            // Page boundary crossed, make sure that pages are allocated
             grow_memory(new_hp)
         }
 
