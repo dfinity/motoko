@@ -5,55 +5,53 @@ use crate::{
             PartitionedHeapIterator,
         },
         time::BoundedTime,
-        PARTITIONED_HEAP,
+        State,
     },
     mem_utils::memcpy_words,
     memory::Memory,
     types::*,
 };
 
-// State shared over multiple increment calls.
-static mut EVACUATION_STATE: Option<HeapIteratorState> = None;
-
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
     heap: &'a PartitionedHeap,
-    state: &'a mut HeapIteratorState,
+    iterator_state: &'a mut HeapIteratorState,
     time: &'a mut BoundedTime,
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
-    pub unsafe fn start_phase() {
-        debug_assert!(EVACUATION_STATE.is_none());
-        EVACUATION_STATE = Some(HeapIteratorState::new());
-        PARTITIONED_HEAP.as_mut().unwrap().plan_evacuations();
+    pub unsafe fn start_phase(state: &mut State) {
+        debug_assert!(state.iterator_state.is_none());
+        state.iterator_state = Some(HeapIteratorState::new());
+        state.partitioned_heap.as_mut().unwrap().plan_evacuations();
     }
 
-    pub unsafe fn complete_phase() {
-        debug_assert!(Self::evacuation_completed());
-        EVACUATION_STATE = None;
+    pub unsafe fn complete_phase(state: &mut State) {
+        debug_assert!(Self::evacuation_completed(state));
+        state.iterator_state = None;
     }
 
-    pub unsafe fn evacuation_completed() -> bool {
-        EVACUATION_STATE.as_ref().unwrap().completed()
+    pub unsafe fn evacuation_completed(state: &State) -> bool {
+        state.iterator_state.as_ref().unwrap().completed()
     }
 
     pub unsafe fn instance(
         mem: &'a mut M,
+        state: &'a mut State,
         time: &'a mut BoundedTime,
     ) -> EvacuationIncrement<'a, M> {
-        let heap = PARTITIONED_HEAP.as_ref().unwrap();
-        let state = EVACUATION_STATE.as_mut().unwrap();
+        let heap = state.partitioned_heap.as_mut().unwrap();
+        let iterator_state = state.iterator_state.as_mut().unwrap();
         EvacuationIncrement {
             mem,
             heap,
-            state,
+            iterator_state,
             time,
         }
     }
 
     pub unsafe fn run(&mut self) {
-        let mut iterator = PartitionedHeapIterator::load_from(self.heap, &self.state);
+        let mut iterator = PartitionedHeapIterator::load_from(self.heap, &self.iterator_state);
         while iterator.current_partition().is_some() {
             let partition = iterator.current_partition().unwrap();
             if partition.to_be_evacuated() {
@@ -65,7 +63,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
             }
             iterator.next_partition();
         }
-        iterator.save_to(&mut self.state);
+        iterator.save_to(&mut self.iterator_state);
     }
 
     pub unsafe fn evacuate_partition(&mut self, partition: &Partition) {
@@ -74,14 +72,15 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         if partition.marked_size() == 0 {
             return;
         }
-        let mut iterator = PartitionIterator::load_from(partition, &self.state, &mut self.time);
+        let mut iterator =
+            PartitionIterator::load_from(partition, &self.iterator_state, &mut self.time);
         while iterator.current_object().is_some() && !self.time.is_over() {
             let object = iterator.current_object().unwrap();
             // Advance the iterator before evacuation since the debug mode clears the evacuating object.
             iterator.next_object(&mut self.time);
             self.evacuate_object(object);
         }
-        iterator.save_to(&mut self.state);
+        iterator.save_to(&mut self.iterator_state);
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {

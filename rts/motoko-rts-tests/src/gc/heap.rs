@@ -3,7 +3,7 @@ use super::utils::{
 };
 
 use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
-use motoko_rts::gc::incremental::PARTITIONED_HEAP;
+use motoko_rts::gc::incremental::STATE;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
@@ -283,7 +283,7 @@ impl MotokoHeapInner {
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        if let Some(partitioned_heap) = &mut PARTITIONED_HEAP {
+        if let Some(partitioned_heap) = &mut STATE.partitioned_heap {
             let mut dummy_memory = DummyMemory {};
             let result = partitioned_heap.allocate(&mut dummy_memory, n);
             self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
