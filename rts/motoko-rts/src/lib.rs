@@ -56,7 +56,8 @@ unsafe fn partitioned_alloc_words<M: memory::Memory>(
     mem: &mut M,
     n: types::Words<u32>,
 ) -> types::Value {
-    gc::incremental::PARTITIONED_HEAP
+    gc::incremental::STATE
+        .partitioned_heap
         .as_mut()
         .unwrap()
         .allocate(mem, n)
