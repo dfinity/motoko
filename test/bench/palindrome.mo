@@ -1,8 +1,7 @@
 // The 2 palindrome implementations from
 // "There and Back Again", by Olivier Danvy and Mayer Goldberg
-//MOC-FLAG
+//
 import { error; performanceCounter; rts_heap_size; debugPrint ; stableMemoryGrow; stableMemoryLoadBlob} = "mo:⛔";
-
 
 actor Palindrome {
     type List<A> = ?(A, List<A>);
