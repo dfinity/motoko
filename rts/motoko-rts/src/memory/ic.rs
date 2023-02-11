@@ -92,7 +92,7 @@ impl Memory for IcMemory {
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
     debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
-    if ptr >= 0xFFFF_0000 {
+    if ptr > 0xFFFF_0000 {
         // spare the last wasm memory page
         rts_trap_with("Cannot grow memory")
     };
@@ -104,6 +104,6 @@ unsafe fn grow_memory(ptr: u64) {
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
             rts_trap_with("Cannot grow memory");
         }
-        //debug_assert!(wasm32::memory_size(0) <= 65535)
+        debug_assert!(wasm32::memory_size(0) <= 65535)
     }
 }
