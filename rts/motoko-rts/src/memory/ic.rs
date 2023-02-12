@@ -2,7 +2,7 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::STATE;
+use crate::gc::incremental::get_partitioned_heap;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -47,7 +47,7 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
 
 #[no_mangle]
 unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
-    match &STATE.partitioned_heap {
+    match get_partitioned_heap() {
         None => RECLAIMED,
         Some(heap) => heap.reclaimed_size(),
     }
@@ -60,7 +60,7 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    match &STATE.partitioned_heap {
+    match get_partitioned_heap() {
         None => Bytes(HP - get_aligned_heap_base()),
         Some(heap) => heap.occupied_size(),
     }
@@ -93,10 +93,11 @@ impl IcMemory {
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+        let partitioned_heap = get_partitioned_heap();
         // Use the partitioned heap, if the incremental GC is enabled.
         // Comparison with `is_some()` is faster than using pattern matching with `if let`.
-        if STATE.partitioned_heap.is_some() {
-            STATE.partitioned_heap.as_mut().unwrap().allocate(self, n)
+        if partitioned_heap.is_some() {
+            partitioned_heap.as_mut().unwrap().allocate(self, n)
         } else {
             self.linear_allocation(n)
         }

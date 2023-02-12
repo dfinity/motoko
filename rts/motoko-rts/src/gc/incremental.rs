@@ -6,6 +6,8 @@
 //! - Focus on reclaiming high-garbage partitions.
 //! - Compacting heap space with partition evacuations.
 //! - Incremental copying enabled by forwarding pointers.
+use core::cell::RefCell;
+
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
@@ -41,7 +43,7 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    let running = STATE.phase != Phase::Pause && STATE.phase != Phase::Stop;
+    let running = STATE.borrow().phase != Phase::Pause && STATE.borrow().phase != Phase::Stop;
     if running || should_start() {
         incremental_gc(mem);
     }
@@ -57,12 +59,13 @@ const ALLOCATION_INCREMENT_LIMIT: usize = 500_000;
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
-    if STATE.phase == Phase::Pause {
+    let state = STATE.get_mut();
+    if state.phase == Phase::Pause {
         record_gc_start::<M>();
     }
     let time = BoundedTime::new(SCHEDULED_INCREMENT_LIMIT);
-    IncrementalGC::instance(mem, &mut STATE, time).empty_call_stack_increment(root_set());
-    if STATE.phase == Phase::Pause {
+    IncrementalGC::instance(mem, state, time).empty_call_stack_increment(root_set());
+    if state.phase == Phase::Pause {
         record_gc_stop::<M>();
     }
 }
@@ -145,13 +148,13 @@ pub struct State {
 }
 
 /// GC state retained over multiple GC increments.
-pub static mut STATE: State = State {
+static mut STATE: RefCell<State> = RefCell::new(State {
     phase: Phase::Pause,
     partitioned_heap: None,
     allocation_count: 0,
     mark_state: None,
     iterator_state: None,
-};
+});
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC state `STATE`.
@@ -165,14 +168,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
     pub unsafe fn initialize(mem: &'a mut M, heap_base: usize) {
-        let partitioned_heap = Some(PartitionedHeap::new(mem, heap_base));
-        STATE = State {
-            phase: Phase::Pause,
-            partitioned_heap,
-            allocation_count: 0,
-            mark_state: None,
-            iterator_state: None,
-        };
+        let state = STATE.get_mut();
+        state.phase = Phase::Pause;
+        state.partitioned_heap = Some(PartitionedHeap::new(mem, heap_base));
+        state.allocation_count = 0;
+        state.mark_state = None;
+        state.iterator_state = None;
     }
 
     /// Each GC schedule point can get a new GC instance that shares the common GC state.
@@ -419,5 +420,14 @@ unsafe fn allocation_increment<M: Memory>(mem: &mut M, state: &mut State) {
 /// during stream serialization.
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
-    STATE.phase = Phase::Stop;
+    let state = STATE.get_mut();
+    state.phase = Phase::Stop;
+}
+
+pub unsafe fn incremental_gc_state() -> &'static mut State {
+    STATE.get_mut()
+}
+
+pub unsafe fn get_partitioned_heap() -> &'static mut Option<PartitionedHeap> {
+    &mut STATE.get_mut().partitioned_heap
 }

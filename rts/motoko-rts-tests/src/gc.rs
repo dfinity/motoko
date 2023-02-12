@@ -17,7 +17,9 @@ use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use motoko_rts::gc::incremental::time::BoundedTime;
-use motoko_rts::gc::incremental::{SCHEDULED_INCREMENT_LIMIT, STATE};
+use motoko_rts::gc::incremental::{
+    get_partitioned_heap, incremental_gc_state, SCHEDULED_INCREMENT_LIMIT,
+};
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
 };
@@ -163,7 +165,7 @@ fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
     unsafe {
         match gc {
             GC::Incremental => initialize_incremental_gc(heap),
-            _ => STATE.partitioned_heap = None,
+            _ => incremental_gc_state().partitioned_heap = None,
         }
     }
 }
@@ -173,8 +175,7 @@ unsafe fn initialize_incremental_gc(heap: &mut MotokoHeap) {
     let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
     // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
-    let result = STATE
-        .partitioned_heap
+    let result = get_partitioned_heap()
         .as_mut()
         .unwrap()
         .allocate(heap, Bytes(allocation_size as u32).to_words());
@@ -518,7 +519,7 @@ impl GC {
                     };
                     IncrementalGC::instance(
                         heap,
-                        &mut STATE,
+                        incremental_gc_state(),
                         BoundedTime::new(SCHEDULED_INCREMENT_LIMIT),
                     )
                     .empty_call_stack_increment(roots);

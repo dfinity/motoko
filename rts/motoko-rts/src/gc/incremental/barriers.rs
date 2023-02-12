@@ -5,11 +5,12 @@
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
+    gc::incremental::incremental_gc_state,
     memory::Memory,
     types::{is_skewed, Value},
 };
 
-use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Phase, STATE};
+use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Phase};
 
 /// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
 /// Used for the incremental GC.
@@ -23,15 +24,16 @@ use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Ph
 pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, value: Value) {
     debug_assert!(!is_skewed(location as u32));
     debug_assert_ne!(location, core::ptr::null_mut());
+    let state = incremental_gc_state();
 
     // Optimization: Early exit on pause.
-    if STATE.phase == Phase::Pause {
+    if state.phase == Phase::Pause {
         *location = value;
         return;
     }
 
-    pre_write_barrier(mem, &mut STATE, *location);
-    if STATE.phase == Phase::Update {
+    pre_write_barrier(mem, state, *location);
+    if state.phase == Phase::Update {
         *location = value.forward_if_possible();
     } else {
         *location = value;
@@ -47,11 +49,13 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 /// * Resolve pointer forwarding during the GC update phase.
 #[ic_mem_fn]
 pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
+    let state = incremental_gc_state();
+
     // Optimization: Early exit on pause.
-    if STATE.phase == Phase::Pause {
+    if state.phase == Phase::Pause {
         return;
     }
 
-    post_allocation_barrier(&mut STATE, new_object);
-    allocation_increment(mem, &mut STATE);
+    post_allocation_barrier(state, new_object);
+    allocation_increment(mem, state);
 }
