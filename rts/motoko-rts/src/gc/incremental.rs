@@ -299,13 +299,17 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 /// The barrier can be conservatively called even if the overwritten value is not a pointer.
 /// The barrier is only effective while the GC is in the mark phase.
 #[inline(never)]
-pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value: Value) {
-    if STATE.phase == Phase::Mark {
-        let base_address = STATE.partitioned_heap.as_ref().unwrap().base_address();
+pub(crate) unsafe fn pre_write_barrier<M: Memory>(
+    mem: &mut M,
+    state: &mut State,
+    overwritten_value: Value,
+) {
+    if state.phase == Phase::Mark {
+        let base_address = state.partitioned_heap.as_ref().unwrap().base_address();
         if overwritten_value.points_to_or_beyond(base_address) {
-            if !MarkIncrement::<M>::mark_completed(&mut STATE) {
+            if !MarkIncrement::<M>::mark_completed(state) {
                 let mut time = BoundedTime::new(0);
-                let mut increment = MarkIncrement::instance(mem, &mut STATE, &mut time);
+                let mut increment = MarkIncrement::instance(mem, state, &mut time);
                 increment.mark_object(overwritten_value);
             } else {
                 debug_assert!(overwritten_value.as_obj().is_marked());
@@ -318,11 +322,11 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, overwritten_value
 /// `new_object` is the skewed pointer of the newly allocated and initialized object.
 /// The new object needs to be fully initialized, except for the payload of a blob.
 /// The barrier is only effective during a running GC.
-pub(crate) unsafe fn post_allocation_barrier(new_object: Value) {
-    if STATE.phase == Phase::Mark || STATE.phase == Phase::Evacuate {
-        mark_new_allocation(new_object);
-    } else if STATE.phase == Phase::Update {
-        update_new_allocation(new_object);
+pub(crate) unsafe fn post_allocation_barrier(state: &mut State, new_object: Value) {
+    if state.phase == Phase::Mark || state.phase == Phase::Evacuate {
+        mark_new_allocation(state, new_object);
+    } else if state.phase == Phase::Update {
+        update_new_allocation(state, new_object);
     }
 }
 
@@ -346,12 +350,12 @@ pub(crate) unsafe fn post_allocation_barrier(new_object: Value) {
 /// * When GC is stopped on canister upgrade:
 ///   - The GC will not resume and thus marking is irrelevant.
 ///   - This is necessary because the upgrade serialization alters tags to store other information.
-unsafe fn mark_new_allocation(new_object: Value) {
-    debug_assert!(STATE.phase == Phase::Mark || STATE.phase == Phase::Evacuate);
+unsafe fn mark_new_allocation(state: &mut State, new_object: Value) {
+    debug_assert!(state.phase == Phase::Mark || state.phase == Phase::Evacuate);
     let object = new_object.get_ptr() as *mut Obj;
     debug_assert!(!object.is_marked());
     object.mark();
-    STATE
+    state
         .partitioned_heap
         .as_mut()
         .unwrap()
@@ -378,9 +382,9 @@ unsafe fn mark_new_allocation(new_object: Value) {
 /// * When the GC is stopped on canister upgrade:
 ///   - The GC will not resume and thus pointer updates are irrelevant. The runtime system
 ///     continues to resolve the forwarding for all remaining old pointers.
-unsafe fn update_new_allocation(new_object: Value) {
-    debug_assert!(STATE.phase == Phase::Update);
-    let heap = STATE.partitioned_heap.as_ref().unwrap();
+unsafe fn update_new_allocation(state: &State, new_object: Value) {
+    debug_assert!(state.phase == Phase::Update);
+    let heap = state.partitioned_heap.as_ref().unwrap();
     if heap.updates_needed() {
         let object = new_object.get_ptr() as *mut Obj;
         visit_pointer_fields(
@@ -401,12 +405,12 @@ const ALLOCATION_INCREMENT_INTERVAL: usize = 5_000;
 
 /// Additional increment, performed at certain allocation intervals to keep up with a
 /// high allocation rate.
-unsafe fn allocation_increment<M: Memory>(mem: &mut M) {
-    STATE.allocation_count += 1;
-    if STATE.allocation_count == ALLOCATION_INCREMENT_INTERVAL {
-        STATE.allocation_count = 0;
+unsafe fn allocation_increment<M: Memory>(mem: &mut M, state: &mut State) {
+    state.allocation_count += 1;
+    if state.allocation_count == ALLOCATION_INCREMENT_INTERVAL {
+        state.allocation_count = 0;
         let time = BoundedTime::new(ALLOCATION_INCREMENT_LIMIT);
-        IncrementalGC::instance(mem, &mut STATE, time).increment();
+        IncrementalGC::instance(mem, state, time).increment();
     }
 }
 

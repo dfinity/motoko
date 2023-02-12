@@ -30,7 +30,7 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
         return;
     }
 
-    pre_write_barrier(mem, *location);
+    pre_write_barrier(mem, &mut STATE, *location);
     if STATE.phase == Phase::Update {
         *location = value.forward_if_possible();
     } else {
@@ -52,6 +52,6 @@ pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
         return;
     }
 
-    post_allocation_barrier(new_object);
-    allocation_increment(mem);
+    post_allocation_barrier(&mut STATE, new_object);
+    allocation_increment(mem, &mut STATE);
 }
