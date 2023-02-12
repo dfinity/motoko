@@ -1169,7 +1169,7 @@ module Stack = struct
 
   let stack_overflow env =
     Func.share_code0 env "stack_overflow" [] (fun env ->
-      (* read last byte of reserved page to force trap *)
+      (* read last word of reserved page to force trap *)
       compile_unboxed_const 0xFFFF_FFFCl ^^
       G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
       G.i Drop
