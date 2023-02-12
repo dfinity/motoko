@@ -20,7 +20,7 @@
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
 use crate::gc::generational::write_barrier::post_write_barrier;
-use crate::gc::incremental::pre_write_barrier;
+use crate::gc::incremental::{pre_write_barrier, STATE};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -570,7 +570,7 @@ impl Array {
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
-        pre_write_barrier(mem, *slot_addr);
+        pre_write_barrier(mem, &mut STATE, *slot_addr);
         *slot_addr = value.forward_if_possible();
         post_write_barrier(mem, slot_addr as u32);
     }
