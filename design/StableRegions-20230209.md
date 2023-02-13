@@ -154,7 +154,7 @@ rebuilt into the heap when the upgrade succeeds.
 
 ### region heap object
 
- - `RegionObject { id : Nat16; capacity : Nat16; vec_ptr: Nat32 }`
+ - `RegionObject { id : Nat16; size_in_pages: Nat64; capacity : Nat16; vec_ptr: Nat32 }`
  - 8 bytes per entry.
  - `vec_ptr` points to a vector with `capacity` slots.
  - to support load and store quickly, the `vec_ptr` is also held in the heap.
