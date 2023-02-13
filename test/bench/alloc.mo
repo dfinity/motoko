@@ -1,5 +1,5 @@
 //MOC-FLAG --force-gc
-import { error; performanceCounter; rts_heap_size; debugPrint ; stableMemoryGrow; stableMemoryLoadBlob} = "mo:⛔";
+import { error; performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
 
 
 actor alloc {
