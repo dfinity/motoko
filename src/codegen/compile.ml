@@ -5559,12 +5559,14 @@ module MakeSerialization (Strm : Stream) = struct
       let go' can_recover env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
+        (* pass as globals (never change in rec calls) *)
         get_rel_buf_opt ^^
         get_data_buf ^^
         get_ref_buf ^^
         get_typtbl ^^
         get_typtbl_end ^^
         get_typtbl_size ^^
+        (* ... end pass as globals*)
         get_idlty ^^
         ( (* Reset depth counter if we made progress *)
           ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
