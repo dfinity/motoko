@@ -96,7 +96,7 @@ unsafe fn grow_memory(ptr: u64) {
     debug_assert_eq!(0xFFFF_0000, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
     if ptr > 0xFFFF_0000 {
         // spare the last wasm memory page
-        rts_trap_with("Cannot grow memory")
+        rts_trap_with("Cannot allocate memory")
     };
     let total_pages_needed = (ptr >> 16) as usize + (ptr < 0xFFFF_0000) as usize;
     let current_pages = wasm32::memory_size(0);
