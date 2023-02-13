@@ -773,7 +773,7 @@ and define_id env id v =
 and define_pat env pat v =
   match pat.it with
   | WildP -> true
-  | LitP _ | SignP _ | AltP _ -> match_pat pat v = None
+  | LitP _ | SignP _ | AltP _ -> match_pat pat v <> None
   | VarP id ->
     define_id env id v;
     true
