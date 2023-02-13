@@ -78,7 +78,7 @@ a time (in terms of the way that the canister interacts with the
 system API, at least).  Rather than actually grow by a single page,
 the implementation grows by a "page block" (8MB) at a time.
 
-This choice means that there are 120 pages per page block, and that
+This choice means that there are 128 pages per page block, and that
 the maximum number of regions and region blocks are each relatively
 small (32k each).  Consequently, they can each be identified with a
 2-byte identifier, and we can pre-allocate tables to store certain
