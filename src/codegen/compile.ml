@@ -1177,7 +1177,7 @@ module Stack = struct
 
   let alloc_words env n =
     (* first, check for stack underflow, if necessary *)
-    (if (n >= page_size) then
+    (if (n >= Int32.div page_size 4l) then
       get_stack_ptr env ^^
       compile_unboxed_const (Int32.mul n Heap.word_size) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
