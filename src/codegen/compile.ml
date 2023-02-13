@@ -1176,10 +1176,11 @@ module Stack = struct
     )
 
   let alloc_words env n =
+    let n_bytes = Int32.mul n Heap.word_size in
     (* first, check for stack underflow, if necessary *)
-    (if (n >= Int32.div page_size 4l) then
+    (if (n_bytes >= page_size) then
       get_stack_ptr env ^^
-      compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+      compile_unboxed_const n_bytes ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       (G.if0
         (stack_overflow env)
@@ -1188,7 +1189,7 @@ module Stack = struct
        G.nop) ^^
     (* alloc words *)
     get_stack_ptr env ^^
-    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    compile_unboxed_const n_bytes ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
     get_stack_ptr env
