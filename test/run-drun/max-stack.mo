@@ -1,5 +1,5 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 256
-import { error; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint ; } = "mo:⛔";
+//MOC-FLAG --compacting-gc --rts-stack-pages 32
+import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
 
 actor stack {
 
@@ -46,10 +46,11 @@ actor stack {
                 i = i;
                 heap = rts_heap_size();
                 stack = rts_max_stack_size();
-                stack_pages = rts_max_stack_size()/65536
+                stack_pages = (rts_max_stack_size()+65535)/65536
               });
             }
           } catch e {
+            trace (errorMessage(e));
             done := true
           }
         };
@@ -62,14 +63,14 @@ actor stack {
             from_candid(b)
           else null;
 
-        trace("deserialized");
+        if deserialize trace("deserialized");
         let (m1, n1, s1) = counters();
         trace(debug_show {
           depth = i;
           heap = m1 - m0;
           cycles = n1 - n0;
           stack = s1-s0;
-          stack_pages = s1/65536}
+          stack_pages = (s1+65535)/65536}
         );
         log
     }
