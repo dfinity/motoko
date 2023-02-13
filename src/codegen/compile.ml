@@ -1160,12 +1160,33 @@ module Stack = struct
   let register_globals env =
     (* stack pointer *)
     E.add_global32 env "__stack_pointer" Mutable (end_());
+    (* low watermark *)
+    E.add_global32 env "__stack_min" Mutable (end_());
     E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
     G.i (GlobalGet (nr (E.get_global env "__stack_pointer")))
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
+
+  let get_min env =
+    G.i (GlobalGet (nr (E.get_global env "__stack_min")))
+  let set_min env =
+    G.i (GlobalSet (nr (E.get_global env "__stack_min")))
+
+  let get_max_stack_size env =
+    compile_unboxed_const (end_()) ^^
+    get_min env ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+
+  let update_stack_min env =
+    get_stack_ptr env ^^
+    get_min env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    (G.if0
+       (get_stack_ptr env ^^
+        set_min env)
+      G.nop)
 
   let stack_overflow env =
     Func.share_code0 env "stack_overflow" [] (fun env ->
@@ -1191,6 +1212,7 @@ module Stack = struct
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
+    update_stack_min env ^^
     get_stack_ptr env
 
   let free_words env n =
@@ -1219,6 +1241,7 @@ module Stack = struct
     compile_mul_const Heap.word_size ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
+    update_stack_min env ^^
     get_stack_ptr env
 
   let dynamic_free_words env get_n =
@@ -9191,6 +9214,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_max_live_size", [] ->
     SR.Vanilla,
     Heap.get_max_live_size env ^^ BigNum.from_word32 env
+
+  | OtherPrim "rts_max_stack_size", [] ->
+    SR.Vanilla,
+    Stack.get_max_stack_size env ^^ Prim.prim_word32toNat env
 
   | OtherPrim "rts_callback_table_count", [] ->
     SR.Vanilla,

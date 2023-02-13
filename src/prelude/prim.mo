@@ -64,6 +64,7 @@ func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
 func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
 func rts_reclaimed() : Nat { (prim "rts_reclaimed" : () -> Nat) () };
 func rts_max_live_size() : Nat { (prim "rts_max_live_size" : () -> Nat) () };
+func rts_max_stack_size() : Nat { (prim "rts_max_stack_size" : () -> Nat) () };
 func rts_callback_table_count() : Nat { (prim "rts_callback_table_count" : () -> Nat) () };
 func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> Nat) () };
 func rts_mutator_instructions() : Nat { (prim "rts_mutator_instructions" : () -> Nat) () };
