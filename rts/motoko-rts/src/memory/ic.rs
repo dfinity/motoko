@@ -103,9 +103,9 @@ unsafe fn grow_memory(ptr: u64) {
     if total_pages_needed > current_pages {
         let got = wasm32::memory_grow(0, total_pages_needed - current_pages);
         if got == core::usize::MAX {
-             // replica signals that there is not enough memory
-             rts_trap_with("Cannot grow memory");
-         }
+            // replica signals that there is not enough memory
+            rts_trap_with("Cannot grow memory");
+        }
         debug_assert!(wasm32::memory_size(0) <= 65535)
     }
 }
