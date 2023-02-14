@@ -16,10 +16,10 @@ actor stack {
        performanceCounter(0),
        rts_max_stack_size());
 
-    public func ser() : async Text { await go(false) };
-    public func deser() : async Text { await go(true) };
+    public func ser() : async () { await go(false) };
+    public func deser() : async () { await go(true) };
 
-    public func go(deserialize : Bool) : async Text {
+    public func go(deserialize : Bool) : async () {
         log := "";
         let (m0, n0, s0) = counters();
         var i = 0;
@@ -43,8 +43,9 @@ actor stack {
                else null;
 
               trace(debug_show {
-                i = i;
-                heap = rts_heap_size();
+                length = i;
+                bytes = b.size();
+//              heap = rts_heap_size();
                 stack = rts_max_stack_size();
                 stack_pages = (rts_max_stack_size()+65535)/65536
               });
@@ -66,13 +67,14 @@ actor stack {
         if deserialize trace("deserialized");
         let (m1, n1, s1) = counters();
         trace(debug_show {
-          depth = i;
-          heap = m1 - m0;
-          cycles = n1 - n0;
+          length = i;
+          bytes = b.size();
+//          heap = m1 - m0;
+//          cycles = n1 - n0;
           stack = s1-s0;
           stack_pages = (s1+65535)/65536}
         );
-        log
+
     }
 
 
