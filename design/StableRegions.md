@@ -14,7 +14,7 @@ The **region manager** is the state and logic to support this generalization.
  - a **page block** is a contiguous sequence of 128 pages (~8MB).
  - a **page block index** is a 16 bit, index-based identifier for a page block.
  - a **region** is a sequence of (generally non-contiguous) **page blocks**.
- - the maximum number of pages is 32768.
+ - the maximum number of page blocks is 32768.
  - the maximum amount of stable memory for all regions is 256GB.
 
 
