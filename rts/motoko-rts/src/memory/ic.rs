@@ -89,7 +89,7 @@ impl Memory for IcMemory {
 /// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
 #[inline(never)]
 unsafe fn grow_memory(ptr: u64) {
-    debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
+    debug_assert_eq!(0xFFFF_0000, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
     if ptr > 0xFFFF_0000 {
         // spare the last wasm memory page
         rts_trap_with("Cannot allocate memory")
