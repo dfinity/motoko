@@ -171,25 +171,25 @@ rebuilt into the heap when the upgrade succeeds.
 
 ### region-blocks table
 
- - purpose:
-  - relate a region ID to its vector of block IDs, to compute an access efficiently (load or store).
+ - purpose: 
+   - relate a region ID to its vector of block IDs, to compute an access efficiently (load or store).
 
-  - NB: The organization of this table is meant to support O(1) load
-    and store operations, but in so doing, it needs to use a
-    dynamically-sized vector for each region.  There is no a priori
-    way to know how to allocate these, and if we naively preallocate
-    them to each be the potential "maximal region" (with all blocks
-    allocated to it), the resulting preallocated table requires
-    gigabytes of space, and thus is prohibitively large.
+   - NB: The organization of this table is meant to support O(1) load
+     and store operations, but in so doing, it needs to use a
+     dynamically-sized vector for each region.  There is no a priori
+     way to know how to allocate these, and if we naively preallocate
+     them to each be the potential "maximal region" (with all blocks
+     allocated to it), the resulting preallocated table requires
+     gigabytes of space, and thus is prohibitively large.
 
-    At the same time, having dynamically-sized stable vectors is kind
-    of the point of regions (each is such a vector, in a sense), and
-    so requiring these first to implement regions' meta data seems
-    potentially circular in concept, if not also very complex.
+     At the same time, having dynamically-sized stable vectors is kind
+     of the point of regions (each is such a vector, in a sense), and
+     so requiring these first to implement regions' meta data seems
+     potentially circular in concept, if not also very complex.
 
-    So, we seem forced to use dynamically-sized heap vectors, and to
-    deal the compilations of integrating them with GC (how involved is
-    that?) and rebuilding them on upgrade.
+     So, we seem forced to use dynamically-sized heap vectors, and to
+     deal the compilations of integrating them with GC (how involved is
+     that?) and rebuilding them on upgrade.
 
 
  - 32768 entries (statically sized, ignoring the `vec_ptr` objects referenced therein).
