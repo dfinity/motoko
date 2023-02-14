@@ -212,7 +212,7 @@ rebuilt into the heap when the upgrade succeeds.
 
 ### Overview of `rebuild`
 
-When a canister upgrades, its heap is lost and the `vec_ptr` objects for each region are lost too.
+When a canister upgrades, its heap is lost and the access vectors for each region are lost too (see `region-blocks` table section).
 
 We use the `block-region` and `region-blocks` tables in stable memory to rebuild these vectors in the latter table:
 
