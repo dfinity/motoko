@@ -36,7 +36,7 @@ tensions:
 
 On the other hand, during ordinary canister execution, ~we *do* want to rely on the heap (not stable memory) for meta data to avoid its higher access costs for load and store operations, and thus we need meta data in two places, both heap and stable memory.~
 
-Tension 1 is resolved by ~storing certain meta data twice, just as with the Rust implementation that serves as our basis.~ storing the data only in stable memory, and relying on those acesses becoming faster in the near future. (looking into the near-future roadmap for canister stable memory, it seems this is very likely.)
+Tension 1 is resolved by ~storing certain meta data twice, just as with the Rust implementation that serves as our basis.~ storing the data only in stable memory, and relying on those accesses becoming faster in the near future. (looking into the near-future roadmap for canister stable memory, it seems this is very likely.)
 
 Compared with the Rust version, we store enough extra meta data to permit:
 
@@ -188,13 +188,13 @@ rebuilt into the heap when the upgrade succeeds.
     potentially circular in concept, if not also very complex.
 
     So, we seem forced to use dynamically-sized heap vectors, and to
-    deal the compications of integrating them with GC (how involved is
+    deal the compilations of integrating them with GC (how involved is
     that?) and rebuilding them on upgrade.
 
 
  - 32768 entries (statically sized, ignoring the `vec_ptr` objects referenced therein).
  - 16 bytes per entry.
- - entry type = `RegionBlock { size_in_pages: Nat64; vec_capacity : Nat32; vec_ptr: Nat32 }`
+ - entry type = `RegionBlocks { size_in_pages: Nat64; vec_capacity : Nat32; vec_ptr: Nat32 }`
   - `vec_ptr` points at what we call the region's "access vector"
  - the location of each entry gives its corresponding region ID.
  - `vec_ptr` points to a special vector with `vec_capacity` slots,
