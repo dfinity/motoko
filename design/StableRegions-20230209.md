@@ -196,14 +196,18 @@ rebuilt into the heap when the upgrade succeeds.
  - 16 bytes per entry.
  - entry type = `RegionBlocks { size_in_pages: Nat64; vec_capacity : Nat32; vec_ptr: Nat32 }`
  - the location of each entry in the table gives its corresponding region ID.
- - the `vec_ptr` field points at what we call the region's **"access vector"**:
-   - the access vector is a special heap-allocated vector with `vec_capacity` slots.
-   - to support dynamic growth, the access vector is held in the heap rather than stable memory.
-   - the access vector doubles when it grows.
+ - the `size_in_pages` field measures the size of the region in terms of _pages_, not blocks. 
+ - the `vec_capacity` and `vec_ptr` fields work with `size_in_pages`
+   to represent a growable vector that we call the region's **"access
+   vector"** (because "blocks vector" sounds a bit strange, and its
+   used to support O(1) access operations): 
+   - the access vector's address is held in `vec_ptr` and it has `vec_capacity` slots.
    - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
+   - to support dynamic growth, _the access vector is held in the Motoko **heap** rather than **stable memory**._
+   - the access vector doubles when it grows.
    - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
    - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
- - during an upgrade, the access vectors are "rebuilt" in a batch (see `rebuild`).
+   - during an upgrade, the access vectors are "rebuilt" in a batch (see `rebuild`).
 
 
 ### Overview of `rebuild`
