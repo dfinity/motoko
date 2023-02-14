@@ -25,6 +25,7 @@ use self::{
 
 pub mod array_slicing;
 pub mod barriers;
+pub mod mark_bitmap;
 pub mod mark_stack;
 pub mod partitioned_heap;
 mod phases;

@@ -1,5 +1,6 @@
 mod array_slicing;
 mod mark_bit;
+mod mark_bitmap;
 mod mark_stack;
 mod partitioned_heap;
 mod roots;
@@ -10,6 +11,7 @@ pub fn test() {
     unsafe {
         array_slicing::test();
         mark_bit::test();
+        mark_bitmap::test();
         mark_stack::test();
         partitioned_heap::test();
         roots::test();
