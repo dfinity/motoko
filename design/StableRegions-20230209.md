@@ -146,6 +146,12 @@ rebuilt into the heap when the upgrade succeeds.
  - block-region table (fixed size, about 131kb).
  - region-blocks (fixed size, about 524kb).
 
+### representation of values of type `Region`
+
+ - We use the region ID, a `Nat16`, to represent the region as a value.
+ - To compute a load or store access, this requires consulting stable memory for (almost all) meta data.
+ - We rely on the cost of these stable memory accesses going down in the near future to support this design decision.
+
 ### block-region table
 
  - purpose:
