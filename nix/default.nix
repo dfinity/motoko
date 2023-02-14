@@ -57,10 +57,10 @@ let
 
               # downgrade `wasmjs_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0
               js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
-                version = "4.0.0";
+                version = "5.0.1";
                 src = self.fetchurl {
                   url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
-                  sha256 = "sha256-3wL4GeWy9II0rys+PnyXga+oIS+L7Ofrz72DWLOUSV4=";
+                  sha256 = "sha256-eiEPHKFqdCOBlH3GfD2Nn0yU+/IHOHRLE1OJeYW2EGk=";
                 };
               });
 
