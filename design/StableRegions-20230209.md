@@ -33,11 +33,11 @@ tensions:
 
 **Tension 1** is introduced because we want to avoid relying on the Motoko heap as the "ground truth" about the allocator's state.  If this heap is lost, as it is during an upgrade, then a developer may still want to recover all of the regions' data and meta data.
 
-On the other hand, during ordinary canister execution, we *do* want to rely on the heap (not stable memory) for meta data to avoid its higher access costs for load and store operations, and thus we need meta data in two places, both heap and stable memory.
+On the other hand, during ordinary canister execution, ~we *do* want to rely on the heap (not stable memory) for meta data to avoid its higher access costs for load and store operations, and thus we need meta data in two places, both heap and stable memory.~
 
-Tension 1 is resolved by storing certain meta data twice, just as with the Rust implementation that serves as our basis.
+Tension 1 is resolved by ~storing certain meta data twice, just as with the Rust implementation that serves as our basis.~ storing the data only in stable memory, and relying on those acesses becoming faster in the near future. (looking into the near-future roadmap for canister stable memory, it seems this is very likely.)
 
-The main difference is that in our case, we store enough extra meta data to permit:
+Compared with the Rust version, we store enough extra meta data to permit:
 
  - Regions whose page blocks are in arbitrary order, not
    necessarily in order of smallest to highest address.
@@ -78,7 +78,7 @@ a time (in terms of the way that the canister interacts with the
 system API, at least).  Rather than actually grow by a single page,
 the implementation grows by a "page block" (8MB) at a time.
 
-This choice means that there are 120 pages per page block, and that
+This choice means that there are 128 pages per page block, and that
 the maximum number of regions and region blocks are each relatively
 small (32k each).  Consequently, they can each be identified with a
 2-byte identifier, and we can pre-allocate tables to store certain
@@ -92,6 +92,14 @@ control the minimal footprint of a region (8MB) and dictate the
 maximum size of stable memory for a canister today (32GB).  With 32k
 regions at 8MB each, well over the maximum stable memory size is used
 (256GB compared to 32GB, the limit today)
+
+### Q: When is stable memory becoming less costly?
+
+TBA
+
+### Q: How does the cheaper stable memory access cost compare with ordinary heap memory access cost?
+
+TBA
 
 
 ## Design details
@@ -109,14 +117,16 @@ User-facing region allocator operations:
 
  - `region_new` -- create a dynamic region.
  - `region_grow` -- grow region by a specified number of pages.
- - `region_release`* -- release region and reuse region's page blocks.
  - `region_load` -- read some data from the region.
  - `region_store` -- store some data into the region.
 
+And a special operation, for testing our design for future GC integration (bonus):
 
- - * The `region_release` operation is not part of the MVP, but supporting it
-   is important because it means we can transition quickly to an integration
-   with the ambient Motoko GC if we can support it.
+- `region_release` -- release region and reuse region's page blocks.
+
+The `_release` operation is *not* part of the user-facing API nor part of the MVP,
+but supporting it is important because it means we can transition quickly to an integration
+with the ambient Motoko GC if we can support it.
 
 ## Internal footprint
 
@@ -125,48 +135,77 @@ The state of the allocator is stored in a combination of stable memory and heap 
 The stable memory state is sufficient to reconstitute the heap objects
 (`rebuild` operation, described in a subsection below).  That means
 that even if the heap is lost (like during an upgrade that fails) the
-stable memory state can fully describe the state parts that should be
+stable memory state can fully describe the parts that should be
 rebuilt into the heap when the upgrade succeeds.
 
 ### stable memory fields
 
- - total allocated buckets, `Nat16`, max value is `32768`.
+ - total allocated blocks, `Nat16`, max value is `32768`.
  - total allocated regions, `Nat16`, max value is `32767` (one region is reserved for "no region").
- - bucket-region table (fixed size, about 131kb).
- - region-object table (fixed size, about 393kb).
+ - block-region table (fixed size, about 131kb).
+ - region-blocks (fixed size, about 524kb).
 
-### bucket-region table
+### block-region table
 
- - purpose: relate a bucket ID ("page block ID") to its region (if any) and its position in that region.
+ - purpose:
+   - relate a block ID ("page block ID") to its region (if any) and its position in that region (see `rebuild`).
+
+   - NB: The organization of this table is not useful for efficient
+     access calculations of load or store (they require a linear
+     search that would be prohibitively slow). Rather, the
+     `region-blocks` table is designed for that purpose.  OTOH, this
+     table is suitable to do a "batch" rebuild of the dynamic heap-allocated vectors
+     in that table, which get lost during upgrades.
+
  - 32768 entries (statically sized).
  - 4 bytes per entry.
- - entry type = `BucketRegion { region : Nat16, position : Nat16 }`
- - the location of each entry gives its corresponding bucket ID.
+ - entry type = `BlockRegion { region : Nat16, position : Nat16 }`
+ - the location of each entry gives its corresponding block ID.
 
-### region-object table
+### region-blocks table
 
- - 32768 entries (statically sized).
- - 12 bytes per entry.
- - entry type = `RegionObjectEntry { size_in_pages: Nat64; heap_object: Nat32 }`
+ - purpose:
+  - relate a region ID to its vector of block IDs, to compute an access efficiently (load or store).
+
+  - NB: The organization of this table is meant to support O(1) load
+    and store operations, but in so doing, it needs to use a
+    dynamically-sized vector for each region.  Tere is no a priori
+    way to know how to allocate these, and if we naively preallocate
+    them to each be the potential "maximal region" (with all blocks
+    allocated to it), the resulting preallocated table requires
+    gigabytes of space, and thus is prohibitively large.
+
+    At the same time, having dynamically-sized stable vectors is kind
+    of the point of regions (each is such a vector, in a sense), and
+    so requiring these first to implement regions' meta data seems
+    potentially circular in concept, if not also very complex.
+
+    So, we seem forced to use dynamically-sized heap vectors, and to
+    deal the compications of integrating them with GC (how involved is
+    that?) and rebuilding them on upgrade.
+
+
+ - 32768 entries (statically sized, ignoring the `vec_ptr` objects referenced therein).
+ - 16 bytes per entry.
+ - entry type = `RegionBlock { size_in_pages: Nat64; vec_capacity : Nat32; vec_ptr: Nat32 }`
+  - `vec_ptr` points at what we call the region's "access vector"
  - the location of each entry gives its corresponding region ID.
- - the heap object layout is rebuilt on upgrade.
- - the heap object is described in its own subsection.
-
-### region heap object
-
- - `RegionObject { id : Nat16; capacity : Nat16; vec_ptr: Nat32 }`
- - 8 bytes per entry.
- - `vec_ptr` points to a vector with `capacity` slots.
- - to support load and store quickly, the `vec_ptr` is also held in the heap.
+ - `vec_ptr` points to a special vector with `vec_capacity` slots,
+ - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
+ - to support dynamic growth, the `vec_ptr` object is held in the heap.
  - capacity of `vec_ptr` doubles when it grows.
- - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`.
+ - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
+ - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
+ - the `vec_ptr` object is rebuilt on upgrade.
+
 
 ### Overview of `rebuild`
 
-When a canister upgrades, its heap is lost and the region heap objects must thus be rebuilt.
+When a canister upgrades, its heap is lost and the `vec_ptr` objects for each region are lost too.
 
-Specifically, the region-object table points into the heap, and its heap objects are
-rebuilt by using both the bucket-region table, and the region-object table.
+We use the `block-region` and `region-blocks` tables in stable memory to rebuild these vectors in the latter table:
 
- - The region-object table gives a size for each region, saying how large each vector for each region object needs to be (see `RegionObject.vec_ptr`).
- - The bucket-region table gives a position and region for each bucket.  Once each region object has been allocated (including its vector for buckets), the bucket-region table says how to fill them, one entry at a time.
+ - The `region-blocks` table gives a size for each region, saying how large each vector for each region needs to be.
+ - The `block-region` table gives a relative position and region ID for each block ID.
+
+Once each regions' vectors have been allocated, the block-region table says how to fill them, one entry at a time.
