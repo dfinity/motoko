@@ -1,2 +1,2 @@
-max-stack.mo:72.19-72.24: warning [M0155], operator may trap for inferred type
+max-stack.mo:74.19-74.24: warning [M0155], operator may trap for inferred type
   Nat
