@@ -195,15 +195,15 @@ rebuilt into the heap when the upgrade succeeds.
  - 32768 entries (statically sized, ignoring the `vec_ptr` objects referenced therein).
  - 16 bytes per entry.
  - entry type = `RegionBlocks { size_in_pages: Nat64; vec_capacity : Nat32; vec_ptr: Nat32 }`
-  - `vec_ptr` points at what we call the region's "access vector"
- - the location of each entry gives its corresponding region ID.
- - `vec_ptr` points to a special vector with `vec_capacity` slots,
- - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
- - to support dynamic growth, the `vec_ptr` object is held in the heap.
- - capacity of `vec_ptr` doubles when it grows.
- - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
- - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
- - the `vec_ptr` object is rebuilt on upgrade.
+ - the location of each entry in the table gives its corresponding region ID.
+ - the `vec_ptr` field points at what we call the region's **"access vector"**:
+   - the access vector is a special heap-allocated vector with `vec_capacity` slots.
+   - to support dynamic growth, the access vector is held in the heap rather than stable memory.
+   - the access vector doubles when it grows.
+   - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
+   - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
+   - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
+ - during an upgrade, the access vectors are "rebuilt" in a batch (see `rebuild`).
 
 
 ### Overview of `rebuild`
