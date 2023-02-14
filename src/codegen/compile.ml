@@ -5579,7 +5579,7 @@ module MakeSerialization (Strm : Stream) = struct
      (fun env get_idltyp get_depth get_can_recover ->
       let get_rel_buf_opt = Registers.get_rel_buf_opt env in
       let get_data_buf = Registers.get_data_buf env in
-      let get_ref_buf = Registers.get_ref_buf env in
+      let _get_ref_buf = Registers.get_ref_buf env in
       let get_typtbl = Registers.get_typtbl env in
       let get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
@@ -5597,9 +5597,6 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-        let (set_idlty, get_idlty) = new_local env "idl_ty" in
-        set_idlty ^^
-        get_idlty ^^ 
         ( (* Reset depth counter if we made progress *)
           ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
