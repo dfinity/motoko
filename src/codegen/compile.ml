@@ -5597,9 +5597,9 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-(*        let (set_idlty, get_idlty) = new_local env "idl_ty" in
+        let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
-        get_idlty ^^ *)
+        get_idlty ^^ 
         ( (* Reset depth counter if we made progress *)
           ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -5608,7 +5608,7 @@ module MakeSerialization (Strm : Stream) = struct
           (compile_unboxed_const 0l)
         ) ^^
         (if can_recover
-         then compile_unboxed_const 1l 
+         then compile_unboxed_const 1l
          else get_can_recover) ^^
         deserialize_go env t
       in
