@@ -842,7 +842,7 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
     )
-  let share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
+  let _share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7; p8; p9] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -4929,7 +4929,8 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
-  *)
+   *)
+              
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
@@ -4944,6 +4945,46 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_end")))
   let get_typtbl_idltyps env =
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
+
+  module Registers = struct
+    let register_globals env =
+     (E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@data_buf" Mutable 0l;
+      E.add_global32 env "@@ref_buf" Mutable 0l;
+      E.add_global32 env "@@typtbl" Mutable 0l;
+      E.add_global32 env "@@typtbl_end" Mutable 0l;
+      E.add_global32 env "@@typtbl_size" Mutable 0l)
+
+    let get_rel_buf_opt env =
+      G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
+    let set_rel_buf_opt env =
+      G.i (GlobalSet (nr (E.get_global env "@@rel_buf_opt")))
+
+    let get_data_buf env =
+      G.i (GlobalGet (nr (E.get_global env "@@data_buf")))
+    let set_data_buf env =
+      G.i (GlobalSet (nr (E.get_global env "@@data_buf")))
+
+    let get_ref_buf env =
+      G.i (GlobalGet (nr (E.get_global env "@@ref_buf")))
+    let set_ref_buf env =
+      G.i (GlobalSet (nr (E.get_global env "@@ref_buf")))
+
+    let get_typtbl env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl")))
+    let set_typtbl env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl")))
+
+    let get_typtbl_end env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl_end")))
+    let set_typtbl_end env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl_end")))
+
+    let get_typtbl_size env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl_size")))
+    let set_typtbl_size env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
+  end
 
   open Typ_hash
 
@@ -5530,19 +5571,18 @@ module MakeSerialization (Strm : Stream) = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code9 env name
-      (("rel_buf_opt", I32Type),
-       ("data_buffer", I32Type),
-       ("ref_buffer", I32Type),
-       ("typtbl", I32Type),
-       ("typtbl_end", I32Type),
-       ("typtbl_size", I32Type),
-       ("idltyp", I32Type),
+    Func.share_code3 env name
+      (("idltyp", I32Type),
        ("depth", I32Type),
        ("can_recover", I32Type)
       ) [I32Type]
-    (fun env get_rel_buf_opt get_data_buf get_ref_buf get_typtbl get_typtbl_end get_typtbl_size get_idltyp get_depth get_can_recover ->
-
+     (fun env get_idltyp get_depth get_can_recover ->
+      let get_rel_buf_opt = Registers.get_rel_buf_opt env in
+      let get_data_buf = Registers.get_data_buf env in
+      let get_ref_buf = Registers.get_ref_buf env in
+      let get_typtbl = Registers.get_typtbl env in
+      let get_typtbl_end = Registers.get_typtbl_end env in
+      let get_typtbl_size = Registers.get_typtbl_size env in
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
          level of opt that is not present in the value type
@@ -5557,17 +5597,9 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-        let (set_idlty, get_idlty) = new_local env "idl_ty" in
+(*        let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
-        (* pass as globals (never change in rec calls) *)
-        get_rel_buf_opt ^^
-        get_data_buf ^^
-        get_ref_buf ^^
-        get_typtbl ^^
-        get_typtbl_end ^^
-        get_typtbl_size ^^
-        (* ... end pass as globals*)
-        get_idlty ^^
+        get_idlty ^^ *)
         ( (* Reset depth counter if we made progress *)
           ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -5576,7 +5608,7 @@ module MakeSerialization (Strm : Stream) = struct
           (compile_unboxed_const 0l)
         ) ^^
         (if can_recover
-         then compile_unboxed_const 1l
+         then compile_unboxed_const 1l 
          else get_can_recover) ^^
         deserialize_go env t
       in
@@ -6275,11 +6307,15 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-             get_rel_buf_opt ^^
-             get_data_buf ^^ get_ref_buf ^^
-             get_typtbl_ptr ^^ load_unskewed_ptr ^^
-             get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
-             get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
+             begin
+               (* set up register arguments *)
+               get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+               get_data_buf ^^ Registers.set_data_buf env ^^
+               get_ref_buf ^^ Registers.set_ref_buf env ^^
+               get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+               get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+               get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+             end ^^
              ReadBuf.read_sleb128 env get_main_typs_buf ^^
              compile_unboxed_const 0l ^^ (* initial depth *)
              can_recover ^^
@@ -10411,6 +10447,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   Stack.register_globals env;
   GC.register_globals env;
   StableMem.register_globals env;
+  Serialization.Registers.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
