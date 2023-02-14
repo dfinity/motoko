@@ -1,6 +1,7 @@
-Stable Region Allocator Design for Motoko
-20230209
-Matthew Hammer
+# Stable Region Allocator Design
+
+- 20230209
+- Matthew Hammer
 
 ## Purpose of this document
 
