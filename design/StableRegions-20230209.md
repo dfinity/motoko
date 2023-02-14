@@ -143,8 +143,8 @@ rebuilt into the heap when the upgrade succeeds.
 
  - total allocated blocks, `Nat16`, max value is `32768`.
  - total allocated regions, `Nat16`, max value is `32767` (one region is reserved for "no region").
- - block-region table (fixed size, about 131kb).
- - region-blocks (fixed size, about 524kb).
+ - The `block-region` table (fixed size, about 131kb).
+ - The `region-blocks` table (fixed size, about 524kb).
 
 ### representation of values of type `Region`
 
@@ -176,7 +176,7 @@ rebuilt into the heap when the upgrade succeeds.
 
   - NB: The organization of this table is meant to support O(1) load
     and store operations, but in so doing, it needs to use a
-    dynamically-sized vector for each region.  Tere is no a priori
+    dynamically-sized vector for each region.  There is no a priori
     way to know how to allocate these, and if we naively preallocate
     them to each be the potential "maximal region" (with all blocks
     allocated to it), the resulting preallocated table requires
