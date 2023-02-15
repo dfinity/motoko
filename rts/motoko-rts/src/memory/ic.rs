@@ -31,15 +31,13 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
-pub(crate) unsafe fn initialize_memory<M: Memory>(mem: &mut M, align: bool) {
+pub(crate) unsafe fn initialize_memory(align: bool) {
     HP = if align {
         get_aligned_heap_base()
     } else {
         get_heap_base()
     };
     LAST_HP = HP;
-    // make sure that the page HP points to is allocated too
-    mem.grow_memory(u64::from(HP));
 }
 
 #[no_mangle]
@@ -95,8 +93,7 @@ impl Memory for IcMemory {
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        if (old_hp ^ new_hp) / WASM_PAGE_SIZE.as_u32() as u64 != 0 {
-            // Page boundary crossed, make sure that pages are allocated
+        if new_hp > ((wasm32::memory_size(0) as u64) << 16) {
             self.grow_memory(new_hp)
         }
 
@@ -106,9 +103,8 @@ impl Memory for IcMemory {
         Value::from_ptr(old_hp as usize)
     }
 
-    /// Page allocation. Ensures that the memory up to, and including, the given pointer is allocated,
+    /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated,
     /// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
-    /// Enforced precondition: `ptr` must be a pointer less than or equal to 0xFFFF_0000.
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: u64) {
         debug_assert_eq!(0xFFFF_0000, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
@@ -116,14 +112,14 @@ impl Memory for IcMemory {
             // spare the last wasm memory page
             rts_trap_with("Cannot allocate memory")
         };
-        let total_pages_needed = (ptr >> 16) as usize + (ptr < 0xFFFF_0000) as usize;
+        let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
+        let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
         let current_pages = wasm32::memory_size(0);
         if total_pages_needed > current_pages {
             if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
                 // replica signals that there is not enough memory
                 rts_trap_with("Cannot grow memory");
             }
-            debug_assert!(wasm32::memory_size(0) <= 65535)
         }
     }
 }
