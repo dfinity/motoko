@@ -710,8 +710,7 @@ and block force_unit ds =
     let x = fresh_var "x" (e.note.S.note_typ) in
     (decs prefix @ [letD x (exp e); letP (pat p) (varE x)], varE x)
   | false, S.LetD (p, e, Some f) ->
-    let x = fresh_var "x" (e.note.S.note_typ) in
-    (decs prefix @ [letD x (let_else_switch p e f last.note); letP (pat p) (varE x)], varE x)
+    (decs prefix, let_else_switch p e f last.note)
   | _, _ ->
     (decs ds, tupE [])
 
