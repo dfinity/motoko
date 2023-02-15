@@ -1,6 +1,6 @@
 import Prim = "mo:prim";
 
-// test desabilization of stabilized data, without rts stack overflow.
+// test destabilization of stable variables, without rts stack overflow
 actor a {
 
    stable let x = Prim.stableMemoryGrow(1);
