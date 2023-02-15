@@ -31,7 +31,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             .partitioned_heap
             .as_mut()
             .unwrap()
-            .start_new_allocation_partition(mem);
+            .start_collection(mem);
         debug_assert!(state.mark_state.is_none());
         let mark_stack = MarkStack::new(mem);
         state.mark_state = Some(MarkState {
@@ -82,7 +82,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         }
         while let Some(value) = self.mark_stack.pop() {
             debug_assert!(value.is_ptr());
-            debug_assert!(value.as_obj().is_marked());
             self.mark_fields(value.as_obj());
 
             self.time.tick();
@@ -99,19 +98,15 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
         let object = value.as_obj();
-        if object.is_marked() {
-            return;
+        if self.heap.mark_object(object) {
+            debug_assert!(
+                object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
+            );
+            self.mark_stack.push(self.mem, value);
         }
-        object.mark();
-        self.heap.record_marked_space(object);
-        debug_assert!(
-            object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
-        );
-        self.mark_stack.push(self.mem, value);
     }
 
     unsafe fn mark_fields(&mut self, object: *mut Obj) {
-        debug_assert!(object.is_marked());
         visit_pointer_fields(
             self,
             object,
@@ -122,7 +117,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 gc.mark_object(field_value);
             },
             |gc, slice_start, array| {
-                debug_assert!(array.is_marked());
                 let length = slice_array(array);
                 if array.tag() >= TAG_ARRAY_SLICE_MIN {
                     gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));

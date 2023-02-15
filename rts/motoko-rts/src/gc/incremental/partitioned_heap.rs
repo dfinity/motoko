@@ -36,9 +36,11 @@
 
 use core::{array::from_fn, ops::Range};
 
-use crate::{memory::Memory, rts_trap_with, types::*};
+use crate::{
+    gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
+};
 
-use super::time::BoundedTime;
+use super::mark_bitmap::{BitmapIterator, MarkBitmap, BITMAP_SIZE};
 
 /// Size of each parition.
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
@@ -54,12 +56,14 @@ pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.85;
 
 /// Heap partition of size `PARTITION_SIZE`.
 pub struct Partition {
-    index: usize,        // Index of the partition `0..MAX_PARTITIONS`.
-    free: bool,          // Denotes a free partition (which may still contain static space).
+    index: usize,               // Index of the partition `0..MAX_PARTITIONS`.
+    free: bool,                 // Denotes a free partition (which may still contain static space).
     large_content: bool, // Specifies whether a large object is contained that spans multiple partitions.
     marked_size: usize,  // Total amount of marked object space in the dynamic space.
     static_size: usize,  // Size of the static space.
     dynamic_size: usize, // Size of the dynamic space.
+    bitmap: Option<MarkBitmap>, // Mark bitmap used for marking objects inside this partition.
+    temporary: bool,     // Specifies a temporary partition used during a GC run to store bitmaps.
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
@@ -69,7 +73,7 @@ impl Partition {
         self.index
     }
 
-    fn start_address(&self) -> usize {
+    pub fn start_address(&self) -> usize {
         self.index * PARTITION_SIZE
     }
 
@@ -109,6 +113,22 @@ impl Partition {
         self.update
     }
 
+    pub fn is_temporary(&self) -> bool {
+        self.temporary
+    }
+
+    pub fn has_dynamic_space(&self) -> bool {
+        !self.free && !self.temporary && self.static_size != PARTITION_SIZE
+    }
+
+    pub fn get_bitmap(&self) -> &MarkBitmap {
+        self.bitmap.as_ref().unwrap()
+    }
+
+    pub fn mutable_bitmap(&mut self) -> &mut MarkBitmap {
+        self.bitmap.as_mut().unwrap()
+    }
+
     #[cfg(feature = "memory_check")]
     unsafe fn clear_free_remainder(&self) {
         use crate::constants::WORD_SIZE;
@@ -138,12 +158,14 @@ impl Partition {
 
     pub unsafe fn free(&mut self) {
         debug_assert!(!self.free);
-        debug_assert!(self.evacuate || self.large_content);
+        debug_assert!(self.evacuate || self.large_content || self.temporary);
         debug_assert_eq!(self.marked_size, 0);
+        debug_assert!(self.bitmap.is_none());
         self.free = true;
         self.dynamic_size = 0;
         self.evacuate = false;
         self.large_content = false;
+        self.temporary = false;
 
         #[cfg(feature = "memory_check")]
         self.clear_free_remainder();
@@ -168,14 +190,14 @@ impl Partition {
 /// Keeps the state of a `PartitionedHeapIterator` with an inner `PartititionIterator`.
 pub struct HeapIteratorState {
     partition_index: usize,
-    current_address: usize,
+    bitmap_iterator: Option<BitmapIterator>,
 }
 
 impl HeapIteratorState {
     pub fn new() -> HeapIteratorState {
         HeapIteratorState {
             partition_index: 0,
-            current_address: 0,
+            bitmap_iterator: None,
         }
     }
 
@@ -189,45 +211,47 @@ impl HeapIteratorState {
 /// of large objects. Instantiated per GC increment, operating on a stored `HeapIteratorState`.
 /// Due to borrow checker restrictions, the iterator does not directly reference the state
 /// but needs to be explicitly loaded and stored from the state by the GC increments.
-pub struct PartitionedHeapIterator<'a> {
-    heap: &'a PartitionedHeap,
+pub struct PartitionedHeapIterator {
     partition_index: usize,
 }
 
-impl<'a> PartitionedHeapIterator<'a> {
-    pub fn load_from(
-        heap: &'a PartitionedHeap,
-        state: &HeapIteratorState,
-    ) -> PartitionedHeapIterator<'a> {
-        let mut iterator = PartitionedHeapIterator {
-            heap,
-            partition_index: state.partition_index,
-        };
-        iterator.skip_free_partitions();
+impl PartitionedHeapIterator {
+    pub fn load_from(heap: &PartitionedHeap, state: &HeapIteratorState) -> PartitionedHeapIterator {
+        let partition_index = state.partition_index;
+        let mut iterator = PartitionedHeapIterator { partition_index };
+        iterator.skip_empty_partitions(heap);
         iterator
-    }
-
-    fn skip_free_partitions(&mut self) {
-        while self.partition_index < MAX_PARTITIONS && self.current_partition().unwrap().is_free() {
-            debug_assert!(!self.current_partition().unwrap().has_large_content());
-            self.partition_index += 1;
-        }
     }
 
     pub fn save_to(&self, state: &mut HeapIteratorState) {
         state.partition_index = self.partition_index;
     }
 
-    pub fn current_partition(&self) -> Option<&Partition> {
-        if self.partition_index < MAX_PARTITIONS {
-            Some(self.heap.get_partition(self.partition_index))
-        } else {
-            None
+    fn skip_empty_partitions(&mut self, heap: &PartitionedHeap) {
+        loop {
+            if self.partition_index == MAX_PARTITIONS {
+                return;
+            }
+            let partition = heap.get_partition(self.partition_index);
+            if partition.has_dynamic_space() {
+                return;
+            }
+            self.partition_index += 1;
         }
     }
 
-    pub unsafe fn next_partition(&mut self) {
-        let partition = self.current_partition().unwrap();
+    pub fn has_partition(&self) -> bool {
+        self.partition_index < MAX_PARTITIONS
+    }
+
+    pub fn current_partition<'a>(&self, heap: &'a PartitionedHeap) -> &'a Partition {
+        debug_assert!(self.partition_index < MAX_PARTITIONS);
+        heap.get_partition(self.partition_index)
+    }
+
+    pub unsafe fn next_partition(&mut self, heap: &PartitionedHeap) {
+        debug_assert!(self.partition_index < MAX_PARTITIONS);
+        let partition = heap.get_partition(self.partition_index);
         let number_of_partitions = if partition.has_large_content() {
             let large_object = partition.dynamic_space_start() as *mut Obj;
             PartitionedHeap::partitions_length(large_object)
@@ -235,71 +259,60 @@ impl<'a> PartitionedHeapIterator<'a> {
             1
         };
         self.partition_index += number_of_partitions;
-        self.skip_free_partitions();
+        self.skip_empty_partitions(heap);
         debug_assert!(self.partition_index <= MAX_PARTITIONS);
     }
 }
 
-/// Iterates over the marked object in the partition.
+/// Iterates over the marked objects in the partition.
 /// Instantiated per GC increment, operating on a stored `HeapIteratorState`.
 pub struct PartitionIterator {
-    start_address: usize,
-    end_address: usize,
-    current_address: usize,
+    partition_start: usize,
+    bitmap_iterator: BitmapIterator,
 }
 
 impl PartitionIterator {
-    pub unsafe fn load_from(
-        partition: &Partition,
-        state: &HeapIteratorState,
-        time: &mut BoundedTime,
-    ) -> PartitionIterator {
-        let start_address = partition.dynamic_space_start();
-        let end_address = partition.dynamic_space_end();
-        let current_address =
-            if state.current_address < start_address || state.current_address > end_address {
-                start_address
-            } else {
-                state.current_address
-            };
-        let mut iterator = PartitionIterator {
-            start_address,
-            end_address,
-            current_address,
+    pub unsafe fn load_from(partition: &Partition, state: &HeapIteratorState) -> PartitionIterator {
+        let partition_start = partition.start_address();
+        let bitmap_iterator = if state.bitmap_iterator.is_none() {
+            partition.get_bitmap().iterate()
+        } else {
+            state.bitmap_iterator.as_ref().unwrap().clone()
         };
-        iterator.skip_unmarked_space(time);
-        iterator
+        debug_assert!(bitmap_iterator.belongs_to(partition.bitmap.as_ref().unwrap()));
+        PartitionIterator {
+            partition_start,
+            bitmap_iterator,
+        }
     }
 
     pub fn save_to(&self, state: &mut HeapIteratorState) {
-        debug_assert!(self.current_address >= self.start_address);
-        state.current_address = self.current_address;
+        state.bitmap_iterator =
+            if self.bitmap_iterator.current_marked_offset() == BITMAP_ITERATION_END {
+                None
+            } else {
+                Some(self.bitmap_iterator.clone())
+            };
     }
 
-    unsafe fn skip_unmarked_space(&mut self, time: &mut BoundedTime) {
-        // Also considers free partitions that have zero dynamic space.
-        while self.current_address < self.end_address
-            && !is_marked(*(self.current_address as *mut Tag))
-        {
-            let size = block_size(self.current_address).to_bytes().as_usize();
-            self.current_address += size; // Potentially skips even a large object.
-            time.tick();
-        }
+    pub fn has_object(&self) -> bool {
+        let offset = self.bitmap_iterator.current_marked_offset();
+        offset != BITMAP_ITERATION_END
     }
 
-    pub fn current_object(&self) -> Option<*mut Obj> {
-        if self.current_address < self.end_address {
-            Some(self.current_address as *mut Obj)
-        } else {
-            None
-        }
+    pub fn current_object(&self) -> *mut Obj {
+        let offset = self.bitmap_iterator.current_marked_offset();
+        debug_assert_ne!(offset, BITMAP_ITERATION_END);
+        let address = self.partition_start + offset;
+        address as *mut Obj
     }
 
-    pub unsafe fn next_object(&mut self, time: &mut BoundedTime) {
-        debug_assert!(self.current_address >= self.start_address);
-        let size = block_size(self.current_address).to_bytes().as_usize();
-        self.current_address += size;
-        self.skip_unmarked_space(time);
+    pub fn next_object(&mut self) {
+        debug_assert_ne!(
+            self.bitmap_iterator.current_marked_offset(),
+            BITMAP_ITERATION_END
+        );
+        self.bitmap_iterator.next();
     }
 }
 
@@ -310,6 +323,8 @@ pub struct PartitionedHeap {
     allocation_index: usize, // Index of the partition currently used for allocations.
     evacuating: bool,
     reclaimed: u64,
+    bitmap_pointer: usize, // Allocation pointer for mark bitmaps.
+    gc_running: bool,      // Create bitmaps for partitions whn allocated during active GC.
 }
 
 impl PartitionedHeap {
@@ -329,6 +344,8 @@ impl PartitionedHeap {
                 0
             },
             dynamic_size: 0,
+            bitmap: None,
+            temporary: false,
             evacuate: false,
             update: false,
         });
@@ -338,6 +355,8 @@ impl PartitionedHeap {
             allocation_index,
             evacuating: false,
             reclaimed: 0,
+            bitmap_pointer: 0,
+            gc_running: false,
         }
     }
 
@@ -351,6 +370,63 @@ impl PartitionedHeap {
 
     fn mutable_partition(&mut self, index: usize) -> &mut Partition {
         &mut self.partitions[index]
+    }
+
+    unsafe fn allocate_temporary_partition(&mut self) -> &mut Partition {
+        for partition in &mut self.partitions {
+            if partition.free && partition.is_completely_free() {
+                debug_assert_eq!(partition.dynamic_size, 0);
+                partition.free = false;
+                partition.temporary = true;
+                return partition;
+            }
+        }
+        rts_trap_with("Cannot grow memory");
+    }
+
+    unsafe fn allocate_bitmap<M: Memory>(&mut self, mem: &mut M) -> MarkBitmap {
+        if self.bitmap_pointer % PARTITION_SIZE == 0 {
+            let partition = self.allocate_temporary_partition();
+            mem.grow_memory(partition.end_address() as u64);
+            self.bitmap_pointer = partition.start_address();
+        }
+        let bitmap = MarkBitmap::allocate(self.bitmap_pointer);
+        self.bitmap_pointer += BITMAP_SIZE;
+        bitmap
+    }
+
+    // Optimization: Returns true if the object transitioned from unmarked to marked.
+    pub unsafe fn mark_object(&mut self, object: *mut Obj) -> bool {
+        let address = object as usize;
+        let partition_index = address / PARTITION_SIZE;
+        let partition = self.mutable_partition(partition_index);
+        let bitmap = partition.mutable_bitmap();
+        let offset = address % PARTITION_SIZE;
+        if !bitmap.is_marked(offset) {
+            bitmap.mark(offset);
+            self.record_marked_space(object);
+            true
+        } else {
+            false
+        }
+    }
+
+    // TODO: Economize mark bitmap for large object partitions.
+    // But this would mean that we need to handle this also in the heap iteration.
+
+    pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M) {
+        debug_assert_eq!(self.bitmap_pointer, 0);
+        debug_assert!(!self.gc_running);
+        self.gc_running = true;
+        for partition_index in 0..MAX_PARTITIONS {
+            let partition = self.get_partition(partition_index);
+            if partition.has_dynamic_space() {
+                let bitmap = self.allocate_bitmap(mem);
+                self.mutable_partition(partition_index).bitmap = Some(bitmap);
+            }
+        }
+        // Allow young object collection by starting a new allocation partition.
+        self.start_new_allocation_partition(mem);
     }
 
     pub fn plan_evacuations(&mut self) {
@@ -377,14 +453,20 @@ impl PartitionedHeap {
             let marked_size = partition.marked_size;
             partition.update = false;
             partition.marked_size = 0;
+            partition.bitmap = None;
             if partition.to_be_evacuated() {
                 debug_assert!(partition.index != self.allocation_index);
                 debug_assert!(partition.dynamic_size >= marked_size);
                 self.reclaimed += (partition.dynamic_size - marked_size) as u64;
                 partition.free();
+            } else if partition.temporary {
+                partition.free();
             }
         }
         self.evacuating = false;
+        self.bitmap_pointer = 0;
+        debug_assert!(self.gc_running);
+        self.gc_running = false;
     }
 
     pub fn updates_needed(&self) -> bool {
@@ -399,11 +481,23 @@ impl PartitionedHeap {
         self.allocation_index == index
     }
 
-    unsafe fn allocate_free_partition(&mut self, requested_space: usize) -> &mut Partition {
+    unsafe fn allocate_free_partition<M: Memory>(
+        &mut self,
+        mem: &mut M,
+        requested_space: usize,
+    ) -> &mut Partition {
+        let bitmap = if self.gc_running {
+            Some(self.allocate_bitmap(mem))
+        } else {
+            None
+        };
         for partition in &mut self.partitions {
             if partition.free && partition.free_size() >= requested_space {
                 debug_assert_eq!(partition.dynamic_size, 0);
                 partition.free = false;
+                if bitmap.is_some() {
+                    partition.bitmap = bitmap;
+                }
                 return partition;
             }
         }
@@ -423,7 +517,7 @@ impl PartitionedHeap {
         Bytes(self.reclaimed)
     }
 
-    #[inline]
+    // TODO: Inline this information in mark bitmap
     pub unsafe fn record_marked_space(&mut self, object: *mut Obj) {
         let address = object as usize;
         let size = block_size(address).to_bytes().as_usize();
@@ -470,7 +564,7 @@ impl PartitionedHeap {
         #[cfg(feature = "memory_check")]
         self.allocation_partition().clear_free_remainder();
 
-        let new_partition = self.allocate_free_partition(size);
+        let new_partition = self.allocate_free_partition(mem, size);
         mem.grow_memory(new_partition.end_address() as u64);
         let heap_pointer = new_partition.dynamic_space_end();
         new_partition.dynamic_size += size;
@@ -484,6 +578,11 @@ impl PartitionedHeap {
         if size > usize::MAX - PARTITION_SIZE {
             panic!("Too large allocation");
         }
+        let bitmap = if self.gc_running {
+            Some(self.allocate_bitmap(mem))
+        } else {
+            None
+        };
         let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
         debug_assert!(number_of_partitions > 0);
         let first_index = self.find_large_space(number_of_partitions);
@@ -507,7 +606,10 @@ impl PartitionedHeap {
                 partition.dynamic_size = PARTITION_SIZE;
             }
         }
-        let first_partition = self.get_partition(first_index);
+        let first_partition = self.mutable_partition(first_index);
+        if bitmap.is_some() {
+            first_partition.bitmap = bitmap;
+        }
         Value::from_ptr(first_partition.dynamic_space_start())
     }
 

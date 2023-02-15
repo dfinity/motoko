@@ -66,9 +66,9 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn run(&mut self) {
-        let mut iterator = PartitionedHeapIterator::load_from(self.heap, &self.iterator_state);
-        while iterator.current_partition().is_some() {
-            let partition = iterator.current_partition().unwrap();
+        let mut iterator = PartitionedHeapIterator::load_from(&self.heap, &self.iterator_state);
+        while iterator.has_partition() {
+            let partition = iterator.current_partition(&self.heap);
             if partition.to_be_updated() {
                 self.update_partition(partition);
                 if self.time.is_over() {
@@ -76,7 +76,7 @@ impl<'a> UpdateIncrement<'a> {
                     break;
                 }
             }
-            iterator.next_partition();
+            iterator.next_partition(&self.heap);
         }
         iterator.save_to(&mut self.iterator_state);
     }
@@ -84,22 +84,20 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn update_partition(&mut self, partition: &Partition) {
         debug_assert!(!partition.is_free());
         debug_assert!(!partition.to_be_evacuated());
-        let mut iterator =
-            PartitionIterator::load_from(partition, &self.iterator_state, &mut self.time);
-        while iterator.current_object().is_some() {
-            let object = iterator.current_object().unwrap();
+        let mut iterator = PartitionIterator::load_from(partition, &mut self.iterator_state);
+        while iterator.has_object() {
+            let object = iterator.current_object();
             self.update_object(object);
             if self.time.is_over() {
                 // Resume updating the same object later.
                 break;
             }
-            iterator.next_object(&mut self.time);
+            iterator.next_object();
         }
         iterator.save_to(&mut self.iterator_state);
     }
 
     unsafe fn update_object(&mut self, object: *mut Obj) {
-        debug_assert!(object.is_marked());
         debug_assert!(!object.is_forwarded());
         if self.updates_needed {
             self.update_fields(object);
@@ -108,7 +106,6 @@ impl<'a> UpdateIncrement<'a> {
             // Keep mark bit and later resume updating more slices of this array.
             return;
         }
-        object.unmark();
         debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         self.time.tick();
     }
@@ -126,7 +123,6 @@ impl<'a> UpdateIncrement<'a> {
                     gc.time.tick();
                 },
                 |gc, slice_start, array| {
-                    debug_assert!(array.is_marked());
                     let length = slice_array(array);
                     gc.time.advance((length - slice_start) as usize);
                     length

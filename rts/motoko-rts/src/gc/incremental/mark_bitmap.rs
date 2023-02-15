@@ -28,7 +28,7 @@ use super::partitioned_heap::PARTITION_SIZE;
 
 const BITMAP_FRACTION: usize = (WORD_SIZE * u8::BITS) as usize;
 
-const BITMAP_SIZE: usize = PARTITION_SIZE / BITMAP_FRACTION;
+pub const BITMAP_SIZE: usize = PARTITION_SIZE / BITMAP_FRACTION;
 
 /// Partition-associated mark bitmap.
 pub struct MarkBitmap {
@@ -82,6 +82,7 @@ impl MarkBitmap {
 /// Adopted and adjusted from `mark_compact/bitmap.rs`.
 /// The iterator separates advancing `next()` from inspection `current_marked_offset()`
 /// to better support the incremental evacuation and update GC increments.
+#[derive(Clone)]
 pub struct BitmapIterator {
     /// Start address of the mark bitmap.
     bitmap_pointer: *mut u8,
@@ -99,6 +100,8 @@ pub struct BitmapIterator {
 /// `usize::MAX` is not word-aligned and thus not a valid object address.
 pub const BITMAP_ITERATION_END: usize = usize::MAX;
 
+const BIT_INDEX_END: usize = BITMAP_SIZE * u8::BITS as usize;
+
 impl BitmapIterator {
     fn new(bitmap_pointer: *mut u8) -> BitmapIterator {
         debug_assert_eq!(PARTITION_SIZE % size_of::<u64>(), 0);
@@ -114,11 +117,15 @@ impl BitmapIterator {
         iterator
     }
 
+    pub fn belongs_to(&self, bitmap: &MarkBitmap) -> bool {
+        self.bitmap_pointer == bitmap.pointer
+    }
+
     /// Returns the next marked address offset in the partition,
     /// or `BITMAP_ITERATION_END` if there are no more bits set.
     pub fn current_marked_offset(&self) -> usize {
         assert!(self.next_bit_index > 0);
-        if self.next_bit_index == BITMAP_SIZE {
+        if self.next_bit_index == BIT_INDEX_END {
             return BITMAP_ITERATION_END;
         } else {
             (self.next_bit_index - 1) * WORD_SIZE as usize
@@ -127,9 +134,9 @@ impl BitmapIterator {
 
     /// Advance the iterator to the next marked offset.
     pub fn next(&mut self) {
-        debug_assert!(self.next_bit_index <= BITMAP_SIZE);
+        debug_assert!(self.next_bit_index <= BIT_INDEX_END);
 
-        if self.next_bit_index == BITMAP_SIZE {
+        if self.next_bit_index == BIT_INDEX_END {
             return;
         }
 
@@ -147,7 +154,7 @@ impl BitmapIterator {
 
             // Move on to next word, always within a 64-bit boundary.
             self.next_bit_index += self.leading_zeros;
-            if self.next_bit_index == BITMAP_SIZE {
+            if self.next_bit_index == BIT_INDEX_END {
                 return;
             }
             let word64_index = self.next_bit_index / size_of::<u64>();

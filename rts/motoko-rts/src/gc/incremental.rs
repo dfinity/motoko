@@ -355,13 +355,9 @@ pub(crate) unsafe fn post_allocation_barrier(state: &mut State, new_object: Valu
 unsafe fn mark_new_allocation(state: &mut State, new_object: Value) {
     debug_assert!(state.phase == Phase::Mark || state.phase == Phase::Evacuate);
     let object = new_object.get_ptr() as *mut Obj;
-    debug_assert!(!object.is_marked());
-    object.mark();
-    state
-        .partitioned_heap
-        .as_mut()
-        .unwrap()
-        .record_marked_space(object);
+    let heap = state.partitioned_heap.as_mut().unwrap();
+    let unmarked_before = heap.mark_object(object);
+    debug_assert!(unmarked_before);
 }
 
 /// Update the pointer fields during the update phase.
