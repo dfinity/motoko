@@ -2341,7 +2341,7 @@ and infer_dec env dec : T.typ =
   | ExpD exp
   | LetD (_, exp, None) -> infer_exp env exp
   | LetD (_, exp, Some fail) ->
-    check_exp env T.Non fail;
+    if not env.pre then check_exp env T.Non fail;
     infer_exp env exp
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
