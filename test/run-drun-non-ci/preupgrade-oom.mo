@@ -1,7 +1,7 @@
 import P "mo:⛔";
 
 // exercise OOM detection during upgrade.
-// allocate up to last page, and then incrementally try to
+// allocate up to last page, and then try to
 // trigger OOM incrementally on last page.
 // post-upgrade traps to avoid hitting disk
 // NB: the oom would not be detected pre 0.6.21
@@ -12,7 +12,7 @@ actor {
   system func preupgrade() {
    // allocate up to last page
    P.debugPrint("(pre");
-   while (P.rts_memory_size() / 65536 < 65536) {
+   while (P.rts_memory_size() / 65536 < 65534) {
      ignore P.stableMemoryLoadBlob(0, 65536);
    };
    P.debugPrint("filled");
@@ -44,4 +44,3 @@ actor {
 //SKIP comp-ref
 
 //CALL upgrade ""
-
