@@ -1172,27 +1172,28 @@ module Stack = struct
       (* read last word of reserved page to force trap *)
       compile_unboxed_const 0xFFFF_FFFCl ^^
       G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
-      G.i Drop
+      G.i Unreachable
     )
 
   let alloc_words env n =
     let n_bytes = Int32.mul n Heap.word_size in
-    (* first, check for stack underflow, if necessary *)
-    (if (n_bytes >= page_size) then
-      get_stack_ptr env ^^
-      compile_unboxed_const n_bytes ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-      (G.if0
-        (stack_overflow env)
-        G.nop)
-     else
-       G.nop) ^^
+    (* avoid absurd allocations *)
+    assert Int32.(to_int n_bytes < !Flags.rts_stack_pages * to_int page_size);
     (* alloc words *)
     get_stack_ptr env ^^
     compile_unboxed_const n_bytes ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
-    get_stack_ptr env
+    get_stack_ptr env ^^
+    (* check for stack overflow, if necessary *)
+    if n_bytes >= page_size then
+      get_stack_ptr env ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+      G.if0
+        G.nop
+        (stack_overflow env)
+    else
+      G.nop
 
   let free_words env n =
     get_stack_ptr env ^^
