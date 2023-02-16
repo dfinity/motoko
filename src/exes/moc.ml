@@ -168,6 +168,10 @@ let argspec = [
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
 
+  "--rts-stack-pages",
+  Arg.Set_int Flags.rts_stack_pages,
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
+
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
   " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."

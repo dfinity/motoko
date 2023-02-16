@@ -1157,13 +1157,16 @@ module Stack = struct
      We sometimes use the stack space if we need small amounts of scratch space.
 
      All pointers here are unskewed.
+
+     (We report logical stack overflow as "RTS Stack underflow" as the stack
+     grows downwards.)
   *)
 
-  let end_ = Int32.mul 2l page_size (* 128k of stack *)
+  let end_ () = Int32.mul (Int32.of_int (!Flags.rts_stack_pages)) page_size
 
   let register_globals env =
     (* stack pointer *)
-    E.add_global32 env "__stack_pointer" Mutable end_;
+    E.add_global32 env "__stack_pointer" Mutable (end_());
     E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
@@ -1171,10 +1174,29 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
-  (* TODO: check for overflow *)
+  let stack_overflow env =
+    Func.share_code0 env "stack_overflow" [] (fun env ->
+      (* read last word of reserved page to force trap *)
+      compile_unboxed_const 0xFFFF_FFFCl ^^
+      G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+      G.i Drop
+    )
+
   let alloc_words env n =
+    let n_bytes = Int32.mul n Heap.word_size in
+    (* first, check for stack underflow, if necessary *)
+    (if (n_bytes >= page_size) then
+      get_stack_ptr env ^^
+      compile_unboxed_const n_bytes ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      (G.if0
+        (stack_overflow env)
+        G.nop)
+     else
+       G.nop) ^^
+    (* alloc words *)
     get_stack_ptr env ^^
-    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    compile_unboxed_const n_bytes ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
     get_stack_ptr env
@@ -1197,7 +1219,9 @@ module Stack = struct
     compile_divU_const Heap.word_size ^^
     get_n ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    E.then_trap_with env "RTS Stack underflow" ^^
+    (G.if0
+      (stack_overflow env)
+      G.nop) ^^
     get_stack_ptr env ^^
     get_n ^^
     compile_mul_const Heap.word_size ^^
@@ -3952,8 +3976,8 @@ module Lifecycle = struct
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
 
-  let ptr = Stack.end_
-  let end_ = Int32.add Stack.end_ Heap.word_size
+  let ptr () = Stack.end_ ()
+  let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
 
   (* Which states may come before this *)
   let pre_states = function
@@ -3972,11 +3996,11 @@ module Lifecycle = struct
     | InPostUpgrade -> [InInit]
 
   let get env =
-    compile_unboxed_const ptr ^^
+    compile_unboxed_const (ptr ()) ^^
     load_unskewed_ptr
 
   let set env new_state =
-    compile_unboxed_const ptr ^^
+    compile_unboxed_const (ptr ()) ^^
     compile_unboxed_const (int_of_state new_state) ^^
     store_unskewed_ptr
 
@@ -10678,7 +10702,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
+  let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
 
   IC.register_globals env;
   Stack.register_globals env;
