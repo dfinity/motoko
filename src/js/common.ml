@@ -21,7 +21,7 @@ let range_of_region at =
 let diagnostics_of_msg (msg : Diag.message) =
   Diag.(object%js
     val source = Js.string msg.at.left.file
-    val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info)  -> 2
+    val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info) -> 2
     val range = range_of_region msg.at
     val message = Js.string msg.text
   end)
@@ -65,7 +65,18 @@ let js_set_run_step_limit limit =
 let js_run list source =
   Mo_types.Cons.session (fun _ -> 
     let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
-    ignore (Pipeline.run_stdin_from_file list (Js.to_string source)))
+    match Pipeline.run_stdin_from_file list (Js.to_string source) with
+    | Some v ->
+      object%js
+        (* TODO: val value = js_value v *)
+        val error = Js.null
+      end
+    | None ->
+      object%js
+        val error = Js.some (object%js
+          (* empty for compatibility with returning a message, type, location, etc. in the future *)
+        end)
+      end)
 
 let js_viper filenames =
   Mo_types.Cons.session (fun _ -> 
