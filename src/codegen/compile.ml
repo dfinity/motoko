@@ -1184,15 +1184,16 @@ module Stack = struct
     compile_unboxed_const n_bytes ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
+    get_stack_ptr env ^^
     (* check for stack overflow, if necessary *)
     if n_bytes >= page_size then
       get_stack_ptr env ^^
       G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
       G.if0
-        (get_stack_ptr env)
+        G.nop
         (stack_overflow env)
     else
-      get_stack_ptr env
+      G.nop
 
   let free_words env n =
     get_stack_ptr env ^^
