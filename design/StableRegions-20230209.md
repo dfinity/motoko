@@ -109,10 +109,7 @@ Spring 2023.
 
 Internal region allocator operations:
 
-
  - `initialize` -- called by the RTS, not by the Motoko developer.
- - `rebuild` -- also called by the RTS, during an post-upgrade.
-
 
 User-facing region allocator operations:
 
@@ -129,26 +126,35 @@ The `_release` operation is *not* part of the user-facing API nor part of the MV
 but supporting it is important because it means we can transition quickly to an integration
 with the ambient Motoko GC if we can support it.
 
+Another special operation, for disaster recovery:
+
+ - `rebuild` -- not needed unless we need to recreate all Region objects from their stable-memory counterparts.
+
+
 ## Internal footprint
 
-The state of the allocator is stored in a combination of stable memory and heap memory.
+The state of the allocator is stored in a combination of:
 
-The stable memory state is sufficient to reconstitute the heap objects
-(`rebuild` operation, described in a subsection below).  That means
-that even if the heap is lost (like during an upgrade that fails) the
-stable memory state can fully describe the parts that should be
-rebuilt into the heap when the upgrade succeeds.
+ - stable memory fields and tables and
+ - stable heap memory, in the form of objects of type `Region`.
+
+The stable memory state is sufficient to reconstitute the stable heap objects
+(`rebuild` operation, described in a subsection below).
+
+That means that even if the stable parts of the heap are lost, the
+stable memory state can fully describe the region objects that will be rebuilt when it succeeds.
 
 ### stable memory fields
 
  - total allocated blocks, `Nat16`, max value is `32768`.
  - total allocated regions, `Nat16`, max value is `32767` (one region is reserved for "no region").
  - The `block-region` table (fixed size, about 131kb).
- - The `region-blocks` table (fixed size, about 262kb).
+ - The `region` table (fixed size, about 262kb).
 
 ### representation of values of type `Region`
 
  - A singleton, heap-allocated object with mutable fields.
+ - While being heap-allocated, the object is also `stable` (can be stored in a `stable var`, etc).
  - `RegionObject { size_in_pages: Nat64; id: Nat16; vec_capacity: Nat16; vec_ptr: Nat32 }`
  - Field `size_in_pages` gives the number of pages allocated to the Region.
  - Field `id` gives the Regions numerical id as an index into the `region` table.
@@ -158,7 +164,6 @@ rebuilt into the heap when the upgrade succeeds.
    used to support O(1) access operations):
    - the access vector's address is held in `vec_ptr` and it has `vec_capacity` slots.
    - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
-   - to support dynamic growth, _the access vector is held in the Motoko **heap** rather than **stable memory**._
    - the access vector doubles when it grows.
    - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
    - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
