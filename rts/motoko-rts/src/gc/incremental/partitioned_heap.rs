@@ -269,51 +269,75 @@ impl PartitionedHeapIterator {
 /// Instantiated per GC increment, operating on a stored `HeapIteratorState`.
 pub struct PartitionIterator {
     partition_start: usize,
-    bitmap_iterator: BitmapIterator,
+    bitmap_iterator: Option<BitmapIterator>,
+    visit_large_object: bool,
 }
 
 impl PartitionIterator {
-    pub unsafe fn load_from(partition: &Partition, state: &HeapIteratorState) -> PartitionIterator {
+    pub unsafe fn load_from(
+        partition: &Partition,
+        state: &mut HeapIteratorState,
+    ) -> PartitionIterator {
         let partition_start = partition.start_address();
-        let bitmap_iterator = if state.bitmap_iterator.is_none() {
-            partition.get_bitmap().iterate()
+        let bitmap_iterator = if partition.has_large_content() {
+            debug_assert!(state.bitmap_iterator.is_none());
+            None
+        } else if state.bitmap_iterator.is_none() {
+            Some(partition.get_bitmap().iterate())
         } else {
-            state.bitmap_iterator.as_ref().unwrap().clone()
+            debug_assert!(state
+                .bitmap_iterator
+                .as_ref()
+                .unwrap()
+                .belongs_to(partition.bitmap.as_ref().unwrap()));
+            state.bitmap_iterator.take()
         };
-        debug_assert!(bitmap_iterator.belongs_to(partition.bitmap.as_ref().unwrap()));
         PartitionIterator {
             partition_start,
             bitmap_iterator,
+            visit_large_object: partition.has_large_content() && partition.marked_size() > 0,
         }
     }
 
-    pub fn save_to(&self, state: &mut HeapIteratorState) {
-        state.bitmap_iterator =
-            if self.bitmap_iterator.current_marked_offset() == BITMAP_ITERATION_END {
-                None
-            } else {
-                Some(self.bitmap_iterator.clone())
-            };
+    pub fn save_to(&mut self, state: &mut HeapIteratorState) {
+        state.bitmap_iterator = if self.has_object() {
+            self.bitmap_iterator.take()
+        } else {
+            None
+        };
     }
 
     pub fn has_object(&self) -> bool {
-        let offset = self.bitmap_iterator.current_marked_offset();
-        offset != BITMAP_ITERATION_END
+        if self.bitmap_iterator.is_some() {
+            let iterator = self.bitmap_iterator.as_ref().unwrap();
+            let offset = iterator.current_marked_offset();
+            offset != BITMAP_ITERATION_END
+        } else {
+            self.visit_large_object
+        }
     }
 
     pub fn current_object(&self) -> *mut Obj {
-        let offset = self.bitmap_iterator.current_marked_offset();
-        debug_assert_ne!(offset, BITMAP_ITERATION_END);
-        let address = self.partition_start + offset;
-        address as *mut Obj
+        if self.bitmap_iterator.is_some() {
+            let iterator = self.bitmap_iterator.as_ref().unwrap();
+            let offset = iterator.current_marked_offset();
+            debug_assert_ne!(offset, BITMAP_ITERATION_END);
+            let address = self.partition_start + offset;
+            address as *mut Obj
+        } else {
+            debug_assert!(self.visit_large_object);
+            self.partition_start as *mut Obj
+        }
     }
 
     pub fn next_object(&mut self) {
-        debug_assert_ne!(
-            self.bitmap_iterator.current_marked_offset(),
-            BITMAP_ITERATION_END
-        );
-        self.bitmap_iterator.next();
+        if self.bitmap_iterator.is_some() {
+            let iterator = self.bitmap_iterator.as_mut().unwrap();
+            debug_assert_ne!(iterator.current_marked_offset(), BITMAP_ITERATION_END);
+            iterator.next();
+        } else {
+            self.visit_large_object = false;
+        }
     }
 }
 
@@ -401,19 +425,18 @@ impl PartitionedHeap {
         let address = object as usize;
         let partition_index = address / PARTITION_SIZE;
         let partition = self.mutable_partition(partition_index);
+        if partition.has_large_content() {
+            return self.mark_large_object(object);
+        }
         let bitmap = partition.mutable_bitmap();
         let offset = address % PARTITION_SIZE;
-        if !bitmap.is_marked(offset) {
-            bitmap.mark(offset);
-            self.record_marked_space(object);
-            true
-        } else {
-            false
+        if bitmap.is_marked(offset) {
+            return false;
         }
+        bitmap.mark(offset);
+        partition.marked_size += block_size(address).to_bytes().as_usize();
+        true
     }
-
-    // TODO: Economize mark bitmap for large object partitions.
-    // But this would mean that we need to handle this also in the heap iteration.
 
     pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M) {
         debug_assert_eq!(self.bitmap_pointer, 0);
@@ -421,13 +444,15 @@ impl PartitionedHeap {
         self.gc_running = true;
         for partition_index in 0..MAX_PARTITIONS {
             let partition = self.get_partition(partition_index);
-            if partition.has_dynamic_space() {
+            if partition.has_dynamic_space() && !partition.has_large_content() {
                 let bitmap = self.allocate_bitmap(mem);
                 self.mutable_partition(partition_index).bitmap = Some(bitmap);
             }
         }
-        // Allow young object collection by starting a new allocation partition.
-        self.start_new_allocation_partition(mem);
+        if self.allocation_partition().dynamic_size > 0 {
+            // Allow young object collection by starting a new allocation partition.
+            self.start_new_allocation_partition(mem);
+        }
     }
 
     pub fn plan_evacuations(&mut self) {
@@ -518,20 +543,6 @@ impl PartitionedHeap {
         Bytes(self.reclaimed)
     }
 
-    // TODO: Inline this information in mark bitmap
-    pub unsafe fn record_marked_space(&mut self, object: *mut Obj) {
-        let address = object as usize;
-        let size = block_size(address).to_bytes().as_usize();
-        if size <= PARTITION_SIZE {
-            let partition = &mut self.partitions[address / PARTITION_SIZE];
-            debug_assert!(address >= partition.dynamic_space_start());
-            partition.marked_size += size;
-            debug_assert!(address + size <= partition.dynamic_space_end());
-        } else {
-            self.mark_large_object(object);
-        }
-    }
-
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {
         let size = words.to_bytes().as_usize();
         if size <= PARTITION_SIZE {
@@ -556,9 +567,7 @@ impl PartitionedHeap {
     }
 
     pub unsafe fn start_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
-        if self.allocation_partition().dynamic_size > 0 {
-            self.allocate_in_new_partition(mem, 0);
-        }
+        self.allocate_in_new_partition(mem, 0);
     }
 
     // Significant performance gain by not inlining.
@@ -581,11 +590,6 @@ impl PartitionedHeap {
         if size > usize::MAX - PARTITION_SIZE {
             panic!("Too large allocation");
         }
-        let bitmap = if self.gc_running {
-            Some(self.allocate_bitmap(mem))
-        } else {
-            None
-        };
         let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
         debug_assert!(number_of_partitions > 0);
         let first_index = self.find_large_space(number_of_partitions);
@@ -598,6 +602,7 @@ impl PartitionedHeap {
             debug_assert!(!partition.large_content);
             partition.free = false;
             partition.large_content = true;
+            debug_assert!(partition.bitmap.is_none());
             debug_assert_eq!(partition.static_size, 0);
             debug_assert_eq!(partition.dynamic_size, 0);
             if index == last_index {
@@ -610,9 +615,6 @@ impl PartitionedHeap {
             }
         }
         let first_partition = self.mutable_partition(first_index);
-        if bitmap.is_some() {
-            first_partition.bitmap = bitmap;
-        }
         Value::from_ptr(first_partition.dynamic_space_start())
     }
 
@@ -676,13 +678,18 @@ impl PartitionedHeap {
     }
 
     // Significant performance gain by not inlining.
+    // Optimization: Returns true if it has not yet been marked before.
     #[inline(never)]
-    unsafe fn mark_large_object(&mut self, object: *mut Obj) {
+    unsafe fn mark_large_object(&mut self, object: *mut Obj) -> bool {
         let range = Self::occupied_partition_range(object);
+        if self.partitions[range.start].marked_size > 0 {
+            return false;
+        }
         for index in range.start..range.end - 1 {
             self.partitions[index].marked_size = PARTITION_SIZE;
         }
         let object_size = block_size(object as usize).to_bytes().as_usize();
         self.partitions[range.end - 1].marked_size = object_size % PARTITION_SIZE;
+        true
     }
 }

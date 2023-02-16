@@ -182,8 +182,8 @@ unsafe fn count_objects(heap: &PartitionedHeap) -> usize {
 unsafe fn count_objects_in_partition(partition: &Partition) -> usize {
     let mut count = 0;
     let mut time = BoundedTime::new(0);
-    let state = HeapIteratorState::new();
-    let mut iterator = PartitionIterator::load_from(partition, &state);
+    let mut state = HeapIteratorState::new();
+    let mut iterator = PartitionIterator::load_from(partition, &mut state);
     while iterator.has_object() {
         let object = iterator.current_object();
         assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
@@ -307,8 +307,8 @@ unsafe fn iterate_large_objects(heap: &PartitionedHeap, expected_sizes: &[usize]
 
 unsafe fn iterate_large_partition(partition: &Partition, detected_sizes: &mut Vec<usize>) {
     let mut time = BoundedTime::new(0);
-    let state = HeapIteratorState::new();
-    let mut iterator = PartitionIterator::load_from(partition, &state);
+    let mut state = HeapIteratorState::new();
+    let mut iterator = PartitionIterator::load_from(partition, &mut state);
     while iterator.has_object() {
         let object = iterator.current_object();
         assert_eq!(object.tag(), TAG_BLOB);
