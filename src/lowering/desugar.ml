@@ -675,26 +675,6 @@ and text_dotE proj e =
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
-(* Move to construct.ml? *)
-and let_else_switch p e f note =
-  let v = fresh_var "v" (e.note.note_typ) in
-  let e', p', f' = exp e, pat p, exp f in
-  (* Evaluate e once, assign it to variable v, and pattern match on v. If v
-     matches p, expression evaluates to v. Otherwise evaluate f. *)
-  blockE
-    [letD v e']
-    {
-      e' with
-      it = I.SwitchE(
-        varE v,
-        I.[
-          { it = { pat = p'; exp = varE v }; at = e'.at; note = () };
-          { it = { pat = wildP; exp = f' }; at = f'.at ; note = () }
-        ]
-      );
-      note = Note.{ def with typ = note.note_typ; eff = note.note_eff };
-    }
-
 and block force_unit ds =
   match ds with
   | [] -> ([], tupE [])
@@ -710,7 +690,7 @@ and block force_unit ds =
     let x = fresh_var "x" (e.note.S.note_typ) in
     (decs prefix @ [letD x (exp e); letP (pat p) (varE x)], varE x)
   | false, S.LetD (p, e, Some f) ->
-    (decs prefix, let_else_switch p e f last.note)
+    (decs prefix, let_else_switch (pat p) (exp e) (exp f))
   | _, _ ->
     (decs ds, tupE [])
 
@@ -732,7 +712,7 @@ and dec' at n = function
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
     | _, I.ActorE _, Some _ -> assert false
     | _, _, None -> I.LetD (p', e')
-    | _, _, Some f -> I.LetD (p', let_else_switch p e f n)
+    | _, _, Some f -> I.LetD (p', let_else_switch (pat p) (exp e) (exp f))
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
