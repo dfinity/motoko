@@ -110,7 +110,7 @@ impl Memory for IcMemory {
         debug_assert_eq!(0xFFFF_0000, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
         if ptr > 0xFFFF_0000 {
             // spare the last wasm memory page
-            rts_trap_with("Cannot allocate memory")
+            rts_trap_with("Cannot grow memory")
         };
         let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
         let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
