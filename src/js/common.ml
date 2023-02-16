@@ -29,13 +29,13 @@ let diagnostics_of_msg (msg : Diag.message) =
 let diagnostics_of_msgs (msgs : Diag.message list) =
   Array.of_list (List.map diagnostics_of_msg msgs)
 
-let rec js_sexpr (sexpr : Wasm.Sexpr.sexpr) : Js.Unsafe.any =
+let rec js_of_sexpr (sexpr : Wasm.Sexpr.sexpr) : Js.Unsafe.any =
   (* generate a JSON-serializable value tree from an s-expression *)
   match sexpr with
 | Wasm.Sexpr.Node (head, inner) ->
   Js.Unsafe.coerce (object%js
     val name = Js.string head
-    val args = inner |> List.map js_sexpr |> Array.of_list |> Js.array |> Js.some
+    val args = inner |> List.map js_of_sexpr |> Array.of_list |> Js.array |> Js.some
   end)
 | Wasm.Sexpr.Atom s ->
   Js.Unsafe.coerce (Js.string s)
@@ -68,13 +68,13 @@ let js_run list source =
     match Pipeline.run_stdin_from_file list (Js.to_string source) with
     | Some v ->
       object%js
-        (* val value = js_value v *)
+        (* TODO: val value = js_value v *)
         val error = Js.null
       end
     | None ->
       object%js
         val error = Js.some (object%js
-          val message = Js.string "(Error)"
+          (* empty for compatibility with returning a message, type, location, etc. in the future *)
         end)
       end)
 
@@ -137,7 +137,7 @@ let js_compile_wasm mode source =
 let js_parse_candid s =
   let parse_result = Idllib.Pipeline.parse_string (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
-    Js.some (js_sexpr (Idllib.Arrange_idl.prog prog)))
+    Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog)))
 
 let js_parse_motoko s =
   let main_file = "" in
@@ -150,7 +150,7 @@ let js_parse_motoko s =
       let include_docs = Some prog.note.Syntax.trivia
       let main_file = Some main_file
     end)
-    in Js.some (js_sexpr (Arrange.prog prog)))
+    in Js.some (js_of_sexpr (Arrange.prog prog)))
 
 let js_parse_motoko_typed paths =
   let paths = paths |> Js.to_array |> Array.to_list in
@@ -167,8 +167,8 @@ let js_parse_motoko_typed paths =
       let main_file = Some prog.at.left.file
     end)
     in object%js
-      val ast = js_sexpr (Arrange_sources_types.prog prog)
-      (* val typ = js_sexpr (Arrange_sources_types.typ typ) *)
+      val ast = js_of_sexpr (Arrange_sources_types.prog prog)
+      (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
     end) |> Array.of_list |> Js.array |> Js.some)
 
 let js_save_file filename content =
