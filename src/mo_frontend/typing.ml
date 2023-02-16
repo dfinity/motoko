@@ -2469,7 +2469,7 @@ and gather_dec env scope dec : Scope.t =
       {it = VarP id; _},
       ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
        {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
-       None (* FIXME ?? *)
+       None
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
@@ -2712,7 +2712,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
 let is_actor_dec d =
   match d.it with
   | ExpD e
-  | LetD (_, e, None) -> CompUnit.is_actor_def e
+  | LetD (_, e, _) -> CompUnit.is_actor_def e
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
     obj_sort.it = T.Actor
   | _ -> false
