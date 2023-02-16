@@ -188,7 +188,7 @@ In ordinary operation, the second feature is not required.  In the event of an u
      access calculations of load or store (they require a linear
      search that would be prohibitively slow).  OTOH, this
      table is suitable to do a "batch" rebuild of the dynamic heap-allocated vectors
-     in that table, which get lost during upgrades.
+     in that table, if need be (see `rebuild`).
 
  - 32768 entries (statically sized).
  - 4 bytes per entry.
