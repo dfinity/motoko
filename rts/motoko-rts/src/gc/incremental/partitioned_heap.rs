@@ -449,8 +449,8 @@ impl PartitionedHeap {
                 self.mutable_partition(partition_index).bitmap = Some(bitmap);
             }
         }
-        if self.allocation_partition().dynamic_size > 0 {
-            // Allow young object collection by starting a new allocation partition.
+        if self.allocation_partition().dynamic_size > PARTITION_SIZE / 2 {
+            // Allow reclaiming objects in current allocation partition.
             self.start_new_allocation_partition(mem);
         }
     }

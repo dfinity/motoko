@@ -19,7 +19,7 @@ use motoko_rts::{
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 
 const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / 16;
-const HEAP_SIZE: usize = 6 * PARTITION_SIZE;
+const HEAP_SIZE: usize = 4 * PARTITION_SIZE;
 
 pub unsafe fn test() {
     println!("  Testing partitioned heap...");
@@ -259,8 +259,7 @@ unsafe fn test_large_size_scenario() {
 }
 
 unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
-    // Plus temporary partition and starting a new allocation partition.
-    let total_partitions = number_of_partitions + 2;
+    let total_partitions = number_of_partitions + 1; // Plus temporary partition.
     let mut heap = PartitionedTestHeap::new(total_partitions * PARTITION_SIZE);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
     heap.inner.start_collection(&mut heap.memory);
