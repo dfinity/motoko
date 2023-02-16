@@ -14,9 +14,15 @@ crate-type = ["staticlib"]
 # is used in RTS tests.
 default = ["ic"]
 
+# The following features select a GC strategy
+copying = []
+compacting = []
+generational = ["compacting"]
+incremental = []
+
 # This feature is used to enable stuff needed for the RTS linked with
 # moc-generated code, but not when testing the RTS
-ic = []
+ic = ["copying", "compacting", "generational", "incremental"]
 
 [dependencies]
 libc = { version = "0.2.139", default_features = false }
