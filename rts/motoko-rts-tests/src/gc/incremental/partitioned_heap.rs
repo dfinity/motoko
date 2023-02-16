@@ -19,7 +19,7 @@ use motoko_rts::{
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 
 const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / 16;
-const HEAP_SIZE: usize = 5 * PARTITION_SIZE;
+const HEAP_SIZE: usize = 6 * PARTITION_SIZE;
 
 pub unsafe fn test() {
     println!("  Testing partitioned heap...");
@@ -29,7 +29,7 @@ pub unsafe fn test() {
 
 unsafe fn test_normal_size_scenario() {
     let mut heap = create_test_heap();
-    let occupied_partitions = 1 + heap.heap_pointer() / PARTITION_SIZE;
+    let occupied_partitions = 2 + heap.heap_pointer() / PARTITION_SIZE;
     test_allocation_partitions(&heap.inner, occupied_partitions);
     test_iteration(&heap.inner, 1024);
     test_evacuation_plan(&mut heap, occupied_partitions);
@@ -39,7 +39,6 @@ unsafe fn test_normal_size_scenario() {
     test_survival_rate(&mut heap.inner);
     test_freeing_partitions(&mut heap.inner, HEAP_SIZE / PARTITION_SIZE);
     test_close_partition(&mut heap);
-    heap.inner.complete_collection();
 }
 
 fn test_allocation_partitions(heap: &PartitionedHeap, number_of_partitions: usize) {
@@ -64,13 +63,6 @@ unsafe fn test_iteration(heap: &PartitionedHeap, break_step_size: usize) {
         let count_before = set.len();
         iterate_heap(heap, &mut iterator_state, &mut set, &mut time);
         assert!(set.len() > count_before);
-        println!(
-            "TEST {} {} {} {}",
-            set.len(),
-            count_before,
-            NUMBER_OF_OBJECTS,
-            time.is_over()
-        );
         assert!(time.is_over() || set.len() == NUMBER_OF_OBJECTS);
     }
     assert_eq!(set.len(), NUMBER_OF_OBJECTS);
@@ -162,6 +154,7 @@ const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
 
 unsafe fn test_reallocations(heap: &mut PartitionedTestHeap) {
     println!("    Test reallocations...");
+    heap.inner.start_collection(&mut heap.memory);
     let remaining_objects = count_objects(&heap.inner);
     allocate_objects(heap);
     assert!(
@@ -266,7 +259,9 @@ unsafe fn test_large_size_scenario() {
 }
 
 unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
-    let mut heap = PartitionedTestHeap::new(number_of_partitions * PARTITION_SIZE);
+    // Plus temporary partition and starting a new allocation partition.
+    let total_partitions = number_of_partitions + 2;
+    let mut heap = PartitionedTestHeap::new(total_partitions * PARTITION_SIZE);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
     heap.inner.start_collection(&mut heap.memory);
     for size in sizes.iter() {
@@ -285,6 +280,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     heap.inner.plan_evacuations();
     heap.inner.collect_large_objects();
     heap.inner.complete_collection();
+    heap.inner.start_collection(&mut heap.memory);
     iterate_large_objects(&heap.inner, &[]);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
 }

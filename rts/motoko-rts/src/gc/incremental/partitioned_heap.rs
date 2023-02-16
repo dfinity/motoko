@@ -161,6 +161,7 @@ impl Partition {
         debug_assert!(self.evacuate || self.large_content || self.temporary);
         debug_assert_eq!(self.marked_size, 0);
         debug_assert!(self.bitmap.is_none());
+        debug_assert!(!self.update);
         self.free = true;
         self.dynamic_size = 0;
         self.evacuate = false;
@@ -555,7 +556,9 @@ impl PartitionedHeap {
     }
 
     pub unsafe fn start_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
-        self.allocate_in_new_partition(mem, 0);
+        if self.allocation_partition().dynamic_size > 0 {
+            self.allocate_in_new_partition(mem, 0);
+        }
     }
 
     // Significant performance gain by not inlining.
@@ -665,6 +668,8 @@ impl PartitionedHeap {
             let partition = self.mutable_partition(index);
             debug_assert!(partition.large_content);
             let size = partition.dynamic_size;
+            partition.update = false;
+            partition.bitmap = None;
             partition.free();
             self.reclaimed += size as u64;
         }
