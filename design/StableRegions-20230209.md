@@ -157,7 +157,7 @@ stable memory state can fully describe the region objects that will be rebuilt w
  - While being heap-allocated, the object is also `stable` (can be stored in a `stable var`, etc).
  - `RegionObject { size_in_pages: Nat64; id: Nat16; vec_capacity: Nat16; vec_ptr: Nat32 }`
  - Field `size_in_pages` gives the number of pages allocated to the Region.
- - Field `id` gives the Regions numerical id as an index into the `region` table.
+ - Field `id` gives the Region's numerical id as an index into the `region` table.
  - Fields `vec_capacity` and `vec_ptr` work with `size_in_pages`
    to represent a growable vector that we call the region's **"access
    vector"** (because "blocks vector" sounds a bit strange, and its
@@ -166,7 +166,6 @@ stable memory state can fully describe the region objects that will be rebuilt w
    - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
    - the access vector doubles when it grows.
    - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
-   - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
    - during an upgrade, the access vectors get serialized and deserialized as data `Blobs` (as if no pointers are inside each).
 
 
