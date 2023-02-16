@@ -116,10 +116,6 @@ impl BitmapIterator {
         iterator
     }
 
-    pub fn belongs_to(&self, bitmap: &MarkBitmap) -> bool {
-        self.bitmap_pointer == bitmap.pointer
-    }
-
     /// Returns the next marked address offset in the partition,
     /// or `BITMAP_ITERATION_END` if there are no more bits set.
     pub fn current_marked_offset(&self) -> usize {

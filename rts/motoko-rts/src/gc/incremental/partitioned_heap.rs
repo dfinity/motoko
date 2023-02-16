@@ -187,64 +187,24 @@ impl Partition {
     }
 }
 
-const NO_LARGE_OBJECT: usize = usize::MAX;
-
-#[derive(Clone, Copy)]
-struct LargeObjectIterator {
-    current_address: usize,
-    visited: bool,
-}
-
-impl LargeObjectIterator {
-    fn none() -> LargeObjectIterator {
-        LargeObjectIterator { 
-            current_address: NO_LARGE_OBJECT, 
-            visited: true 
-        }
-    }
-}
-
-/// Iterator state that can be stored between GC increments.
-/// Keeps the state of a `PartitionedHeapIterator` with an inner `PartititionIterator`.
-pub struct HeapIteratorState {
-    partition_index: usize,
-    bitmap_iterator: Option<BitmapIterator>,
-    large_iterator: LargeObjectIterator,
-}
-
-impl HeapIteratorState {
-    pub fn new() -> HeapIteratorState {
-        HeapIteratorState {
-            partition_index: 0,
-            bitmap_iterator: None,
-            large_iterator: LargeObjectIterator::none(),
-        }
-    }
-
-    pub fn completed(&self) -> bool {
-        debug_assert!(self.partition_index <= MAX_PARTITIONS);
-        self.partition_index == MAX_PARTITIONS
-    }
-}
-
-/// Iterates over all partitions, by skipping free partitions and the subsequent partitions
-/// of large objects. Instantiated per GC increment, operating on a stored `HeapIteratorState`.
-/// Due to borrow checker restrictions, the iterator does not directly reference the state
-/// but needs to be explicitly loaded and stored from the state by the GC increments.
+/// Iterates over all partitions and their contained marked objects, by skipping
+/// free partitions, the subsequent partitions of large objects, and unmarked objects.
 pub struct PartitionedHeapIterator {
     partition_index: usize,
+    bitmap_iterator: Option<BitmapIterator>,
+    visit_large_object: bool,
 }
 
 impl PartitionedHeapIterator {
-    pub fn load_from(heap: &PartitionedHeap, state: &HeapIteratorState) -> PartitionedHeapIterator {
-        let partition_index = state.partition_index;
-        let mut iterator = PartitionedHeapIterator { partition_index };
+    pub fn new(heap: &PartitionedHeap) -> PartitionedHeapIterator {
+        let mut iterator = PartitionedHeapIterator {
+            partition_index: 0,
+            bitmap_iterator: None,
+            visit_large_object: false,
+        };
         iterator.skip_empty_partitions(heap);
+        iterator.start_object_iteration(heap);
         iterator
-    }
-
-    pub fn save_to(&self, state: &mut HeapIteratorState) {
-        state.partition_index = self.partition_index;
     }
 
     fn skip_empty_partitions(&mut self, heap: &PartitionedHeap) {
@@ -280,59 +240,24 @@ impl PartitionedHeapIterator {
         };
         self.partition_index += number_of_partitions;
         self.skip_empty_partitions(heap);
+        self.start_object_iteration(heap)
+    }
+
+    fn start_object_iteration(&mut self, heap: &PartitionedHeap) {
         debug_assert!(self.partition_index <= MAX_PARTITIONS);
-    }
-}
-
-/// Iterates over the marked objects in the partition.
-/// Instantiated per GC increment, operating on a stored `HeapIteratorState`.
-pub struct PartitionIterator {
-    partition_start: usize,
-    bitmap_iterator: Option<BitmapIterator>,
-    large_iterator: LargeObjectIterator,
-}
-
-impl PartitionIterator {
-    pub unsafe fn load_from(
-        partition: &Partition,
-        state: &mut HeapIteratorState,
-    ) -> PartitionIterator {
-        let partition_start = partition.start_address();
-        let bitmap_iterator = if partition.has_large_content() {
-            debug_assert!(state.bitmap_iterator.is_none());
-            None
-        } else if state.bitmap_iterator.is_none()
-            || !state
-                .bitmap_iterator
-                .as_ref()
-                .unwrap()
-                .belongs_to(partition.bitmap.as_ref().unwrap())
-        {
-            Some(partition.get_bitmap().iterate())
+        if self.partition_index == MAX_PARTITIONS {
+            self.bitmap_iterator = None;
+            self.visit_large_object = false;
         } else {
-            state.bitmap_iterator.take()
-        };
-        let large_iterator = if !partition.has_large_content() || partition.marked_size() == 0
-        {
-            LargeObjectIterator::none()
-        } else if partition_start != state.large_iterator.current_address {
-            LargeObjectIterator {
-                current_address: partition_start,
-                visited: false
+            let partition = heap.get_partition(self.partition_index);
+            if partition.has_large_content() {
+                self.bitmap_iterator = None;
+                self.visit_large_object = partition.marked_size() > 0
+            } else {
+                self.bitmap_iterator = Some(partition.get_bitmap().iterate());
+                self.visit_large_object = false;
             }
-        } else {
-            state.large_iterator 
-        };
-        PartitionIterator {
-            partition_start,
-            bitmap_iterator,
-            large_iterator,
         }
-    }
-
-    pub fn save_to(&mut self, state: &mut HeapIteratorState) {
-        state.bitmap_iterator = self.bitmap_iterator.take();
-        state.large_iterator = self.large_iterator;
     }
 
     pub fn has_object(&self) -> bool {
@@ -341,24 +266,23 @@ impl PartitionIterator {
             let offset = iterator.current_marked_offset();
             offset != BITMAP_ITERATION_END
         } else {
-            debug_assert_ne!(self.large_iterator.current_address, NO_LARGE_OBJECT);
-            !self.large_iterator.visited
+            self.visit_large_object
         }
     }
 
     pub fn current_object(&self) -> *mut Obj {
+        let partition_start = self.partition_index * PARTITION_SIZE;
         if self.bitmap_iterator.is_some() {
             let iterator = self.bitmap_iterator.as_ref().unwrap();
             let offset = iterator.current_marked_offset();
             debug_assert_ne!(offset, BITMAP_ITERATION_END);
-            let address = self.partition_start + offset;
+            let address = partition_start + offset;
             address as *mut Obj
         } else {
-            debug_assert_ne!(self.large_iterator.current_address, NO_LARGE_OBJECT);
-            debug_assert!(!self.large_iterator.visited);
-            self.large_iterator.current_address as *mut Obj
+            debug_assert!(self.visit_large_object);
+            partition_start as *mut Obj
         }
-    }   
+    }
 
     pub fn next_object(&mut self) {
         if self.bitmap_iterator.is_some() {
@@ -366,9 +290,8 @@ impl PartitionIterator {
             debug_assert_ne!(iterator.current_marked_offset(), BITMAP_ITERATION_END);
             iterator.next();
         } else {
-            debug_assert_ne!(self.large_iterator.current_address, NO_LARGE_OBJECT);
-            debug_assert!(!self.large_iterator.visited);
-            self.large_iterator.visited = true;
+            debug_assert!(self.visit_large_object);
+            self.visit_large_object = false;
         }
     }
 }

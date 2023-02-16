@@ -1,8 +1,6 @@
 use crate::{
     gc::incremental::{
-        partitioned_heap::{
-            HeapIteratorState, PartitionIterator, PartitionedHeap, PartitionedHeapIterator,
-        },
+        partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
         time::BoundedTime,
         State,
     },
@@ -14,15 +12,16 @@ use crate::{
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
     heap: &'a mut PartitionedHeap,
-    iterator_state: &'a mut HeapIteratorState,
+    iterator: &'a mut PartitionedHeapIterator,
     time: &'a mut BoundedTime,
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
-        state.iterator_state = Some(HeapIteratorState::new());
-        state.partitioned_heap.as_mut().unwrap().plan_evacuations();
+        let heap = state.partitioned_heap.as_mut().unwrap();
+        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
+        heap.plan_evacuations();
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
@@ -31,7 +30,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     pub unsafe fn evacuation_completed(state: &State) -> bool {
-        state.iterator_state.as_ref().unwrap().completed()
+        !state.iterator_state.as_ref().unwrap().has_partition()
     }
 
     pub unsafe fn instance(
@@ -40,19 +39,18 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         time: &'a mut BoundedTime,
     ) -> EvacuationIncrement<'a, M> {
         let heap = state.partitioned_heap.as_mut().unwrap();
-        let iterator_state = state.iterator_state.as_mut().unwrap();
+        let iterator = state.iterator_state.as_mut().unwrap();
         EvacuationIncrement {
             mem,
             heap,
-            iterator_state,
+            iterator,
             time,
         }
     }
 
     pub unsafe fn run(&mut self) {
-        let mut iterator = PartitionedHeapIterator::load_from(&self.heap, &self.iterator_state);
-        while iterator.has_partition() {
-            let partition = iterator.current_partition(&self.heap);
+        while self.iterator.has_partition() {
+            let partition = self.iterator.current_partition(&self.heap);
             if partition.to_be_evacuated() {
                 self.evacuate_partition(partition.get_index());
                 if self.time.is_over() {
@@ -60,23 +58,20 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
                     break;
                 }
             }
-            iterator.next_partition(&self.heap);
+            self.iterator.next_partition(&self.heap);
         }
-        iterator.save_to(&mut self.iterator_state);
     }
 
     pub unsafe fn evacuate_partition(&mut self, partition_index: usize) {
         let partition = self.heap.get_partition(partition_index);
         debug_assert!(!partition.is_free());
         debug_assert!(!partition.has_large_content());
-        let mut iterator = PartitionIterator::load_from(partition, &mut self.iterator_state);
-        while iterator.has_object() && !self.time.is_over() {
-            let object = iterator.current_object();
+        while self.iterator.has_object() && !self.time.is_over() {
+            let object = self.iterator.current_object();
             // Advance the iterator before evacuation since the debug mode clears the evacuating object.
-            iterator.next_object();
+            self.iterator.next_object();
             self.evacuate_object(object);
         }
-        iterator.save_to(&mut self.iterator_state);
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {

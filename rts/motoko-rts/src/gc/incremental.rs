@@ -13,7 +13,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
-    partitioned_heap::{HeapIteratorState, PartitionedHeap},
+    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
     phases::{
         evacuation_increment::EvacuationIncrement,
         mark_increment::{MarkIncrement, MarkState},
@@ -148,7 +148,7 @@ pub struct State {
     pub partitioned_heap: Option<PartitionedHeap>,
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
-    iterator_state: Option<HeapIteratorState>,
+    iterator_state: Option<PartitionedHeapIterator>,
 }
 
 /// GC state retained over multiple GC increments.
