@@ -113,7 +113,11 @@ unsafe fn iterate_partition(
             break;
         }
     }
+    let finished = !iterator.has_object();
     iterator.save_to(state);
+    if finished {
+        assert!(!PartitionIterator::load_from(partition, state).has_object());
+    }
 }
 
 unsafe fn test_evacuation_plan(heap: &mut PartitionedTestHeap, occupied_partitions: usize) {
@@ -316,6 +320,8 @@ unsafe fn iterate_large_partition(partition: &Partition, detected_sizes: &mut Ve
         time.tick();
         iterator.next_object();
     }
+    iterator.save_to(&mut state);
+    assert!(!PartitionIterator::load_from(partition, &mut state).has_object());
 }
 
 unsafe fn occupied_space(partition: &Partition) -> usize {

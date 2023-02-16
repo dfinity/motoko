@@ -187,11 +187,29 @@ impl Partition {
     }
 }
 
+const NO_LARGE_OBJECT: usize = usize::MAX;
+
+#[derive(Clone, Copy)]
+struct LargeObjectIterator {
+    current_address: usize,
+    visited: bool,
+}
+
+impl LargeObjectIterator {
+    fn none() -> LargeObjectIterator {
+        LargeObjectIterator { 
+            current_address: NO_LARGE_OBJECT, 
+            visited: true 
+        }
+    }
+}
+
 /// Iterator state that can be stored between GC increments.
 /// Keeps the state of a `PartitionedHeapIterator` with an inner `PartititionIterator`.
 pub struct HeapIteratorState {
     partition_index: usize,
     bitmap_iterator: Option<BitmapIterator>,
+    large_iterator: LargeObjectIterator,
 }
 
 impl HeapIteratorState {
@@ -199,6 +217,7 @@ impl HeapIteratorState {
         HeapIteratorState {
             partition_index: 0,
             bitmap_iterator: None,
+            large_iterator: LargeObjectIterator::none(),
         }
     }
 
@@ -270,7 +289,7 @@ impl PartitionedHeapIterator {
 pub struct PartitionIterator {
     partition_start: usize,
     bitmap_iterator: Option<BitmapIterator>,
-    visit_large_object: bool,
+    large_iterator: LargeObjectIterator,
 }
 
 impl PartitionIterator {
@@ -282,29 +301,38 @@ impl PartitionIterator {
         let bitmap_iterator = if partition.has_large_content() {
             debug_assert!(state.bitmap_iterator.is_none());
             None
-        } else if state.bitmap_iterator.is_none() {
-            Some(partition.get_bitmap().iterate())
-        } else {
-            debug_assert!(state
+        } else if state.bitmap_iterator.is_none()
+            || !state
                 .bitmap_iterator
                 .as_ref()
                 .unwrap()
-                .belongs_to(partition.bitmap.as_ref().unwrap()));
+                .belongs_to(partition.bitmap.as_ref().unwrap())
+        {
+            Some(partition.get_bitmap().iterate())
+        } else {
             state.bitmap_iterator.take()
+        };
+        let large_iterator = if !partition.has_large_content() || partition.marked_size() == 0
+        {
+            LargeObjectIterator::none()
+        } else if partition_start != state.large_iterator.current_address {
+            LargeObjectIterator {
+                current_address: partition_start,
+                visited: false
+            }
+        } else {
+            state.large_iterator 
         };
         PartitionIterator {
             partition_start,
             bitmap_iterator,
-            visit_large_object: partition.has_large_content() && partition.marked_size() > 0,
+            large_iterator,
         }
     }
 
     pub fn save_to(&mut self, state: &mut HeapIteratorState) {
-        state.bitmap_iterator = if self.has_object() {
-            self.bitmap_iterator.take()
-        } else {
-            None
-        };
+        state.bitmap_iterator = self.bitmap_iterator.take();
+        state.large_iterator = self.large_iterator;
     }
 
     pub fn has_object(&self) -> bool {
@@ -313,7 +341,8 @@ impl PartitionIterator {
             let offset = iterator.current_marked_offset();
             offset != BITMAP_ITERATION_END
         } else {
-            self.visit_large_object
+            debug_assert_ne!(self.large_iterator.current_address, NO_LARGE_OBJECT);
+            !self.large_iterator.visited
         }
     }
 
@@ -325,10 +354,11 @@ impl PartitionIterator {
             let address = self.partition_start + offset;
             address as *mut Obj
         } else {
-            debug_assert!(self.visit_large_object);
-            self.partition_start as *mut Obj
+            debug_assert_ne!(self.large_iterator.current_address, NO_LARGE_OBJECT);
+            debug_assert!(!self.large_iterator.visited);
+            self.large_iterator.current_address as *mut Obj
         }
-    }
+    }   
 
     pub fn next_object(&mut self) {
         if self.bitmap_iterator.is_some() {
@@ -336,7 +366,9 @@ impl PartitionIterator {
             debug_assert_ne!(iterator.current_marked_offset(), BITMAP_ITERATION_END);
             iterator.next();
         } else {
-            self.visit_large_object = false;
+            debug_assert_ne!(self.large_iterator.current_address, NO_LARGE_OBJECT);
+            debug_assert!(!self.large_iterator.visited);
+            self.large_iterator.visited = true;
         }
     }
 }
