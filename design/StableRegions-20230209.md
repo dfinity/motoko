@@ -175,9 +175,9 @@ The `region-blocks` relation is not materialized into a table in stable memory (
 
 Instead, this relation is represented in two ways at the same time:
  1. by the set of heap-allocated region objects, and their access vectors.  The access vectors provide O(1) store and load support.
- 2. by the `block-region` table and the `region-table`, which together are sufficient to recreate all of the heap-allocated region objects.
+ 2. by the `block-region` table and the `region` table, which together are sufficient to recreate all of the heap-allocated region objects.
 
-In ordinary operation, the second feature is not required.  In the event of an upgrade failure, however, it could be vital.
+In ordinary operation, the second feature is not required.  In the event of an upgrade failure, however, it could be vital (See `rebuild`).
 
 ### block-region table
 
