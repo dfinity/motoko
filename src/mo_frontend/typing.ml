@@ -2004,6 +2004,13 @@ and check_pat' env t pat : Scope.val_env =
     let ve2 = check_pat env t pat2 in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0166" "different set of bindings in pattern alternatives";
+    let check_same_bind_type bind t1 t2 = if not (T.eq t1 t2) then
+      local_error env pat.at "M0167" "types for alternative pattern variables %s%a%a"
+        bind
+        display_typ_expand t1
+        display_typ_expand t2;
+    in
+    T.Env.(iter (fun k t1 -> check_same_bind_type k t1 (find k ve2))) ve1;
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
     T.Env.empty
