@@ -162,8 +162,7 @@ let share_exp e =
 
 let share_dec d =
   match d.it with
-  | LetD (p, e, None) -> LetD (p, share_exp e, None) @? d.at
-  | LetD (p, e, Some _) -> assert false
+  | LetD (p, e, f) -> LetD (p, share_exp e, f) @? d.at
   | _ -> d
 
 let share_stab stab_opt dec =

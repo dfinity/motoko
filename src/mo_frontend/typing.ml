@@ -2287,7 +2287,6 @@ and check_stab env sort scope dec_fields =
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD (_, _, None)) -> []
-    | T.Actor, Some {it = Flexible; _} , LetD (_, _, Some _) -> assert false
     | T.Actor, Some stab, _ ->
       local_error env stab.at "M0133"
         "misplaced stability modifier: allowed on var or simple let declarations only";
@@ -2341,7 +2340,10 @@ and infer_dec env dec : T.typ =
   | ExpD exp
   | LetD (_, exp, None) -> infer_exp env exp
   | LetD (_, exp, Some fail) ->
-    if not env.pre then check_exp env T.Non fail;
+    if env.in_actor then
+      error env dec.at "M0184" "let-else binding forbidden for actor fields";
+    if not env.pre then
+      check_exp env T.Non fail;
     infer_exp env exp
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
