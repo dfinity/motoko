@@ -1,1 +1,1 @@
-or-pattern-binds.mo:1.5-1.21: type error [M0105], variables are not allowed in pattern alternatives
+or-pattern-binds.mo:1.5-1.23: type error [M0166], different set of bindings in pattern alternatives

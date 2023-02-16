@@ -1873,6 +1873,8 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         "pattern branches have incompatible types,\nleft consumes%a\nright consumes%a"
         display_typ_expand t1
         display_typ_expand t2;
+    if T.Env.keys ve1 <> T.Env.keys ve2 then
+      error env pat.at "M0165" "different set of bindings in pattern alternatives";
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
     t, T.Env.empty
@@ -2000,6 +2002,8 @@ and check_pat' env t pat : Scope.val_env =
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
     let ve2 = check_pat env t pat2 in
+    if T.Env.keys ve1 <> T.Env.keys ve2 then
+      error env pat.at "M0166" "different set of bindings in pattern alternatives";
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
     T.Env.empty
