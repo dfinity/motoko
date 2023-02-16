@@ -1169,6 +1169,7 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
+
   let get_min env =
     G.i (GlobalGet (nr (E.get_global env "__stack_min")))
   let set_min env =
@@ -1188,6 +1189,7 @@ module Stack = struct
         set_min env)
       G.nop)
 
+
   let stack_overflow env =
     Func.share_code0 env "stack_overflow" [] (fun env ->
       (* read last word of reserved page to force trap *)
@@ -1197,10 +1199,11 @@ module Stack = struct
     )
 
   let alloc_words env n =
+    let n_bytes = Int32.mul n Heap.word_size in
     (* first, check for stack underflow, if necessary *)
-    (if (n >= page_size) then
+    (if (n_bytes >= page_size) then
       get_stack_ptr env ^^
-      compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+      compile_unboxed_const n_bytes ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       (G.if0
         (stack_overflow env)
@@ -1209,7 +1212,7 @@ module Stack = struct
        G.nop) ^^
     (* alloc words *)
     get_stack_ptr env ^^
-    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    compile_unboxed_const n_bytes ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
     update_stack_min env ^^

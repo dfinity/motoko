@@ -7,6 +7,9 @@
     Now defaults to 32 pages (2MiB) (up from previous 2 pages/128KiB) (#3782).
     In emergencies, increasing this setting may improve your ability to deserialize deeply nested Candid or stable variable data.
 
+  * Performance improvement: heap allocator speedup (#3090, #3790).
+
+>>>>>>> origin/master
   * bugfix: avoid more heap-out-bounds error during deserialization of stable variables by increasing default runtime system stack from 128KiB to 2MiB (#3782).
 
 ## 0.8.1 (2023-02-03)
