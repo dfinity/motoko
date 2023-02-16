@@ -96,11 +96,11 @@ regions at 8MB each, well over the maximum stable memory size is used
 
 ### Q: When is stable memory becoming less costly?
 
-TBA
+Spring 2023.
 
 ### Q: How does the cheaper stable memory access cost compare with ordinary heap memory access cost?
 
-TBA
+2-3x slower than ordinary heap memory.
 
 
 ## Design details
@@ -144,13 +144,36 @@ rebuilt into the heap when the upgrade succeeds.
  - total allocated blocks, `Nat16`, max value is `32768`.
  - total allocated regions, `Nat16`, max value is `32767` (one region is reserved for "no region").
  - The `block-region` table (fixed size, about 131kb).
- - The `region-blocks` table (fixed size, about 524kb).
+ - The `region-blocks` table (fixed size, about 262kb).
 
 ### representation of values of type `Region`
 
- - We use the region ID, a `Nat16`, to represent the region as a value.
- - To compute a load or store access, this requires consulting stable memory for (almost all) meta data.
- - We rely on the cost of these stable memory accesses going down in the near future to support this design decision.
+ - A singleton, heap-allocated object with mutable fields.
+ - `RegionObject { size_in_pages: Nat64; id: Nat16; vec_capacity: Nat16; vec_ptr: Nat32 }`
+ - Field `size_in_pages` gives the number of pages allocated to the Region.
+ - Field `id` gives the Regions numerical id as an index into the `region` table.
+ - Fields `vec_capacity` and `vec_ptr` work with `size_in_pages`
+   to represent a growable vector that we call the region's **"access
+   vector"** (because "blocks vector" sounds a bit strange, and its
+   used to support O(1) access operations):
+   - the access vector's address is held in `vec_ptr` and it has `vec_capacity` slots.
+   - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
+   - to support dynamic growth, _the access vector is held in the Motoko **heap** rather than **stable memory**._
+   - the access vector doubles when it grows.
+   - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
+   - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
+   - during an upgrade, the access vectors get serialized and deserialized as data `Blobs` (as if no pointers are inside each).
+
+
+### region-blocks relation
+
+The `region-blocks` relation is not materialized into a table in stable memory (doing so with a pre-allocated table would be prohibitively large).
+
+Instead, this relation is represented in two ways at the same time:
+ 1. by the set of heap-allocated region objects, and their access vectors.  The access vectors provide O(1) store and load support.
+ 2. by the `block-region` table and the `region-table`, which together are sufficient to recreate all of the heap-allocated region objects.
+
+In ordinary operation, the second feature is not required.  In the event of an upgrade failure, however, it could be vital.
 
 ### block-region table
 
@@ -159,8 +182,7 @@ rebuilt into the heap when the upgrade succeeds.
 
    - NB: The organization of this table is not useful for efficient
      access calculations of load or store (they require a linear
-     search that would be prohibitively slow). Rather, the
-     `region-blocks` table is designed for that purpose.  OTOH, this
+     search that would be prohibitively slow).  OTOH, this
      table is suitable to do a "batch" rebuild of the dynamic heap-allocated vectors
      in that table, which get lost during upgrades.
 
@@ -169,54 +191,30 @@ rebuilt into the heap when the upgrade succeeds.
  - entry type = `BlockRegion { region : Nat16, position : Nat16 }`
  - the location of each entry gives its corresponding block ID.
 
-### region-blocks table
+### region table
 
- - purpose: 
-   - relate a region ID to its vector of block IDs, to compute an access efficiently (load or store).
+ - purpose:
+   - relate a region ID to its size in pages.
 
-   - NB: The organization of this table is meant to support O(1) load
-     and store operations, but in so doing, it needs to use a
-     dynamically-sized vector for each region.  There is no a priori
-     way to know how to allocate these, and if we naively preallocate
-     them to each be the potential "maximal region" (with all blocks
-     allocated to it), the resulting preallocated table requires
-     gigabytes of space, and thus is prohibitively large.
+   - NB: This table exists as a "stable backup" of the per-region fields
+     that exist in the set of region objects, except for the access vectors' elements (see `block-region` table for their data).
 
-     At the same time, having dynamically-sized stable vectors is kind
-     of the point of regions (each is such a vector, in a sense), and
-     so requiring these first to implement regions' meta data seems
-     potentially circular in concept, if not also very complex.
-
-     So, we seem forced to use dynamically-sized heap vectors, and to
-     deal the compilations of integrating them with GC (how involved is
-     that?) and rebuilding them on upgrade.
-
-
- - 32768 entries (statically sized, ignoring the `vec_ptr` objects referenced therein).
- - 16 bytes per entry.
- - entry type = `RegionBlocks { size_in_pages: Nat64; vec_capacity : Nat32; vec_ptr: Nat32 }`
+ - 32768 entries (statically sized).
+ - 8 bytes per entry.
+ - entry type = `RegionBlocks { size_in_pages: Nat64; }`
  - the location of each entry in the table gives its corresponding region ID.
- - the `size_in_pages` field measures the size of the region in terms of _pages_, not blocks. 
- - the `vec_capacity` and `vec_ptr` fields work with `size_in_pages`
-   to represent a growable vector that we call the region's **"access
-   vector"** (because "blocks vector" sounds a bit strange, and its
-   used to support O(1) access operations): 
-   - the access vector's address is held in `vec_ptr` and it has `vec_capacity` slots.
-   - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
-   - to support dynamic growth, _the access vector is held in the Motoko **heap** rather than **stable memory**._
-   - the access vector doubles when it grows.
-   - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
-   - but we use a `Nat32` for `capacity` to make all fields things word-aligned (does that matter?).
-   - during an upgrade, the access vectors are "rebuilt" in a batch (see `rebuild`).
+ - the `size_in_pages` field measures the size of the region in terms of _pages_, not blocks.
 
 
 ### Overview of `rebuild`
 
-When a canister upgrades, its heap is lost and the access vectors for each region are lost too (see `region-blocks` table section).
+When upgrades work as expected, stable `Regions` are serialized and deserialized just like other stable data.
 
-We use the `block-region` and `region-blocks` tables in stable memory to rebuild these vectors in the latter table:
+For disaster recovery, we can **also** rebuild all of the region objects from data in stable memory.
 
- - The `region-blocks` table gives a size for each region, saying how large each vector for each region needs to be.
+We use the `block-region` and `region` tables in stable memory to rebuild the regions' objects:
+
+ - The `region` table gives a size for each region, saying how large each vector for each region needs to be.
  - The `block-region` table gives a relative position and region ID for each block ID.
 
 Once each regions' vectors have been allocated, the block-region table says how to fill them, one entry at a time.
