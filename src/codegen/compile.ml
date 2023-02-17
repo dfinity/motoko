@@ -1190,7 +1190,7 @@ module Stack = struct
       get_stack_ptr env ^^
       G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
       G.if0
-        G.nop
+        G.nop (* we found leading zeros, i.e. no wraparound *)
         (stack_overflow env)
     else
       G.nop
