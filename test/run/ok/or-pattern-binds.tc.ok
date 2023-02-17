@@ -1,4 +1,0 @@
-or-pattern-binds.mo:3.5-3.23: type error [M0167], types for alternative pattern variables a3
-  Nat
-  Char
-or-pattern-binds.mo:3.5-3.23: type error [M0105], variables are not allowed in pattern alternatives

@@ -749,7 +749,7 @@ and declare_pat pat : val_env =
   | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
   | TagP (_, pat1)
-  | AltP (pat1, _)    (* both have empty binders *)
+  | AltP (pat1, _) (* pat2 has the same identifiers *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
 
@@ -774,11 +774,20 @@ and define_pat env pat v =
   let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
   match pat.it with
   | WildP -> ()
-  | LitP _ | SignP _ | AltP _ ->
+  | LitP _ | SignP _ ->
     if match_pat pat v = None
     then err ()
     else ()
-  | VarP id -> define_id env id v
+  | AltP (pat1, pat2) ->
+     if match_pat pat1 v = None
+    then begin
+      if match_pat pat2 v = None
+      then err ()
+      else define_pat env pat2 v
+    end
+    else define_pat env pat1 v
+  | VarP id -> (*Printf.eprintf "value %s does match pattern %s\n" (string_of_val env v) id.it;*)
+               define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
   | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
   | OptP pat1 ->
