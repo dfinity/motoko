@@ -14,9 +14,9 @@
 
   * Performance improvement: heap allocator speedup (#3090, #3790).
 
-  * bugfix: avoid more heap-out-bounds error during deserialization of stable variables
+  * bugfix: avoid more heap-out-bounds errors during deserialization of stable variables
     by increasing default runtime system stack from 128KiB to 2MiB (#3782).
-    _Note_: this is a partial fix as issues with stack growth remain.
+    _Note_: this is a partial fix, as issues with stack growth remain.
 
 * motoko-base
 
