@@ -1171,11 +1171,6 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
-  let get_frame_ptr env =
-    G.i (GlobalGet (nr (E.get_global env "__frame_pointer")))
-  let set_frame_ptr env =
-    G.i (GlobalSet (nr (E.get_global env "__frame_pointer")))
-
   let get_min env =
     G.i (GlobalGet (nr (E.get_global env "__stack_min")))
   let set_min env =
@@ -1236,48 +1231,6 @@ module Stack = struct
     f get_x ^^
     free_words env n
 
-  let with_frame env name n f =
-    (* reserve space for n words + saved frame_ptr *)
-    alloc_words env (Int32.add n 1l) ^^
-    (* store the current frame_ptr at offset 0*)
-    get_frame_ptr env ^^
-    G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
-    get_stack_ptr env ^^
-    (* set_frame_ptr to stack_ptr *)
-    set_frame_ptr env ^^
-    (* do as f *)
-    f () ^^
-    (* assert frame_ptr == stack_ptr *)
-    get_frame_ptr env ^^
-    get_stack_ptr env ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    E.else_trap_with env "frame_ptr <> stack_ptr" ^^
-    (* restore the saved frame_ptr *)
-    get_frame_ptr env ^^
-    G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
-    set_frame_ptr env ^^
-    (* free the frame *)
-    free_words env (Int32.add n 1l)
-
-  let get_local env n =
-    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
-    get_frame_ptr env ^^
-      G.i (Load { ty = I32Type; align = 2; offset; sz = None})
-
-  let get_prev_local env n =
-    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
-    (* indirect through save frame_ptr at offset 0 *)
-    get_frame_ptr env ^^
-    G.i (Load { ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
-    G.i (Load { ty = I32Type; align = 2; offset; sz = None})
-
-  let set_local env n =
-    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
-    Func.share_code1 env ("set_local %i" ^ Int32.to_string n) ("val", I32Type) []
-      (fun env get_val ->
-         get_frame_ptr env ^^
-         get_val ^^
-         G.i (Store { ty = I32Type; align = 2; offset; sz = None}))
 
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
@@ -1310,6 +1263,65 @@ module Stack = struct
     dynamic_alloc_words env get_n ^^ set_x ^^
     f get_x ^^
     dynamic_free_words env get_n
+
+  (* Stack Frames *)
+
+  (* Traditional frame pointer for accessing statically allocated locals/args (all words)
+     Used (sofar) only in serialization to compress Wasm stack
+     at cost of expanding Rust/C Stack (whose size we control)*)
+  let get_frame_ptr env =
+    G.i (GlobalGet (nr (E.get_global env "__frame_pointer")))
+  let set_frame_ptr env =
+    G.i (GlobalSet (nr (E.get_global env "__frame_pointer")))
+
+  (* Frame pointer operations *)
+
+  (* Enter/exit a new frame of `n` words, saving and restoring prev frame pointer *)
+  let with_frame env name n f =
+    (* reserve space for n words + saved frame_ptr *)
+    alloc_words env (Int32.add n 1l) ^^
+    (* store the current frame_ptr at offset 0*)
+    get_frame_ptr env ^^
+    G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    get_stack_ptr env ^^
+    (* set_frame_ptr to stack_ptr *)
+    set_frame_ptr env ^^
+    (* do as f *)
+    f () ^^
+    (* assert frame_ptr == stack_ptr *)
+    get_frame_ptr env ^^
+    get_stack_ptr env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "frame_ptr <> stack_ptr" ^^
+    (* restore the saved frame_ptr *)
+    get_frame_ptr env ^^
+    G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    set_frame_ptr env ^^
+    (* free the frame *)
+    free_words env (Int32.add n 1l)
+
+  (* read local n of current frame *)
+  let get_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    get_frame_ptr env ^^
+      G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  (* read local n of previous frame *)
+  let get_prev_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    (* indirect through save frame_ptr at offset 0 *)
+    get_frame_ptr env ^^
+    G.i (Load { ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  (* set local n of current frame *)
+  let set_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    Func.share_code1 env ("set_local %i" ^ Int32.to_string n) ("val", I32Type) []
+      (fun env get_val ->
+         get_frame_ptr env ^^
+         get_val ^^
+         G.i (Store { ty = I32Type; align = 2; offset; sz = None}))
 
 end (* Stack *)
 
@@ -5649,9 +5661,9 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-          (* assumes idltyp on stack *)
+        (* assumes idltyp on stack *)
         Stack.with_frame env "frame_ptr" 3l (fun () ->
-            Stack.set_local env 0l ^^ (* arg get_idltyp *)
+          Stack.set_local env 0l ^^ (* arg get_idltyp *)
             (* set up frame arguments *)
             ( (* Reset depth counter if we made progress *)
               ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
@@ -6372,14 +6384,14 @@ module MakeSerialization (Strm : Stream) = struct
                 get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
               end ^^
               (* set up frame arguments *)
-              ReadBuf.read_sleb128 env get_main_typs_buf ^^ (* idltyp *)
-              compile_unboxed_const 0l ^^ (* initial depth *)
-              can_recover ^^ (* recovery mode *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
-                  Stack.set_local env 2l ^^
-                  Stack.set_local env 1l ^^
-                  Stack.set_local env 0l ^^
-                  deserialize_go env t
+                ReadBuf.read_sleb128 env get_main_typs_buf ^^ (* idltyp *)
+                Stack.set_local env 0l ^^
+                compile_unboxed_const 0l ^^ (* initial depth *)
+                Stack.set_local env 1l ^^
+                can_recover ^^ (* recovery mode *)
+                Stack.set_local env 2l ^^
+                deserialize_go env t
              )
              ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
