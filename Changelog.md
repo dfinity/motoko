@@ -1,15 +1,31 @@
 # Motoko compiler changelog
 
+* Improve recursive deserialization capacity to match recursive serialization capacity by reducing Wasm stack consumption (#3809).
+  Because of the bounds on recursion depth imposed by fixed-size stack, the
+  advice remains the same: avoid deeply nested recursive data structures.
+  Slogan: shallow trees good, very long lists bad.
+
+## 0.8.2 (2023-02-17)
+
 * motoko (`moc`)
 
   * Add compiler flag `--rts-stack-pages <n>` to override default number of
-    pages dedicated to fixed runtime system stack.
-    Now defaults to 32 pages (2MiB) (up from previous 2 pages/128KiB) (#3782).
-    In emergencies, increasing this setting may improve your ability to deserialize deeply nested Candid or stable variable data.
+    pages dedicated to fixed runtime system stack. Now defaults to 32 pages
+    (2MiB) (up from previous 2 pages/128KiB) (#3782).
+    In emergencies, increasing this setting may improve your ability to deserialize
+    deeply nested Candid or stable variable data.
+
+  * Add stack overflow detection utilising reserved page (#3793).
 
   * Performance improvement: heap allocator speedup (#3090, #3790).
 
-  * bugfix: avoid more heap-out-bounds error during deserialization of stable variables by increasing default runtime system stack from 128KiB to 2MiB (#3782).
+  * bugfix: avoid more heap-out-bounds errors during deserialization of stable variables
+    by increasing default runtime system stack from 128KiB to 2MiB (#3782).
+    _Note_: this is a partial fix, as issues with stack growth remain.
+
+* motoko-base
+
+  * bugfix: non-leaky deletion for `RBTree` (dfinity/motoko-base#524).
 
 ## 0.8.1 (2023-02-03)
 
@@ -127,7 +143,7 @@
 
   * Add user-facing timer functionality (dfinity/motoko-base#474).
 
-  * Add `Array.size` (#486, #494).
+  * Add `Array.size` (dfinity/motoko-base#486, dfinity/motoko-base#494).
 
   * Add `TrieSet` methods `isEmpty`, `isSubset` (dfinity/motoko-base#503).
 
