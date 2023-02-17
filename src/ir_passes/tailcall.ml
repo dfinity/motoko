@@ -156,9 +156,7 @@ and pat' env = function
   | LitP l        -> env
   | OptP p
   | TagP (_, p)   -> pat env p
-  | AltP (p1, p2) -> assert(Freevars.(M.is_empty (pat p1)));
-                     assert(Freevars.(M.is_empty (pat p2)));
-                     env
+  | AltP (p1, p2) -> pat env p1 (* TODO: assert that both bind the same vars *)
 
 and pats env ps  =
   match ps with

@@ -967,7 +967,7 @@ and gather_pat env const ve0 pat : val_env =
     | ObjP pfs ->
       List.fold_left go ve (pats_of_obj_pat pfs)
     | AltP (pat1, pat2) ->
-      ve
+      go ve pat1
     | OptP pat1
     | TagP (_, pat1) ->
       go ve pat1
@@ -1015,9 +1015,9 @@ and check_pat env pat : val_env =
     let ve2 = check_pat env pat2 in
     t <: pat1.note;
     t <: pat2.note;
-    check env pat.at (T.Env.is_empty ve1 && T.Env.is_empty ve2)
+    (* check env pat.at (T.Env.is_empty ve1 && T.Env.is_empty ve2)
       "variables are not allowed in pattern alternatives";
-    T.Env.empty
+    T.Env.empty*) ve1 (* FOR NOW *)
 
 and check_pats at env pats ve : val_env =
   match pats with
