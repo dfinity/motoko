@@ -1239,7 +1239,7 @@ module Stack = struct
   let with_frame env name n f =
     (* reserve space for n words + saved frame_ptr *)
     alloc_words env (Int32.add n 1l) ^^
-    (* store the current frame_ptr a offset 0*)
+    (* store the current frame_ptr at offset 0*)
     get_frame_ptr env ^^
     G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
     get_stack_ptr env ^^
@@ -1259,18 +1259,18 @@ module Stack = struct
     (* free the frame *)
     free_words env (Int32.add n 1l)
 
-  let get_stack_local env n =
+  let get_local env n =
     let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
     get_frame_ptr env ^^
     G.i (Load { ty = I32Type; align = 2; offset; sz = None})
 
-  let get_stack_local_ptr env n =
+  let set_local env n =
     let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
-    get_frame_ptr env ^^
-    compile_add_const offset
-
-  let store_local env =
-    G.i (Store { ty = I32Type; align = 2; offset = 0l; sz = None})
+    Func.share_code1 env ("set_local %i" ^ Int32.to_string n) ("val", I32Type) []
+      (fun env get_val ->
+         get_frame_ptr env ^^
+         get_val ^^
+         G.i (Store { ty = I32Type; align = 2; offset; sz = None}))
 
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
@@ -5618,15 +5618,9 @@ module MakeSerialization (Strm : Stream) = struct
     Func.share_code0 env name
       [I32Type]
       (fun env  ->
-      let get_idltyp =
-        Stack.get_stack_local env 0l
-      in
-      let get_depth =
-        Stack.get_stack_local env 1l
-      in
-      let get_can_recover =
-        Stack.get_stack_local env 2l
-      in
+      let get_idltyp = Stack.get_local env 0l in
+      let get_depth = Stack.get_local env 1l  in
+      let get_can_recover = Stack.get_local env 2l in
       let get_rel_buf_opt = Registers.get_rel_buf_opt env in
       let get_data_buf = Registers.get_data_buf env in
       let _get_ref_buf = Registers.get_ref_buf env in
@@ -5648,35 +5642,23 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-          let (set_tmp, get_tmp) = new_local env "tmp" in
-          set_tmp ^^
-          (* FIXME index off of saved frame_ptr *)
-          let (set_old_depth, get_old_depth) = new_local env "old_depth" in
-          get_depth ^^
-          set_old_depth ^^
-          let (set_old_can_recover, get_old_can_recover) = new_local env "old_can_recover" in
-          (* END FIXME *)
-          get_can_recover ^^
-          set_old_can_recover ^^
-          Stack.with_frame env "frame_ptr" 3l (fun () ->
-          Stack.get_stack_local_ptr env 0l ^^
-          get_tmp ^^
-          Stack.store_local env ^^
-          Stack.get_stack_local_ptr env 1l ^^
+          (* assumes idltyp on stack *)
           ( (* Reset depth counter if we made progress *)
             ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
             G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
             G.if1 I32Type
-              (get_old_depth ^^ compile_add_const 1l)
+              (get_depth ^^ compile_add_const 1l)
               (compile_unboxed_const 0l)
           ) ^^
-          Stack.store_local env ^^
-          Stack.get_stack_local_ptr env 2l ^^
           (if can_recover
            then compile_unboxed_const 1l
-           else get_old_can_recover) ^^
-          Stack.store_local env ^^
-          deserialize_go env t)
+           else get_can_recover) ^^
+           Stack.with_frame env "frame_ptr" 3l (fun () ->
+             (* set up frame arguments *)
+             Stack.set_local env 2l ^^ (* arg get_depth *)
+             Stack.set_local env 1l ^^ (* arg get_can_recover *)
+             Stack.set_local env 0l ^^ (* arg get_idltyp *)
+             deserialize_go env t)
       in
 
       let go = go' false in
@@ -6373,26 +6355,24 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-             begin
-               (* set up register arguments *)
-               get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
-               get_data_buf ^^ Registers.set_data_buf env ^^
-               get_ref_buf ^^ Registers.set_ref_buf env ^^
-               get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
-               get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-               get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
-             end ^^
+              begin
+                (* set up register arguments *)
+                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+                get_data_buf ^^ Registers.set_data_buf env ^^
+                get_ref_buf ^^ Registers.set_ref_buf env ^^
+                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+              end ^^
+              (* set up frame arguments *)
+              ReadBuf.read_sleb128 env get_main_typs_buf ^^ (* idltyp *)
+              compile_unboxed_const 0l ^^ (* initial depth *)
+              can_recover ^^ (* recovery mode *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
-                 Stack.get_stack_local_ptr env 0l ^^
-                 ReadBuf.read_sleb128 env get_main_typs_buf ^^
-                 Stack.store_local env ^^
-                 Stack.get_stack_local_ptr env 1l ^^
-                 compile_unboxed_const 0l ^^ (* initial depth *)
-                 Stack.store_local env ^^
-                 Stack.get_stack_local_ptr env 2l ^^
-                 can_recover ^^
-                 Stack.store_local env ^^
-                 deserialize_go env t
+                  Stack.set_local env 2l ^^
+                  Stack.set_local env 1l ^^
+                  Stack.set_local env 0l ^^
+                  deserialize_go env t
              )
              ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
