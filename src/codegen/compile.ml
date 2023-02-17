@@ -6375,7 +6375,7 @@ module MakeSerialization (Strm : Stream) = struct
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
               begin
-                (* set up register arguments *)
+                (* set up invariant register arguments *)
                 get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
                 get_data_buf ^^ Registers.set_data_buf env ^^
                 get_ref_buf ^^ Registers.set_ref_buf env ^^
@@ -6383,7 +6383,7 @@ module MakeSerialization (Strm : Stream) = struct
                 get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
                 get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
               end ^^
-              (* set up frame arguments *)
+              (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
                 ReadBuf.read_sleb128 env get_main_typs_buf ^^ (* idltyp *)
                 Stack.set_local env 0l ^^

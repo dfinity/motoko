@@ -1,6 +1,7 @@
 # Motoko compiler changelog
 
-* Improve recursive deserialization capacity to match recursive serialization capacity by reducing Wasm stack consumption (#3809).
+* Improve recursive deserialization capacity to match recursive serialization capacity by reducing
+  Wasm stack consumption (#3809).
   Because of the bounds on recursion depth imposed by fixed-size stack, the
   advice remains the same: avoid deeply nested recursive data structures.
   Think "shallow trees good, very long lists bad".
@@ -11,7 +12,7 @@
 
   * Add compiler flag `--rts-stack-pages <n>` to override default number of
     pages dedicated to fixed runtime system stack. Now defaults to 32 pages
-    (2MiB) (up from previous 2 pages/128KiB) (#3782).CH
+    (2MiB) (up from previous 2 pages/128KiB) (#3782).
     In emergencies, increasing this setting may improve your ability to deserialize
     deeply nested Candid or stable variable data.
 
