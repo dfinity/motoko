@@ -778,10 +778,7 @@ and define_pat env pat v =
     if match_pat pat v = None
     then err ()
     else ()
-  | AltP (pat1, pat2) ->
-    if match_pat pat1 v = None
-    then define_pat env pat2 v
-    else define_pat env pat1 v
+  | AltP (pat1, pat2) -> define_pat env (if match_pat pat1 v <> None then pat1 else pat2) v
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
   | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
