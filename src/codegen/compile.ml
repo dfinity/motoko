@@ -1160,6 +1160,8 @@ module Stack = struct
   let register_globals env =
     (* stack pointer *)
     E.add_global32 env "__stack_pointer" Mutable (end_());
+    (* frame pointer *)
+    E.add_global32 env "__frame_pointer" Mutable (end_());
     (* low watermark *)
     E.add_global32 env "__stack_min" Mutable (end_());
     E.export_global env "__stack_pointer"
@@ -1169,6 +1171,10 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
+  let get_frame_ptr env =
+    G.i (GlobalGet (nr (E.get_global env "__frame_pointer")))
+  let set_frame_ptr env =
+    G.i (GlobalSet (nr (E.get_global env "__frame_pointer")))
 
   let get_min env =
     G.i (GlobalGet (nr (E.get_global env "__stack_min")))
@@ -1188,7 +1194,6 @@ module Stack = struct
        (get_stack_ptr env ^^
         set_min env)
       G.nop)
-
 
   let stack_overflow env =
     Func.share_code0 env "stack_overflow" [] (fun env ->
@@ -1230,6 +1235,42 @@ module Stack = struct
     alloc_words env n ^^ set_x ^^
     f get_x ^^
     free_words env n
+
+  let with_frame env name n f =
+    (* reserve space for n words + saved frame_ptr *)
+    alloc_words env (Int32.add n 1l) ^^
+    (* store the current frame_ptr a offset 0*)
+    get_frame_ptr env ^^
+    G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    get_stack_ptr env ^^
+    (* set_frame_ptr to stack_ptr *)
+    set_frame_ptr env ^^
+    (* do as f *)
+    f () ^^
+    (* assert frame_ptr == stack_ptr *)
+    get_frame_ptr env ^^
+    get_stack_ptr env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "frame_ptr <> stack_ptr" ^^
+    (* restore the saved frame_ptr *)
+    get_frame_ptr env ^^
+    G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    set_frame_ptr env ^^
+    (* free the frame *)
+    free_words env (Int32.add n 1l)
+
+  let get_stack_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    get_frame_ptr env ^^
+    G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  let get_stack_local_ptr env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    get_frame_ptr env ^^
+    compile_add_const offset
+
+  let store_local env =
+    G.i (Store { ty = I32Type; align = 2; offset = 0l; sz = None})
 
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
@@ -4956,7 +4997,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@ref_buf" Mutable 0l;
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l)
+      E.add_global32 env "@@typtbl_size" Mutable 0l) 
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -5574,18 +5615,25 @@ module MakeSerialization (Strm : Stream) = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code3 env name
-      (("idltyp", I32Type),
-       ("depth", I32Type),
-       ("can_recover", I32Type)
-      ) [I32Type]
-     (fun env get_idltyp get_depth get_can_recover ->
+    Func.share_code0 env name
+      [I32Type]
+      (fun env  ->
+      let get_idltyp =
+        Stack.get_stack_local env 0l
+      in
+      let get_depth =
+        Stack.get_stack_local env 1l
+      in
+      let get_can_recover =
+        Stack.get_stack_local env 2l
+      in
       let get_rel_buf_opt = Registers.get_rel_buf_opt env in
       let get_data_buf = Registers.get_data_buf env in
       let _get_ref_buf = Registers.get_ref_buf env in
       let get_typtbl = Registers.get_typtbl env in
       let get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
+
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
          level of opt that is not present in the value type
@@ -5600,17 +5648,35 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-        ( (* Reset depth counter if we made progress *)
-          ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          G.if1 I32Type
-          (get_depth ^^ compile_add_const 1l)
-          (compile_unboxed_const 0l)
-        ) ^^
-        (if can_recover
-         then compile_unboxed_const 1l
-         else get_can_recover) ^^
-        deserialize_go env t
+          let (set_tmp, get_tmp) = new_local env "tmp" in
+          set_tmp ^^
+          (* FIXME index off of saved frame_ptr *)
+          let (set_old_depth, get_old_depth) = new_local env "old_depth" in
+          get_depth ^^
+          set_old_depth ^^
+          let (set_old_can_recover, get_old_can_recover) = new_local env "old_can_recover" in
+          (* END FIXME *)
+          get_can_recover ^^
+          set_old_can_recover ^^
+          Stack.with_frame env "frame_ptr" 3l (fun () ->
+          Stack.get_stack_local_ptr env 0l ^^
+          get_tmp ^^
+          Stack.store_local env ^^
+          Stack.get_stack_local_ptr env 1l ^^
+          ( (* Reset depth counter if we made progress *)
+            ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            G.if1 I32Type
+              (get_old_depth ^^ compile_add_const 1l)
+              (compile_unboxed_const 0l)
+          ) ^^
+          Stack.store_local env ^^
+          Stack.get_stack_local_ptr env 2l ^^
+          (if can_recover
+           then compile_unboxed_const 1l
+           else get_old_can_recover) ^^
+          Stack.store_local env ^^
+          deserialize_go env t)
       in
 
       let go = go' false in
@@ -6316,10 +6382,19 @@ module MakeSerialization (Strm : Stream) = struct
                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
              end ^^
-             ReadBuf.read_sleb128 env get_main_typs_buf ^^
-             compile_unboxed_const 0l ^^ (* initial depth *)
-             can_recover ^^
-             deserialize_go env t ^^ set_val ^^
+              Stack.with_frame env "frame_ptr" 3l (fun () ->
+                 Stack.get_stack_local_ptr env 0l ^^
+                 ReadBuf.read_sleb128 env get_main_typs_buf ^^
+                 Stack.store_local env ^^
+                 Stack.get_stack_local_ptr env 1l ^^
+                 compile_unboxed_const 0l ^^ (* initial depth *)
+                 Stack.store_local env ^^
+                 Stack.get_stack_local_ptr env 2l ^^
+                 can_recover ^^
+                 Stack.store_local env ^^
+                 deserialize_go env t
+             )
+             ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (G.if1 I32Type
