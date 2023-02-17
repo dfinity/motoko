@@ -780,14 +780,9 @@ and define_pat env pat v =
     else ()
   | AltP (pat1, pat2) ->
      if match_pat pat1 v = None
-    then begin
-      if match_pat pat2 v = None
-      then err ()
-      else define_pat env pat2 v
-    end
+    then define_pat env pat2 v
     else define_pat env pat1 v
-  | VarP id -> (*Printf.eprintf "value %s does match pattern %s\n" (string_of_val env v) id.it;*)
-               define_id env id v
+  | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
   | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
   | OptP pat1 ->
