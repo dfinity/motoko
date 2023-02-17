@@ -199,7 +199,7 @@ Literals are constant values. The syntactic validity of a literal depends on the
 To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 | Abbreviation | Category   | Supported opertions             |
-|--------------|------------|---------------------------------|
+| ------------ | ---------- | ------------------------------- |
 | A            | Arithmetic | arithmetic operations           |
 | L            | Logical    | logical/Boolean operations      |
 | B            | Bitwise    | bitwise and wrapping operations |
@@ -211,7 +211,7 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 ### Unary operators
 
 | `<unop>` | Category |                  |
-|----------|----------|------------------|
+| -------- | -------- | ---------------- |
 | `-`      | A        | numeric negation |
 | `+`      | A        | numeric identity |
 | `^`      | B        | bitwise negation |
@@ -220,7 +220,7 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 ### Relational operators
 
 |           |          |                                                 |
-|-----------|----------|-------------------------------------------------|
+| --------- | -------- | ----------------------------------------------- |
 | `<relop>` | Category |                                                 |
 | `==`      |          | equals                                          |
 | `!=`      |          | not equals                                      |
@@ -236,7 +236,7 @@ Equality and inequality are structural and based on the observable content of th
 ### Numeric binary operators
 
 | `<binop>` | Category |                |
-|-----------|----------|----------------|
+| --------- | -------- | -------------- |
 | `+`       | A        | addition       |
 | `-`       | A        | subtraction    |
 | `*`       | A        | multiplication |
@@ -247,7 +247,7 @@ Equality and inequality are structural and based on the observable content of th
 ### Bitwise and wrapping binary operators
 
 | `<binop>` | Category |                                                |
-|-----------|----------|------------------------------------------------|
+| --------- | -------- | ---------------------------------------------- |
 | `&`       | B        | bitwise and                                    |
 | `\|`      | B        | bitwise or                                     |
 | `^`       | B        | exclusive or                                   |
@@ -263,13 +263,13 @@ Equality and inequality are structural and based on the observable content of th
 ### Text operators
 
 | `<binop>` | Category |               |
-|-----------|----------|---------------|
+| --------- | -------- | ------------- |
 | `#`       | T        | concatenation |
 
 ### Assignment operators
 
 | `:=`, `<unop>=`, `<binop>=` | Category |                                            |
-|-----------------------------|----------|--------------------------------------------|
+| --------------------------- | -------- | ------------------------------------------ |
 | `:=`                        | \*       | assignment (in place update)               |
 | `+=`                        | A        | in place add                               |
 | `-=`                        | A        | in place subtract                          |
@@ -297,7 +297,7 @@ The category of a compound assignment `<unop>=`/`<binop>=` is given by the categ
 The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
 
 | Precedence | Associativity | Token                                                                                                                         |
-|------------|---------------|-------------------------------------------------------------------------------------------------------------------------------|
+| ---------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                   |
 | (higher)   | none          | `else`, `while`                                                                                                               |
 | (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
@@ -580,8 +580,8 @@ Motoko provides the following primitive type identifiers, including support for 
 
 The category of a type determines the operators (unary, binary, relational and in-place update via assignment) applicable to values of that type.
 
-| Identifier                          | Category | Description                                                            |
-|-------------------------------------|----------|------------------------------------------------------------------------|
+| Identifier                         | Category | Description                                                            |
+| ---------------------------------- | -------- | ---------------------------------------------------------------------- |
 | [`Bool`](./base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
 | [`Char`](./base/Char.md)           | O        | Unicode characters                                                     |
 | [`Text`](./base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
@@ -1231,7 +1231,7 @@ This condition ensures that every stable variable is either fresh, requiring ini
 The declaration `<dec>` of a `system` field must be a manifest `func` declaration with one of the following names and types:
 
 | name          | type                                                          | description         |
-|---------------|---------------------------------------------------------------|---------------------|
+| ------------- | ------------------------------------------------------------- | ------------------- |
 | `heartbeat`   | `() -> async ()`                                              | heartbeat action    |
 | `timer`       | `(Nat64 -> ()) -> async ()`                                   | timer action        |
 | `inspect`     | `{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool` | message predicate   |
@@ -1396,7 +1396,7 @@ All bindings declared by a `let` (if any) are *immutable*.
 
 #### Handling pattern match failures
 
-In the presence of of refutable patterns a `let` declaration may fail to bind the expression. The default consequence of such a failure is trapping. The compiler will additionally emit a warning if a pattern match failure is a possibility.
+In the presence of refutable patterns, a `let` declaration may fail to bind the expression. The default consequence of such a failure is trapping. The compiler will additionally emit a warning if a pattern match failure is a possibility.
 
 There are cases, however, when the user wants to explicitly handle such pattern match failures. For such cases
 the let declaration `let <pat> = <exp> else <fail-expr>` is provided, and has identical static and dynamic semantics with
@@ -1839,7 +1839,7 @@ If `var` is absent from `var? T` then the value `w` is just the value `v` of imm
 The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, and `U`,`<id>` and `T` are related by a row of the following table:
 
 |            |         |                         |                                              |
-|------------|---------|-------------------------|----------------------------------------------|
+| ---------- | ------- | ----------------------- | -------------------------------------------- |
 | U          | `<id>`  | T                       | Description                                  |
 | `Text`     | `size`  | `Nat`                   | size (or length) in characters               |
 | `Text`     | `chars` | `{ next: () -> Char? }` | character iterator, first to last            |
