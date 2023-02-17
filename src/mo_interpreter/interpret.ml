@@ -779,7 +779,7 @@ and define_pat env pat v =
     then err ()
     else ()
   | AltP (pat1, pat2) ->
-     if match_pat pat1 v = None
+    if match_pat pat1 v = None
     then define_pat env pat2 v
     else define_pat env pat1 v
   | VarP id -> define_id env id v
