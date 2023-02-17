@@ -12,7 +12,7 @@
 
   * Add compiler flag `--rts-stack-pages <n>` to override default number of
     pages dedicated to fixed runtime system stack. Now defaults to 32 pages
-    (2MiB) (up from previous 2 pages/128KiB) (#3782).CH
+    (2MiB) (up from previous 2 pages/128KiB) (#3782).
     In emergencies, increasing this setting may improve your ability to deserialize
     deeply nested Candid or stable variable data.
 
