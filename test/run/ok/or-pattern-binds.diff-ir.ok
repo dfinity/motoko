@@ -1,0 +1,6 @@
+--- or-pattern-binds.run
++++ or-pattern-binds.run-ir
+@@ -1 +1,2 @@
+-{a2 = 5}
++Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
++or-pattern-binds.mo:3.5-3.23: IR type error [M0000], variables are not allowed in pattern alternatives
