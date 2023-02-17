@@ -1262,6 +1262,13 @@ module Stack = struct
   let get_local env n =
     let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
     get_frame_ptr env ^^
+      G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  let get_prev_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    (* indirect through save frame_ptr at offset 0 *)
+    get_frame_ptr env ^^
+    G.i (Load { ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
     G.i (Load { ty = I32Type; align = 2; offset; sz = None})
 
   let set_local env n =
@@ -5643,22 +5650,22 @@ module MakeSerialization (Strm : Stream) = struct
 
       let go' can_recover env t =
           (* assumes idltyp on stack *)
-          ( (* Reset depth counter if we made progress *)
-            ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
-            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-            G.if1 I32Type
-              (get_depth ^^ compile_add_const 1l)
-              (compile_unboxed_const 0l)
-          ) ^^
-          (if can_recover
-           then compile_unboxed_const 1l
-           else get_can_recover) ^^
-           Stack.with_frame env "frame_ptr" 3l (fun () ->
-             (* set up frame arguments *)
-             Stack.set_local env 2l ^^ (* arg get_depth *)
-             Stack.set_local env 1l ^^ (* arg get_can_recover *)
-             Stack.set_local env 0l ^^ (* arg get_idltyp *)
-             deserialize_go env t)
+        Stack.with_frame env "frame_ptr" 3l (fun () ->
+            Stack.set_local env 0l ^^ (* arg get_idltyp *)
+            (* set up frame arguments *)
+            ( (* Reset depth counter if we made progress *)
+              ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+              G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+              G.if1 I32Type
+                (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
+                (compile_unboxed_const 0l)
+             ) ^^
+            Stack.set_local env 1l ^^ (* arg get_depth *)
+            (if can_recover
+             then compile_unboxed_const 1l
+             else Stack.get_prev_local env 2l) ^^
+            Stack.set_local env 2l ^^ (* arg get_can_recover *)
+            deserialize_go env t)
       in
 
       let go = go' false in
