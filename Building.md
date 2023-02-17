@@ -83,7 +83,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
  * Create a PR from this commit, and label it `automerge-squash`. E.g.
    with `git push origin HEAD:$USER/0.8.$MOC_MINOR`. Mergify will
    merge it into master without additional approval, within 2 or 3 minutes.
- * `git switch master; git pull`. The release commit should be your `HEAD`
+ * `git switch master; git pull --rebase`. The release commit should be your `HEAD`
  * `git tag 0.8.$MOC_MINOR -m "Motoko 0.8.$MOC_MINOR"`
  * `git push origin 0.8.$MOC_MINOR`
 
