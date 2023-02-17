@@ -1,4 +1,4 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32
+//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
 import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
 
 actor stack {

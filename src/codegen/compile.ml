@@ -1163,7 +1163,8 @@ module Stack = struct
     (* frame pointer *)
     E.add_global32 env "__frame_pointer" Mutable (end_());
     (* low watermark *)
-    E.add_global32 env "__stack_min" Mutable (end_());
+    if !Flags.measure_rts_stack then
+      E.add_global32 env "__stack_min" Mutable (end_());
     E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
@@ -1177,11 +1178,15 @@ module Stack = struct
     G.i (GlobalSet (nr (E.get_global env "__stack_min")))
 
   let get_max_stack_size env =
-    compile_unboxed_const (end_()) ^^
-    get_min env ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    if !Flags.measure_rts_stack then
+      compile_unboxed_const (end_()) ^^
+      get_min env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    else (* report max available *)
+      compile_unboxed_const (end_())
 
   let update_stack_min env =
+    if !Flags.measure_rts_stack then
     get_stack_ptr env ^^
     get_min env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
@@ -1189,6 +1194,7 @@ module Stack = struct
        (get_stack_ptr env ^^
         set_min env)
       G.nop)
+    else G.nop
 
   let stack_overflow env =
     Func.share_code0 env "stack_overflow" [] (fun env ->
