@@ -13,7 +13,7 @@ actor {
     }
   };
 
-  system func heartbeat() : async () {
+  system func heartbeat() : async* () {
     if (count < max) {
       ignore inc();
     }

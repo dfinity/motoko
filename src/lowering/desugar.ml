@@ -335,9 +335,7 @@ and call_system_func_opt name es obj_typ =
                (unitE ()) in
            { timer with at }
         | "heartbeat" ->
-          blockE
-            [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
-           (unitE ())
+          (awaitE T.Cmp (callE (varE (var id.it note)) [T.Any] (unitE())))
         | "inspect" ->
           let _, tfs = T.as_obj obj_typ in
           let caller = fresh_var "caller" T.principal in
