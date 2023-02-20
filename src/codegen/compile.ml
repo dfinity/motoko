@@ -5625,18 +5625,37 @@ module MakeSerialization (Strm : Stream) = struct
         E.call_import env "rts" "idl_sub")
 
   (* The main deserialization function, generated once per type hash.
-     Its parameters are:
-       * data_buffer: The current position of the input data buffer
-       * ref_buffer:  The current position of the input references buffer
-       * typtbl:      The type table, as returned by parse_idl_header
+
+     We use a combination of RTS stack locals and registers (Wasm globals) for
+     recursive parameter passing to avoid exhausting the Wasm stack, which is instead
+     used solely for return values and (implicit) return addresses.
+
+     Its RTS stack parameters are (c.f. module Stack):
+
        * idltyp:      The idl type (prim type or table index) to decode now
-       * typtbl_size: The size of the type table, used to limit recursion
        * depth:       Recursion counter; reset when we make progres on the value
        * can_recover: Whether coercion errors are recoverable, see coercion_failed below
 
+     Its register parameters are (c.f. Registers):
+       * rel_buf_opt: The optional subtype check memoization table
+          (non-null for untrusted Candid but null for trusted de-stablization (see `with_rel_buf_opt`).)
+       * data_buffer: The current position of the input data buffer
+       * ref_buffer:  The current position of the input references buffer
+       * typtbl:      The type table, as returned by parse_idl_header
+       * typtbl_size: The size of the type table, used to limit recursion
+
      It returns the value of type t (vanilla representation) or coercion_error_value,
      It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
-   *)
+
+  *)
+
+  (* symbolic names for arguments passed on RTS stack *)
+  module StackArgs = struct
+    let idltyp = 0l
+    let depth = 1l
+    let can_recover = 2l
+  end
+
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -5644,9 +5663,9 @@ module MakeSerialization (Strm : Stream) = struct
     Func.share_code0 env name
       [I32Type]
       (fun env  ->
-      let get_idltyp = Stack.get_local env 0l in
-      let get_depth = Stack.get_local env 1l  in
-      let get_can_recover = Stack.get_local env 2l in
+      let get_idltyp = Stack.get_local env StackArgs.idltyp in
+      let get_depth = Stack.get_local env StackArgs.depth in
+      let get_can_recover = Stack.get_local env StackArgs.can_recover in
       let get_rel_buf_opt = Registers.get_rel_buf_opt env in
       let get_data_buf = Registers.get_data_buf env in
       let _get_ref_buf = Registers.get_ref_buf env in
@@ -5670,21 +5689,21 @@ module MakeSerialization (Strm : Stream) = struct
       let go' can_recover env t =
         (* assumes idltyp on stack *)
         Stack.with_frame env "frame_ptr" 3l (fun () ->
-          Stack.set_local env 0l ^^ (* arg get_idltyp *)
-            (* set up frame arguments *)
-            ( (* Reset depth counter if we made progress *)
-              ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
-              G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-              G.if1 I32Type
-                (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
-                (compile_unboxed_const 0l)
-             ) ^^
-            Stack.set_local env 1l ^^ (* arg get_depth *)
-            (if can_recover
+          Stack.set_local env StackArgs.idltyp ^^
+          (* set up frame arguments *)
+          ( (* Reset depth counter if we made progress *)
+            ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            G.if1 I32Type
+              (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
+              (compile_unboxed_const 0l)
+            ) ^^
+          Stack.set_local env StackArgs.depth ^^
+          (if can_recover
              then compile_unboxed_const 1l
              else Stack.get_prev_local env 2l) ^^
-            Stack.set_local env 2l ^^ (* arg get_can_recover *)
-            deserialize_go env t)
+          Stack.set_local env StackArgs.can_recover ^^
+          deserialize_go env t)
       in
 
       let go = go' false in
@@ -6392,12 +6411,15 @@ module MakeSerialization (Strm : Stream) = struct
               end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
-                ReadBuf.read_sleb128 env get_main_typs_buf ^^ (* idltyp *)
-                Stack.set_local env 0l ^^
-                compile_unboxed_const 0l ^^ (* initial depth *)
-                Stack.set_local env 1l ^^
-                can_recover ^^ (* recovery mode *)
-                Stack.set_local env 2l ^^
+                (* idltyp *)
+                ReadBuf.read_sleb128 env get_main_typs_buf ^^
+                Stack.set_local env StackArgs.idltyp ^^
+                (* depth *)
+                compile_unboxed_const 0l ^^
+                Stack.set_local env StackArgs.depth ^^
+                (* recovery mode *)
+                can_recover ^^
+                Stack.set_local env StackArgs.can_recover ^^
                 deserialize_go env t
              )
              ^^ set_val ^^
