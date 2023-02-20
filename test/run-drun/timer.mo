@@ -18,7 +18,7 @@ actor {
 
      var last = 0;
      let id1 = setTimer(1 * second, false, func () : async () { count += 1; debugPrint "YEP!" });
-     let id2 = setTimer(2 * second, false, func () : async () { count += 1; debugPrint "DIM!" });
+     let id2 = setTimer(2 * (second - second / 10), true, func () : async () { count += 1; debugPrint "DIM!" });
      let id3 = setTimer(3 * second, false, func () : async () {
          count += 1;
          debugPrint "ROOK!";
