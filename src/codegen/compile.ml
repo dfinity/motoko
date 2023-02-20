@@ -5023,7 +5023,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@ref_buf" Mutable 0l;
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l) 
+      E.add_global32 env "@@typtbl_size" Mutable 0l)
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
