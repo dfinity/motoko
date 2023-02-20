@@ -1186,12 +1186,19 @@ module Stack = struct
     set_stack_ptr env ^^
     get_stack_ptr env ^^
     (* check for stack overflow, if necessary *)
-    if n_bytes >= page_size then
+    if n_bytes >= page_size then begin
       get_stack_ptr env ^^
       G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
       G.if0
         G.nop (* we found leading zeros, i.e. no wraparound *)
         (stack_overflow env)
+      end
+    else if n > 0l then begin
+      (* force read of last word *)
+      get_stack_ptr env ^^
+      get_stack_ptr env ^^
+      G.i (Load {ty = I32Type; align = 2; offset = -4l; sz = None})
+      end
     else
       G.nop
 
