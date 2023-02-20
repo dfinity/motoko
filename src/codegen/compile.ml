@@ -1196,7 +1196,6 @@ module Stack = struct
     else if n > 0l then begin
       (* force read of last word *)
       get_stack_ptr env ^^
-      get_stack_ptr env ^^
       G.i (Load {ty = I32Type; align = 2; offset = -4l; sz = None})
       end
     else
