@@ -296,7 +296,7 @@ struct
     | _ ->
       raise Utf8 *)
     and encode' acc = function
-      | [] -> acc
+      | [] -> List.rev acc
       | n::ns when n < 0 -> raise Utf8
       | n::ns when n < 0x80 ->
         encode' (n :: acc) ns
@@ -711,7 +711,8 @@ struct
   let%test "Base32.decode 000000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
   let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
-  let%test "Utf8.decode/encode prim emoji" = Utf8.encode (Utf8.decode "mo:⛔") = "mo:⛔"
+  let%test "Utf8.decode prim emoji" = Wasm.Utf8.encode (Utf8.decode "mo:⛔") = "mo:⛔"
+  let%test "Utf8.encode prim emoji" = Utf8.encode (Wasm.Utf8.decode "mo:⛔") = "mo:⛔"
 
   let%test "Utf8.is_valid agrees with Utf8.decode for single-byte strings" =
     let rec loop f i =
