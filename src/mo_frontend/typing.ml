@@ -1875,8 +1875,6 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         display_typ_expand t2;
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0165" "different set of bindings in pattern alternatives";
-    (*if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "M0105" "variables are not allowed in pattern alternatives";*)
     let check_same_bind_type bind t1 t2 = () (*if not (T.eq t1 t2) then
       local_error env pat.at "M0167" "types for alternative pattern variables %s%a%a"
         bind
@@ -2018,8 +2016,6 @@ and check_pat' env t pat : Scope.val_env =
         display_typ_expand t2;
     in
     T.Env.(iter (fun k t1 -> check_same_bind_type k t1 (find k ve2))) ve1;
-    (*if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "M0105" "variables are not allowed in pattern alternatives";*)
     ve1
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
