@@ -41,7 +41,7 @@ pub enum CheckerMode {
 struct MemoryChecker<'a, M: Memory> {
     mode: CheckerMode,
     mem: &'a mut M,
-    heap: &'a PartitionedHeap,
+    heap: &'a mut PartitionedHeap,
     roots: Roots,
     mark_stack: MarkStack,
     visited: RememberedSet,
@@ -75,7 +75,8 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
         let object = value.as_obj();
         if let CheckerMode::MarkCompletion = self.mode {
             // The incremental GC must have marked this reachable object.
-            assert!(object.is_marked());
+            // Mark object returns false if it has been previously marked.
+            assert!(!self.heap.mark_object(object));
         }
         if !self.visited.contains(value) {
             self.visited.insert(self.mem, value);
@@ -117,7 +118,6 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
         if let CheckerMode::UpdateCompletion = self.mode {
             // Forwarding is no longer allowed on a completed GC.
             assert!(!object.is_forwarded());
-            assert!(!(object.get_ptr() as *const Obj).is_marked());
         }
         let address = object.get_ptr();
         self.check_valid_address(address);
