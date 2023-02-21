@@ -12,10 +12,13 @@ use crate::visitor::visit_pointer_fields;
 use super::mark_stack::MarkStack;
 use super::partitioned_heap::PartitionedHeap;
 use super::roots::{visit_roots, Roots};
-use super::PARTITIONED_HEAP;
 
-pub unsafe fn check_memory<M: Memory>(mem: &mut M, roots: Roots, mode: CheckerMode) {
-    let heap = PARTITIONED_HEAP.as_ref().unwrap();
+pub unsafe fn check_memory<M: Memory>(
+    mem: &mut M,
+    heap: &mut PartitionedHeap,
+    roots: Roots,
+    mode: CheckerMode,
+) {
     let mark_stack = MarkStack::new(mem);
     let visited = RememberedSet::new(mem);
     let mut checker = MemoryChecker {

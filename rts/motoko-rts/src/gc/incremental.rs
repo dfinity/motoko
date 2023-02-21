@@ -246,6 +246,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         {
             sanity_checks::check_memory(
                 self.mem,
+                self.state.partitioned_heap.as_mut().unwrap(),
                 _roots,
                 sanity_checks::CheckerMode::MarkCompletion,
             );
@@ -292,6 +293,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         {
             sanity_checks::check_memory(
                 self.mem,
+                self.state.partitioned_heap.as_mut().unwrap(),
                 _roots,
                 sanity_checks::CheckerMode::UpdateCompletion,
             );
