@@ -711,7 +711,7 @@ struct
   let%test "Base32.decode 000000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
   let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
-  let%test "Utf8.decode prim emoji" = Utf8.encode (Utf8.decode "mo:⛔") = "mo:⛔"
+  let%test "Utf8.decode/encode prim emoji" = Utf8.encode (Utf8.decode "mo:⛔") = "mo:⛔"
 
   let%test "Utf8.is_valid agrees with Utf8.decode for single-byte strings" =
     let rec loop f i =
