@@ -187,6 +187,7 @@ module Utf8 :
 sig
   type t = int list
   exception Utf8
+  val is_valid : string -> bool
   val decode : string -> t (* raises Utf8 *)
   val encode : t -> string (* raises Utf8 *)
 end

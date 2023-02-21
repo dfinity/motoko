@@ -56,13 +56,13 @@ try {
     stdout: ''
   });
 
-  // assert.deepStrictEqual(moc.Motoko.run([], 'text.mo'), {
-  //   result: {
-  //     error: null,
-  //   },
-  //   stderr: '',
-  //   stdout: `10_000 : Nat\n`
-  // });
+  assert.deepStrictEqual(moc.Motoko.run([], 'text.mo'), {
+    result: {
+      error: null,
+    },
+    stderr: '',
+    stdout: `10_000 : Nat\n`
+  });
 }
 catch (err) {
   assert.fail(err);

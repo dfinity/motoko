@@ -229,6 +229,62 @@ module Utf8 =
 struct
   type t = int list
   exception Utf8 = Wasm.Utf8.Utf8
+
+  let rec is_valid s = is_valid' [] (List.map Char.code (String.explode s))
+  and is_valid' acc = function
+    | [] -> true
+    | b1::bs when b1 < 0x80 ->
+      is_valid' acc bs
+    | b1::bs when b1 < 0xc2 ->
+      false
+    | b1::b2::bs when b1 < 0xe0 ->
+      (b2 land 0xc0 = 0x80) && is_valid' acc bs
+    | b1::b2::b3::bs when b1 < 0xf0 ->
+      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && is_valid' acc bs
+    | b1::b2::b3::b4::bs when b1 < 0xf8 ->
+      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && (b4 land 0xc0 = 0x80) && is_valid' acc bs
+    | _ ->
+      false
+  
+  let con b = if b land 0xc0 = 0x80 then b land 0x3f else raise Utf8
+  let code min n =
+    if n < min || (0xd800 <= n && n < 0xe000) || n >= 0x110000 then raise Utf8
+    else n
+
+  let rec decode s = decode' [] (List.map Char.code (String.explode s))
+  (* and decode' = function
+    | [] -> []
+    | b1::bs when b1 < 0x80 ->
+      code 0x0 b1 :: decode' bs
+    | b1::bs when b1 < 0xc0 ->
+      raise Utf8
+    | b1::b2::bs when b1 < 0xe0 ->
+      code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: decode' bs
+    | b1::b2::b3::bs when b1 < 0xf0 ->
+      code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) :: decode' bs
+    | b1::b2::b3::b4::bs when b1 < 0xf8 ->
+      code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4)
+      :: decode' bs
+    | _ ->
+      raise Utf8 *)
+    and decode' acc = function
+      | [] -> List.rev acc
+      | b1::bs when b1 < 0x80 ->
+        decode' (code 0x0 b1 :: acc) bs
+      | b1::bs when b1 < 0xc0 ->
+        raise Utf8
+      | b1::b2::bs when b1 < 0xe0 ->
+        let c = code 0x80 ((b1 land 0x1f) lsl 6 + con b2) in
+        decode' (c :: acc) bs
+      | b1::b2::b3::bs when b1 < 0xf0 ->
+        let c = code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) in
+        decode' (c :: acc) bs
+      | b1::b2::b3::b4::bs when b1 < 0xf8 ->
+        let c = code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) in
+        decode' (c :: acc) bs
+      | _ ->
+        raise Utf8
+  
   let con n = 0x80 lor (n land 0x3f)
   let rec encode ns = String.implode (List.map Char.chr (encode' [] ns))
   (* and encode' = function
@@ -267,45 +323,6 @@ struct
         let b3 = con (n lsr 6) in
         let b4 = con n in
         encode' (b1::b2::b3::b4::acc) ns
-      | _ ->
-        raise Utf8
-
-  let con b = if b land 0xc0 = 0x80 then b land 0x3f else raise Utf8
-  let code min n =
-    if n < min || (0xd800 <= n && n < 0xe000) || n >= 0x110000 then raise Utf8
-    else n
-
-  let rec decode s = decode' [] (List.map Char.code (String.explode s))
-  (* and decode' = function
-    | [] -> []
-    | b1::bs when b1 < 0x80 ->
-      code 0x0 b1 :: decode' bs
-    | b1::bs when b1 < 0xc0 ->
-      raise Utf8
-    | b1::b2::bs when b1 < 0xe0 ->
-      code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: decode' bs
-    | b1::b2::b3::bs when b1 < 0xf0 ->
-      code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) :: decode' bs
-    | b1::b2::b3::b4::bs when b1 < 0xf8 ->
-      code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4)
-      :: decode' bs
-    | _ ->
-      raise Utf8 *)
-    and decode' acc = function
-      | [] -> List.rev acc
-      | b1::bs when b1 < 0x80 ->
-        decode' (code 0x0 b1 :: acc) bs
-      | b1::bs when b1 < 0xc0 ->
-        raise Utf8
-      | b1::b2::bs when b1 < 0xe0 ->
-        let c = code 0x80 ((b1 land 0x1f) lsl 6 + con b2) in
-        decode' (c :: acc) bs
-      | b1::b2::b3::bs when b1 < 0xf0 ->
-        let c = code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) in
-        decode' (c :: acc) bs
-      | b1::b2::b3::b4::bs when b1 < 0xf8 ->
-        let c = code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) in
-        decode' (c :: acc) bs
       | _ ->
         raise Utf8
 end
