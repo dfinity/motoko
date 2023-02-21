@@ -1,0 +1,3 @@
+or-pattern-mismatch.mo:1.5-1.23: type error [M0167], types for alternative pattern variables a3 differ
+  Nat
+  Char
