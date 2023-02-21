@@ -266,7 +266,7 @@ struct
     | _ ->
       raise Utf8 *)
     and decode' acc = function
-      | [] -> acc
+      | [] -> List.rev acc
       | b1::bs when b1 < 0x80 ->
         decode' (code 0x0 b1 :: acc) bs
       | b1::bs when b1 < 0xc2 -> raise Utf8
