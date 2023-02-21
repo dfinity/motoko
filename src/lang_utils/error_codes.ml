@@ -187,5 +187,6 @@ let error_codes : (string * string option) list =
     "M0181", None; (* Verification mode assertions not allowed *)
     "M0182", None; (* Timer defined by user when -no-timer flag is specified *)
     "M0183", None; (* Incompatible async sorts *)
-    "M0186", None; (* types mismatched for alternative pattern variables *)
+    "M0185", None; (* Different set of bindings in pattern alternatives *)
+    "M0186", None; (* Types mismatched for alternative pattern variables *)
   ]
