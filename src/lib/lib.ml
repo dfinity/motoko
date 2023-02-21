@@ -269,16 +269,13 @@ struct
       | [] -> List.rev acc
       | b1::bs when b1 < 0x80 ->
         decode' (code 0x0 b1 :: acc) bs
-      | b1::bs when b1 < 0xc0 -> raise Utf8
+      | b1::bs when b1 < 0xc2 -> raise Utf8
       | b1::b2::bs when b1 < 0xe0 ->
-        let c = code 0x80 ((b1 land 0x1f) lsl 6 + con b2) in
-        decode' (c :: acc) bs
+        decode' (code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: acc) bs
       | b1::b2::b3::bs when b1 < 0xf0 ->
-        let c = code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) in
-        decode' (c :: acc) bs
+        decode' (code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) :: acc) bs
       | b1::b2::b3::b4::bs when b1 < 0xf8 ->
-        let c = code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) in
-        decode' (c :: acc) bs
+        decode' (code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) :: acc) bs
       | _ -> raise Utf8
   
   let con n = 0x80 lor (n land 0x3f)
@@ -300,10 +297,9 @@ struct
       raise Utf8 *)
     and encode' acc = function
       | [] -> List.rev acc
-      | n::ns when n < 0 ->
-        raise Utf8
+      | n::ns when n < 0 -> raise Utf8
       | n::ns when n < 0x80 ->
-        encode' (n::acc) ns
+        encode' (n :: acc) ns
       | n::ns when n < 0x800 ->
         encode' (0xc0 lor (n lsr 6) :: con n :: acc) ns
       | n::ns when n < 0x10000 ->
@@ -715,6 +711,18 @@ struct
   let%test "Base32.decode 000000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
   let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
+  let%test "Utf8.decode prim emoji" = Utf8.decode "mo:⛔" = Wasm.Utf8.decode "mo:⛔"
+
+  let%test "Utf8.is_valid agrees with Utf8.decode for single-byte strings" =
+    let rec loop f i =
+      if i > 0xFF then true
+      else if not (f i) then false
+      else loop f (i + 1)
+    in loop (fun i ->
+      let s = Utf8.encode [i] in
+      Utf8.is_valid s = (try (ignore (Utf8.decode s); true) with Utf8.Utf8 -> false)
+    ) 0
+  
   let%test "String.split \"\"" = String.split "" '/' = [""]
   let%test "String.split \"/\"" = String.split "/" '/' = ["";""]
   let%test "String.split \"//\"" = String.split "//" '/' = ["";"";""]
