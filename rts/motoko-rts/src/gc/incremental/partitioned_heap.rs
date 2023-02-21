@@ -610,7 +610,7 @@ impl PartitionedHeap {
                 debug_assert!(!partition.free);
                 let object = partition.dynamic_space_start() as *mut Obj;
                 let number_of_partitions = Self::partitions_length(object);
-                if !object.is_marked() {
+                if partition.marked_size == 0 {
                     self.free_large_object(object);
                 }
                 index += number_of_partitions;
