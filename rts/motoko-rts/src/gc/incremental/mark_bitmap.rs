@@ -119,7 +119,7 @@ impl BitmapIterator {
     /// Returns the next marked address offset in the partition,
     /// or `BITMAP_ITERATION_END` if there are no more bits set.
     pub fn current_marked_offset(&self) -> usize {
-        assert!(self.next_bit_index > 0);
+        debug_assert!(self.next_bit_index > 0);
         if self.next_bit_index == BIT_INDEX_END {
             return BITMAP_ITERATION_END;
         } else {
