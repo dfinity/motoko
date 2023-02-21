@@ -6,7 +6,7 @@
 debug.print: YEP!
 debug.print: DIM!
 debug.print: ROOK!
-debug.print: BATT!
+debug.print: DIM!
 debug.print: BATT!
 debug.print: BATT!
 debug.print: BATT!
