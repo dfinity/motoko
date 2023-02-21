@@ -129,9 +129,9 @@ unsafe fn record_gc_stop<M: Memory>() {
 ///     * Concurrent accesses to old object locations are handled by pointer forwarding.
 /// 3. Updating: Incremental updates of all old pointers to their new forwarded addresses.
 ///    Must complete on empty call stack.
-///     * Also clearing the mark bit of all alive objects.
 ///     * Concurrent copying of old pointer values is intercepted to resolve forwarding.
-/// Finally, all the evacuated partitions are freed.
+/// Finally, all the evacuated and temporary partitions are freed.
+/// The temporary partitions store mark bitmaps.
 
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
 #[derive(PartialEq)]
@@ -319,7 +319,12 @@ pub(crate) unsafe fn pre_write_barrier<M: Memory>(
                 let mut increment = MarkIncrement::instance(mem, state, &mut time);
                 increment.mark_object(overwritten_value);
             } else {
-                debug_assert!(overwritten_value.as_obj().is_marked());
+                // Check whether the object is already marked, `mark_object()` returns false if previously marked.
+                debug_assert!(!state
+                    .partitioned_heap
+                    .as_mut()
+                    .unwrap()
+                    .mark_object(overwritten_value.as_obj()));
             }
         }
     }
@@ -353,7 +358,7 @@ pub(crate) unsafe fn post_allocation_barrier(state: &mut State, new_object: Valu
 ///   - Mark new objects such that their fields are updated in the subsequent update phase.
 ///     The fields may still point to old object locations that are forwarded.
 /// * During the update phase
-///   - New objects must not be marked in this phase as the mark bits are reset.
+///   - New objects do not need to be marked as they are allocated in non-evacuated partitions.
 /// * When GC is stopped on canister upgrade:
 ///   - The GC will not resume and thus marking is irrelevant.
 ///   - This is necessary because the upgrade serialization alters tags to store other information.

@@ -197,7 +197,7 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        blob.initialize_tag(TAG_BLOB);
+        (*blob).header.tag = TAG_BLOB;
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);

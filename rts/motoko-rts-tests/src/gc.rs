@@ -239,8 +239,7 @@ fn check_dynamic_heap(
             continue;
         }
 
-        let raw_tag = read_word(heap, offset);
-        let tag = unmark(raw_tag);
+        let tag = read_word(heap, offset);
         offset += WORD_SIZE;
 
         if tag == TAG_ONE_WORD_FILLER {
@@ -407,7 +406,7 @@ fn compute_reachable_objects(
 
 fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
     let table_addr = heap.as_ptr() as usize + offset;
-    assert_eq!(unmark(read_word(heap, offset)), TAG_ARRAY);
+    assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), make_pointer(table_addr as u32));

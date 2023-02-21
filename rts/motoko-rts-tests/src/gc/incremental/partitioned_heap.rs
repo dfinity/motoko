@@ -13,7 +13,7 @@ use motoko_rts::{
         time::BoundedTime,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{unmark, Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
+    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -406,8 +406,7 @@ impl PartitionedTestHeap {
 }
 
 unsafe fn block_size(block: *const Tag) -> usize {
-    let tag = unmark(*block);
-    match tag {
+    match *block {
         TAG_ARRAY => {
             size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }

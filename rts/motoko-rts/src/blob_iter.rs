@@ -16,7 +16,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
 
     // NB. cannot use as_array() here as we didn't write the header yet
     let iter_array = iter_ptr.get_ptr() as *mut Array;
-    iter_array.initialize_tag(TAG_ARRAY);
+    (*iter_array).header.tag = TAG_ARRAY;
     (*iter_array).header.forward = iter_ptr;
     (*iter_array).len = 2;
 

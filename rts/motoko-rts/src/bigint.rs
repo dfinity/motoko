@@ -36,7 +36,7 @@ use crate::gc::incremental::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
-use crate::types::{size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
+use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -44,7 +44,7 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
-    blob.initialize_tag(TAG_BIGINT);
+    (*blob).header.tag = TAG_BIGINT;
     (*blob).header.forward = ptr;
 
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
@@ -86,7 +86,7 @@ pub unsafe fn mp_realloc<M: Memory>(
 ) -> *mut libc::c_void {
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
-    debug_assert_eq!((bigint as *const Obj).tag(), TAG_BIGINT);
+    debug_assert_eq!((*bigint).header.tag, TAG_BIGINT);
     debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {

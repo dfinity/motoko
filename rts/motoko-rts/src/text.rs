@@ -110,7 +110,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     // Create concat node
     let r = mem.alloc_words(size_of::<Concat>());
     let r_concat = r.get_ptr() as *mut Concat;
-    r_concat.initialize_tag(TAG_CONCAT);
+    (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).header.forward = r;
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1.forward_if_possible();

@@ -85,7 +85,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         (*original).forward = new_address;
         debug_assert!(!copy.is_forwarded());
         debug_assert!(original.is_forwarded());
-        // The mark bit is necessary to ensure field updates in the copy.
+        // Marking is necessary to ensure field updates in the copy.
         let unmarked_before = self.heap.mark_object(copy);
         debug_assert!(unmarked_before);
 

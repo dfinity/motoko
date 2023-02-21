@@ -1468,23 +1468,21 @@ module Tagged = struct
     | ArraySliceMinimum -> 32l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
-    | CoercionFailure -> 0x7ffffffel (* bit 31 is reserved mark bit *)
-    | StableSeen -> 0x7fffffffl (* bit 31 is reserved mark bit *)
+    | CoercionFailure -> 0xfffffffel
+    | StableSeen -> 0xffffffffl
 
   (* The tag *)
   let header_size = 2l
-  let raw_tag_field = 0l
+  let tag_field = 0l
   let forwarding_pointer_field = 1l
 
-  let mark_bit_mask = Int32.shift_left 1l 31
-  
   (* Note: Post allocation barrier must be applied after initialization *)
   let alloc env size tag =
     let (set_object, get_object) = new_local env "new_object" in
     Heap.alloc env size ^^
     set_object ^^ get_object ^^
     compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field raw_tag_field ^^
+    Heap.store_field tag_field ^^
     get_object ^^ (* object pointer *)
     get_object ^^ (* forwarding pointer *)
     Heap.store_field forwarding_pointer_field ^^
@@ -1496,18 +1494,14 @@ module Tagged = struct
     else
       G.nop)
   
-  let store_unmarked_tag env tag =
+  let store_tag env tag =
     load_forwarding_pointer env ^^
     compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field raw_tag_field
+    Heap.store_field tag_field
         
   let load_tag env =
     load_forwarding_pointer env ^^
-    Heap.load_field raw_tag_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      compile_bitand_const (Int32.lognot mark_bit_mask)
-    else
-      G.nop)
+    Heap.load_field tag_field
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
@@ -1599,9 +1593,9 @@ module Tagged = struct
     let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
     let unskewed_ptr = E.reserve_static_memory env size in
     let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
-    let raw_tag = bytes_of_int32 (int_of_tag tag) in
+    let tag = bytes_of_int32 (int_of_tag tag) in
     let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
-    let data = raw_tag ^ forward ^ payload in
+    let data = tag ^ forward ^ payload in
     E.write_static_memory env unskewed_ptr data;
     skewed_ptr
 
@@ -5452,7 +5446,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.(store_unmarked_tag env StableSeen) ^^
+          get_x ^^ Tagged.(store_tag env StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -5569,12 +5563,8 @@ module MakeSerialization (Strm : Stream) = struct
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
-          let set_offset, get_offset = new_local env "offset" in
-          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^ set_offset ^^ 
-          get_offset ^^ compile_bitand_const Tagged.mark_bit_mask ^^ 
-          compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          E.else_trap_with env "Too large offset, colliding with bit mark" ^^
-          get_offset ^^ Heap.store_field Tagged.raw_tag_field ^^
+          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^
+          Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
