@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+* Improve recursive deserialization capacity to match recursive serialization capacity by reducing
+  Wasm stack consumption (#3809).
+  Because of the bounds on recursion depth imposed by fixed-size stack, the
+  advice remains the same: avoid deeply nested recursive data structures.
+  Think "shallow trees good, very long lists bad".
+
 ## 0.8.2 (2023-02-17)
 
 * motoko (`moc`)
