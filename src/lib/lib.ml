@@ -309,20 +309,11 @@ struct
       | n::ns when n < 0x80 ->
         encode' (n::acc) ns
       | n::ns when n < 0x800 ->
-        let b1 = 0xc0 lor (n lsr 6) in
-        let b2 = con n in
-        encode' (b1::b2::acc) ns
+        encode' (0xc0 lor (n lsr 6) :: con n :: acc) ns
       | n::ns when n < 0x10000 ->
-        let b1 = 0xe0 lor (n lsr 12) in
-        let b2 = con (n lsr 6) in
-        let b3 = con n in
-        encode' (b1::b2::b3::acc) ns
+        encode' (0xe0 lor (n lsr 12) :: con (n lsr 6) :: con n :: acc) ns
       | n::ns when n < 0x110000 ->
-        let b1 = 0xf0 lor (n lsr 18) in
-        let b2 = con (n lsr 12) in
-        let b3 = con (n lsr 6) in
-        let b4 = con n in
-        encode' (b1::b2::b3::b4::acc) ns
+        encode' (0xf0 lor (n lsr 18) :: con (n lsr 12) :: con (n lsr 6) :: con n :: acc) ns
       | _ ->
         raise Utf8
 end
