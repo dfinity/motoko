@@ -10,7 +10,7 @@ use crate::{
     types::{is_skewed, Value},
 };
 
-use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Phase};
+use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Phase, State};
 
 /// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
 /// Used for the incremental GC.
@@ -24,20 +24,19 @@ use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Ph
 pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, value: Value) {
     debug_assert!(!is_skewed(location as u32));
     debug_assert_ne!(location, core::ptr::null_mut());
-    let state = incremental_gc_state();
 
-    // Optimization: Early exit on pause.
+    let state = incremental_gc_state();
     if state.phase == Phase::Pause {
         *location = value;
-        return;
-    }
-
-    pre_write_barrier(mem, state, *location);
-    if state.phase == Phase::Update {
-        *location = value.forward_if_possible();
     } else {
-        *location = value;
+        internal_write_with_barrier(mem, state, location, value);
     }
+}
+
+#[inline(never)]
+unsafe fn internal_write_with_barrier<M: Memory>(mem: &mut M, state: &mut State, location: *mut Value, value: Value) {
+    pre_write_barrier(mem, state, *location);
+    *location = value.forward_if_possible();
 }
 
 /// Allocation barrier to be called after a new object allocation.
@@ -51,11 +50,13 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
     let state = incremental_gc_state();
 
-    // Optimization: Early exit on pause.
-    if state.phase == Phase::Pause {
-        return;
+    if state.phase != Phase::Pause {
+        internal_allocation_barrier(mem, state, new_object);
     }
+}
 
+#[inline(never)]
+unsafe fn internal_allocation_barrier<M: Memory>(mem: &mut M, state: &mut State, new_object: Value) {
     post_allocation_barrier(state, new_object);
     allocation_increment(mem, state);
 }

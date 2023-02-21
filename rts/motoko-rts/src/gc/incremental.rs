@@ -305,8 +305,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 /// `overwritten_value` (skewed if a pointer) denotes the value that will be overwritten.
 /// The barrier can be conservatively called even if the overwritten value is not a pointer.
 /// The barrier is only effective while the GC is in the mark phase.
-#[inline(never)]
-pub(crate) unsafe fn pre_write_barrier<M: Memory>(
+unsafe fn pre_write_barrier<M: Memory>(
     mem: &mut M,
     state: &mut State,
     overwritten_value: Value,
