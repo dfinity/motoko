@@ -24,7 +24,6 @@ use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Ph
 pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, value: Value) {
     debug_assert!(!is_skewed(location as u32));
     debug_assert_ne!(location, core::ptr::null_mut());
-
     let state = incremental_gc_state();
     if state.phase == Phase::Pause {
         *location = value;
@@ -49,7 +48,6 @@ unsafe fn internal_write_with_barrier<M: Memory>(mem: &mut M, state: &mut State,
 #[ic_mem_fn]
 pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
     let state = incremental_gc_state();
-
     if state.phase != Phase::Pause {
         internal_allocation_barrier(mem, state, new_object);
     }
