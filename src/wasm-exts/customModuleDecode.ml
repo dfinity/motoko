@@ -23,7 +23,7 @@ module F32 = Wasm.F32
 module F64 = Wasm.F64
 module I32_convert = Wasm.I32_convert
 module I64_convert = Wasm.I64_convert
-module Utf8 = Wasm.Utf8
+module Utf8 = Lib.Utf8
 open CustomModule
 
 (* Decoding stream *)

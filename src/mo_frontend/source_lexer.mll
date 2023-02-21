@@ -2,7 +2,7 @@
 open Mo_def.Trivia
 open Source_token
 open Lexer_lib
-module Utf8 = Wasm.Utf8
+module Utf8 = Lib.Utf8
 
 let region lexbuf =
   let left = convert_pos (Lexing.lexeme_start_p lexbuf) in
