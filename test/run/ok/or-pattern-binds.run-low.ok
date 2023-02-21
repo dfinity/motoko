@@ -1,1 +1,1 @@
-or-pattern-binds.mo:10.25-10.28: execution error, accessing identifier before its definition
+{a2l = 5; a2r = 7}

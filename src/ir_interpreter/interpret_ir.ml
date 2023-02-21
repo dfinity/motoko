@@ -656,7 +656,7 @@ and declare_pat pat : val_env =
   | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) V.Env.empty
   | OptP pat1
   | TagP (_, pat1) -> declare_pat pat1
-  | AltP (pat1, pat2) -> declare_pat pat1
+  | AltP (pat1, _pat2) -> declare_pat pat1 (* pat2 has the same bindings *)
 
 and declare_pats pats ve : val_env =
   match pats with
@@ -673,10 +673,11 @@ and define_pat env pat v =
   let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
   match pat.it with
   | WildP -> ()
-  | LitP _ | AltP _ ->
+  | LitP _ ->
     if match_pat pat v = None
     then err ()
     else ()
+  | AltP (pat1, pat2) -> define_pat env (if match_pat pat1 v <> None then pat1 else pat2) v
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
   | ObjP pfs -> define_field_pats env pfs (V.as_obj v)
