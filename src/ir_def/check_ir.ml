@@ -1012,7 +1012,7 @@ and check_pat env pat : val_env =
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in
-    let ve2 = check_pat env pat2 in
+    let _ve2 = check_pat env pat2 in
     t <: pat1.note;
     t <: pat2.note;
     (* check env pat.at (T.Env.is_empty ve1 && T.Env.is_empty ve2)
