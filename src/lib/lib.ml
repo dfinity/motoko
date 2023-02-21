@@ -230,19 +230,19 @@ struct
   type t = int list
   exception Utf8 = Wasm.Utf8.Utf8
 
-  let rec is_valid s = is_valid' [] (List.map Char.code (String.explode s))
-  and is_valid' acc = function
+  let rec is_valid s = is_valid' (List.map Char.code (String.explode s))
+  and is_valid' = function
     | [] -> true
     | b1::bs when b1 < 0x80 ->
-      is_valid' acc bs
+      is_valid' bs
     | b1::bs when b1 < 0xc2 ->
       false
     | b1::b2::bs when b1 < 0xe0 ->
-      (b2 land 0xc0 = 0x80) && is_valid' acc bs
+      (b2 land 0xc0 = 0x80) && is_valid' bs
     | b1::b2::b3::bs when b1 < 0xf0 ->
-      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && is_valid' acc bs
+      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && is_valid' bs
     | b1::b2::b3::b4::bs when b1 < 0xf8 ->
-      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && (b4 land 0xc0 = 0x80) && is_valid' acc bs
+      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && (b4 land 0xc0 = 0x80) && is_valid' bs
     | _ ->
       false
   
