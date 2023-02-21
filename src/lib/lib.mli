@@ -183,6 +183,14 @@ sig
   val encode : string -> string
 end
 
+module Utf8 :
+sig
+  type t = int list
+  exception Utf8
+  val decode : string -> t (* raises Utf8 *)
+  val encode : t -> string (* raises Utf8 *)
+end
+
 module FilePath :
 sig
   (**
