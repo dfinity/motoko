@@ -296,7 +296,7 @@ struct
     | _ ->
       raise Utf8 *)
     and encode' acc = function
-      | [] -> List.rev acc
+      | [] -> acc
       | n::ns when n < 0 -> raise Utf8
       | n::ns when n < 0x80 ->
         encode' (n :: acc) ns
