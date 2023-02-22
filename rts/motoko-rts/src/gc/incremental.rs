@@ -54,7 +54,7 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 /// Distinguishing between two types of GC increments:
 /// * Scheduled increments: Compiler-instrumented GC calls.
 /// * Allocation increments: GC increment at periodic allocations.
-pub const SCHEDULED_INCREMENT_LIMIT: usize = 2_500_000;
+pub const SCHEDULED_INCREMENT_LIMIT: usize = 3_500_000;
 const ALLOCATION_INCREMENT_LIMIT: usize = 500_000;
 
 #[ic_mem_fn(ic_only)]
