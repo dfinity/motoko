@@ -796,10 +796,10 @@ and define_pat env pat v =
   | ParP pat1 -> define_pat env pat1 v
 
 and define_pats env pats vs =
-  List.fold_left (fun acc (pat, v) -> acc && define_pat env pat v) true (List.combine pats vs)
+  List.for_all2 (fun pat v -> define_pat env pat v) pats vs
 
 and define_pat_fields env pfs vs =
-  List.fold_left (fun acc pf -> acc && define_pat_field env vs pf) true pfs
+  List.for_all (fun pf -> define_pat_field env vs pf) pfs
 
 and define_pat_field env vs pf =
   let v = V.Env.find pf.it.id.it vs in
@@ -939,8 +939,7 @@ and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
   | TypD _ -> V.Env.empty
-  | LetD (pat, _, None) -> declare_pat pat
-  | LetD (pat, _, Some _) -> declare_pat pat
+  | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
