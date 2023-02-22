@@ -235,7 +235,7 @@ struct
     | [] -> true
     | b1::bs when b1 < 0x80 ->
       is_valid' bs
-    | b1::bs when b1 < 0xc2 -> false
+    | b1::bs when b1 < 0xc0 -> false
     | b1::b2::bs when b1 < 0xe0 ->
       (b2 land 0xc0 = 0x80) && is_valid' bs
     | b1::b2::b3::bs when b1 < 0xf0 ->
@@ -254,7 +254,7 @@ struct
     | [] -> List.rev acc
     | b1::bs when b1 < 0x80 ->
       decode' (code 0x0 b1 :: acc) bs
-    | b1::bs when b1 < 0xc2 -> raise Utf8
+    | b1::bs when b1 < 0xc0 -> raise Utf8
     | b1::b2::bs when b1 < 0xe0 ->
       decode' (code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: acc) bs
     | b1::b2::b3::bs when b1 < 0xf0 ->
