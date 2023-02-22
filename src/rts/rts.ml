@@ -20,5 +20,6 @@ let load_file env =
     exit 1
 
 let wasm : string Lazy.t = lazy (load_file "MOC_RTS")
+let wasm_generational : string Lazy.t = wasm
 
 let wasm_debug : string Lazy.t = lazy (load_file "MOC_DEBUG_RTS")
