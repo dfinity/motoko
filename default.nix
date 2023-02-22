@@ -257,9 +257,7 @@ rec {
 
       installPhase = ''
         mkdir -p $out/rts
-        cp mo-rts.wasm $out/rts
-        cp mo-rts-generational.wasm $out/rts
-        cp mo-rts-debug.wasm $out/rts
+        cp mo-rts*.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
