@@ -97,6 +97,7 @@ let argspec = [
       ")";
 
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
+  "-measure-rts-stack", Arg.Set Flags.measure_rts_stack, " measure the maximum rts stack usage (reported by prim \"rts_max_stack\")";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
