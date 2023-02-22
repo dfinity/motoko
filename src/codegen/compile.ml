@@ -6371,7 +6371,8 @@ module MakeSerialization (Strm : Stream) = struct
           remember_failure get_val ^^
           get_val ^^ store_ptr
         ) ^^
-        Tagged.allocation_barrier env get_x
+        Tagged.allocation_barrier env get_x ^^
+        get_x
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if1 I32Type (Opt.null_lit env)
