@@ -40,7 +40,10 @@ use crate::{
     gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
 };
 
-use super::mark_bitmap::{BitmapIterator, MarkBitmap, BITMAP_SIZE, DEFAULT_MARK_BITMAP};
+use super::{
+    mark_bitmap::{BitmapIterator, MarkBitmap, BITMAP_SIZE, DEFAULT_MARK_BITMAP},
+    time::BoundedTime,
+};
 
 /// Size of each parition.
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
@@ -421,7 +424,7 @@ impl PartitionedHeap {
         true
     }
 
-    pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M) {
+    pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M, time: &mut BoundedTime) {
         debug_assert_eq!(self.bitmap_pointer, 0);
         debug_assert!(!self.gc_running);
         self.gc_running = true;
@@ -432,6 +435,7 @@ impl PartitionedHeap {
                 self.mutable_partition(partition_index)
                     .bitmap
                     .assign(bitmap_address);
+                time.advance(Bytes(BITMAP_SIZE as u32).to_words().as_usize());
             }
         }
         if self.allocation_partition().dynamic_size > PARTITION_SIZE / 2 {

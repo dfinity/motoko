@@ -233,7 +233,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(self.pausing());
 
         self.state.phase = Phase::Mark;
-        MarkIncrement::start_phase(self.mem, self.state);
+        MarkIncrement::start_phase(self.mem, self.state, &mut self.time);
         let mut increment = MarkIncrement::instance(self.mem, self.state, &mut self.time);
         increment.mark_roots(roots);
     }

@@ -26,8 +26,8 @@ pub struct MarkIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
-    pub unsafe fn start_phase(mem: &mut M, state: &mut State) {
-        state.partitioned_heap.start_collection(mem);
+    pub unsafe fn start_phase(mem: &mut M, state: &mut State, time: &mut BoundedTime) {
+        state.partitioned_heap.start_collection(mem, time);
         debug_assert!(state.mark_state.is_none());
         let mark_stack = MarkStack::new(mem);
         state.mark_state = Some(MarkState {

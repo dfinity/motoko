@@ -132,7 +132,8 @@ unsafe fn test_evacuation_plan(heap: &mut PartitionedTestHeap, occupied_partitio
 unsafe fn test_freeing_partitions(heap: &mut PartitionedTestHeap, occupied_partitions: usize) {
     println!("    Test freeing partitions...");
     heap.inner.complete_collection();
-    heap.inner.start_collection(&mut heap.memory);
+    let mut time = BoundedTime::new(0);
+    heap.inner.start_collection(&mut heap.memory, &mut time);
     let mut iterator = PartitionedHeapIterator::new(&heap.inner);
     while iterator.has_partition() {
         let partition = iterator.current_partition(&heap.inner);
@@ -150,7 +151,8 @@ const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
 
 unsafe fn test_reallocations(heap: &mut PartitionedTestHeap) {
     println!("    Test reallocations...");
-    heap.inner.start_collection(&mut heap.memory);
+    let mut time = BoundedTime::new(0);
+    heap.inner.start_collection(&mut heap.memory, &mut time);
     let remaining_objects = count_objects(&heap.inner);
     allocate_objects(heap);
     assert!(
@@ -257,7 +259,8 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     let total_partitions = number_of_partitions + 1; // Plus temporary partition.
     let mut heap = PartitionedTestHeap::new(total_partitions * PARTITION_SIZE);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
-    heap.inner.start_collection(&mut heap.memory);
+    let mut time = BoundedTime::new(0);
+    heap.inner.start_collection(&mut heap.memory, &mut time);
     for size in sizes.iter() {
         assert_eq!(*size % WORD_SIZE, 0);
         assert!(*size >= size_of::<Blob>());
@@ -274,14 +277,15 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     heap.inner.plan_evacuations();
     heap.inner.collect_large_objects();
     heap.inner.complete_collection();
-    heap.inner.start_collection(&mut heap.memory);
+    heap.inner.start_collection(&mut heap.memory, &mut time);
     iterate_large_objects(&heap.inner, &[]);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
 }
 
 unsafe fn unmark_all_objects(heap: &mut PartitionedTestHeap) {
     heap.inner.complete_collection();
-    heap.inner.start_collection(&mut heap.memory);
+    let mut time = BoundedTime::new(0);
+    heap.inner.start_collection(&mut heap.memory, &mut time);
 }
 
 unsafe fn iterate_large_objects(heap: &PartitionedHeap, expected_sizes: &[usize]) {
@@ -328,8 +332,9 @@ unsafe fn occupied_space(partition: &Partition) -> usize {
 fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
+    let mut time = BoundedTime::new(0);
     unsafe {
-        heap.inner.start_collection(&mut heap.memory);
+        heap.inner.start_collection(&mut heap.memory, &mut time);
     }
     allocate_objects(&mut heap);
     let heap_size = heap.inner.occupied_size().as_usize();
