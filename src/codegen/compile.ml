@@ -1004,6 +1004,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
+    E.add_func_import env "rts" "running_gc" [] [I32Type];
     ()
 
 end (* RTS *)
@@ -1659,6 +1660,31 @@ module Tagged = struct
   let _branch_typed_with env ty retty branches =
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
+  let allocation_barrier env get_object = 
+    (if !Flags.gc_strategy = Flags.Incremental then
+      (* performance gain by first checking the GC state *)
+      E.call_import env "rts" "running_gc" ^^
+      G.if0 (
+        get_object ^^
+        E.call_import env "rts" "allocation_barrier"
+      ) G.nop
+    else 
+      G.nop)  
+  
+  let write_with_barrier env =
+    let (set_value, get_value) = new_local env "written_value" in
+    let (set_location, get_location) = new_local env "write_location" in
+    set_value ^^ set_location ^^
+    (* performance gain by first checking the GC state *)
+    E.call_import env "rts" "running_gc" ^^
+    G.if0 (
+      get_location ^^ get_value ^^
+      E.call_import env "rts" "write_with_barrier"
+    ) (
+      get_location ^^ get_value ^^
+      store_unskewed_ptr
+    )
+  
   let obj env tag element_instructions : G.t =
     let n = List.length element_instructions in
     let size = (Int32.add (Wasm.I32.of_int_u n) header_size) in
@@ -1671,12 +1697,8 @@ module Tagged = struct
       Heap.store_field (Int32.add (Wasm.I32.of_int_u idx) header_size)
     in
     G.concat_mapi init_elem element_instructions ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_object ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_object
-    else
-      get_object)
+    allocation_barrier env get_object ^^
+    get_object
 
   let new_static_obj env tag payload =
     let payload = StaticBytes.as_bytes payload in
@@ -1959,12 +1981,8 @@ module BoxedWord64 = struct
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_i ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_i
-    else
-      get_i)
+    Tagged.allocation_barrier env get_i ^^
+    get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -2082,12 +2100,8 @@ module BoxedSmallWord = struct
     Tagged.alloc env 3l Tagged.Bits32 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_i ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_i
-    else
-      get_i)
+    Tagged.allocation_barrier env get_i ^^
+    get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const 30l ^^
@@ -2326,12 +2340,8 @@ module Float = struct
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_i ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_i
-    else
-      get_i)
+    Tagged.allocation_barrier env get_i ^^
+    get_i
   )
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
@@ -3369,12 +3379,8 @@ module Object = struct
     G.concat_map init_field fs ^^
 
     (* Return the pointer to the object *)
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_ri ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_ri
-    else
-      get_ri)
+    Tagged.allocation_barrier env get_ri ^^
+    get_ri
 
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
@@ -3500,14 +3506,10 @@ module Blob = struct
   let alloc env = 
     let (set_blob, get_blob) = new_local env "new_blob" in
     E.call_import env "rts" "alloc_blob" ^^ 
-    (if !Flags.gc_strategy = Flags.Incremental then
-      set_blob ^^
-      get_blob ^^
-      (* uninitialized blob payload is allowed by the barrier *)
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_blob
-    else
-      G.nop)
+    set_blob ^^
+    (* uninitialized blob payload is allowed by the barrier *)
+    Tagged.allocation_barrier env get_blob ^^
+    get_blob
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   
@@ -3873,12 +3875,8 @@ module Arr = struct
       store_ptr
     ) ^^
 
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_r ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_r
-    else
-      get_r)
+    Tagged.allocation_barrier env get_r ^^
+    get_r
 
   let tabulate env =
     let (set_f, get_f) = new_local env "f" in
@@ -3915,13 +3913,9 @@ module Arr = struct
       compile_add_const 1l ^^
       set_i
     ) ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_r ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_r
-    else
-      get_r)
-
+    Tagged.allocation_barrier env get_r ^^
+    get_r
+    
   let ofBlob env =
     Func.share_code1 env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
       let (set_len, get_len) = new_local env "len" in
@@ -3939,13 +3933,8 @@ module Arr = struct
         TaggedSmallWord.msb_adjust Type.Nat8 ^^
         store_ptr
       ) ^^
-
-      (if !Flags.gc_strategy = Flags.Incremental then
-        get_r ^^
-        E.call_import env "rts" "allocation_barrier" ^^
-        get_r
-      else
-        get_r)
+      Tagged.allocation_barrier env get_r ^^
+      get_r
     )
 
   let toBlob env =
@@ -6366,11 +6355,7 @@ module MakeSerialization (Strm : Stream) = struct
             remember_failure get_val ^^
             get_val ^^ store_ptr
           ) ^^
-          (if !Flags.gc_strategy = Flags.Incremental then
-            get_x ^^
-            E.call_import env "rts" "allocation_barrier"
-          else
-            G.nop)
+          Tagged.allocation_barrier env get_x
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -6386,12 +6371,7 @@ module MakeSerialization (Strm : Stream) = struct
           remember_failure get_val ^^
           get_val ^^ store_ptr
         ) ^^
-        (if !Flags.gc_strategy = Flags.Incremental then
-          get_x ^^
-          E.call_import env "rts" "allocation_barrier" ^^
-          get_x
-        else
-          get_x)
+        Tagged.allocation_barrier env get_x
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if1 I32Type (Opt.null_lit env)
@@ -7566,7 +7546,7 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      E.call_import env "rts" "write_with_barrier"
+      Tagged.write_with_barrier env
     | (Some ((HeapInd i), typ), _) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
@@ -7586,7 +7566,7 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      E.call_import env "rts" "write_with_barrier"
+      Tagged.write_with_barrier env
     | (Some ((HeapStatic ptr), typ), _) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
@@ -7837,11 +7817,7 @@ module FuncDec = struct
         (* Store all captured values *)
         store_env ^^
 
-        (if !Flags.gc_strategy = Flags.Incremental then
-          get_clos ^^
-          E.call_import env "rts" "allocation_barrier"
-        else
-          G.nop)
+        Tagged.allocation_barrier env get_clos
       in
 
       if is_local
@@ -9046,7 +9022,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     Arr.idx_bigint env ^^
     compile_add_const ptr_unskew,
     SR.Vanilla,
-    E.call_import env "rts" "write_with_barrier"
+    Tagged.write_with_barrier env
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -9070,7 +9046,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     Object.idx env e.note.Note.typ n ^^
     compile_add_const ptr_unskew,
     SR.Vanilla,
-    E.call_import env "rts" "write_with_barrier"
+    Tagged.write_with_barrier env
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)

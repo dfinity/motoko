@@ -406,11 +406,13 @@ const ALLOCATION_INCREMENT_INTERVAL: usize = 5_000;
 /// Additional increment, performed at certain allocation intervals to keep up with a
 /// high allocation rate.
 unsafe fn allocation_increment<M: Memory>(mem: &mut M, state: &mut State) {
-    state.allocation_count += 1;
-    if state.allocation_count == ALLOCATION_INCREMENT_INTERVAL {
-        state.allocation_count = 0;
-        let time = BoundedTime::new(ALLOCATION_INCREMENT_LIMIT);
-        IncrementalGC::instance(mem, state, time).increment();
+    if state.phase != Phase::Pause {
+        state.allocation_count += 1;
+        if state.allocation_count == ALLOCATION_INCREMENT_INTERVAL {
+            state.allocation_count = 0;
+            let time = BoundedTime::new(ALLOCATION_INCREMENT_LIMIT);
+            IncrementalGC::instance(mem, state, time).increment();
+        }
     }
 }
 
