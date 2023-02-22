@@ -20,7 +20,7 @@
 //! The mark bitmap serves for fast traversal of marked objects in a partition with few marked objects
 //! (and many garbage objects).
 
-use core::mem::size_of;
+use core::{mem::size_of, ptr::null_mut};
 
 use crate::{constants::WORD_SIZE, mem_utils::memzero, types::Bytes};
 
@@ -36,17 +36,26 @@ pub struct MarkBitmap {
 }
 
 impl MarkBitmap {
-    /// Allocate and initializes the bitmap at the defined memory address.
-    pub unsafe fn allocate(bitmap_address: usize) -> MarkBitmap {
-        let mut bitmap = MarkBitmap {
-            pointer: bitmap_address as *mut u8,
-        };
-        bitmap.clear();
-        bitmap
+    /// Allocate new zero-sized bitmap.
+    pub fn new() -> MarkBitmap {
+        MarkBitmap {
+            pointer: null_mut(),
+        }
     }
 
-    unsafe fn clear(&mut self) {
-        memzero(self.pointer as usize, Bytes(BITMAP_SIZE as u32).to_words());
+    /// Assign and initialize the bitmap memory at the defined address.
+    pub unsafe fn assign(&mut self, bitmap_address: *mut u8) {
+        memzero(
+            bitmap_address as usize,
+            Bytes(BITMAP_SIZE as u32).to_words(),
+        );
+        debug_assert_eq!(self.pointer, null_mut());
+        self.pointer = bitmap_address;
+    }
+
+    /// Release the bitmap memory after garbage collection.
+    pub fn release(&mut self) {
+        self.pointer = null_mut();
     }
 
     fn word_index(&self, offset_in_partition: usize) -> usize {
@@ -57,6 +66,7 @@ impl MarkBitmap {
 
     /// Check whether the object at defined address offset in the partition is marked.
     pub unsafe fn is_marked(&self, offset_in_partition: usize) -> bool {
+        debug_assert_ne!(self.pointer, null_mut());
         let word_index = self.word_index(offset_in_partition);
         let byte_index = word_index / u8::BITS as usize;
         let bit_index = word_index % u8::BITS as usize;
@@ -66,6 +76,7 @@ impl MarkBitmap {
 
     /// Mark an object at the defined address offset in the partition.
     pub unsafe fn mark(&mut self, offset_in_partition: usize) {
+        debug_assert_ne!(self.pointer, null_mut());
         let word_index = self.word_index(offset_in_partition);
         let byte_index = word_index / u8::BITS as usize;
         let bit_index = word_index % u8::BITS as usize;
@@ -103,6 +114,7 @@ const BIT_INDEX_END: usize = BITMAP_SIZE * u8::BITS as usize;
 
 impl BitmapIterator {
     fn new(bitmap_pointer: *mut u8) -> BitmapIterator {
+        debug_assert_ne!(bitmap_pointer, null_mut());
         debug_assert_eq!(PARTITION_SIZE % size_of::<u64>(), 0);
         debug_assert_eq!(bitmap_pointer as usize % size_of::<u64>(), 0);
         let mut iterator = BitmapIterator {

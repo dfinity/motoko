@@ -33,7 +33,12 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 }
 
 #[inline(never)]
-unsafe fn internal_write_with_barrier<M: Memory>(mem: &mut M, state: &mut State, location: *mut Value, value: Value) {
+unsafe fn internal_write_with_barrier<M: Memory>(
+    mem: &mut M,
+    state: &mut State,
+    location: *mut Value,
+    value: Value,
+) {
     pre_write_barrier(mem, state, *location);
     *location = value.forward_if_possible();
 }
@@ -54,7 +59,11 @@ pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
 }
 
 #[inline(never)]
-unsafe fn internal_allocation_barrier<M: Memory>(mem: &mut M, state: &mut State, new_object: Value) {
+unsafe fn internal_allocation_barrier<M: Memory>(
+    mem: &mut M,
+    state: &mut State,
+    new_object: Value,
+) {
     post_allocation_barrier(state, new_object);
     allocation_increment(mem, state);
 }

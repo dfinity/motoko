@@ -59,7 +59,8 @@ fn address_of_bit(bit: u16) -> usize {
 
 fn test_mark(bitmap_pointer: Value, mut bits: Vec<u16>) {
     unsafe {
-        let mut bitmap = MarkBitmap::allocate(bitmap_pointer.get_ptr());
+        let mut bitmap = MarkBitmap::new();
+        bitmap.assign(bitmap_pointer.get_ptr() as *mut u8);
         for bit in &bits {
             assert!(!bitmap.is_marked(address_of_bit(*bit)));
         }
@@ -78,6 +79,7 @@ fn test_mark(bitmap_pointer: Value, mut bits: Vec<u16>) {
             assert!(bitmap.is_marked(address_of_bit(bit)));
             last_bit = Some(bit);
         }
+        bitmap.release();
     }
 }
 
@@ -88,7 +90,8 @@ fn test_iterator_proptest(bitmap_pointer: Value, bits: HashSet<u16>) -> TestCase
 
 fn test_iterator(bitmap_pointer: Value, bits: HashSet<u16>) {
     unsafe {
-        let mut bitmap = MarkBitmap::allocate(bitmap_pointer.get_ptr());
+        let mut bitmap = MarkBitmap::new();
+        bitmap.assign(bitmap_pointer.get_ptr() as *mut u8);
         for bit in bits.iter() {
             bitmap.mark(address_of_bit(*bit));
         }
@@ -107,5 +110,6 @@ fn test_iterator(bitmap_pointer: Value, bits: HashSet<u16>) {
             bitmap_iterator.current_marked_offset(),
             BITMAP_ITERATION_END
         );
+        bitmap.release();
     }
 }
