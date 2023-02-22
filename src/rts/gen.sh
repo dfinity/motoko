@@ -12,6 +12,6 @@ if [ -z "$1" ]; then
 fi
 
 perl -0777 -ne 'print "let wasm = lazy \""; printf "\\x%02x", $_ for unpack("C*", $_); print "\"\n";' "$1/mo-rts.wasm" > "$file"
-perl -0777 -ne 'print "let wasm_generational = lazy \""; printf "\\x%02x", $_ for unpack("C*", $_); print "\"\n";' "$1/mo-rts-generational.wasm" > "$file"
+perl -0777 -ne 'print "let wasm_generational = lazy \""; printf "\\x%02x", $_ for unpack("C*", $_); print "\"\n";' "$1/mo-rts-generational.wasm" >> "$file"
 
 perl -0777 -ne 'print "let wasm_debug = lazy \""; printf "\\x%02x", $_ for unpack("C*", $_); print "\"";' "$1/mo-rts-debug.wasm" >> "$file"
