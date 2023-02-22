@@ -269,7 +269,7 @@ rec {
           -t ${nixpkgs.rustc-nightly} \
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
-          $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+          $out/rts/mo-rts*.wasm
       '';
 
       allowedRequisites = [];
