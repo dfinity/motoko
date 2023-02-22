@@ -1,10 +1,24 @@
 # Timer
-Timers for one-off or periodic tasks.
+
+Timers for one-off or periodic tasks. Applicable as part of the default mechanism.
 
 Note: If `moc` is invoked with `-no-timer`, the importing will fail.
+
 Note: The resolution of the timers is in the order of the block rate,
       so durations should be chosen well above that. For frequent
       canister wake-ups the heatbeat mechanism should be considered.
+
+Note: Below functionality is active only if the user doesn't explicitly
+      implement `system func timer`.
+
+Note: Timers are _not_ persisted across upgrades. One possible strategy
+      to re-establish timers after an upgrade is to walk stable variables
+      in the `post_upgrade` hook and distill necessary timer information
+      from there.
+
+Note: Basing security (e.g. access control) on timers is almost always
+      the wrong choice. Be sure to inform yourself about state-of-the art
+      dApp security.
 
 ## Type `Duration`
 ``` motoko no-repl
