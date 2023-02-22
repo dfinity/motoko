@@ -250,63 +250,33 @@ struct
     else n
 
   let rec decode s = decode' [] (List.map Char.code (String.explode s))
-  (* and decode' = function
-    | [] -> []
+  and decode' acc = function
+    | [] -> List.rev acc
     | b1::bs when b1 < 0x80 ->
-      code 0x0 b1 :: decode' bs
-    | b1::bs when b1 < 0xc0 ->
-      raise Utf8
+      decode' (code 0x0 b1 :: acc) bs
+    | b1::bs when b1 < 0xc2 -> raise Utf8
     | b1::b2::bs when b1 < 0xe0 ->
-      code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: decode' bs
+      decode' (code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: acc) bs
     | b1::b2::b3::bs when b1 < 0xf0 ->
-      code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) :: decode' bs
+      decode' (code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) :: acc) bs
     | b1::b2::b3::b4::bs when b1 < 0xf8 ->
-      code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4)
-      :: decode' bs
-    | _ ->
-      raise Utf8 *)
-    and decode' acc = function
-      | [] -> List.rev acc
-      | b1::bs when b1 < 0x80 ->
-        decode' (code 0x0 b1 :: acc) bs
-      | b1::bs when b1 < 0xc2 -> raise Utf8
-      | b1::b2::bs when b1 < 0xe0 ->
-        decode' (code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: acc) bs
-      | b1::b2::b3::bs when b1 < 0xf0 ->
-        decode' (code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) :: acc) bs
-      | b1::b2::b3::b4::bs when b1 < 0xf8 ->
-        decode' (code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) :: acc) bs
-      | _ -> raise Utf8
+      decode' (code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) :: acc) bs
+    | _ -> raise Utf8
   
   let con n = 0x80 lor (n land 0x3f)
   let rec encode ns = String.implode (List.map Char.chr (encode' [] ns))
-  (* and encode' = function
-    | [] -> []
-    | n::ns when n < 0 ->
-      raise Utf8
+  and encode' acc = function
+    | [] -> List.rev acc
+    | n::ns when n < 0 -> raise Utf8
     | n::ns when n < 0x80 ->
-      n :: encode' ns
+      encode' (n :: acc) ns
     | n::ns when n < 0x800 ->
-      0xc0 lor (n lsr 6) :: con n :: encode' ns
+      encode' (con n :: 0xc0 lor (n lsr 6) :: acc) ns
     | n::ns when n < 0x10000 ->
-      0xe0 lor (n lsr 12) :: con (n lsr 6) :: con n :: encode' ns
+      encode' (con n :: con (n lsr 6) :: 0xe0 lor (n lsr 12) :: acc) ns
     | n::ns when n < 0x110000 ->
-      0xf0 lor (n lsr 18) :: con (n lsr 12) :: con (n lsr 6) :: con n
-      :: encode' ns
-    | _ ->
-      raise Utf8 *)
-    and encode' acc = function
-      | [] -> List.rev acc
-      | n::ns when n < 0 -> raise Utf8
-      | n::ns when n < 0x80 ->
-        encode' (n :: acc) ns
-      | n::ns when n < 0x800 ->
-        encode' (con n :: 0xc0 lor (n lsr 6) :: acc) ns
-      | n::ns when n < 0x10000 ->
-        encode' (con n :: con (n lsr 6) :: 0xe0 lor (n lsr 12) :: acc) ns
-      | n::ns when n < 0x110000 ->
-        encode' (con n :: con (n lsr 6) :: con (n lsr 12) :: 0xf0 lor (n lsr 18) :: acc) ns
-      | _ -> raise Utf8
+      encode' (con n :: con (n lsr 6) :: con (n lsr 12) :: 0xf0 lor (n lsr 18) :: acc) ns
+    | _ -> raise Utf8
 end
 
 module List =
