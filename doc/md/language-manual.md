@@ -1,3 +1,4 @@
+
 # Language quick reference
 
 <!--
@@ -1368,7 +1369,8 @@ The or pattern `<pat1> or <pat2>` is a disjunctive pattern.
 
 The result of matching `<pat1> or <pat2>` against a value is the result of matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
 
-(Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier (`<id>`) patterns so a successful match always binds zero identifiers.)
+(Note, a disjunctive pattern may contain identifier (`<id>`) patterns with the restriction that both alternatives must bind the same identifiers and these must
+obtain values of the same type.)
 
 ### Expression declaration
 
