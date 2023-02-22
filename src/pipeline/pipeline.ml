@@ -660,7 +660,7 @@ let ir_passes mode prog_ir name =
 (* Compilation *)
 
 let load_as_rts () =
-  let rts = switch !Flags.sanity, !Flags.gc_strategy with
+  let rts = match !Flags.sanity, !Flags.gc_strategy with
   | true, _ -> Rts.wasm_debug
   | _, Generational -> Rts.wasm_generational
   | _, _ -> Rts.wasm (* for now *)

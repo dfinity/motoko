@@ -111,7 +111,7 @@ CLANG_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm
+all: mo-rts.wasm mo-rts-generational.wasm mo-rts-debug.wasm
 
 _build:
 	mkdir -p $@
