@@ -662,10 +662,8 @@ let ir_passes mode prog_ir name =
 let load_as_rts () =
   let rts = match !Flags.sanity, !Flags.gc_strategy with
   | true, _ -> Rts.wasm_debug
-  | _, Generational -> Rts.wasm_generational
-  | _, _ -> Rts.wasm (* for now *)
-
-  if !Flags.sanity then  else  in
+  | _, Mo_config.Flags.Generational -> Rts.wasm_generational
+  | _, _ -> Rts.wasm (* for now *) in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
 type compile_result = (Idllib.Syntax.prog * Wasm_exts.CustomModule.extended_module) Diag.result
