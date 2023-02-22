@@ -58,7 +58,7 @@ unsafe fn partitioned_alloc_words<M: memory::Memory>(
 ) -> types::Value {
     use crate::gc::incremental::get_partitioned_heap;
 
-    get_partitioned_heap().as_mut().unwrap().allocate(mem, n)
+    get_partitioned_heap().allocate(mem, n)
 }
 
 extern "C" {

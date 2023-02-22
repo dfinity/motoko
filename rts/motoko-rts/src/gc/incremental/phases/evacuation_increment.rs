@@ -19,7 +19,7 @@ pub struct EvacuationIncrement<'a, M: Memory> {
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
-        let heap = state.partitioned_heap.as_mut().unwrap();
+        let heap = &mut state.partitioned_heap;
         state.iterator_state = Some(PartitionedHeapIterator::new(heap));
         heap.plan_evacuations();
     }
@@ -38,7 +38,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         state: &'a mut State,
         time: &'a mut BoundedTime,
     ) -> EvacuationIncrement<'a, M> {
-        let heap = state.partitioned_heap.as_mut().unwrap();
+        let heap = &mut state.partitioned_heap;
         let iterator = state.iterator_state.as_mut().unwrap();
         EvacuationIncrement {
             mem,

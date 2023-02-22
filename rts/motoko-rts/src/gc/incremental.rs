@@ -13,7 +13,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
-    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
+    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, UNINITIALIZED_HEAP},
     phases::{
         evacuation_increment::EvacuationIncrement,
         mark_increment::{MarkIncrement, MarkState},
@@ -37,7 +37,7 @@ pub mod time;
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    ic::initialize_memory(true);
+    ic::initialize_memory(true, true);
     assert_eq!(ic::HP, ic::get_aligned_heap_base()); // No dynamic heap allocations so far.
     IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base() as usize);
 }
@@ -145,7 +145,7 @@ enum Phase {
 
 pub struct State {
     phase: Phase,
-    pub partitioned_heap: Option<PartitionedHeap>,
+    partitioned_heap: PartitionedHeap,
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
@@ -154,7 +154,7 @@ pub struct State {
 /// GC state retained over multiple GC increments.
 static mut STATE: RefCell<State> = RefCell::new(State {
     phase: Phase::Pause,
-    partitioned_heap: None,
+    partitioned_heap: UNINITIALIZED_HEAP,
     allocation_count: 0,
     mark_state: None,
     iterator_state: None,
@@ -174,7 +174,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     pub unsafe fn initialize(mem: &'a mut M, heap_base: usize) {
         let state = STATE.get_mut();
         state.phase = Phase::Pause;
-        state.partitioned_heap = Some(PartitionedHeap::new(mem, heap_base));
+        state.partitioned_heap = PartitionedHeap::new(mem, heap_base);
         state.allocation_count = 0;
         state.mark_state = None;
         state.iterator_state = None;
@@ -187,6 +187,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         state: &'a mut State,
         time: BoundedTime,
     ) -> IncrementalGC<'a, M> {
+        debug_assert!(state.partitioned_heap.is_initialized());
         IncrementalGC { mem, state, time }
     }
 
@@ -246,7 +247,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         {
             sanity_checks::check_memory(
                 self.mem,
-                self.state.partitioned_heap.as_mut().unwrap(),
+                &mut self.state.partitioned_heap,
                 _roots,
                 sanity_checks::CheckerMode::MarkCompletion,
             );
@@ -293,7 +294,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         {
             sanity_checks::check_memory(
                 self.mem,
-                self.state.partitioned_heap.as_mut().unwrap(),
+                &mut self.state.partitioned_heap,
                 _roots,
                 sanity_checks::CheckerMode::UpdateCompletion,
             );
@@ -307,7 +308,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 /// The barrier is only effective while the GC is in the mark phase.
 unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritten_value: Value) {
     if state.phase == Phase::Mark {
-        let base_address = state.partitioned_heap.as_ref().unwrap().base_address();
+        let base_address = state.partitioned_heap.base_address();
         if overwritten_value.points_to_or_beyond(base_address) {
             if !MarkIncrement::<M>::mark_completed(state) {
                 let mut time = BoundedTime::new(0);
@@ -317,8 +318,6 @@ unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritt
                 // Check whether the object is already marked, `mark_object()` returns false if previously marked.
                 debug_assert!(!state
                     .partitioned_heap
-                    .as_mut()
-                    .unwrap()
                     .mark_object(overwritten_value.as_obj()));
             }
         }
@@ -360,8 +359,7 @@ pub(crate) unsafe fn post_allocation_barrier(state: &mut State, new_object: Valu
 unsafe fn mark_new_allocation(state: &mut State, new_object: Value) {
     debug_assert!(state.phase == Phase::Mark || state.phase == Phase::Evacuate);
     let object = new_object.get_ptr() as *mut Obj;
-    let heap = state.partitioned_heap.as_mut().unwrap();
-    let unmarked_before = heap.mark_object(object);
+    let unmarked_before = state.partitioned_heap.mark_object(object);
     debug_assert!(unmarked_before);
 }
 
@@ -387,14 +385,13 @@ unsafe fn mark_new_allocation(state: &mut State, new_object: Value) {
 ///     continues to resolve the forwarding for all remaining old pointers.
 unsafe fn update_new_allocation(state: &State, new_object: Value) {
     debug_assert!(state.phase == Phase::Update);
-    let heap = state.partitioned_heap.as_ref().unwrap();
-    if heap.updates_needed() {
+    if state.partitioned_heap.updates_needed() {
         let object = new_object.get_ptr() as *mut Obj;
         visit_pointer_fields(
             &mut (),
             object,
             object.tag(),
-            heap.base_address(),
+            state.partitioned_heap.base_address(),
             |_, field| {
                 *field = (*field).forward_if_possible();
             },
@@ -430,6 +427,12 @@ pub unsafe fn incremental_gc_state() -> &'static mut State {
     STATE.get_mut()
 }
 
-pub unsafe fn get_partitioned_heap() -> &'static mut Option<PartitionedHeap> {
+pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
+    debug_assert!(STATE.get_mut().partitioned_heap.is_initialized());
     &mut STATE.get_mut().partitioned_heap
+}
+
+/// Only for RTS unit tests
+pub unsafe fn reset_partitioned_heap() {
+    STATE.get_mut().partitioned_heap = UNINITIALIZED_HEAP;
 }

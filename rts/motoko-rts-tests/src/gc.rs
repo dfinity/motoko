@@ -18,7 +18,7 @@ use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use motoko_rts::gc::incremental::time::BoundedTime;
 use motoko_rts::gc::incremental::{
-    get_partitioned_heap, incremental_gc_state, SCHEDULED_INCREMENT_LIMIT,
+    get_partitioned_heap, incremental_gc_state, reset_partitioned_heap, SCHEDULED_INCREMENT_LIMIT,
 };
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
@@ -117,7 +117,7 @@ fn test_gcs(heap_descr: &TestHeap) {
             &heap_descr.continuation_table,
         );
     }
-    reset_partitioned_heap();
+    reset_incremental_gc();
 }
 
 fn test_gc(
@@ -165,7 +165,7 @@ fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
     unsafe {
         match gc {
             GC::Incremental => initialize_incremental_gc(heap),
-            _ => incremental_gc_state().partitioned_heap = None,
+            _ => reset_partitioned_heap(),
         }
     }
 }
@@ -175,16 +175,13 @@ unsafe fn initialize_incremental_gc(heap: &mut MotokoHeap) {
     let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
     // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
-    let result = get_partitioned_heap()
-        .as_mut()
-        .unwrap()
-        .allocate(heap, Bytes(allocation_size as u32).to_words());
+    let result = get_partitioned_heap().allocate(heap, Bytes(allocation_size as u32).to_words());
     // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
     // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
     assert_eq!(result.get_ptr(), heap.heap_base_address());
 }
 
-fn reset_partitioned_heap() {
+fn reset_incremental_gc() {
     let mut memory = TestMemory::new(Words(PARTITION_SIZE as u32));
     unsafe {
         IncrementalGC::initialize(&mut memory, 0);

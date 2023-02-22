@@ -20,6 +20,8 @@ pub(crate) static mut HP: u32 = 0;
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
 
+static mut USING_INCREMENTAL_GC: bool = false;
+
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
@@ -31,13 +33,14 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
-pub(crate) unsafe fn initialize_memory(align: bool) {
+pub(crate) unsafe fn initialize_memory(align: bool, using_incremental_gc: bool) {
     HP = if align {
         get_aligned_heap_base()
     } else {
         get_heap_base()
     };
     LAST_HP = HP;
+    USING_INCREMENTAL_GC = using_incremental_gc;
 }
 
 #[no_mangle]
@@ -47,9 +50,10 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
 
 #[no_mangle]
 unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
-    match get_partitioned_heap() {
-        None => RECLAIMED,
-        Some(heap) => heap.reclaimed_size(),
+    if USING_INCREMENTAL_GC {
+        get_partitioned_heap().reclaimed_size()
+    } else {
+        RECLAIMED
     }
 }
 
@@ -60,9 +64,10 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    match get_partitioned_heap() {
-        None => Bytes(HP - get_aligned_heap_base()),
-        Some(heap) => heap.occupied_size(),
+    if USING_INCREMENTAL_GC {
+        get_partitioned_heap().occupied_size()
+    } else {
+        Bytes(HP - get_aligned_heap_base())
     }
 }
 
@@ -73,11 +78,10 @@ pub struct IcMemory;
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let partitioned_heap = get_partitioned_heap();
         // Use the partitioned heap, if the incremental GC is enabled.
         // Comparison with `is_some()` is faster than using pattern matching with `if let`.
-        if partitioned_heap.is_some() {
-            partitioned_heap.as_mut().unwrap().allocate(self, n)
+        if USING_INCREMENTAL_GC {
+            get_partitioned_heap().allocate(self, n)
         } else {
             self.linear_alloc_words(n)
         }

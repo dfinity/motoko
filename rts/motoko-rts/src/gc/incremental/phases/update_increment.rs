@@ -20,7 +20,7 @@ pub struct UpdateIncrement<'a> {
 impl<'a> UpdateIncrement<'a> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
-        let heap = state.partitioned_heap.as_mut().unwrap();
+        let heap = &mut state.partitioned_heap;
         state.iterator_state = Some(PartitionedHeapIterator::new(heap));
         heap.collect_large_objects();
         heap.plan_updates();
@@ -28,9 +28,8 @@ impl<'a> UpdateIncrement<'a> {
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::update_completed(state));
-        let heap = state.partitioned_heap.as_mut().unwrap();
         state.iterator_state = None;
-        heap.complete_collection();
+        state.partitioned_heap.complete_collection();
     }
 
     pub unsafe fn update_completed(state: &State) -> bool {
@@ -38,7 +37,7 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn instance(state: &'a mut State, time: &'a mut BoundedTime) -> UpdateIncrement<'a> {
-        let heap = state.partitioned_heap.as_ref().unwrap();
+        let heap = &state.partitioned_heap;
         let state = state.iterator_state.as_mut().unwrap();
         let updates_needed = heap.updates_needed();
         UpdateIncrement {

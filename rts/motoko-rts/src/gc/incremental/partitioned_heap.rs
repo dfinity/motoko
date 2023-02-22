@@ -40,7 +40,7 @@ use crate::{
     gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
 };
 
-use super::mark_bitmap::{BitmapIterator, MarkBitmap, BITMAP_SIZE};
+use super::mark_bitmap::{BitmapIterator, MarkBitmap, BITMAP_SIZE, DEFAULT_MARK_BITMAP};
 
 /// Size of each parition.
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
@@ -67,6 +67,20 @@ pub struct Partition {
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
+
+/// Optimization: Saving an `Option` or `LazyCell`.
+const UNINITIALIZED_PARTITION: Partition = Partition {
+    index: usize::MAX,
+    free: false,
+    large_content: false,
+    marked_size: 0,
+    static_size: 0,
+    dynamic_size: 0,
+    bitmap: DEFAULT_MARK_BITMAP,
+    temporary: false,
+    evacuate: false,
+    update: false,
+};
 
 impl Partition {
     pub fn get_index(&self) -> usize {
@@ -306,6 +320,17 @@ pub struct PartitionedHeap {
     gc_running: bool,      // Create bitmaps for partitions whn allocated during active GC.
 }
 
+/// Optimization: Saving an `Option` or `LazyCell`.
+pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
+    partitions: [UNINITIALIZED_PARTITION; MAX_PARTITIONS],
+    heap_base: 0,
+    allocation_index: 0,
+    evacuating: false,
+    reclaimed: 0,
+    bitmap_pointer: 0,
+    gc_running: false,
+};
+
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
         let allocation_index = heap_base / PARTITION_SIZE;
@@ -337,6 +362,10 @@ impl PartitionedHeap {
             bitmap_pointer: 0,
             gc_running: false,
         }
+    }
+
+    pub fn is_initialized(&self) -> bool {
+        self.partitions[0].index == 0
     }
 
     pub fn base_address(&self) -> usize {

@@ -130,6 +130,8 @@ impl MotokoHeap {
 }
 
 struct MotokoHeapInner {
+    /// Using the incremental GC with the partitioned heap.
+    using_incremental_gc: bool,
     /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
     /// (all pointers would have to be updated).
     heap: Box<[u8]>,
@@ -273,6 +275,7 @@ impl MotokoHeapInner {
         );
 
         MotokoHeapInner {
+            using_incremental_gc: gc == GC::Incremental,
             heap: heap.into_boxed_slice(),
             heap_base_offset: static_heap_size_bytes + realign,
             heap_ptr_last: static_heap_size_bytes + realign,
@@ -283,9 +286,9 @@ impl MotokoHeapInner {
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        if let Some(partitioned_heap) = get_partitioned_heap() {
+        if self.using_incremental_gc {
             let mut dummy_memory = DummyMemory {};
-            let result = partitioned_heap.allocate(&mut dummy_memory, n);
+            let result = get_partitioned_heap().allocate(&mut dummy_memory, n);
             self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
         }
 

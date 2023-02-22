@@ -35,12 +35,14 @@ pub struct MarkBitmap {
     pointer: *mut u8,
 }
 
+pub const DEFAULT_MARK_BITMAP: MarkBitmap = MarkBitmap {
+    pointer: null_mut(),
+};
+
 impl MarkBitmap {
     /// Allocate new zero-sized bitmap.
     pub fn new() -> MarkBitmap {
-        MarkBitmap {
-            pointer: null_mut(),
-        }
+        DEFAULT_MARK_BITMAP
     }
 
     /// Assign and initialize the bitmap memory at the defined address.
