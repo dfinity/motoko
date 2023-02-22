@@ -79,7 +79,6 @@ impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         // Use the partitioned heap, if the incremental GC is enabled.
-        // Comparison with `is_some()` is faster than using pattern matching with `if let`.
         if USING_INCREMENTAL_GC {
             get_partitioned_heap().allocate(self, n)
         } else {
