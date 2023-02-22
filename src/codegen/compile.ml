@@ -842,7 +842,7 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
     )
-  let share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
+  let _share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7; p8; p9] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -1160,6 +1160,11 @@ module Stack = struct
   let register_globals env =
     (* stack pointer *)
     E.add_global32 env "__stack_pointer" Mutable (end_());
+    (* frame pointer *)
+    E.add_global32 env "__frame_pointer" Mutable (end_());
+    (* low watermark *)
+    if !Flags.measure_rts_stack then
+      E.add_global32 env "__stack_min" Mutable (end_());
     E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
@@ -1167,32 +1172,58 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
+  let get_min env =
+    G.i (GlobalGet (nr (E.get_global env "__stack_min")))
+  let set_min env =
+    G.i (GlobalSet (nr (E.get_global env "__stack_min")))
+
+  let get_max_stack_size env =
+    if !Flags.measure_rts_stack then
+      compile_unboxed_const (end_()) ^^
+      get_min env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    else (* report max available *)
+      compile_unboxed_const (end_())
+
+  let update_stack_min env =
+    if !Flags.measure_rts_stack then
+    get_stack_ptr env ^^
+    get_min env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    (G.if0
+       (get_stack_ptr env ^^
+        set_min env)
+      G.nop)
+    else G.nop
+
   let stack_overflow env =
     Func.share_code0 env "stack_overflow" [] (fun env ->
       (* read last word of reserved page to force trap *)
       compile_unboxed_const 0xFFFF_FFFCl ^^
       G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
-      G.i Drop
+      G.i Unreachable
     )
 
   let alloc_words env n =
     let n_bytes = Int32.mul n Heap.word_size in
-    (* first, check for stack underflow, if necessary *)
-    (if (n_bytes >= page_size) then
-      get_stack_ptr env ^^
-      compile_unboxed_const n_bytes ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-      (G.if0
-        (stack_overflow env)
-        G.nop)
-     else
-       G.nop) ^^
+    (* avoid absurd allocations *)
+    assert Int32.(to_int n_bytes < !Flags.rts_stack_pages * to_int page_size);
     (* alloc words *)
     get_stack_ptr env ^^
     compile_unboxed_const n_bytes ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
-    get_stack_ptr env
+    update_stack_min env ^^
+    get_stack_ptr env ^^
+    (* check for stack overflow, if necessary *)
+    if n_bytes >= page_size then
+      get_stack_ptr env ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+      G.if0
+        G.nop (* we found leading zeros, i.e. no wraparound *)
+        (stack_overflow env)
+    else
+      G.nop
 
   let free_words env n =
     get_stack_ptr env ^^
@@ -1207,6 +1238,7 @@ module Stack = struct
     f get_x ^^
     free_words env n
 
+
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
     compile_divU_const Heap.word_size ^^
@@ -1220,6 +1252,7 @@ module Stack = struct
     compile_mul_const Heap.word_size ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
+    update_stack_min env ^^
     get_stack_ptr env
 
   let dynamic_free_words env get_n =
@@ -1237,6 +1270,65 @@ module Stack = struct
     dynamic_alloc_words env get_n ^^ set_x ^^
     f get_x ^^
     dynamic_free_words env get_n
+
+  (* Stack Frames *)
+
+  (* Traditional frame pointer for accessing statically allocated locals/args (all words)
+     Used (sofar) only in serialization to compress Wasm stack
+     at cost of expanding Rust/C Stack (whose size we control)*)
+  let get_frame_ptr env =
+    G.i (GlobalGet (nr (E.get_global env "__frame_pointer")))
+  let set_frame_ptr env =
+    G.i (GlobalSet (nr (E.get_global env "__frame_pointer")))
+
+  (* Frame pointer operations *)
+
+  (* Enter/exit a new frame of `n` words, saving and restoring prev frame pointer *)
+  let with_frame env name n f =
+    (* reserve space for n words + saved frame_ptr *)
+    alloc_words env (Int32.add n 1l) ^^
+    (* store the current frame_ptr at offset 0*)
+    get_frame_ptr env ^^
+    G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    get_stack_ptr env ^^
+    (* set_frame_ptr to stack_ptr *)
+    set_frame_ptr env ^^
+    (* do as f *)
+    f () ^^
+    (* assert frame_ptr == stack_ptr *)
+    get_frame_ptr env ^^
+    get_stack_ptr env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "frame_ptr <> stack_ptr" ^^
+    (* restore the saved frame_ptr *)
+    get_frame_ptr env ^^
+    G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    set_frame_ptr env ^^
+    (* free the frame *)
+    free_words env (Int32.add n 1l)
+
+  (* read local n of current frame *)
+  let get_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    get_frame_ptr env ^^
+      G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  (* read local n of previous frame *)
+  let get_prev_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    (* indirect through save frame_ptr at offset 0 *)
+    get_frame_ptr env ^^
+    G.i (Load { ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  (* set local n of current frame *)
+  let set_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    Func.share_code1 env ("set_local %i" ^ Int32.to_string n) ("val", I32Type) []
+      (fun env get_val ->
+         get_frame_ptr env ^^
+         get_val ^^
+         G.i (Store { ty = I32Type; align = 2; offset; sz = None}))
 
 end (* Stack *)
 
@@ -4907,7 +4999,8 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
-  *)
+   *)
+              
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
@@ -4922,6 +5015,46 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_end")))
   let get_typtbl_idltyps env =
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
+
+  module Registers = struct
+    let register_globals env =
+     (E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@data_buf" Mutable 0l;
+      E.add_global32 env "@@ref_buf" Mutable 0l;
+      E.add_global32 env "@@typtbl" Mutable 0l;
+      E.add_global32 env "@@typtbl_end" Mutable 0l;
+      E.add_global32 env "@@typtbl_size" Mutable 0l)
+
+    let get_rel_buf_opt env =
+      G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
+    let set_rel_buf_opt env =
+      G.i (GlobalSet (nr (E.get_global env "@@rel_buf_opt")))
+
+    let get_data_buf env =
+      G.i (GlobalGet (nr (E.get_global env "@@data_buf")))
+    let set_data_buf env =
+      G.i (GlobalSet (nr (E.get_global env "@@data_buf")))
+
+    let get_ref_buf env =
+      G.i (GlobalGet (nr (E.get_global env "@@ref_buf")))
+    let set_ref_buf env =
+      G.i (GlobalSet (nr (E.get_global env "@@ref_buf")))
+
+    let get_typtbl env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl")))
+    let set_typtbl env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl")))
+
+    let get_typtbl_end env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl_end")))
+    let set_typtbl_end env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl_end")))
+
+    let get_typtbl_size env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl_size")))
+    let set_typtbl_size env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
+  end
 
   open Typ_hash
 
@@ -5492,34 +5625,53 @@ module MakeSerialization (Strm : Stream) = struct
         E.call_import env "rts" "idl_sub")
 
   (* The main deserialization function, generated once per type hash.
-     Its parameters are:
-       * data_buffer: The current position of the input data buffer
-       * ref_buffer:  The current position of the input references buffer
-       * typtbl:      The type table, as returned by parse_idl_header
+
+     We use a combination of RTS stack locals and registers (Wasm globals) for
+     recursive parameter passing to avoid exhausting the Wasm stack, which is instead
+     used solely for return values and (implicit) return addresses.
+
+     Its RTS stack parameters are (c.f. module Stack):
+
        * idltyp:      The idl type (prim type or table index) to decode now
-       * typtbl_size: The size of the type table, used to limit recursion
        * depth:       Recursion counter; reset when we make progres on the value
        * can_recover: Whether coercion errors are recoverable, see coercion_failed below
 
+     Its register parameters are (c.f. Registers):
+       * rel_buf_opt: The optional subtype check memoization table
+          (non-null for untrusted Candid but null for trusted de-stablization (see `with_rel_buf_opt`).)
+       * data_buffer: The current position of the input data buffer
+       * ref_buffer:  The current position of the input references buffer
+       * typtbl:      The type table, as returned by parse_idl_header
+       * typtbl_size: The size of the type table, used to limit recursion
+
      It returns the value of type t (vanilla representation) or coercion_error_value,
      It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
-   *)
+
+  *)
+
+  (* symbolic names for arguments passed on RTS stack *)
+  module StackArgs = struct
+    let idltyp = 0l
+    let depth = 1l
+    let can_recover = 2l
+  end
+
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code9 env name
-      (("rel_buf_opt", I32Type),
-       ("data_buffer", I32Type),
-       ("ref_buffer", I32Type),
-       ("typtbl", I32Type),
-       ("typtbl_end", I32Type),
-       ("typtbl_size", I32Type),
-       ("idltyp", I32Type),
-       ("depth", I32Type),
-       ("can_recover", I32Type)
-      ) [I32Type]
-    (fun env get_rel_buf_opt get_data_buf get_ref_buf get_typtbl get_typtbl_end get_typtbl_size get_idltyp get_depth get_can_recover ->
+    Func.share_code0 env name
+      [I32Type]
+      (fun env  ->
+      let get_idltyp = Stack.get_local env StackArgs.idltyp in
+      let get_depth = Stack.get_local env StackArgs.depth in
+      let get_can_recover = Stack.get_local env StackArgs.can_recover in
+      let get_rel_buf_opt = Registers.get_rel_buf_opt env in
+      let get_data_buf = Registers.get_data_buf env in
+      let _get_ref_buf = Registers.get_ref_buf env in
+      let get_typtbl = Registers.get_typtbl env in
+      let get_typtbl_end = Registers.get_typtbl_end env in
+      let get_typtbl_size = Registers.get_typtbl_size env in
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -5535,26 +5687,23 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-        let (set_idlty, get_idlty) = new_local env "idl_ty" in
-        set_idlty ^^
-        get_rel_buf_opt ^^
-        get_data_buf ^^
-        get_ref_buf ^^
-        get_typtbl ^^
-        get_typtbl_end ^^
-        get_typtbl_size ^^
-        get_idlty ^^
-        ( (* Reset depth counter if we made progress *)
-          ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          G.if1 I32Type
-          (get_depth ^^ compile_add_const 1l)
-          (compile_unboxed_const 0l)
-        ) ^^
-        (if can_recover
-         then compile_unboxed_const 1l
-         else get_can_recover) ^^
-        deserialize_go env t
+        (* assumes idltyp on stack *)
+        Stack.with_frame env "frame_ptr" 3l (fun () ->
+          Stack.set_local env StackArgs.idltyp ^^
+          (* set up frame arguments *)
+          ( (* Reset depth counter if we made progress *)
+            ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            G.if1 I32Type
+              (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
+              (compile_unboxed_const 0l)
+            ) ^^
+          Stack.set_local env StackArgs.depth ^^
+          (if can_recover
+             then compile_unboxed_const 1l
+             else Stack.get_prev_local env 2l) ^^
+          Stack.set_local env StackArgs.can_recover ^^
+          deserialize_go env t)
       in
 
       let go = go' false in
@@ -6251,15 +6400,29 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-             get_rel_buf_opt ^^
-             get_data_buf ^^ get_ref_buf ^^
-             get_typtbl_ptr ^^ load_unskewed_ptr ^^
-             get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
-             get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
-             ReadBuf.read_sleb128 env get_main_typs_buf ^^
-             compile_unboxed_const 0l ^^ (* initial depth *)
-             can_recover ^^
-             deserialize_go env t ^^ set_val ^^
+              begin
+                (* set up invariant register arguments *)
+                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+                get_data_buf ^^ Registers.set_data_buf env ^^
+                get_ref_buf ^^ Registers.set_ref_buf env ^^
+                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+              end ^^
+              (* set up variable frame arguments *)
+              Stack.with_frame env "frame_ptr" 3l (fun () ->
+                (* idltyp *)
+                ReadBuf.read_sleb128 env get_main_typs_buf ^^
+                Stack.set_local env StackArgs.idltyp ^^
+                (* depth *)
+                compile_unboxed_const 0l ^^
+                Stack.set_local env StackArgs.depth ^^
+                (* recovery mode *)
+                can_recover ^^
+                Stack.set_local env StackArgs.can_recover ^^
+                deserialize_go env t
+             )
+             ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (G.if1 I32Type
@@ -9193,6 +9356,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     Heap.get_max_live_size env ^^ BigNum.from_word32 env
 
+  | OtherPrim "rts_max_stack_size", [] ->
+    SR.Vanilla,
+    Stack.get_max_stack_size env ^^ Prim.prim_word32toNat env
+
   | OtherPrim "rts_callback_table_count", [] ->
     SR.Vanilla,
     ContinuationTable.count env ^^ Prim.prim_word32toNat env
@@ -10383,6 +10550,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   Stack.register_globals env;
   GC.register_globals env;
   StableMem.register_globals env;
+  Serialization.Registers.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
