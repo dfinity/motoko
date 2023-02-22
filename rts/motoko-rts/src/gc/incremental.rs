@@ -419,8 +419,7 @@ unsafe fn allocation_increment<M: Memory>(mem: &mut M, state: &mut State) {
 /// during stream serialization.
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
-    let state = STATE.get_mut();
-    state.phase = Phase::Stop;
+    STATE.get_mut().phase = Phase::Stop;
 }
 
 pub unsafe fn incremental_gc_state() -> &'static mut State {
