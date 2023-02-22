@@ -279,8 +279,8 @@ struct
       | _ -> raise Utf8
   
   let con n = 0x80 lor (n land 0x3f)
-  let rec encode ns = String.implode (List.map Char.chr (encode' ns))
-  and encode' = function
+  let rec encode ns = String.implode (List.map Char.chr (encode' [] ns))
+  (* and encode' = function
     | [] -> []
     | n::ns when n < 0 ->
       raise Utf8
@@ -294,19 +294,19 @@ struct
       0xf0 lor (n lsr 18) :: con (n lsr 12) :: con (n lsr 6) :: con n
       :: encode' ns
     | _ ->
-      raise Utf8
-    (* and encode' acc = function
+      raise Utf8 *)
+    and encode' acc = function
       | [] -> List.rev acc
       | n::ns when n < 0 -> raise Utf8
       | n::ns when n < 0x80 ->
         encode' (n :: acc) ns
       | n::ns when n < 0x800 ->
-        encode' (0xc0 lor (n lsr 6) :: con n :: acc) ns
+        encode' (con n :: 0xc0 lor (n lsr 6) :: acc) ns
       | n::ns when n < 0x10000 ->
-        encode' (0xe0 lor (n lsr 12) :: con (n lsr 6) :: con n :: acc) ns
+        encode' (con n :: con (n lsr 6) :: 0xe0 lor (n lsr 12) :: acc) ns
       | n::ns when n < 0x110000 ->
-        encode' (0xf0 lor (n lsr 18) :: con (n lsr 12) :: con (n lsr 6) :: con n :: acc) ns
-      | _ -> raise Utf8 *)
+        encode' (con n :: con (n lsr 6) :: con (n lsr 12) :: 0xf0 lor (n lsr 18) :: acc) ns
+      | _ -> raise Utf8
 end
 
 module List =
