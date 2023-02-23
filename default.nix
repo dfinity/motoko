@@ -765,7 +765,7 @@ rec {
       samples
       rts
       base-src
-      # base-tests # re-enable later when `RBTreeTestMore` test size is reduced
+      base-tests
       base-doc
       docs
       report-site
