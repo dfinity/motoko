@@ -7490,7 +7490,7 @@ module Var = struct
     | Some (HeapInd i) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field env ^^
+      Heap.store_field MutBox.field ^^
       (if !Flags.gc_strategy = Flags.Generational
         then
          G.i (LocalGet (nr i)) ^^
@@ -7501,7 +7501,7 @@ module Var = struct
     | Some (HeapStatic ptr) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field env ^^
+      Heap.store_field MutBox.field ^^
       (if !Flags.gc_strategy = Flags.Generational
         then
          compile_unboxed_const ptr ^^
