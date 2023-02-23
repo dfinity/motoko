@@ -1570,9 +1570,9 @@ module Tagged = struct
     Heap.load_field forwarding_pointer_field
 
   let store_tag env tag =
-      load_forwarding_pointer env ^^
-      compile_unboxed_const (int_of_tag tag) ^^
-      Heap.store_field tag_field
+    load_forwarding_pointer env ^^
+    compile_unboxed_const (int_of_tag tag) ^^
+    Heap.store_field tag_field
     
   let load_tag env =
     load_forwarding_pointer env ^^
