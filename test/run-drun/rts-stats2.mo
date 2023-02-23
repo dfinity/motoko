@@ -27,7 +27,7 @@ actor a {
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
     // 10_008 at some point
-    // assert (Prim.rts_max_live_size() > 10000); // Artificial forwarding pointer sanity test disables the GC
+    assert (Prim.rts_max_live_size() > 10000);
     assert (Prim.rts_max_live_size() < 11000);
   };
 }

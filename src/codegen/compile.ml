@@ -1577,7 +1577,7 @@ module Tagged = struct
   let load_tag env =
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
-    
+
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
   let branch_default env retty def (cases : (tag * G.t) list) : G.t =
@@ -3756,7 +3756,6 @@ module Arr = struct
 
   (* Does not initialize the fields! *)
   let alloc env = E.call_import env "rts" "alloc_array"
-    
 
   let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
@@ -3773,8 +3772,7 @@ module Arr = struct
     set_pointer ^^
 
     (* Upper pointer boundary, skewed *)
-    get_array ^^ 
-    Heap.load_field len_field ^^
+    get_array ^^ Heap.load_field len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
@@ -6461,7 +6459,7 @@ module MakeSerialization (Strm : Stream) = struct
       get_data_start ^^
       get_refs_start ^^
       serialize_go env (Type.seq ts) ^^
-      
+
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^

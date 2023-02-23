@@ -11,6 +11,6 @@ debug.print: {heap_MB = 448}
 debug.print: {heap_MB = 512}
 debug.print: {heap_MB = 576}
 debug.print: {heap_MB = 640}
-debug.print: {heap_MB = 704}
+debug.print: {heap_MB = 705}
 debug.print: postupgrade!
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at destabilization-crash.mo:39.6-39.18
