@@ -14,9 +14,9 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┐
-//      │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴
+// ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
+// │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+// └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
@@ -36,7 +36,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{size_of, Blob, Bytes, Obj, Stream, Value, TAG_BLOB};
+use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -73,12 +73,6 @@ impl Stream {
     #[inline]
     pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
         self.add(1) as *const u8 // skip closure header
-    }
-
-    #[inline]
-    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
-        debug_assert!((*(self as *mut Obj)).forward.get_ptr() == self as usize);
-        self as *mut Blob
     }
 
     /// make sure that the cache is empty

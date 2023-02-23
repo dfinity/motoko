@@ -35,14 +35,14 @@ use crate::buf::{read_byte, Buf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
-use crate::types::{size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
+use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
-    let mut blob = ptr.get_ptr() as *mut BigInt;
+    let blob = ptr.get_ptr() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
     (*blob).header.forward = ptr;
 
@@ -457,7 +457,7 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
 
 #[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
-    debug_assert!((*(stream as *mut Obj)).forward.get_ptr() == stream as usize);
+    debug_assert!(!stream.is_forwarded());
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     stream.write_leb128(&mut tmp, false)
@@ -501,7 +501,7 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
 
 #[no_mangle]
 pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
-    debug_assert!((*(stream as *mut Obj)).forward.get_ptr() == stream as usize);
+    debug_assert!(!stream.is_forwarded());
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 

@@ -23,6 +23,7 @@ use crate::gc::generational::write_barrier::write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use core::ptr::null;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -271,17 +272,43 @@ impl Value {
         );
     }
 
-    /// Get the object tag, with potential forwarding. In debug mode panics if the value is not a pointer.
-    pub unsafe fn tag(self) -> Tag {
-        debug_assert!(self.get().is_ptr());
+    /// Check whether the object's forwarding pointer refers to a different location.
+    pub unsafe fn is_forwarded(self) -> bool {
         self.check_forwarding_pointer();
-        (self.forward().get_ptr() as *mut Obj).tag()
+        self.forward().get_ptr() != self.get_ptr()
+    }
+
+    /// Get the object tag. No forwarding. Can be applied to any block, regular objects
+    /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
+    /// In debug mode panics if the value is not a pointer.
+    pub unsafe fn tag(self) -> Tag {
+        *(self.get_ptr() as *const Tag)
     }
 
     /// Get the forwarding pointer. Used in incremental GC.
     pub unsafe fn forward(self) -> Value {
-        let obj = self.get_ptr() as *mut Obj;
+        debug_assert!(self.is_obj());
+        debug_assert!(self.get_ptr() as *const Obj != null());
+        let obj = self.get_ptr() as *const Obj;
         (*obj).forward
+    }
+
+    /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
+    pub unsafe fn forward_if_possible(self) -> Value {
+        if self.is_ptr() && self.get_ptr() as *const Obj != null() {
+            // Ignore null pointers used in text_iter.
+            self.forward()
+        } else {
+            self
+        }
+    }
+
+    /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
+    /// Returns `false` for pointers to special `OneWordFiller`, `FwdPtr`, and `FreeSpace` blocks that do not have
+    /// a regular object header.
+    pub unsafe fn is_obj(self) -> bool {
+        let tag = self.tag();
+        tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
     }
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
@@ -289,6 +316,13 @@ impl Value {
         debug_assert!(self.get().is_ptr());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Obj
+    }
+
+    /// Get the pointer as `MutBox` using forwarding. In debug mode panics if the value is not a pointer.
+    pub unsafe fn as_mutbox(self) -> *mut MutBox {
+        debug_assert_eq!(self.tag(), TAG_MUTBOX);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut MutBox
     }
 
     /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
@@ -391,7 +425,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // only used in copying GC - not to be confused with forwarding pointer in the header used for incremental GC
+pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -411,11 +445,16 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
-    // Forwarding pointer to support object moving in the incremental GC
+    /// Forwarding pointer to support object moving in the incremental GC.
     pub forward: Value,
 }
 
 impl Obj {
+    /// Check whether the object's forwarding pointer refers to a different location.
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        (*self).forward.get_ptr() != self as usize
+    }
+
     pub unsafe fn tag(self: *const Self) -> Tag {
         (*self).tag
     }
@@ -566,10 +605,11 @@ impl Blob {
                 as *mut OneWordFiller;
             (*filler).tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
+            debug_assert!(slop >= size_of::<FreeSpace>());
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
             (*filler).tag = TAG_FREE_SPACE;
-            (*filler).words = slop - Words(1);
+            (*filler).words = slop - size_of::<FreeSpace>();
         }
 
         (*self).len = new_len;
@@ -579,7 +619,7 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
-    pub padding: u32, // insertion of forwarding pointer in the header implies 1 word padding to 64-bit
+    pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -587,7 +627,18 @@ pub struct Stream {
     pub filled: Bytes<u32>, // cache data follows ..
 }
 
-/// Only used in copying GC - not to be confused with the forwarding pointer in the general object header
+impl Stream {
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        (self as *const Obj).is_forwarded()
+    }
+
+    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
+        debug_assert!(!self.is_forwarded());
+        self as *mut Blob
+    }
+}
+
+/// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
 /// that is used in the incremental GC.
 /// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
@@ -715,16 +766,19 @@ pub struct FreeSpace {
 impl FreeSpace {
     /// Size of the free space (includes object header)
     pub unsafe fn size(self: *mut Self) -> Words<u32> {
-        (*self).words + size_of::<Obj>()
+        (*self).words + size_of::<FreeSpace>()
     }
 }
 
-/// Returns object size in words
-pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
-    let obj = obj as *mut Obj;
-    match obj.tag() {
+/// Returns the heap block size in words.
+/// Handles both objects with header and forwarding pointer
+/// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
+/// that do not have a forwarding pointer.
+pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
+    let tag = *(address as *mut Tag);
+    match tag {
         TAG_OBJECT => {
-            let object = obj as *mut Object;
+            let object = address as *mut Object;
             let size = object.size();
             size_of::<Object>() + Words(size)
         }
@@ -732,7 +786,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
         TAG_ARRAY => {
-            let array = obj as *mut Array;
+            let array = address as *mut Array;
             let size = array.len();
             size_of::<Array>() + Words(size)
         }
@@ -742,7 +796,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_MUTBOX => size_of::<MutBox>(),
 
         TAG_CLOSURE => {
-            let closure = obj as *mut Closure;
+            let closure = address as *mut Closure;
             let size = closure.size();
             size_of::<Closure>() + Words(size)
         }
@@ -752,7 +806,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_VARIANT => size_of::<Variant>(),
 
         TAG_BLOB => {
-            let blob = obj as *mut Blob;
+            let blob = address as *mut Blob;
             size_of::<Blob>() + blob.len().to_words()
         }
 
@@ -763,7 +817,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_BITS32 => size_of::<Bits32>(),
 
         TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
+            let bigint = address as *mut BigInt;
             size_of::<BigInt>() + bigint.len().to_words()
         }
 
@@ -774,7 +828,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
 
         TAG_FREE_SPACE => {
-            let free_space = obj as *mut FreeSpace;
+            let free_space = address as *mut FreeSpace;
             free_space.size()
         }
 

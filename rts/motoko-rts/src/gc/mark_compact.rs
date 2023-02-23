@@ -221,7 +221,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         unthread(p, p_new);
 
         // Move the object
-        let p_size_words = object_size(p as usize);
+        let p_size_words = block_size(p as usize);
         if p_new as usize != p as usize {
             memcpy_words(p_new as usize, p as usize, p_size_words);
 

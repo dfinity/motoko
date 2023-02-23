@@ -76,7 +76,7 @@ pub unsafe fn copying_gc_internal<
     // Scavenge to-space
     let mut p = begin_to_space;
     while p < get_hp() {
-        let size = object_size(p);
+        let size = block_size(p);
         scav(mem, begin_from_space, begin_to_space, p);
         p += size.to_bytes().as_usize();
     }
@@ -143,7 +143,7 @@ unsafe fn evac<M: Memory>(
 
     debug_assert!((*ptr_loc).forward().get_ptr() == obj as usize);
 
-    let obj_size = object_size(obj as usize);
+    let obj_size = block_size(obj as usize);
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();
