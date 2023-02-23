@@ -1,4 +1,4 @@
-=> update provisional_create_canister_with_cycles(record {settings = null; amount = null})
+=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null})
 <= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 debug.print: init'ed
@@ -37,4 +37,23 @@ debug.print: init'ed 2
 => update inc()
 <= replied: ()
 => query check(5)
+<= replied: ()
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+debug.print: init'ed 3
+<= replied: ()
+=> query check(5)
+<= replied: ()
+=> update inc()
+<= replied: ()
+=> update check(6)
+<= replied: ()
+=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
+debug.print: init'ed 4
+<= replied: ()
+=> query check(6)
+<= replied: ()
+=> update inc()
+debug.print: timer endpoint in 4
+<= replied: ()
+=> query check(7)
 <= replied: ()

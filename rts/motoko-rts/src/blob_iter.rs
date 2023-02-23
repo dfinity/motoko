@@ -17,8 +17,8 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     (*iter_array).header.forward = iter_ptr;
     (*iter_array).len = 2;
 
-    iter_array.set(ITER_BLOB_IDX, blob);
-    iter_array.set(ITER_POS_IDX, Value::from_scalar(0));
+    iter_array.set_pointer(ITER_BLOB_IDX, blob, mem);
+    iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
     #[cfg(debug_assertions)]
     crate::check::create_artificial_forward(mem, iter_ptr);
@@ -39,13 +39,13 @@ unsafe extern "C" fn blob_iter_done(iter: Value) -> u32 {
 
 /// Reads next byte, advances the iterator
 #[no_mangle]
-unsafe extern "C" fn blob_iter_next(iter: Value) -> u32 {
+unsafe fn blob_iter_next(iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
     let pos = iter_array.get(ITER_POS_IDX).get_scalar();
 
-    iter_array.set(ITER_POS_IDX, Value::from_scalar(pos + 1));
+    iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(pos + 1));
 
     blob.as_blob().get(pos).into()
 }

@@ -70,6 +70,7 @@ s/RETURN/\'return\'/g
 s/RCURLY/\'}\'/g
 s/RBRACKET/\']\'/g
 s/QUEST/\'?\'/g
+s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
@@ -131,7 +132,9 @@ s/CATASSIGN/\'@=\'/g
 s/CASE/\'case\'/g
 s/BREAK/\'break\'/g
 s/BOOL/<bool>/g
+s/AWAITSTAR/\'await*\'/g
 s/AWAIT/\'await\'/g
+s/ASYNCSTAR/\'async*\'/g
 s/ASYNC/\'async\'/g
 s/ASSERT/\'assert\'/g
 s/ARROW/\'->\'/g
@@ -141,5 +144,6 @@ s/ASSIGN/\':=\'/g
 s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
+s/WITH/\'with\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/

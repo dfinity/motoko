@@ -45,7 +45,7 @@ let ensure_async_typ t_opt =
   match t_opt with
   | None -> t_opt
   | Some { it = AsyncT _; _} -> t_opt
-  | Some t -> Some (AsyncT(scopeT no_region, t) @! no_region)
+  | Some t -> Some (AsyncT(Type.Fut, scopeT no_region, t) @! no_region)
 
 let funcT (sort, tbs, t1, t2) =
   match sort.it, t2.it with
@@ -132,8 +132,8 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
     false, e (* body declared as EQ e *)
   else (* body declared as immediate block *)
     match sp.it, t_opt with
-    | _, Some {it = AsyncT _; _} ->
-      true, asyncE (scope_bind x.it e.at) e
+    | _, Some {it = AsyncT (s, _, _); _} ->
+      true, asyncE s (scope_bind x.it e.at) e
     | Type.Shared _, (None | Some { it = TupT []; _}) ->
       true, ignore_asyncE (scope_bind x.it e.at) e
     | _, _ -> (true, e)
@@ -205,7 +205,7 @@ and objblock s dec_fields =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CATCH CONTINUE DO LABEL DEBUG
+%token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
@@ -235,6 +235,8 @@ and objblock s dec_fields =
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
+
+%nonassoc IMPLIES (* see assertions.mly *)
 
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
@@ -417,7 +419,9 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(scopeT (at $sloc), t) @! at $sloc }
+    { AsyncT(Type.Fut, scopeT (at $sloc), t) @! at $sloc }
+  | ASYNCSTAR t=typ_pre
+    { AsyncT(Type.Cmp, scopeT (at $sloc), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -550,7 +554,7 @@ lit :
 
 
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
-ob : e=exp_obj { e }
+%public ob : e=exp_obj { e }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
@@ -568,7 +572,6 @@ exp_plain :
 
 exp_nullary(B) :
   | e=B
-    { e }
   | e=exp_plain
     { e }
   | x=id
@@ -625,7 +628,7 @@ exp_un(B) :
   | FROM_CANDID e=exp_un(ob)
     { FromCandidE e @? at $sloc }
 
-exp_bin(B) :
+%public exp_bin(B) :
   | e=exp_un(B)
     { e }
   | e1=exp_bin(B) op=binop e2=exp_bin(ob)
@@ -639,7 +642,7 @@ exp_bin(B) :
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
 
-exp_nondec(B) :
+%public exp_nondec(B) :
   | e=exp_bin(B)
     { e }
   | e1=exp_bin(B) ASSIGN e2=exp(ob)
@@ -651,11 +654,15 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
-    { AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+  | ASYNCSTAR e=block
+    { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
-    { AwaitE(e) @? at $sloc }
+    { AwaitE(Type.Fut, e) @? at $sloc }
+  | AWAITSTAR e=exp_nest
+    { AwaitE(Type.Cmp, e) @? at $sloc }
   | ASSERT e=exp_nest
-    { AssertE(e) @? at $sloc }
+    { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
     { let x' = ("continue " ^ x.it) @@ x.at in
       let unit () = TupT [] @! at $sloc in
@@ -704,7 +711,6 @@ exp_nondec(B) :
   | DO QUEST e=block
     { DoOptE(e) @? at $sloc }
 
-
 exp_nonvar(B) :
   | e=exp_nondec(B)
     { e }
@@ -717,9 +723,8 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp_nest :
+%public exp_nest :
   | e=block
-    { e }
   | e=exp(bl)
     { e }
 
@@ -840,7 +845,8 @@ dec_nonvar :
       let e =
         if s.it = Type.Actor then
           AwaitE
-            (AsyncE(scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+            (Type.Fut,
+             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
               (objblock s (List.map share_dec_field efs) @? (at $sloc)))
              @? at $sloc)
         else objblock s efs

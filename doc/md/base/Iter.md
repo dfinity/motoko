@@ -20,12 +20,10 @@ for (x in i) {
 }
 ```
 
-## `class range`
+## Class `range`
 
-
-### Function `next`
 ``` motoko no-repl
-func next() : ?Nat
+class range(x : Nat, y : Int)
 ```
 
 Creates an iterator that produces all `Nat`s from `x` to `y` including
@@ -39,16 +37,26 @@ assert(?3 == iter.next());
 assert(null == iter.next());
 ```
 
-## `class revRange`
+### Function `next`
+``` motoko no-repl
+func next() : ?Nat
+```
 
+
+## Class `revRange`
+
+``` motoko no-repl
+class revRange(x : Int, y : Int)
+```
+
+Like `range` but produces the values in the opposite
+order.
 
 ### Function `next`
 ``` motoko no-repl
 func next() : ?Int
 ```
 
-Like `range` but produces the values in the opposite
-order.
 
 ## Function `iterate`
 ``` motoko no-repl

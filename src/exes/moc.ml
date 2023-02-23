@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | StableCompatible | Compile | Run | Interact | PrintDeps | Explain
+type mode = Default | Check | StableCompatible | Compile | Run | Interact | PrintDeps | Explain | Viper
 
 let mode = ref Default
 let args = ref []
@@ -42,6 +42,7 @@ let argspec = [
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
+  "--viper", Arg.Unit (set_mode Viper), " emit viper code";
   "--stable-compatible",
     Arg.Tuple [
       Arg.String (fun fp -> Flags.pre_ref := Some fp);
@@ -96,10 +97,12 @@ let argspec = [
       ")";
 
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
+  "-measure-rts-stack", Arg.Set Flags.measure_rts_stack, " measure the maximum rts stack usage (reported by prim \"rts_max_stack\")";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
+  "-no-timer", Arg.Clear Flags.global_timer, " do not create a global timer expiration endpoint";
   "-no-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WasmMode)),
       " do not import any system API";
@@ -107,7 +110,7 @@ let argspec = [
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
   "-ref-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
+  Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
       " use the reference implementation of the Internet Computer system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
@@ -138,6 +141,10 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
+  "--generational-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
+  " use generational GC";
+
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
   " use compacting GC";
@@ -156,10 +163,18 @@ let argspec = [
 
   "--experimental-field-aliasing",
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
-  " enable experimental support for aliasing of var fields"
+  " enable experimental support for aliasing of var fields";
+
+  "--rts-stack-pages",
+  Arg.Set_int Flags.rts_stack_pages,
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
+
+  "--trap-on-call-error",
+  Arg.Unit (fun () -> Flags.trap_on_call_error := true),
+  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."
   ]
 
-  @  Args.inclusion_args
+  @ Args.inclusion_args
 
 
 
@@ -189,6 +204,9 @@ let process_files files : unit =
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
+  | Viper ->
+    let (s, _) = Diag.run (Pipeline.viper_files files) in
+    printf "%s" s
   | StableCompatible ->
     begin
       match (!Flags.pre_ref, !Flags.post_ref) with

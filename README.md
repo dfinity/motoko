@@ -1,4 +1,4 @@
-# [Motoko](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/motoko/) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/workflow/status/dfinity/motoko/release?logo=github)](https://github.com/dfinity/embed-motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/Building.md)
+# [Motoko](https://internetcomputer.org/docs/current/motoko/main/about-this-guide) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/actions/workflow/status/dfinity/motoko/release.yml?branch=master&logo=github)](https://github.com/dfinity/motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/Building.md)
 
 
 A safe, simple, actor-based programming language for authoring [Internet Computer](https://internetcomputer.org/) (IC) canister smart contracts.
@@ -12,6 +12,7 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 * [Concrete syntax](doc/md/examples/grammar.txt).
 * [Documentation sources](doc/md/).
 * [Base library documentation](doc/md/base/index.md).
+* [_Motoko-san_: a prototypical deductive verifier](src/viper/README.md).
 
 ## Introduction
 
@@ -57,5 +58,7 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 ## Community resources
 
 * [Awesome Motoko](https://github.com/motoko-unofficial/awesome-motoko#readme)
+* [Blocks - an online low-code editor for Motoko](https://github.com/Blocks-Editor/blocks)
+* [MOPS - a Motoko package manager hosted on the IC](https://j4mwm-bqaaa-aaaam-qajbq-cai.ic0.app/)
 * [Motoko Bootcamp](https://github.com/motoko-bootcamp/bootcamp#readme) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
 * [Motoko library starter template](https://github.com/ByronBecker/motoko-library-template)

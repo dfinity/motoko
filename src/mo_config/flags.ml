@@ -4,7 +4,7 @@ module M = Map.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
-type gc_strategy = MarkCompact | Copying
+type gc_strategy = Generational | MarkCompact | Copying
 
 let trace = ref false
 let verbose = ref false
@@ -26,6 +26,7 @@ let actor_aliases : string M.t ref = ref M.empty
 let actor_idl_path : string option ref = ref None
 let max_stable_pages_default = 65536
 let max_stable_pages : int ref = ref max_stable_pages_default
+let measure_rts_stack = ref false
 let pre_ref : string option ref = ref None
 let post_ref : string option ref = ref None
 let profile = ref false
@@ -40,4 +41,9 @@ let error_detail = ref 2
 let sanity = ref false
 let gc_strategy = ref Copying
 let force_gc = ref false
+let global_timer = ref true
 let experimental_field_aliasing = ref false
+let ocaml_js = ref false
+let rts_stack_pages_default = 32 (* 2MB *)
+let rts_stack_pages : int ref = ref rts_stack_pages_default
+let trap_on_call_error = ref false

@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-dhDXhVNAAHzLRHdA6MpIGuoY76UhiF4ObeLO4gG/wo4=";
+      cargoSha256 = "sha256-YHLGj2pK9WvGxRW+T2sUUvA6UhNv+sc0m1NlR18sJAc=";
 
       patchPhase = ''
       cd ../drun-vendor.tar.gz
@@ -49,6 +49,7 @@ EOF
         llvmPackages_13.libclang
         lmdb
         libunwind
+        libiconv
       ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.darwin.apple_sdk.frameworks.Security
       ];

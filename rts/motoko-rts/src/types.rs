@@ -19,6 +19,8 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
+use crate::gc::generational::write_barrier::write_barrier;
+use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
@@ -227,6 +229,7 @@ impl Value {
     }
 
     /// Get the raw value
+    #[inline]
     pub fn get_raw(&self) -> u32 {
         self.0
     }
@@ -343,17 +346,34 @@ impl Value {
         debug_assert!(self.is_scalar());
         self.0 as i32 >> 1
     }
+
+    // optimized version of `value.is_ptr() && value.get_ptr() >= address`
+    // value is a pointer equal or greater than the unskewed address > 1
+    #[inline]
+    pub fn points_to_or_beyond(&self, address: usize) -> bool {
+        debug_assert!(address > TRUE_VALUE as usize);
+        let raw = self.get_raw();
+        is_skewed(raw) && unskew(raw as usize) >= address
+    }
 }
 
+#[inline]
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
 pub fn is_ptr(value: u32) -> bool {
-    value & 0b1 != 0 && value != TRUE_VALUE
+    is_skewed(value) && value != TRUE_VALUE
 }
 
+#[inline]
+pub const fn is_skewed(value: u32) -> bool {
+    value & 0b1 != 0
+}
+
+#[inline]
 pub const fn skew(ptr: usize) -> usize {
     ptr.wrapping_sub(1)
 }
 
+#[inline]
 pub const fn unskew(value: usize) -> usize {
     value.wrapping_add(1)
 }
@@ -438,32 +458,34 @@ pub struct Array {
 }
 
 impl Array {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
-        }
-    }
-
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
-        self.check_dereferenced_forwarding();
+    pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
-        self.check_dereferenced_forwarding();
-        debug_assert!(self.len() > idx);
-        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
+        let slot_addr = self.element_address(idx);
         *(slot_addr as *const Value)
     }
 
-    pub unsafe fn set(self: *mut Self, idx: u32, ptr: Value) {
-        self.check_dereferenced_forwarding();
+    /// Write a pointer value to an array element. Uses a post-update barrier.
+    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+        debug_assert!(value.is_ptr());
+        let slot_addr = self.element_address(idx);
+        *(slot_addr as *mut Value) = value;
+        write_barrier(mem, slot_addr as u32);
+    }
+
+    /// Write a scalar value to an array element. No need for a write barrier.
+    pub unsafe fn set_scalar(self: *mut Self, idx: u32, value: Value) {
+        debug_assert!(value.is_scalar());
+        let slot_addr = self.element_address(idx);
+        *(slot_addr as *mut Value) = value;
+    }
+
+    #[inline]
+    unsafe fn element_address(self: *const Self, idx: u32) -> usize {
         debug_assert!(self.len() > idx);
-        let slot_addr = self.payload_addr() as usize + (idx * WORD_SIZE) as usize;
-        *(slot_addr as *mut Value) = ptr;
+        self.payload_addr() as usize + (idx * WORD_SIZE) as usize
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {

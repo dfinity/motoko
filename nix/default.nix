@@ -43,17 +43,39 @@ let
         })
 
         # Selecting the ocaml version
-        # Also update ocmal-version in src/*/.ocamlformat!
+        # Also update ocaml-version in src/*/.ocamlformat!
         (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
 
-        (
-          self: super: {
+        (self: super: {
             # Additional ocaml package
-            ocamlPackages = super.ocamlPackages // {
+            ocamlPackages = super.ocamlPackages // rec {
               obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) lib fetchFromGitHub ocaml dune_2;
+                inherit (self) lib fetchFromGitHub ocaml dune_3;
                 inherit (self) ocamlPackages;
                 inherit (self.stdenv) mkDerivation;
+              };
+
+              # downgrade `wasmjs_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0
+              js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
+                version = "5.0.1";
+                src = self.fetchurl {
+                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
+                  sha256 = "sha256-eiEPHKFqdCOBlH3GfD2Nn0yU+/IHOHRLE1OJeYW2EGk=";
+                };
+              });
+
+              # inline recipe from https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/ocaml/js_of_ocaml/default.nix
+              js_of_ocaml = with super.ocamlPackages; buildDunePackage {
+                pname = "js_of_ocaml";
+
+                inherit (js_of_ocaml-compiler) version src;
+                duneVersion = "3";
+
+                buildInputs = [ ppxlib ];
+
+                propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
+
+                meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
 
               # downgrade wasm until we have support for 2.0.0
@@ -67,6 +89,9 @@ let
                   sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
                 };
               });
+
+              # No testing of atdgen, as it pulls in python stuff, tricky on musl
+              atdgen = super.ocamlPackages.atdgen.overrideAttrs(_: { doCheck = false; });
             };
           }
         )
@@ -78,7 +103,7 @@ let
 
         # Rust nightly
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-06-30"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-10-30"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
@@ -95,9 +120,9 @@ let
           };
         })
 
-        # Rust 1.62
+        # Rust 1.66
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-06-30"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-12-15"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform {
             rustc = rust-channel.rust;

@@ -1,18 +1,58 @@
 # Debug
-Debugging aids
+Utility functions for debugging.
 
-## Value `print`
-``` motoko no-repl
-let print : Text -> ()
+Import from the base library to use this module.
+```motoko name=import
+import Debug "mo:base/Debug";
 ```
 
-`print(t)` emits text `t` to the debug output stream.
-How this stream is stored or displayed depends on the
-execution environment.
-
-## Value `trap`
+## Function `print`
 ``` motoko no-repl
-let trap : Text -> None
+func print(text : Text)
 ```
 
-`trap(t)` traps execution with a user-provided message.
+Prints `text` to output stream.
+
+NOTE: The output is placed in the replica log. When running on mainnet,
+this function has no effect.
+
+```motoko include=import
+Debug.print "Hello New World!";
+Debug.print(debug_show(4)) // Often used with `debug_show` to convert values to Text
+```
+
+## Function `trap`
+``` motoko no-repl
+func trap(errorMessage : Text) : None
+```
+
+`trap(t)` traps execution with a user-provided diagnostic message.
+
+The caller of a future whose execution called `trap(t)` will
+observe the trap as an `Error` value, thrown at `await`, with code
+`#canister_error` and message `m`. Here `m` is a more descriptive `Text`
+message derived from the provided `t`. See example for more details.
+
+NOTE: Other execution environments that cannot handle traps may only
+propagate the trap and terminate execution, with or without some
+descriptive message.
+
+```motoko
+import Debug "mo:base/Debug";
+import Error "mo:base/Error";
+
+actor {
+  func fail() : async () {
+    Debug.trap("user provided error message");
+  };
+
+  public func foo() : async () {
+    try {
+      await fail();
+    } catch e {
+      let code = Error.code(e); // evaluates to #canister_error
+      let message = Error.message(e); // contains user provided error message
+    }
+  };
+}
+```

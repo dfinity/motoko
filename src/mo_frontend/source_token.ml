@@ -12,7 +12,9 @@ type token =
   | LCURLY
   | RCURLY
   | AWAIT
+  | AWAITSTAR
   | ASYNC
+  | ASYNCSTAR
   | BREAK
   | CASE
   | CATCH
@@ -55,6 +57,8 @@ type token =
   | BANG
   | AND
   | OR
+  | IMPLIES
+  | OLD
   | NOT
   | IMPORT
   | MODULE
@@ -114,6 +118,7 @@ type token =
   | TEXT of string
   | PRIM
   | UNDERSCORE
+  | INVARIANT
   (* Trivia *)
   | LINEFEED of line_feed
   | SINGLESPACE
@@ -134,7 +139,9 @@ let to_parser_token :
   | LCURLY -> Ok Parser.LCURLY
   | RCURLY -> Ok Parser.RCURLY
   | AWAIT -> Ok Parser.AWAIT
+  | AWAITSTAR -> Ok Parser.AWAITSTAR
   | ASYNC -> Ok Parser.ASYNC
+  | ASYNCSTAR -> Ok Parser.ASYNCSTAR
   | BREAK -> Ok Parser.BREAK
   | CASE -> Ok Parser.CASE
   | CATCH -> Ok Parser.CATCH
@@ -177,6 +184,8 @@ let to_parser_token :
   | BANG -> Ok Parser.BANG
   | AND -> Ok Parser.AND
   | OR -> Ok Parser.OR
+  | IMPLIES -> Ok Parser.IMPLIES
+  | OLD -> Ok Parser.OLD
   | NOT -> Ok Parser.NOT
   | IMPORT -> Ok Parser.IMPORT
   | MODULE -> Ok Parser.MODULE
@@ -236,6 +245,7 @@ let to_parser_token :
   | TEXT s -> Ok (Parser.TEXT s)
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
+  | INVARIANT -> Ok Parser.INVARIANT
   (*Trivia *)
   | SINGLESPACE -> Error (Space 1)
   | SPACE n -> Error (Space n)
@@ -255,7 +265,9 @@ let string_of_parser_token = function
   | Parser.LCURLY -> "LCURLY"
   | Parser.RCURLY -> "RCURLY"
   | Parser.AWAIT -> "AWAIT"
+  | Parser.AWAITSTAR -> "AWAIT*"
   | Parser.ASYNC -> "ASYNC"
+  | Parser.ASYNCSTAR -> "ASYNC*"
   | Parser.BREAK -> "BREAK"
   | Parser.CASE -> "CASE"
   | Parser.CATCH -> "CATCH"
@@ -361,6 +373,9 @@ let string_of_parser_token = function
   | Parser.TEXT _ -> "TEXT of string"
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
+  | Parser.INVARIANT -> "INVARIANT"
+  | Parser.IMPLIES -> "IMPLIES"
+  | Parser.OLD -> "OLD"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

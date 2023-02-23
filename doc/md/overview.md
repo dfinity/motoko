@@ -64,7 +64,10 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
     -   uniform representation, unboxed arithmetic
 
-    -   two-space GC or mark-compact GC, invoked after messages (for now)
+    -   copying GC, compacting GC, or generational GC
+        (select which with compiler flag)
+
+    -   GC invoked after messages (for now)
 
 -   polymorphism by erasure
 
@@ -88,39 +91,41 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 ## Libraries
 
 ``` motoko name=impDebugInt
-  import Debug "mo:base/Debug";
-  import Int "mo:base/Int";
+import Debug "mo:base/Debug";
+import Int "mo:base/Int";
 ```
 
 (`import MyLib "src/MyLib"` imports a library from the local file system.)
 
 Specific bindings can be imported from the module using object patterns
 
-      import { cons; nil } = "mo:base/List";
+``` motoko
+import { push; nil } = "mo:base/List";
+```
 
-## Libraries
+## Libraries continued
 
 ``` motoko
-  import Debug "mo:base/Debug";
-  import Int "mo:base/Int";
-  import Trie "mo:base/Trie";
+import Debug "mo:base/Debug";
+import Int "mo:base/Int";
+import Trie "mo:base/Trie";
 
-  type Users = Trie.Trie<Text, Nat>; // reference types
+type Users = Trie.Trie<Text, Nat>; // reference types
 
-  Debug.print(Int.toText(7)); // reference functions/values
+Debug.print(Int.toText(7)); // reference functions/values
 ```
 
 ## Blocks and declarations
 
 ``` motoko include=impDebugInt
-  type Delta = Nat;
-  func print() {
-    Debug.print(Int.toText(counter));
-  };
-  let d : Delta = 42;
-  var counter = 1;
-  counter := counter + d;
-  print();
+type Delta = Nat;
+func print() {
+  Debug.print(Int.toText(counter));
+};
+let d : Delta = 42;
+var counter = 1;
+counter := counter + d;
+print();
 ```
 
 -   Semicolon after each declaration!

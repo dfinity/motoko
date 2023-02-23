@@ -15,6 +15,7 @@ module Blob = struct
         ) (String.to_seq b)
       )
     )
+  let rand32() = String.init 32 (fun _ -> Char.chr (Random.int 256))
 end
 
 (* Types *)
@@ -27,6 +28,9 @@ type context = value
 
 and func =
   context -> value -> value cont -> unit
+
+and comp =
+  value cont -> value cont -> unit
 
 and value =
   | Null
@@ -51,6 +55,7 @@ and value =
   | Obj of value Env.t
   | Func of Call_conv.t * func
   | Async of async
+  | Comp of comp
   | Mut of value ref
   | Iter of value Seq.t ref (* internal to {b.vals(), t.chars()} iterator *)
 
@@ -100,6 +105,7 @@ let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
+let as_comp = function Comp c -> c | _ -> invalid "as_comp"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
 
@@ -130,10 +136,10 @@ let rec compare x1 x2 =
     )
   | Mut r1, Mut r2 -> compare !r1 !r2
   | Async _, Async _ -> raise (Invalid_argument "Value.compare")
+  | Comp _, Comp _ -> raise (Invalid_argument "Value.compare")
   | _ -> generic_compare x1 x2
 
 let equal x1 x2 = compare x1 x2 = 0
-
 
 (* (Pseudo)-Identities (for caller and self) *)
 
@@ -202,6 +208,7 @@ let rec pp_val_nullary d ppf = function
     fprintf ppf "@[<1>[%a]@]"
       (pp_print_list ~pp_sep:comma (pp_val d)) (Array.to_list a)
   | Func (_, _) -> pr ppf "func"
+  | Comp _ -> pr ppf "async*"
   | v ->
     (* "(" ^ string_of_val d v ^ ")" *)
     fprintf ppf "@[<1>(%a)@]" (pp_val d) v

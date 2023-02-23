@@ -113,6 +113,8 @@ let rec exp msgs e : f = match e.it with
   | NotE e              -> exp msgs e
   | AndE (e1, e2)       -> exps msgs [e1; e2]
   | OrE (e1, e2)        -> exps msgs [e1; e2]
+  | ImpliesE (e1, e2)   -> exps msgs [e1; e2]
+  | OldE e              -> exp msgs e
   | IfE (e1, e2, e3)    -> exps msgs [e1; e2; e3]
   | SwitchE (e, cs)     -> exp msgs e ++ cases msgs cs
   | TryE (e, cs)        -> exp msgs e ++ cases msgs cs
@@ -122,9 +124,9 @@ let rec exp msgs e : f = match e.it with
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
   | LabelE (i, t, e)    -> exp msgs e
   | DebugE e            -> exp msgs e
-  | AsyncE (_, e)    -> exp msgs e
-  | AwaitE e            -> exp msgs e
-  | AssertE e           -> exp msgs e
+  | AsyncE (_, _, e)    -> exp msgs e
+  | AwaitE (_, e)       -> exp msgs e
+  | AssertE (_, e)      -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
   | DoOptE e            -> exp msgs e

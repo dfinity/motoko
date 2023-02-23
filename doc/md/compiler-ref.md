@@ -30,6 +30,7 @@ You can use the following options with the `moc` command.
 | `--copying-gc`                            | Use copying GC (default)                                                                                                                              |
 | `--debug`                                 | Respects debug expressions in the source (the default).                                                                                               |
 | `--error-detail <n>`                      | Set level of error message detail for syntax errors, n in \[0..3\] (default 2).                                                                       |
+| `--generational-gc`                       | Use generational GC                                                                                                                                   |
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
@@ -38,6 +39,7 @@ You can use the following options with the `moc` command.
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |
 | `--max-stable-pages <n>`                  | Set maximum number of pages available for library `ExperimentStableMemory.mo` (default 65536).                                                        |
 | `-no-system-api`                          | Disables system API imports.                                                                                                                          |
+| `-no-timer`                               | Disables timer API imports and hides timer primitives.                                                                                                |
 | `-o <file>`                               | Specifies the output file.                                                                                                                            |
 | `-p <n>`                                  | Sets the print depth.                                                                                                                                 |
 | `--package <package-name> <package-path>` | Specifies a `<package-name>` `<package-path>` pair, separated by a space.                                                                             |
@@ -48,7 +50,10 @@ You can use the following options with the `moc` command.
 | `--release`                               | Ignores debug expressions in the source.                                                                                                              |
 | `--stable-types`                          | Compile binary and emit signature of stable types to `.most` file.                                                                                    |
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
-| `-t`                                      | Activates tracing in interpreter.                                                                                                                     |
-| `-v`                                      | Generates verbose output.                                                                                                                             |
+| `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (default 32).
+| `--trap-on-call-error`                    | Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed.
+|                                           | Emulates behaviour of moc versions < 0.8.0.
+| `-t`                                      | Activates tracing in interpreter.
+| `-v`                                      | Generates verbose output.
 | `--version`                               | Displays version information.                                                                                                                         |
 | `-wasi-system-api`                        | Uses the WASI system API (`wasmtime`).                                                                                                                |

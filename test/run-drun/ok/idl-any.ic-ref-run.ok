@@ -1,4 +1,4 @@
-=> update provisional_create_canister_with_cycles(record {settings = null; amount = null})
+=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null})
 <= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
@@ -89,6 +89,6 @@ debug.print: ok: Foo
 => query any(variant {dk_jduc = (-272716322 : int32)}, "Foo")
 debug.print: ok: Foo
 <= replied: ()
-=> query any(0x4449444c016602abcd0200710400deadbeef03466f6f)
+=> query any(future, "Foo")
 debug.print: ok: Foo
 <= replied: ()

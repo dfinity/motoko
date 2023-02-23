@@ -37,6 +37,8 @@ and path' =
   | IdH  of id
   | DotH of path * id
 
+and async_sort = Type.async_sort
+
 type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
   | PathT of path * typ list                       (* type path *)
@@ -47,7 +49,7 @@ and typ' =
   | VariantT of typ_tag list                       (* variant *)
   | TupT of typ_item list                          (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
-  | AsyncT of scope * typ                          (* future *)
+  | AsyncT of async_sort * scope * typ             (* future / computation *)
   | AndT of typ * typ                              (* intersection *)
   | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
@@ -173,6 +175,8 @@ and exp' =
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
+  | ImpliesE of exp * exp                      (* implication *)
+  | OldE of exp                                (* old-expression *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
   | WhileE of exp * exp                        (* while-do loop *)
@@ -182,9 +186,9 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of typ_bind * exp                   (* async *)
-  | AwaitE of exp                              (* await *)
-  | AssertE of exp                             (* assertion *)
+  | AsyncE of async_sort * typ_bind * exp      (* future / computation *)
+  | AwaitE of async_sort * exp                 (* await *)
+  | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
@@ -194,6 +198,9 @@ and exp' =
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)
+
+and assert_kind =
+  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit
 
 and dec_field = dec_field' Source.phrase
 and dec_field' = {dec : dec; vis : vis; stab: stab option}
@@ -310,13 +317,13 @@ let scopeT at =
 
 (* Expressions *)
 
-let asyncE tbs e =
-  AsyncE (tbs, e) @? e.at
+let asyncE sort tbs e =
+  AsyncE (sort, tbs, e) @? e.at
 
 let ignore_asyncE tbs e =
   IgnoreE (
-    AnnotE (AsyncE (tbs, e) @? e.at,
-      AsyncT (scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
+    AnnotE (AsyncE (Type.Fut, tbs, e) @? e.at,
+      AsyncT (Type.Fut, scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
 
 let is_asyncE e =
   match e.it with
@@ -326,7 +333,7 @@ let is_asyncE e =
 let is_ignore_asyncE e =
   match e.it with
   | IgnoreE
-      {it = AnnotE ({it = AsyncE _; _},
-        {it = AsyncT (_, {it = TupT []; _}); _}); _} ->
+      {it = AnnotE ({it = AsyncE (Type.Fut, _, _); _},
+        {it = AsyncT (Type.Fut, _, {it = TupT []; _}); _}); _} ->
     true
   | _ -> false

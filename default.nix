@@ -66,7 +66,7 @@ let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
-    pkgs.dune_2
+    pkgs.dune_3
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.checkseum
@@ -162,14 +162,14 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256:0kq1r2aqhpvg739ljmbr9f6101rfwadnmvjddq297xww6r0mkfqa";
+        cargoSha256 = "sha256-gzLk4kNBSbd8ujJ/7mNs/vwCu76ASqtyoVU84PdaJCw=";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-VLT4Vz7se8clzo3LPjJ1CEfnpGDTkOKH38GZOsXVbdc";
+      rustStdDepsHash = "sha256-dGQzospDaIlGKWu08b8oaXJgIsniBVxI//zc6/LywIE=";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -195,7 +195,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-VKNXQ7uT5njmZ4RlF1Lebyy7hPSw+KRjG8ntCXfw/Y4";
+        sha256 = "sha256-jCk92mPwXd8H8zEH4OMdcEwFM8IiYdlhYdYr+WzDW5E=";
         copyLockfile = true;
       };
 
@@ -350,6 +350,7 @@ rec {
             patchShebangs .
             ${llvmEnv}
             export ESM=${nixpkgs.sources.esm}
+            export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
             make -C ${dir}
           '';
@@ -363,8 +364,24 @@ rec {
 
     compacting_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--compacting-gc";
+      });
+
+    generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--generational-gc";
+      });
+
+    snty_compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
       });
+
+    snty_generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
+      });
+
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -478,9 +495,11 @@ rec {
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
+      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -490,6 +509,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
@@ -750,7 +770,12 @@ rec {
     builtins.attrValues js;
   };
 
-  shell = stdenv.mkDerivation {
+  viperServer = nixpkgs.fetchurl {
+    url = https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar;
+    sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
+  };
+
+  shell = nixpkgs.mkShell {
     name = "motoko-shell";
 
     #
@@ -780,7 +805,8 @@ rec {
           nixpkgs.nix-update
           nixpkgs.rlwrap # for `rlwrap moc`
           nixpkgs.difftastic
-        ]
+          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
+        ] ++ nixpkgs.lib.optional stdenv.isDarwin nixpkgs.darwin.apple_sdk.frameworks.Security
       ));
 
     shellHook = llvmEnv + ''
@@ -797,6 +823,7 @@ rec {
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
+    VIPER_SERVER = "${viperServer}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
