@@ -44,21 +44,9 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
     text::text_of_str(mem, "0.1")
 }
 
-// Optimized allocation function to be used with non-incremental GC.
 #[ic_mem_fn(ic_only)]
-unsafe fn linear_alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
-    mem.linear_alloc_words(n)
-}
-
-// Optimized allocation function to be used with the incremental GC.
-#[ic_mem_fn(ic_only)]
-unsafe fn partitioned_alloc_words<M: memory::Memory>(
-    mem: &mut M,
-    n: types::Words<u32>,
-) -> types::Value {
-    use crate::gc::incremental::get_partitioned_heap;
-
-    get_partitioned_heap().allocate(mem, n)
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+    mem.alloc_words(n)
 }
 
 extern "C" {

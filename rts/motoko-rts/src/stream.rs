@@ -32,8 +32,7 @@
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
-use crate::gc::incremental::barriers::allocation_barrier;
-use crate::gc::incremental::{incremental_gc_state, post_allocation_barrier};
+use crate::gc::incremental::barriers::{allocation_barrier, slim_allocation_barrier};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -201,8 +200,7 @@ impl Stream {
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);
-        let state = incremental_gc_state();
-        post_allocation_barrier(state, ptr);
+        slim_allocation_barrier(ptr);
         ptr
     }
 
