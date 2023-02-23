@@ -1555,20 +1555,24 @@ module Tagged = struct
   let tag_field = 0l
   let forwarding_pointer_field = 1l
 
-  (* Assumes a pointer to the object on the stack *)
-  let store_tag tag =
+  let alloc env size tag =
+    let (set_object, get_object) = new_local env "new_object" in
+    Heap.alloc env size ^^
+    set_object ^^ get_object ^^
     compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field tag_field
-
-  let store_forwarding_pointer env =
-    let (set_object_ptr, get_object_ptr) = new_local env "object_ptr" in
-    set_object_ptr ^^
-    get_object_ptr ^^ (* object pointer *)
-    get_object_ptr ^^ (* forwarding pointer *)
-    Heap.store_field forwarding_pointer_field
-
+    Heap.store_field tag_field ^^
+    get_object ^^ (* object pointer *)
+    get_object ^^ (* forwarding pointer *)
+    Heap.store_field forwarding_pointer_field ^^
+    get_object
+    
   let load_forwarding_pointer env =
     Heap.load_field forwarding_pointer_field
+
+  let store_tag env tag =
+      load_forwarding_pointer env ^^
+      compile_unboxed_const (int_of_tag tag) ^^
+      Heap.store_field tag_field
     
   let load_tag env =
     load_forwarding_pointer env ^^
@@ -1640,27 +1644,18 @@ module Tagged = struct
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
   let obj env tag element_instructions : G.t =
-    let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
-
     let n = List.length element_instructions in
-    Heap.alloc env (Wasm.I32.add header_size (Wasm.I32.of_int_u n)) ^^
-    set_heap_obj ^^
-
-    get_heap_obj ^^
-    compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field tag_field ^^
-
-    get_heap_obj ^^
-    get_heap_obj ^^ (* forwarding pointer *)
-    Heap.store_field forwarding_pointer_field ^^
-
+    let size = (Int32.add (Wasm.I32.of_int_u n) header_size) in
+    let (set_object, get_object) = new_local env "new_object" in
+    alloc env size tag ^^
+    set_object ^^
     let init_elem idx instrs : G.t =
-      get_heap_obj ^^
+      get_object ^^
       instrs ^^
-      Heap.store_field (Wasm.I32.add header_size (Wasm.I32.of_int_u idx))
+      Heap.store_field (Int32.add (Wasm.I32.of_int_u idx) header_size)
     in
     G.concat_mapi init_elem element_instructions ^^
-    get_heap_obj
+    get_object
 
   let new_static_obj env tag payload =
     let payload = StaticBytes.as_bytes payload in
@@ -1940,10 +1935,8 @@ module BoxedWord64 = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Heap.alloc env 4l ^^
+    Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag Bits64) ^^
-    get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -2060,10 +2053,8 @@ module BoxedSmallWord = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Heap.alloc env 3l ^^
+    Tagged.alloc env 3l Tagged.Bits32 ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag Bits32) ^^
-    get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -2301,10 +2292,8 @@ module Float = struct
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Heap.alloc env 4l ^^
+    Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag Bits64) ^^
-    get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
   )
@@ -3319,17 +3308,9 @@ module Object = struct
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
-    Heap.alloc env (Int32.add header_size sz) ^^
+    Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
     set_ri ^^
-
-    (* Set tag *)
-    get_ri ^^
-    Tagged.(store_tag Object) ^^
-
-    (* Set forwarding pointer *)
-    get_ri ^^
-    Tagged.(store_forwarding_pointer env) ^^
-
+    
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
@@ -5500,7 +5481,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.load_forwarding_pointer env ^^ Tagged.(store_tag StableSeen) ^^
+          get_x ^^ Tagged.(store_tag env StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -5617,7 +5598,8 @@ module MakeSerialization (Strm : Stream) = struct
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
-          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^ Heap.store_field Tagged.tag_field ^^
+          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^
+          Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -6614,13 +6596,9 @@ module MakeSerialization (Strm : Stream) = struct
     ))
 
   let deserialize env ts =
-    compile_unboxed_const 1l ^^
-    E.call_import env "rts" "set_serialization_status" ^^
     IC.arg_data env ^^
     Bool.lit false ^^ (* can't recover *)
-    deserialize_from_blob false env ts ^^
-    compile_unboxed_const 0l ^^
-    E.call_import env "rts" "set_serialization_status"
+    deserialize_from_blob false env ts
 
 (*
 Note [speculating for short (S)LEB encoded bignums]
@@ -7694,16 +7672,8 @@ module FuncDec = struct
 
       let code =
         (* Allocate a heap object for the closure *)
-        Heap.alloc env (Int32.add Closure.header_size len) ^^
+        Tagged.alloc env (Int32.add Closure.header_size len) Tagged.Closure ^^
         set_clos ^^
-
-        (* Store the tag *)
-        get_clos ^^
-        Tagged.(store_tag Closure) ^^
-
-        (* Store the forwarding pointer *)
-        get_clos ^^
-        Tagged.(store_forwarding_pointer env) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^

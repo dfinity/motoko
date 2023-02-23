@@ -77,7 +77,7 @@ pub unsafe fn copying_gc_internal<
     let mut p = begin_to_space;
     while p < get_hp() {
         let size = block_size(p);
-        scav(mem, begin_from_space, begin_to_space, p);
+        scav(mem, begin_from_space, begin_to_space, Value::from_ptr(p));
         p += size.to_bytes().as_usize();
     }
 
@@ -129,19 +129,19 @@ unsafe fn evac<M: Memory>(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
-    let obj = (*ptr_loc).get_ptr() as *mut Obj;
-
     // Check object alignment to avoid undefined behavior. See also static_checks module.
-    debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
+    debug_assert_eq!((*ptr_loc).get_ptr() as u32 % WORD_SIZE, 0);
 
     // Update the field if the object is already evacuated
-    if obj.tag() == TAG_FWD_PTR {
-        let fwd = (*(obj as *const FwdPtr)).fwd;
+    if (*ptr_loc).tag() == TAG_FWD_PTR {
+        let block = (*ptr_loc).get_ptr() as *const FwdPtr;
+        let fwd = (*block).fwd;
         *ptr_loc = fwd;
         return;
     }
 
-    debug_assert!((*ptr_loc).forward().get_ptr() == obj as usize);
+    debug_assert!(!(*ptr_loc).is_forwarded());
+    let obj = (*ptr_loc).get_ptr() as *mut Obj;
 
     let obj_size = block_size(obj as usize);
 
@@ -170,8 +170,17 @@ unsafe fn evac<M: Memory>(
     (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
-unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: usize, obj: usize) {
-    let obj = obj as *mut Obj;
+unsafe fn scav<M: Memory>(
+    mem: &mut M,
+    begin_from_space: usize,
+    begin_to_space: usize,
+    block: Value,
+) {
+    if !block.is_obj() {
+        // Skip `OneWordFiller` and `FreeSpace` that have no regular object header.
+        return;
+    }
+    let obj = block.get_ptr() as *mut Obj;
 
     crate::visitor::visit_pointer_fields(
         mem,
@@ -197,6 +206,6 @@ unsafe fn evac_static_roots<M: Memory>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(mem, begin_from_space, begin_to_space, obj.get_ptr());
+        scav(mem, begin_from_space, begin_to_space, obj);
     }
 }
