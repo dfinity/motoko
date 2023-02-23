@@ -321,7 +321,7 @@ and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
-        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _, None); at; _ };
+        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _, _); at; _ };
         _ }
       when id.it = name ->
       Some (
@@ -708,9 +708,8 @@ and dec' at n = function
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it, f with
-    | I.VarP i, I.ActorE (ds, fs, u, t), None ->
+    | I.VarP i, I.ActorE (ds, fs, u, t), _ ->
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
-    | _, I.ActorE _, Some _ -> assert false
     | _, _, None -> I.LetD (p', e')
     | _, _, Some f -> I.LetD (p', let_else_switch (pat p) (exp e) (exp f))
     end
