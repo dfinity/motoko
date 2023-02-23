@@ -565,9 +565,9 @@ module E = struct
   let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
-
+    
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
-    Int32.add (add_static env data) ptr_unskew  
+    Int32.add (add_static env data) ptr_unskew
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -1590,7 +1590,7 @@ module Tagged = struct
     load_forwarding_pointer env ^^
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
-        
+    
   let load_tag env =
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
@@ -3862,7 +3862,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
