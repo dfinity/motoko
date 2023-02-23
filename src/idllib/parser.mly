@@ -80,8 +80,8 @@ seplist(X, SEP) :
 
 %inline text :
  | s=TEXT
-   { try ignore (Wasm.Utf8.decode s); s
-     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
+   { try ignore (Lib.Utf8.decode s); s
+     with Lib.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
    }
 
 %inline id :

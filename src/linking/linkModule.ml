@@ -115,7 +115,7 @@ let get_import is_thing j m =
   in go 0l m.imports
 
 let find_imports is_thing libname m : imports =
-  let name = Wasm.Utf8.decode libname in
+  let name = Lib.Utf8.decode libname in
   let rec go i acc = function
     | [] -> List.rev acc
     | imp::is ->
@@ -145,7 +145,7 @@ let count_imports is_thing m =
 
 let remove_export is_thing name : module_' -> module_' = fun m ->
   let to_remove e =
-    not (is_thing e.it.edesc.it <> None && e.it.name = Wasm.Utf8.decode name)
+    not (is_thing e.it.edesc.it <> None && e.it.name = Lib.Utf8.decode name)
   in
   { m with exports = List.filter to_remove m.exports }
 
@@ -249,7 +249,7 @@ let prepend_to_start fi ftype (em : extended_module)  =
   }
 
 let _remove_non_canister_exports (em : extended_module) : extended_module =
-  let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
+  let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Lib.Utf8.encode exp.it.name) <> None in
   map_module (fun m -> { m with exports = List.filter is_canister_export m.exports }) em
 
 let remove_non_ic_exports (em : extended_module) : extended_module =
@@ -257,8 +257,8 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
    custom types section was only exported for linking, and should not be
    exported in the final module *)
   let is_ic_export (exp : export) =
-    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None ||
-    "_start" = Wasm.Utf8.encode exp.it.name
+    Lib.String.chop_prefix "canister_" (Lib.Utf8.encode exp.it.name) <> None ||
+    "_start" = Lib.Utf8.encode exp.it.name
   in
 
   let keep_export exp =
@@ -551,8 +551,8 @@ let fill_memory_base_import new_base : module_' -> module_' = fun m ->
       | [] -> assert false
       | imp::is -> match imp.it.idesc.it with
         | GlobalImport _ty
-          when imp.it.module_name = Wasm.Utf8.decode "env" &&
-               imp.it.item_name = Wasm.Utf8.decode "__memory_base" ->
+          when imp.it.module_name = Lib.Utf8.decode "env" &&
+               imp.it.item_name = Lib.Utf8.decode "__memory_base" ->
           Int32.of_int i
         | GlobalImport _ ->
           go (i + 1) is
@@ -578,8 +578,8 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
       | [] -> assert false
       | imp::is -> match imp.it.idesc.it with
         | GlobalImport _ty
-          when imp.it.module_name = Wasm.Utf8.decode "env" &&
-               imp.it.item_name = Wasm.Utf8.decode "__table_base" ->
+          when imp.it.module_name = Lib.Utf8.decode "env" &&
+               imp.it.item_name = Lib.Utf8.decode "__table_base" ->
           Int32.of_int i
         | GlobalImport _ ->
           go (i + 1) is
@@ -663,13 +663,13 @@ let find_fun_export (name : name) (exports : export list) : var option =
     if export.it.name = name then
       match export.it.edesc.it with
       | FuncExport var -> Some var
-      | _ -> raise (LinkError (Format.sprintf "Export %s is not a function" (Wasm.Utf8.encode name)))
+      | _ -> raise (LinkError (Format.sprintf "Export %s is not a function" (Lib.Utf8.encode name)))
     else
       None
   ) exports
 
 let remove_got_func_imports (imports : import list) : import list =
-  let got_func_str = Wasm.Utf8.decode "GOT.func" in
+  let got_func_str = Lib.Utf8.decode "GOT.func" in
   List.filter (fun import -> import.it.module_name <> got_func_str) imports
 
 (* Merge global list of a module with a sorted (on global index) list of (global
@@ -699,7 +699,7 @@ let mk_i32_global (i : int32) =
 (* Generate (global index, function index) pairs for GOT.func imports of a
    module. Uses import and export lists of the module so those should be valid. *)
 let collect_got_func_imports (m : module_') : (int32 * int32) list =
-  let got_func_name = Wasm.Utf8.decode "GOT.func" in
+  let got_func_name = Lib.Utf8.decode "GOT.func" in
 
   let get_got_func_import (global_idx, imports) import : (int32 * (int32 * int32) list) =
     if import.it.module_name = got_func_name then
@@ -707,7 +707,7 @@ let collect_got_func_imports (m : module_') : (int32 * int32) list =
       let name = import.it.item_name in
       let fun_idx =
         match find_fun_export name m.exports with
-        | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.func import %s" (Wasm.Utf8.encode name)))
+        | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.func import %s" (Lib.Utf8.encode name)))
         | Some export_idx -> export_idx.it
       in
       let global_idx =
@@ -773,7 +773,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let global_exports1 = find_exports is_global_export em1.module_ in
 
   let heap_global =
-    match NameMap.find_opt (Wasm.Utf8.decode "__heap_base") global_exports1 with
+    match NameMap.find_opt (Lib.Utf8.decode "__heap_base") global_exports1 with
     | None -> raise (LinkError "First module does not export __heap_base")
     | Some gi -> gi in
 
@@ -877,7 +877,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   (* Inject call to "__wasm_call_ctors" *)
   let add_call_ctors =
-    match NameMap.find_opt (Wasm.Utf8.decode "__wasm_call_ctors") fun_exports2 with
+    match NameMap.find_opt (Lib.Utf8.decode "__wasm_call_ctors") fun_exports2 with
     | None -> fun em -> em
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
   in
