@@ -8,7 +8,7 @@ use motoko_rts_macros::ic_mem_fn;
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn initialize_copying_gc() {
-    crate::memory::ic::initialize_memory(false);
+    crate::memory::ic::initialize_memory(false, false);
 }
 
 #[ic_mem_fn(ic_only)]

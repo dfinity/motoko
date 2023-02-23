@@ -29,7 +29,7 @@ use self::write_barrier::REMEMBERED_SET;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
-    crate::memory::ic::initialize_memory(true);
+    crate::memory::ic::initialize_memory(true, false);
     write_barrier::init_generational_write_barrier(mem);
 }
 
