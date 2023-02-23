@@ -2468,7 +2468,7 @@ and gather_dec env scope dec : Scope.t =
       {it = VarP id; _},
       ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
        {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
-       None
+       _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
@@ -2551,7 +2551,7 @@ and infer_dec_typdecs env dec : Scope.t =
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
         {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
-        None
+        _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
@@ -2564,7 +2564,7 @@ and infer_dec_typdecs env dec : Scope.t =
       obj_env = T.Env.singleton id.it obj_scope
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
-  | LetD ({it = VarP id; _}, exp, None) ->
+  | LetD ({it = VarP id; _}, exp, _) ->
     (match infer_val_path env exp with
      | None -> Scope.empty
      | Some t ->
@@ -2633,7 +2633,7 @@ and infer_dec_valdecs env dec : Scope.t =
       {it = VarP id; _} as pat,
       ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
         {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _ }); _ }),
-        None
+        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in

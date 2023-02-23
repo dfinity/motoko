@@ -44,9 +44,9 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       assert (List.length tbs > 0);
       finish imports { it = ActorClassU (sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e), None); _}] when as_lib ->
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e), _); _}] when as_lib ->
       finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
-    | [{it = LetD ({it = VarP i1; _}, e, None); _}] when is_actor_def e ->
+    | [{it = LetD ({it = VarP i1; _}, e, _); _}] when is_actor_def e ->
       let fields, note, at = as_actor_def e in
       finish imports { it = ActorU (Some i1, fields); note; at }
 
