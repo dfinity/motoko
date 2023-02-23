@@ -27,9 +27,6 @@ use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
 
-#[cfg(debug_assertions)]
-pub static mut STRICT_FORWARDING_POINTER_CHECKS: bool = true;
-
 pub fn size_of<T>() -> Words<u32> {
     Bytes(::core::mem::size_of::<T>() as u32).to_words()
 }
@@ -419,29 +416,17 @@ pub struct Obj {
 }
 
 impl Obj {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).forward.get_ptr(), self as usize);
-        }
-    }
-
     pub unsafe fn tag(self: *const Self) -> Tag {
-        self.check_dereferenced_forwarding();
         (*self).tag
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.check_dereferenced_forwarding();
         self as *mut Blob
     }
 
     pub unsafe fn as_concat(self: *mut Self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.check_dereferenced_forwarding();
         self as *const Concat
     }
 }
@@ -489,7 +474,6 @@ impl Array {
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {
-        self.check_dereferenced_forwarding();
         (*self).len
     }
 }
@@ -502,28 +486,16 @@ pub struct Object {
 }
 
 impl Object {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
-        }
-    }
-
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
-        self.check_dereferenced_forwarding();
         self.add(1) as *mut Value // skip object header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        self.check_dereferenced_forwarding();
         (*self).size
     }
 
     #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
-        self.check_dereferenced_forwarding();
         *self.payload_addr().add(idx as usize)
     }
 }
@@ -543,22 +515,11 @@ pub struct Closure {
 }
 
 impl Closure {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
-        }
-    }
-
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
-        self.check_dereferenced_forwarding();
         self.offset(1) as *mut Value // skip closure header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        self.check_dereferenced_forwarding();
         (*self).size
     }
 }
@@ -571,43 +532,28 @@ pub struct Blob {
 }
 
 impl Blob {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
-        }
-    }
-
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
-        self.check_dereferenced_forwarding();
         self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn payload_const(self: *const Self) -> *const u8 {
-        self.check_dereferenced_forwarding();
         self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn len(self: *const Self) -> Bytes<u32> {
-        self.check_dereferenced_forwarding();
         (*self).len
     }
 
     pub unsafe fn get(self: *const Self, idx: u32) -> u8 {
-        self.check_dereferenced_forwarding();
         *self.payload_const().add(idx as usize)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
-        self.check_dereferenced_forwarding();
         *self.payload_addr().add(idx as usize) = byte;
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
     pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
-        self.check_dereferenced_forwarding();
         let current_len_words = self.len().to_words();
         let new_len_words = new_len.to_words();
 
@@ -662,22 +608,11 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
-        }
-    }
-
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
-        self.check_dereferenced_forwarding();
         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
-        self.check_dereferenced_forwarding();
         self.add(1) as *mut mp_digit // skip closure header
     }
 
@@ -729,22 +664,11 @@ pub struct Concat {
 }
 
 impl Concat {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(self: *const Self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!((*self).header.forward.get_ptr(), self as usize);
-        }
-    }
-
     pub unsafe fn text1(self: *const Self) -> Value {
-        self.check_dereferenced_forwarding();
         (*self).text1
     }
 
     pub unsafe fn text2(self: *const Self) -> Value {
-        self.check_dereferenced_forwarding();
         (*self).text2
     }
 }
@@ -764,22 +688,7 @@ pub struct Bits64 {
 }
 
 impl Bits64 {
-    /// Check that the forwarding pointer has already been dereferenced
-    #[inline]
-    unsafe fn check_dereferenced_forwarding(&self) {
-        #[cfg(debug_assertions)]
-        if STRICT_FORWARDING_POINTER_CHECKS {
-            debug_assert_eq!(
-                self.header.forward.get_ptr(),
-                (self as *const Self) as usize
-            );
-        }
-    }
-
     pub fn bits(&self) -> u64 {
-        unsafe {
-            self.check_dereferenced_forwarding();
-        }
         (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
     }
 }

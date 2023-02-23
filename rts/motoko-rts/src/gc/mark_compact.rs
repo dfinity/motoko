@@ -34,14 +34,6 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
-    #[cfg(debug_assertions)]
-    if crate::check::ARTIFICIAL_FORWARDING {
-        crate::check::check_memory(mem);
-        return;
-    }
-
-    assert!(!crate::check::ARTIFICIAL_FORWARDING);
-
     use crate::memory::ic;
 
     compacting_gc_internal(
@@ -78,11 +70,6 @@ pub unsafe fn compacting_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    #[cfg(debug_assertions)]
-    {
-        crate::types::STRICT_FORWARDING_POINTER_CHECKS = false;
-    }
-
     let old_hp = get_hp() as u32;
 
     assert_eq!(heap_base % 32, 0);
@@ -101,11 +88,6 @@ pub unsafe fn compacting_gc_internal<
 
     let live = get_hp() as u32 - heap_base;
     note_live_size(Bytes(live));
-
-    #[cfg(debug_assertions)]
-    {
-        crate::types::STRICT_FORWARDING_POINTER_CHECKS = true;
-    }
 }
 
 unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(

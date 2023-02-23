@@ -25,6 +25,8 @@ use std::fmt::Write;
 
 use fxhash::{FxHashMap, FxHashSet};
 
+use crate::gc::utils::make_pointer;
+
 pub fn test() {
     println!("Testing garbage collection ...");
 

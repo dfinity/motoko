@@ -39,9 +39,6 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     (*blob).header.forward = ptr;
     (*blob).len = size;
 
-    #[cfg(debug_assertions)]
-    crate::check::create_artificial_forward(mem, ptr);
-
     ptr
 }
 
@@ -59,9 +56,6 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     (*ptr).header.tag = TAG_ARRAY;
     (*ptr).header.forward = skewed_ptr;
     (*ptr).len = len;
-
-    #[cfg(debug_assertions)]
-    crate::check::create_artificial_forward(mem, skewed_ptr);
 
     skewed_ptr
 }
