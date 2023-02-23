@@ -454,6 +454,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             if new_pointer as usize != old_pointer as usize {
                 memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
+
+                // Update forwarding pointer
+                let new_obj = new_pointer as *mut Obj;
+                debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
+                (*new_obj).forward = Value::from_ptr(new_pointer as usize);
             }
 
             free += object_size.to_bytes().as_usize();
