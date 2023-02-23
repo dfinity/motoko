@@ -2226,7 +2226,7 @@ and check_system_fields env sort scope tfs dec_fields =
     | T.Actor, vis,
       LetD({ it = VarP id; _ },
            { it = FuncE _; _ },
-           None) ->
+           _) ->
       begin
         match List.assoc_opt id.it (system_funcs tfs) with
         | Some t ->
