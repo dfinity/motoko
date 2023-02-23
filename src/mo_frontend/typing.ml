@@ -2169,7 +2169,7 @@ and object_of_scope env sort dec_fields scope at =
   T.Obj (sort, List.sort T.compare_field tfs')
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _); _}, None) ->
+  | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _); _}, _) ->
     T.is_shared_sort shared_pat.it
   | _ -> false
 
@@ -2281,11 +2281,11 @@ and check_stab env sort scope dec_fields =
     | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
-    | T.Actor, Some {it = Stable; _}, LetD (pat, _, None) when stable_pat pat ->
+    | T.Actor, Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
       let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
-    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD (_, _, None)) -> []
+    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
     | T.Actor, Some stab, _ ->
       local_error env stab.at "M0133"
         "misplaced stability modifier: allowed on var or simple let declarations only";
