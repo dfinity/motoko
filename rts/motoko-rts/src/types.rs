@@ -285,7 +285,7 @@ impl Value {
         *(self.get_ptr() as *const Tag)
     }
 
-    /// Get the forwarding pointer. Used in incremental GC.
+    /// Get the forwarding pointer. Used by the incremental GC.
     pub unsafe fn forward(self) -> Value {
         debug_assert!(self.is_obj());
         debug_assert!(self.get_ptr() as *const Obj != null());
@@ -639,7 +639,7 @@ impl Stream {
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
-/// that is used in the incremental GC.
+/// that is used by the incremental GC.
 /// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
