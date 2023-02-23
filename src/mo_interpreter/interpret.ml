@@ -350,7 +350,7 @@ let text_chars t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
-    let s = Wasm.Utf8.decode t in
+    let s = Lib.Utf8.decode t in
     let next =
       V.local_func 0 1 (fun c v k' ->
         if !i = List.length s
@@ -363,7 +363,7 @@ let text_chars t at =
 let text_len t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (Numerics.Nat.of_int (List.length (Wasm.Utf8.decode t))))
+    k (V.Int (Numerics.Nat.of_int (List.length (Lib.Utf8.decode t))))
   )
 
 (* Expressions *)

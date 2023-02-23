@@ -818,10 +818,9 @@ let check_int64 env = check_lit_val env T.Int64 Numerics.Int_64.of_string
 let check_float env = check_lit_val env T.Float Numerics.Float.of_string
 
 let check_text env at s =
-  (try ignore (Wasm.Utf8.decode s)
-   with Wasm.Utf8.Utf8 -> local_error env at "M0049" "string literal \"%s\": is not valid utf8" (String.escaped s));
+  if not (Lib.Utf8.is_valid s) then
+    local_error env at "M0049" "string literal \"%s\": is not valid utf8" (String.escaped s);
   s
-
 
 let infer_lit env lit at : T.prim =
   match !lit with
