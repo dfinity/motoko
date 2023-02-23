@@ -19,6 +19,7 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
+#[cfg(feature = "generational")]
 use crate::gc::generational::write_barrier::write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
@@ -431,6 +432,7 @@ impl Array {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
+        #[cfg(feature = "generational")]
         write_barrier(mem, slot_addr as u32);
     }
 

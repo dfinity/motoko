@@ -1,4 +1,4 @@
-#[cfg(feature = "ic")]
+#[cfg(any(feature = "copying", feature = "compacting", feature = "incremental"))]
 pub mod ic;
 
 use crate::constants::WASM_HEAP_SIZE;
