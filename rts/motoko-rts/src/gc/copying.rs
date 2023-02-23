@@ -187,6 +187,7 @@ unsafe fn scav<M: Memory>(
         return;
     }
     let obj = block.get_ptr() as *mut Obj;
+    
     crate::visitor::visit_pointer_fields(
         mem,
         obj,

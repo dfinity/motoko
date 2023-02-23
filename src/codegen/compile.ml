@@ -559,15 +559,15 @@ module E = struct
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
 
-  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
-    Int32.add (add_static env data) ptr_unskew
-
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
     
   let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
+
+  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
+    Int32.add (add_static env data) ptr_unskew  
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -3356,7 +3356,7 @@ module Object = struct
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
     Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
     set_ri ^^
-
+    
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
@@ -3915,7 +3915,7 @@ module Arr = struct
     ) ^^
     Tagged.allocation_barrier env get_r ^^
     get_r
-    
+
   let ofBlob env =
     Func.share_code1 env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
       let (set_len, get_len) = new_local env "len" in
@@ -6549,7 +6549,7 @@ module MakeSerialization (Strm : Stream) = struct
       get_data_start ^^
       get_refs_start ^^
       serialize_go env (Type.seq ts) ^^
-      
+
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^

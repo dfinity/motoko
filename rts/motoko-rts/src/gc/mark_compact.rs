@@ -286,8 +286,8 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
         header = tmp;
     }
 
-    (*obj).tag = header;
-
     // At the end of the chain is the original header for the object
-    debug_assert!(obj.tag() >= TAG_OBJECT && obj.tag() <= TAG_NULL);
+    debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+
+    (*obj).tag = header;
 }
