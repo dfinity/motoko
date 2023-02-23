@@ -656,7 +656,7 @@ impl Stream {
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
-/// that is used in the incremental GC.
+/// that is used by the incremental GC.
 /// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
