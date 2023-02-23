@@ -992,10 +992,6 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "set_serialization_status" [I32Type] [];
-    E.add_func_import env "rts" "check_forwarding_pointer" [I32Type] [I32Type];
-    E.add_func_import env "rts" "set_artificial_forwarding" [I32Type] [];
-    E.add_func_import env "rts" "create_artificial_forward" [I32Type] [];
     E.add_func_import env "rts" "init_write_barrier" [] [];
     E.add_func_import env "rts" "write_barrier" [I32Type] [];
     ()
@@ -1572,10 +1568,7 @@ module Tagged = struct
     Heap.store_field forwarding_pointer_field
 
   let load_forwarding_pointer env =
-    (if !Flags.sanity then
-      E.call_import env "rts" "check_forwarding_pointer"
-    else
-      Heap.load_field forwarding_pointer_field)
+    Heap.load_field forwarding_pointer_field
     
   let load_tag env =
     load_forwarding_pointer env ^^
@@ -1667,13 +1660,7 @@ module Tagged = struct
       Heap.store_field (Wasm.I32.add header_size (Wasm.I32.of_int_u idx))
     in
     G.concat_mapi init_elem element_instructions ^^
-    get_heap_obj ^^
-    (if !Flags.sanity then
-      E.call_import env "rts" "create_artificial_forward" ^^
-      get_heap_obj
-    else
-      G.nop
-    )
+    get_heap_obj
 
   let new_static_obj env tag payload =
     let payload = StaticBytes.as_bytes payload in
@@ -1958,13 +1945,7 @@ module BoxedWord64 = struct
     get_i ^^ Tagged.(store_tag Bits64) ^^
     get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
-    get_i ^^
-    (if !Flags.sanity then
-      E.call_import env "rts" "create_artificial_forward" ^^
-      get_i
-    else
-      G.nop
-    )
+    get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -2084,12 +2065,7 @@ module BoxedSmallWord = struct
     get_i ^^ Tagged.(store_tag Bits32) ^^
     get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
-    get_i ^^
-    (if !Flags.sanity then
-      E.call_import env "rts" "create_artificial_forward" ^^
-      get_i
-    else 
-      G.nop)
+    get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const 30l ^^
@@ -2330,13 +2306,7 @@ module Float = struct
     get_i ^^ Tagged.(store_tag Bits64) ^^
     get_i ^^ Tagged.(store_forwarding_pointer env) ^^ (* forwarding pointer *)
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
-    get_i ^^
-    (if !Flags.sanity then
-      E.call_import env "rts" "create_artificial_forward" ^^
-      get_i
-    else 
-      G.nop
-    )
+    get_i
   )
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
@@ -3381,14 +3351,6 @@ module Object = struct
     in
     G.concat_map init_field fs ^^
 
-    (if !Flags.sanity then
-      (* Sanity check: Create artificial forwarding object *)
-      get_ri ^^
-      E.call_import env "rts" "create_artificial_forward"
-    else
-      G.nop
-    ) ^^
-    
     (* Return the pointer to the object *)
     get_ri
 
@@ -6493,9 +6455,6 @@ module MakeSerialization (Strm : Stream) = struct
       let (tydesc, _offsets, _idltyps) = type_desc env ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
-      compile_unboxed_const 1l ^^
-      E.call_import env "rts" "set_serialization_status" ^^
-
       (* Get object sizes *)
       get_x ^^
       buffer_size env (Type.seq ts) ^^
@@ -6533,10 +6492,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.else_trap_with env "cannot send references on IC System API" ^^
 
       (* Extract the payload if possible *)
-      Strm.terminate env get_data_start get_data_size tydesc_len ^^
-
-      compile_unboxed_const 0l ^^
-      E.call_import env "rts" "set_serialization_status"
+      Strm.terminate env get_data_start get_data_size tydesc_len
     )
 
 
@@ -7767,14 +7723,7 @@ module FuncDec = struct
       then
         SR.Vanilla,
         code ^^
-        get_clos ^^
-        (if !Flags.sanity then
-          (* Sanity check: create artificial forwarding proxy *)
-          get_clos ^^
-          E.call_import env "rts" "create_artificial_forward"
-        else 
-          G.nop
-        )
+        get_clos
       else assert false (* no first class shared functions *)
 
   let lit env ae name sort control free_vars args mk_body ret_tys at =
