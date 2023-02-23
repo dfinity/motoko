@@ -71,7 +71,7 @@ pub struct Partition {
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
 
-/// Optimization: Saving an `Option` or `LazyCell`.
+/// Optimization: Avoiding `Option` or `Lazy`.
 const UNINITIALIZED_PARTITION: Partition = Partition {
     index: usize::MAX,
     free: false,
@@ -323,7 +323,7 @@ pub struct PartitionedHeap {
     gc_running: bool,      // Create bitmaps for partitions whn allocated during active GC.
 }
 
-/// Optimization: Saving an `Option` or `LazyCell`.
+/// Optimization: Avoiding `Option` or `LazyCell`.
 pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
     partitions: [UNINITIALIZED_PARTITION; MAX_PARTITIONS],
     heap_base: 0,

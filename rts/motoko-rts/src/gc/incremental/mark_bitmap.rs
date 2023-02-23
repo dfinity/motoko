@@ -1,21 +1,21 @@
 //! Mark bitmap in the incremental GC.
 //!
-//! A separate mark bitmap is associated for each non-free parition that does not host large objects.
-//! The bitmaps are allocated in one or multiple separate bitmap partitions, that are freed on completion
+//! A separate mark bitmap memory is associated for each non-free partition that does not host large objects.
+//! The bitmap memory is allocated in one or multiple separate bitmap partitions, that are freed on completion
 //! of a GC run.
 //!
-//! A bitmap is raw memory (no object header, no blob) of the fixed size `PARTITION_SIZE / WORD_SIZE / u8::bits`,
-//! which is `PARTITION_SIZE /32` bytes. For simplicity, the bitmaps is not shortened for partitions that
-//! also accomodate static space besides dynamic space.
+//! A bitmap is represented in raw memory (no object header, no blob) of the fixed size
+//! `PARTITION_SIZE / WORD_SIZE / u8::bits`, which is `PARTITION_SIZE /32` bytes. For simplicity, the bitmaps
+//! is not shortened for partitions that also accommodate static space besides dynamic space.
 //!
-//! The access a mark bit of an object, the corresponding bitmap and address offset inside the object's partition
+//! To access a mark bit of an object, the corresponding bitmap and address offset inside the object's partition
 //! needs to be first determined. The corresponding bit is then accessed at the byte with index
 //! `offset / WORD_SIZE / u8::BITS` and at the bit index `offset % u8::BITS`.
 //!
 //! If an object is marked, the corresponding bit is set to `1`. Otherwise, if the object is not marked or
 //! the bit does not denote the start of an object, it is `0`.
 //!
-//! The mark bitmap must be entirely cleared on allocation at the beginning of each mark phase.
+//! The mark bitmap memory must be entirely cleared (zeroed) when assigned at the beginning of each mark phase.
 //!
 //! The mark bitmap serves for fast traversal of marked objects in a partition with few marked objects
 //! (and many garbage objects).
