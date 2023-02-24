@@ -1,5 +1,6 @@
 # Motoko compiler changelog
 
+## 0.8.3 (2023-02-24)
 
 * motoko (`moc`)
 
@@ -18,6 +19,8 @@
     Because of the bounds on recursion depth imposed by fixed-size stack, the
     advice remains the same: avoid deeply nested recursive data structures.
     Think "shallow trees good, very long lists bad".
+
+  * bugfix: stack overflow in UTF-8 encode/decode for `moc.js` (#3825).
 
 * motoko-base
 
