@@ -244,7 +244,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
     (path : string) (decls : ide_decl list) : ide_decl list =
   let is_let_bound dec_field =
     match dec_field.it.Syntax.dec.it with
-    | Syntax.LetD (pat, _) -> Some pat
+    | Syntax.LetD (pat, _, _) -> Some pat
     | _ -> None
   in
   let is_type_def dec_field =
