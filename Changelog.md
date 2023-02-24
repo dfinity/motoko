@@ -9,7 +9,7 @@
     of programs when pattern-match failure occurs, thus providing a means against
     the famous "pyramid of doom" issue. A common example is look-ups:
     ``` Motoko
-    shared func getUser(user : Text) : Id {
+    shared func getUser(user : Text) : async Id {
       let ?id = Map.get(users, user) else { throw Error.reject("no such user") };
       id
     }
