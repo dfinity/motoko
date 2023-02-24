@@ -425,7 +425,7 @@ module E = struct
 
   let export_global env name =
     add_export env (nr {
-      name = Wasm.Utf8.decode name;
+      name = Lib.Utf8.decode name;
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
@@ -482,8 +482,8 @@ module E = struct
       raise (CodegenError "Add all imports before all functions!");
 
     let i = {
-      module_name = Wasm.Utf8.decode modname;
-      item_name = Wasm.Utf8.decode funcname;
+      module_name = Lib.Utf8.decode modname;
+      item_name = Lib.Utf8.decode funcname;
       idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
     } in
     let fi = reg env.func_imports (nr i) in
@@ -1140,7 +1140,7 @@ module Heap = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_heap_base";
+      name = Lib.Utf8.decode "get_heap_base";
       edesc = nr (FuncExport (nr get_heap_base_fn))
     })
 
@@ -4233,7 +4233,7 @@ module IC = struct
           end);
 
       E.add_export env (nr {
-        name = Wasm.Utf8.decode "print_ptr";
+        name = Lib.Utf8.decode "print_ptr";
         edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
       })
 
@@ -4277,7 +4277,7 @@ module IC = struct
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
-      name = Wasm.Utf8.decode (
+      name = Lib.Utf8.decode (
         match E.mode env with
         | Flags.WASIMode -> "memory"
         | _  -> "mem"
@@ -4285,7 +4285,7 @@ module IC = struct
       edesc = nr (MemoryExport (nr 0l))
     });
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "table";
+      name = Lib.Utf8.decode "table";
       edesc = nr (TableExport (nr 0l))
     })
 
@@ -4301,7 +4301,7 @@ module IC = struct
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_init";
+      name = Lib.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
       })
 
@@ -4317,7 +4317,7 @@ module IC = struct
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_heartbeat";
+      name = Lib.Utf8.decode "canister_heartbeat";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4334,7 +4334,7 @@ module IC = struct
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_global_timer";
+      name = Lib.Utf8.decode "canister_global_timer";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4347,7 +4347,7 @@ module IC = struct
         (* no need to GC !*)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_inspect_message";
+      name = Lib.Utf8.decode "canister_inspect_message";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4359,7 +4359,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.Idle
     )) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "_start";
+      name = Lib.Utf8.decode "_start";
       edesc = nr (FuncExport (nr fi))
       })
 
@@ -4389,12 +4389,12 @@ module IC = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_pre_upgrade";
+      name = Lib.Utf8.decode "canister_pre_upgrade";
       edesc = nr (FuncExport (nr pre_upgrade_fi))
     });
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_post_upgrade";
+      name = Lib.Utf8.decode "canister_post_upgrade";
       edesc = nr (FuncExport (nr post_upgrade_fi))
     })
 
@@ -5009,7 +5009,7 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "bigint_trap";
+      name = Lib.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
 
@@ -5021,7 +5021,7 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "rts_trap";
+      name = Lib.Utf8.decode "rts_trap";
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
@@ -5035,7 +5035,7 @@ module RTS_Exports = struct
           )
       else E.reuse_import env "ic0" "stable64_write" in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "stable64_write_moc";
+      name = Lib.Utf8.decode "stable64_write_moc";
       edesc = nr (FuncExport (nr stable64_write_moc_fi))
     })
 
@@ -7227,7 +7227,7 @@ module GCRoots = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_static_roots";
+      name = Lib.Utf8.decode "get_static_roots";
       edesc = nr (FuncExport (nr get_static_roots))
     })
 
@@ -8103,7 +8103,7 @@ module FuncDec = struct
 
       let fi = E.built_in env name in
       E.add_export env (nr {
-        name = Wasm.Utf8.decode ("canister_update " ^ name);
+        name = Lib.Utf8.decode ("canister_update " ^ name);
         edesc = nr (FuncExport (nr fi))
       })
     | _ -> ()
@@ -10630,7 +10630,7 @@ and export_actor_field env  ae (f : Ir.field) =
     | _ -> assert false in
 
   E.add_export env (nr {
-    name = Wasm.Utf8.decode (match E.mode env with
+    name = Lib.Utf8.decode (match E.mode env with
       | Flags.ICMode | Flags.RefMode ->
         Mo_types.Type.(
         match normalize f.note with

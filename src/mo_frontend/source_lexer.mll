@@ -2,7 +2,7 @@
 open Mo_def.Trivia
 open Source_token
 open Lexer_lib
-module Utf8 = Wasm.Utf8
+module Utf8 = Lib.Utf8
 
 let region lexbuf =
   let left = convert_pos (Lexing.lexeme_start_p lexbuf) in
@@ -61,7 +61,7 @@ let char lexbuf s =
     | [n] -> n
     | [] -> error lexbuf "empty character literal"
     | _ -> error lexbuf "overlong character literal"
-  with Wasm.Utf8.Utf8 ->
+  with Lib.Utf8.Utf8 ->
     error lexbuf "invalid utf8 in character literal"
 }
 

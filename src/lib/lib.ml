@@ -225,6 +225,60 @@ struct
     Buffer.contents buf
 end
 
+module Utf8 =
+struct
+  type t = int list
+  exception Utf8 = Wasm.Utf8.Utf8
+
+  let rec is_valid s = is_valid' (List.map Char.code (String.explode s))
+  and is_valid' = function
+    | [] -> true
+    | b1::bs when b1 < 0x80 ->
+      is_valid' bs
+    | b1::bs when b1 < 0xc0 -> false
+    | b1::b2::bs when b1 < 0xe0 ->
+      (b2 land 0xc0 = 0x80) && is_valid' bs
+    | b1::b2::b3::bs when b1 < 0xf0 ->
+      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && is_valid' bs
+    | b1::b2::b3::b4::bs when b1 < 0xf8 ->
+      (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && (b4 land 0xc0 = 0x80) && is_valid' bs
+    | _ -> false
+  
+  let con b = if b land 0xc0 = 0x80 then b land 0x3f else raise Utf8
+  let code min n =
+    if n < min || (0xd800 <= n && n < 0xe000) || n >= 0x110000 then raise Utf8
+    else n
+
+  let rec decode s = decode' [] (List.map Char.code (String.explode s))
+  and decode' acc = function
+    | [] -> List.rev acc
+    | b1::bs when b1 < 0x80 ->
+      decode' (code 0x0 b1 :: acc) bs
+    | b1::bs when b1 < 0xc0 -> raise Utf8
+    | b1::b2::bs when b1 < 0xe0 ->
+      decode' (code 0x80 ((b1 land 0x1f) lsl 6 + con b2) :: acc) bs
+    | b1::b2::b3::bs when b1 < 0xf0 ->
+      decode' (code 0x800 ((b1 land 0x0f) lsl 12 + con b2 lsl 6 + con b3) :: acc) bs
+    | b1::b2::b3::b4::bs when b1 < 0xf8 ->
+      decode' (code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) :: acc) bs
+    | _ -> raise Utf8
+  
+  let con n = 0x80 lor (n land 0x3f)
+  let rec encode ns = String.implode (List.map Char.chr (encode' [] ns))
+  and encode' acc = function
+    | [] -> List.rev acc
+    | n::ns when n < 0 -> raise Utf8
+    | n::ns when n < 0x80 ->
+      encode' (n :: acc) ns
+    | n::ns when n < 0x800 ->
+      encode' (con n :: 0xc0 lor (n lsr 6) :: acc) ns
+    | n::ns when n < 0x10000 ->
+      encode' (con n :: con (n lsr 6) :: 0xe0 lor (n lsr 12) :: acc) ns
+    | n::ns when n < 0x110000 ->
+      encode' (con n :: con (n lsr 6) :: con (n lsr 12) :: 0xf0 lor (n lsr 18) :: acc) ns
+    | _ -> raise Utf8
+end
+
 module List =
 struct
   let equal p xs ys =
@@ -627,6 +681,19 @@ struct
   let%test "Base32.decode 000000000000" = Base32.decode "AAAAAAAA" = Ok "\x00\x00\x00\x00\x00"
   let%test "Base32.decode DEADBEEF" = Base32.decode "32W353Y" = Ok "\xDE\xAD\xBE\xEF"
 
+  let%test "Utf8.decode prim emoji" = Wasm.Utf8.encode (Utf8.decode "mo:⛔") = "mo:⛔"
+  let%test "Utf8.encode prim emoji" = Utf8.encode (Wasm.Utf8.decode "mo:⛔") = "mo:⛔"
+
+  let%test "Utf8.is_valid agrees with Utf8.decode for single-byte strings" =
+    let rec loop f i =
+      if i > 0xFF then true
+      else if not (f i) then false
+      else loop f (i + 1)
+    in loop (fun i ->
+      let s = Utf8.encode [i] in
+      Utf8.is_valid s = (try (ignore (Utf8.decode s); true) with Utf8.Utf8 -> false)
+    ) 0
+  
   let%test "String.split \"\"" = String.split "" '/' = [""]
   let%test "String.split \"/\"" = String.split "/" '/' = ["";""]
   let%test "String.split \"//\"" = String.split "//" '/' = ["";"";""]
