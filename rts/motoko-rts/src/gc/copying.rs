@@ -21,6 +21,8 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
+    slow_down();
+
     copying_gc_internal(
         mem,
         ic::get_heap_base(),
@@ -37,6 +39,15 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     );
 
     ic::LAST_HP = ic::HP;
+}
+
+#[cfg(feature = "ic")]
+fn slow_down() {
+    let mut value = f64::MAX;
+    for _ in 0..5_000_000 {
+        value /= 2.0;
+    }
+    assert!(!value.is_nan());
 }
 
 pub unsafe fn copying_gc_internal<
