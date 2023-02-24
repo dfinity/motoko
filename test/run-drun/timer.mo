@@ -9,7 +9,7 @@ actor {
   };
 
   var count = 0;
-  var max = 10;
+  var max = 5;
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
   let second : Nat64 = 1_000_000_000;
 
@@ -22,7 +22,7 @@ actor {
      let id3 = setTimer(3 * second, false, func () : async () {
          count += 1;
          debugPrint "ROOK!";
-         last := setTimer(1 * second, true, func () : async () { 
+         last := setTimer(2 * second, true, func () : async () { 
            count += 1; debugPrint "BATT!"; 
            if (count == max) { cancelTimer last; } 
          });
@@ -31,7 +31,6 @@ actor {
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
        attempts += 1;
-       if (count > 5) { cancelTimer id2 };
        if (attempts >= 200 and count == 0)
          throw error("he's dead Jim");
      };

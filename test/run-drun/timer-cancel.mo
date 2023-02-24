@@ -18,16 +18,16 @@ actor {
 
   let second : Nat64 = 1_000_000_000;
 
-  ignore setTimer(3 * second, false,
-    func () : async () {
-      t := setTimer(2 * second, true, remind);
-      await remind();
-  });
-
   var max = 4;
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   public shared func go() : async () {
+     ignore setTimer(2 * second, false,
+        func () : async () {
+           t := setTimer(1 * second, true, remind);
+           await remind();
+        });
+
      var attempts = 0;
 
      while (counter < max) {

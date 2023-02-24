@@ -8,10 +8,5 @@ debug.print: DIM!
 debug.print: ROOK!
 debug.print: BATT!
 debug.print: BATT!
-debug.print: BATT!
-debug.print: BATT!
-debug.print: BATT!
-debug.print: BATT!
-debug.print: BATT!
-debug.print: {count = 10}
+debug.print: {count = 5}
 <= replied: ()
