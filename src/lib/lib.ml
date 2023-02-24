@@ -153,14 +153,25 @@ end
 
 module String =
 struct
+
   let implode cs =
     let buf = Buffer.create 80 in
     List.iter (Buffer.add_char buf) cs;
     Buffer.contents buf
 
+  let implode_map f cs =
+    let buf = Buffer.create 80 in
+    List.iter (fun c -> Buffer.add_char buf (f c)) cs;
+    Buffer.contents buf
+
   let explode s =
     let cs = ref [] in
     for i = String.length s - 1 downto 0 do cs := s.[i] :: !cs done;
+    !cs
+
+  let explode_map f s =
+    let cs = ref [] in
+    for i = String.length s - 1 downto 0 do cs := f s.[i] :: !cs done;
     !cs
 
   (** Stack.fold (fun x y -> y ^ c ^ x) "" (String.split s c) == s *)
@@ -230,7 +241,7 @@ struct
   type t = int list
   exception Utf8 = Wasm.Utf8.Utf8
 
-  let rec is_valid s = is_valid' (List.map Char.code (String.explode s))
+  let rec is_valid s = is_valid' (String.explode_map Char.code s)
   and is_valid' = function
     | [] -> true
     | b1::bs when b1 < 0x80 ->
@@ -243,13 +254,16 @@ struct
     | b1::b2::b3::b4::bs when b1 < 0xf8 ->
       (b2 land 0xc0 = 0x80) && (b3 land 0xc0 = 0x80) && (b4 land 0xc0 = 0x80) && is_valid' bs
     | _ -> false
-  
+
   let con b = if b land 0xc0 = 0x80 then b land 0x3f else raise Utf8
   let code min n =
     if n < min || (0xd800 <= n && n < 0xe000) || n >= 0x110000 then raise Utf8
     else n
 
-  let rec decode s = decode' [] (List.map Char.code (String.explode s))
+  let rec decode s = decode' [] (String.explode_map Char.code s)
+
+  (*  let rec decode s = decode' [] (String.explode_map Char.code s) *)
+
   and decode' acc = function
     | [] -> List.rev acc
     | b1::bs when b1 < 0x80 ->
@@ -262,9 +276,11 @@ struct
     | b1::b2::b3::b4::bs when b1 < 0xf8 ->
       decode' (code 0x10000 ((b1 land 0x07) lsl 18 + con b2 lsl 12 + con b3 lsl 6 + con b4) :: acc) bs
     | _ -> raise Utf8
-  
+
   let con n = 0x80 lor (n land 0x3f)
-  let rec encode ns = String.implode (List.map Char.chr (encode' [] ns))
+
+  let rec encode ns = String.implode_map Char.chr (encode' [] ns)
+  (*  let rec encode ns = String.implode_map Char.chr (encode' [] ns) *)
   and encode' acc = function
     | [] -> List.rev acc
     | n::ns when n < 0 -> raise Utf8
@@ -684,6 +700,15 @@ struct
   let%test "Utf8.decode prim emoji" = Wasm.Utf8.encode (Utf8.decode "mo:⛔") = "mo:⛔"
   let%test "Utf8.encode prim emoji" = Utf8.encode (Wasm.Utf8.decode "mo:⛔") = "mo:⛔"
 
+  let%test "Utf8.encode decode large" =
+    (* this test overflows if we use Wasm.Utf8 functions instead *)
+    let b = Buffer.create 16 in
+    for i = 0 to 65535*16 do
+      Buffer.add_char b (Char.chr (i land 0x7F))
+    done;
+    let s = Buffer.contents b in
+    Utf8.encode (Utf8.decode s) = s
+
   let%test "Utf8.is_valid agrees with Utf8.decode for single-byte strings" =
     let rec loop f i =
       if i > 0xFF then true
@@ -693,7 +718,7 @@ struct
       let s = Utf8.encode [i] in
       Utf8.is_valid s = (try (ignore (Utf8.decode s); true) with Utf8.Utf8 -> false)
     ) 0
-  
+
   let%test "String.split \"\"" = String.split "" '/' = [""]
   let%test "String.split \"/\"" = String.split "/" '/' = ["";""]
   let%test "String.split \"//\"" = String.split "//" '/' = ["";"";""]
