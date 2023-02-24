@@ -3,22 +3,10 @@
 
 * motoko (`moc`)
 
-  * new 'let-else' construct for handling pattern-match failure.
-
-    The let declaration `let <pat> = <exp> else <block-or-exp>` has type `T` and declares the bindings in `<pat>` provided:
-    -   `<exp>` has type `T`,
-    -   `<pat>` has type `T`, and
-    -   `<block-or-exp>` has type `None`.
-
-    The declaration `let <pat> = <exp> else <block-or-exp>` evaluates `<exp>` to a result `r`.
-    If `r` is `trap`, the declaration evaluates to `trap`.
-    If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`.
-    If matching succeeds, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
-    If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`,
-    cannot proceed to the end of the declaration but may still alter control-flow to, for example, `return` or `throw`
-    to exit an enclosing function, `break` from an enclosing expression or simply diverge.
-
-    All bindings declared by a `let-else` (if any) are *immutable*.
+  * new 'let-else' construct for handling pattern-match failure (#3836).
+    This is a frequently asked-for feature that allows to change the control-flow
+    of programs when pattern-match failure occurs, thus providing a means against
+    the famous "pyramid of doom" issue.
 
   * Improve recursive deserialization capacity to match recursive serialization capacity by reducing
     Wasm stack consumption (#3809).
