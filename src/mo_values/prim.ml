@@ -200,7 +200,7 @@ let prim trap =
 
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
-                                          | code -> Wasm.Utf8.encode [code]
+                                          | code -> Lib.Utf8.encode [code]
                                in k (Text str)
   | "print" -> fun _ v k -> Printf.printf "%s\n%!" (as_text v); k unit
   | "trap" -> fun _ v k -> trap.trap ("explicit trap: " ^ (as_text v))
@@ -240,7 +240,7 @@ let prim trap =
     | Seq.Cons (v, vs) -> i := vs; k v
     end
   | "text_len" -> fun _ v k ->
-    k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
+    k (Int (Nat.of_int (List.length (Lib.Utf8.decode (Value.as_text v)))))
   | "text_compare" -> fun _ v k ->
     (match Value.as_tup v with
      | [a; b] -> k (Int8 (Int_8.of_int
@@ -248,7 +248,7 @@ let prim trap =
                              if a = b then 0 else if a < b then -1 else 1)))
      | _ -> assert false)
   | "text_iter" -> fun _ v k ->
-    let s = Wasm.Utf8.decode (Value.as_text v) in
+    let s = Lib.Utf8.decode (Value.as_text v) in
     let i = Seq.map (fun c -> Char c) (List.to_seq s) in
     k (Iter (ref i))
   | "Array.init" -> fun _ v k ->
@@ -345,9 +345,9 @@ let prim trap =
   | "decodeUtf8" ->
       fun _ v k ->
         let s = as_blob v in
-        begin match Wasm.Utf8.decode s with
+        begin match Lib.Utf8.decode s with
           | _ -> k (Opt (Text s))
-          | exception Wasm.Utf8.Utf8 -> k Null
+          | exception Lib.Utf8.Utf8 -> k Null
         end
 
   | "encodeUtf8" ->
