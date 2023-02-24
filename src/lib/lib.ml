@@ -261,9 +261,6 @@ struct
     else n
 
   let rec decode s = decode' [] (String.explode_map Char.code s)
-
-  (*  let rec decode s = decode' [] (String.explode_map Char.code s) *)
-
   and decode' acc = function
     | [] -> List.rev acc
     | b1::bs when b1 < 0x80 ->
@@ -280,7 +277,6 @@ struct
   let con n = 0x80 lor (n land 0x3f)
 
   let rec encode ns = String.implode_map Char.chr (encode' [] ns)
-  (*  let rec encode ns = String.implode_map Char.chr (encode' [] ns) *)
   and encode' acc = function
     | [] -> List.rev acc
     | n::ns when n < 0 -> raise Utf8
@@ -707,6 +703,7 @@ struct
       Buffer.add_char b (Char.chr (i land 0x7F))
     done;
     let s = Buffer.contents b in
+    Utf8.is_valid s &&
     Utf8.encode (Utf8.decode s) = s
 
   let%test "Utf8.is_valid agrees with Utf8.decode for single-byte strings" =
