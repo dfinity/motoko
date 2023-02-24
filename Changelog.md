@@ -1,10 +1,35 @@
 # Motoko compiler changelog
 
-* Improve recursive deserialization capacity to match recursive serialization capacity by reducing
-  Wasm stack consumption (#3809).
-  Because of the bounds on recursion depth imposed by fixed-size stack, the
-  advice remains the same: avoid deeply nested recursive data structures.
-  Think "shallow trees good, very long lists bad".
+
+* motoko (`moc`)
+
+  * new 'let-else' construct for handling pattern-match failure.
+
+    The let declaration `let <pat> = <exp> else <block-or-exp>` has type `T` and declares the bindings in `<pat>` provided:
+    -   `<exp>` has type `T`,
+    -   `<pat>` has type `T`, and
+    -   `<block-or-exp>` has type `None`.
+
+    The declaration `let <pat> = <exp> else <block-or-exp>` evaluates `<exp>` to a result `r`.
+    If `r` is `trap`, the declaration evaluates to `trap`.
+    If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`.
+    If matching succeeds, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
+    If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`,
+    cannot proceed to the end of the declaration but may still alter control-flow to, for example, `return` or `throw`
+    to exit an enclosing function, `break` from an enclosing expression or simply diverge.
+
+    All bindings declared by a `let-else` (if any) are *immutable*.
+
+  * Improve recursive deserialization capacity to match recursive serialization capacity by reducing
+    Wasm stack consumption (#3809).
+    Because of the bounds on recursion depth imposed by fixed-size stack, the
+    advice remains the same: avoid deeply nested recursive data structures.
+    Think "shallow trees good, very long lists bad".
+
+* motoko-base
+
+  * add missing `unshare : Tree<K, V> -> ()` method to class `RBTree<K, V>`
+    to restore objects from saved state (dfinity/motoko-base#532).
 
 ## 0.8.2 (2023-02-17)
 
