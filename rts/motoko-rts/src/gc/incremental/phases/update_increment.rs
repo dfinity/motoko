@@ -1,54 +1,49 @@
 use crate::{
     gc::incremental::{
         array_slicing::slice_array,
-        partitioned_heap::{
-            HeapIteratorState, Partition, PartitionIterator, PartitionedHeap,
-            PartitionedHeapIterator,
-        },
+        partitioned_heap::{Partition, PartitionedHeap, PartitionedHeapIterator},
         roots::visit_roots,
         time::BoundedTime,
-        Roots, PARTITIONED_HEAP,
+        Roots, State,
     },
     types::*,
     visitor::visit_pointer_fields,
 };
 
-static mut UPDATE_STATE: Option<HeapIteratorState> = None;
-
 pub struct UpdateIncrement<'a> {
     time: &'a mut BoundedTime,
     heap: &'a PartitionedHeap,
-    state: &'a mut HeapIteratorState,
+    iterator: &'a mut PartitionedHeapIterator,
     updates_needed: bool,
 }
 
 impl<'a> UpdateIncrement<'a> {
-    pub unsafe fn start_phase() {
-        debug_assert!(UPDATE_STATE.is_none());
-        UPDATE_STATE = Some(HeapIteratorState::new());
-        let heap = PARTITIONED_HEAP.as_mut().unwrap();
+    pub unsafe fn start_phase(state: &mut State) {
+        debug_assert!(state.iterator_state.is_none());
+        let heap = &mut state.partitioned_heap;
+        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
         heap.collect_large_objects();
         heap.plan_updates();
     }
 
-    pub unsafe fn complete_phase() {
-        debug_assert!(Self::update_completed());
-        UPDATE_STATE = None;
-        PARTITIONED_HEAP.as_mut().unwrap().complete_collection();
+    pub unsafe fn complete_phase(state: &mut State) {
+        debug_assert!(Self::update_completed(state));
+        state.iterator_state = None;
+        state.partitioned_heap.complete_collection();
     }
 
-    pub unsafe fn update_completed() -> bool {
-        UPDATE_STATE.as_ref().unwrap().completed()
+    pub unsafe fn update_completed(state: &State) -> bool {
+        !state.iterator_state.as_ref().unwrap().has_partition()
     }
 
-    pub unsafe fn instance(time: &'a mut BoundedTime) -> UpdateIncrement<'a> {
-        let heap = PARTITIONED_HEAP.as_ref().unwrap();
-        let state = UPDATE_STATE.as_mut().unwrap();
+    pub unsafe fn instance(state: &'a mut State, time: &'a mut BoundedTime) -> UpdateIncrement<'a> {
+        let heap = &state.partitioned_heap;
+        let state = state.iterator_state.as_mut().unwrap();
         let updates_needed = heap.updates_needed();
         UpdateIncrement {
             time,
             heap,
-            state,
+            iterator: state,
             updates_needed,
         }
     }
@@ -64,9 +59,8 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn run(&mut self) {
-        let mut iterator = PartitionedHeapIterator::load_from(self.heap, &self.state);
-        while iterator.current_partition().is_some() {
-            let partition = iterator.current_partition().unwrap();
+        while self.iterator.has_partition() {
+            let partition = self.iterator.current_partition(&self.heap);
             if partition.to_be_updated() {
                 self.update_partition(partition);
                 if self.time.is_over() {
@@ -74,29 +68,25 @@ impl<'a> UpdateIncrement<'a> {
                     break;
                 }
             }
-            iterator.next_partition();
+            self.iterator.next_partition(&self.heap);
         }
-        iterator.save_to(&mut self.state);
     }
 
     pub unsafe fn update_partition(&mut self, partition: &Partition) {
         debug_assert!(!partition.is_free());
         debug_assert!(!partition.to_be_evacuated());
-        let mut iterator = PartitionIterator::load_from(partition, &self.state, &mut self.time);
-        while iterator.current_object().is_some() {
-            let object = iterator.current_object().unwrap();
+        while self.iterator.has_object() {
+            let object = self.iterator.current_object();
             self.update_object(object);
             if self.time.is_over() {
                 // Resume updating the same object later.
                 break;
             }
-            iterator.next_object(&mut self.time);
+            self.iterator.next_object();
         }
-        iterator.save_to(&mut self.state);
     }
 
     unsafe fn update_object(&mut self, object: *mut Obj) {
-        debug_assert!(object.is_marked());
         debug_assert!(!object.is_forwarded());
         if self.updates_needed {
             self.update_fields(object);
@@ -105,7 +95,6 @@ impl<'a> UpdateIncrement<'a> {
             // Keep mark bit and later resume updating more slices of this array.
             return;
         }
-        object.unmark();
         debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
         self.time.tick();
     }
@@ -123,7 +112,6 @@ impl<'a> UpdateIncrement<'a> {
                     gc.time.tick();
                 },
                 |gc, slice_start, array| {
-                    debug_assert!(array.is_marked());
                     let length = slice_array(array);
                     gc.time.advance((length - slice_start) as usize);
                     length

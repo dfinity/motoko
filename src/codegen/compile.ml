@@ -425,7 +425,7 @@ module E = struct
 
   let export_global env name =
     add_export env (nr {
-      name = Wasm.Utf8.decode name;
+      name = Lib.Utf8.decode name;
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
@@ -482,8 +482,8 @@ module E = struct
       raise (CodegenError "Add all imports before all functions!");
 
     let i = {
-      module_name = Wasm.Utf8.decode modname;
-      item_name = Wasm.Utf8.decode funcname;
+      module_name = Lib.Utf8.decode modname;
+      item_name = Lib.Utf8.decode funcname;
       idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
     } in
     let fi = reg env.func_imports (nr i) in
@@ -559,15 +559,15 @@ module E = struct
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
 
-  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
-    Int32.add (add_static env data) ptr_unskew
-
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
     
   let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
+    
+  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
+    Int32.add (add_static env data) ptr_unskew
 
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
@@ -861,7 +861,7 @@ module Func = struct
         (G.i (LocalGet (nr 5l)))
         (G.i (LocalGet (nr 6l)))
     )
-  let share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
+  let _share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
     share_code env name [p1; p2; p3; p4; p5; p6; p7; p8; p9] retty (fun env -> mk_body env
         (G.i (LocalGet (nr 0l)))
         (G.i (LocalGet (nr 1l)))
@@ -1008,6 +1008,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
+    E.add_func_import env "rts" "running_gc" [] [I32Type];
     ()
 
 end (* RTS *)
@@ -1143,7 +1144,7 @@ module Heap = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_heap_base";
+      name = Lib.Utf8.decode "get_heap_base";
       edesc = nr (FuncExport (nr get_heap_base_fn))
     })
 
@@ -1161,13 +1162,21 @@ module Stack = struct
      We sometimes use the stack space if we need small amounts of scratch space.
 
      All pointers here are unskewed.
+
+     (We report logical stack overflow as "RTS Stack underflow" as the stack
+     grows downwards.)
   *)
 
-  let end_ = Int32.mul 2l page_size (* 128k of stack *)
+  let end_ () = Int32.mul (Int32.of_int (!Flags.rts_stack_pages)) page_size
 
   let register_globals env =
     (* stack pointer *)
-    E.add_global32 env "__stack_pointer" Mutable end_;
+    E.add_global32 env "__stack_pointer" Mutable (end_());
+    (* frame pointer *)
+    E.add_global32 env "__frame_pointer" Mutable (end_());
+    (* low watermark *)
+    if !Flags.measure_rts_stack then
+      E.add_global32 env "__stack_min" Mutable (end_());
     E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
@@ -1175,13 +1184,58 @@ module Stack = struct
   let set_stack_ptr env =
     G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
-  (* TODO: check for overflow *)
-  let alloc_words env n =
+  let get_min env =
+    G.i (GlobalGet (nr (E.get_global env "__stack_min")))
+  let set_min env =
+    G.i (GlobalSet (nr (E.get_global env "__stack_min")))
+
+  let get_max_stack_size env =
+    if !Flags.measure_rts_stack then
+      compile_unboxed_const (end_()) ^^
+      get_min env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    else (* report max available *)
+      compile_unboxed_const (end_())
+
+  let update_stack_min env =
+    if !Flags.measure_rts_stack then
     get_stack_ptr env ^^
-    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    get_min env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    (G.if0
+       (get_stack_ptr env ^^
+        set_min env)
+      G.nop)
+    else G.nop
+
+  let stack_overflow env =
+    Func.share_code0 env "stack_overflow" [] (fun env ->
+      (* read last word of reserved page to force trap *)
+      compile_unboxed_const 0xFFFF_FFFCl ^^
+      G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+      G.i Unreachable
+    )
+
+  let alloc_words env n =
+    let n_bytes = Int32.mul n Heap.word_size in
+    (* avoid absurd allocations *)
+    assert Int32.(to_int n_bytes < !Flags.rts_stack_pages * to_int page_size);
+    (* alloc words *)
+    get_stack_ptr env ^^
+    compile_unboxed_const n_bytes ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
-    get_stack_ptr env
+    update_stack_min env ^^
+    get_stack_ptr env ^^
+    (* check for stack overflow, if necessary *)
+    if n_bytes >= page_size then
+      get_stack_ptr env ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+      G.if0
+        G.nop (* we found leading zeros, i.e. no wraparound *)
+        (stack_overflow env)
+    else
+      G.nop
 
   let free_words env n =
     get_stack_ptr env ^^
@@ -1196,17 +1250,21 @@ module Stack = struct
     f get_x ^^
     free_words env n
 
+
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
     compile_divU_const Heap.word_size ^^
     get_n ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    E.then_trap_with env "RTS Stack underflow" ^^
+    (G.if0
+      (stack_overflow env)
+      G.nop) ^^
     get_stack_ptr env ^^
     get_n ^^
     compile_mul_const Heap.word_size ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     set_stack_ptr env ^^
+    update_stack_min env ^^
     get_stack_ptr env
 
   let dynamic_free_words env get_n =
@@ -1224,6 +1282,65 @@ module Stack = struct
     dynamic_alloc_words env get_n ^^ set_x ^^
     f get_x ^^
     dynamic_free_words env get_n
+
+  (* Stack Frames *)
+
+  (* Traditional frame pointer for accessing statically allocated locals/args (all words)
+     Used (sofar) only in serialization to compress Wasm stack
+     at cost of expanding Rust/C Stack (whose size we control)*)
+  let get_frame_ptr env =
+    G.i (GlobalGet (nr (E.get_global env "__frame_pointer")))
+  let set_frame_ptr env =
+    G.i (GlobalSet (nr (E.get_global env "__frame_pointer")))
+
+  (* Frame pointer operations *)
+
+  (* Enter/exit a new frame of `n` words, saving and restoring prev frame pointer *)
+  let with_frame env name n f =
+    (* reserve space for n words + saved frame_ptr *)
+    alloc_words env (Int32.add n 1l) ^^
+    (* store the current frame_ptr at offset 0*)
+    get_frame_ptr env ^^
+    G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    get_stack_ptr env ^^
+    (* set_frame_ptr to stack_ptr *)
+    set_frame_ptr env ^^
+    (* do as f *)
+    f () ^^
+    (* assert frame_ptr == stack_ptr *)
+    get_frame_ptr env ^^
+    get_stack_ptr env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "frame_ptr <> stack_ptr" ^^
+    (* restore the saved frame_ptr *)
+    get_frame_ptr env ^^
+    G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    set_frame_ptr env ^^
+    (* free the frame *)
+    free_words env (Int32.add n 1l)
+
+  (* read local n of current frame *)
+  let get_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    get_frame_ptr env ^^
+      G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  (* read local n of previous frame *)
+  let get_prev_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    (* indirect through save frame_ptr at offset 0 *)
+    get_frame_ptr env ^^
+    G.i (Load { ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+    G.i (Load { ty = I32Type; align = 2; offset; sz = None})
+
+  (* set local n of current frame *)
+  let set_local env n =
+    let offset = Int32.mul (Int32.add n 1l) Heap.word_size in
+    Func.share_code1 env ("set_local %i" ^ Int32.to_string n) ("val", I32Type) []
+      (fun env get_val ->
+         get_frame_ptr env ^^
+         get_val ^^
+         G.i (Store { ty = I32Type; align = 2; offset; sz = None}))
 
 end (* Stack *)
 
@@ -1447,23 +1564,21 @@ module Tagged = struct
     | ArraySliceMinimum -> 32l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
-    | CoercionFailure -> 0x7ffffffel (* bit 31 is reserved mark bit *)
-    | StableSeen -> 0x7fffffffl (* bit 31 is reserved mark bit *)
+    | CoercionFailure -> 0xfffffffel
+    | StableSeen -> 0xffffffffl
 
   (* The tag *)
   let header_size = 2l
-  let raw_tag_field = 0l
+  let tag_field = 0l
   let forwarding_pointer_field = 1l
 
-  let mark_bit_mask = Int32.shift_left 1l 31
-  
   (* Note: Post allocation barrier must be applied after initialization *)
   let alloc env size tag =
     let (set_object, get_object) = new_local env "new_object" in
     Heap.alloc env size ^^
     set_object ^^ get_object ^^
     compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field raw_tag_field ^^
+    Heap.store_field tag_field ^^
     get_object ^^ (* object pointer *)
     get_object ^^ (* forwarding pointer *)
     Heap.store_field forwarding_pointer_field ^^
@@ -1475,18 +1590,14 @@ module Tagged = struct
     else
       G.nop)
   
-  let store_unmarked_tag env tag =
+  let store_tag env tag =
     load_forwarding_pointer env ^^
     compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field raw_tag_field
-        
+    Heap.store_field tag_field
+    
   let load_tag env =
     load_forwarding_pointer env ^^
-    Heap.load_field raw_tag_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      compile_bitand_const (Int32.lognot mark_bit_mask)
-    else
-      G.nop)
+    Heap.load_field tag_field
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
@@ -1553,6 +1664,31 @@ module Tagged = struct
   let _branch_typed_with env ty retty branches =
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
+  let allocation_barrier env get_object = 
+    (if !Flags.gc_strategy = Flags.Incremental then
+      (* performance gain by first checking the GC state *)
+      E.call_import env "rts" "running_gc" ^^
+      G.if0 (
+        get_object ^^
+        E.call_import env "rts" "allocation_barrier"
+      ) G.nop
+    else 
+      G.nop)  
+  
+  let write_with_barrier env =
+    let (set_value, get_value) = new_local env "written_value" in
+    let (set_location, get_location) = new_local env "write_location" in
+    set_value ^^ set_location ^^
+    (* performance gain by first checking the GC state *)
+    E.call_import env "rts" "running_gc" ^^
+    G.if0 (
+      get_location ^^ get_value ^^
+      E.call_import env "rts" "write_with_barrier"
+    ) (
+      get_location ^^ get_value ^^
+      store_unskewed_ptr
+    )
+  
   let obj env tag element_instructions : G.t =
     let n = List.length element_instructions in
     let size = (Int32.add (Wasm.I32.of_int_u n) header_size) in
@@ -1565,12 +1701,8 @@ module Tagged = struct
       Heap.store_field (Int32.add (Wasm.I32.of_int_u idx) header_size)
     in
     G.concat_mapi init_elem element_instructions ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_object ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_object
-    else
-      get_object)
+    allocation_barrier env get_object ^^
+    get_object
 
   let new_static_obj env tag payload =
     let payload = StaticBytes.as_bytes payload in
@@ -1578,9 +1710,9 @@ module Tagged = struct
     let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
     let unskewed_ptr = E.reserve_static_memory env size in
     let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
-    let raw_tag = bytes_of_int32 (int_of_tag tag) in
+    let tag = bytes_of_int32 (int_of_tag tag) in
     let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
-    let data = raw_tag ^ forward ^ payload in
+    let data = tag ^ forward ^ payload in
     E.write_static_memory env unskewed_ptr data;
     skewed_ptr
 
@@ -1853,12 +1985,8 @@ module BoxedWord64 = struct
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_i ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_i
-    else
-      get_i)
+    Tagged.allocation_barrier env get_i ^^
+    get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -1976,12 +2104,8 @@ module BoxedSmallWord = struct
     Tagged.alloc env 3l Tagged.Bits32 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_i ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_i
-    else
-      get_i)
+    Tagged.allocation_barrier env get_i ^^
+    get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const 30l ^^
@@ -2220,12 +2344,8 @@ module Float = struct
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_i ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_i
-    else
-      get_i)
+    Tagged.allocation_barrier env get_i ^^
+    get_i
   )
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
@@ -3240,7 +3360,7 @@ module Object = struct
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
     Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
     set_ri ^^
-
+    
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
@@ -3263,12 +3383,8 @@ module Object = struct
     G.concat_map init_field fs ^^
 
     (* Return the pointer to the object *)
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_ri ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_ri
-    else
-      get_ri)
+    Tagged.allocation_barrier env get_ri ^^
+    get_ri
 
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
@@ -3394,14 +3510,10 @@ module Blob = struct
   let alloc env = 
     let (set_blob, get_blob) = new_local env "new_blob" in
     E.call_import env "rts" "alloc_blob" ^^ 
-    (if !Flags.gc_strategy = Flags.Incremental then
-      set_blob ^^
-      get_blob ^^
-      (* uninitialized blob payload is allowed by the barrier *)
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_blob
-    else
-      G.nop)
+    set_blob ^^
+    (* uninitialized blob payload is allowed by the barrier *)
+    Tagged.allocation_barrier env get_blob ^^
+    get_blob
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   
@@ -3754,7 +3866,7 @@ module Arr = struct
     let (set_x, get_x) = new_local env "x" in
     let (set_r, get_r) = new_local env "r" in
     set_x ^^
-    
+
     (* Allocate *)
     BigNum.to_word32 env ^^
     alloc env ^^
@@ -3767,12 +3879,8 @@ module Arr = struct
       store_ptr
     ) ^^
 
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_r ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_r
-    else
-      get_r)
+    Tagged.allocation_barrier env get_r ^^
+    get_r
 
   let tabulate env =
     let (set_f, get_f) = new_local env "f" in
@@ -3809,12 +3917,8 @@ module Arr = struct
       compile_add_const 1l ^^
       set_i
     ) ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      get_r ^^
-      E.call_import env "rts" "allocation_barrier" ^^
-      get_r
-    else
-      get_r)
+    Tagged.allocation_barrier env get_r ^^
+    get_r
 
   let ofBlob env =
     Func.share_code1 env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
@@ -3833,13 +3937,8 @@ module Arr = struct
         TaggedSmallWord.msb_adjust Type.Nat8 ^^
         store_ptr
       ) ^^
-
-      (if !Flags.gc_strategy = Flags.Incremental then
-        get_r ^^
-        E.call_import env "rts" "allocation_barrier" ^^
-        get_r
-      else
-        get_r)
+      Tagged.allocation_barrier env get_r ^^
+      get_r
     )
 
   let toBlob env =
@@ -3956,8 +4055,8 @@ module Lifecycle = struct
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
 
-  let ptr = Stack.end_
-  let end_ = Int32.add Stack.end_ Heap.word_size
+  let ptr () = Stack.end_ ()
+  let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
 
   (* Which states may come before this *)
   let pre_states = function
@@ -3976,11 +4075,11 @@ module Lifecycle = struct
     | InPostUpgrade -> [InInit]
 
   let get env =
-    compile_unboxed_const ptr ^^
+    compile_unboxed_const (ptr ()) ^^
     load_unskewed_ptr
 
   let set env new_state =
-    compile_unboxed_const ptr ^^
+    compile_unboxed_const (ptr ()) ^^
     compile_unboxed_const (int_of_state new_state) ^^
     store_unskewed_ptr
 
@@ -4138,7 +4237,7 @@ module IC = struct
           end);
 
       E.add_export env (nr {
-        name = Wasm.Utf8.decode "print_ptr";
+        name = Lib.Utf8.decode "print_ptr";
         edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
       })
 
@@ -4182,7 +4281,7 @@ module IC = struct
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
-      name = Wasm.Utf8.decode (
+      name = Lib.Utf8.decode (
         match E.mode env with
         | Flags.WASIMode -> "memory"
         | _  -> "mem"
@@ -4190,7 +4289,7 @@ module IC = struct
       edesc = nr (MemoryExport (nr 0l))
     });
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "table";
+      name = Lib.Utf8.decode "table";
       edesc = nr (TableExport (nr 0l))
     })
 
@@ -4206,7 +4305,7 @@ module IC = struct
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_init";
+      name = Lib.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
       })
 
@@ -4222,7 +4321,7 @@ module IC = struct
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_heartbeat";
+      name = Lib.Utf8.decode "canister_heartbeat";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4239,7 +4338,7 @@ module IC = struct
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_global_timer";
+      name = Lib.Utf8.decode "canister_global_timer";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4252,7 +4351,7 @@ module IC = struct
         (* no need to GC !*)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_inspect_message";
+      name = Lib.Utf8.decode "canister_inspect_message";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4264,7 +4363,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.Idle
     )) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "_start";
+      name = Lib.Utf8.decode "_start";
       edesc = nr (FuncExport (nr fi))
       })
 
@@ -4294,12 +4393,12 @@ module IC = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_pre_upgrade";
+      name = Lib.Utf8.decode "canister_pre_upgrade";
       edesc = nr (FuncExport (nr pre_upgrade_fi))
     });
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_post_upgrade";
+      name = Lib.Utf8.decode "canister_post_upgrade";
       edesc = nr (FuncExport (nr post_upgrade_fi))
     })
 
@@ -4914,7 +5013,7 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "bigint_trap";
+      name = Lib.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
 
@@ -4926,7 +5025,7 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "rts_trap";
+      name = Lib.Utf8.decode "rts_trap";
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
@@ -4940,7 +5039,7 @@ module RTS_Exports = struct
           )
       else E.reuse_import env "ic0" "stable64_write" in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "stable64_write_moc";
+      name = Lib.Utf8.decode "stable64_write_moc";
       edesc = nr (FuncExport (nr stable64_write_moc_fi))
     })
 
@@ -5114,7 +5213,8 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
-  *)
+   *)
+              
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
@@ -5129,6 +5229,46 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_end")))
   let get_typtbl_idltyps env =
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
+
+  module Registers = struct
+    let register_globals env =
+     (E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@data_buf" Mutable 0l;
+      E.add_global32 env "@@ref_buf" Mutable 0l;
+      E.add_global32 env "@@typtbl" Mutable 0l;
+      E.add_global32 env "@@typtbl_end" Mutable 0l;
+      E.add_global32 env "@@typtbl_size" Mutable 0l)
+
+    let get_rel_buf_opt env =
+      G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
+    let set_rel_buf_opt env =
+      G.i (GlobalSet (nr (E.get_global env "@@rel_buf_opt")))
+
+    let get_data_buf env =
+      G.i (GlobalGet (nr (E.get_global env "@@data_buf")))
+    let set_data_buf env =
+      G.i (GlobalSet (nr (E.get_global env "@@data_buf")))
+
+    let get_ref_buf env =
+      G.i (GlobalGet (nr (E.get_global env "@@ref_buf")))
+    let set_ref_buf env =
+      G.i (GlobalSet (nr (E.get_global env "@@ref_buf")))
+
+    let get_typtbl env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl")))
+    let set_typtbl env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl")))
+
+    let get_typtbl_end env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl_end")))
+    let set_typtbl_end env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl_end")))
+
+    let get_typtbl_size env =
+      G.i (GlobalGet (nr (E.get_global env "@@typtbl_size")))
+    let set_typtbl_size env =
+      G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
+  end
 
   open Typ_hash
 
@@ -5431,7 +5571,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.(store_unmarked_tag env StableSeen) ^^
+          get_x ^^ Tagged.(store_tag env StableSeen) ^^
           (* and descend *)
           size_thing ()
         end
@@ -5548,12 +5688,8 @@ module MakeSerialization (Strm : Stream) = struct
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
-          let set_offset, get_offset = new_local env "offset" in
-          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^ set_offset ^^ 
-          get_offset ^^ compile_bitand_const Tagged.mark_bit_mask ^^ 
-          compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          E.else_trap_with env "Too large offset, colliding with bit mark" ^^
-          get_offset ^^ Heap.store_field Tagged.raw_tag_field ^^
+          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^
+          Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -5723,34 +5859,53 @@ module MakeSerialization (Strm : Stream) = struct
         E.call_import env "rts" "idl_sub")
 
   (* The main deserialization function, generated once per type hash.
-     Its parameters are:
-       * data_buffer: The current position of the input data buffer
-       * ref_buffer:  The current position of the input references buffer
-       * typtbl:      The type table, as returned by parse_idl_header
+
+     We use a combination of RTS stack locals and registers (Wasm globals) for
+     recursive parameter passing to avoid exhausting the Wasm stack, which is instead
+     used solely for return values and (implicit) return addresses.
+
+     Its RTS stack parameters are (c.f. module Stack):
+
        * idltyp:      The idl type (prim type or table index) to decode now
-       * typtbl_size: The size of the type table, used to limit recursion
        * depth:       Recursion counter; reset when we make progres on the value
        * can_recover: Whether coercion errors are recoverable, see coercion_failed below
 
+     Its register parameters are (c.f. Registers):
+       * rel_buf_opt: The optional subtype check memoization table
+          (non-null for untrusted Candid but null for trusted de-stablization (see `with_rel_buf_opt`).)
+       * data_buffer: The current position of the input data buffer
+       * ref_buffer:  The current position of the input references buffer
+       * typtbl:      The type table, as returned by parse_idl_header
+       * typtbl_size: The size of the type table, used to limit recursion
+
      It returns the value of type t (vanilla representation) or coercion_error_value,
      It advances the data_buffer past the decoded value (even if it returns coercion_error_value!)
-   *)
+
+  *)
+
+  (* symbolic names for arguments passed on RTS stack *)
+  module StackArgs = struct
+    let idltyp = 0l
+    let depth = 1l
+    let can_recover = 2l
+  end
+
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
-    Func.share_code9 env name
-      (("rel_buf_opt", I32Type),
-       ("data_buffer", I32Type),
-       ("ref_buffer", I32Type),
-       ("typtbl", I32Type),
-       ("typtbl_end", I32Type),
-       ("typtbl_size", I32Type),
-       ("idltyp", I32Type),
-       ("depth", I32Type),
-       ("can_recover", I32Type)
-      ) [I32Type]
-    (fun env get_rel_buf_opt get_data_buf get_ref_buf get_typtbl get_typtbl_end get_typtbl_size get_idltyp get_depth get_can_recover ->
+    Func.share_code0 env name
+      [I32Type]
+      (fun env  ->
+      let get_idltyp = Stack.get_local env StackArgs.idltyp in
+      let get_depth = Stack.get_local env StackArgs.depth in
+      let get_can_recover = Stack.get_local env StackArgs.can_recover in
+      let get_rel_buf_opt = Registers.get_rel_buf_opt env in
+      let get_data_buf = Registers.get_data_buf env in
+      let _get_ref_buf = Registers.get_ref_buf env in
+      let get_typtbl = Registers.get_typtbl env in
+      let get_typtbl_end = Registers.get_typtbl_end env in
+      let get_typtbl_size = Registers.get_typtbl_size env in
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -5766,26 +5921,23 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
-        let (set_idlty, get_idlty) = new_local env "idl_ty" in
-        set_idlty ^^
-        get_rel_buf_opt ^^
-        get_data_buf ^^
-        get_ref_buf ^^
-        get_typtbl ^^
-        get_typtbl_end ^^
-        get_typtbl_size ^^
-        get_idlty ^^
-        ( (* Reset depth counter if we made progress *)
-          ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          G.if1 I32Type
-          (get_depth ^^ compile_add_const 1l)
-          (compile_unboxed_const 0l)
-        ) ^^
-        (if can_recover
-         then compile_unboxed_const 1l
-         else get_can_recover) ^^
-        deserialize_go env t
+        (* assumes idltyp on stack *)
+        Stack.with_frame env "frame_ptr" 3l (fun () ->
+          Stack.set_local env StackArgs.idltyp ^^
+          (* set up frame arguments *)
+          ( (* Reset depth counter if we made progress *)
+            ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            G.if1 I32Type
+              (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
+              (compile_unboxed_const 0l)
+            ) ^^
+          Stack.set_local env StackArgs.depth ^^
+          (if can_recover
+             then compile_unboxed_const 1l
+             else Stack.get_prev_local env 2l) ^^
+          Stack.set_local env StackArgs.can_recover ^^
+          deserialize_go env t)
       in
 
       let go = go' false in
@@ -6207,11 +6359,7 @@ module MakeSerialization (Strm : Stream) = struct
             remember_failure get_val ^^
             get_val ^^ store_ptr
           ) ^^
-          (if !Flags.gc_strategy = Flags.Incremental then
-            get_x ^^
-            E.call_import env "rts" "allocation_barrier"
-          else
-            G.nop)
+          Tagged.allocation_barrier env get_x
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -6227,12 +6375,8 @@ module MakeSerialization (Strm : Stream) = struct
           remember_failure get_val ^^
           get_val ^^ store_ptr
         ) ^^
-        (if !Flags.gc_strategy = Flags.Incremental then
-          get_x ^^
-          E.call_import env "rts" "allocation_barrier" ^^
-          get_x
-        else
-          get_x)
+        Tagged.allocation_barrier env get_x ^^
+        get_x
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if1 I32Type (Opt.null_lit env)
@@ -6409,7 +6553,7 @@ module MakeSerialization (Strm : Stream) = struct
       get_data_start ^^
       get_refs_start ^^
       serialize_go env (Type.seq ts) ^^
-      
+
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -6492,15 +6636,29 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-             get_rel_buf_opt ^^
-             get_data_buf ^^ get_ref_buf ^^
-             get_typtbl_ptr ^^ load_unskewed_ptr ^^
-             get_maintyps_ptr ^^ load_unskewed_ptr ^^ (* typtbl_end *)
-             get_typtbl_size_ptr ^^ load_unskewed_ptr ^^
-             ReadBuf.read_sleb128 env get_main_typs_buf ^^
-             compile_unboxed_const 0l ^^ (* initial depth *)
-             can_recover ^^
-             deserialize_go env t ^^ set_val ^^
+              begin
+                (* set up invariant register arguments *)
+                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+                get_data_buf ^^ Registers.set_data_buf env ^^
+                get_ref_buf ^^ Registers.set_ref_buf env ^^
+                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+              end ^^
+              (* set up variable frame arguments *)
+              Stack.with_frame env "frame_ptr" 3l (fun () ->
+                (* idltyp *)
+                ReadBuf.read_sleb128 env get_main_typs_buf ^^
+                Stack.set_local env StackArgs.idltyp ^^
+                (* depth *)
+                compile_unboxed_const 0l ^^
+                Stack.set_local env StackArgs.depth ^^
+                (* recovery mode *)
+                can_recover ^^
+                Stack.set_local env StackArgs.can_recover ^^
+                deserialize_go env t
+             )
+             ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (G.if1 I32Type
@@ -7073,7 +7231,7 @@ module GCRoots = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_static_roots";
+      name = Lib.Utf8.decode "get_static_roots";
       edesc = nr (FuncExport (nr get_static_roots))
     })
 
@@ -7393,7 +7551,7 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      E.call_import env "rts" "write_with_barrier"
+      Tagged.write_with_barrier env
     | (Some ((HeapInd i), typ), _) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
@@ -7413,7 +7571,7 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      E.call_import env "rts" "write_with_barrier"
+      Tagged.write_with_barrier env
     | (Some ((HeapStatic ptr), typ), _) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
@@ -7664,11 +7822,7 @@ module FuncDec = struct
         (* Store all captured values *)
         store_env ^^
 
-        (if !Flags.gc_strategy = Flags.Incremental then
-          get_clos ^^
-          E.call_import env "rts" "allocation_barrier"
-        else
-          G.nop)
+        Tagged.allocation_barrier env get_clos
       in
 
       if is_local
@@ -7953,7 +8107,7 @@ module FuncDec = struct
 
       let fi = E.built_in env name in
       E.add_export env (nr {
-        name = Wasm.Utf8.decode ("canister_update " ^ name);
+        name = Lib.Utf8.decode ("canister_update " ^ name);
         edesc = nr (FuncExport (nr fi))
       })
     | _ -> ()
@@ -8873,7 +9027,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     Arr.idx_bigint env ^^
     compile_add_const ptr_unskew,
     SR.Vanilla,
-    E.call_import env "rts" "write_with_barrier"
+    Tagged.write_with_barrier env
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8897,7 +9051,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     Object.idx env e.note.Note.typ n ^^
     compile_add_const ptr_unskew,
     SR.Vanilla,
-    E.call_import env "rts" "write_with_barrier"
+    Tagged.write_with_barrier env
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
@@ -9500,6 +9654,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_max_live_size", [] ->
     SR.Vanilla,
     Heap.get_max_live_size env ^^ BigNum.from_word32 env
+
+  | OtherPrim "rts_max_stack_size", [] ->
+    SR.Vanilla,
+    Stack.get_max_stack_size env ^^ Prim.prim_word32toNat env
 
   | OtherPrim "rts_callback_table_count", [] ->
     SR.Vanilla,
@@ -10476,7 +10634,7 @@ and export_actor_field env  ae (f : Ir.field) =
     | _ -> assert false in
 
   E.add_export env (nr {
-    name = Wasm.Utf8.decode (match E.mode env with
+    name = Lib.Utf8.decode (match E.mode env with
       | Flags.ICMode | Flags.RefMode ->
         Mo_types.Type.(
         match normalize f.note with
@@ -10685,12 +10843,13 @@ and conclude_module env set_serialization_globals start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts IC.trap_with Lifecycle.end_ in
+  let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
 
   IC.register_globals env;
   Stack.register_globals env;
   GC.register_globals env;
   StableMem.register_globals env;
+  Serialization.Registers.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in

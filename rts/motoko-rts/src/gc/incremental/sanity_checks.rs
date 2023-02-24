@@ -12,10 +12,13 @@ use crate::visitor::visit_pointer_fields;
 use super::mark_stack::MarkStack;
 use super::partitioned_heap::PartitionedHeap;
 use super::roots::{visit_roots, Roots};
-use super::PARTITIONED_HEAP;
 
-pub unsafe fn check_memory<M: Memory>(mem: &mut M, roots: Roots, mode: CheckerMode) {
-    let heap = PARTITIONED_HEAP.as_ref().unwrap();
+pub unsafe fn check_memory<M: Memory>(
+    mem: &mut M,
+    heap: &mut PartitionedHeap,
+    roots: Roots,
+    mode: CheckerMode,
+) {
     let mark_stack = MarkStack::new(mem);
     let visited = RememberedSet::new(mem);
     let mut checker = MemoryChecker {
@@ -38,7 +41,7 @@ pub enum CheckerMode {
 struct MemoryChecker<'a, M: Memory> {
     mode: CheckerMode,
     mem: &'a mut M,
-    heap: &'a PartitionedHeap,
+    heap: &'a mut PartitionedHeap,
     roots: Roots,
     mark_stack: MarkStack,
     visited: RememberedSet,
@@ -49,7 +52,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
     // Note: The heap may contain garbage objects with stale pointers that are no longer valid.
     // Various check modes:
     // * MarkCompletion:
-    ///  Check that the set of marked objects by the incremental GC is the same set or a subset
+    ///  Check that the set of marked objects by the incremental GC is the same set or a superset
     ///  of the objects being marked by a conventional stop-the-world mark phase. The incremental
     ///  GC may mark more objects due to concurrent allocations and concurrent pointer modifications.
     // * UpdateCompletion:
@@ -71,8 +74,9 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
         assert!(value.get_ptr() >= self.heap.base_address());
         let object = value.as_obj();
         if let CheckerMode::MarkCompletion = self.mode {
-            // The incremental GC have marked this reachable object.
-            assert!(object.is_marked());
+            // The incremental GC must have marked this reachable object.
+            // Mark object returns false if it has been previously marked.
+            assert!(!self.heap.mark_object(object));
         }
         if !self.visited.contains(value) {
             self.visited.insert(self.mem, value);
@@ -94,7 +98,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             0,
             |gc, field_address| {
                 let value = *field_address;
-                // Ignore null pointers used in text_iter.
+                // Ignore null pointers used in `text_iter`.
                 if value.get_ptr() as *const Obj != null() {
                     if value.get_ptr() >= gc.heap.base_address() {
                         gc.check_object(value);
@@ -112,9 +116,8 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
         object.check_forwarding_pointer();
         if let CheckerMode::UpdateCompletion = self.mode {
-            // Forwarding no longer allowed on completed GC.
+            // Forwarding is no longer allowed on a completed GC.
             assert!(!object.is_forwarded());
-            assert!(!(object.get_ptr() as *const Obj).is_marked());
         }
         let address = object.get_ptr();
         self.check_valid_address(address);

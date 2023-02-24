@@ -7,7 +7,7 @@
 
 pub mod mark_stack;
 pub mod remembered_set;
-#[cfg(debug_assertions)]
+#[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
 
@@ -29,7 +29,7 @@ use self::write_barrier::REMEMBERED_SET;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
-    crate::memory::ic::initialize_memory(true);
+    crate::memory::ic::initialize_memory(true, false);
     write_barrier::init_generational_write_barrier(mem);
 }
 
@@ -57,13 +57,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     };
     let strategy = decide_strategy(&heap.limits);
 
-    #[cfg(debug_assertions)]
-    let forced_gc = strategy.is_none();
-
     let strategy = strategy.unwrap_or(Strategy::Young);
     let mut gc = GenerationalGC::new(heap, strategy);
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "memory_check")]
     sanity_checks::verify_snapshot(&gc.heap, false);
 
     gc.run();
@@ -73,11 +70,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     update_statistics(&old_limits, new_limits);
     update_strategy(strategy, new_limits);
 
-    #[cfg(debug_assertions)]
-    if !forced_gc {
-        sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
-        sanity_checks::take_snapshot(&mut gc.heap);
-    }
+    #[cfg(feature = "memory_check")]
+    sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
+    #[cfg(feature = "memory_check")]
+    sanity_checks::take_snapshot(&mut gc.heap);
 
     write_barrier::init_generational_write_barrier(gc.heap.mem);
 }
@@ -296,12 +292,12 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     // Remember to visit the array suffix later, store the next visit offset in the tag.
-                    array.initialize_tag(new_start);
+                    (*array).header.tag = new_start;
                     push_mark_stack(gc.heap.mem, array as usize);
                     new_start
                 } else {
                     // No further visits of this array. Restore the tag.
-                    array.initialize_tag(TAG_ARRAY);
+                    (*array).header.tag = TAG_ARRAY;
                     array.len()
                 }
             },
@@ -497,21 +493,21 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn thread(&self, field: *mut Value) {
         let pointed = (*field).get_ptr() as *mut Obj;
         assert!(self.should_be_threaded(pointed));
-        let pointed_header = (*pointed).raw_tag;
+        let pointed_header = (*pointed).tag;
         *field = Value::from_raw(pointed_header);
-        (*pointed).raw_tag = field as u32;
+        (*pointed).tag = field as u32;
     }
 
     unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {
         assert!(self.should_be_threaded(object));
-        let mut header = (*object).raw_tag;
+        let mut header = (*object).tag;
         while header & 0b1 == 0 {
-            let tmp = (*(header as *const Obj)).raw_tag;
+            let tmp = (*(header as *const Obj)).tag;
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
         assert!(header >= TAG_OBJECT && header <= TAG_NULL);
-        (*object).raw_tag = header;
+        (*object).tag = header;
     }
 
     unsafe fn should_be_threaded(&self, object: *mut Obj) -> bool {

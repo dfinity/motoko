@@ -20,7 +20,7 @@
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
 use crate::gc::generational::write_barrier::post_write_barrier;
-use crate::gc::incremental::pre_write_barrier;
+use crate::gc::incremental::barriers::write_with_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -283,10 +283,10 @@ impl Value {
     /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
     /// In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
-        unmark(*(self.get_ptr() as *const Tag))
+        *(self.get_ptr() as *const Tag)
     }
 
-    /// Get the forwarding pointer. Used in incremental GC.
+    /// Get the forwarding pointer. Used by the incremental GC.
     pub unsafe fn forward(self) -> Value {
         debug_assert!(self.is_obj());
         debug_assert!(self.get_ptr() as *const Obj != null());
@@ -294,7 +294,7 @@ impl Value {
         (*obj).forward
     }
 
-    /// Resolve forwarding if the value is pointer. Otherwise, return the same value.
+    /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
     pub unsafe fn forward_if_possible(self) -> Value {
         if self.is_ptr() && self.get_ptr() as *const Obj != null() {
             // Ignore null pointers used in text_iter.
@@ -305,7 +305,8 @@ impl Value {
     }
 
     /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
-    /// Returns `false` for pointers to special `OneWordFiller` and `FreeSpace` blocks that have no regular object header.
+    /// Returns `false` for pointers to special `OneWordFiller`, `FwdPtr`, and `FreeSpace` blocks that do not have
+    /// a regular object header.
     pub unsafe fn is_obj(self) -> bool {
         let tag = self.tag();
         tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
@@ -425,7 +426,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // only used in copying GC - not to be confused with forwarding pointer in the header used for incremental GC
+pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -441,69 +442,22 @@ pub const TAG_FREE_SPACE: Tag = 31;
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 
-// Incremental GC Mark Bit
-// Stored in the most significant bit 31 of the raw tag:
-//
-// ┌──────┬───────────────────────────┐
-// | Mark |          Tag              |
-// └──────┴───────────────────────────┘
-//  Bit 31        Bits 30..0
-//
-// Used for in-place marking of object during incremental GC.
-// Note: A bitmap cannot be used for marking in incremental GC
-// as the size cannot be fixed due to possible allocations during the GC run.
-
-const MARK_BIT_MASK: u32 = 1 << 31;
-
-#[inline]
-pub fn is_marked(tag: Tag) -> bool {
-    tag & MARK_BIT_MASK != 0
-}
-
-#[inline]
-pub fn mark(tag: Tag) -> Tag {
-    tag | MARK_BIT_MASK
-}
-
-#[inline]
-pub fn unmark(tag: Tag) -> Tag {
-    tag & !MARK_BIT_MASK
-}
-
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
-    /// Raw tag encoding the object tag together with the mark bit
-    pub raw_tag: Tag,
-    /// Forwarding pointer to support object moving in the incremental GC
+    pub tag: Tag,
+    /// Forwarding pointer to support object moving in the incremental GC.
     pub forward: Value,
 }
 
 impl Obj {
-    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
-        debug_assert!(!is_marked(tag));
-        (*self).raw_tag = tag;
-    }
-
-    pub unsafe fn is_marked(self: *const Self) -> bool {
-        is_marked((*self).raw_tag)
-    }
-
-    pub unsafe fn mark(self: *mut Self) {
-        (*self).raw_tag = mark((*self).raw_tag);
-    }
-
-    pub unsafe fn unmark(self: *mut Self) {
-        (*self).raw_tag = unmark((*self).raw_tag);
-    }
-
     /// Check whether the object's forwarding pointer refers to a different location.
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
         (*self).forward.get_ptr() != self as usize
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {
-        unmark((*self).raw_tag)
+        (*self).tag
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
@@ -529,18 +483,6 @@ pub struct Array {
 }
 
 impl Array {
-    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
-        (self as *mut Obj).initialize_tag(tag);
-    }
-
-    pub unsafe fn is_marked(self: *const Self) -> bool {
-        (self as *const Obj).is_marked()
-    }
-
-    pub unsafe fn tag(self: *const Self) -> Tag {
-        (self as *const Obj).tag()
-    }
-
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
@@ -550,7 +492,7 @@ impl Array {
         *(slot_addr as *const Value)
     }
 
-    /// Initialize the element of a new created array.
+    /// Initialize the element of a newly created array.
     /// Uses a generational post-update barrier on pointer writes.
     /// No incremental pre-update barrier as the previous value is undefined.
     /// Resolve pointer forwarding for the written value if necessary.
@@ -569,8 +511,7 @@ impl Array {
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
-        pre_write_barrier(mem, *slot_addr);
-        *slot_addr = value.forward_if_possible();
+        write_with_barrier(mem, slot_addr, value);
         post_write_barrier(mem, slot_addr as u32);
     }
 
@@ -647,10 +588,6 @@ pub struct Blob {
 }
 
 impl Blob {
-    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
-        (self as *mut Obj).initialize_tag(tag);
-    }
-
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
         self.add(1) as *mut u8 // skip blob header
     }
@@ -699,7 +636,7 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
-    pub padding: u32, // insertion of forwarding pointer in the header implies 1 word padding to 64-bit
+    pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -718,8 +655,8 @@ impl Stream {
     }
 }
 
-/// Only used in copying GC - not to be confused with the forwarding pointer in the general object header
-/// that is used in the incremental GC.
+/// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
+/// that is used by the incremental GC.
 /// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
@@ -739,10 +676,6 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
-        (self as *mut Obj).initialize_tag(tag);
-    }
-
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
@@ -799,10 +732,6 @@ pub struct Concat {
 }
 
 impl Concat {
-    pub unsafe fn initialize_tag(self: *mut Self, tag: Tag) {
-        (self as *mut Obj).initialize_tag(tag);
-    }
-
     pub unsafe fn text1(self: *const Self) -> Value {
         (*self).text1
     }
@@ -863,7 +792,7 @@ impl FreeSpace {
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
 /// that do not have a forwarding pointer.
 pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
-    let tag = unmark(*(address as *mut Tag));
+    let tag = *(address as *mut Tag);
     match tag {
         TAG_OBJECT => {
             let object = address as *mut Object;

@@ -16,10 +16,10 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[cfg(feature = "ic")]
 #[no_mangle]
+#[cfg(feature = "ic")]
 pub unsafe extern "C" fn initialize_compacting_gc() {
-    crate::memory::ic::initialize_memory(true);
+    crate::memory::ic::initialize_memory(true, false);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -269,25 +269,25 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
 unsafe fn thread(field: *mut Value) {
     // Store pointed object's header in the field, field address in the pointed object's header
     let pointed = (*field).as_obj();
-    let pointed_header = (*pointed).raw_tag;
+    let pointed_header = (*pointed).tag;
     *field = Value::from_raw(pointed_header);
-    (*pointed).raw_tag = field as u32;
+    (*pointed).tag = field as u32;
 }
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
 unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
-    let mut header = (*obj).raw_tag;
+    let mut header = (*obj).tag;
 
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
     while header & 0b1 == 0 {
-        let tmp = (*(header as *const Obj)).raw_tag;
+        let tmp = (*(header as *const Obj)).tag;
         (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
         header = tmp;
     }
 
-    (*obj).raw_tag = header;
-
     // At the end of the chain is the original header for the object
-    debug_assert!(obj.tag() >= TAG_OBJECT && obj.tag() <= TAG_NULL);
+    debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+
+    (*obj).tag = header;
 }

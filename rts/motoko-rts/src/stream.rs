@@ -33,7 +33,7 @@
 
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::gc::incremental::barriers::allocation_barrier;
-use crate::gc::incremental::post_allocation_barrier;
+use crate::gc::incremental::{incremental_gc_state, post_allocation_barrier};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -197,11 +197,12 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        blob.initialize_tag(TAG_BLOB);
+        (*blob).header.tag = TAG_BLOB;
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);
-        post_allocation_barrier(ptr);
+        let state = incremental_gc_state();
+        post_allocation_barrier(state, ptr);
         ptr
     }
 

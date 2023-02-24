@@ -121,7 +121,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         }
 
         TAG_FWD_PTR | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE | _ => {
-            println!(100, "ERROR {tag}");
             rts_trap_with("invalid object tag in visit_pointer_fields");
         }
     }

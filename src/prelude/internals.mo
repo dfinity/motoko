@@ -397,38 +397,62 @@ let @ic00 = actor "aaaaa-aa" :
     } -> async ()
  };
 
-func @ic00_create_canister() : shared {
-      settings : ?@ManagementCanister.canister_settings
-    } -> async { canister_id : Principal } {
-  @ic00.create_canister
-};
-
-func @ic00_install_code() : shared {
-    mode : { #install; #reinstall; #upgrade };
-    canister_id : Principal;
-    wasm_module : @ManagementCanister.wasm_module;
-    arg : Blob;
-  } -> async () {
-  @ic00.install_code
+func @install_actor_helper(
+    install_arg: {
+      #new : { settings : ?@ManagementCanister.canister_settings } ;
+      #install : Principal;
+      #reinstall : actor {} ;
+      #upgrade : actor {}
+    },
+    wasm_module : Blob,
+    arg : Blob)
+  : async* Principal = async* {
+  let (mode, canister_id) =
+    switch install_arg {
+      case (#new settings) {
+        let available = (prim "cyclesAvailable" : () -> Nat) ();
+        let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+        @cycles += accepted;
+        let { canister_id } =
+          await @ic00.create_canister(settings);
+        (#install, canister_id)
+      };
+      case (#install principal1) {
+        (#install, principal1)
+      };
+      case (#reinstall actor1) {
+        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
+      };
+      case (#upgrade actor2) {
+        (#upgrade, (prim "cast" : (actor {}) -> Principal) actor2)
+      }
+    };
+  await @ic00.install_code({
+    mode;
+    canister_id;
+    wasm_module;
+    arg
+  });
+  return canister_id;
 };
 
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 // TODO: This helper is now only used by Prim.createActor and could be removed, except
 // that Prim.createActor was mentioned on the forum and might be in use. (#3420)
-func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat) ();
   let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
   @cycles += accepted;
-  let { canister_id = canister_id_ } =
+  let { canister_id } =
     await @ic00.create_canister({settings = null});
   await @ic00.install_code({
     mode = #install;
-    canister_id = canister_id_;
-    wasm_module = wasm_module_;
-    arg = arg_;
+    canister_id;
+    wasm_module;
+    arg;
   });
-  return canister_id_;
+  return canister_id;
 };
 
 // raw calls

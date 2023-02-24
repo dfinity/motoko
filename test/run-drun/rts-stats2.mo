@@ -1,11 +1,18 @@
 import Prim "mo:⛔";
 actor a {
-  let length = 1024 * 1024; 
+  func runGC(): async() {
+    var count = 0;
+    // run multiple GC increments for the incremental GC
+    while (count < 3) {
+      await async();
+      count += 1;
+    }
+  };
+
+  let length = 8 * 1024 * 1024; 
   public func foo(): async() {
-    await async { // extra GC increment for incremental GC
-      ignore(Prim.Array_init<()>(length, ())); 
-    };
-    await async(); // extra GC increment for incremental GC
+    ignore(Prim.Array_init<()>(length, ())); 
+    await runGC();
   };
   public func check_A() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
@@ -19,10 +26,8 @@ actor a {
   };
   flexible var v : [var ()] = [var];
   public func bar(): async() {
-    await async { // extra GC increment for incremental GC
-      v := Prim.Array_init<()>(length, ()); // larger amount to trigger incremental GC
-    };
-    await async(); // extra GC increment for incremental GC
+    v := Prim.Array_init<()>(length, ()); // larger amount to trigger incremental GC
+    await runGC();
   };
   public func check_B() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());

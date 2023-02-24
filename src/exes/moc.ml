@@ -97,6 +97,7 @@ let argspec = [
       ")";
 
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
+  "-measure-rts-stack", Arg.Set Flags.measure_rts_stack, " measure the maximum rts stack usage (reported by prim \"rts_max_stack\")";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
@@ -171,6 +172,10 @@ let argspec = [
   "--experimental-field-aliasing",
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
+
+  "--rts-stack-pages",
+  Arg.Set_int Flags.rts_stack_pages,
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
 
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),

@@ -30,19 +30,19 @@ pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
     // Optimized version, only to be used by non-incremental GC runtimes.
     unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value;
-    // Grow the allocated memory size to at leat the address of `ptr`.
+    // Grow the allocated memory size to at least the address of `ptr`.
     unsafe fn grow_memory(&mut self, ptr: u64);
 }
 
 /// Allocate a new blob.
-/// Note: After initialization, post allocation barrier needs to be applied for all mutator objects.
+/// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 /// For RTS-internal blobs that can be collected by the next GC run, the post allocation barrier can be omitted.
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
-    blob.initialize_tag(TAG_BLOB);
+    (*blob).header.tag = TAG_BLOB;
     (*blob).header.forward = ptr;
     (*blob).len = size;
 
@@ -50,7 +50,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
 }
 
 /// Allocate a new array.
-/// Note: After initialization, post allocation barrier needs to be applied for all mutator objects.
+/// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     // Array payload should not be larger than half of the memory
@@ -61,7 +61,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
-    ptr.initialize_tag(TAG_ARRAY);
+    (*ptr).header.tag = TAG_ARRAY;
     (*ptr).header.forward = skewed_ptr;
     (*ptr).len = len;
 
