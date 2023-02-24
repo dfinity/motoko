@@ -7,12 +7,18 @@
   * new 'let-else' construct for handling pattern-match failure (#3836).
     This is a frequently asked-for feature that allows to change the control-flow
     of programs when pattern-match failure occurs, thus providing a means against
-    the famous "pyramid of doom" issue.
-    E.g. an expression like
+    the famous "pyramid of doom" issue. A common example is look-ups:
+    ``` Motoko
+    shared func getUser(user : Text) : Id {
+      let ?id = map.get(users, user) else { throw Error.reject("no such user") };
+      id
+    }
+    ```
+    Similarly, an expression like
     ``` Motoko
     (label v : Bool { let <pat> = <exp> else break v false; true })
     ```
-    can evaluate to a `Bool`, signifying whether `<pat>` matches `<exp>`.
+    evaluates to a `Bool`, signifying whether `<pat>` matches `<exp>`.
 
   * Improve recursive deserialization capacity to match recursive serialization capacity by reducing
     Wasm stack consumption (#3809).
