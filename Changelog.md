@@ -1,10 +1,28 @@
 # Motoko compiler changelog
 
-* Improve recursive deserialization capacity to match recursive serialization capacity by reducing
-  Wasm stack consumption (#3809).
-  Because of the bounds on recursion depth imposed by fixed-size stack, the
-  advice remains the same: avoid deeply nested recursive data structures.
-  Think "shallow trees good, very long lists bad".
+
+* motoko (`moc`)
+
+  * new 'let-else' construct for handling pattern-match failure (#3836).
+    This is a frequently asked-for feature that allows to change the control-flow
+    of programs when pattern-match failure occurs, thus providing a means against
+    the famous "pyramid of doom" issue.
+    E.g. an expression like
+    ``` Motoko
+    (label v : Bool { let <pat> = <exp> else break v false; true })
+    ```
+    can evaluate to a `Bool`, signifying whether `<pat>` matches `<exp>`.
+
+  * Improve recursive deserialization capacity to match recursive serialization capacity by reducing
+    Wasm stack consumption (#3809).
+    Because of the bounds on recursion depth imposed by fixed-size stack, the
+    advice remains the same: avoid deeply nested recursive data structures.
+    Think "shallow trees good, very long lists bad".
+
+* motoko-base
+
+  * add missing `unshare : Tree<K, V> -> ()` method to class `RBTree<K, V>`
+    to restore objects from saved state (dfinity/motoko-base#532).
 
 ## 0.8.2 (2023-02-17)
 
