@@ -10,7 +10,7 @@
     the famous "pyramid of doom" issue. A common example is look-ups:
     ``` Motoko
     shared func getUser(user : Text) : Id {
-      let ?id = map.get(users, user) else { throw Error.reject("no such user") };
+      let ?id = Map.get(users, user) else { throw Error.reject("no such user") };
       id
     }
     ```
