@@ -73,7 +73,7 @@ Example:
 List.last<Nat>(?(0, ?(1, null))) // => ?1
 ```
 
-Runtime: O(1)
+Runtime: O(size)
 
 Space: O(1)
 
@@ -82,7 +82,7 @@ Space: O(1)
 func pop<T>(l : List<T>) : (?T, List<T>)
 ```
 
-Remove the head of the list, returning the optioned head and the tail of the list in a pair. 
+Remove the head of the list, returning the optioned head and the tail of the list in a pair.
 Returns `(null, null)` if the list is empty.
 
 Example:
@@ -374,7 +374,7 @@ List.foldLeft<Nat, Text>(
 
 Runtime: O(size(list))
 
-Space: O(1)
+Space: O(1) heap, O(1) stack
 
 *Runtime and space assumes that `combine` runs in O(1) time and space.
 
@@ -398,9 +398,9 @@ List.foldRight<Nat, Text>(
 ) // => "123"
 ```
 
-Runtime: O(size)
+Runtime: O(size(list))
 
-Space: O(1)
+Space: O(1) heap, O(size(list)) stack
 
 *Runtime and space assumes that `combine` runs in O(1) time and space.
 
@@ -601,9 +601,9 @@ List.replicate<Nat>(
 ) // => ?(0, ?(0, ?(0, null)))
 ```
 
-Runtime: O(1)
+Runtime: O(n)
 
-Space: O(1)
+Space: O(n)
 
 ## Function `zip`
 ``` motoko no-repl
