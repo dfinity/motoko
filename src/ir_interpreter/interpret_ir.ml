@@ -415,9 +415,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k v1
       | DecodeUtf8, [v1] ->
         let s = V.as_blob v1 in
-        begin match Wasm.Utf8.decode s with
+        begin match Lib.Utf8.decode s with
           | _ -> k (V.Opt (V.Text s))
-          | exception Wasm.Utf8.Utf8 -> k V.Null
+          | exception Lib.Utf8.Utf8 -> k V.Null
         end
       | EncodeUtf8, [v1] ->
         k (V.Blob (V.as_text v1))

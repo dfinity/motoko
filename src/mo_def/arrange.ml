@@ -33,7 +33,7 @@ module Make (Cfg : Config) = struct
   let source at it = if Cfg.include_sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
   let typ t = Atom (Type_pretty.string_of_typ t)
-  
+
   let trivia at it =
     match Cfg.include_docs with
     | Some table ->
@@ -250,8 +250,9 @@ module Make (Cfg : Config) = struct
   | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
 
   and dec d = trivia d.at (source d.at (match d.it with
-    | ExpD e -> "ExpD" $$ [exp e ]
-    | LetD (p, e) -> "LetD" $$ [pat p; exp e]
+    | ExpD e -> "ExpD" $$ [exp e]
+    | LetD (p, e, Some f) -> "LetD" $$ [pat p; exp e; exp f]
+    | LetD (p, e, None) -> "LetD" $$ [pat p; exp e]
     | VarD (x, e) -> "VarD" $$ [id x; exp e]
     | TypD (x, tp, t) ->
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]

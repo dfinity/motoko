@@ -535,6 +535,26 @@ let ignoreE exp =
   then exp
   else thenE exp (unitE ())
 
+and let_else_switch p e f =
+  let v = fresh_var "v" (e.note.Note.typ) in
+  (* Evaluate e once, assign it to variable v, and pattern match on v. If v
+     matches p, expression evaluates to v. Otherwise evaluate f. *)
+  blockE
+    [letD v e]
+    {
+      e with
+      it = SwitchE(
+        varE v,
+        [
+          { it = { pat = p; exp = varE v }; at = e.at; note = () };
+          { it = { pat = wildP; exp = f }; at = f.at ; note = () }
+        ]
+      );
+      note = Note.{ def with
+        typ = e.note.Note.typ;
+        eff = max_eff (eff e) (eff f)
+      }
+    }
 
 (* Mono-morphic function expression *)
 
