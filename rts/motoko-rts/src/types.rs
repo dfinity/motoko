@@ -1,14 +1,21 @@
 //! Heap layout.
 //!
 //! Each object has its object id.
-//! Objects are indirectly referred to via a central object table, that maps an object id to the
-//! corresponding object address. Fields and array elements store values that encode an object id
-//! if it refers to an object.
+//! Objects in dynamic heap are indirectly referred to via a central object table, that maps an
+//! object id to the corresponding object address. Fields and array elements store values that
+//! encode an object id if it refers to an object. Objects in static space are handled
+//! specifically, see below.
 //!
 //! Value representation:
-//! * Object id: Skewed address of the entry in the object table that identifies the object.
-//!     (Table entry addresses are aligned to 4 bytes, so the skewed representation has bit 0 set.)
+//! * Object id:
+//!     If object in dynamic heap space, skewed address of the entry in the object table that i
+//!     dentifies the object. (Table entry addresses are aligned to 4 bytes, so the skewed
+//!     representation has bit 0 set.)
+//!     If the object resides in the static space, skewed address of the object. The id is not
+//!     recorded in the object table.
 //! * Scalar: A scalar value, shifted by 1 bit.
+//!
+//! For an object in the dynamic heap:
 //!
 //!                       Object table
 //! Value (skewed)       ┌─────────────┐   
@@ -21,9 +28,8 @@
 //!
 //! Object id have bit 0 set (skewed), while scalr values have bit 0 clear (left-shifted by 1).
 //!
-//! Compatbility mode for non-incremental GC:
-//!  * The object id is simply represented as the skwewed object address.
-//!    No indirection via central object table is used.
+//! Exceptions for (1) static objects and/or (2) non-incremental GC mode:
+//!  * Object id = skewed object adddress. No indirection via the object table is used.
 
 // Note [struct representation]
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -261,6 +267,7 @@ impl Value {
 
     /// Get the address of an object by lookup through the object table.
     pub unsafe fn get_object_address(self) -> usize {
+        assert!(self.is_object_id());
         let table_pointer = unskew(self.0 as usize);
         // TODO: Check id and lookup in table
         table_pointer

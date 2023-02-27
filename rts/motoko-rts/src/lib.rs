@@ -35,7 +35,7 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::Bytes;
+use types::{Bytes, Value};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -47,6 +47,16 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
 #[ic_mem_fn(ic_only)]
 unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> usize {
     mem.alloc_words(n)
+}
+
+#[no_mangle]
+extern "C" fn new_object_id(address: usize) -> Value {
+    Value::new_object_id(address)
+}
+
+#[no_mangle]
+unsafe extern "C" fn get_object_address(value: Value) -> usize {
+    value.get_object_address()
 }
 
 extern "C" {

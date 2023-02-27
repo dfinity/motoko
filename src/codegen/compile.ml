@@ -730,17 +730,11 @@ let from_0_to_n env mk_body = from_m_to_n env 0l mk_body
 
 (* Pointer reference and dereference  *)
 
-let load_unskewed_ptr : G.t =
+let load_ptr : G.t =
   G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
 
-let store_unskewed_ptr : G.t =
-  G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
-
-let load_ptr : G.t =
-  G.i (Load {ty = I32Type; align = 2; offset = ptr_unskew; sz = None})
-
 let store_ptr : G.t =
-  G.i (Store {ty = I32Type; align = 2; offset = ptr_unskew; sz = None})
+  G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
 
 module FakeMultiVal = struct
   (* For some use-cases (e.g. processing the compiler output with analysis
@@ -979,6 +973,8 @@ module RTS = struct
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "schedule_generational_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "new_object_id" [I32Type] [I32Type];
+    E.add_func_import env "rts" "get_object_address" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [I32Type] [];
@@ -1070,6 +1066,12 @@ module Heap = struct
   let dyn_alloc_words env =
     E.call_import env "rts" "alloc_words"
 
+  let new_object_id env = 
+    E.call_import env "rts" "new_object_id"
+
+  let get_object_address env = 
+    E.call_import env "rts" "get_object_address"
+
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
@@ -1080,41 +1082,33 @@ module Heap = struct
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
 
-  let load_field_unskewed (i : int32) : G.t =
+  let load_field (i : int32) : G.t =
     let offset = Int32.mul word_size i in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
 
-  let load_field (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) ptr_unskew) in
-    G.i (Load {ty = I32Type; align = 2; offset; sz = None})
-
   let store_field (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    let offset = Int32.mul word_size i in
     G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
 
-  let load_field64_unskewed (i : int32) : G.t =
+  let load_field64 (i : int32) : G.t =
     let offset = Int32.mul word_size i in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
 
-  let load_field64 (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) ptr_unskew) in
-    G.i (Load {ty = I64Type; align = 2; offset; sz = None})
-
   let store_field64 (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    let offset = Int32.mul word_size i in
     G.i (Store {ty = I64Type; align = 2; offset; sz = None})
 
   (* Or even as a single 64 bit float *)
 
   let load_field_float64 (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    let offset = Int32.mul word_size i in
     G.i (Load {ty = F64Type; align = 2; offset; sz = None})
 
   let store_field_float64 (i : int32) : G.t =
-    let offset = Int32.(add (mul word_size i) ptr_unskew) in
+    let offset = Int32.mul word_size i in
     G.i (Store {ty = F64Type; align = 2; offset; sz = None})
 
   (* Convenience functions related to memory *)
@@ -1474,18 +1468,20 @@ module BitTagged = struct
 end (* BitTagged *)
 
 module Tagged = struct
-  (* Tagged objects all have an object header consisting of a tag and a forwarding pointer.
+  (* Tagged objects all have an object header consisting of a tag and an object id.
      The tag is to describe their runtime type and serves to traverse the heap 
      (serialization, GC), but also for objectification of arrays.
 
      The tag is a word at the beginning of the object.
 
-     They forwarding pointer supports object moving in the incremental garbage collection.
+     Objects are indirected via a central object table in the incremental GC.
+     This translates an object id to the object's address.
+     This indirection enables fast object moving during the incremental GC.
 
          obj header
-     ┌──────┬─────────┬──
-     │ tag  │ fwd ptr │ ...
-     └──────┴─────────┴──
+     ┌──────┬─────┬──
+     │ tag  │ id  │ ...
+     └──────┴─────┴──
 
      All tagged heap objects have a size of at least two words
      (important for GC, which replaces them with an Indirection).
@@ -1553,29 +1549,28 @@ module Tagged = struct
   (* The tag *)
   let header_size = 2l
   let tag_field = 0l
-  let forwarding_pointer_field = 1l
+  let object_id_field = 1l
 
   let alloc env size tag =
-    let (set_object, get_object) = new_local env "new_object" in
-    Heap.alloc env size ^^
-    set_object ^^ get_object ^^
+    let (set_address, get_address) = new_local env "alloc_address" in
+    let (set_object_id, get_object_id) = new_local env "object_id" in
+    Heap.alloc env size ^^ set_address ^^
+    get_address ^^ Heap.new_object_id env ^^ set_object_id ^^ 
+    get_address ^^
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field ^^
-    get_object ^^ (* object pointer *)
-    get_object ^^ (* forwarding pointer *)
-    Heap.store_field forwarding_pointer_field ^^
-    get_object
-    
-  let load_forwarding_pointer env =
-    Heap.load_field forwarding_pointer_field
+    get_address ^^ (* object pointer *)
+    get_object_id ^^ (* object id *)
+    Heap.store_field object_id_field ^^
+    get_object_id
 
   let store_tag env tag =
-    load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
     
   let load_tag env =
-    load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field tag_field
 
   (* Branches based on the tag of the object pointed to,
@@ -1647,10 +1642,14 @@ module Tagged = struct
     let n = List.length element_instructions in
     let size = (Int32.add (Wasm.I32.of_int_u n) header_size) in
     let (set_object, get_object) = new_local env "new_object" in
+    let (set_address, get_address) = new_local env "object_address" in
     alloc env size tag ^^
     set_object ^^
+    get_object ^^
+    Heap.get_object_address env ^^
+    set_address ^^
     let init_elem idx instrs : G.t =
-      get_object ^^
+      get_address ^^
       instrs ^^
       Heap.store_field (Int32.add (Wasm.I32.of_int_u idx) header_size)
     in
@@ -1662,19 +1661,19 @@ module Tagged = struct
     let header_size = Int32.(mul Heap.word_size header_size) in
     let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
     let unskewed_ptr = E.reserve_static_memory env size in
-    let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
+    let static_object_id = Int32.(add unskewed_ptr ptr_skew) in
     let tag = bytes_of_int32 (int_of_tag tag) in
-    let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
-    let data = tag ^ forward ^ payload in
+    let object_id = bytes_of_int32 static_object_id in
+    let data = tag ^ object_id ^ payload in
     E.write_static_memory env unskewed_ptr data;
-    skewed_ptr
+    static_object_id
 
   let shared_static_obj env tag payload =
     let tag_word = bytes_of_int32 (int_of_tag tag) in
     let payload_bytes = StaticBytes.as_bytes payload in
     let key = tag_word ^ payload_bytes in
     match E.object_pool_find env key with
-    | Some ptr -> ptr (* no forwarding pointer dereferencing needed as static objects do not move *)
+    | Some ptr -> ptr (* no object table indirection needed for static objects *)
     | None ->
       let ptr = new_static_obj env tag payload in
       E.object_pool_add env key ptr;
@@ -1690,7 +1689,7 @@ module MutBox = struct
        │ obj header │ payload │
        └──────┴─────┴─────────┘
 
-     The object header includes the obj tag (MutBox) and the forwarding pointer.
+     The object header includes the obj tag (MutBox) and the object id.
   *)
 
   let field = Tagged.header_size
@@ -1706,13 +1705,13 @@ module MutBox = struct
     ptr
     
   let load_field env =
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field field
 
   let store_field env =
     let (set_mutbox_value, get_mutbox_value) = new_local env "mutbox_value" in
     set_mutbox_value ^^
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     get_mutbox_value ^^
     Heap.store_field field
 end
@@ -1759,7 +1758,7 @@ module Opt = struct
     compile_unboxed_const (null_vanilla_lit env)
 
   let is_some env =
-    (* no forwarding pointer dereferencing as the null object is static and does not move *)
+    (* No object table indirection needed for `null` literal which is a static object *)
     (* Moreover, pattern matching sometimes calls this function to compare scalars against null *)
     null_lit env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
@@ -1785,13 +1784,11 @@ module Opt = struct
     )
 
   (* This function is used where conceptually, Opt.inject should be used, but
-  we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
-  let inject_simple env e = 
-    e ^^ Tagged.load_forwarding_pointer env
-    
+  we know for sure that it wouldn’t do anything anyways *)
+  let inject_simple env e = e
 
   let load_some_payload_field env =
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field some_payload_field
 
   let project env =
@@ -1820,7 +1817,7 @@ module Variant = struct
        │ obj header │ varianttag │ payload │
        └──────┴─────┴────────────┴─────────┘
 
-     The object header includes the obj tag (TAG_VARIANT) and the forwarding pointer.
+     The object header includes the obj tag (TAG_VARIANT) and the object id.
   *)
 
   let variant_tag_field = Tagged.header_size
@@ -1833,11 +1830,11 @@ module Variant = struct
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
   let get_variant_tag env = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field variant_tag_field
 
   let project env = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field payload_field
 
   (* Test if the top of the stack points to a variant with this label *)
@@ -1858,7 +1855,7 @@ module Closure = struct
        │ obj header │ funid │ size │ captured ... │
        └──────┴─────┴───────┴──────┴──────────────┘
 
-     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+     The object header includes the object tag (TAG_CLOSURE) and the object id.
 
   *)
   let header_size = Int32.add Tagged.header_size 2l
@@ -1867,18 +1864,19 @@ module Closure = struct
   let len_field = Int32.add 1l Tagged.header_size
 
   let load_data env i = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field (Int32.add header_size i)
 
   let store_data env i = 
     let (set_closure_data, get_closure_data) = new_local env "closure_data" in
     set_closure_data ^^
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     get_closure_data ^^
     Heap.store_field (Int32.add header_size i)
 
   let prepare_closure_call env =
-    Tagged.load_forwarding_pointer env
+    (* Heap.get_object_address env *)
+    G.nop
 
   (* Expect on the stack
      * the function closure (using prepare_closure_call)
@@ -1892,12 +1890,12 @@ module Closure = struct
       I32Type :: Lib.List.make n_args I32Type,
       FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
     (* get the table index *)
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field funptr_field ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
-    FakeMultiVal.load env (Lib.List.make n_res I32Type)
-
+    FakeMultiVal.load env (Lib.List.make n_res I32Type) 
+    
   let static_closure env fi : int32 =
     Tagged.shared_static_obj env Tagged.Closure StaticBytes.[
       I32 (E.add_fun_ptr env fi);
@@ -1919,7 +1917,7 @@ module BoxedWord64 = struct
        │ obj header │    i64    │
        └──────┴─────┴─────┴─────┘
 
-     The object header includes the object tag (Bits64) and the forwarding pointer.
+     The object header includes the object tag (Bits64) and the object id.
 
   *)
 
@@ -1937,7 +1935,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
+    get_i ^^ Heap.get_object_address env ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
@@ -1950,7 +1948,7 @@ module BoxedWord64 = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         ( get_n ^^ BitTagged.untag env)
-        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field64 payload_field)
+        ( get_n ^^ Heap.get_object_address env ^^ Heap.load_field64 payload_field)
     )
 end (* BoxedWord64 *)
 
@@ -2037,7 +2035,7 @@ module BoxedSmallWord = struct
        │ obj header │ i32 │
        └──────┴─────┴─────┘
 
-     The object header includes the object tag (Bits32) and the forwarding pointer.
+     The object header includes the object tag (Bits32) and the object id.
 
   *)
 
@@ -2055,7 +2053,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Tagged.alloc env 3l Tagged.Bits32 ^^
     set_i ^^
-    get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
+    get_i ^^ Heap.get_object_address env ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -2071,7 +2069,7 @@ module BoxedSmallWord = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         (get_n ^^ BitTagged.untag_i32)
-        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field payload_field)
+        (get_n ^^ Heap.get_object_address env ^^ Heap.load_field payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2278,7 +2276,7 @@ module Float = struct
      treated opaquely by the RTS. We'll introduce a separate tag when the need of
      debug inspection (or GC representation change) arises.
 
-     The object header includes the object tag (Bits64) and the forwarding pointer.
+     The object header includes the object tag (Bits64) and the object id.
   *)
 
   let payload_field = Tagged.header_size
@@ -2294,11 +2292,11 @@ module Float = struct
     let (set_i, get_i) = new_local env "boxed_f64" in
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
+    get_i ^^ Heap.get_object_address env ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
     get_i
   )
 
-  let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
+  let unbox env = Heap.get_object_address env ^^ Heap.load_field_float64 payload_field
 
 end (* Float *)
 
@@ -3243,7 +3241,7 @@ module Object = struct
           │ field1_hash │ field2_hash │ … │
           └─────────────┴─────────────┴───┘
 
-    The object header includes the object tag (Object) and the forwarding pointer.
+    The object header includes the object tag (Object) and the object id.
 
     The field hash array lives in static memory (so no size header needed).
     The hash_ptr is skewed.
@@ -3308,23 +3306,28 @@ module Object = struct
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
+    let (set_address, get_address) = new_local env "object_address" in
     Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
     set_ri ^^
+
+    get_ri ^^
+    Heap.get_object_address env ^^
+    set_address ^^
     
     (* Set size *)
-    get_ri ^^
+    get_address ^^
     compile_unboxed_const sz ^^
     Heap.store_field size_field ^^
 
     (* Set hash_ptr *)
-    get_ri ^^
+    get_address ^^
     compile_unboxed_const hash_ptr ^^
     Heap.store_field hash_ptr_field ^^
 
     (* Write all the fields *)
     let init_field (name, mk_is) : G.t =
       (* Write the pointer to the indirection *)
-      get_ri ^^
+      get_address ^^
       mk_is () ^^
       let i = FieldEnv.find name name_pos_map in
       let offset = Int32.add header_size i in
@@ -3339,27 +3342,27 @@ module Object = struct
   let idx_hash_raw env low_bound =
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
     Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      let set_x = G.setter_for get_x in
+      let set_address, get_address = new_local env "h_address" in
       let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
 
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+      get_x ^^ Heap.get_object_address env ^^ set_address ^^
 
-      get_x ^^ Heap.load_field hash_ptr_field ^^
+      get_address ^^ Heap.load_field hash_ptr_field ^^
 
       (* Linearly scan through the fields (binary search can come later) *)
       (* unskew h_ptr and advance both to low bound *)
       compile_add_const Int32.(add ptr_unskew (mul Heap.word_size (of_int low_bound))) ^^
       set_h_ptr ^^
-      get_x ^^
+      get_address ^^
       compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
-      set_x ^^
+      set_address ^^
       G.loop0 (
-          get_h_ptr ^^ load_unskewed_ptr ^^
+          get_h_ptr ^^ load_ptr ^^
           get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if0
-            (get_x ^^ G.i Return)
+            (get_address ^^ G.i Return)
             (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
-             get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+            get_address ^^ compile_add_const Heap.word_size ^^ set_address ^^
              G.i (Br (nr 1l)))
         ) ^^
       G.i Unreachable
@@ -3373,7 +3376,7 @@ module Object = struct
       Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env low_bound ^^
-      load_ptr ^^ Tagged.load_forwarding_pointer env ^^
+      load_ptr ^^ Heap.get_object_address env ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size)
     )
     else idx_hash_raw env low_bound
@@ -3425,7 +3428,7 @@ module Blob = struct
      │ obj header │ n_bytes │ bytes (padded) … │
      └──────┴─────┴─────────┴──────────────────┘
 
-    The object header includes the object tag (Blob) and the forwarding pointer.
+    The object header includes the object tag (Blob) and the object id.
 
     This heap object is used for various kinds of binary, non-pointer data.
 
@@ -3437,7 +3440,7 @@ module Blob = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let len env = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field len_field
 
   let vanilla_lit env s =
@@ -3457,7 +3460,7 @@ module Blob = struct
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   
   let payload_ptr_unskewed env = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     compile_add_const unskewed_payload_offset
 
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
@@ -3501,10 +3504,8 @@ module Blob = struct
         | EqOp -> "Blob.compare_eq"
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let set_x = G.setter_for get_x in
-      let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
+      get_x ^^
+      get_y ^^
 
       match op with
         (* Some operators can be reduced to the negation of other operators *)
@@ -3605,7 +3606,7 @@ module Blob = struct
       from_0_to_n env (fun get_i ->
         get_ptr ^^
         compile_unboxed_const 0l ^^
-        store_unskewed_ptr ^^
+        store_ptr ^^
         get_ptr ^^
         compile_add_const Heap.word_size ^^
         set_ptr))
@@ -3623,7 +3624,7 @@ module Text = struct
      │ obj header │ n_bytes │ text1 │ text2 │
      └──────┴─────┴─────────┴───────┴───────┘
 
-    The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the forwarding pointer
+    The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the object id.
 
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
@@ -3669,11 +3670,6 @@ module Text = struct
         | EqOp -> "Text.compare_eq"
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let set_x = G.setter_for get_x in
-      let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
-
       get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0l ^^
       match op with
@@ -3695,7 +3691,7 @@ module Arr = struct
      │ obj header │ n_fields │ field1 │ … │
      └──────┴─────┴──────────┴────────┴───┘
      
-     The object  header includes the object tag (Array) and the forwarding pointer.
+     The object  header includes the object tag (Array) and the object id.
 
      No difference between mutable and immutable arrays.
   *)
@@ -3705,12 +3701,12 @@ module Arr = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let len env = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field len_field
 
   (* Static array access. No checking *)
   let load_field env n = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
@@ -3728,7 +3724,7 @@ module Arr = struct
       compile_add_const header_size ^^
       compile_mul_const element_size ^^
       get_array ^^
-      Tagged.load_forwarding_pointer env ^^
+      Heap.get_object_address env ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
@@ -3760,19 +3756,19 @@ module Arr = struct
   let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
-    let set_array = G.setter_for get_array in
+    let (set_array_address, get_array_address) = new_local env "array_address" in
+    
+    get_array ^^ Heap.get_object_address env ^^ set_array_address ^^
 
-    get_array ^^ Tagged.load_forwarding_pointer env ^^ set_array ^^
-
-    (* Initial element pointer, skewed *)
+    (* Initial element pointer *)
     compile_unboxed_const header_size ^^
     compile_mul_const element_size ^^
-    get_array ^^
+    get_array_address ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     set_pointer ^^
 
-    (* Upper pointer boundary, skewed *)
-    get_array ^^ Heap.load_field len_field ^^
+    (* Upper pointer boundary *)
+    get_array_address ^^ Heap.load_field len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
@@ -3786,7 +3782,7 @@ module Arr = struct
     ) (
       body get_pointer ^^
 
-      (* Next element pointer, skewed *)
+      (* Next element pointer *)
       get_pointer ^^
       compile_add_const element_size ^^
       set_pointer
@@ -3908,7 +3904,7 @@ module Tuple = struct
 
   (* Expects on the stack the pointer to the array. *)
   let load_n env n = 
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Heap.load_field (Int32.add Arr.header_size n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
@@ -4005,12 +4001,12 @@ module Lifecycle = struct
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
-    load_unskewed_ptr
+    load_ptr
 
   let set env new_state =
     compile_unboxed_const (ptr ()) ^^
     compile_unboxed_const (int_of_state new_state) ^^
-    store_unskewed_ptr
+    store_ptr
 
   let trans env new_state =
     let name = "trans_state" ^ Int32.to_string (int_of_state new_state) in
@@ -4726,9 +4722,9 @@ module StableMem = struct
     | _ -> assert false
 
   let _read_word32 env =
-    read env false "word32" I32Type 4l load_unskewed_ptr
+    read env false "word32" I32Type 4l load_ptr
   let write_word32 env =
-    write env false "word32" I32Type 4l store_unskewed_ptr
+    write env false "word32" I32Type 4l store_ptr
 
 
   (* read and clear word32 from stable mem offset on stack *)
@@ -4745,10 +4741,10 @@ module StableMem = struct
             get_offset ^^
             compile_const_64 4L ^^
             IC.system_call env "stable64_read" ^^
-            get_temp_ptr ^^ load_unskewed_ptr ^^
+            get_temp_ptr ^^ load_ptr ^^
             set_word ^^
             (* write 0 *)
-            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
+            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_ptr ^^
             get_offset ^^
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 4L ^^
@@ -4866,21 +4862,21 @@ module StableMem = struct
    | _ -> assert false
 
   let load_word32 env =
-    read env true "word32" I32Type 4l load_unskewed_ptr
+    read env true "word32" I32Type 4l load_ptr
   let store_word32 env =
-    write env true "word32" I32Type 4l store_unskewed_ptr
+    write env true "word32" I32Type 4l store_ptr
 
   let load_word8 env =
     read env true "word8" I32Type 1l
       (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}))
   let store_word8 env =
-    write env true "word8" I32Type 1l store_unskewed_ptr
+    write env true "word8" I32Type 1l store_ptr
 
   let load_word16 env =
     read env true "word16" I32Type 2l
       (G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)}))
   let store_word16 env =
-    write env true "word16" I32Type 2l store_unskewed_ptr
+    write env true "word16" I32Type 2l store_ptr
 
   let load_word64 env =
     read env true "word64" I64Type 8l
@@ -5596,7 +5592,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
-          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^
+          get_x ^^ Heap.get_object_address env ^^ Strm.absolute_offset env get_data_buf ^^
           Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -5970,7 +5966,7 @@ module MakeSerialization (Strm : Stream) = struct
               get_typtbl ^^
               get_arg_typ ^^ compile_mul_const Heap.word_size ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-              load_unskewed_ptr
+              load_ptr
             ) ^^
             ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
             (* read sleb128 *)
@@ -5999,7 +5995,7 @@ module MakeSerialization (Strm : Stream) = struct
               get_typtbl ^^
               get_arg_typ ^^ compile_mul_const Heap.word_size ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-              load_unskewed_ptr
+              load_ptr
             ) ^^
             ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
             (* read sleb128 *)
@@ -6030,7 +6026,7 @@ module MakeSerialization (Strm : Stream) = struct
         Stack.with_words env "get_n_ptr" 1l (fun get_n_ptr ->
           get_n_ptr ^^
           ReadBuf.read_leb128 env get_typ_buf ^^
-          store_unskewed_ptr ^^
+          store_ptr ^^
           f get_typ_buf get_n_ptr
         )
       ) in
@@ -6092,8 +6088,8 @@ module MakeSerialization (Strm : Stream) = struct
                We update the memo location here so that loops work
             *)
             get_thing ^^ set_result ^^
-            get_memo ^^ get_result ^^ store_unskewed_ptr ^^
-            get_memo ^^ compile_add_const 4l ^^ Blob.lit env (typ_hash t) ^^ store_unskewed_ptr
+            get_memo ^^ get_result ^^ store_ptr ^^
+            get_memo ^^ compile_add_const 4l ^^ Blob.lit env (typ_hash t) ^^ store_ptr
           )
         end begin
           (* Decoded before. Check type hash *)
@@ -6517,11 +6513,11 @@ module MakeSerialization (Strm : Stream) = struct
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* Allocate memo table, if necessary *)
-      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_ptr) (fun get_rel_buf_opt ->
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
-        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_ptr) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
@@ -6547,9 +6543,9 @@ module MakeSerialization (Strm : Stream) = struct
                 get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
                 get_data_buf ^^ Registers.set_data_buf env ^^
                 get_ref_buf ^^ Registers.set_ref_buf env ^^
-                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
-                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+                get_typtbl_ptr ^^ load_ptr ^^ Registers.set_typtbl env ^^
+                get_maintyps_ptr ^^ load_ptr ^^ Registers.set_typtbl_end env ^^
+                get_typtbl_size_ptr ^^ load_ptr ^^ Registers.set_typtbl_size env
               end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
@@ -6578,7 +6574,7 @@ module MakeSerialization (Strm : Stream) = struct
          (get_arg_count ^^ compile_rel_const I32Op.GtU 0l)
          begin
            get_data_buf ^^
-           get_typtbl_ptr ^^ load_unskewed_ptr ^^
+           get_typtbl_ptr ^^ load_ptr ^^
            ReadBuf.read_sleb128 env get_main_typs_buf ^^
            compile_unboxed_const 0l ^^
            E.call_import env "rts" "skip_any" ^^
@@ -6772,7 +6768,7 @@ module BlobStream : Stream = struct
 
   let absolute_offset _env get_token =
     let filled_field = Int32.add Blob.len_field 9l in (* see invariant in `stream.rs` *)
-    get_token ^^ Heap.load_field_unskewed filled_field
+    get_token ^^ Heap.load_field filled_field
 
   let checkpoint _env _get_token = G.i Drop
 
@@ -6874,7 +6870,7 @@ module Stabilization = struct
       E.call_import env "rts" "stream_shutdown" ^^
       compile_unboxed_zero ^^ (* no need to write *)
       get_token ^^
-      Heap.load_field64_unskewed ptr64_field ^^
+      Heap.load_field64 ptr64_field ^^
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
@@ -6890,9 +6886,9 @@ module Stabilization = struct
       let start64_field = Int32.add ptr64_field 2l in (* see invariant in `stream.rs` *)
       absolute_offset env get_token ^^
       get_token ^^
-      Heap.load_field64_unskewed ptr64_field ^^
+      Heap.load_field64 ptr64_field ^^
       get_token ^^
-      Heap.load_field64_unskewed start64_field ^^
+      Heap.load_field64 start64_field ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
@@ -7420,23 +7416,31 @@ module Var = struct
       sr,
       G.i (LocalSet (nr i))
     | Some (HeapInd i) ->
-      G.i (LocalGet (nr i)),
+      let (set_address, get_address) = new_local env "mutbox_address" in
+      G.i (LocalGet (nr i)) ^^
+      Heap.get_object_address env ^^
+      set_address ^^
+      get_address,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
       (if !Flags.gc_strategy = Flags.Generational
         then
-         G.i (LocalGet (nr i)) ^^
+         get_address ^^
          compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
         else G.nop)
     | Some (HeapStatic ptr) ->
-      compile_unboxed_const ptr,
+      let (set_address, get_address) = new_local env "mutbox_address" in
+      compile_unboxed_const ptr ^^
+      Heap.get_object_address env ^^
+      set_address ^^
+      get_address,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
       (if !Flags.gc_strategy = Flags.Generational
         then
-         compile_unboxed_const ptr ^^
+         get_address ^^
          compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
@@ -7565,7 +7569,7 @@ module FuncDec = struct
     let retty = Lib.List.make return_arity I32Type in
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
-      let get_closure = G.i (LocalGet (nr 0l)) ^^ Tagged.load_forwarding_pointer env in
+      let get_closure = G.i (LocalGet (nr 0l)) in
 
       let ae1, closure_codeW = restore_env env ae0 get_closure in
 
@@ -7675,11 +7679,13 @@ module FuncDec = struct
 
         (* Store the function pointer number: *)
         get_clos ^^
+        Heap.get_object_address env ^^
         compile_unboxed_const (E.add_fun_ptr env fi) ^^
         Heap.store_field Closure.funptr_field ^^
 
         (* Store the length *)
         get_clos ^^
+        Heap.get_object_address env ^^
         compile_unboxed_const len ^^
         Heap.store_field Closure.len_field ^^
 
@@ -9071,7 +9077,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
     (* Note: the below two lines compile to `i32.add; i32.load offset=13`,
        thus together also unskewing the pointer and skipping administrative
@@ -9806,7 +9812,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae p ^^
     compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     Tuple.from_stack env 2 ^^ set_meth_pair ^^
     compile_exp_vanilla env ae a ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
@@ -9960,7 +9966,7 @@ and compile_exp (env : E.t) ae exp =
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
-    Tagged.load_forwarding_pointer env ^^
+    Heap.get_object_address env ^^
     set_future ^^
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
