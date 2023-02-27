@@ -9,18 +9,19 @@ const ITER_POS_IDX: u32 = 1;
 /// Returns iterator for the given blob
 #[ic_mem_fn]
 unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value {
-    let iter_ptr = mem.alloc_words(size_of::<Array>() + Words(2));
+    let address = mem.alloc_words(size_of::<Array>() + Words(2));
+    let id = Value::new_object_id(address);
 
     // NB. cannot use as_array() here as we didn't write the header yet
-    let iter_array = iter_ptr.get_ptr() as *mut Array;
+    let iter_array = address as *mut Array;
     (*iter_array).header.tag = TAG_ARRAY;
-    (*iter_array).header.forward = iter_ptr;
+    (*iter_array).header.id = id;
     (*iter_array).len = 2;
 
     iter_array.set_pointer(ITER_BLOB_IDX, blob, mem);
     iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-    iter_ptr
+    id
 }
 
 /// Returns whether the iterator is finished

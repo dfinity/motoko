@@ -1,3 +1,30 @@
+//! Heap layout.
+//!
+//! Each object has its object id.
+//! Objects are indirectly referred to via a central object table, that maps an object id to the
+//! corresponding object address. Fields and array elements store values that encode an object id
+//! if it refers to an object.
+//!
+//! Value representation:
+//! * Object id: Skewed address of the entry in the object table that identifies the object.
+//!     (Table entry addresses are aligned to 4 bytes, so the skewed representation has bit 0 set.)
+//! * Scalar: A scalar value, shifted by 1 bit.
+//!
+//!                       Object table
+//! Value (skewed)       ┌─────────────┐   
+//!    |                 |     ...     |
+//!    |   object id     |─────────────|                     Object
+//!    └───────────────> |   address   |───────────────> ┌─────────────┐
+//!                      |─────────────|                 |     ...     |
+//!                      |     ...     |                 └─────────────┘
+//!                      └─────────────┘
+//!
+//! Object id have bit 0 set (skewed), while scalr values have bit 0 clear (left-shifted by 1).
+//!
+//! Compatbility mode for non-incremental GC:
+//!  * The object id is simply represented as the skwewed object address.
+//!    No indirection via central object table is used.
+
 // Note [struct representation]
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -23,7 +50,6 @@ use crate::gc::generational::write_barrier::write_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
-use core::ptr::null;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -164,31 +190,23 @@ pub const TRUE_VALUE: u32 = 0x1;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Value(u32);
 
-/// A view of `Value` for analyzing the slot contents.
-pub enum PtrOrScalar {
-    /// Slot is a pointer to a boxed object
-    Ptr(usize),
-
-    /// Slot is an unboxed scalar value
-    Scalar(u32),
-}
-
-impl PtrOrScalar {
-    pub fn is_ptr(&self) -> bool {
-        matches!(self, PtrOrScalar::Ptr(_))
-    }
-
-    pub fn is_scalar(&self) -> bool {
-        matches!(self, PtrOrScalar::Scalar(_))
-    }
-}
+/// Sentinel `null` reference, reserved object id trapping when resolving its object address.
+pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
 
 impl Value {
-    /// Create a value from a pointer
-    pub const fn from_ptr(ptr: usize) -> Self {
+    /// Reserve a new object id in the object table for a newly allocated object at the defined address.
+    pub const fn new_object_id(address: usize) -> Value {
         // Cannot use `debug_assert_eq` in const yet, so using `debug_assert`
-        debug_assert!(ptr & 0b1 == 0b0);
-        Value(skew(ptr) as u32)
+        debug_assert!(address as usize & 0b1 == 0b0);
+
+        // TODO: Allocate in object table
+
+        // TODO: Remove this temporary logic
+        Value(skew(address) as u32)
+    }
+
+    pub fn free_object_id(self) {
+        // TODO: Implement
     }
 
     /// Create a value from a scalar
@@ -211,21 +229,6 @@ impl Value {
         Value(raw)
     }
 
-    /// Analyzes the value.
-    ///
-    /// Note: when using this function in performance critical code make sure to check the
-    /// generated Wasm and see if it can be improved by using `Value::get_raw`, `unskew`, etc.
-    /// rustc/LLVM generates slightly more inefficient code (compared to using functions like
-    /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
-    /// cycle.
-    pub fn get(&self) -> PtrOrScalar {
-        if is_ptr(self.0) {
-            PtrOrScalar::Ptr(unskew(self.0 as usize))
-        } else {
-            PtrOrScalar::Scalar(self.0 >> 1)
-        }
-    }
-
     /// Get the raw value
     #[inline]
     pub fn get_raw(&self) -> u32 {
@@ -234,143 +237,87 @@ impl Value {
 
     /// Is the value a scalar?
     pub fn is_scalar(&self) -> bool {
-        self.get().is_scalar()
+        !is_object_id(self.0)
     }
 
     /// Is the value a pointer?
-    pub fn is_ptr(&self) -> bool {
-        self.get().is_ptr()
+    pub fn is_object_id(&self) -> bool {
+        is_object_id(self.0)
     }
 
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
     /// the value is not a scalar.
     pub fn get_scalar(&self) -> u32 {
-        debug_assert!(self.get().is_scalar());
+        debug_assert!(self.is_scalar());
         self.0 >> 1
     }
 
     /// Assumes that the value is a signed scalar and returns the scalar value. In debug mode
     /// panics if the value is not a scalar.
     pub fn get_signed_scalar(&self) -> i32 {
-        debug_assert!(self.get().is_scalar());
+        debug_assert!(self.is_scalar());
         self.0 as i32 >> 1
     }
 
-    /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
-    /// the value is not a pointer or if it points to a stale object that has been forwarded.
-    pub fn get_ptr(self) -> usize {
-        debug_assert!(self.get().is_ptr());
-        unskew(self.0 as usize)
+    /// Get the address of an object by lookup through the object table.
+    pub unsafe fn get_object_address(self) -> usize {
+        let table_pointer = unskew(self.0 as usize);
+        // TODO: Check id and lookup in table
+        table_pointer
     }
 
-    /// Check that the forwarding pointer is valid.
-    #[inline]
-    pub unsafe fn check_forwarding_pointer(self) {
-        debug_assert!(
-            self.forward().get_ptr() == self.get_ptr()
-                || self.forward().forward().get_ptr() == self.forward().get_ptr()
-        );
-    }
-
-    /// Check whether the object's forwarding pointer refers to a different location.
-    pub unsafe fn is_forwarded(self) -> bool {
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() != self.get_ptr()
-    }
-
-    /// Get the object tag. No forwarding. Can be applied to any block, regular objects
-    /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
-    /// In debug mode panics if the value is not a pointer.
+    /// Get the object tag. In debug mode panics if the value is not an object id.
     pub unsafe fn tag(self) -> Tag {
-        *(self.get_ptr() as *const Tag)
+        *(self.get_object_address() as *const Tag)
     }
 
-    /// Get the forwarding pointer. Used by the incremental GC.
-    pub unsafe fn forward(self) -> Value {
-        debug_assert!(self.is_obj());
-        debug_assert!(self.get_ptr() as *const Obj != null());
-        let obj = self.get_ptr() as *const Obj;
-        (*obj).forward
-    }
-
-    /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
-    pub unsafe fn forward_if_possible(self) -> Value {
-        if self.is_ptr() && self.get_ptr() as *const Obj != null() {
-            // Ignore null pointers used in text_iter.
-            self.forward()
-        } else {
-            self
-        }
-    }
-
-    /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
-    /// Returns `false` for pointers to special `OneWordFiller`, `FwdPtr`, and `FreeSpace` blocks that do not have
-    /// a regular object header.
-    pub unsafe fn is_obj(self) -> bool {
-        let tag = self.tag();
-        tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
-    }
-
-    /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
+    /// Get the pointer as `Obj`. In debug mode panics if the value is not an object id.
     pub unsafe fn as_obj(self) -> *mut Obj {
-        debug_assert!(self.get().is_ptr());
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Obj
+        debug_assert!(has_object_header(self.tag()));
+        self.get_object_address() as *mut Obj
     }
 
-    /// Get the pointer as `MutBox` using forwarding. In debug mode panics if the value is not a pointer.
+    /// Get the pointer as `MutBox`. In debug mode panics if the value is not an object id pointing to a `MutBox`.
     pub unsafe fn as_mutbox(self) -> *mut MutBox {
         debug_assert_eq!(self.tag(), TAG_MUTBOX);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut MutBox
+        self.get_object_address() as *mut MutBox
     }
 
-    /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Array`.
+    /// Get the pointer as `Array`. In debug mode panics if the value is not an object id pointing to an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
         debug_assert_eq!(self.tag(), TAG_ARRAY);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Array
+        self.get_object_address() as *mut Array
     }
 
-    /// Get the pointer as `Concat` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not a `Concat`.
+    /// Get the pointer as `Concat`. In debug mode panics if the value is not an object id pointing to a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *const Concat
+        self.get_object_address() as *const Concat
     }
 
-    /// Get the pointer as `Blob` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not a `Blob`.
+    /// Get the pointer as `Blob. In debug mode panics if the value is not an object id pointing to a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *const Blob
+        self.get_object_address() as *const Blob
     }
 
-    /// Get the pointer as mutable `Blob` using forwarding.
+    /// Get the pointer as mutable `Blob`.
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Blob
+        self.get_object_address() as *mut Blob
     }
 
-    /// Get the pointer as `Stream` using forwarding, which is a glorified `Blob`.
-    /// In debug mode panics if the value is not a pointer or the
-    /// pointed object is not a `Blob`.
+    /// Get the pointer as `Stream`, which is a glorified `Blob`.
+    /// In debug mode panics if the value is not an object id pointing to a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Stream
+        self.get_object_address() as *mut Stream
     }
 
-    /// Get the pointer as `BigInt` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not a `BigInt`.
+    /// Get the pointer as `BigInt`. In debug mode panics if the value is not an object id pointing to a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut BigInt
+        self.get_object_address() as *mut BigInt
     }
 
     pub fn as_tiny(self) -> i32 {
@@ -378,19 +325,18 @@ impl Value {
         self.0 as i32 >> 1
     }
 
-    // optimized version of `value.is_ptr() && value.get_ptr() >= address`
-    // value is a pointer equal or greater than the unskewed address > 1
+    // Shortcut version of `value.is_object_id() && value.get_object_address() >= address`.
+    // Value is an object id pointing to an object at the unskewed address > 1
     #[inline]
-    pub fn points_to_or_beyond(&self, address: usize) -> bool {
+    pub unsafe fn points_to_or_beyond(&self, address: usize) -> bool {
         debug_assert!(address > TRUE_VALUE as usize);
-        let raw = self.get_raw();
-        is_skewed(raw) && unskew(raw as usize) >= address
+        self.is_object_id() && self.get_object_address() >= address
     }
 }
 
 #[inline]
-/// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
-pub fn is_ptr(value: u32) -> bool {
+/// Returns whether a raw value is representing an object id. Useful when using `Value::get_raw`.
+pub fn is_object_id(value: u32) -> bool {
     is_skewed(value) && value != TRUE_VALUE
 }
 
@@ -425,7 +371,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_FWD_PTR: Tag = 19;
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -445,14 +391,15 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
-    /// Forwarding pointer to support object moving in the incremental GC.
-    pub forward: Value,
+    /// Object identity, skewed pointer to the object's entry in the object table.
+    /// Supports reverse lookup of the object in the object table.
+    /// Used by the incremental GC for atomic incremental object moving.
+    pub id: Value,
 }
 
 impl Obj {
-    /// Check whether the object's forwarding pointer refers to a different location.
-    pub unsafe fn is_forwarded(self: *const Self) -> bool {
-        (*self).forward.get_ptr() != self as usize
+    pub unsafe fn id(self: *const Self) -> Value {
+        (*self).id
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {
@@ -493,7 +440,7 @@ impl Array {
 
     /// Write a pointer value to an array element. Uses a post-update barrier.
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
-        debug_assert!(value.is_ptr());
+        debug_assert!(value.is_object_id());
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
         write_barrier(mem, slot_addr as u32);
@@ -619,7 +566,7 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
-    pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
+    pub padding: u32, // The insertion of the object id in the header implies 1 word padding to 64-bit.
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -628,18 +575,12 @@ pub struct Stream {
 }
 
 impl Stream {
-    pub unsafe fn is_forwarded(self: *const Self) -> bool {
-        (self as *const Obj).is_forwarded()
-    }
-
     pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
-        debug_assert!(!self.is_forwarded());
         self as *mut Blob
     }
 }
 
-/// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
-/// that is used by the incremental GC.
+/// Only used by the copying GC.
 /// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
@@ -668,8 +609,7 @@ impl BigInt {
     }
 
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
-        let bigint = (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
-        (*bigint).header.forward.as_bigint()
+        (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt
     }
 
     /// Returns pointer to the `mp_int` struct
@@ -770,10 +710,17 @@ impl FreeSpace {
     }
 }
 
+/// Determines whether an heap block with this tag has a regular header that contains an object id.
+/// Returns `false` for `OneWordFiller`, `FwdPtr`, and `FreeSpace` tags whose blocks do not have
+/// a regular object header.
+pub(crate) unsafe fn has_object_header(tag: Tag) -> bool {
+    tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
+}
+
 /// Returns the heap block size in words.
-/// Handles both objects with header and forwarding pointer
-/// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
-/// that do not have a forwarding pointer.
+/// Handles both objects with header that stores the object id and
+/// special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
+/// that do not have a regular header with object id.
 pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
     let tag = *(address as *mut Tag);
     match tag {
@@ -811,7 +758,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
         }
 
         TAG_FWD_PTR => {
-            rts_trap_with("object_size: forwarding pointer");
+            rts_trap_with("block_size: forwarding pointer");
         }
 
         TAG_BITS32 => size_of::<Bits32>(),
@@ -833,7 +780,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
         }
 
         _ => {
-            rts_trap_with("object_size: invalid object tag");
+            rts_trap_with("block_size: invalid object tag");
         }
     }
 }

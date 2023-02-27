@@ -69,7 +69,7 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         let bytes = n.to_bytes();
         let delta = u64::from(bytes.as_u32());
 
@@ -84,7 +84,7 @@ impl Memory for IcMemory {
 
         HP = new_hp as u32;
 
-        Value::from_ptr(old_hp as usize)
+        old_hp as usize
     }
 }
 

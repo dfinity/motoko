@@ -15,7 +15,7 @@ use core::ptr::null_mut;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{Array, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{Array, Value, NULL_OBJECT_ID, TAG_BLOB, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -55,7 +55,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`
     let todo_addr = array.payload_addr().add(ITER_TODO_IDX as usize) as *mut _;
-    *todo_addr = Value::from_ptr(null_mut() as *mut Array as usize);
+    *todo_addr = NULL_OBJECT_ID;
 
     // Initialize position field
     array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn text_iter_done(iter: Value) -> u32 {
     let blob = array.get(ITER_BLOB_IDX).as_blob();
     let todo = array.get(ITER_TODO_IDX);
 
-    if pos >= blob.len().as_u32() && todo.get_ptr() as *mut Array == null_mut() {
+    if pos >= blob.len().as_u32() && todo.get_object_address() as *mut Array == null_mut() {
         1
     } else {
         0
@@ -97,7 +97,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     if pos >= blob.len().as_u32() {
         let todo = iter_array.get(ITER_TODO_IDX);
 
-        if todo.get_ptr() as *mut Array == null_mut() {
+        if todo.get_object_address() as *mut Array == null_mut() {
             // Caller should check with text_iter_done
             rts_trap_with("text_iter_next: Iter already done");
         }

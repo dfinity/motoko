@@ -20,7 +20,7 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         self.inner.borrow_mut().alloc_words(n)
     }
 }
@@ -112,7 +112,7 @@ impl MotokoHeap {
             motoko_rts::debug::dump_heap(
                 self.heap_base_address() as u32,
                 self.heap_ptr_address() as u32,
-                Value::from_ptr(self.static_root_array_address()),
+                Value::new_object_id(self.static_root_array_address()),
                 self.continuation_table_ptr_address() as *mut Value,
             );
         }
@@ -272,7 +272,7 @@ impl MotokoHeapInner {
         }
     }
 
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         let bytes = n.to_bytes();
 
         // Update heap pointer
@@ -283,7 +283,7 @@ impl MotokoHeapInner {
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
 
-        Value::from_ptr(old_hp)
+        old_hp
     }
 
     unsafe fn grow_memory(&mut self, ptr: usize) {

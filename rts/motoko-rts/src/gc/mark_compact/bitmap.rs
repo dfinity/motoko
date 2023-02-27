@@ -77,7 +77,9 @@ pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_p
     // 64 bits in a single read and check as many bits as possible with a single `word != 0`.
     let bitmap_bytes = Bytes(((BITMAP_SIZE + 7) / 8) * 8);
     // Allocating an actual object here as otherwise dump_heap gets confused
-    let blob = alloc_blob(mem, bitmap_bytes).get_ptr() as *mut Blob;
+    let id = alloc_blob(mem, bitmap_bytes);
+    id.free_object_id();
+    let blob = id.get_object_address() as *mut Blob;
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
     BITMAP_PTR = blob.payload_addr();

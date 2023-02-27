@@ -17,7 +17,7 @@ static mut SNAPSHOT: *mut Blob = null_mut();
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
     let length = Bytes(heap.limits.free as u32);
-    let blob = alloc_blob(heap.mem, length).get_ptr() as *mut Blob;
+    let blob = alloc_blob(heap.mem, length).get_object_address() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }
@@ -33,6 +33,7 @@ pub unsafe fn verify_snapshot<M: Memory>(heap: &Heap<M>, verify_roots: bool) {
         verify_static_roots(heap.roots.static_roots.as_array(), heap.limits.free);
     }
     verify_heap(&heap.limits);
+    (*SNAPSHOT).header.id.free_object_id();
     SNAPSHOT = null_mut();
 }
 
@@ -52,7 +53,8 @@ unsafe fn verify_heap(limits: &Limits) {
     assert!(SNAPSHOT.len().as_usize() <= limits.free);
     let mut pointer = limits.base;
     while pointer < SNAPSHOT.len().as_usize() {
-        if Value::from_ptr(pointer).is_obj() {
+        let tag = *(pointer as *const Tag);
+        if has_object_header(tag) {
             let current = pointer as *mut Obj;
             let previous = (SNAPSHOT.payload_addr() as usize + pointer) as *mut Obj;
             assert!(current.tag() == previous.tag());
@@ -79,7 +81,7 @@ unsafe fn verify_heap(limits: &Limits) {
 unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
     if (current_field as usize) < last_free {
         let value = *current_field;
-        value.is_ptr() && value.get_ptr() as usize >= last_free
+        value.is_object_id() && value.get_object_address() as usize >= last_free
     } else {
         false
     }
@@ -113,7 +115,7 @@ pub unsafe fn check_memory(limits: &Limits, roots: &Roots) {
 impl<'a> MemoryChecker<'a> {
     unsafe fn check_memory(&self) {
         self.check_static_roots();
-        if (*self.roots.continuation_table_ptr_loc).is_ptr() {
+        if (*self.roots.continuation_table_ptr_loc).is_object_id() {
             self.check_object(*self.roots.continuation_table_ptr_loc);
         }
         self.check_heap();
@@ -143,7 +145,7 @@ impl<'a> MemoryChecker<'a> {
             0,
             |_, field_address| {
                 // Ignore null pointers used in text_iter.
-                if (*field_address).get_ptr() as *mut Obj != null_mut() {
+                if (*field_address).get_object_address() as *mut Obj != null_mut() {
                     (&self).check_object_header(*field_address);
                 }
             },
@@ -152,8 +154,8 @@ impl<'a> MemoryChecker<'a> {
     }
 
     unsafe fn check_object_header(&self, object: Value) {
-        assert!(object.is_ptr());
-        let pointer = object.get_ptr();
+        assert!(object.is_object_id());
+        let pointer = object.get_object_address();
         assert!(pointer < self.limits.free);
         let tag = object.tag();
         assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
@@ -162,9 +164,11 @@ impl<'a> MemoryChecker<'a> {
     unsafe fn check_heap(&self) {
         let mut pointer = self.limits.base;
         while pointer < self.limits.free {
-            let block = Value::from_ptr(pointer as usize);
-            if block.tag() != TAG_ONE_WORD_FILLER {
-                self.check_object(block);
+            let tag = *(pointer as *const Tag);
+            if has_object_header(tag) {
+                let object = pointer as *mut Obj;
+                assert!(has_object_header((*object).tag));
+                self.check_object((*object).id);
             }
             pointer += block_size(pointer as usize).to_bytes().as_usize();
         }

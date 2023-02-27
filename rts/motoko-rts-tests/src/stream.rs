@@ -13,7 +13,7 @@ pub unsafe fn test() {
     const STREAM_SMALL_SIZE: u32 = 60;
 
     println!("  Testing stream creation");
-    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(STREAM_SMALL_SIZE)) as usize);
+    let stream = Value::new_object_id(alloc_stream(&mut mem, Bytes(STREAM_SMALL_SIZE)) as usize);
 
     let initial_stream_filled = (size_of::<Stream>() - size_of::<Blob>())
         .to_bytes()
@@ -37,7 +37,7 @@ pub unsafe fn test() {
 
     println!("  Testing stream filling (blocks)");
     const STREAM_LARGE_SIZE: u32 = 6000;
-    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(STREAM_LARGE_SIZE)) as usize);
+    let stream = Value::new_object_id(alloc_stream(&mut mem, Bytes(STREAM_LARGE_SIZE)) as usize);
     let chunk: [u8; 10] = [10, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     for _ in 0..STREAM_LARGE_SIZE / chunk.len() as u32 {
         stream

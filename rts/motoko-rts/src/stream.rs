@@ -20,7 +20,7 @@
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
-// - `obj header` contains tag and forwarding pointer
+// - `obj header` contains tag and object id
 // - `len` is in blob metadata
 // - 'padding' to align to 64-bit
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
@@ -193,11 +193,11 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        let ptr = Value::from_ptr(blob as usize);
+        let object_id = Value::new_object_id(blob as usize);
         (*blob).header.tag = TAG_BLOB;
-        (*blob).header.forward = ptr;
+        (*blob).header.id = object_id;
         debug_assert_eq!(blob.len(), (*self).filled);
-        ptr
+        object_id
     }
 
     /// Shut down the stream by outputting all data. Lengths are

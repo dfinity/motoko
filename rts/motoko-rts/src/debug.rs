@@ -12,9 +12,10 @@ pub unsafe extern "C" fn print_value(value: Value) {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 
-    match value.get() {
-        PtrOrScalar::Scalar(scalar) => print_tagged_scalar(&mut write_buf, scalar),
-        PtrOrScalar::Ptr(ptr) => print_boxed_object(&mut write_buf, ptr),
+    if value.is_object_id() {
+        print_boxed_object(&mut write_buf, value.get_object_address());
+    } else {
+        print_tagged_scalar(&mut write_buf, value.get_scalar());
     }
 
     print(&write_buf);
@@ -52,9 +53,9 @@ pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) 
 
     for i in 0..len {
         let elem = arr.get(i);
-        if elem.is_ptr() {
+        if elem.is_object_id() {
             let _ = write!(&mut write_buf, "{}: ", i);
-            print_boxed_object(&mut write_buf, elem.get_ptr());
+            print_boxed_object(&mut write_buf, elem.get_object_address());
             print(&write_buf);
             write_buf.reset();
         }
@@ -82,7 +83,7 @@ pub(crate) unsafe fn print_static_roots(static_roots: Value) {
     for i in 0..len {
         let field_addr = payload_addr.add(i as usize);
         let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, field_addr as usize);
-        print_boxed_object(&mut write_buf, (*field_addr).get_ptr());
+        print_boxed_object(&mut write_buf, (*field_addr).get_object_address());
         print(&write_buf);
         write_buf.reset();
     }
@@ -123,12 +124,6 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
 pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
-    let forward = (*(p as *mut Value)).forward();
-    if forward.get_ptr() != p {
-        let _ = write!(buf, "<forwarded to {:#x}>", forward.get_ptr());
-        return;
-    }
-
     let obj = p as *mut Obj;
     let tag = obj.tag();
 
@@ -149,7 +144,8 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 let val = object.get(i);
                 let _ = write!(buf, "{:#x}", val.get_raw());
 
-                if let PtrOrScalar::Ptr(indirectee_ptr) = val.get() {
+                if val.is_object_id() {
+                    let indirectee_ptr = val.get_object_address();
                     let _ = write!(buf, " (indirectee=");
                     print_boxed_object(buf, indirectee_ptr);
                     let _ = write!(buf, ")");

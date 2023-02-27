@@ -64,7 +64,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     for i in 0..old_size {
         let old_value = old_array.get(i);
-        if old_value.is_ptr() {
+        if old_value.is_object_id() {
             new_array.set_pointer(i, old_value, mem);
         } else {
             new_array.set_scalar(i, old_value);

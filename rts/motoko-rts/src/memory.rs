@@ -25,21 +25,25 @@ use motoko_rts_macros::ic_mem_fn;
 /// ```
 ///
 /// This function does not take any `Memory` arguments can be used by the generated code.
+/// Returns an object address that still needs to be assiged to a new object id to  
+/// obtain a `Value`.
 pub trait Memory {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize;
 }
 
 /// Helper for allocating blobs
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
+    let address = mem.alloc_words(size_of::<Blob>() + size.to_words());
+    let id = Value::new_object_id(address);
+
     // NB. Cannot use `as_blob` here as we didn't write the header yet
-    let blob = ptr.get_ptr() as *mut Blob;
+    let blob = address as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
-    (*blob).header.forward = ptr;
+    (*blob).header.id = id;
     (*blob).len = size;
 
-    ptr
+    id
 }
 
 /// Helper for allocating arrays
@@ -50,12 +54,14 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
         rts_trap_with("Array allocation too large");
     }
 
-    let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
+    let address = mem.alloc_words(size_of::<Array>() + Words(len));
+    let id = Value::new_object_id(address);
 
-    let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
+    // Cannot use `as_array()` here since the object header is not yet written.
+    let ptr: *mut Array = address as *mut Array;
     (*ptr).header.tag = TAG_ARRAY;
-    (*ptr).header.forward = skewed_ptr;
+    (*ptr).header.id = id;
     (*ptr).len = len;
 
-    skewed_ptr
+    id
 }

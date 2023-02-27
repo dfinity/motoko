@@ -217,7 +217,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         self.mark_static_roots();
 
         let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
-        if continuation_table.is_ptr() && continuation_table.get_ptr() >= self.generation_base() {
+        if continuation_table.is_object_id()
+            && continuation_table.get_object_address() >= self.generation_base()
+        {
             self.mark_object(continuation_table);
         }
 
@@ -251,7 +253,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn mark_object(&mut self, object: Value) {
-        let pointer = object.get_ptr() as u32;
+        let pointer = object.get_object_address() as u32;
         assert!(pointer >= self.generation_base() as u32);
         assert_eq!(pointer % WORD_SIZE, 0);
 
@@ -359,7 +361,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         self.thread_static_roots();
 
         let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
-        if continuation_table.is_ptr() && continuation_table.get_ptr() >= self.generation_base() {
+        if continuation_table.is_object_id()
+            && continuation_table.get_object_address() >= self.generation_base()
+        {
             self.thread(self.heap.roots.continuation_table_ptr_loc);
         }
 
@@ -406,7 +410,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             |_, field_address| {
                 let field_value = *field_address;
                 // Thread if backwards or self pointer
-                if field_value.get_ptr() <= object as usize {
+                if field_value.get_object_address() <= object as usize {
                     (&self).thread(field_address);
                 }
             },
@@ -445,21 +449,24 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let old_pointer = (bit * WORD_SIZE) as *mut Obj;
             let new_pointer = free;
 
+            let new_id = Value::new_object_id(new_pointer);
+
             // Unthread backwards pointers as well as forward pointers of static objects.
             // In the case of a young collection, also unthread forward pointers of old objects.
-            self.unthread(old_pointer, new_pointer);
+            self.unthread(old_pointer, new_id);
 
             // Move the object
             let object_size = block_size(old_pointer as usize);
             if new_pointer as usize != old_pointer as usize {
                 memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
-
-                // Update forwarding pointer
-                let new_obj = new_pointer as *mut Obj;
-                debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-                (*new_obj).forward = Value::from_ptr(new_pointer as usize);
             }
+
+            // Update object id, TODO: Remove later
+            let new_obj = new_pointer as *mut Obj;
+            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
+            (*new_obj).id.free_object_id();
+            (*new_obj).id = new_id;
 
             free += object_size.to_bytes().as_usize();
 
@@ -480,7 +487,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             object.tag(),
             self.generation_base(),
             |_, field_address| {
-                if (*field_address).get_ptr() > object as usize {
+                if (*field_address).get_object_address() > object as usize {
                     (&self).thread(field_address)
                 }
             },
@@ -489,19 +496,19 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn thread(&self, field: *mut Value) {
-        let pointed = (*field).get_ptr() as *mut Obj;
+        let pointed = (*field).get_object_address() as *mut Obj;
         assert!(self.should_be_threaded(pointed));
         let pointed_header = (*pointed).tag;
         *field = Value::from_raw(pointed_header);
         (*pointed).tag = field as u32;
     }
 
-    unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {
+    unsafe fn unthread(&self, object: *mut Obj, new_id: Value) {
         assert!(self.should_be_threaded(object));
         let mut header = (*object).tag;
         while header & 0b1 == 0 {
             let tmp = (*(header as *const Obj)).tag;
-            (*(header as *mut Value)) = Value::from_ptr(new_location);
+            (*(header as *mut Value)) = new_id;
             header = tmp;
         }
         assert!(header >= TAG_OBJECT && header <= TAG_NULL);

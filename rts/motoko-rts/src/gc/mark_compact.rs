@@ -105,7 +105,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     mark_static_roots(mem, static_roots, heap_base);
 
-    if (*continuation_table_ptr_loc).is_ptr() {
+    if (*continuation_table_ptr_loc).is_object_id() {
         mark_object(mem, *continuation_table_ptr_loc);
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
         // it will be readable when we unthread the continuation table
@@ -134,9 +134,8 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 }
 
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
-    debug_assert!(!obj.is_forwarded());
     let obj_tag = obj.tag();
-    let obj = obj.get_ptr() as u32;
+    let obj = obj.get_object_address() as u32;
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);
@@ -169,7 +168,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
             mark_object(mem, field_value);
 
             // Thread if backwards or self pointer
-            if field_value.get_ptr() <= obj as usize {
+            if field_value.get_object_address() <= obj as usize {
                 thread(field_addr);
             }
         },
@@ -217,8 +216,10 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         let p = (bit * WORD_SIZE) as *mut Obj;
         let p_new = free;
 
+        let new_id = Value::new_object_id(p_new as usize);
+
         // Update backwards references to the object's new location and restore object header
-        unthread(p, p_new);
+        unthread(p, new_id);
 
         // Move the object
         let p_size_words = block_size(p as usize);
@@ -226,11 +227,13 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
             memcpy_words(p_new as usize, p as usize, p_size_words);
 
             debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
-            // Update forwarding pointer
-            let new_obj = p_new as *mut Obj;
-            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-            (*new_obj).forward = Value::from_ptr(p_new as usize);
         }
+
+        // Update object id, TODO: Remove later
+        let new_obj = p_new as *mut Obj;
+        debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
+        (*new_obj).id.free_object_id();
+        (*new_obj).id = new_id;
 
         free += p_size_words.to_bytes().as_u32();
 
@@ -251,7 +254,7 @@ unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
         obj.tag(),
         heap_base as usize,
         |_, field_addr| {
-            if (*field_addr).get_ptr() > obj as usize {
+            if (*field_addr).get_object_address() > obj as usize {
                 thread(field_addr)
             }
         },
@@ -269,14 +272,14 @@ unsafe fn thread(field: *mut Value) {
 }
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
-unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
+unsafe fn unthread(obj: *mut Obj, new_id: Value) {
     let mut header = (*obj).tag;
 
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
     while header & 0b1 == 0 {
         let tmp = (*(header as *const Obj)).tag;
-        (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
+        (*(header as *mut Value)) = new_id;
         header = tmp;
     }
 

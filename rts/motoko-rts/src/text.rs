@@ -22,7 +22,7 @@
 // │ obj header │ n_bytes │ text1 │ text2 │
 // └────────────┴─────────┴───────┴───────┘
 //
-// The object header includes tag (`TAG_CONCAT`) and forwarding pointer.
+// The object header includes tag (`TAG_CONCAT`) and object id.
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
@@ -105,15 +105,17 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     }
 
     // Create concat node
-    let r = mem.alloc_words(size_of::<Concat>());
-    let r_concat = r.get_ptr() as *mut Concat;
-    (*r_concat).header.tag = TAG_CONCAT;
-    (*r_concat).header.forward = r;
-    (*r_concat).n_bytes = new_len;
-    (*r_concat).text1 = s1.forward_if_possible();
-    (*r_concat).text2 = s2.forward_if_possible();
+    let address = mem.alloc_words(size_of::<Concat>());
+    let id = Value::new_object_id(address);
 
-    r
+    let r_concat = address as *mut Concat;
+    (*r_concat).header.tag = TAG_CONCAT;
+    (*r_concat).header.id = id;
+    (*r_concat).n_bytes = new_len;
+    (*r_concat).text1 = s1;
+    (*r_concat).text2 = s2;
+
+    id
 }
 
 // Leaving breadcrumbs in the destination buffer for which concat node/blob to continue
@@ -203,8 +205,7 @@ pub unsafe extern "C" fn text_size(s: Value) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
-    s.check_forwarding_pointer();
-    (s.forward().get_ptr() as *mut Blob).len()
+    (s.get_object_address() as *mut Blob).len()
 }
 
 /// Compares texts from given offset on for the given number of bytes. All assumed to be in range.

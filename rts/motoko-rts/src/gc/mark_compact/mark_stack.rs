@@ -25,13 +25,14 @@ pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
     debug_assert!(STACK_BLOB_PTR.is_null());
 
     // Allocating an actual object here to not break dump_heap
-    STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).get_ptr() as *mut Blob;
+    STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).get_object_address() as *mut Blob;
     STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
     STACK_PTR = STACK_BASE;
     STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.as_usize());
 }
 
 pub unsafe fn free_mark_stack() {
+    (*STACK_BLOB_PTR).header.id.free_object_id();
     STACK_BLOB_PTR = null_mut();
     STACK_BASE = null_mut();
     STACK_PTR = null_mut();
@@ -41,7 +42,7 @@ pub unsafe fn free_mark_stack() {
 /// Doubles the stack size
 pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
     let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
-    let p = mem.alloc_words(stack_cap).get_ptr() as *mut usize;
+    let p = mem.alloc_words(stack_cap) as *mut usize;
 
     // Make sure nothing was allocated after the stack
     debug_assert_eq!(STACK_TOP, p);
