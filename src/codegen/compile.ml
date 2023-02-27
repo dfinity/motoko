@@ -3500,9 +3500,7 @@ module Blob = struct
         | EqOp -> "Blob.compare_eq"
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      get_x ^^
-      get_y ^^
-
+      
       match op with
         (* Some operators can be reduced to the negation of other operators *)
         | LtOp ->  get_x ^^ get_y ^^ compare env GeOp ^^ Bool.neg
