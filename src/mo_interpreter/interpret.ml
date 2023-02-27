@@ -19,8 +19,8 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
-(* The actor heap. 
-    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities. 
+(* The actor heap.
+    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities.
 *)
 let state = ref V.Env.empty
 
@@ -350,7 +350,7 @@ let text_chars t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
-    let s = Wasm.Utf8.decode t in
+    let s = Lib.Utf8.decode t in
     let next =
       V.local_func 0 1 (fun c v k' ->
         if !i = List.length s
@@ -363,7 +363,7 @@ let text_chars t at =
 let text_len t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (Numerics.Nat.of_int (List.length (Wasm.Utf8.decode t))))
+    k (V.Int (Numerics.Nat.of_int (List.length (Lib.Utf8.decode t))))
   )
 
 (* Expressions *)
@@ -771,35 +771,35 @@ and define_id env id v =
   Lib.Promise.fulfill (find id.it env.vals) v
 
 and define_pat env pat v =
-  let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
   match pat.it with
-  | WildP -> ()
-  | LitP _ | SignP _ | AltP _ ->
-    if match_pat pat v = None
-    then err ()
-    else ()
-  | VarP id -> define_id env id v
-  | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
+  | WildP -> true
+  | LitP _ | SignP _ | AltP _ -> match_pat pat v <> None
+  | VarP id ->
+    define_id env id v;
+    true
+  | TupP pats ->
+    define_pats env pats (V.as_tup v)
+  | ObjP pfs ->
+    define_pat_fields env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
-    | V.Null -> err ()
+    | V.Null -> false
     | _ -> assert false
     )
   | TagP (i, pat1) ->
     let lab, v1 = V.as_variant v in
     if lab = i.it
     then define_pat env pat1 v1
-    else err ()
+    else false
   | AnnotP (pat1, _)
   | ParP pat1 -> define_pat env pat1 v
 
 and define_pats env pats vs =
-  List.iter2 (define_pat env) pats vs
+  List.for_all2 (fun pat v -> define_pat env pat v) pats vs
 
 and define_pat_fields env pfs vs =
-  List.iter (define_pat_field env vs) pfs
+  List.for_all (fun pf -> define_pat_field env vs pf) pfs
 
 and define_pat_field env vs pf =
   let v = V.Env.find pf.it.id.it vs in
@@ -939,7 +939,7 @@ and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
   | TypD _ -> V.Env.empty
-  | LetD (pat, _) -> declare_pat pat
+  | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
@@ -955,10 +955,14 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
-  | LetD (pat, exp) ->
+  | LetD (pat, exp, fail) ->
     interpret_exp env exp (fun v ->
-      define_pat env pat v;
-      k v
+      if define_pat env pat v then
+        k v
+      else
+        match fail with
+        | Some fail -> interpret_exp env fail (fun _ -> assert false)
+        | None -> trap pat.at "value %s does not match pattern" (string_of_val env v)
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->

@@ -199,7 +199,7 @@ Literals are constant values. The syntactic validity of a literal depends on the
 To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 | Abbreviation | Category   | Supported opertions             |
-|--------------|------------|---------------------------------|
+| ------------ | ---------- | ------------------------------- |
 | A            | Arithmetic | arithmetic operations           |
 | L            | Logical    | logical/Boolean operations      |
 | B            | Bitwise    | bitwise and wrapping operations |
@@ -211,7 +211,7 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 ### Unary operators
 
 | `<unop>` | Category |                  |
-|----------|----------|------------------|
+| -------- | -------- | ---------------- |
 | `-`      | A        | numeric negation |
 | `+`      | A        | numeric identity |
 | `^`      | B        | bitwise negation |
@@ -220,7 +220,7 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 ### Relational operators
 
 |           |          |                                                 |
-|-----------|----------|-------------------------------------------------|
+| --------- | -------- | ----------------------------------------------- |
 | `<relop>` | Category |                                                 |
 | `==`      |          | equals                                          |
 | `!=`      |          | not equals                                      |
@@ -236,7 +236,7 @@ Equality and inequality are structural and based on the observable content of th
 ### Numeric binary operators
 
 | `<binop>` | Category |                |
-|-----------|----------|----------------|
+| --------- | -------- | -------------- |
 | `+`       | A        | addition       |
 | `-`       | A        | subtraction    |
 | `*`       | A        | multiplication |
@@ -247,7 +247,7 @@ Equality and inequality are structural and based on the observable content of th
 ### Bitwise and wrapping binary operators
 
 | `<binop>` | Category |                                                |
-|-----------|----------|------------------------------------------------|
+| --------- | -------- | ---------------------------------------------- |
 | `&`       | B        | bitwise and                                    |
 | `\|`      | B        | bitwise or                                     |
 | `^`       | B        | exclusive or                                   |
@@ -263,13 +263,13 @@ Equality and inequality are structural and based on the observable content of th
 ### Text operators
 
 | `<binop>` | Category |               |
-|-----------|----------|---------------|
+| --------- | -------- | ------------- |
 | `#`       | T        | concatenation |
 
 ### Assignment operators
 
 | `:=`, `<unop>=`, `<binop>=` | Category |                                            |
-|-----------------------------|----------|--------------------------------------------|
+| --------------------------- | -------- | ------------------------------------------ |
 | `:=`                        | \*       | assignment (in place update)               |
 | `+=`                        | A        | in place add                               |
 | `-=`                        | A        | in place subtract                          |
@@ -297,7 +297,7 @@ The category of a compound assignment `<unop>=`/`<binop>=` is given by the categ
 The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
 
 | Precedence | Associativity | Token                                                                                                                         |
-|------------|---------------|-------------------------------------------------------------------------------------------------------------------------------|
+| ---------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                   |
 | (higher)   | none          | `else`, `while`                                                                                                               |
 | (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
@@ -387,7 +387,8 @@ The syntax of a *declaration* is as follows:
 ``` bnf
 <dec> ::=                                                               declaration
   <exp>                                                                  expression
-  let <pat> = <exp>                                                      immutable
+  let <pat> = <exp>                                                      immutable, trap on match failure
+  let <pat> = <exp> else <block-or-exp>                                  immutable, handle match failure
   var <id> (: <typ>)? = <exp>                                            mutable
   <sort> <id>? =? <obj-body>                                             object
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       function
@@ -580,8 +581,8 @@ Motoko provides the following primitive type identifiers, including support for 
 
 The category of a type determines the operators (unary, binary, relational and in-place update via assignment) applicable to values of that type.
 
-| Identifier                          | Category | Description                                                            |
-|-------------------------------------|----------|------------------------------------------------------------------------|
+| Identifier                         | Category | Description                                                            |
+| ---------------------------------- | -------- | ---------------------------------------------------------------------- |
 | [`Bool`](./base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
 | [`Char`](./base/Char.md)           | O        | Unicode characters                                                     |
 | [`Text`](./base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
@@ -1231,7 +1232,7 @@ This condition ensures that every stable variable is either fresh, requiring ini
 The declaration `<dec>` of a `system` field must be a manifest `func` declaration with one of the following names and types:
 
 | name          | type                                                          | description         |
-|---------------|---------------------------------------------------------------|---------------------|
+| ------------- | ------------------------------------------------------------- | ------------------- |
 | `heartbeat`   | `() -> async ()`                                              | heartbeat action    |
 | `timer`       | `(Nat64 -> ()) -> async ()`                                   | timer action        |
 | `inspect`     | `{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool` | message predicate   |
@@ -1384,15 +1385,49 @@ TBR
 
 ### Let declaration
 
-The let declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
+The `let` declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
 
--   `<exp>` has type `T`.
+-   `<exp>` has type `T`, and
 
 -   `<pat>` has type `T`.
 
 The declaration `let <pat> = <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`. If matching fails, then the result is `trap`. Otherwise, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
 
 All bindings declared by a `let` (if any) are *immutable*.
+
+### Let-else declaration
+
+The `let-else` declaration `let <pat> = <exp> else <block-or-exp>` has type `T` and declares the bindings in `<pat>` provided:
+
+-   `<exp>` has type `T`,
+
+-   `<pat>` has type `T`, and
+
+-   `<block-or-exp>` has type `None`.
+
+The declaration `let <pat> = <exp> else <block-or-exp>` evaluates `<exp>` to a result `r`.
+If `r` is `trap`, the declaration evaluates to `trap`.
+If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`.
+If matching succeeds, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
+If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`,
+cannot proceed to the end of the declaration but may still alter control-flow to,
+for example `return` or `throw` to exit an enclosing function,
+break` from an enclosing expression or simply diverge.
+
+All bindings declared by a `let-else` (if any) are *immutable*.
+
+#### Handling pattern match failures
+
+In the presence of refutable patterns, the pattern in a `let` declaration may fail to match the value of its expression.
+In such cases, the `let`-declaration will evaluate to a trap.
+The compiler emits a warning for any `let`-declaration than can trap due to pattern match failure.
+
+Instead of trapping, a user may want to explicitly handle pattern match failures.
+The `let-else` declaration, `let <pat> = <exp> else <block-or-exp>`, has mostly identical static and dynamic semantics to `let`,
+but diverts the program's control flow to `<block-or-exp>` when pattern matching fails, allowing recovery from failure.
+The `else` expression, `<block-or-exp>`, must have type `None` and typically exits the declaration using imperative control flow
+constructs such as `throw`, `return`, `break` or non-returning functions such as `Debug.trap(...)` (that all produce a result of type `None`).
+Any compilation warning that is produced for a `let` can be silenced by handling the potential pattern-match failure using `let-else`.
 
 ### Var declaration
 
@@ -1830,7 +1865,7 @@ If `var` is absent from `var? T` then the value `w` is just the value `v` of imm
 The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, and `U`,`<id>` and `T` are related by a row of the following table:
 
 |            |         |                         |                                              |
-|------------|---------|-------------------------|----------------------------------------------|
+| ---------- | ------- | ----------------------- | -------------------------------------------- |
 | U          | `<id>`  | T                       | Description                                  |
 | `Text`     | `size`  | `Nat`                   | size (or length) in characters               |
 | `Text`     | `chars` | `{ next: () -> Char? }` | character iterator, first to last            |

@@ -194,7 +194,7 @@ let rec pp_val_nullary d ppf = function
   | Nat64 n -> pr ppf (Nat64.to_pretty_string n)
   | Float f -> pr ppf (Float.to_pretty_string f)
   | Char c ->  pr ppf (string_of_string '\'' [c] '\'')
-  | Text t -> pr ppf (string_of_string '\"' (Wasm.Utf8.decode t) '\"')
+  | Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
   | Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
   | Tup vs ->
     fprintf ppf "@[<1>(%a%s)@]"

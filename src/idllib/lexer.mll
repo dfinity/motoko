@@ -1,6 +1,6 @@
 {
 open Parser
-module Utf8 = Wasm.Utf8
+module Utf8 = Lib.Utf8
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;

@@ -1,5 +1,60 @@
 # Motoko compiler changelog
 
+## 0.8.3 (2023-02-24)
+
+* motoko (`moc`)
+
+  * new 'let-else' construct for handling pattern-match failure (#3836).
+    This is a frequently asked-for feature that allows to change the control-flow
+    of programs when pattern-match failure occurs, thus providing a means against
+    the famous "pyramid of doom" issue. A common example is look-ups:
+    ``` Motoko
+    shared func getUser(user : Text) : async Id {
+      let ?id = Map.get(users, user) else { throw Error.reject("no such user") };
+      id
+    }
+    ```
+    Similarly, an expression like
+    ``` Motoko
+    (label v : Bool { let <pat> = <exp> else break v false; true })
+    ```
+    evaluates to a `Bool`, signifying whether `<pat>` matches `<exp>`.
+
+  * Improve recursive deserialization capacity to match recursive serialization capacity by reducing
+    Wasm stack consumption (#3809).
+    Because of the bounds on recursion depth imposed by fixed-size stack, the
+    advice remains the same: avoid deeply nested recursive data structures.
+    Think "shallow trees good, very long lists bad".
+
+  * bugfix: stack overflow in UTF-8 encode/decode for `moc.js` (#3825).
+
+* motoko-base
+
+  * add missing `unshare : Tree<K, V> -> ()` method to class `RBTree<K, V>`
+    to restore objects from saved state (dfinity/motoko-base#532).
+
+## 0.8.2 (2023-02-17)
+
+* motoko (`moc`)
+
+  * Add compiler flag `--rts-stack-pages <n>` to override default number of
+    pages dedicated to fixed runtime system stack. Now defaults to 32 pages
+    (2MiB) (up from previous 2 pages/128KiB) (#3782).
+    In emergencies, increasing this setting may improve your ability to deserialize
+    deeply nested Candid or stable variable data.
+
+  * Add stack overflow detection utilising reserved page (#3793).
+
+  * Performance improvement: heap allocator speedup (#3090, #3790).
+
+  * bugfix: avoid more heap-out-bounds errors during deserialization of stable variables
+    by increasing default runtime system stack from 128KiB to 2MiB (#3782).
+    _Note_: this is a partial fix, as issues with stack growth remain.
+
+* motoko-base
+
+  * bugfix: non-leaky deletion for `RBTree` (dfinity/motoko-base#524).
+
 ## 0.8.1 (2023-02-03)
 
 * motoko (`moc`)
@@ -116,7 +171,7 @@
 
   * Add user-facing timer functionality (dfinity/motoko-base#474).
 
-  * Add `Array.size` (#486, #494).
+  * Add `Array.size` (dfinity/motoko-base#486, dfinity/motoko-base#494).
 
   * Add `TrieSet` methods `isEmpty`, `isSubset` (dfinity/motoko-base#503).
 
