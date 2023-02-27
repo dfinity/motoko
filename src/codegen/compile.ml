@@ -1874,12 +1874,8 @@ module Closure = struct
     get_closure_data ^^
     Heap.store_field (Int32.add header_size i)
 
-  let prepare_closure_call env =
-    (* Heap.get_object_address env *)
-    G.nop
-
   (* Expect on the stack
-     * the function closure (using prepare_closure_call)
+     * the function closure
      * and arguments (n-ary!)
      * the function closure again!
   *)
@@ -3459,13 +3455,13 @@ module Blob = struct
 
   let payload_offset = Int32.mul Heap.word_size header_size
   
-  let payload_ptr_unskewed env = 
+  let payload_ptr env = 
     Heap.get_object_address env ^^
     compile_add_const payload_offset
 
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
-      get_x ^^ payload_ptr_unskewed env ^^
+      get_x ^^ payload_ptr env ^^
       get_x ^^ len env
     )
 
@@ -3473,7 +3469,7 @@ module Blob = struct
     fun env get_ptr get_size ->
       let (set_x, get_x) = new_local env "x" in
       get_size ^^ alloc env ^^ set_x ^^
-      get_x ^^ payload_ptr_unskewed env ^^
+      get_x ^^ payload_ptr env ^^
       get_ptr ^^
       get_size ^^
       Heap.memcpy env ^^
@@ -3486,7 +3482,7 @@ module Blob = struct
     get_size_fun env ^^ set_len ^^
 
     get_len ^^ alloc env ^^ set_blob ^^
-    get_blob ^^ payload_ptr_unskewed env ^^
+    get_blob ^^ payload_ptr env ^^
     offset_fun env ^^
     get_len ^^
     copy_fun env ^^
@@ -3542,7 +3538,7 @@ module Blob = struct
         get_len ^^
         from_0_to_n env (fun get_i ->
           get_x ^^
-          payload_ptr_unskewed env ^^
+          payload_ptr env ^^
           get_i ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3550,7 +3546,7 @@ module Blob = struct
 
 
           get_y ^^
-          payload_ptr_unskewed env ^^
+          payload_ptr env ^^
           get_i ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3585,7 +3581,7 @@ module Blob = struct
     E.call_import env "rts" "blob_iter_next" ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
-  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed env
+  let dyn_alloc_scratch env = alloc env ^^ payload_ptr env
 
   (* TODO: rewrite using MemoryFill *)
   let clear env =
@@ -3828,7 +3824,6 @@ module Arr = struct
       get_pointer ^^
       (* The closure *)
       get_f ^^
-      Closure.prepare_closure_call env ^^
       (* The arg *)
       get_i ^^
       BigNum.from_word32 env ^^
@@ -3856,7 +3851,7 @@ module Arr = struct
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ get_i ^^ idx env ^^
-        get_blob ^^ Blob.payload_ptr_unskewed env ^^
+        get_blob ^^ Blob.payload_ptr env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
         TaggedSmallWord.msb_adjust Type.Nat8 ^^
@@ -3876,7 +3871,7 @@ module Arr = struct
       get_len ^^ Blob.alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
-        get_r ^^ Blob.payload_ptr_unskewed env ^^
+        get_r ^^ Blob.payload_ptr env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         get_a ^^ get_i ^^ idx env ^^
         load_ptr ^^
@@ -4180,7 +4175,7 @@ module IC = struct
     Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
       let (set_blob, get_blob) = new_local env "blob" in
       get_str ^^ Text.to_blob env ^^ set_blob ^^
-      get_blob ^^ Blob.payload_ptr_unskewed env ^^
+      get_blob ^^ Blob.payload_ptr env ^^
       get_blob ^^ Blob.len env ^^
       print_ptr_len env
     )
@@ -4904,7 +4899,7 @@ module StableMem = struct
           get_len ^^
           guard_range env ^^
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_blob ^^ Blob.payload_ptr env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_read" ^^
@@ -4923,7 +4918,7 @@ module StableMem = struct
           get_len ^^
           guard_range env ^^
           get_offset ^^
-          get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_blob ^^ Blob.payload_ptr env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_write")
     | _ -> assert false
@@ -5034,7 +5029,7 @@ module BumpStream : Stream = struct
     get_data_size ^^ compile_add_const header_size ^^
     Blob.dyn_alloc_scratch env ^^ set_data_buf ^^
     get_data_buf ^^
-    Blob.lit env header ^^ Blob.payload_ptr_unskewed env ^^
+    Blob.lit env header ^^ Blob.payload_ptr env ^^
     compile_unboxed_const header_size ^^
     Heap.memcpy env ^^
     get_data_buf ^^ compile_add_const header_size ^^ set_data_buf
@@ -5083,7 +5078,7 @@ module BumpStream : Stream = struct
     get_x ^^ Blob.len env ^^ set_len ^^
     write_word_leb env get_data_buf get_len ^^
     get_data_buf ^^
-    get_x ^^ Blob.payload_ptr_unskewed env ^^
+    get_x ^^ Blob.payload_ptr env ^^
     get_len ^^
     Heap.memcpy env ^^
     get_len ^^ advance_data_buf get_data_buf
@@ -5913,7 +5908,7 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
-        get_x ^^ Blob.payload_ptr_unskewed env ^^
+        get_x ^^ Blob.payload_ptr env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
       in
@@ -5930,7 +5925,7 @@ module MakeSerialization (Strm : Stream) = struct
         E.else_trap_with env "IDL error: principal too long" ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
-        get_x ^^ Blob.payload_ptr_unskewed env ^^
+        get_x ^^ Blob.payload_ptr env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
       in
@@ -6490,7 +6485,7 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_val, get_val) = new_local env "val" in
 
       get_blob ^^ Blob.len env ^^ set_data_size ^^
-      get_blob ^^ Blob.payload_ptr_unskewed env ^^ set_data_start ^^
+      get_blob ^^ Blob.payload_ptr env ^^ set_data_start ^^
 
       (* Allocate space for the reference buffer and copy it *)
       compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
@@ -6759,7 +6754,7 @@ module BlobStream : Stream = struct
     get_token ^^ E.call_import env "rts" "stream_split" ^^
     let set_blob, get_blob = new_local env "blob" in
     set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
+    get_blob ^^ Blob.payload_ptr env ^^
     get_blob ^^ Blob.len env
 
   let finalize_buffer code = code
@@ -6796,7 +6791,7 @@ module BlobStream : Stream = struct
     get_x ^^ Blob.len env ^^ set_len ^^
     write_word_leb env get_token get_len ^^
     get_token ^^
-    get_x ^^ Blob.payload_ptr_unskewed env ^^
+    get_x ^^ Blob.payload_ptr env ^^
     get_len ^^
     E.call_import env "rts" "stream_write"
 
@@ -7090,7 +7085,7 @@ module Stabilization = struct
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
           get_len ^^ Blob.alloc env ^^ set_blob ^^
-          extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
+          extend64 (get_blob ^^ Blob.payload_ptr env) ^^
           get_offset ^^
           extend64 get_len ^^
           IC.system_call env "stable64_read" ^^
@@ -7108,7 +7103,7 @@ module Stabilization = struct
 
           (* copy zeros from blob to stable memory *)
           get_offset ^^
-          extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
+          extend64 (get_blob ^^ Blob.payload_ptr env) ^^
           extend64 (get_blob ^^ Blob.len env) ^^
           IC.system_call env "stable64_write" ^^
 
@@ -7755,7 +7750,6 @@ module FuncDec = struct
         Arr.load_field env 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
-        Closure.prepare_closure_call env ^^
 
         (* Deserialize/Blobify reply arguments  *)
         from_arg_data env ^^
@@ -7776,7 +7770,6 @@ module FuncDec = struct
         Arr.load_field env 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
-        Closure.prepare_closure_call env ^^
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
@@ -7967,7 +7960,6 @@ module FuncDec = struct
         ContinuationTable.peek_future env ^^
         set_closure ^^ 
         get_closure ^^ 
-        Closure.prepare_closure_call env ^^
         get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -8974,7 +8966,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          set_clos ^^
          get_clos ^^
-         Closure.prepare_closure_call env ^^
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
