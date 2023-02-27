@@ -19,7 +19,7 @@ Stable regions address the problem that today's `ExperimentalStableMemory` modul
 
 Stable regions permit a new API that supports composable use cases.
 
-Stable regions also bring Motoko closer to parity with Rust canister development support today, by giving a run-time-system-based analog of a special Rust library for stable data structures that allocates “pages” for them from stable memory in separate memory regions.
+Stable regions also bring Motoko closer to parity with Rust canister development support today, by giving a run-time-system-based analog of a special Rust library for stable data structures that allocates “pages” for them from stable memory in separate, isolated, memory regions.
 
 
 ## Design space
