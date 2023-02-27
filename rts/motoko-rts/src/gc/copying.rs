@@ -44,7 +44,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 #[cfg(feature = "ic")]
 fn slow_down() {
     let mut value = f64::MAX;
-    for _ in 0..5_000_000 {
+    for _ in 0..2_000_000 {
         value /= 2.0;
     }
     assert!(!value.is_nan());
