@@ -9955,7 +9955,6 @@ and compile_exp (env : E.t) ae exp =
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
-    Heap.get_object_address env ^^
     set_future ^^
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
