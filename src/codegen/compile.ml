@@ -7419,7 +7419,6 @@ module Var = struct
       (if !Flags.gc_strategy = Flags.Generational
         then
          get_address ^^
-         compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
         else G.nop)
@@ -7434,7 +7433,6 @@ module Var = struct
       (if !Flags.gc_strategy = Flags.Generational
         then
          get_address ^^
-         compile_add_const ptr_unskew ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
          E.call_import env "rts" "write_barrier"
         else G.nop)
@@ -8875,7 +8873,6 @@ let rec compile_lexp (env : E.t) ae lexp =
     SR.Vanilla,
     store_ptr ^^
     get_field ^^
-    compile_add_const ptr_unskew ^^
     E.call_import env "rts" "write_barrier"
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
@@ -8892,7 +8889,6 @@ let rec compile_lexp (env : E.t) ae lexp =
     SR.Vanilla,
     store_ptr ^^
     get_field ^^
-    compile_add_const ptr_unskew ^^
     E.call_import env "rts" "write_barrier"
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
