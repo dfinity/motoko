@@ -222,3 +222,4 @@ We use the `block-region` and `region` tables in stable memory to rebuild the re
  - The `block-region` table gives a relative position and region ID for each block ID.
 
 Once each regions' vectors have been allocated, the block-region table says how to fill them, one entry at a time.
+Unlike the Rust design, vector entries can be populated out-of-order.
