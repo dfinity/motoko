@@ -3457,11 +3457,11 @@ module Blob = struct
 
   let alloc env = E.call_import env "rts" "alloc_blob"
 
-  let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
+  let payload_offset = Int32.mul Heap.word_size header_size
   
   let payload_ptr_unskewed env = 
     Heap.get_object_address env ^^
-    compile_add_const unskewed_payload_offset
+    compile_add_const payload_offset
 
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
