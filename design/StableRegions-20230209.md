@@ -163,7 +163,7 @@ stable memory state can fully describe the region objects that will be rebuilt w
    vector"** (because "blocks vector" sounds a bit strange, and its
    used to support O(1) access operations):
    - the access vector's address is held in `vec_ptr` and it has `vec_capacity` slots.
-   - the first `size_in_pages / 128` slots of `vec_ptr` contain a valid page block ID for the region.
+   - the first `size_in_pages + 127 / 128` slots of `vec_ptr` contain a valid page block ID for the region.
    - the access vector doubles when it grows.
    - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
    - during an upgrade, the access vectors get serialized and deserialized as data `Blobs` (as if no pointers are inside each).
