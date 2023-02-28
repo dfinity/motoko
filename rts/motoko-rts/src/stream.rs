@@ -22,7 +22,8 @@
 // into the leading bytes:
 // - `obj header` contains tag and forwarding pointer
 // - `len` is in blob metadata
-// - 'padding' to align to 64-bit
+// - 'padding' because the compiler automatically align `ptr64` to 64-bit according to
+//    C-memory representation
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
