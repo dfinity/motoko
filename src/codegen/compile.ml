@@ -9797,7 +9797,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae p ^^
     compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
-    Heap.get_object_address env ^^
     Tuple.from_stack env 2 ^^ set_meth_pair ^^
     compile_exp_vanilla env ae a ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
