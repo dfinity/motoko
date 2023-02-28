@@ -374,8 +374,7 @@ pub const TAG_CONCAT: Tag = 25;
 pub const TAG_NULL: Tag = 27;
 pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
-pub const TAG_REGION_OBJ: Tag = 33;
-pub const TAG_REGION_VEC: Tag = 35;
+pub const TAG_REGION: Tag = 33;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -383,7 +382,7 @@ pub const TAG_REGION_VEC: Tag = 35;
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
@@ -452,6 +451,22 @@ impl Array {
     pub unsafe fn len(self: *const Self) -> u32 {
         (*self).len
     }
+}
+
+#[rustfmt::skip]
+#[repr(C)] // See the note at the beginning of this module
+pub struct Region {
+    pub header: Obj,
+    pub id: u16,
+    pub page_count: u64,
+    pub vec_ptr: *mut Blob, // Blob knows its own capacity
+}
+
+impl Region {
+    pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip array header
+    }
+    // to do
 }
 
 #[repr(C)] // See the note at the beginning of this module
