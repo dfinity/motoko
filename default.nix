@@ -12,13 +12,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
-let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
-let ic-ref-run =
-  # copy out the binary, to remove dependencies on the libraries
-  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
-      mkdir -p $out/bin
-      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
-  ''; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -162,14 +155,14 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256:0kq1r2aqhpvg739ljmbr9f6101rfwadnmvjddq297xww6r0mkfqa";
+        cargoSha256 = "sha256-gzLk4kNBSbd8ujJ/7mNs/vwCu76ASqtyoVU84PdaJCw=";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-VLT4Vz7se8clzo3LPjJ1CEfnpGDTkOKH38GZOsXVbdc";
+      rustStdDepsHash = "sha256-dGQzospDaIlGKWu08b8oaXJgIsniBVxI//zc6/LywIE=";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -195,7 +188,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-VKNXQ7uT5njmZ4RlF1Lebyy7hPSw+KRjG8ntCXfw/Y4";
+        sha256 = "sha256-jCk92mPwXd8H8zEH4OMdcEwFM8IiYdlhYdYr+WzDW5E=";
         copyLockfile = true;
       };
 
@@ -300,8 +293,6 @@ rec {
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
-
-  inherit ic-ref-run;
 
   tests = let
     testDerivationArgs = {
@@ -493,9 +484,6 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
-      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -535,7 +523,7 @@ rec {
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
           nixpkgs.nodejs-16_x
-          nixpkgs.nodePackages.uglify-js
+          nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
           patchShebangs .
@@ -543,7 +531,7 @@ rec {
           ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
-          uglifyjs ${n}.js -o ${n}.min.js -c -m
+          terser ${n}.js -o ${n}.min.js -c -m
         '';
         installPhase = ''
           mkdir -p $out
@@ -758,7 +746,6 @@ rec {
       base-doc
       docs
       report-site
-      ic-ref-run
       shell
       check-formatting
       check-rts-formatting

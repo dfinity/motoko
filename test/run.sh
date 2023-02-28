@@ -98,7 +98,8 @@ function normalize () {
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
-    sed -e '/RTS error: Cannot grow memory/q' |
+    sed -e '/RTS error: Cannot grow memory/q' \
+        -e '/RTS error: Cannot allocate memory/q' |
     # Delete Viper meta-output
     sed -e '/^Silicon /d' \
         > $1.norm

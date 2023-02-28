@@ -1,7 +1,7 @@
 // The 2 palindrome implementations from
 // "There and Back Again", by Olivier Danvy and Mayer Goldberg
 //
-import { error; performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
+import { performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
 
 actor Palindrome {
     type List<A> = ?(A, List<A>);
@@ -50,6 +50,7 @@ actor Palindrome {
     func counters() : (Int, Nat64) = (rts_heap_size(), performanceCounter(0));
 
     public func go() : async () {
+
         let (m0, n0) = counters();
         let b = cps(as_list "go hang a salami imalas a gnah og"); // Go hang a salami, i'm a lasagna hog.
         let (m1, n1) = counters();

@@ -29,3 +29,6 @@ Session.vim
 .cproject
 .favorites.json
 .settings/
+
+# Mac OS
+*DS_STORE*

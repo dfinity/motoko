@@ -315,7 +315,7 @@ let encode (em : extended_module) =
 
     let bool b = vu1 (if b then 1 else 0)
     let string bs = len (String.length bs); put_string s bs
-    let name n = string (Wasm.Utf8.encode n)
+    let name n = string (Lib.Utf8.encode n)
     let list f xs = List.iter f xs
     let opt f xo = Option.iter f xo
     let vec_by l f xs = l (List.length xs); list f xs
@@ -842,7 +842,7 @@ let encode (em : extended_module) =
       section 0 (vec string) labels (labels <> [])
 
     let utf8 bs =
-      ignore (Wasm.Utf8.decode bs);  (* assert well-formedness *)
+      ignore (Lib.Utf8.decode bs);  (* assert well-formedness *)
       put_string s bs
 
     let motoko_sections motoko =

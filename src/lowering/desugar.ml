@@ -321,7 +321,7 @@ and call_system_func_opt name es obj_typ =
   List.find_map (fun es ->
     match es.it with
     | { S.vis = { it = S.System; _ };
-        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _); at; _ };
+        S.dec = { it = S.LetD( { it = S.VarP id; note; _ }, _, _); at; _ };
         _ }
       when id.it = name ->
       Some (
@@ -684,11 +684,13 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (decs prefix, exp e)
-  | false, S.LetD ({it = S.VarP x; _}, e) ->
+  | false, S.LetD ({it = S.VarP x; _}, e, _) -> (* Fail block dead, pattern match irrefutable *)
     (decs ds, varE (var x.it e.note.S.note_typ))
-  | false, S.LetD (p', e') ->
-    let x = fresh_var "x" (e'.note.S.note_typ) in
-    (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
+  | false, S.LetD (p, e, None) ->
+    let x = fresh_var "x" (e.note.S.note_typ) in
+    (decs prefix @ [letD x (exp e); letP (pat p) (varE x)], varE x)
+  | false, S.LetD (p, e, Some f) ->
+    (decs prefix, let_else_switch (pat p) (exp e) (exp f))
   | _, _ ->
     (decs ds, tupE [])
 
@@ -701,14 +703,15 @@ and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
-  | S.LetD (p, e) ->
+  | S.LetD (p, e, f) ->
     let p' = pat p in
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
-    begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (ds, fs, u, t) ->
+    begin match p'.it, e'.it, f with
+    | I.VarP i, I.ActorE (ds, fs, u, t), _ ->
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
-    | _ -> I.LetD (p', e')
+    | _, _, None -> I.LetD (p', e')
+    | _, _, Some f -> I.LetD (p', let_else_switch (pat p) (exp e) (exp f))
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false

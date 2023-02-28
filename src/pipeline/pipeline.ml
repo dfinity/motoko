@@ -571,7 +571,7 @@ let run_stdin lexer (senv, denv) : env option =
       if !Flags.verbose then printf "\n";
       Some env'
 
-let run_stdin_from_file files file =
+let run_stdin_from_file files file : Value.value option =
   let open Lib.Option.Syntax in
   let* (senv, denv) = interpret_files initial_env files in
   let* (libs, prog, senv', t, sscope) =
@@ -581,7 +581,7 @@ let run_stdin_from_file files file =
   Format.printf "@[<hv 2>%a :@ %a@]@."
     (Value.pp_val 10) v
     Type.pp_typ t;
-  Some ()
+  Some v
 
 let run_files_and_stdin files =
   let open Lib.Option.Syntax in
