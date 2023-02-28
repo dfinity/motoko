@@ -225,10 +225,10 @@ fn check_dynamic_heap(
         });
 
         for field_idx in 1..n_fields {
-            let field = read_word(heap, offset);
+            let raw_field_value = read_word(heap, offset);
             offset += WORD_SIZE;
             // Get index of the object pointed by the field
-            let pointee_address = field.wrapping_add(1); // unskew
+            let pointee_address = get_object_address(raw_field_value as usize);
             let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
             let pointee_idx_offset =
                 pointee_offset as usize + size_of::<Array>().to_bytes().as_usize(); // skip array header (incl. length)
