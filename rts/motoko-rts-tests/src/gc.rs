@@ -25,8 +25,6 @@ use std::fmt::Write;
 
 use fxhash::{FxHashMap, FxHashSet};
 
-use crate::gc::utils::make_object_id;
-
 pub fn test() {
     println!("Testing garbage collection ...");
 
@@ -181,7 +179,6 @@ fn check_dynamic_heap(
     let continuation_table_addr =
         get_object_address(read_word(heap, continuation_table_ptr_offset) as usize);
     let continuation_table_offset = continuation_table_addr as usize - heap.as_ptr() as usize;
-    let heap_base = heap.as_ptr() as usize + heap_base_offset;
 
     while offset < heap_ptr_offset {
         let object_offset = offset;
@@ -190,7 +187,7 @@ fn check_dynamic_heap(
         let address = offset as usize + heap.as_ptr() as usize;
 
         if object_offset == continuation_table_offset {
-            check_continuation_table(object_offset, continuation_table, heap, heap_base);
+            check_continuation_table(object_offset, continuation_table, heap);
             offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
                 .as_usize();
@@ -326,18 +323,15 @@ fn compute_reachable_objects(
     closure
 }
 
-fn check_continuation_table(
-    mut offset: usize,
-    continuation_table: &[ObjectIdx],
-    heap: &[u8],
-    heap_base: usize,
-) {
+fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
     let table_addr = heap.as_ptr() as usize + offset;
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    let expected_id = make_object_id(table_addr as u32, heap_base as u32);
-    assert_eq!(read_word(heap, offset), expected_id.get_raw());
+    assert_eq!(
+        get_object_address(read_word(heap, offset) as usize),
+        table_addr
+    );
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
