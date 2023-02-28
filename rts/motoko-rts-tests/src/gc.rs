@@ -351,7 +351,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 impl GC {
     fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
         let heap_base = heap.heap_base_address() as u32;
-        let static_roots = Value::new_object_id(heap.static_root_array_address());
+        let static_roots = heap.static_root_array_id();
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.clone();

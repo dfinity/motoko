@@ -90,6 +90,13 @@ impl MotokoHeap {
         self.inner.borrow().static_root_array_address()
     }
 
+    // Get static root array object id.
+    pub fn static_root_array_id(&self) -> Value {
+        // The static root array resides in static heap space. No indirection via object table.
+        assert!(self.static_root_array_address() < self.heap_base_address());
+        Value::from_raw(skew(self.static_root_array_address()) as u32)
+    }
+
     /// Get the offset of the continuation table pointer
     pub fn continuation_table_ptr_offset(&self) -> usize {
         self.inner.borrow().continuation_table_ptr_offset
@@ -112,7 +119,7 @@ impl MotokoHeap {
             motoko_rts::debug::dump_heap(
                 self.heap_base_address() as u32,
                 self.heap_ptr_address() as u32,
-                Value::new_object_id(self.static_root_array_address()),
+                self.static_root_array_id(),
                 self.continuation_table_ptr_address() as *mut Value,
             );
         }
