@@ -369,7 +369,8 @@ fn create_dynamic_heap(
             // Store object header
             let address = u32::try_from(heap_start + heap_offset).unwrap();
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
-            write_word(dynamic_heap, heap_offset + WORD_SIZE, make_pointer(address)); // forwarding pointer
+            let object_id = Value::new_object_id(address as usize);
+            write_word(dynamic_heap, heap_offset + WORD_SIZE, object_id.get_raw());
             heap_offset += 2 * WORD_SIZE;
 
             // Store length: idx + refs
