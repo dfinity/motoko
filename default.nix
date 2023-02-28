@@ -12,13 +12,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
-let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
-let ic-ref-run =
-  # copy out the binary, to remove dependencies on the libraries
-  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
-      mkdir -p $out/bin
-      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
-  ''; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -301,8 +294,6 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
 
-  inherit ic-ref-run;
-
   tests = let
     testDerivationArgs = {
       # by default, an empty source directory. how to best get an empty directory?
@@ -493,9 +484,6 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
-      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -758,7 +746,6 @@ rec {
       base-doc
       docs
       report-site
-      ic-ref-run
       shell
       check-formatting
       check-rts-formatting
