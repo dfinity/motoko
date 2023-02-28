@@ -1,4 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
+use motoko_rts::types::{skew, Value};
 
 /// A unique object index, used in heap descriptions.
 ///
@@ -47,11 +48,14 @@ pub fn get_scalar_value(scalar: u32) -> u32 {
 }
 
 /// Make a pointer value to be used in heap object payload
-pub fn make_pointer(addr: u32) -> u32 {
-    addr.wrapping_sub(1)
+pub fn make_object_id(address: u32, heap_base: u32) -> Value {
+    if address < heap_base {
+        Value::from_raw(skew(address as usize) as u32)
+    } else {
+        Value::new_object_id(address as usize)
+    }
 }
 
-/// Inverse of `make_pointer`
-pub fn unskew_pointer(skewed_ptr: u32) -> u32 {
-    skewed_ptr.wrapping_add(1)
+pub fn get_object_address(raw_value: usize) -> usize {
+    unsafe { Value::from_raw(raw_value as u32).get_object_address() }
 }

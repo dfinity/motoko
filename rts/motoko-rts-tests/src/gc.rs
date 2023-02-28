@@ -14,7 +14,7 @@ mod utils;
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
-use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
+use utils::{get_object_address, get_scalar_value, read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
@@ -25,7 +25,7 @@ use std::fmt::Write;
 
 use fxhash::{FxHashMap, FxHashSet};
 
-use crate::gc::utils::make_pointer;
+use crate::gc::utils::make_object_id;
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -178,8 +178,10 @@ fn check_dynamic_heap(
     // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
     let mut seen: FxHashMap<ObjectIdx, usize> = Default::default();
 
-    let continuation_table_addr = unskew_pointer(read_word(heap, continuation_table_ptr_offset));
+    let continuation_table_addr =
+        get_object_address(read_word(heap, continuation_table_ptr_offset) as usize);
     let continuation_table_offset = continuation_table_addr as usize - heap.as_ptr() as usize;
+    let heap_base = heap.as_ptr() as usize + heap_base_offset;
 
     while offset < heap_ptr_offset {
         let object_offset = offset;
@@ -188,7 +190,7 @@ fn check_dynamic_heap(
         let address = offset as usize + heap.as_ptr() as usize;
 
         if object_offset == continuation_table_offset {
-            check_continuation_table(object_offset, continuation_table, heap);
+            check_continuation_table(object_offset, continuation_table, heap, heap_base);
             offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
                 .as_usize();
@@ -200,11 +202,10 @@ fn check_dynamic_heap(
 
         assert_eq!(tag, TAG_ARRAY);
 
-        let id = read_word(heap, offset);
+        let object_id = read_word(heap, offset);
         offset += WORD_SIZE;
 
-        // TODO: Temporary check, remove later.
-        assert_eq!(unskew(id as usize), address);
+        assert_eq!(get_object_address(object_id as usize), address);
 
         let n_fields = read_word(heap, offset);
         offset += WORD_SIZE;
@@ -325,19 +326,25 @@ fn compute_reachable_objects(
     closure
 }
 
-fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
+fn check_continuation_table(
+    mut offset: usize,
+    continuation_table: &[ObjectIdx],
+    heap: &[u8],
+    heap_base: usize,
+) {
     let table_addr = heap.as_ptr() as usize + offset;
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), make_pointer(table_addr as u32));
+    let expected_id = make_object_id(table_addr as u32, heap_base as u32);
+    assert_eq!(read_word(heap, offset), expected_id.get_raw());
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
     offset += WORD_SIZE;
 
     for obj in continuation_table.iter() {
-        let ptr = unskew_pointer(read_word(heap, offset));
+        let ptr = get_object_address(read_word(heap, offset) as usize);
         offset += WORD_SIZE;
 
         // Skip object header for idx

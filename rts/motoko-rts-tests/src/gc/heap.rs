@@ -1,5 +1,5 @@
 use super::utils::{
-    make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
+    make_object_id, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
@@ -259,6 +259,8 @@ impl MotokoHeapInner {
             &mut heap[static_heap_size_bytes + realign..heap_size + realign],
         );
 
+        let dynamic_heap_base = heap.as_ptr() as usize + static_heap_size_bytes + realign;
+
         // Closure table pointer is the last word in static heap
         let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
         create_static_heap(
@@ -267,6 +269,7 @@ impl MotokoHeapInner {
             continuation_table_ptr_offset,
             static_heap_size_bytes + dynamic_heap_size_without_continuation_table_bytes,
             &mut heap[realign..static_heap_size_bytes + realign],
+            dynamic_heap_base,
         );
 
         MotokoHeapInner {
@@ -376,7 +379,7 @@ fn create_dynamic_heap(
             // Store object header
             let address = u32::try_from(heap_start + heap_offset).unwrap();
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
-            let object_id = Value::new_object_id(address as usize);
+            let object_id = make_object_id(address, heap_start as u32);
             write_word(dynamic_heap, heap_offset + WORD_SIZE, object_id.get_raw());
             heap_offset += 2 * WORD_SIZE;
 
@@ -403,12 +406,12 @@ fn create_dynamic_heap(
     for (obj, refs) in refs {
         let obj_offset = object_addrs.get(obj).unwrap() - heap_start;
         for (ref_idx, ref_) in refs.iter().enumerate() {
-            let ref_addr = make_pointer(*object_addrs.get(ref_).unwrap() as u32);
+            let ref_id = make_object_id(*object_addrs.get(ref_).unwrap() as u32, heap_start as u32);
             let field_offset = obj_offset
                 + (size_of::<Array>() + Words(1 + ref_idx as u32))
                     .to_bytes()
                     .as_usize();
-            write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
+            write_word(dynamic_heap, field_offset, ref_id.get_raw());
         }
     }
 
@@ -424,12 +427,15 @@ fn create_dynamic_heap(
     {
         let mut heap_offset = continuation_table_offset;
 
-        let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
+        let continuation_table_id = make_object_id(
+            u32::try_from(heap_start + heap_offset).unwrap(),
+            heap_start as u32,
+        );
         write_word(dynamic_heap, continuation_table_offset, TAG_ARRAY);
         write_word(
             dynamic_heap,
             continuation_table_offset + WORD_SIZE,
-            make_pointer(continuation_table_address),
+            continuation_table_id.get_raw(),
         );
         heap_offset += 2 * WORD_SIZE;
 
@@ -438,7 +444,8 @@ fn create_dynamic_heap(
 
         for idx in continuation_table {
             let idx_ptr = *object_addrs.get(idx).unwrap();
-            write_word(dynamic_heap, heap_offset, make_pointer(idx_ptr as u32));
+            let object_id = make_object_id(idx_ptr as u32, heap_start as u32);
+            write_word(dynamic_heap, heap_offset, object_id.get_raw());
             heap_offset += WORD_SIZE;
         }
     }
@@ -455,6 +462,7 @@ fn create_static_heap(
     continuation_table_ptr_offset: usize,
     continuation_table_offset: usize,
     heap: &mut [u8],
+    heap_base: usize,
 ) {
     let root_addresses: Vec<usize> = roots
         .iter()
@@ -465,7 +473,8 @@ fn create_static_heap(
     // root.
     let array_addr = u32::try_from(heap.as_ptr() as usize).unwrap();
     write_word(heap, 0, TAG_ARRAY);
-    write_word(heap, WORD_SIZE, make_pointer(array_addr));
+    let array_id = make_object_id(array_addr, heap_base as u32);
+    write_word(heap, WORD_SIZE, array_id.get_raw());
     write_word(heap, 2 * WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
     // Current offset in the heap for the next static roots array element
@@ -477,17 +486,14 @@ fn create_static_heap(
     for root_address in root_addresses {
         // Add a MutBox for the object
         let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
-        let mutbox_ptr = make_pointer(u32::try_from(mutbox_addr).unwrap());
+        let mutbox_id = make_object_id(u32::try_from(mutbox_addr).unwrap(), heap_base as u32);
 
         write_word(heap, mutbox_offset, TAG_MUTBOX);
-        write_word(heap, mutbox_offset + WORD_SIZE, mutbox_ptr);
-        write_word(
-            heap,
-            mutbox_offset + 2 * WORD_SIZE,
-            make_pointer(u32::try_from(root_address).unwrap()),
-        );
+        write_word(heap, mutbox_offset + WORD_SIZE, mutbox_id.get_raw());
+        let root_id = make_object_id(u32::try_from(root_address).unwrap(), heap_base as u32);
+        write_word(heap, mutbox_offset + 2 * WORD_SIZE, root_id.get_raw());
 
-        write_word(heap, root_addr_offset, mutbox_ptr);
+        write_word(heap, root_addr_offset, mutbox_id.get_raw());
 
         root_addr_offset += WORD_SIZE;
         mutbox_offset += size_of::<MutBox>().to_bytes().as_usize();
@@ -495,9 +501,10 @@ fn create_static_heap(
 
     // Write continuation table pointer as the last word in static heap
     let continuation_table_ptr = continuation_table_offset as u32 + heap.as_ptr() as u32;
+    let continuation_table_id = make_object_id(continuation_table_ptr, heap_base as u32);
     write_word(
         heap,
         continuation_table_ptr_offset,
-        make_pointer(continuation_table_ptr),
+        continuation_table_id.get_raw(),
     );
 }
