@@ -387,8 +387,8 @@ The syntax of a *declaration* is as follows:
 ``` bnf
 <dec> ::=                                                               declaration
   <exp>                                                                  expression
-  let <pat> = <exp>                                                      immutable
-  let <pat> = <exp> else <block-or-exp>                                  let-else
+  let <pat> = <exp>                                                      immutable, trap on match failure
+  let <pat> = <exp> else <block-or-exp>                                  immutable, handle match failure
   var <id> (: <typ>)? = <exp>                                            mutable
   <sort> <id>? =? <obj-body>                                             object
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       function
@@ -1385,9 +1385,9 @@ TBR
 
 ### Let declaration
 
-The let declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
+The `let` declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
 
--   `<exp>` has type `T`.
+-   `<exp>` has type `T`, and
 
 -   `<pat>` has type `T`.
 
@@ -1397,24 +1397,37 @@ All bindings declared by a `let` (if any) are *immutable*.
 
 ### Let-else declaration
 
-The let declaration `let <pat> = <exp> else <block-or-exp>` has type `T` and declares the bindings in `<pat>` provided:
--   `<exp>` has type `T`.
--   `<pat>` has type `T`.
+The `let-else` declaration `let <pat> = <exp> else <block-or-exp>` has type `T` and declares the bindings in `<pat>` provided:
+
+-   `<exp>` has type `T`,
+
+-   `<pat>` has type `T`, and
+
 -   `<block-or-exp>` has type `None`.
-The declaration `let <pat> = <exp> else <block-or-exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`.
+
+The declaration `let <pat> = <exp> else <block-or-exp>` evaluates `<exp>` to a result `r`.
+If `r` is `trap`, the declaration evaluates to `trap`.
+If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`.
 If matching succeeds, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
-If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`, cannot proceed to the end of the declaration but may still alter control-flow to, for example `return` or `throw` to exit an enclosing function, `break` from an enclosing expression or simply diverge.
+If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`,
+cannot proceed to the end of the declaration but may still alter control-flow to,
+for example `return` or `throw` to exit an enclosing function,
+break` from an enclosing expression or simply diverge.
 
 All bindings declared by a `let-else` (if any) are *immutable*.
 
 #### Handling pattern match failures
 
-In the presence of refutable patterns, a `let` declaration may fail to bind the expression. The default consequence of such a failure is trapping. The compiler will additionally emit a warning if a pattern match failure is a possibility.
+In the presence of refutable patterns, the pattern in a `let` declaration may fail to match the value of its expression.
+In such cases, the `let`-declaration will evaluate to a trap.
+The compiler emits a warning for any `let`-declaration than can trap due to pattern match failure.
 
-There are cases, however, when the user wants to explicitly handle such pattern match failures. For such cases
-the let declaration `let <pat> = <exp> else <block-or-exp>` is provided, and has identical static and dynamic semantics with
-the difference that instead of trapping, the canister evaluates the `<block-or-exp>` to redirect the program's control flow.
-Thus `<block-or-exp>` must have type `None` (i.e. being non-returning), and as such `throw`, `return` or other jumps are permitted besides (eventually) aborting calls. The compilation warning is suppressed when the user chooses to handle the potential pattern-match failure.
+Instead of trapping, a user may want to explicitly handle pattern match failures.
+The `let-else` declaration, `let <pat> = <exp> else <block-or-exp>`, has mostly identical static and dynamic semantics to `let`,
+but diverts the program's control flow to `<block-or-exp>` when pattern matching fails, allowing recovery from failure.
+The `else` expression, `<block-or-exp>`, must have type `None` and typically exits the declaration using imperative control flow
+constructs such as `throw`, `return`, `break` or non-returning functions such as `Debug.trap(...)` (that all produce a result of type `None`).
+Any compilation warning that is produced for a `let` can be silenced by handling the potential pattern-match failure using `let-else`.
 
 ### Var declaration
 

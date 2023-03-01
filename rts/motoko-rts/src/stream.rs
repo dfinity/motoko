@@ -20,7 +20,7 @@
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
-// - `obj header` contains tag and forwarding pointer
+// - `obj header` contains tag (BLOB) and forwarding pointer
 // - `len` is in blob metadata
 // - 'padding' because the compiler automatically align `ptr64` to 64-bit according to
 //    C-memory representation

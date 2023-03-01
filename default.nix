@@ -546,7 +546,7 @@ rec {
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
           nixpkgs.nodejs-16_x
-          nixpkgs.nodePackages.uglify-js
+          nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
           patchShebangs .
@@ -554,7 +554,7 @@ rec {
           ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
-          uglifyjs ${n}.js -o ${n}.min.js -c -m
+          terser ${n}.js -o ${n}.min.js -c -m
         '';
         installPhase = ''
           mkdir -p $out
@@ -765,7 +765,7 @@ rec {
       samples
       rts
       base-src
-      # base-tests # Re-enable when `RBTreeTestMore` has been scaled down
+      base-tests
       base-doc
       docs
       report-site

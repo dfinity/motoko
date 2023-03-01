@@ -19,7 +19,7 @@ use motoko_rts_macros::ic_mem_fn;
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn initialize_compacting_gc() {
-    crate::memory::ic::initialize_memory(true, false);
+    crate::memory::ic::initialize_memory(false);
 }
 
 #[ic_mem_fn(ic_only)]
