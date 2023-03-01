@@ -1,0 +1,39 @@
+* Stable region PR. Working notes.
+** Matthew Hammer
+** 20230301
+
+
+* Files
+
+** Compiler files
+
+*** motoko/src/codegen/compile.ml
+*** motoko/src/prelude/prim.mo
+
+** RTS files
+
+*** motoko/rts/motoko-rts/src/region.rs
+*** motoko/rts/motoko-rts/src/types.rs
+*** motoko/rts/motoko-rts/src/memory/ic.rs
+
+** Test files
+
+*** motoko/test/run.sh
+*** motoko/test/run-drun/stable-region-blob/Region.mo
+*** motoko/test/run-drun/stable-region-blob.mo
+
+* Experiments
+
+** Q: Can Matthew add a new RTS function, exposed as a Prim.XYZ function by the compiler to a test?
+*** Began: 
+*** Implemented a global counter in the RTS as a mutable global (REGION_NEXT_ID).
+*** Exposed Prim.regionNextId
+*** Made a passing test that calls that function and asserts its expected value.
+*** 20230301-1539: Done (with this summary).
+
+
+
+
+** Q: Can Matthew support the legacy API with the new primitives and a special region?
+*** Advice from Claudio on 20230228 during our team call.
+*** TO DO
