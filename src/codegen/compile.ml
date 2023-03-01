@@ -977,7 +977,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_object_address" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
-    E.add_func_import env "rts" "init" [I32Type] [];
+    E.add_func_import env "rts" "initialize_heap" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
@@ -10602,8 +10602,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Bool.lit (!Flags.gc_strategy = Flags.MarkCompact || !Flags.gc_strategy = Flags.Generational) ^^
-    E.call_import env "rts" "init" ^^
+    E.call_import env "rts" "initialize_heap" ^^
     (if !Flags.gc_strategy = Flags.Generational
      then
       E.call_import env "rts" "init_write_barrier"
