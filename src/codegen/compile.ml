@@ -1480,7 +1480,7 @@ module Tagged = struct
 
      The tag is a word at the beginning of the object.
 
-     They forwarding pointer supports object moving in the incremental garbage collection.
+     The (skewed) forwarding pointer supports object moving in the incremental garbage collection.
 
          obj header
      ┌──────┬─────────┬──
