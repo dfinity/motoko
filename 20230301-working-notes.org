@@ -29,7 +29,7 @@
 *** Implemented a global counter in the RTS as a mutable global (REGION_NEXT_ID).
 *** Exposed Prim.regionNextId
 *** Made a passing test that calls that function and asserts its expected value.
-*** 20230301-1539: Done (with this summary).
+*** 20230301-1539: Success (also wrote this summary).
 
 
 
