@@ -458,13 +458,14 @@ impl Array {
 pub struct Region {
     pub header: Obj,
     pub id: u16,
-    pub page_count: u64,
-    pub vec_ptr: *mut Blob, // Blob knows its own capacity
+    pub padding: u16,
+    pub page_count: u32,
+    // payload holds: vec_ptr : *mut Blob, // Blob knows its own capacity
 }
 
 impl Region {
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
-        self.offset(1) as *mut Value // skip array header
+        self.offset(1) as *mut Value // skip region header
     }
     // to do
 }
