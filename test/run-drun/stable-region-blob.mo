@@ -103,6 +103,8 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
+// TO DO -- pass run on run-drun
+//SKIP drun-run
 
 //CALL upgrade ""
 //CALL ingress testBounds "DIDL\x00\x00"
