@@ -77,8 +77,13 @@
 //! increasing `HEAP_BASE` and possibly also `LAST_HP` if this is below the new `HEAP_BASE`.
 //! Objects blocking the extension of the table can be easily moved to another place, because
 //! of the `O(1)` object movement costs by changing their addresses in the table.
-//! Note: If objects are moved to the young generation due to table extension, their object id
-//! must be added to the remembered set of the young generation in order to retain the moved object.
+//! Notes:
+//! * The new `HEAP_BASE` may be aligned to 32 bytes (as required by `MarkBitmap` if this is used).
+//! * `LAST_HP` may fall behind the new `HEAP_BASE`, in which case it needs to be increased to the
+//!   new `HEAP_BASE`.
+//! * If objects are moved to the young generation due to table extension, their object id
+//!   must be added to the remembered set of the young generation in order to retain the moved
+//!   object.
 //!
 //! Table shrinking is generally not supported due to the fragmentation of the free slots in table,
 //! i.e. free object ids can be spread across the entire table and do not necessarily manifest
@@ -99,9 +104,8 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    memory::Memory,
     rts_trap_with,
-    types::{skew, unskew, Value, Words, NULL_OBJECT_ID},
+    types::{skew, unskew, Value, NULL_OBJECT_ID},
 };
 
 /// Central object table.
@@ -117,12 +121,9 @@ pub struct ObjectTable {
 const FREE_STACK_END: Value = NULL_OBJECT_ID;
 
 impl ObjectTable {
-    pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: &mut u32, length: usize) -> ObjectTable {
+    pub fn new(base: *mut usize, length: usize) -> ObjectTable {
         assert!(length > 0);
-        let size = Words(length as u32);
-        let base = mem.alloc_words(size) as *mut usize;
-        assert_eq!(*heap_base, base as u32);
-        *heap_base = base as u32 + size.to_bytes().as_u32();
+        assert_eq!(base as u32 % WORD_SIZE, 0);
         let mut table = ObjectTable {
             base,
             length,
@@ -136,6 +137,10 @@ impl ObjectTable {
         self.base as usize
     }
 
+    pub fn end(&self) -> usize {
+        unsafe { self.base.add(self.length) as usize }
+    }
+
     fn add_free_range(&mut self, range: Range<usize>) {
         for index in range.rev() {
             let object_id = self.index_to_object_id(index);
@@ -144,6 +149,7 @@ impl ObjectTable {
     }
 
     pub fn new_object_id(&mut self, address: usize) -> Value {
+        assert!(address >= self.end());
         let object_id = self.pop_free_id();
         self.write_element(object_id, address);
         object_id
@@ -190,12 +196,12 @@ impl ObjectTable {
         }
     }
 
-    unsafe fn get_element(&self, object_id: Value) -> *mut usize {
+    fn get_element(&self, object_id: Value) -> *mut usize {
         assert!(object_id.is_object_id());
         let element_address = unskew(object_id.get_raw() as usize);
         assert_eq!(element_address % WORD_SIZE as usize, 0);
         assert!(element_address >= self.base as usize);
-        assert!(element_address < self.base.add(self.length) as usize);
+        assert!(element_address < self.end());
         element_address as *mut usize
     }
 }

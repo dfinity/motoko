@@ -146,6 +146,14 @@ fn test_gc(
             continuation_table_ptr_offset,
         );
     }
+
+    reset_test_heap();
+}
+
+fn reset_test_heap() {
+    unsafe {
+        OBJECT_TABLE = None;
+    }
 }
 
 /// Check the dynamic heap:

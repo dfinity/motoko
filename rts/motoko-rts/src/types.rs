@@ -197,7 +197,7 @@ pub const TRUE_VALUE: u32 = 0x1;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Value(u32);
 
-pub(crate) static mut OBJECT_TABLE: Option<ObjectTable> = None;
+pub static mut OBJECT_TABLE: Option<ObjectTable> = None;
 
 /// Sentinel `null` reference, reserved object id trapping when resolving its object address.
 pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);

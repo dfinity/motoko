@@ -2,6 +2,7 @@ use super::utils::{
     make_object_id, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
+use motoko_rts::gc::incremental::object_table::ObjectTable;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
@@ -119,6 +120,8 @@ impl MotokoHeap {
     }
 }
 
+const OBJECT_TABLE_LENGTH: usize = 1000;
+
 struct MotokoHeapInner {
     /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
     /// (all pointers would have to be updated).
@@ -196,6 +199,9 @@ impl MotokoHeapInner {
                 map.len(),
                 "Invalid test heap: some objects appear multiple times"
             );
+            unsafe {
+                assert!(OBJECT_TABLE.is_none());
+            }
         }
 
         // Each object will have array header plus one word for id per object + one word for each reference. Static heap will
@@ -206,6 +212,11 @@ impl MotokoHeapInner {
             + (roots.len() * size_of::<MutBox>().as_usize())
             + 1)
             * WORD_SIZE;
+
+        let use_object_table = match gc {
+            GC::Copying => false,
+            GC::MarkCompact | GC::Generational => true,
+        };
 
         let dynamic_heap_size_without_continuation_table_bytes = {
             let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
@@ -218,12 +229,21 @@ impl MotokoHeapInner {
                 .to_bytes()
                 .as_usize();
 
-        let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
+        let object_table_size = if use_object_table {
+            OBJECT_TABLE_LENGTH * WORD_SIZE
+        } else {
+            0
+        };
+
+        assert_eq!(object_table_size % 32, 0);
+
+        let total_heap_size_bytes =
+            static_heap_size_bytes + object_table_size + dynamic_heap_size_bytes;
 
         let heap_size = heap_size_for_gc(
             gc,
             static_heap_size_bytes,
-            dynamic_heap_size_bytes,
+            object_table_size + dynamic_heap_size_bytes,
             map.len(),
         );
 
@@ -236,12 +256,11 @@ impl MotokoHeapInner {
         assert_eq!(realign % 4, 0);
 
         let structure = create_dynamic_heap(
+            object_table_size,
             map,
             continuation_table,
             &mut heap[static_heap_size_bytes + realign..heap_size + realign],
         );
-
-        let dynamic_heap_base = heap.as_ptr() as usize + static_heap_size_bytes + realign;
 
         // Closure table pointer is the last word in static heap
         let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
@@ -250,13 +269,12 @@ impl MotokoHeapInner {
             &structure,
             continuation_table_ptr_offset,
             &mut heap[realign..static_heap_size_bytes + realign],
-            dynamic_heap_base,
         );
 
         MotokoHeapInner {
             heap: heap.into_boxed_slice(),
-            heap_base_offset: static_heap_size_bytes + realign,
-            heap_ptr_last: static_heap_size_bytes + realign,
+            heap_base_offset: static_heap_size_bytes + realign + object_table_size,
+            heap_ptr_last: static_heap_size_bytes + realign + object_table_size,
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_id,
             continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
@@ -346,21 +364,34 @@ struct DynamicHeapStructure {
 ///
 /// Returns a mapping from object indices (`ObjectIdx`) to their object ids (`Value`).
 fn create_dynamic_heap(
+    object_table_size: usize,
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     continuation_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
 ) -> DynamicHeapStructure {
+    assert_eq!(object_table_size % WORD_SIZE, 0);
+
     let heap_start = dynamic_heap.as_ptr() as usize;
+
+    if object_table_size > 0 {
+        assert_eq!(object_table_size, OBJECT_TABLE_LENGTH * WORD_SIZE);
+        let table = ObjectTable::new(heap_start as *mut usize, OBJECT_TABLE_LENGTH);
+        assert_eq!(table.end() % 32, 0);
+        unsafe {
+            assert!(OBJECT_TABLE.is_none());
+            OBJECT_TABLE = Some(table);
+        }
+    }
 
     // Maps objects to their addresses
     let mut object_ids: FxHashMap<ObjectIdx, Value> = Default::default();
 
     // First pass allocates objects without fields
     {
-        let mut heap_offset = 0;
+        let mut heap_offset = object_table_size;
         for (obj, refs) in refs {
             let address = u32::try_from(heap_start + heap_offset).unwrap();
-            let object_id = make_object_id(address, heap_start as u32);
+            let object_id = make_object_id(address);
             object_ids.insert(*obj, object_id);
 
             // Store object header
@@ -404,15 +435,14 @@ fn create_dynamic_heap(
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let continuation_table_offset = (size_of::<Array>() * n_objects as u32)
-        .to_bytes()
-        .as_usize()
+    let continuation_table_offset = object_table_size
+        + (size_of::<Array>() * n_objects as u32)
+            .to_bytes()
+            .as_usize()
         + n_fields * WORD_SIZE;
 
-    let continuation_table_id = make_object_id(
-        u32::try_from(heap_start + continuation_table_offset).unwrap(),
-        heap_start as u32,
-    );
+    let continuation_table_id =
+        make_object_id(u32::try_from(heap_start + continuation_table_offset).unwrap());
 
     {
         let mut heap_offset = continuation_table_offset;
@@ -448,7 +478,6 @@ fn create_static_heap(
     structure: &DynamicHeapStructure,
     continuation_table_ptr_offset: usize,
     heap: &mut [u8],
-    heap_base: usize,
 ) -> Value {
     let root_ids: Vec<Value> = roots
         .iter()
@@ -459,7 +488,7 @@ fn create_static_heap(
     // root.
     let array_addr = u32::try_from(heap.as_ptr() as usize).unwrap();
     write_word(heap, 0, TAG_ARRAY);
-    let root_array_id = make_object_id(array_addr, heap_base as u32);
+    let root_array_id = make_object_id(array_addr);
     write_word(heap, WORD_SIZE, root_array_id.get_raw());
     write_word(heap, 2 * WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
@@ -472,7 +501,8 @@ fn create_static_heap(
     for root_id in root_ids {
         // Add a MutBox for the object
         let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
-        let mutbox_id = make_object_id(u32::try_from(mutbox_addr).unwrap(), heap_base as u32);
+
+        let mutbox_id = make_object_id(u32::try_from(mutbox_addr).unwrap());
 
         write_word(heap, mutbox_offset, TAG_MUTBOX);
         write_word(heap, mutbox_offset + WORD_SIZE, mutbox_id.get_raw());

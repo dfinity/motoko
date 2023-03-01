@@ -39,15 +39,23 @@ pub(crate) unsafe fn initialize_memory<M: Memory>(
 ) {
     HEAP_BASE = align_to_32_bytes(heap_base);
     HP = HEAP_BASE;
+    LAST_HP = HP;
     if use_object_table {
         initalize_object_table(mem);
     }
-    LAST_HP = HP;
 }
 
 unsafe fn initalize_object_table<M: Memory>(mem: &mut M) {
     const INITIAL_TABLE_LENGTH: usize = 10_000;
-    let table = ObjectTable::new(mem, &mut HEAP_BASE, INITIAL_TABLE_LENGTH);
+    let size = Words(INITIAL_TABLE_LENGTH as u32);
+    assert_eq!(HEAP_BASE, HP);
+    let base = mem.alloc_words(size) as *mut usize;
+    let table = ObjectTable::new(base, INITIAL_TABLE_LENGTH);
+    HEAP_BASE = align_to_32_bytes(HP);
+    HP = HEAP_BASE;
+    if LAST_HP < HEAP_BASE {
+        LAST_HP = HEAP_BASE;
+    }
     OBJECT_TABLE = Some(table);
 }
 
