@@ -28,6 +28,12 @@ use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
 
 #[ic_mem_fn(ic_only)]
+unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
+    crate::memory::ic::initialize_memory(mem, heap_base, true);
+    write_barrier::init_write_barrier(mem);
+}
+
+#[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
     let limits = get_limits();
     if decide_strategy(&limits).is_some() {

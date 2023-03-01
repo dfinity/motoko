@@ -117,6 +117,7 @@ fn test_gc(
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
+        gc,
         false, // before gc
         refs,
         roots,
@@ -134,6 +135,7 @@ fn test_gc(
         let heap_ptr_offset = heap.heap_ptr_offset();
         let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
         check_dynamic_heap(
+            gc,
             check_all_reclaimed, // after gc
             refs,
             roots,
@@ -156,6 +158,7 @@ fn test_gc(
 ///   heap.
 ///
 fn check_dynamic_heap(
+    gc: GC,
     post_gc: bool,
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
@@ -187,7 +190,7 @@ fn check_dynamic_heap(
         let address = offset as usize + heap.as_ptr() as usize;
 
         if object_offset == continuation_table_offset {
-            check_continuation_table(object_offset, continuation_table, heap);
+            check_continuation_table(gc, object_offset, continuation_table, heap);
             offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
                 .as_usize();
@@ -202,7 +205,9 @@ fn check_dynamic_heap(
         let object_id = read_word(heap, offset);
         offset += WORD_SIZE;
 
-        assert_eq!(get_object_address(object_id as usize), address);
+        if gc != GC::Copying {
+            assert_eq!(get_object_address(object_id as usize), address);
+        }
 
         let n_fields = read_word(heap, offset);
         offset += WORD_SIZE;
@@ -323,15 +328,22 @@ fn compute_reachable_objects(
     closure
 }
 
-fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
+fn check_continuation_table(
+    gc: GC,
+    mut offset: usize,
+    continuation_table: &[ObjectIdx],
+    heap: &[u8],
+) {
     let table_addr = heap.as_ptr() as usize + offset;
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    assert_eq!(
-        get_object_address(read_word(heap, offset) as usize),
-        table_addr
-    );
+    if gc != GC::Copying {
+        assert_eq!(
+            get_object_address(read_word(heap, offset) as usize),
+            table_addr
+        );
+    }
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);

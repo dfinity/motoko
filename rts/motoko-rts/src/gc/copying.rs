@@ -6,6 +6,11 @@ use crate::types::*;
 use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
+unsafe fn initialize_copying_gc<M: Memory>(mem: &mut M, heap_base: u32) {
+    crate::memory::ic::initialize_memory(mem, heap_base, false);
+}
+
+#[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
     // Half of the heap.
     // NB. This expression is evaluated in compile time to a constant.
@@ -55,6 +60,9 @@ pub unsafe fn copying_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
+    // Does not work with object table.
+    assert!(OBJECT_TABLE.is_none());
+
     let begin_from_space = heap_base as usize;
     let end_from_space = get_hp();
     let begin_to_space = end_from_space;
@@ -160,13 +168,6 @@ unsafe fn evac<M: Memory>(
 
     // Update evacuated field
     *ptr_loc = new_id;
-
-    // Update object ids, TODO: Remove later
-    let to_space_obj = obj_addr as *mut Obj;
-    debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
-    debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
-    (*to_space_obj).id.free_object_id();
-    (*to_space_obj).id = new_id;
 }
 
 unsafe fn scav<M: Memory>(
