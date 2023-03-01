@@ -1487,8 +1487,12 @@ module Tagged = struct
      │ tag  │ fwd ptr │ ...
      └──────┴─────────┴──
 
-     All tagged heap objects have a size of at least two words
-     (important for GC, which replaces them with an Indirection).
+     The copying GC requires that all tagged objects in the dynamic heap space have at least
+     two words in order to replace them by `Indirection`. This condition is met as the 
+     object header already occupies two words, and all objects except `Null` even have a size 
+     of at least three words. The `Null` object is a singleton and only lives in static heap 
+     space and is therefore not replaced by `Indirection` during copying GC. (Without forwarding 
+     pointer in the header, the object would be smaller than `Indirection`.)
 
      Attention: This mapping is duplicated in these places
        * here
