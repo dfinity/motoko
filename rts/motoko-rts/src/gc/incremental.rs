@@ -111,7 +111,7 @@ unsafe fn record_gc_stop<M: Memory>() {
     debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let growth_during_gc = current_allocations - LAST_ALLOCATIONS;
     let heap_size = ic::get_heap_size();
-    let static_size = Bytes(ic::get_heap_base());
+    let static_size = Bytes(ic::get_aligned_heap_base());
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     debug_assert!(growth_during_gc.0 <= dynamic_size.as_usize() as u64);
