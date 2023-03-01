@@ -231,13 +231,8 @@ impl MotokoHeapInner {
         // that we have general word alignment). So we over-allocate 28 bytes.
         let mut heap = vec![0u8; heap_size + 28];
 
-        // MarkCompact assumes that the dynamic heap starts at a 32-byte multiple
-        let realign = match gc {
-            GC::Copying => 0,
-            GC::MarkCompact | GC::Generational => {
-                (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32
-            }
-        };
+        // Align the dynamic heap starts at a 32-byte multiple.
+        let realign = (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32;
         assert_eq!(realign % 4, 0);
 
         let structure = create_dynamic_heap(
