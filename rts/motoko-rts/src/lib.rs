@@ -50,7 +50,7 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> u
 }
 
 #[no_mangle]
-extern "C" fn new_object_id(address: usize) -> Value {
+unsafe extern "C" fn new_object_id(address: usize) -> Value {
     Value::new_object_id(address)
 }
 

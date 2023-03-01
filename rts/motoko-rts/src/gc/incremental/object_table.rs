@@ -101,7 +101,7 @@ use crate::{
     constants::WORD_SIZE,
     memory::Memory,
     rts_trap_with,
-    types::{skew, unskew, Value, Words},
+    types::{skew, unskew, Value, Words, NULL_OBJECT_ID},
 };
 
 /// Central object table.
@@ -114,7 +114,7 @@ pub struct ObjectTable {
     free: Value,
 }
 
-const FREE_STACK_END: Value = Value::from_raw(skew(0) as u32);
+const FREE_STACK_END: Value = NULL_OBJECT_ID;
 
 impl ObjectTable {
     pub unsafe fn new<M: Memory>(mem: &mut M, length: usize) -> ObjectTable {
@@ -130,6 +130,10 @@ impl ObjectTable {
         table
     }
 
+    pub fn base(&self) -> usize {
+        self.base as usize
+    }
+
     fn add_free_range(&mut self, range: Range<usize>) {
         for index in range.rev() {
             let object_id = self.index_to_object_id(index);
@@ -141,6 +145,10 @@ impl ObjectTable {
         let object_id = self.pop_free_id();
         self.write_element(object_id, address);
         object_id
+    }
+
+    pub fn free_object_id(&mut self, object_id: Value) {
+        self.push_free_id(object_id);
     }
 
     pub fn get_object_address(&self, object_id: Value) -> usize {

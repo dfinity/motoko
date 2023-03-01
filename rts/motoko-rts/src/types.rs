@@ -53,6 +53,7 @@
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
 use crate::gc::generational::write_barrier::write_barrier;
+use crate::gc::incremental::object_table::ObjectTable;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -196,23 +197,26 @@ pub const TRUE_VALUE: u32 = 0x1;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Value(u32);
 
+static mut OBJECT_TABLE: Option<ObjectTable> = None;
+
 /// Sentinel `null` reference, reserved object id trapping when resolving its object address.
 pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
 
 impl Value {
     /// Reserve a new object id in the object table for a newly allocated object at the defined address.
-    pub const fn new_object_id(address: usize) -> Value {
-        // Cannot use `debug_assert_eq` in const yet, so using `debug_assert`
-        debug_assert!(address as usize & 0b1 == 0b0);
-
-        // TODO: Allocate in object table
-
-        // TODO: Remove this temporary logic
-        Value(skew(address) as u32)
+    pub unsafe fn new_object_id(address: usize) -> Value {
+        debug_assert!(!is_skewed(address as u32));
+        if OBJECT_TABLE.is_some() {
+            OBJECT_TABLE.as_mut().unwrap().new_object_id(address)
+        } else {
+            Value(skew(address) as u32)
+        }
     }
 
-    pub fn free_object_id(self) {
-        // TODO: Implement
+    pub unsafe fn free_object_id(self) {
+        if OBJECT_TABLE.is_some() {
+            OBJECT_TABLE.as_mut().unwrap().free_object_id(self);
+        }
     }
 
     /// Create a value from a scalar
@@ -268,9 +272,15 @@ impl Value {
     /// Get the address of an object by lookup through the object table.
     pub unsafe fn get_object_address(self) -> usize {
         assert!(self.is_object_id());
-        let table_pointer = unskew(self.0 as usize);
-        // TODO: Check id and lookup in table
-        table_pointer
+        let pointer = unskew(self.0 as usize);
+        if OBJECT_TABLE.is_some() {
+            let table = OBJECT_TABLE.as_mut().unwrap();
+            if pointer >= table.base() {
+                return table.get_object_address(self);
+            }
+        }
+        // static object or non-incremental mode
+        pointer
     }
 
     /// Get the object tag. In debug mode panics if the value is not an object id.

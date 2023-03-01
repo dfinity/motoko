@@ -52,7 +52,7 @@ pub fn make_object_id(address: u32, heap_base: u32) -> Value {
     if address < heap_base {
         Value::from_raw(skew(address as usize) as u32)
     } else {
-        Value::new_object_id(address as usize)
+        unsafe { Value::new_object_id(address as usize) }
     }
 }
 
