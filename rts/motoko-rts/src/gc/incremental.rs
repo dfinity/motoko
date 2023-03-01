@@ -1,3 +1,5 @@
+pub mod object_table;
+
 use motoko_rts_macros::ic_mem_fn;
 
 #[cfg(feature = "ic")]
