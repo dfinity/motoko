@@ -15,8 +15,7 @@
 //!
 //! Heap base is shifted on allocation and growth (shrinking) of the object table.
 //! The base of the object table never moves to guarantee immutability of the object
-//! ids that are encoded as pointers into the table. The GC does not reclaim the
-//! object table as it is outside the dynamic heap space.
+//! ids that are encoded as pointers into the table.
 //!
 //! The dynamic heap can be organized into generations, e.g. old and young generation
 //! with `LAST_HP` splitting both generations. On each GC run, the young generation could
@@ -74,7 +73,8 @@
 //!
 //! Table growth:
 //! When the table is full, i.e. the allocator encounters an empty free stack, the table is
-//! extended at its end, which also shifts the beginning of the dynamic heap space.
+//! extended at its end, which also shifts the beginning of the dynamic heap space. This involves
+//! increasing `HEAP_BASE` and possibly also `LAST_HP` if this is below the new `HEAP_BASE`.
 //! Objects blocking the extension of the table can be easily moved to another place, because
 //! of the `O(1)` object movement costs by changing their addresses in the table.
 //! Note: If objects are moved to the young generation due to table extension, their object id

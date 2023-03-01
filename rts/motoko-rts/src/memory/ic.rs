@@ -39,10 +39,10 @@ pub(crate) unsafe fn initialize_memory<M: Memory>(
 ) {
     HEAP_BASE = align_to_32_bytes(heap_base);
     HP = HEAP_BASE;
-    LAST_HP = HP;
     if use_object_table {
         initalize_object_table(mem);
     }
+    LAST_HP = HP;
 }
 
 unsafe fn initalize_object_table<M: Memory>(mem: &mut M) {
