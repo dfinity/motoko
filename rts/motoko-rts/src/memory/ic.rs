@@ -1,7 +1,10 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
+use motoko_rts_macros::ic_mem_fn;
+
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
+use crate::gc::incremental::object_table::ObjectTable;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -31,11 +34,18 @@ fn align_to_32_bytes(address: u32) -> u32 {
     ((address + 31) / 32) * 32
 }
 
-#[no_mangle]
-unsafe extern "C" fn initialize_heap(heap_base: u32) {
+#[ic_mem_fn]
+unsafe fn initialize_heap<M: Memory>(mem: &mut M, heap_base: u32) {
     HEAP_BASE = align_to_32_bytes(heap_base);
     HP = HEAP_BASE;
     LAST_HP = HP;
+    initalize_object_table(mem);
+}
+
+unsafe fn initalize_object_table<M: Memory>(mem: &mut M) {
+    const INITIAL_TABLE_LENGTH: usize = 10_000;
+    let table = ObjectTable::new(mem, &mut HEAP_BASE, INITIAL_TABLE_LENGTH);
+    OBJECT_TABLE = Some(table);
 }
 
 #[no_mangle]

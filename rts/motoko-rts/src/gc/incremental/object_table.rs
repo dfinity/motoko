@@ -117,10 +117,12 @@ pub struct ObjectTable {
 const FREE_STACK_END: Value = NULL_OBJECT_ID;
 
 impl ObjectTable {
-    pub unsafe fn new<M: Memory>(mem: &mut M, length: usize) -> ObjectTable {
+    pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: &mut u32, length: usize) -> ObjectTable {
         assert!(length > 0);
         let size = Words(length as u32);
         let base = mem.alloc_words(size) as *mut usize;
+        assert_eq!(*heap_base, base as u32);
+        *heap_base = base as u32 + size.to_bytes().as_u32();
         let mut table = ObjectTable {
             base,
             length,
