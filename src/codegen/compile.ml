@@ -977,7 +977,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_object_address" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
-    E.add_func_import env "rts" "initialize_heap" [] [];
+    E.add_func_import env "rts" "initialize_heap" [I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
@@ -1116,16 +1116,6 @@ module Heap = struct
   let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp"
-
-  let register env =
-    let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
-      get_heap_base env
-    )) in
-
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "get_heap_base";
-      edesc = nr (FuncExport (nr get_heap_base_fn))
-    })
 
   let get_heap_size env =
     E.call_import env "rts" "get_heap_size"
@@ -10594,7 +10584,6 @@ and conclude_module env set_serialization_globals start_fi_o =
   let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
 
-  Heap.register env;
   GCRoots.register env static_roots;
   IC.register env;
 
@@ -10602,6 +10591,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    Heap.get_heap_base env ^^
     E.call_import env "rts" "initialize_heap" ^^
     (if !Flags.gc_strategy = Flags.Generational
      then

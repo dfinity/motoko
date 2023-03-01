@@ -38,7 +38,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
 
     compacting_gc_internal(
         mem,
-        ic::get_aligned_heap_base(),
+        ic::HEAP_BASE,
         // get_hp
         || ic::HP as usize,
         // set_hp

@@ -13,6 +13,9 @@ pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
+/// Heap base (start of dynamic heap space)
+pub(crate) static mut HEAP_BASE: u32 = 0;
+
 /// Heap pointer
 pub(crate) static mut HP: u32 = 0;
 
@@ -21,18 +24,17 @@ pub(crate) static mut LAST_HP: u32 = 0;
 
 // Provided by generated code
 extern "C" {
-    fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> Value;
 }
 
-pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
-    // align to 32 bytes
-    ((get_heap_base() + 31) / 32) * 32
+fn align_to_32_bytes(address: u32) -> u32 {
+    ((address + 31) / 32) * 32
 }
 
 #[no_mangle]
-unsafe extern "C" fn initialize_heap() {
-    HP = get_aligned_heap_base();
+unsafe extern "C" fn initialize_heap(heap_base: u32) {
+    HEAP_BASE = align_to_32_bytes(heap_base);
+    HP = HEAP_BASE;
     LAST_HP = HP;
 }
 
@@ -53,7 +55,7 @@ unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_aligned_heap_base())
+    Bytes(HP - HEAP_BASE)
 }
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
