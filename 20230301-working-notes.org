@@ -25,15 +25,17 @@
 * Experiments
 
 ** Q: Can Matthew add a new RTS function, exposed as a Prim.XYZ function by the compiler to a test?
-*** Began: 
+*** A: Yes, it was simple and only touched a few files (three listed above).
 *** Implemented a global counter in the RTS as a mutable global (REGION_NEXT_ID).
-*** Exposed Prim.regionNextId
+*** Exposed access to the RTS function via Prim.regionNextId
 *** Made a passing test that calls that function and asserts its expected value.
 *** 20230301-1539: Success (also wrote this summary).
-
-
 
 
 ** Q: Can Matthew support the legacy API with the new primitives and a special region?
 *** Advice from Claudio on 20230228 during our team call.
 *** TO DO
+*** Re-direct existing primitives to use the new RTS entry points (change compile.ml)
+*** Globally-allocate Region 0 (maybe similar to the global that I did for an experiment?)
+*** Region 0 is held specially, but is structured like all other regions (extend RTS with those defs)
+*** Support load/store operations on that Region representation.
