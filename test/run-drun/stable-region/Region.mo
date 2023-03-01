@@ -2,6 +2,8 @@ import Prim "mo:⛔";
 
 module {
 
+  public let next_id = Prim.regionNextId; // TEMP (for testing).
+
   public let new = Prim.regionNew;
 
   public let size = Prim.regionSize;

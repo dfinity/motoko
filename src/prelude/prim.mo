@@ -374,6 +374,9 @@ func stableVarQuery() : shared query () -> async {size : Nat64} =
 
 // multiple stable memory regions
 
+func regionNextId() : Nat32 =
+  (prim "regionNextId" : () -> Nat32) (); // TEMP (for testing).
+
 func regionNew() : Region =
   (prim "regionNew" : () -> Region) ();
 

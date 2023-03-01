@@ -3,7 +3,9 @@ import Region "stable-region/Region";
 actor {
 
   stable var n : Nat64 = 0;
-  stable var r : Region = Region.new();
+//  stable var r : Region = Region.new();
+  let next_id = Region.next_id();
+  assert next_id == 2;
 
 /*
   assert (n == Region.size(r));
@@ -104,13 +106,13 @@ actor {
 // too slow on ic-ref-run:
 //SKIP comp-ref
 // TO DO -- pass run on run-drun
-//SKIP drun-run
+//xSKIP drun-run
 
-//CALL upgrade ""
-//CALL ingress testBounds "DIDL\x00\x00"
-//CALL upgrade ""
-//CALL ingress testBounds "DIDL\x00\x00"
-//CALL upgrade ""
-//CALL ingress testBounds "DIDL\x00\x00"
-//CALL upgrade ""
+//xCALL upgrade ""
+//xCALL ingress testBounds "DIDL\x00\x00"
+//xCALL upgrade ""
+//xCALL ingress testBounds "DIDL\x00\x00"
+//xCALL upgrade ""
+//xCALL ingress testBounds "DIDL\x00\x00"
+//xCALL upgrade ""
 

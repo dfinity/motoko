@@ -938,6 +938,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_grow" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region_load_blob" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region_store_blob" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "region_next_id" [] [I32Type];
     E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
     E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
@@ -3498,7 +3499,9 @@ end (* Blob *)
 module Region = struct
   (*
     See rts/motoko-rts/src/region.rs
-  *)
+   *)
+  let next_id env =
+    E.call_import env "rts" "region_next_id" (* TEMP (for testing) *)
   let new_ env =
     E.call_import env "rts" "region_new"
   let size env =
@@ -9401,6 +9404,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
     Region.new_ env
+
+  | OtherPrim "regionNextId", [] ->
+    SR.Vanilla,
+    Region.next_id env
 
   | OtherPrim ("regionGrow"), [e0; e1] ->
     SR.UnboxedWord64,
