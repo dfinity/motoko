@@ -35,7 +35,7 @@
 ** Q: Can Matthew support the legacy API with the new primitives and a special region?
 *** Advice from Claudio on 20230228 during our team call.
 *** TO DO
-*** Re-direct existing primitives to use the new RTS entry points (change compile.ml)
-*** Globally-allocate Region 0 (maybe similar to the global that I did for an experiment?)
-*** Region 0 is held specially, but is structured like all other regions (extend RTS with those defs)
-*** Support load/store operations on that Region representation.
+**** Re-direct existing primitives to use the new RTS entry points (change compile.ml)
+**** Globally-allocate Region 0 (maybe similar to the global that I did for an experiment?)
+**** Region 0 is held specially, but is structured like all other regions (extend RTS with those defs)
+**** Support load/store operations on that Region representation.
