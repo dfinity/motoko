@@ -1,6 +1,6 @@
 use crate::mem_utils::memzero;
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{size_of, Blob, Bytes, Obj};
+use crate::types::{size_of, Blob, Bytes, Obj, Value, NULL_OBJECT_ID};
 
 /* How the Wasm-heap maps to the bitmap
 
@@ -59,6 +59,8 @@ thus we mark bit 2 in byte 0xAC004 + 0x402A = 0xB002E, which is in the BM.
 
 /// Current bitmap
 static mut BITMAP_FORBIDDEN_PTR: *mut u8 = core::ptr::null_mut();
+// TODO: `BITMAP_ID` can be omitted if no object table is used.
+static mut BITMAP_ID: Value = NULL_OBJECT_ID;
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
 static mut BITMAP_SIZE: u32 = 0;
 
@@ -77,9 +79,9 @@ pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_p
     // 64 bits in a single read and check as many bits as possible with a single `word != 0`.
     let bitmap_bytes = Bytes(((BITMAP_SIZE + 7) / 8) * 8);
     // Allocating an actual object here as otherwise dump_heap gets confused
-    let id = alloc_blob(mem, bitmap_bytes);
-    id.free_object_id();
-    let blob = id.get_object_address() as *mut Blob;
+    debug_assert!(BITMAP_ID == NULL_OBJECT_ID);
+    BITMAP_ID = alloc_blob(mem, bitmap_bytes);
+    let blob = BITMAP_ID.get_object_address() as *mut Blob;
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
     BITMAP_PTR = blob.payload_addr();
@@ -90,6 +92,11 @@ pub unsafe fn free_bitmap() {
     BITMAP_PTR = core::ptr::null_mut();
     BITMAP_FORBIDDEN_PTR = core::ptr::null_mut();
     BITMAP_SIZE = 0;
+
+    // TODO: Code below can be omitted if no object table is used.
+    debug_assert!(BITMAP_ID != NULL_OBJECT_ID);
+    BITMAP_ID.free_object_id();
+    BITMAP_ID = NULL_OBJECT_ID;
 }
 
 pub unsafe fn get_bit(idx: u32) -> bool {
