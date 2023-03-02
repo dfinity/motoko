@@ -121,6 +121,8 @@ pub struct ObjectTable {
 const FREE_STACK_END: Value = NULL_OBJECT_ID;
 
 impl ObjectTable {
+    /// Initialize the new object table at address base with `length` entries.
+    /// The memory between `base` and `base + length * WORD` must already be reserved.
     pub fn new(base: *mut usize, length: usize) -> ObjectTable {
         assert!(length > 0);
         assert_eq!(base as u32 % WORD_SIZE, 0);
@@ -133,10 +135,12 @@ impl ObjectTable {
         table
     }
 
+    /// Base address of the object table`.
     pub fn base(&self) -> usize {
         self.base as usize
     }
 
+    /// End address of the object table, equals `HEAP_BASE` (when aligned to 32 bytes).
     pub fn end(&self) -> usize {
         unsafe { self.base.add(self.length) as usize }
     }
@@ -148,6 +152,7 @@ impl ObjectTable {
         }
     }
 
+    /// Allocate a new object id and associate the object's address.
     pub fn new_object_id(&mut self, address: usize) -> Value {
         assert!(address >= self.end());
         let object_id = self.pop_free_id();
@@ -155,12 +160,22 @@ impl ObjectTable {
         object_id
     }
 
+    /// The garbage collector frees object ids of discarded objects.
     pub fn free_object_id(&mut self, object_id: Value) {
         self.push_free_id(object_id);
     }
 
+    /// Retrieve the object address for a given object id.
     pub fn get_object_address(&self, object_id: Value) -> usize {
         self.read_element(object_id)
+    }
+
+    /// Record that an object obtained a new address.
+    pub fn move_object(&self, object_id: Value, new_address: usize) {
+        assert!(self.read_element(object_id) >= self.end());
+        assert_eq!(new_address % WORD_SIZE as usize, 0);
+        assert!(new_address >= self.end());
+        self.write_element(object_id, new_address);
     }
 
     fn index_to_object_id(&self, index: usize) -> Value {

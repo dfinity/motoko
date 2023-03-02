@@ -12,6 +12,7 @@ pub unsafe fn test() {
     assert!(OBJECT_TABLE.is_none());
     test_allocate();
     test_remove_realloc();
+    test_move();
 }
 
 const TEST_SIZE: usize = 10_000;
@@ -92,4 +93,22 @@ fn test_remove_realloc() {
     }
     check_all_entries(&object_table, &expected_table);
     free_all_entries(&mut object_table, &expected_table);
+}
+
+fn move_all_objects(object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
+    for index in 0..expected_table.len() {
+        let (object_id, old_address) = expected_table[index];
+        let new_address = old_address + 3 * WORD_SIZE;
+        object_table.move_object(object_id, new_address);
+        expected_table[index].1 = new_address;
+    }
+}
+
+fn test_move() {
+    let mut object_table = create_object_table(TEST_SIZE);
+    let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
+    allocate_entries(&mut object_table, &mut expected_table);
+    check_all_entries(&object_table, &expected_table);
+    move_all_objects(&mut object_table, &mut expected_table);
+    check_all_entries(&object_table, &expected_table);
 }
