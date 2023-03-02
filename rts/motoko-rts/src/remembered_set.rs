@@ -1,4 +1,5 @@
 //! Remembered set.
+//! Used by both the generational GC and the incremental GC.
 //! Serves for recording pointer locations trapped by the write barrier.
 //!
 //! Hash-set implementation. Linked-list collision handling.

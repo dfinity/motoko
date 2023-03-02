@@ -6,7 +6,6 @@
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
 pub mod mark_stack;
-pub mod remembered_set;
 #[cfg(debug_assertions)]
 mod sanity_checks;
 pub mod write_barrier;
@@ -30,7 +29,7 @@ use self::write_barrier::REMEMBERED_SET;
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
     crate::memory::ic::initialize_memory(mem, heap_base, true);
-    write_barrier::init_write_barrier(mem);
+    write_barrier::init_generational_write_barrier(mem);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -79,7 +78,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
         sanity_checks::take_snapshot(&mut gc.heap);
     }
 
-    write_barrier::init_write_barrier(gc.heap.mem);
+    write_barrier::init_generational_write_barrier(gc.heap.mem);
 }
 
 #[cfg(feature = "ic")]

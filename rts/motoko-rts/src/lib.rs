@@ -26,6 +26,7 @@ pub mod leb128;
 mod mem_utils;
 pub mod memory;
 pub mod principal_id;
+pub mod remembered_set;
 mod static_checks;
 pub mod stream;
 pub mod text;

@@ -13,8 +13,8 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
-use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
+use motoko_rts::remembered_set::RememberedSet;
 use utils::{get_object_address, get_scalar_value, read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;

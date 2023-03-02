@@ -996,6 +996,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "generational_write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "incremental_write_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -7399,12 +7400,13 @@ module Var = struct
 
   (* Returns desired stack representation, preparation code and code to consume
      the value onto the stack *)
-  let set_val env ae var : G.t * SR.t * G.t = match VarEnv.lookup_var ae var with
-    | Some (Local (sr, i)) ->
+  let set_val env ae var : G.t * SR.t * G.t = 
+    match (VarEnv.lookup_var ae var, !Flags.gc_strategy) with
+    | (Some (Local (sr, i)), _) ->
       G.nop,
       sr,
       G.i (LocalSet (nr i))
-    | Some (HeapInd i) ->
+    | (Some (HeapInd i), Flags.Generational) ->
       let (set_address, get_address) = new_local env "mutbox_address" in
       G.i (LocalGet (nr i)) ^^
       Heap.get_object_address env ^^
@@ -7412,13 +7414,29 @@ module Var = struct
       get_address,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Flags.Generational
-        then
-         get_address ^^
-         compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-         E.call_import env "rts" "generational_write_barrier"
-        else G.nop)
-    | Some (HeapStatic ptr) ->
+      get_address ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "generational_write_barrier"
+    | (Some (HeapInd i), Flags.Incremental) -> (* Temporary duplicate to generational GC *)
+      let (set_address, get_address) = new_local env "mutbox_address" in
+      G.i (LocalGet (nr i)) ^^
+      Heap.get_object_address env ^^
+      set_address ^^
+      get_address,
+      SR.Vanilla,
+      Heap.store_field MutBox.field ^^
+      get_address ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "incremental_write_barrier"
+    | (Some (HeapInd i), _) ->
+      let (set_address, get_address) = new_local env "mutbox_address" in
+      G.i (LocalGet (nr i)) ^^
+      Heap.get_object_address env ^^
+      set_address ^^
+      get_address,
+      SR.Vanilla,
+      Heap.store_field MutBox.field
+    | (Some (HeapStatic ptr), Flags.Generational) ->
       let (set_address, get_address) = new_local env "mutbox_address" in
       compile_unboxed_const ptr ^^
       Heap.get_object_address env ^^
@@ -7426,15 +7444,31 @@ module Var = struct
       get_address,
       SR.Vanilla,
       Heap.store_field MutBox.field ^^
-      (if !Flags.gc_strategy = Flags.Generational
-        then
-         get_address ^^
-         compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-         E.call_import env "rts" "generational_write_barrier"
-        else G.nop)
-    | Some (Const _) -> fatal "set_val: %s is const" var
-    | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
-    | None   -> fatal "set_val: %s missing" var
+      get_address ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "generational_write_barrier"
+    | (Some (HeapStatic ptr), Flags.Incremental) -> (* Temporary duplicate to generational GC *)
+      let (set_address, get_address) = new_local env "mutbox_address" in
+      compile_unboxed_const ptr ^^
+      Heap.get_object_address env ^^
+      set_address ^^
+      get_address,
+      SR.Vanilla,
+      Heap.store_field MutBox.field ^^
+      get_address ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      E.call_import env "rts" "incremental_write_barrier"
+    | (Some (HeapStatic ptr), _) ->
+      let (set_address, get_address) = new_local env "mutbox_address" in
+      compile_unboxed_const ptr ^^
+      Heap.get_object_address env ^^
+      set_address ^^
+      get_address,
+      SR.Vanilla,
+      Heap.store_field MutBox.field
+    | (Some (Const _), _) -> fatal "set_val: %s is const" var
+    | (Some (PublicMethod _), _) -> fatal "set_val: %s is PublicMethod" var
+    | (None, _)   -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
   let set_val_vanilla env ae var : G.t * G.t =
@@ -8870,6 +8904,17 @@ let rec compile_lexp (env : E.t) ae lexp =
     store_ptr ^^
     get_field ^^
     E.call_import env "rts" "generational_write_barrier"
+  | IdxLE (e1, e2), Flags.Incremental -> (* Temporary duplicate to generational GC *)
+    let (set_field, get_field) = new_local env "field" in
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    set_field ^^ (* peepholes to tee *)
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    E.call_import env "rts" "incremental_write_barrier"
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8886,6 +8931,16 @@ let rec compile_lexp (env : E.t) ae lexp =
     store_ptr ^^
     get_field ^^
     E.call_import env "rts" "generational_write_barrier"
+  | DotLE (e, n), Flags.Incremental -> (* Temporary duplicate to generational GC *)
+    let (set_field, get_field) = new_local env "field" in
+    compile_exp_vanilla env ae e ^^
+    Object.idx env e.note.Note.typ n ^^
+    set_field ^^ (* peepholes to tee *)
+    get_field,
+    SR.Vanilla,
+    store_ptr ^^
+    get_field ^^
+    E.call_import env "rts" "incremental_write_barrier"
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)

@@ -1,4 +1,4 @@
-//! Write barrier, used for generational GC
+//! Write barrier, used by the incremental GC
 
 use crate::memory::Memory;
 use crate::remembered_set::RememberedSet;
@@ -9,22 +9,22 @@ pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
 pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
-/// (Re-)initialize the write barrier for generational GC.
+/// (Re-)initialize the write barrier for the incremental GC.
 #[cfg(feature = "ic")]
-pub(super) unsafe fn init_generational_write_barrier<M: Memory>(mem: &mut M) {
+pub(super) unsafe fn init_incremental_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     REMEMBERED_SET = Some(RememberedSet::new(mem));
     HEAP_BASE = ic::HEAP_BASE;
     LAST_HP = ic::LAST_HP;
 }
 
-/// Write barrier to be called AFTER the pointer store, used for generational GC.
+/// Write barrier to be called AFTER the pointer store, used by the incremental GC.
 /// `location`: location of modified pointer (address of object field or array element).
 ///
 /// As the barrier is called after the write, `*location` refers to the NEW value.
 /// No effect is the write barrier is deactivated.
 #[ic_mem_fn]
-pub unsafe fn generational_write_barrier<M: Memory>(mem: &mut M, location: u32) {
+pub unsafe fn incremental_write_barrier<M: Memory>(mem: &mut M, location: u32) {
     // Must be an unskewed address.
     debug_assert_eq!(location & 0b1, 0);
     // Checks have been optimized according to the frequency of occurrence.
