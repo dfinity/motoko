@@ -277,7 +277,13 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-    object_pool : int32 StringEnv.t ref;
+      (* Pool for shared static objects. Their lookup needs to be specifically
+         handled by using the tag and the payload without the forwarding pointer.
+         This is because the forwarding pointer depends on the allocation adddress.
+         The lookup is different to `static_string` that has no such 
+         allocation-dependent content and can thus be immediately looked up by 
+         the string value. *)
+    object_pool : int32 StringEnv.t ref; 
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -561,11 +567,11 @@ module E = struct
 
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
-    
+
   let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
-    
+
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
     Int32.add (add_static env data) ptr_unskew
 
