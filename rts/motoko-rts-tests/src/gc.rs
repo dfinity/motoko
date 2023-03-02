@@ -8,6 +8,7 @@
 mod compacting;
 mod generational;
 mod heap;
+mod incremental;
 mod random;
 mod utils;
 
@@ -44,6 +45,7 @@ pub fn test() {
 
     compacting::test();
     generational::test();
+    incremental::test();
 }
 
 fn test_heaps() -> Vec<TestHeap> {
