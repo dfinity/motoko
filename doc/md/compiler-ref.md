@@ -35,6 +35,7 @@ You can use the following options with the `moc` command.
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
 | `--idl`                                   | Compile binary and emit Candid IDL specification to `.did` file.                                                                                      |
+| `--incremental-gc`                        | Use incremental GC                                                                                                                                    |
 | `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |
 | `--max-stable-pages <n>`                  | Set maximum number of pages available for library `ExperimentStableMemory.mo` (default 65536).                                                        |

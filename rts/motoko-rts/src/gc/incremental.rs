@@ -6,7 +6,8 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::memory::Memory;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
+unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M, heap_base: u32) {
+    crate::memory::ic::initialize_memory(mem, heap_base, true);
     println!(100, "INITIALIZE INCREMENTAL GC");
 }
 

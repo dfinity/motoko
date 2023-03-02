@@ -64,7 +64,7 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
     -   uniform representation, unboxed arithmetic
 
-    -   copying GC, compacting GC, or generational GC
+    -   copying GC, compacting GC, generational GC, or incremental GC
         (select which with compiler flag)
 
     -   GC invoked after messages (for now)

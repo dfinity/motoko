@@ -589,6 +589,7 @@ module E = struct
     | Flags.MarkCompact -> "compacting"
     | Flags.Copying -> "copying"
     | Flags.Generational -> "generational"
+    | Flags.Incremental -> "incremental"
 
   let collect_garbage env =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
@@ -970,9 +971,11 @@ module RTS = struct
     E.add_func_import env "rts" "copying_gc" [] [];
     E.add_func_import env "rts" "compacting_gc" [] [];
     E.add_func_import env "rts" "generational_gc" [] [];
+    E.add_func_import env "rts" "incremental_gc" [] [];
     E.add_func_import env "rts" "schedule_copying_gc" [] [];
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "schedule_generational_gc" [] [];
+    E.add_func_import env "rts" "schedule_incremental_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "new_object_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_object_address" [I32Type] [I32Type];
@@ -981,6 +984,7 @@ module RTS = struct
     E.add_func_import env "rts" "initialize_copying_gc" [I32Type] [];
     E.add_func_import env "rts" "initialize_compacting_gc" [I32Type] [];
     E.add_func_import env "rts" "initialize_generational_gc" [I32Type] [];
+    E.add_func_import env "rts" "initialize_incremental_gc" [I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
@@ -991,7 +995,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "generational_write_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -7412,7 +7416,7 @@ module Var = struct
         then
          get_address ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-         E.call_import env "rts" "write_barrier"
+         E.call_import env "rts" "generational_write_barrier"
         else G.nop)
     | Some (HeapStatic ptr) ->
       let (set_address, get_address) = new_local env "mutbox_address" in
@@ -7426,7 +7430,7 @@ module Var = struct
         then
          get_address ^^
          compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-         E.call_import env "rts" "write_barrier"
+         E.call_import env "rts" "generational_write_barrier"
         else G.nop)
     | Some (Const _) -> fatal "set_val: %s is const" var
     | Some (PublicMethod _) -> fatal "set_val: %s is PublicMethod" var
@@ -8865,7 +8869,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     SR.Vanilla,
     store_ptr ^^
     get_field ^^
-    E.call_import env "rts" "write_barrier"
+    E.call_import env "rts" "generational_write_barrier"
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8881,7 +8885,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     SR.Vanilla,
     store_ptr ^^
     get_field ^^
-    E.call_import env "rts" "write_barrier"
+    E.call_import env "rts" "generational_write_barrier"
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
