@@ -32,6 +32,15 @@
 *** 20230301-1539: Success (also wrote this summary).
 
 
+** Q: Can Matthew implement the "region_new" RTS function?
+*** A: Yes, at least partially.  It works, but is not totally complete yet (no access vector yet).
+*** Also implemented another temporary helper, to get the ID of a Region as a Nat32.
+*** The test asserts that the ID from the Region matches what REGION_NEXT_ID gives.
+*** I have some confusion about how to return these kinds of scalars, given the skew stuff around everywhere.
+*** When I tried using Value.from_scalar(id) I got a value that wasn't right.
+*** Using Value.from_raw(id) worked, but it doesn't seem right, or I'm not understanding the conventions yet.
+*** 20230301-1649: Success (also wrote this summary).
+
 ** Q: Can Matthew support the legacy API with the new primitives and a special region?
 *** Advice from Claudio on 20230228 during our team call.
 *** TO DO
