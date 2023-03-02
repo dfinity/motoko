@@ -2,10 +2,17 @@ import P "mo:⛔";
 import Region "stable-region/Region";
 actor {
 
-  stable var n : Nat64 = 0;
-//  stable var r : Region = Region.new();
+  P.debugPrint("Begin");
+
   let next_id = Region.next_id();
   assert next_id == 2;
+
+  let r2 = Region.new();
+  let r2_id = Region.id r2;
+
+  P.debugPrint("Created region " # (debug_show r2_id));
+
+  assert r2_id == 2;
 
 /*
   assert (n == Region.size(r));
@@ -115,4 +122,3 @@ actor {
 //xCALL upgrade ""
 //xCALL ingress testBounds "DIDL\x00\x00"
 //xCALL upgrade ""
-

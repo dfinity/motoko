@@ -281,6 +281,13 @@ impl Value {
         self.get_ptr() as *mut Array
     }
 
+    /// Get the pointer as `Region`. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Region`.
+    pub unsafe fn as_region(self) -> *mut Region {
+        debug_assert_eq!(self.tag(), TAG_REGION);
+        self.get_ptr() as *mut Region
+    }
+
     /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {

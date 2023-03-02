@@ -21,7 +21,7 @@ pub(crate) static mut LAST_HP: u32 = 0;
 
 /// Next region to bump-allocate.
 /// (Regions 0 and 1 are reserved.)
-pub(crate) static mut NEXT_REGION_ID: u32 = 2;
+pub(crate) static mut NEXT_REGION_ID: u16 = 2;
 
 // Provided by generated code
 extern "C" {

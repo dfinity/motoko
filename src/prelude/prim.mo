@@ -377,6 +377,9 @@ func stableVarQuery() : shared query () -> async {size : Nat64} =
 func regionNextId() : Nat32 =
   (prim "regionNextId" : () -> Nat32) (); // TEMP (for testing).
 
+func regionId(r : Region) : Nat32 =
+  (prim "regionId" : Region -> Nat32) r; // TEMP (for testing).
+
 func regionNew() : Region =
   (prim "regionNew" : () -> Region) ();
 

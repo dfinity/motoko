@@ -6,6 +6,8 @@ module {
 
   public let new = Prim.regionNew;
 
+  public let id = Prim.regionId;
+
   public let size = Prim.regionSize;
   public let grow = Prim.regionGrow;
 
