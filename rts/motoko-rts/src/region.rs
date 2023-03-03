@@ -6,17 +6,49 @@ use motoko_rts_macros::ic_mem_fn;
 
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
-    // to do: use ic0_stable module to implement the getters/settings below.
-
+    /// Offsets into stable memory for statically-sized fields and tables.
+    pub mod offset {
+	pub const TOTAL_ALLOCATED_BLOCKS : u64 = 0;
+	pub const TOTAL_ALLOCATED_REGIONS : u64 = 2;
+	// const BLOCK_REGION_TABLE
+	// const REGION_TABLE
+    }
     pub mod total_allocated_blocks {
-	// to do:
-	// get,
-	// set
+	use crate::ic0_stable::nicer::{read, write};
+	use crate::rts_trap_with;
+	use super::offset;
+	use core::convert::TryInto;
+
+	pub unsafe fn get() -> u64 {
+	    let mut res : [u8; 2] = [0, 0];
+	    read(offset::TOTAL_ALLOCATED_BLOCKS, &mut res);
+	    let res : u64 = (res[0] as u64) << 8 | res[1] as u64; // big endian Nat16
+	    res
+	}
+	pub unsafe fn set(n: u64) {
+	    let n_ = n as u16;
+	    let bytes : [u8; 2] = [(n_ & 0xFF00) as u8, (n & 0xFF) as u8];
+	    write(offset::TOTAL_ALLOCATED_BLOCKS, &bytes);
+	}
     }
 
     pub mod total_allocated_regions {
-	// (will subsume the temp global, REGION_NEXT_ID)
-	// to do: get, incr
+	use crate::ic0_stable::nicer::{read, write};
+	use crate::rts_trap_with;
+	use super::offset;
+	use core::convert::TryInto;
+
+	pub unsafe fn get() -> u64 {
+	    let mut res : [u8; 2] = [0, 0];
+	    read(offset::TOTAL_ALLOCATED_REGIONS, &mut res);
+	    let res : u64 = (res[0] as u64) << 8 | res[1] as u64; // big endian Nat16
+	    res
+	}
+	pub unsafe fn set(n: u64) {
+	    let n_ = n as u16;
+	    let bytes : [u8; 2] = [(n_ & 0xFF00) as u8, (n & 0xFF) as u8];
+	    write(offset::TOTAL_ALLOCATED_REGIONS, &bytes);
+	}
     }
 
     pub mod block_region_table {
@@ -50,6 +82,10 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     NEXT_REGION_ID += 1;
     (*region).page_count = 0;
     (*region).vec_pages = alloc_blob(mem, Bytes(0));
+    { // to do -- use this to eventually replace NEXT_REGION_ID
+	let c = meta_data::total_allocated_regions::get();
+	meta_data::total_allocated_regions::set(c + 1);
+    }
     Value::from_ptr(region as usize)
 }
 
@@ -70,24 +106,26 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let r = r.as_region();
     let new_pages_ = new_pages as u32;
     let old_page_count = (*r).page_count;
+    let old_block_count = (old_page_count + 127) / 128;
     let new_block_count = (old_page_count + new_pages_ + 127) / 128;
+    let inc_block_count = new_block_count - old_block_count;
+    { // Update the total allocated blocks:
+	let c = meta_data::total_allocated_blocks::get();
+	meta_data::total_allocated_blocks::set(c + inc_block_count as u64);
+    }
     (*r).page_count += new_pages_;
     let new_vec_pages = alloc_blob(mem, Bytes(new_block_count * 2));
-    let old_vec_byte_count = (old_page_count + 127 / 128) * 2;
-    let new_vec_byte_count = (old_page_count + new_pages_ + 127 / 128) * 2;
+    let old_vec_byte_count = old_block_count * 2;
+    let new_vec_byte_count = new_block_count * 2;
     for i in 0..old_vec_byte_count {
 	let new_pages = new_vec_pages.get_ptr() as *mut Blob;
 	let old_pages = (*r).vec_pages.get_ptr() as *mut Blob;
 	new_pages.set(i, old_pages.get(i));
     }
     //  ## choose and record new block IDs:
-    //  ### update meta data:
-    //    - let old_total_blocks = meta_data::total_allocated_blocks::get();
-    //    - let new_total_blocks = old_total_blocks + new_block_count;
-    //    - call meta_data::total_allocated_blocks::set(new_total_blocks)
     //    - call meta_data::block_region_table::set_block_region(r.id, block_id)
     //             for each block_id in old_total_blocks..new_total_blocks-1
-    //  ### save new block IDs into new_vec_pages
+    //  ## save new block IDs into new_vec_pages
     //    - call new_vec_pages.set(byte_offset)
     //            for byte_offset in old_vec_byte_count..new_vec_byte_count
     //              if the byte_offset is even, vs odd, ...

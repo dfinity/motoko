@@ -41,9 +41,21 @@
 *** Using Value.from_raw(id) worked, but it doesn't seem right, or I'm not understanding the conventions yet.
 *** 20230301-1649: Success (also wrote this summary).
 
+** Q: Can Matthew implement `meta_data::{total_allocated_blocks, total_allocated_regions}`?
+*** Motivation: Get some practice reading and writing stable memory, using ic0_stable module.
+*** Outcome (20230303-1631):
+**** Implemented most of the logic, but did not intially grow stable memory to accomodate the special fields/tables.
+**** test now says `trapped: stable memory out of bounds`
+
+
 ** Q: Can Matthew implement "region_grow" RTS function?
+WIP
 
 ** Q: Can Matthew implement load/store byte RTS functions?
+TO DO
+
+** Q: Can Matthew compile a stub stable memory API for WASI mode (generate stubs that trap)?
+TO DO
 
 ** Q: Can Matthew support the legacy API with the new primitives and a special region?
 *** Advice from Claudio on 20230228 during our team call.
