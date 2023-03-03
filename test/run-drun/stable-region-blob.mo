@@ -21,6 +21,10 @@ actor {
   assert Region.grow(r3, 137) == 0;
   assert Region.grow(r4, 17) == 0;
 
+  assert Region.grow(r2, 137 * 17) == 137 * 17;
+  assert Region.grow(r3, 137) == 137;
+  assert Region.grow(r4, 17) == 17;
+
 
 /*
   assert (n == Region.size(r));
