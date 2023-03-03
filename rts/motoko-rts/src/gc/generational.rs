@@ -10,7 +10,6 @@ pub mod mark_stack;
 mod sanity_checks;
 pub mod write_barrier;
 
-use crate::gc::common::{get_limits, get_roots, set_limits};
 use crate::gc::generational::mark_stack::{alloc_mark_stack, push_mark_stack};
 use crate::gc::mark_compact::bitmap::{
     alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
@@ -37,7 +36,8 @@ unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
-    let limits = get_limits();
+    use crate::gc::common;
+    let limits = common::get_limits();
     if decide_strategy(&limits).is_some() {
         generational_gc(mem);
     }
@@ -45,11 +45,12 @@ unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
-    let old_limits = get_limits();
+    use crate::gc::common;
+    let old_limits = common::get_limits();
     let heap = Heap {
         mem,
-        limits: get_limits(),
-        roots: get_roots(),
+        limits: common::get_limits(),
+        roots: common::get_roots(),
     };
     let strategy = decide_strategy(&heap.limits);
 
@@ -65,7 +66,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     gc.run();
 
     let new_limits = &gc.heap.limits;
-    set_limits(&gc.heap.limits);
+    common::set_limits(&gc.heap.limits);
     update_statistics(&old_limits, new_limits);
     update_strategy(strategy, new_limits);
 

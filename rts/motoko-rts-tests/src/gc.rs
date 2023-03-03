@@ -17,8 +17,9 @@ use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use motoko_rts::remembered_set::RememberedSet;
 use utils::{get_object_address, get_scalar_value, read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
+use motoko_rts::gc::common::{Limits, Roots};
 use motoko_rts::gc::copying::copying_gc_internal;
-use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
+use motoko_rts::gc::generational::{GenerationalGC, Strategy};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 

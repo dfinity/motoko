@@ -5,7 +5,8 @@ use crate::remembered_set::RememberedSet;
 use crate::types::Value;
 use motoko_rts_macros::ic_mem_fn;
 
-pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
+pub static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
+// TODO: Adjust also this `HEAP_BASE` when object table grows/shrinks! Better incorporate into mem.
 pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
@@ -13,9 +14,13 @@ pub static mut LAST_HP: u32 = 0;
 #[cfg(feature = "ic")]
 pub(super) unsafe fn init_incremental_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    REMEMBERED_SET = Some(RememberedSet::new(mem));
     HEAP_BASE = ic::HEAP_BASE;
-    LAST_HP = ic::LAST_HP;
+    reset_young_remembered_set(mem, ic::LAST_HP as usize);
+}
+
+pub unsafe fn reset_young_remembered_set<M: Memory>(mem: &mut M, last_hp: usize) {
+    YOUNG_REMEMBERED_SET = Some(RememberedSet::new(mem));
+    LAST_HP = last_hp as u32;
 }
 
 /// Write barrier to be called AFTER the pointer store, used by the incremental GC.
@@ -35,7 +40,11 @@ pub unsafe fn incremental_write_barrier<M: Memory>(mem: &mut M, location: u32) {
         if value.points_to_or_beyond(LAST_HP as usize) {
             if location >= HEAP_BASE {
                 // Trap pointers that lead from old generation (or static roots) to young generation.
-                REMEMBERED_SET
+                // Note: We could also only record the target value, as no threading is performed.
+                // However, the location can be overwritten, such that the target object may still become garbage.
+                // Therefore, this allows objects to be collected even if they have only been temporarily referenced
+                // from the old generation.
+                YOUNG_REMEMBERED_SET
                     .as_mut()
                     .unwrap()
                     .insert(mem, Value::from_raw(location));

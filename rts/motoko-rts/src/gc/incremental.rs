@@ -9,7 +9,7 @@ use crate::memory::Memory;
 
 use self::young_collection::YoungCollection;
 
-use super::common::{get_limits, get_roots, set_limits};
+use super::common::{Limits, Roots};
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -27,10 +27,17 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
-    // Always collect the young generation before the incremental collection of the old generation.
-    let mut gc = YoungCollection::new(mem, get_limits(), get_roots());
-    gc.run();
-    set_limits(gc.limits());
+    use crate::gc::common::{get_limits, get_roots, set_limits};
+
+    let new_limits = run_incremental_gc(mem, get_limits(), get_roots());
+    set_limits(&new_limits);
 
     // TODO: If necessary, start or continue the incremental collection
+}
+
+pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, limits: Limits, roots: Roots) -> Limits {
+    // Always collect the young generation before the incremental collection of the old generation.
+    let mut gc = YoungCollection::new(mem, limits, roots);
+    let new_limits = gc.run();
+    new_limits
 }

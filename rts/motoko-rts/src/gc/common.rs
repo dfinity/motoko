@@ -9,6 +9,7 @@ pub struct Roots {
     // * `incremental::YoungCollection::mark_root_set`
 }
 
+#[derive(Clone)]
 pub struct Limits {
     pub base: usize,
     pub last_free: usize, // This separates the old generation from the young generation.

@@ -33,7 +33,7 @@
 use core::ptr::null_mut;
 
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{size_of, Blob, Obj, Value};
+use crate::types::{size_of, Blob, Obj};
 
 pub struct MarkStack {
     last: *mut StackTable,
@@ -47,20 +47,44 @@ struct StackTable {
     pub header: Blob,
     pub previous: *mut StackTable,
     pub next: *mut StackTable,
-    pub entries: [Value; STACK_TABLE_CAPACITY],
+    pub entries: [*mut Obj; STACK_TABLE_CAPACITY],
 }
 
 impl MarkStack {
-    pub unsafe fn new<M: Memory>(mem: &mut M) -> MarkStack {
-        let table = Self::new_table(mem, null_mut());
+    /// Create an empty mark stack that still needs to be allocated before use.
+    /// To avoid slow `Option<MarkStack>`, the stack is allocated and freed by
+    /// separate functions.
+    pub fn new() -> MarkStack {
         MarkStack {
-            last: table,
+            last: null_mut(),
             top: 0,
         }
     }
 
-    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        debug_assert!(self.last != null_mut());
+    /// Allocate the mark stack before use.
+    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M) {
+        assert!(!self.is_allocated());
+        self.last = Self::new_table(mem, null_mut());
+        assert_eq!(self.top, 0);
+    }
+
+    /// Release the mark stack after use.
+    pub unsafe fn free(&mut self) {
+        assert!(self.is_allocated());
+        assert!(self.is_empty());
+        assert_eq!(self.top, 0);
+        self.last = null_mut();
+        // Stack and their object ids are freed by the GC.
+    }
+
+    fn is_allocated(&self) -> bool {
+        self.last != null_mut()
+    }
+
+    /// Push an object address on the stack.
+    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, object: *mut Obj) {
+        debug_assert_ne!(object, null_mut());
+        debug_assert!(self.is_allocated());
         if self.top == STACK_TABLE_CAPACITY {
             if (*self.last).next == null_mut() {
                 self.last = Self::new_table(mem, self.last);
@@ -70,15 +94,17 @@ impl MarkStack {
             self.top = 0;
         }
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
-        (*self.last).entries[self.top] = value;
+        (*self.last).entries[self.top] = object;
         self.top += 1;
     }
 
-    pub unsafe fn pop(&mut self) -> Option<Value> {
-        debug_assert!(self.last != null_mut());
+    /// Pop an object address off the stack, if it is not empty.
+    /// Otherwise, if empty, returns `null_mut()`.
+    pub unsafe fn pop(&mut self) -> *mut Obj {
+        debug_assert!(self.is_allocated());
         if self.top == 0 {
             if (*self.last).previous == null_mut() {
-                return None;
+                return null_mut();
             }
             self.last = (*self.last).previous;
             self.top = STACK_TABLE_CAPACITY;
@@ -86,11 +112,14 @@ impl MarkStack {
         debug_assert!(self.top > 0);
         self.top -= 1;
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
-        Some((*self.last).entries[self.top])
+        let object = (*self.last).entries[self.top];
+        assert_ne!(object, null_mut());
+        object
     }
 
+    /// Determine whether the stack is empty.
     pub unsafe fn is_empty(&self) -> bool {
-        debug_assert!(self.last != null_mut());
+        debug_assert!(self.is_allocated());
         self.top == 0 && (*self.last).previous == null_mut()
     }
 

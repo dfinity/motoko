@@ -1,7 +1,9 @@
-use crate::memory::TestMemory;
+use std::ptr::null_mut;
+
+use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 use motoko_rts::{
     gc::incremental::mark_stack::{MarkStack, STACK_TABLE_CAPACITY},
-    types::{Value, Words},
+    types::{Obj, Words},
 };
 
 pub unsafe fn test() {
@@ -20,16 +22,24 @@ pub unsafe fn test() {
 }
 
 unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
+    let mut stack = MarkStack::new();
     let mut mem = TestMemory::new(Words(64 * 1024));
-    let mut stack = MarkStack::new(&mut mem);
+    stack.allocate(&mut mem);
     for count in 0..amount {
-        stack.push(&mut mem, Value::from_scalar(count as u32));
+        stack.push(&mut mem, synthetic_object_address(count));
         if count == regrow_step {
             test_push_pop(amount - count, regrow_step);
         }
     }
     for count in (0..amount).rev() {
-        assert_eq!(stack.pop().unwrap().get_scalar() as usize, count);
+        assert!(!stack.is_empty());
+        assert_eq!(stack.pop(), synthetic_object_address(count));
     }
-    assert!(stack.pop().is_none());
+    assert!(stack.is_empty());
+    assert_eq!(stack.pop(), null_mut());
+    stack.free();
+}
+
+fn synthetic_object_address(count: usize) -> *mut Obj {
+    ((count + 1) * WORD_SIZE) as *mut Obj
 }
