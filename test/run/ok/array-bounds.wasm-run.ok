@@ -5,7 +5,8 @@ Caused by:
     0: failed to invoke command default
     1: wasm trap: unreachable
        wasm backtrace:
-         0: Array.idx_bigint
-         1: init
-         2: _start
+         0: Array.idx
+         1: Array.idx_bigint
+         2: init
+         3: _start
        

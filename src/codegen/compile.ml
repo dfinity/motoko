@@ -3576,10 +3576,8 @@ module Arr = struct
   (* Static array access. No checking *)
   let load_field n = Heap.load_field Int32.(add n header_size)
 
-  (* Dynamic array access.
-     Expects unsigned unboxed index.
-     No bounds checking
-     Returns the address (not the value) of the field. *)
+  (* Dynamic array access. Returns the address (not the value) of the field.
+     Does no bounds checking *)
   let unsafe_idx env =
     Func.share_code2 env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
       get_idx ^^
@@ -3589,19 +3587,10 @@ module Arr = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
-  (* Dynamic array access.
-     Expects bigint (Nat) index.
-     Does bounds checking
-     Returns the address (not the value) of the field. *)
-  let idx_bigint env =
-    Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx_nat", I32Type)) [I32Type] (fun env get_array get_idx_nat ->
-      let (set_idx, get_idx) = new_local env "idx" in
-      (* Convert to word32 *)
-      get_idx_nat ^^
-      Blob.lit env "Array index out of bounds" ^^
-      BigNum.to_word32_with env ^^
-      set_idx ^^
-
+  (* Dynamic array access. Returns the address (not the value) of the field.
+     Does bounds checking *)
+  let idx env =
+    Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
       (* No need to check the lower bound, we interpret idx as unsigned *)
       (* Check the upper bound *)
       get_idx ^^
@@ -3609,9 +3598,21 @@ module Arr = struct
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
       E.else_trap_with env "Array index out of bounds" ^^
 
+      get_idx ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_array ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    )
+
+  (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
+  let idx_bigint env =
+    Func.share_code2 env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
       get_array ^^
       get_idx ^^
-      unsafe_idx env
+      Blob.lit env "Array index out of bounds" ^^
+      BigNum.to_word32_with env ^^
+      idx env
   )
 
   let vanilla_lit env ptrs =
