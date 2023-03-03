@@ -405,19 +405,56 @@ pub const TAG_FREE_SPACE: Tag = 31;
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 
+// Incremental GC Mark Bit.
+// Stored in the most significant bit 31 of `raw_id` in the object header:
+//
+// ┌──────┬───────────────────────────┐
+// | Mark |          Id               |
+// └──────┴───────────────────────────┘
+//  Bit 31        Bits 30..0
+//
+// Since the object table end address is required to be less than `2**31` (half of the
+// heap space), object id values are also less than `2**31`, leaving bit 31 clear.
+//
+// Used for in-place marking of objects during the incremental GC.
+// Note: Using a mark bitmap during incremental GC is not beneficial as garbage objects
+// need also be visited during compaction to free their object ids. Therefore, full
+// a heap space scan is needed during compaction, while the mark bitmap is optimized
+// for skipping unmarked (garbage) objects.
+
+const MARK_BIT_MASK: usize = 1 << 31;
+
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
-    /// Object identity, skewed pointer to the object's entry in the object table.
-    /// Supports reverse lookup of the object in the object table.
-    /// Used by the incremental GC for atomic incremental object moving.
-    pub id: Value,
+    /// Object identity including a potential mark bit, used by the incremental GC.
+    /// The lower 30 bits encode the skewed pointer to the object's entry in the object table.
+    /// The object id supports reverse lookup of the object in the object table.
+    /// The mark bit is used during incremental GC (young and old generation).
+    mark_and_id: usize,
 }
 
 impl Obj {
-    pub unsafe fn id(self: *const Self) -> Value {
-        (*self).id
+    pub fn initialize_id(&mut self, object_id: Value) {
+        debug_assert_eq!(object_id.get_raw() as usize & MARK_BIT_MASK, 0);
+        self.mark_and_id = object_id.get_raw() as usize;
+    }
+
+    pub unsafe fn object_id(self: *const Self) -> Value {
+        Value::from_raw(((*self).mark_and_id & !MARK_BIT_MASK) as u32)
+    }
+
+    pub unsafe fn is_marked(self: *const Self) -> bool {
+        (*self).mark_and_id & MARK_BIT_MASK != 0
+    }
+
+    pub unsafe fn mark(self: *mut Self) {
+        (*self).mark_and_id |= MARK_BIT_MASK;
+    }
+
+    pub unsafe fn unmark(self: *mut Self) {
+        (*self).mark_and_id &= !MARK_BIT_MASK;
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {

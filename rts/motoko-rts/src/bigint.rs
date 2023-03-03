@@ -35,17 +35,17 @@ use crate::buf::{read_byte, Buf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
-use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
+use crate::types::{size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let address = mem.alloc_words(size_of::<BigInt>() + size.to_words());
-    let id = Value::new_object_id(address);
+    let object_id = Value::new_object_id(address);
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = address as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
-    (*blob).header.id = id;
+    (*blob).header.initialize_id(object_id);
 
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();
@@ -171,7 +171,7 @@ unsafe fn persist_bigint(i: mp_int) -> Value {
         panic!("persist_bigint: alloc changed?");
     }
     (*r).mp_int = i;
-    (*r).header.id
+    (r as *const Obj).object_id()
 }
 
 #[no_mangle]

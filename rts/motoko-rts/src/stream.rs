@@ -195,7 +195,7 @@ impl Stream {
         let blob = (self.cache_addr() as *mut Blob).sub(1);
         let object_id = Value::new_object_id(blob as usize);
         (*blob).header.tag = TAG_BLOB;
-        (*blob).header.id = object_id;
+        (*blob).header.initialize_id(object_id);
         debug_assert_eq!(blob.len(), (*self).filled);
         object_id
     }

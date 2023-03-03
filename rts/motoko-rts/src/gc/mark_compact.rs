@@ -237,8 +237,8 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         // Update object id, TODO: Remove later
         let new_obj = p_new as *mut Obj;
         debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-        (*new_obj).id.free_object_id();
-        (*new_obj).id = new_id;
+        new_obj.object_id().free_object_id();
+        (*new_obj).initialize_id(new_id);
 
         free += p_size_words.to_bytes().as_u32();
 

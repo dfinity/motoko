@@ -106,16 +106,16 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
 
     // Create concat node
     let address = mem.alloc_words(size_of::<Concat>());
-    let id = Value::new_object_id(address);
+    let object_id = Value::new_object_id(address);
 
     let r_concat = address as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
-    (*r_concat).header.id = id;
+    (*r_concat).header.initialize_id(object_id);
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1;
     (*r_concat).text2 = s2;
 
-    id
+    object_id
 }
 
 // Leaving breadcrumbs in the destination buffer for which concat node/blob to continue

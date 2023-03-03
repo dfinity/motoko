@@ -33,7 +33,7 @@ pub unsafe fn verify_snapshot<M: Memory>(heap: &Heap<M>, verify_roots: bool) {
         verify_static_roots(heap.roots.static_roots.as_array(), heap.limits.free);
     }
     verify_heap(&heap.limits);
-    (*SNAPSHOT).header.id.free_object_id();
+    (SNAPSHOT as *const Obj).object_id().free_object_id();
     SNAPSHOT = null_mut();
 }
 
@@ -168,7 +168,7 @@ impl<'a> MemoryChecker<'a> {
             if has_object_header(tag) {
                 let object = pointer as *mut Obj;
                 assert!(has_object_header((*object).tag));
-                self.check_object((*object).id);
+                self.check_object(object.object_id());
             }
             pointer += block_size(pointer as usize).to_bytes().as_usize();
         }

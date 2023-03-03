@@ -35,15 +35,15 @@ pub trait Memory {
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let address = mem.alloc_words(size_of::<Blob>() + size.to_words());
-    let id = Value::new_object_id(address);
+    let object_id = Value::new_object_id(address);
 
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = address as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
-    (*blob).header.id = id;
+    (*blob).header.initialize_id(object_id);
     (*blob).len = size;
 
-    id
+    object_id
 }
 
 /// Helper for allocating arrays
@@ -55,13 +55,13 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     }
 
     let address = mem.alloc_words(size_of::<Array>() + Words(len));
-    let id = Value::new_object_id(address);
+    let object_id = Value::new_object_id(address);
 
     // Cannot use `as_array()` here since the object header is not yet written.
     let ptr: *mut Array = address as *mut Array;
     (*ptr).header.tag = TAG_ARRAY;
-    (*ptr).header.id = id;
+    (*ptr).header.initialize_id(object_id);
     (*ptr).len = len;
 
-    id
+    object_id
 }

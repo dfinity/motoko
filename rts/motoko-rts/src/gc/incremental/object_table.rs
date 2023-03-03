@@ -20,11 +20,9 @@
 //! The dynamic heap can be organized into generations, e.g. old and young generation
 //! with `LAST_HP` splitting both generations. On each GC run, the young generation could
 //! be first collected (classically), before the incremental collection of the (extended)
-//! old generation continues. A mark bitmap and mark stack frames for incremental old
-//! generation collection could be allocated at the end of the old generation (reclaimable
-//! by GC), when the incremental GC run of the old generation starts. Young objects promoted
-//! to the old generation behind the mark bitmap are implicitly considered marked (fitting to
-//! snapshot-at-the-beginning marking strategy).
+//! old generation continues. Mark stack frames for incremental old generation collection
+//! can also be allocated at the end of the old generation (reclaimable by the same
+//! incremental GC run).
 //!
 //! The object table stores an id-to-address translation as an array. Each array element
 //! can be used to represent object id with the address of an allocated object stored in
@@ -78,7 +76,8 @@
 //! Objects blocking the extension of the table can be easily moved to another place, because
 //! of the `O(1)` object movement costs by changing their addresses in the table.
 //! Notes:
-//! * The new `HEAP_BASE` may be aligned to 32 bytes (as required by `MarkBitmap` if this is used).
+//! * The new `HEAP_BASE` may be aligned to 32 bytes (for symmetry to other GCs, but not required
+//!   for the incremental GC).
 //! * `LAST_HP` may fall behind the new `HEAP_BASE`, in which case it needs to be increased to the
 //!   new `HEAP_BASE`.
 //! * If objects are moved to the young generation due to table extension, their object id

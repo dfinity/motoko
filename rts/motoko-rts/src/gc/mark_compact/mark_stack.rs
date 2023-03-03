@@ -2,7 +2,7 @@
 //! otherwise things will break as we push. This invariant is checked in debug builds.
 
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{Blob, Tag, Words};
+use crate::types::{Blob, Obj, Tag, Words};
 
 use core::ptr::null_mut;
 
@@ -32,7 +32,7 @@ pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
 }
 
 pub unsafe fn free_mark_stack() {
-    (*STACK_BLOB_PTR).header.id.free_object_id();
+    (STACK_BLOB_PTR as *const Obj).object_id().free_object_id();
     STACK_BLOB_PTR = null_mut();
     STACK_BASE = null_mut();
     STACK_PTR = null_mut();

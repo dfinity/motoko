@@ -470,8 +470,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             // Update object id, TODO: Remove later
             let new_obj = new_pointer as *mut Obj;
             debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-            (*new_obj).id.free_object_id();
-            (*new_obj).id = new_id;
+            new_obj.object_id().free_object_id();
+            (*new_obj).initialize_id(new_id);
 
             free += object_size.to_bytes().as_usize();
 
