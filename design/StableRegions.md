@@ -214,6 +214,7 @@ In ordinary operation, the second feature is not required.  In the event of an u
  - entry type = `RegionBlocks { size_in_pages: Nat64; }`
  - the location of each entry in the table gives its corresponding region ID.
  - the `size_in_pages` field measures the size of the region in terms of _pages_, not blocks.
+ - to do: track bit per region of whether in-use or reclaimed-and-available, somehow.
 
 
 ### Overview of `rebuild`
