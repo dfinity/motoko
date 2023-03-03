@@ -1,6 +1,7 @@
 pub mod array_slicing;
 pub mod mark_stack;
 pub mod object_table;
+pub mod roots;
 pub mod write_barrier;
 mod young_collection;
 

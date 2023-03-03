@@ -1,12 +1,13 @@
 use crate::types::Value;
 
+#[derive(Clone)]
 pub struct Roots {
     pub static_roots: Value,
-    pub continuation_table_ptr_loc: *mut Value,
+    pub continuation_table_location: *mut Value,
     // For possible future additional roots, please extend the functionality in:
     // * `generational::GenerationalGC::mark_root_set`
     // * `generational::GenerationalGC::thread_initial_phase`
-    // * `incremental::YoungCollection::mark_root_set`
+    // * `incremental::roots::visit_roots`
 }
 
 #[derive(Clone)]
@@ -33,7 +34,7 @@ pub unsafe fn get_roots() -> Roots {
     use crate::memory::ic;
     Roots {
         static_roots: ic::get_static_roots(),
-        continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
+        continuation_table_location: crate::continuation_table::continuation_table_loc(),
     }
 }
 

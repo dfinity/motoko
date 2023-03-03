@@ -215,7 +215,7 @@ impl MotokoHeapInner {
 
         let use_object_table = match gc {
             GC::Copying => false,
-            GC::MarkCompact | GC::Generational => true,
+            GC::MarkCompact | GC::Generational | GC::Incremental => true,
         };
 
         let dynamic_heap_size_without_continuation_table_bytes = {
@@ -340,7 +340,7 @@ fn heap_size_for_gc(
 
             total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
         }
-        GC::Generational => {
+        GC::Generational | GC::Incremental => {
             const ROUNDS: usize = 3;
             const REMEMBERED_SET_MAXIMUM_SIZE: usize = 1024 * 1024 * WORD_SIZE;
             let size = heap_size_for_gc(

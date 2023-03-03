@@ -20,6 +20,7 @@ pub enum GC {
     Copying,
     MarkCompact,
     Generational,
+    Incremental,
 }
 
 pub static GC_IMPLS: [GC; 3] = [GC::Copying, GC::MarkCompact, GC::Generational];

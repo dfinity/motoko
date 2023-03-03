@@ -115,8 +115,8 @@ pub unsafe fn check_memory(limits: &Limits, roots: &Roots) {
 impl<'a> MemoryChecker<'a> {
     unsafe fn check_memory(&self) {
         self.check_static_roots();
-        if (*self.roots.continuation_table_ptr_loc).is_object_id() {
-            self.check_object(*self.roots.continuation_table_ptr_loc);
+        if (*self.roots.continuation_table_location).is_object_id() {
+            self.check_object(*self.roots.continuation_table_location);
         }
         self.check_heap();
     }

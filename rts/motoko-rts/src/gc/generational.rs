@@ -187,7 +187,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn mark_root_set(&mut self) {
         self.mark_static_roots();
 
-        let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
+        let continuation_table = *self.heap.roots.continuation_table_location;
         if continuation_table.is_object_id()
             && continuation_table.get_object_address() >= self.generation_base()
         {
@@ -331,11 +331,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         // Therefore, this must happen after the heap traversal for backwards pointer threading.
         self.thread_static_roots();
 
-        let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
+        let continuation_table = *self.heap.roots.continuation_table_location;
         if continuation_table.is_object_id()
             && continuation_table.get_object_address() >= self.generation_base()
         {
-            self.thread(self.heap.roots.continuation_table_ptr_loc);
+            self.thread(self.heap.roots.continuation_table_location);
         }
 
         // For the young generation GC run, the forward pointers from the old generation must be threaded too.

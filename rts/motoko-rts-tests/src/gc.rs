@@ -438,7 +438,7 @@ impl GC {
                     };
                     let roots = Roots {
                         static_roots,
-                        continuation_table_ptr_loc: continuation_table_ptr_address,
+                        continuation_table_location: continuation_table_ptr_address,
                     };
                     let gc_heap = motoko_rts::gc::generational::Heap {
                         mem: heap,
@@ -453,6 +453,8 @@ impl GC {
                 }
                 round >= 2
             }
+
+            GC::Incremental => unimplemented!(),
         }
     }
 }
