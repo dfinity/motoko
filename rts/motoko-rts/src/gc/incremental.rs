@@ -1,3 +1,4 @@
+pub mod array_slicing;
 pub mod mark_stack;
 pub mod object_table;
 pub mod write_barrier;

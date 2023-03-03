@@ -4,11 +4,12 @@ use crate::{
     constants::WORD_SIZE,
     gc::common::{Limits, Roots},
     memory::Memory,
-    types::{MutBox, Obj, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_MUTBOX},
+    types::{MutBox, Obj, Value, TAG_ARRAY_SLICE_MIN, TAG_MUTBOX},
     visitor::{pointer_to_dynamic_heap, visit_pointer_fields},
 };
 
 use super::{
+    array_slicing::slice_array,
     mark_stack::MarkStack,
     write_barrier::{reset_young_remembered_set, YOUNG_REMEMBERED_SET},
 };
@@ -129,18 +130,12 @@ impl<'a, M: Memory> YoungCollection<'a, M> {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
             },
-            |gc, slice_start, array| {
-                const SLICE_INCREMENT: u32 = 255;
-                debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-                if array.len() - slice_start > SLICE_INCREMENT {
-                    let new_start = slice_start + SLICE_INCREMENT;
-                    (*array).header.tag = new_start;
+            |gc, _, array| {
+                let length = slice_array(array);
+                if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
                     gc.mark_stack.push(gc.mem, array as *mut Obj);
-                    new_start
-                } else {
-                    (*array).header.tag = TAG_ARRAY;
-                    array.len()
                 }
+                length
             },
         );
     }
