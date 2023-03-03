@@ -1,3 +1,4 @@
+pub mod common;
 pub mod copying;
 pub mod generational;
 pub mod incremental;

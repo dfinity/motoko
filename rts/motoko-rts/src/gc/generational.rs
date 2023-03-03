@@ -10,6 +10,7 @@ pub mod mark_stack;
 mod sanity_checks;
 pub mod write_barrier;
 
+use crate::gc::common::{get_limits, get_roots, set_limits};
 use crate::gc::generational::mark_stack::{alloc_mark_stack, push_mark_stack};
 use crate::gc::mark_compact::bitmap::{
     alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
@@ -25,6 +26,8 @@ use motoko_rts_macros::ic_mem_fn;
 
 use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
+
+use super::common::{Limits, Roots};
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -42,17 +45,11 @@ unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
-
     let old_limits = get_limits();
-    let roots = Roots {
-        static_roots: ic::get_static_roots(),
-        continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
-    };
     let heap = Heap {
         mem,
         limits: get_limits(),
-        roots,
+        roots: get_roots(),
     };
     let strategy = decide_strategy(&heap.limits);
 
@@ -79,24 +76,6 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     }
 
     write_barrier::init_generational_write_barrier(gc.heap.mem);
-}
-
-#[cfg(feature = "ic")]
-unsafe fn get_limits() -> Limits {
-    assert!(ic::LAST_HP >= ic::HEAP_BASE);
-    use crate::memory::ic;
-    Limits {
-        base: ic::HEAP_BASE as usize,
-        last_free: ic::LAST_HP as usize,
-        free: ic::HP as usize,
-    }
-}
-
-#[cfg(feature = "ic")]
-unsafe fn set_limits(limits: &Limits) {
-    use crate::memory::ic;
-    ic::HP = limits.free as u32;
-    ic::LAST_HP = limits.free as u32;
 }
 
 #[cfg(feature = "ic")]
@@ -158,20 +137,6 @@ pub struct Heap<'a, M: Memory> {
     pub mem: &'a mut M,
     pub limits: Limits,
     pub roots: Roots,
-}
-
-pub struct Roots {
-    pub static_roots: Value,
-    pub continuation_table_ptr_loc: *mut Value,
-    // For possible future additional roots, please extend the functionality in:
-    // * `mark_root_set`
-    // * `thread_initial_phase`
-}
-
-pub struct Limits {
-    pub base: usize,
-    pub last_free: usize, // this separates the old generation from the young generation
-    pub free: usize,
 }
 
 pub struct GenerationalGC<'a, M: Memory> {
