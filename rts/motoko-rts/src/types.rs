@@ -467,6 +467,7 @@ pub struct Region {
     pub id: u16,
     pub padding: u16,
     pub page_count: u32,
+    pub vec_pages: Value, // Blob of u16's (each a page block ID).
     // payload holds: vec_ptr : *mut Blob, // Blob knows its own capacity
 }
 

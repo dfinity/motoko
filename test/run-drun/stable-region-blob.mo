@@ -13,6 +13,9 @@ actor {
   P.debugPrint("Created region " # (debug_show r2_id));
 
   assert r2_id == 2;
+  assert (Region.size r2) == 0;
+
+  let (r3, r4) = (Region.new(), Region.new());
 
 /*
   assert (n == Region.size(r));

@@ -41,6 +41,9 @@
 *** Using Value.from_raw(id) worked, but it doesn't seem right, or I'm not understanding the conventions yet.
 *** 20230301-1649: Success (also wrote this summary).
 
+* grow
+* load/store byte
+
 ** Q: Can Matthew support the legacy API with the new primitives and a special region?
 *** Advice from Claudio on 20230228 during our team call.
 *** TO DO

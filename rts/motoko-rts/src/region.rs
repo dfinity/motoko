@@ -1,5 +1,5 @@
-use crate::memory::{ic::NEXT_REGION_ID, Memory};
-use crate::types::{size_of, Region, Value, Words, TAG_REGION};
+use crate::memory::{ic::NEXT_REGION_ID, Memory, alloc_blob};
+use crate::types::{size_of, Region, Value, Words, Bytes, TAG_REGION};
 use crate::rts_trap_with;
 
 use motoko_rts_macros::ic_mem_fn;
@@ -13,18 +13,20 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     (*region).id = NEXT_REGION_ID;
     NEXT_REGION_ID += 1;
     (*region).page_count = 0;
+    (*region).vec_pages = alloc_blob(mem, Bytes(0));
     Value::from_ptr(region as usize)
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> Value {
+pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
     let r = r.as_region();
-    Value::from_raw((*r).id as u32) // is this right?  It makes the test pass.
+    (*r).id as u32
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_size<M: Memory>(_mem: &mut M, _r: Value) -> Value {
-    rts_trap_with("TODO region_grow");
+pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
+    let r = r.as_region();
+    (*r).page_count as u64
 }
 
 #[ic_mem_fn]

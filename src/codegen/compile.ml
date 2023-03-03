@@ -935,7 +935,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
-    E.add_func_import env "rts" "region_size" [I32Type] [I32Type];
+    E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
     E.add_func_import env "rts" "region_grow" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region_load_blob" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region_store_blob" [I32Type; I32Type; I32Type] [];
@@ -9424,9 +9424,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Region.grow env
 
   | OtherPrim "regionSize", [e0] ->
-    SR.UnboxedWord32,
+    SR.UnboxedWord64,
     compile_exp_as env ae SR.Vanilla e0 ^^
     Region.size env
+    (* to do *)
 
   | OtherPrim ("regionLoadBlob"), [e0; e1; e2] ->
     SR.Vanilla,
