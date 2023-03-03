@@ -17,6 +17,11 @@ actor {
 
   let (r3, r4) = (Region.new(), Region.new());
 
+  assert Region.grow(r2, 137 * 17) == 0;
+  assert Region.grow(r3, 137) == 0;
+  assert Region.grow(r4, 17) == 0;
+
+
 /*
   assert (n == Region.size(r));
 

@@ -936,7 +936,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
-    E.add_func_import env "rts" "region_grow" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "region_grow" [I32Type; I64Type] [I64Type];
     E.add_func_import env "rts" "region_load_blob" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region_store_blob" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "region_next_id" [] [I32Type];

@@ -1,5 +1,5 @@
 use crate::memory::{ic::NEXT_REGION_ID, Memory, alloc_blob};
-use crate::types::{size_of, Region, Value, Words, Bytes, TAG_REGION};
+use crate::types::{size_of, Region, Value, Words, Blob, Bytes, TAG_REGION};
 use crate::rts_trap_with;
 
 use motoko_rts_macros::ic_mem_fn;
@@ -20,18 +20,36 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 #[ic_mem_fn]
 pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
     let r = r.as_region();
-    (*r).id as u32
+    (*r).id.into()
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
     let r = r.as_region();
-    (*r).page_count as u64
+    (*r).page_count.into()
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_grow<M: Memory>(_mem: &mut M, _r: Value, _new_pages: Value) -> Value {
-    rts_trap_with("TODO region_grow");
+pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
+    let r = r.as_region();
+    let new_pages_ = new_pages as u32;
+    let old_page_count = (*r).page_count;
+    let new_block_count = (old_page_count + new_pages_) / 128;
+    (*r).page_count += new_pages_;
+    let new_vec_pages = alloc_blob(mem, Bytes(new_block_count * 2));
+    // ## copy old block IDs:
+    //  - number of valid entries in region before growth:
+    //     = old_page_count + 127 / 128
+    //  - two bytes per entry.
+    for i in 0..(old_page_count + 127 / 128) * 2 {
+	let new_pages = new_vec_pages.get_ptr() as *mut Blob;
+	let old_pages = (*r).vec_pages.get_ptr() as *mut Blob;
+	new_pages.set(i, old_pages.get(i));
+    }
+    // ## choose and record new block IDs:
+    //  TO DO
+    (*r).vec_pages = new_vec_pages;
+    old_page_count.into()
 }
 
 #[ic_mem_fn]
