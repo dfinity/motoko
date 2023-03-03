@@ -34,7 +34,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let r = r.as_region();
     let new_pages_ = new_pages as u32;
     let old_page_count = (*r).page_count;
-    let new_block_count = (old_page_count + new_pages_) / 128;
+    let new_block_count = (old_page_count + new_pages_ + 127) / 128;
     (*r).page_count += new_pages_;
     let new_vec_pages = alloc_blob(mem, Bytes(new_block_count * 2));
     // ## copy old block IDs:
