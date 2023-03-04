@@ -42,6 +42,8 @@ unsafe extern "C" fn init(align: bool) {
         get_heap_base()
     };
     LAST_HP = HP;
+
+    // Q: 20230303-1724 -- should we grow stable memory here for fields and tables in motoko/design/StableRegions.md?
 }
 
 #[no_mangle]
