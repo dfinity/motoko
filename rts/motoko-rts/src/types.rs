@@ -214,10 +214,21 @@ impl Value {
         }
     }
 
+    /// Free the object if for a deleted object.
+    /// Called by the incremental GC for garbage objects.
     pub unsafe fn free_object_id(self) {
         if OBJECT_TABLE.is_some() {
             OBJECT_TABLE.as_mut().unwrap().free_object_id(self);
         }
+    }
+
+    /// Record a new address for an object after it has been moved.
+    /// Used by the incremental GC.
+    pub unsafe fn set_new_address(self, new_address: usize) {
+        OBJECT_TABLE
+            .as_mut()
+            .unwrap()
+            .move_object(self, new_address);
     }
 
     /// Create a value from a scalar

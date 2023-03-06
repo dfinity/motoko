@@ -38,8 +38,9 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, limits: Limits, roots: Roots) -> Limits {
+    const ACTIVE_INCREMENTAL_GC: bool = false;
     // Always collect the young generation before the incremental collection of the old generation.
-    let mut gc = YoungCollection::new(mem, limits, roots);
+    let mut gc = YoungCollection::new(mem, limits, roots, ACTIVE_INCREMENTAL_GC);
     let new_limits = gc.run();
     new_limits
 }

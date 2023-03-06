@@ -10,15 +10,17 @@ pub static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
 pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
-/// (Re-)initialize the write barrier for the incremental GC.
+/// Activate the write barrier for the incremental GC.
 #[cfg(feature = "ic")]
 pub(super) unsafe fn init_incremental_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     HEAP_BASE = ic::HEAP_BASE;
-    reset_young_remembered_set(mem, ic::LAST_HP as usize);
+    new_young_remembered_set(mem, ic::LAST_HP as usize);
 }
 
-pub unsafe fn reset_young_remembered_set<M: Memory>(mem: &mut M, last_hp: usize) {
+/// Create a new young remembered set after a young generation collection.
+pub(super) unsafe fn new_young_remembered_set<M: Memory>(mem: &mut M, last_hp: usize) {
+    assert!(YOUNG_REMEMBERED_SET.is_none());
     YOUNG_REMEMBERED_SET = Some(RememberedSet::new(mem));
     LAST_HP = last_hp as u32;
 }
