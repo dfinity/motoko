@@ -43,7 +43,7 @@ unsafe extern "C" fn init(align: bool) {
     };
     LAST_HP = HP;
 
-    // Q: 20230303-1724 -- should we grow stable memory here for fields and tables in motoko/design/StableRegions.md?
+    let _ = crate::ic0_stable::nicer::grow(1);
 }
 
 #[no_mangle]
