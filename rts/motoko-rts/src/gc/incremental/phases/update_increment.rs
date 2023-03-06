@@ -75,10 +75,10 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn update_partition(&mut self, partition: &Partition) {
         debug_assert!(!partition.is_free());
         debug_assert!(!partition.to_be_evacuated());
-        while self.iterator.has_object() {
+        while self.iterator.has_object() && !self.time.is_over() {
             let object = self.iterator.current_object();
             self.update_object(object);
-            if self.time.is_over() {
+            if self.time.is_over() && object.tag() >= TAG_ARRAY_SLICE_MIN {
                 // Resume updating the same object later.
                 break;
             }
