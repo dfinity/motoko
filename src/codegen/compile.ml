@@ -976,6 +976,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "init" [I32Type] [];
+    E.add_func_import env "rts" "region_init" [] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
@@ -4108,11 +4109,11 @@ module IC = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
-
       G.i (Call (nr (E.built_in env "init"))) ^^
       GC.collect_garbage env ^^
-
+      G.i (Call (nr (E.built_in env "region_init"))) ^^
       Lifecycle.trans env Lifecycle.Idle
+
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {

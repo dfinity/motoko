@@ -42,8 +42,12 @@ unsafe extern "C" fn init(align: bool) {
         get_heap_base()
     };
     LAST_HP = HP;
+}
 
-    let _ = crate::ic0_stable::nicer::grow(1);
+
+#[no_mangle]
+unsafe extern "C" fn region_init() {
+    //let _ = crate::ic0_stable::nicer::grow(1);
 }
 
 #[no_mangle]
