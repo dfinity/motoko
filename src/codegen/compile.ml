@@ -9170,7 +9170,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     BigNum.from_word30 env
 
   | OtherPrim "text_len", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len env
+    SR.Vanilla, compile_exp_vanilla env ae e ^^
+    Func.share_code1 env "text_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^ Text.len env)
   | OtherPrim "text_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter env
   | OtherPrim "text_iter_done", [e] ->
@@ -9185,7 +9187,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     TaggedSmallWord.msb_adjust Type.Int8
 
   | OtherPrim "blob_size", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env ^^ BigNum.from_word32 env
+    SR.Vanilla, compile_exp_vanilla env ae e ^^
+    Func.share_code1 env "text_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^ Blob.len env ^^ BigNum.from_word32 env)
   | OtherPrim "blob_vals_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
   | OtherPrim "blob_iter_done", [e] ->
