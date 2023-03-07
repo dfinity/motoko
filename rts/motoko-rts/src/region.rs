@@ -1,4 +1,4 @@
-use crate::memory::{ic::NEXT_REGION_ID, Memory, alloc_blob};
+use crate::memory::{ic::NEXT_REGION_ID, ic::NEXT_REGION_LOG_ID, Memory, alloc_blob};
 use crate::types::{size_of, Region, Value, Words, Blob, Bytes, TAG_REGION};
 use crate::rts_trap_with;
 
@@ -87,6 +87,22 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 	meta_data::total_allocated_regions::set(c + 1);
     }
     Value::from_ptr(region as usize)
+}
+
+
+// Utility for logging global region manager state (in stable memory).
+// For sanity-checking during testing and for future trouble-shooting.
+// (Perhaps we can keep this here, and just not commit to it when exposing final API?)
+#[ic_mem_fn]
+pub unsafe fn region_meta_loglines<M: Memory>(mem: &mut M) {
+    let log_id = NEXT_REGION_LOG_ID;
+    NEXT_REGION_LOG_ID += 1;
+    println!(50, "# regionMetaLogLines {{");
+    println!(50, " log_id = {};", log_id);
+    println!(50, " total_allocated_blocks = {};", meta_data::total_allocated_blocks::get());
+    println!(50, " total_allocated_regions = {};", meta_data::total_allocated_regions::get());
+    println!(50, "}}");
+
 }
 
 #[ic_mem_fn]

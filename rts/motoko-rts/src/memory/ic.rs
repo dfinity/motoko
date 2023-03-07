@@ -24,6 +24,9 @@ pub(crate) static mut LAST_HP: u32 = 0;
 /// (Regions 0 and 1 are reserved.)
 pub(crate) static mut NEXT_REGION_ID: u16 = 2;
 
+/// TEMP -- for logging during testing.
+pub(crate) static mut NEXT_REGION_LOG_ID: u16 = 0;
+
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_heap_base() -> u32;
