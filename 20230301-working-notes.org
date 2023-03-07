@@ -64,3 +64,11 @@ TO DO
 **** Globally-allocate Region 0 (maybe similar to the global that I did for an experiment?)
 **** Region 0 is held specially, but is structured like all other regions (extend RTS with those defs)
 **** Support load/store operations on that Region representation.
+
+* Conceptual Questions
+
+** Q: when we call stable64_grow(1) (or (10)) from region_init without getting this?
+
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: empty input. Expected Candid-encoded argument, but received a zero-length argument
+
+** Q: Do we have a preference toward big or little endian for stable variable storage?

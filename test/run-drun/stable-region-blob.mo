@@ -17,13 +17,19 @@ actor {
 
   let (r3, r4) = (Region.new(), Region.new());
 
+  P.debugPrint("Created regions " # (debug_show (Region.id r3)) # " and " # (debug_show (Region.id r4)));
+
   assert Region.grow(r2, 137 * 17) == 0;
   assert Region.grow(r3, 137) == 0;
   assert Region.grow(r4, 17) == 0;
 
+  P.debugPrint("Grew all regions.");
+
   assert Region.grow(r2, 137 * 17) == 137 * 17;
   assert Region.grow(r3, 137) == 137;
   assert Region.grow(r4, 17) == 17;
+
+  P.debugPrint("Grew all regions, again.");
 
 
 /*
