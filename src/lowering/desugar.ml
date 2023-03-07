@@ -198,7 +198,7 @@ and exp' at note = function
       when T.is_array arr.note.S.note_typ && proj.it = "size" ->
     (thenE (exp e1) (primE (I.OtherPrim "array_len") [exp arr])).it
   | S.CallE ({it=S.DotE (arr, proj); _}, _, e1)
-      when T.is_prim T.Text arr.note.S.note_typ && proj.it = "size" ->
+      when T.(is_prim Text) arr.note.S.note_typ && proj.it = "size" ->
     (thenE (exp e1) (primE (I.OtherPrim "text_len") [exp arr])).it
   | S.CallE ({it=S.DotE (arr, proj); _}, _, e1)
       when T.is_prim T.Blob arr.note.S.note_typ && proj.it = "size" ->
