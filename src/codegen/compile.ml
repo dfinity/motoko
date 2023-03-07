@@ -277,7 +277,13 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-    object_pool : int32 StringEnv.t ref;
+      (* Pool for shared static objects. Their lookup needs to be specifically
+         handled by using the tag and the payload without the forwarding pointer.
+         This is because the forwarding pointer depends on the allocation adddress.
+         The lookup is different to `static_string` that has no such 
+         allocation-dependent content and can thus be immediately looked up by 
+         the string value. *)
+    object_pool : int32 StringEnv.t ref; 
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -561,11 +567,11 @@ module E = struct
 
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
-    
+
   let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
-    
+
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
     Int32.add (add_static env data) ptr_unskew
 
@@ -3775,6 +3781,18 @@ module Arr = struct
     Heap.load_field Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
+     Does no bounds checking *)
+  let unsafe_idx env =
+    Func.share_code2 env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+      get_idx ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_array ^^
+      Tagged.load_forwarding_pointer env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    )
+
+  (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
   let idx env =
     Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
@@ -3939,7 +3957,7 @@ module Arr = struct
       get_len ^^ alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
-        get_r ^^ get_i ^^ idx env ^^
+        get_r ^^ get_i ^^ unsafe_idx env ^^
         get_blob ^^ Blob.payload_ptr_unskewed env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3962,7 +3980,7 @@ module Arr = struct
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ Blob.payload_ptr_unskewed env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        get_a ^^ get_i ^^ idx env ^^
+        get_a ^^ get_i ^^ unsafe_idx env ^^
         load_ptr ^^
         TaggedSmallWord.lsb_adjust Type.Nat8 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
@@ -5612,9 +5630,9 @@ module MakeSerialization (Strm : Stream) = struct
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
         size_word env (get_x ^^ Arr.len env) ^^
-        Arr.iterate env get_x (fun get_pointer -> 
-          get_pointer ^^
-          load_ptr ^^
+        get_x ^^ Arr.len env ^^
+        from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           size env t
         )
       | Prim Blob ->
@@ -5772,9 +5790,9 @@ module MakeSerialization (Strm : Stream) = struct
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
         write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
-        Arr.iterate env get_x (fun get_pointer -> 
-          get_pointer ^^
-          load_ptr ^^
+        get_x ^^ Arr.len env ^^
+        from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           write env t
         )
       | Prim Null -> G.nop
@@ -6363,7 +6381,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_len ^^ Arr.alloc env ^^ set_x ^^
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
-            get_x ^^ get_i ^^ Arr.idx env ^^
+            get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
             get_arg_typ ^^ go env t ^^ set_val ^^
             remember_failure get_val ^^
             get_val ^^ store_ptr
@@ -6379,7 +6397,7 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
           get_val ^^ store_ptr
