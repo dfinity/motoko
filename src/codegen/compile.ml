@@ -4111,7 +4111,6 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
       GC.collect_garbage env ^^
-      G.i (Call (nr (E.built_in env "region_init"))) ^^
       Lifecycle.trans env Lifecycle.Idle
 
     ) in
@@ -10502,6 +10501,7 @@ and main_actor as_opt mod_env ds fs up =
         G.nop
     end ^^
     IC.init_globals env ^^
+    G.i (Call (nr (E.built_in env "region_init"))) ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
