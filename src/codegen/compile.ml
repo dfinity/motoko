@@ -3882,6 +3882,7 @@ module Arr = struct
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     let (set_i, get_i) = new_local env "i" in
+    let (set_value, get_value) = new_local env "value" in
     set_f ^^
 
     (* Allocate *)
@@ -3894,8 +3895,7 @@ module Arr = struct
     set_i ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer ->
-      get_pointer ^^
+    iterate env get_r (fun get_index ->
       (* The closure *)
       get_f ^^
       Closure.prepare_closure_call env ^^
@@ -3906,6 +3906,15 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
+      set_value ^^
+
+      (* Recompute the array element address because the array may be moved
+         by a GC increment triggered by the tabulate function. *)
+      (* Write array element *)
+      get_r ^^
+      get_i ^^
+      idx env ^^ (* Resolves object forwarding *)
+      get_value ^^
       store_ptr ^^
 
       (* Increment index *)
@@ -8991,11 +9000,20 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "post_write_barrier"
   | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
-    compile_add_const ptr_unskew,
+    let (set_array, get_array) = new_local env "array" in
+    let (set_index, get_index) = new_local env "index" in
+    let (set_value, get_value) = new_local env "value" in
+    compile_exp_vanilla env ae e1 ^^ set_array ^^
+    compile_exp_vanilla env ae e2 ^^ set_index,
+    (* Compute the array element address later, because the right-hand-side of an assignment may 
+       trigger an allocation GC increment that moves and forwards the array, such that the 
+       element address would become invalid, pointing to the old array state. *)
     SR.Vanilla,
+    set_value ^^
+    get_array ^^ get_index ^^ 
+    Arr.idx_bigint env ^^ (* Resolve array forwarding immediately before the write. *)
+    compile_add_const ptr_unskew ^^ 
+    get_value ^^
     Tagged.write_with_barrier env
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
@@ -9015,11 +9033,18 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "post_write_barrier"
   | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) ->
-    compile_exp_vanilla env ae e ^^
-    (* Only real objects have mutable fields, no need to branch on the tag *)
-    Object.idx env e.note.Note.typ n ^^
-    compile_add_const ptr_unskew,
+    let (set_field, get_field) = new_local env "field" in
+    let (set_value, get_value) = new_local env "value" in
+    compile_exp_vanilla env ae e ^^ set_field,
+    (* Compute the object field address later, because the right-hand-side of an assignment may 
+       trigger an allocation GC increment that moves and forwards the object, such that the 
+       field address would become invalid, pointing to the old object state. *)
     SR.Vanilla,
+    set_value ^^
+    get_field ^^
+    Object.idx env e.note.Note.typ n ^^ (* Resolve object forwarding immediately before the write. *)
+    compile_add_const ptr_unskew ^^
+    get_value ^^
     Tagged.write_with_barrier env
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
