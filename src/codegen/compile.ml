@@ -10501,7 +10501,7 @@ and main_actor as_opt mod_env ds fs up =
         G.nop
     end ^^
     IC.init_globals env ^^
-    G.i (Call (nr (E.built_in env "region_init"))) ^^
+    E.call_import env "rts" "region_init" ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
