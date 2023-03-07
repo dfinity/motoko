@@ -266,10 +266,7 @@ impl Value {
     /// Check that the forwarding pointer is valid.
     #[inline]
     pub unsafe fn check_forwarding_pointer(self) {
-        debug_assert!(
-            self.forward().get_ptr() == self.get_ptr()
-                || self.forward().forward().get_ptr() == self.forward().get_ptr()
-        );
+        debug_assert!(self.forward().get_ptr() == self.get_ptr());
     }
 
     /// Check whether the object's forwarding pointer refers to a different location.
