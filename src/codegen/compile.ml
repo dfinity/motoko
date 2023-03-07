@@ -1588,6 +1588,59 @@ module Tagged = struct
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
 
+  let check_forwarding env unskewed = 
+    let (set_object, get_object) = new_local env "object" in
+    (if unskewed then
+      compile_unboxed_const ptr_skew ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    else G.nop) ^^
+    set_object ^^ get_object ^^
+    load_forwarding_pointer env ^^
+    get_object ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "missing object forwarding"  ^^
+    get_object ^^
+    (if unskewed then
+      compile_unboxed_const ptr_unskew ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    else G.nop)
+
+  let check_forwarding_for_store env typ =
+    let (set_value, get_value, _) = new_local_ env typ "value" in
+    set_value ^^ check_forwarding env false ^^ get_value
+
+  let load_field env index = 
+    (if !Flags.sanity then check_forwarding env false else G.nop) ^^
+    Heap.load_field index
+
+  let store_field env index =
+    (if !Flags.sanity then check_forwarding_for_store env I32Type else G.nop) ^^
+    Heap.store_field index
+
+  let load_field_unskewed env index =
+    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
+    Heap.load_field_unskewed index
+
+  let load_field64_unskewed env index =
+    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
+    Heap.load_field64_unskewed index
+  
+  let load_field64 env index =
+    (if !Flags.sanity then check_forwarding env false else G.nop) ^^
+    Heap.load_field64 index
+
+  let store_field64 env index =
+    (if !Flags.sanity then check_forwarding_for_store env I64Type else G.nop) ^^
+    Heap.store_field64 index
+
+  let load_field_float64 env index =
+    (if !Flags.sanity then check_forwarding env false else G.nop) ^^
+    Heap.load_field_float64 index
+
+  let store_field_float64 env index =
+    (if !Flags.sanity then check_forwarding_for_store env F64Type else G.nop) ^^
+    Heap.store_field_float64 index
+
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
   let branch_default env retty def (cases : (tag * G.t) list) : G.t =
@@ -1717,14 +1770,14 @@ module MutBox = struct
     
   let load_field env =
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field field
+    Tagged.load_field env field
 
   let store_field env =
     let (set_mutbox_value, get_mutbox_value) = new_local env "mutbox_value" in
     set_mutbox_value ^^
     Tagged.load_forwarding_pointer env ^^
     get_mutbox_value ^^
-    Heap.store_field field
+    Tagged.store_field env field
 end
 
 
@@ -1802,7 +1855,7 @@ module Opt = struct
 
   let load_some_payload_field env =
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field some_payload_field
+    Tagged.load_field env some_payload_field
 
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
@@ -1844,11 +1897,11 @@ module Variant = struct
 
   let get_variant_tag env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field variant_tag_field
+    Tagged.load_field env variant_tag_field
 
   let project env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field payload_field
+    Tagged.load_field env payload_field
 
   (* Test if the top of the stack points to a variant with this label *)
   let test_is env l =
@@ -1878,14 +1931,14 @@ module Closure = struct
 
   let load_data env i = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field (Int32.add header_size i)
+    Tagged.load_field env (Int32.add header_size i)
 
   let store_data env i = 
     let (set_closure_data, get_closure_data) = new_local env "closure_data" in
     set_closure_data ^^
     Tagged.load_forwarding_pointer env ^^
     get_closure_data ^^
-    Heap.store_field (Int32.add header_size i)
+    Tagged.store_field env (Int32.add header_size i)
 
   let prepare_closure_call env =
     Tagged.load_forwarding_pointer env
@@ -1903,7 +1956,7 @@ module Closure = struct
       FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field funptr_field ^^
+    Tagged.load_field env funptr_field ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
@@ -1947,7 +2000,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
+    get_i ^^ compile_elem ^^ Tagged.store_field64 env payload_field ^^
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
@@ -1960,7 +2013,7 @@ module BoxedWord64 = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         ( get_n ^^ BitTagged.untag env)
-        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field64 payload_field)
+        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env payload_field)
     )
 end (* BoxedWord64 *)
 
@@ -2065,7 +2118,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Tagged.alloc env 3l Tagged.Bits32 ^^
     set_i ^^
-    get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
+    get_i ^^ compile_elem ^^ Tagged.store_field env payload_field ^^
     get_i
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -2081,7 +2134,7 @@ module BoxedSmallWord = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         (get_n ^^ BitTagged.untag_i32)
-        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field payload_field)
+        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2304,11 +2357,11 @@ module Float = struct
     let (set_i, get_i) = new_local env "boxed_f64" in
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
+    get_i ^^ get_f ^^ Tagged.store_field_float64 env payload_field ^^
     get_i
   )
 
-  let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
+  let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env payload_field
 
 end (* Float *)
 
@@ -3324,12 +3377,12 @@ module Object = struct
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
-    Heap.store_field size_field ^^
+    Tagged.store_field env size_field ^^
 
     (* Set hash_ptr *)
     get_ri ^^
     compile_unboxed_const hash_ptr ^^
-    Heap.store_field hash_ptr_field ^^
+    Tagged.store_field env hash_ptr_field ^^
 
     (* Write all the fields *)
     let init_field (name, mk_is) : G.t =
@@ -3338,7 +3391,7 @@ module Object = struct
       mk_is () ^^
       let i = FieldEnv.find name name_pos_map in
       let offset = Int32.add header_size i in
-      Heap.store_field offset
+      Tagged.store_field env offset
     in
     G.concat_map init_field fs ^^
 
@@ -3354,7 +3407,7 @@ module Object = struct
 
       get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
 
-      get_x ^^ Heap.load_field hash_ptr_field ^^
+      get_x ^^ Tagged.load_field env hash_ptr_field ^^
 
       (* Linearly scan through the fields (binary search can come later) *)
       (* unskew h_ptr and advance both to low bound *)
@@ -3448,7 +3501,7 @@ module Blob = struct
 
   let len env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field len_field
+    Tagged.load_field env len_field
 
   let vanilla_lit env s =
     Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
@@ -3716,12 +3769,12 @@ module Arr = struct
 
   let len env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field len_field
+    Tagged.load_field env len_field
 
   (* Static array access. No checking *)
   let load_field env n = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field Int32.(add n header_size)
+    Tagged.load_field env Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does no bounds checking *)
@@ -3794,7 +3847,7 @@ module Arr = struct
     set_pointer ^^
 
     (* Upper pointer boundary, skewed *)
-    get_array ^^ Heap.load_field len_field ^^
+    get_array ^^ Tagged.load_field env len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
@@ -3931,7 +3984,7 @@ module Tuple = struct
   (* Expects on the stack the pointer to the array. *)
   let load_n env n = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field (Int32.add Arr.header_size n)
+    Tagged.load_field env (Int32.add Arr.header_size n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
@@ -5619,7 +5672,7 @@ module MakeSerialization (Strm : Stream) = struct
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^
-          Heap.store_field Tagged.tag_field ^^
+          Tagged.store_field env Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -6792,9 +6845,9 @@ module BlobStream : Stream = struct
 
   let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
-  let absolute_offset _env get_token =
+  let absolute_offset env get_token =
     let filled_field = Int32.add Blob.len_field 9l in (* see invariant in `stream.rs` *)
-    get_token ^^ Heap.load_field_unskewed filled_field
+    get_token ^^ Tagged.load_field_unskewed env filled_field
 
   let checkpoint _env _get_token = G.i Drop
 
@@ -6896,7 +6949,7 @@ module Stabilization = struct
       E.call_import env "rts" "stream_shutdown" ^^
       compile_unboxed_zero ^^ (* no need to write *)
       get_token ^^
-      Heap.load_field64_unskewed ptr64_field ^^
+      Tagged.load_field64_unskewed env ptr64_field ^^
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
@@ -6912,9 +6965,9 @@ module Stabilization = struct
       let start64_field = Int32.add ptr64_field 2l in (* see invariant in `stream.rs` *)
       absolute_offset env get_token ^^
       get_token ^^
-      Heap.load_field64_unskewed ptr64_field ^^
+      Tagged.load_field64_unskewed env ptr64_field ^^
       get_token ^^
-      Heap.load_field64_unskewed start64_field ^^
+      Tagged.load_field64_unskewed env start64_field ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
@@ -7444,7 +7497,7 @@ module Var = struct
     | Some (HeapInd i) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
-      Heap.store_field MutBox.field ^^
+      Tagged.store_field env MutBox.field ^^
       (if !Flags.gc_strategy = Flags.Generational
         then
          G.i (LocalGet (nr i)) ^^
@@ -7455,7 +7508,7 @@ module Var = struct
     | Some (HeapStatic ptr) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
-      Heap.store_field MutBox.field ^^
+      Tagged.store_field env MutBox.field ^^
       (if !Flags.gc_strategy = Flags.Generational
         then
          compile_unboxed_const ptr ^^
@@ -7698,12 +7751,12 @@ module FuncDec = struct
         (* Store the function pointer number: *)
         get_clos ^^
         compile_unboxed_const (E.add_fun_ptr env fi) ^^
-        Heap.store_field Closure.funptr_field ^^
+        Tagged.store_field env Closure.funptr_field ^^
 
         (* Store the length *)
         get_clos ^^
         compile_unboxed_const len ^^
-        Heap.store_field Closure.len_field ^^
+        Tagged.store_field env Closure.len_field ^^
 
         (* Store all captured values *)
         store_env
@@ -9099,6 +9152,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
        thus together also unskewing the pointer and skipping administrative
        fields, effectively arriving at the desired element *)
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    (* Not using Tagged.load_field since it is not a proper pointer to the array start *)
     Heap.load_field Arr.header_size (* loads the element at the byte offset *)
   | GetPastArrayOffset spacing, [e] ->
     let shift =
