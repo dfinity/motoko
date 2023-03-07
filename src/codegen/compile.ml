@@ -3324,6 +3324,12 @@ module Blob = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let len env = Heap.load_field len_field
+  let len_nat env =
+    Func.share_code1 env "blob_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^
+      len env ^^
+      BigNum.from_word32 env
+    )
 
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
@@ -3512,8 +3518,12 @@ module Text = struct
     E.call_import env "rts" "text_size"
   let to_buf env =
     E.call_import env "rts" "text_to_buf"
-  let len env =
-    E.call_import env "rts" "text_len" ^^ BigNum.from_word32 env
+  let len_nat env =
+    Func.share_code1 env "text_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^
+      E.call_import env "rts" "text_len" ^^
+      BigNum.from_word32 env
+    )
   let prim_showChar env =
     TaggedSmallWord.untag_codepoint ^^
     E.call_import env "rts" "text_singleton"
@@ -9170,9 +9180,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     BigNum.from_word30 env
 
   | OtherPrim "text_len", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^
-    Func.share_code1 env "text_len" ("text", I32Type) [I32Type] (fun env get ->
-      get ^^ Text.len env)
+    SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len_nat env
   | OtherPrim "text_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter env
   | OtherPrim "text_iter_done", [e] ->
@@ -9187,9 +9195,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     TaggedSmallWord.msb_adjust Type.Int8
 
   | OtherPrim "blob_size", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^
-    Func.share_code1 env "text_len" ("text", I32Type) [I32Type] (fun env get ->
-      get ^^ Blob.len env ^^ BigNum.from_word32 env)
+    SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len_nat env
   | OtherPrim "blob_vals_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
   | OtherPrim "blob_iter_done", [e] ->
