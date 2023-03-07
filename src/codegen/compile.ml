@@ -9749,7 +9749,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
         2. return v
     *)
     SR.Vanilla,
-    Stabilization.destabilize env ty
+    Stabilization.destabilize env ty ^^
+    E.call_import env "rts" "region_init"
+
   | ICStableWrite ty, [e] ->
     SR.unit,
     compile_exp_vanilla env ae e ^^
@@ -10501,7 +10503,6 @@ and main_actor as_opt mod_env ds fs up =
         G.nop
     end ^^
     IC.init_globals env ^^
-    E.call_import env "rts" "region_init" ^^
     (* Continue with decls *)
     decls_codeW G.nop
   )
