@@ -111,6 +111,7 @@ let primE prim es =
     | OtherPrim "trap" -> T.Non
     | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | OtherPrim "call_perform_message" -> T.text
+    | OtherPrim "array_len" -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
