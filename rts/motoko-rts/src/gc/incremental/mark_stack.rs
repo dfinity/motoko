@@ -70,6 +70,9 @@ impl MarkStack {
 
     /// Release the mark stack after use.
     pub unsafe fn free(&mut self) {
+        #[cfg(debug_assertions)]
+        self.assert_is_garbage();
+
         assert!(self.is_allocated());
         assert!(self.is_empty());
         assert_eq!(self.top, 0);
@@ -137,7 +140,7 @@ impl MarkStack {
     }
 
     #[cfg(debug_assertions)]
-    pub unsafe fn assert_is_garbage(&self) {
+    unsafe fn assert_is_garbage(&self) {
         let mut current = self.last;
         while (*current).previous != null_mut() {
             current = (*current).previous;

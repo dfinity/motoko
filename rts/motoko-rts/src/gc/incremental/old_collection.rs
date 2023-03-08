@@ -27,7 +27,7 @@
 //! by using the mark bitmap for skipping garbage objects. This is because the object ids of garbage objects need
 //! to be freed in the object table and therefore, the compaction phase must visit all objects (marked and unmarked).
 
-use core::cell::RefCell;
+use core::{cell::RefCell, ptr::null_mut};
 
 use crate::{
     constants::WORD_SIZE,
@@ -36,10 +36,11 @@ use crate::{
         incremental::mark_stack::MarkStack,
     },
     memory::Memory,
-    types::{Obj, Value},
+    types::{Obj, Value, TAG_ARRAY_SLICE_MIN},
+    visitor::visit_pointer_fields,
 };
 
-use super::{roots::visit_roots, time::BoundedTime};
+use super::{array_slicing::slice_array, roots::visit_roots, time::BoundedTime};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Phase {
@@ -126,7 +127,7 @@ impl<'a, M: Memory> OldCollection<'a, M> {
 
     /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
     unsafe fn start_marking(&mut self, roots: Roots) {
-        debug_assert!(self.pausing());
+        assert!(self.pausing());
 
         self.state.phase = Phase::Mark;
         self.state.mark_stack.allocate(self.mem);
@@ -145,6 +146,8 @@ impl<'a, M: Memory> OldCollection<'a, M> {
     }
 
     pub unsafe fn mark_object(&mut self, value: Value) {
+        self.time.tick();
+        assert!(!self.state.mark_complete);
         let object = value.get_object_address() as *mut Obj;
         assert!(object as usize >= self.generation_base());
         assert_eq!(object as u32 % WORD_SIZE, 0);
@@ -155,7 +158,49 @@ impl<'a, M: Memory> OldCollection<'a, M> {
         self.state.mark_stack.push(self.mem, object);
     }
 
-    fn mark_increment(&mut self) {}
+    unsafe fn mark_increment(&mut self) {
+        assert!(!self.state.mark_complete);
+        loop {
+            let object = self.state.mark_stack.pop();
+            if object == null_mut() {
+                break;
+            }
+            self.mark_fields(object);
+
+            self.time.tick();
+            if self.time.is_over() {
+                return;
+            }
+        }
+        self.complete_marking();
+    }
+
+    unsafe fn mark_fields(&mut self, object: *mut Obj) {
+        visit_pointer_fields(
+            self,
+            object,
+            object.tag(),
+            self.generation_base(),
+            |gc, field_address| {
+                let field_value = *field_address;
+                gc.mark_object(field_value);
+            },
+            |gc, slice_start, array| {
+                let length = slice_array(array);
+                if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
+                    gc.state.mark_stack.push(gc.mem, array as *mut Obj);
+                }
+                gc.time.advance((length - slice_start) as usize);
+                length
+            },
+        );
+    }
+
+    unsafe fn complete_marking(&mut self) {
+        assert!(!self.state.mark_complete);
+        self.state.mark_complete = true;
+        self.state.mark_stack.free();
+    }
 
     fn compact_increment(&mut self) {}
 
