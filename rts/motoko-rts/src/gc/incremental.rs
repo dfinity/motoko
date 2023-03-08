@@ -38,6 +38,10 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use crate::gc::common::{
         get_limits, get_roots, set_limits, update_statistics, update_strategy,
     };
+    use crate::memory::ic;
+
+    assert_eq!(write_barrier::HEAP_BASE, ic::HEAP_BASE);
+    assert_eq!(write_barrier::LAST_HP, ic::LAST_HP);
 
     let old_limits = get_limits();
     let strategy = decide_incremental_strategy(old_limits);

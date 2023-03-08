@@ -1,13 +1,14 @@
 use crate::{
     gc::common::{Limits, Roots},
     memory::Memory,
+    types::Value,
 };
 
-#[derive(PartialEq)]
-enum Phase {
+#[derive(PartialEq, Clone, Copy)]
+pub enum Phase {
     Pause,
-    Marking,
-    Compacting,
+    Mark,
+    Compact,
     Stop,
 }
 
@@ -15,6 +16,10 @@ static mut PHASE: Phase = Phase::Pause;
 
 pub unsafe fn is_incremental_gc_running() -> bool {
     PHASE != Phase::Pause && PHASE != Phase::Stop
+}
+
+pub unsafe fn get_phase() -> Phase {
+    PHASE
 }
 
 pub struct OldCollection<'a, M: Memory> {
@@ -33,4 +38,6 @@ impl<'a, M: Memory> OldCollection<'a, M> {
     pub fn get_new_limits(&self) -> Limits {
         self.limits
     }
+
+    pub fn mark_object(_value: Value) {}
 }

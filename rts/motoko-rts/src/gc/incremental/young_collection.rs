@@ -2,9 +2,7 @@ use core::ptr::null_mut;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::{
-        common::{Limits, Roots},
-    },
+    gc::common::{Limits, Roots},
     mem_utils::memcpy_words,
     memory::Memory,
     types::{block_size, has_object_header, Obj, Tag, Value, Words, TAG_ARRAY_SLICE_MIN},

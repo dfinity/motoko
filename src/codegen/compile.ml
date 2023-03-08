@@ -996,7 +996,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "generational_write_barrier" [I32Type] [];
-    E.add_func_import env "rts" "incremental_write_barrier" [I32Type] [];
+    E.add_func_import env "rts" "write_with_barrier" [I32Type] [];
     ()
 
 end (* RTS *)
@@ -7454,17 +7454,12 @@ module Var = struct
       get_address ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "generational_write_barrier"
-    | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ -> (* Temporary duplicate to generational GC *)
-      let (set_address, get_address) = new_local env "mutbox_address" in
+    | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
       G.i (LocalGet (nr i)) ^^
       Heap.get_object_address env ^^
-      set_address ^^
-      get_address,
+      compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      Heap.store_field MutBox.field ^^
-      get_address ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "incremental_write_barrier"
+      E.call_import env "rts" "write_with_barrier"
     | (Some ((HeapInd i), _), _) ->
       let (set_address, get_address) = new_local env "mutbox_address" in
       G.i (LocalGet (nr i)) ^^
@@ -7484,17 +7479,12 @@ module Var = struct
       get_address ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "generational_write_barrier"
-    | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ -> (* Temporary duplicate to generational GC *)
-      let (set_address, get_address) = new_local env "mutbox_address" in
+    | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
       compile_unboxed_const ptr ^^
       Heap.get_object_address env ^^
-      set_address ^^
-      get_address,
+      compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
-      Heap.store_field MutBox.field ^^
-      get_address ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      E.call_import env "rts" "incremental_write_barrier"
+      E.call_import env "rts" "write_with_barrier"
     | (Some ((HeapStatic ptr), _), _) ->
       let (set_address, get_address) = new_local env "mutbox_address" in
       compile_unboxed_const ptr ^^
@@ -8944,17 +8934,12 @@ let rec compile_lexp (env : E.t) ae lexp =
     store_ptr ^^
     get_field ^^
     E.call_import env "rts" "generational_write_barrier"
-  | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) -> (* Temporary duplicate to generational GC *)
-    let (set_field, get_field) = new_local env "field" in
+  | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
-    set_field ^^ (* peepholes to tee *)
-    get_field,
+    Arr.idx_bigint env,
     SR.Vanilla,
-    store_ptr ^^
-    get_field ^^
-    E.call_import env "rts" "incremental_write_barrier"
+    E.call_import env "rts" "write_with_barrier"
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -8971,16 +8956,11 @@ let rec compile_lexp (env : E.t) ae lexp =
     store_ptr ^^
     get_field ^^
     E.call_import env "rts" "generational_write_barrier"
-  | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) -> (* Temporary duplicate to generational GC *)
-    let (set_field, get_field) = new_local env "field" in
+  | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) ->
     compile_exp_vanilla env ae e ^^
-    Object.idx env e.note.Note.typ n ^^
-    set_field ^^ (* peepholes to tee *)
-    get_field,
+    Object.idx env e.note.Note.typ n,
     SR.Vanilla,
-    store_ptr ^^
-    get_field ^^
-    E.call_import env "rts" "incremental_write_barrier"
+    E.call_import env "rts" "write_with_barrier"
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
