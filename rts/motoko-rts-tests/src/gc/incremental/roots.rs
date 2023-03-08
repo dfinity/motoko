@@ -33,7 +33,6 @@ unsafe fn check_regular_roots() {
         &continuation_indices,
         GC::Incremental,
     );
-    let mut mem = TestMemory::new(Words(WORD_SIZE as u32 * INITIAL_TABLE_LENGTH));
     check_visit_static_roots(&heap, &root_indices);
     check_visit_continuation_table(&heap, &continuation_indices);
     OBJECT_TABLE = None;

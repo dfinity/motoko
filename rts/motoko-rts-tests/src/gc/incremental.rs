@@ -13,5 +13,6 @@ pub fn test() {
         mark_stack::test();
         object_table::test();
         roots::test();
+        time::test();
     }
 }

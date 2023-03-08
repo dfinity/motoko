@@ -36,10 +36,8 @@ use crate::{
 };
 
 use super::{
-    array_slicing::slice_array,
-    mark_stack::MarkStack,
-    roots::visit_roots,
-    write_barrier::{new_young_remembered_set, YOUNG_REMEMBERED_SET},
+    array_slicing::slice_array, mark_stack::MarkStack, roots::visit_roots,
+    write_barrier::YOUNG_REMEMBERED_SET,
 };
 
 pub struct YoungCollection<'a, M: Memory> {
@@ -80,7 +78,8 @@ impl<'a, M: Memory> YoungCollection<'a, M> {
     pub unsafe fn run(&mut self) {
         self.mark_phase();
         self.compact_phase();
-        new_young_remembered_set(self.mem, self.limits.free);
+        // Do not immediately create the new remembered set as there may run
+        // a potential subsequent GC increment of the old generation.
     }
 
     pub fn get_new_limits(&self) -> Limits {

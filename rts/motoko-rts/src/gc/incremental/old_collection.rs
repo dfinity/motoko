@@ -33,10 +33,11 @@ use crate::{
     constants::WORD_SIZE,
     gc::{
         common::{Limits, Roots},
-        incremental::mark_stack::MarkStack,
+        incremental::{mark_stack::MarkStack, write_barrier::YOUNG_REMEMBERED_SET},
     },
+    mem_utils::memcpy_words,
     memory::Memory,
-    types::{Obj, Value, TAG_ARRAY_SLICE_MIN},
+    types::{block_size, has_object_header, Obj, Tag, Value, Words, TAG_ARRAY_SLICE_MIN},
     visitor::visit_pointer_fields,
 };
 
@@ -60,6 +61,8 @@ pub struct State {
     phase: Phase,
     mark_stack: MarkStack,
     mark_complete: bool,
+    compact_from: usize,
+    compact_to: usize,
 }
 
 /// GC state retained over multiple GC increments.
@@ -67,6 +70,8 @@ static mut STATE: RefCell<State> = RefCell::new(State {
     phase: Phase::Pause,
     mark_stack: MarkStack::new(),
     mark_complete: false,
+    compact_from: 0,
+    compact_to: 0,
 });
 
 pub struct OldCollection<'a, M: Memory> {
@@ -104,13 +109,10 @@ impl<'a, M: Memory> OldCollection<'a, M> {
             self.start_marking(roots);
         }
         self.increment();
-        // if self.marking_completed() {
-        //     self.start_compacting(roots);
-        //     self.increment();
-        // }
-        // if self.compacting_completed() {
-        //     self.complete_run(roots);
-        // }
+        if self.marking_completed() {
+            self.start_compacting();
+            self.increment();
+        }
     }
 
     unsafe fn pausing(&mut self) -> bool {
@@ -137,6 +139,16 @@ impl<'a, M: Memory> OldCollection<'a, M> {
 
     fn generation_base(&self) -> usize {
         self.limits.base
+    }
+
+    fn generation_end(&self) -> usize {
+        assert_eq!(self.limits.young_generation_size(), 0);
+        self.limits.free
+    }
+
+    fn mark_surviving_objects(&self) -> bool {
+        // TODO: Adjust when unified with young generation collection
+        false
     }
 
     unsafe fn mark_roots(&mut self, roots: Roots) {
@@ -202,7 +214,68 @@ impl<'a, M: Memory> OldCollection<'a, M> {
         self.state.mark_stack.free();
     }
 
-    fn compact_increment(&mut self) {}
+    pub unsafe fn marking_completed(&self) -> bool {
+        assert!(!self.state.mark_complete || self.state.mark_stack.is_empty());
+        self.state.mark_complete
+    }
+
+    pub unsafe fn start_compacting(&mut self) {
+        // TODO: Sanity check to test mark completeness against classical blocking marking.
+        assert!(self.marking_completed());
+        self.state.phase = Phase::Compact;
+        self.state.compact_from = self.generation_base();
+        self.state.compact_to = self.generation_base();
+    }
+
+    unsafe fn compact_increment(&mut self) {
+        // Need to visit all objects in the generation, since mark bits may need to be
+        // cleared and/or garbage object ids must be freed.
+        assert!(YOUNG_REMEMBERED_SET.is_none()); // No longer valid as it will be collected.
+        while self.state.compact_from < self.generation_end() && !self.time.is_over() {
+            self.time.tick();
+            let block = self.state.compact_from as *mut Tag;
+            let size = block_size(block as usize);
+            if has_object_header(*block) {
+                self.compact_object(block as *mut Obj, size);
+            }
+            self.state.compact_from += size.to_bytes().as_usize();
+        }
+        self.complete_compacting();
+    }
+
+    unsafe fn compact_object(&mut self, object: *mut Obj, size: Words<u32>) {
+        let object_id = object.object_id();
+        if object.is_marked() {
+            if !self.mark_surviving_objects() {
+                // If the incremental GC is not active, the object mark must be cleared.
+                // Otherwise, the mark bit must stay according to the allocation policy
+                // during an active incremental marking or compaction phase.
+                object.unmark();
+            }
+            let old_address = object as usize;
+            let new_address = self.state.compact_to;
+            if new_address != old_address {
+                memcpy_words(new_address, old_address, size);
+                object_id.set_new_address(new_address);
+
+                // Determined by measurements in comparison to the mark and compact phases.
+                const TIME_FRACTION_PER_WORD: f64 = 2.7;
+                self.time
+                    .advance((size.as_usize() as f64 / TIME_FRACTION_PER_WORD) as usize);
+            }
+            self.state.compact_to += size.to_bytes().as_usize();
+        } else {
+            // Free the id of a garbage object in the object table.
+            object_id.free_object_id();
+        }
+    }
+
+    fn complete_compacting(&mut self) {
+        assert_eq!(self.state.compact_from, self.generation_end());
+        self.limits.free = self.state.compact_to;
+        self.limits.last_free = self.limits.free;
+        self.state.phase = Phase::Pause;
+    }
 
     pub fn get_new_limits(&self) -> Limits {
         self.limits
@@ -224,12 +297,4 @@ pub unsafe fn is_incremental_gc_running() -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
     incremental_gc_state().phase = Phase::Stop;
-}
-
-/// Only called during RTS testing.
-pub unsafe fn reset() {
-    let state = incremental_gc_state();
-    state.phase = Phase::Pause;
-    state.mark_stack = MarkStack::new();
-    state.mark_complete = false;
 }

@@ -46,7 +46,10 @@ mod young_collection;
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
-    gc::{common::Strategy, incremental::old_collection::OldCollection},
+    gc::{
+        common::Strategy,
+        incremental::{old_collection::OldCollection, write_barrier::create_young_remembered_set},
+    },
     memory::Memory,
 };
 
@@ -122,12 +125,15 @@ pub unsafe fn run_incremental_gc<M: Memory>(
         young_gc.run();
         limits = young_gc.get_new_limits();
         if strategy == Strategy::Full {
-            let mut state = incremental_gc_state();
+            let state = incremental_gc_state();
             let time = BoundedTime::new(INCREMENT_LIMIT);
             let mut old_gc = OldCollection::instance(mem, limits, state, time);
             old_gc.empty_call_stack_increment(roots);
             limits = old_gc.get_new_limits()
         }
+        // New remembered set needs to be allocated in the new young generation (it is never promoted).
+        assert_eq!(limits.young_generation_size(), 0);
+        create_young_remembered_set(mem, limits.last_free);
     }
     limits
 }
