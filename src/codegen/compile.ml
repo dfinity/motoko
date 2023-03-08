@@ -3899,7 +3899,7 @@ module Arr = struct
      and could perform an allocation. The low-level pointer used during 
      iteration could become invalid if the body effects an allocation 
      that moves the array *)
-  let iterate env get_array body =
+  let unsafe_iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
     let set_array = G.setter_for get_array in
@@ -3948,7 +3948,7 @@ module Arr = struct
     set_r ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer ->
+    unsafe_iterate env get_r (fun get_pointer ->
       get_pointer ^^
       get_x ^^
       store_ptr
