@@ -194,15 +194,15 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   (* Optimizing array.size() *)
-  | S.CallE ({it=S.DotE (e1, proj); _}, _, e2)
+  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
       when T.is_array e1.note.S.note_typ && proj.it = "size" ->
-    (thenE (exp e2) (primE (I.OtherPrim "array_len") [exp e1])).it
-  | S.CallE ({it=S.DotE (e1, proj); _}, _, e2)
+    (primE (I.OtherPrim "array_len") [exp e1]).it
+  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
       when T.(is_prim Text) e1.note.S.note_typ && proj.it = "size" ->
-    (thenE (exp e2) (primE (I.OtherPrim "text_len") [exp e1])).it
-  | S.CallE ({it=S.DotE (e1, proj); _}, _, e2)
+    (primE (I.OtherPrim "text_len") [exp e1]).it
+  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
-    (thenE (exp e2) (primE (I.OtherPrim "blob_size") [exp e1])).it
+    (primE (I.OtherPrim "blob_size") [exp e1]).it
   (* Normal call *)
   | S.CallE (e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
