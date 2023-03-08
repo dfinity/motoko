@@ -67,24 +67,28 @@ mod meta_data {
 	use super::{offset, size};
 	use crate::region::{BlockId, RegionId};
 
+	fn index(id : u16) -> u64 {
+	    offset::BLOCK_REGION_TABLE + id as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64
+	}
+
 	pub fn get(b:BlockId) -> Option<RegionId> {
-	    let mut res : [u8; 2] = [0, 0];
-	    read(offset::BLOCK_REGION_TABLE + b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64, &mut res);
-	    let res : u16 = (res[0] as u16) << 8 | res[1] as u16; // big endian Nat16
-	    if res == crate::region::meta_data::NIL_REGION_ID {
+	    if b.0 == crate::region::meta_data::NIL_REGION_ID {
 		None
 	    } else {
+		let mut res : [u8; 2] = [0, 0];
+		read(index(b.0), &mut res);
+		let res : u16 = (res[0] as u16) << 8 | res[1] as u16; // big endian Nat16
 		Some(RegionId(res))
 	    }
 	}
 	pub fn set(b:BlockId, r:Option<RegionId>) {
 	    if let Some(r) = r {
 		let bytes : [u8; 2] = [(r.0 & 0xFF00) as u8, (r.0 & 0xFF) as u8];
-		write(offset::BLOCK_REGION_TABLE + b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64, &bytes);
+		write(index(b.0), &bytes);
 	    } else {
 		let nil = crate::region::meta_data::NIL_REGION_ID;
 		let bytes : [u8; 2] = [(nil & 0xFF00) as u8, (nil & 0xFF) as u8];
-		write(offset::BLOCK_REGION_TABLE + b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64, &bytes);
+		write(index(b.0), &bytes);
 	    }
 	}
     }
