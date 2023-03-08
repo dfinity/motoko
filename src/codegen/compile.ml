@@ -3587,6 +3587,17 @@ module Arr = struct
   let load_field n = Heap.load_field Int32.(add n header_size)
 
   (* Dynamic array access. Returns the address (not the value) of the field.
+     Does no bounds checking *)
+  let unsafe_idx env =
+    Func.share_code2 env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+      get_idx ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_array ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    )
+
+  (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
   let idx env =
     Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
@@ -3728,7 +3739,7 @@ module Arr = struct
       get_len ^^ alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
-        get_r ^^ get_i ^^ idx env ^^
+        get_r ^^ get_i ^^ unsafe_idx env ^^
         get_blob ^^ Blob.payload_ptr_unskewed ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3751,7 +3762,7 @@ module Arr = struct
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ Blob.payload_ptr_unskewed ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        get_a ^^ get_i ^^ idx env ^^
+        get_a ^^ get_i ^^ unsafe_idx env ^^
         load_ptr ^^
         TaggedSmallWord.lsb_adjust Type.Nat8 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
@@ -5380,7 +5391,7 @@ module MakeSerialization (Strm : Stream) = struct
         size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           size env t
         )
       | Prim Blob ->
@@ -5539,7 +5550,7 @@ module MakeSerialization (Strm : Stream) = struct
         write_word_leb env get_data_buf (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           write env t
         )
       | Prim Null -> G.nop
@@ -6130,7 +6141,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_len ^^ Arr.alloc env ^^ set_x ^^
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
-            get_x ^^ get_i ^^ Arr.idx env ^^
+            get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
             get_arg_typ ^^ go env t ^^ set_val ^^
             remember_failure get_val ^^
             get_val ^^ store_ptr
@@ -6145,7 +6156,7 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
           get_val ^^ store_ptr
