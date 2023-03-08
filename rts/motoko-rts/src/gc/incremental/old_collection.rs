@@ -22,6 +22,10 @@
 //! * During mark phase, new allocations to the old generations (promotions from young generation) need to be marked.
 //! * The mark phase must only start on an empty call stack.
 //! Anyway, GC increments are currently only scheduled on empty call stack.
+//! 
+//! The GC uses a mark bit in the object header instead of mark bitmaps since there is no performance advantage 
+//! by using the mark bitmap for skipping garbage objects. This is because the object ids of garbage objects need 
+//! to be freed in the object table and therefore, the compaction phase must visit all objects (marked and unmarked).
 
 use crate::{
     gc::common::{Limits, Roots},

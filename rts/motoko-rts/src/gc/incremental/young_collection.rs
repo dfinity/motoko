@@ -20,6 +20,9 @@
 //! * New objects are allocated in the young generation and not marked (to allow fast reclamation).
 //! * When young objects are promoted to the old generation, they are marked if and only if the
 //!   incremental GC of the old generation is active (i.e. is in mark or compact phase).
+//! 
+//! See the note in `old_collection.rs` for the rationale why a mark bit in the object header is used 
+//! instead of a mark bitmap.
 
 use core::ptr::null_mut;
 
