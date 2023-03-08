@@ -3899,7 +3899,11 @@ module Arr = struct
   let alloc env = 
     E.call_import env "rts" "alloc_array"
 
-  let iterate env get_array body =
+  (* Note: Do not use this iterator for body code that is user-implemented
+     and could perform an allocation. The low-level pointer used during 
+     iteration could become invalid if the body effects an allocation 
+     that moves the array *)
+  let unsafe_iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
     let set_array = G.setter_for get_array in
@@ -3948,7 +3952,7 @@ module Arr = struct
     set_r ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer ->
+    unsafe_iterate env get_r (fun get_pointer ->
       get_pointer ^^
       get_x ^^
       store_ptr
@@ -3957,10 +3961,13 @@ module Arr = struct
     Tagged.allocation_barrier env get_r ^^
     get_r
 
+  (* Note: Do not optimize the array iteration by pointer arithmetics,
+     since the incremental GC needs to resolve forwarding on the array 
+     pointer and called user function may trigger GC increments, potentially
+     moving objects (although currently not the newly allocated objects). *)
   let tabulate env =
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
-    let (set_i, get_i) = new_local env "i" in
     let (set_value, get_value) = new_local env "value" in
     set_f ^^
 
@@ -3969,12 +3976,11 @@ module Arr = struct
     alloc env ^^
     set_r ^^
 
-    (* Initial index *)
-    compile_unboxed_const 0l ^^
-    set_i ^^
-
-    (* Write elements *)
-    iterate env get_r (fun get_index ->
+    (* Length *)
+    get_r ^^ 
+    Tagged.load_field env len_field ^^
+    
+    from_0_to_n env (fun get_i ->
       (* The closure *)
       get_f ^^
       Closure.prepare_closure_call env ^^
@@ -3994,12 +4000,7 @@ module Arr = struct
       get_i ^^
       idx env ^^ (* Resolves object forwarding *)
       get_value ^^
-      store_ptr ^^
-
-      (* Increment index *)
-      get_i ^^
-      compile_add_const 1l ^^
-      set_i
+      store_ptr
     ) ^^
     Tagged.allocation_barrier env get_r ^^
     get_r
