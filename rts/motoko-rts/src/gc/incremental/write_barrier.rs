@@ -29,12 +29,11 @@ pub(super) unsafe fn new_young_remembered_set<M: Memory>(mem: &mut M, last_hp: u
     LAST_HP = last_hp as u32;
 }
 
-/// Write a potential pointer value with with a pre-update and post-update barrier.
-/// Used by the incremental GC.
+/// Write a potential pointer value with with a pre- and post-update barrier used by the incremental GC.
 /// `location` (unskewed) denotes the field or array element where the value is to be written to.
-/// `value` (skewed if a pointer) denotes the value that is to be written to the location.
-/// The barrier can be conservatively called even if the location does not store a pointer or
-/// the new value is not a pointer.
+/// `value` (skewed if an object id) denotes the value that is to be written to the location.
+/// The barrier can be conservatively called even if the location does not store an object id or
+/// the new value is not an object id.
 ///
 /// Barrier effects:
 /// * Pre update: Used during the GC mark phase to guarantee incremental snapshot-at-the-beginning marking.
@@ -66,11 +65,11 @@ unsafe fn post_update_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
         let value = *location;
         if value.points_to_or_beyond(LAST_HP as usize) {
             if location as u32 >= HEAP_BASE {
-                // Trap pointers that lead from old generation (or static roots) to young generation.
+                // Catch object ids that point from old generation (or static roots) to young generation.
                 // Note: We could also only record the target value, as no threading is performed.
                 // However, the location can be overwritten, such that the target object may still become garbage.
-                // Therefore, this allows objects to be collected even if they have only been temporarily referenced
-                // from the old generation.
+                // Therefore, this is an optimization that allows objects to be collected even if they have only
+                // been temporarily referenced from the old generation.
                 YOUNG_REMEMBERED_SET
                     .as_mut()
                     .unwrap()

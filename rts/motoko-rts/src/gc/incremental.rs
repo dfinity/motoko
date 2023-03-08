@@ -1,3 +1,39 @@
+//! Simple incremental GC.
+//!
+//! Properties:
+//! - Fast reclamation of short-lived objects with generational collection.
+//! - Simple incremental compacting collection of the old generation.
+//! - Full-heap incremental snapshot-at-the-beginning marking.
+//! - Incremental compaction enabled by a central object table.
+//!
+//! The heap is partitioned in two generations: the old and the young generation.
+//!
+//! Dynamic heap (starting past the object table):
+//!   ┌────────────────┬──────────────────┐
+//!   │ Old generation │ Young generation │
+//!   └────────────────┴──────────────────┘
+//!   ^                ^                  ^
+//!   |                |                  |
+//!  HEAP_BASE     LAST_HP (last_free)   HP (free)
+//!
+//! Garbage collection is performed in two steps:
+//! 1. Young generation collection (blocking):
+//!    The young generation is collected and the surviving objects promoted to the
+//!    old generation. This blocks the mutator (non-incremental work) which is acceptable
+//!    as the generation tends to be small and the GC work should adapt to the allocation rate.
+//! 2. Old generation collection (incremental):
+//!    Sporadically, an incremental mark-and-compact collection run is started for the old
+//!    generation. The work is performed in multiple increments, where the mutator can resume
+//!    work in between. The GC increment is time-bound by a synthetic clock that deterministically
+//!    counts work steps.
+//!
+//! For simplicity, young generation collection always runs before a GC increment of the old generation.
+//! Therefore, old generation collection perceives its generation as the full heap and the
+//! incremental collector can ignore the generational aspects.
+//!
+//! Specific aspects of young and old generation collection are explained in `young_collection.rs`
+//! and `old_collection.rs`, respectively.
+
 pub mod array_slicing;
 pub mod mark_stack;
 pub mod object_table;

@@ -1,3 +1,26 @@
+//! Young generation garbage collection used by the incremental GC.
+//!
+//! Young generation collection runs:
+//! * Always before a GC increment of the old generation, for simplifying incremental collection.
+//! * After a certain amount of new allocations, i.e. when young generation has exceeded a threshold.
+//!
+//! This aims at fast reclamation of short-lived objects, to reduce GC latency, which is particularly
+//! critical in an incremental GC. Young generation collection blocks the mutator, i.e. does not run
+//! incrementally.
+//!
+//! The young generation collection requires an extra root set of old-to-young pointers. Those pointers
+//! are caught by a write barrier and recorded in a remembered set (`YOUNG_REMEMBERED_SET`).
+//!
+//! The remembered set lives in the young generation and is freed during the young generation collection.
+//!
+//! The compaction phase can use the simple object movement enabled by the central object table provided
+//! for the incremental GC.
+//!
+//! New allocation marking policy:
+//! * New objects are allocated in the young generation and not marked (to allow fast reclamation).
+//! * When young objects are promoted to the old generation, they are marked if and only if the
+//!   incremental GC of the old generation is active (i.e. is in mark or compact phase).
+
 use core::ptr::null_mut;
 
 use crate::{
