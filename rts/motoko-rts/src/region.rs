@@ -19,20 +19,32 @@ impl RegionId {
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
     pub const NIL_REGION_ID : u16 = 32767;
+
+    /// Maximum number of entities.
     pub mod max {
 	pub const BLOCKS : u16 = 32768;
+
 	pub const REGIONS : u16 = 32767;
     }
+
+    /// Sizes of table entries.
     pub mod size {
 	pub const REGION_TABLE_ENTRY : u16 = 8;
+
 	pub const BLOCK_REGION_TABLE_ENTRY : u16 = 4;
     }
+
     /// Offsets into stable memory for statically-sized fields and tables.
     pub mod offset {
 	pub const TOTAL_ALLOCATED_BLOCKS : u64 = 0;
+
 	pub const TOTAL_ALLOCATED_REGIONS : u64 = 2;
+
 	pub const BLOCK_REGION_TABLE : u64 = 4;
-	pub const REGION_TABLE : u64 = BLOCK_REGION_TABLE + super::max::BLOCKS as u64 * super::size::BLOCK_REGION_TABLE_ENTRY as u64;
+
+	pub const REGION_TABLE : u64 =
+	    BLOCK_REGION_TABLE +
+	    super::max::BLOCKS as u64 * super::size::BLOCK_REGION_TABLE_ENTRY as u64;
     }
 
     pub mod total_allocated_blocks {
@@ -101,6 +113,11 @@ mod meta_data {
     pub mod region_table {
 	// invariant (for now, pre-GC integration):
 	//  all regions whose IDs are below the total_allocated_regions are valid.
+	use super::{offset, size};
+
+	fn index(id : u16) -> u64 {
+	    offset::REGION_TABLE + id as u64 * size::REGION_TABLE_ENTRY as u64
+	}
 
 	// to do:
 	// - get_region_size
