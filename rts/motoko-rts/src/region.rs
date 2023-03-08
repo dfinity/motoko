@@ -7,6 +7,15 @@ use motoko_rts_macros::ic_mem_fn;
 pub struct BlockId(pub u16);
 pub struct RegionId(pub u16);
 
+impl RegionId {
+    pub fn id_is_nil(id : u16) -> bool {
+	id == crate::region::meta_data::NIL_REGION_ID
+    }
+    pub fn from_id(id: u16) -> Option<Self> {
+	if Self::id_is_nil(id) { None } else { Some(RegionId(id)) }
+    }
+}
+
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
     pub const NIL_REGION_ID : u16 = 32767;
@@ -72,14 +81,10 @@ mod meta_data {
 	}
 
 	pub fn get(b:BlockId) -> Option<RegionId> {
-	    if b.0 == crate::region::meta_data::NIL_REGION_ID {
-		None
-	    } else {
-		let mut res : [u8; 2] = [0, 0];
-		read(index(b.0), &mut res);
-		let res : u16 = (res[0] as u16) << 8 | res[1] as u16; // big endian Nat16
-		Some(RegionId(res))
-	    }
+	    let mut res : [u8; 2] = [0, 0];
+	    read(index(b.0), &mut res);
+	    let res : u16 = (res[0] as u16) << 8 | res[1] as u16; // big endian Nat16
+	    RegionId::from_id(res)
 	}
 	pub fn set(b:BlockId, r:Option<RegionId>) {
 	    if let Some(r) = r {
