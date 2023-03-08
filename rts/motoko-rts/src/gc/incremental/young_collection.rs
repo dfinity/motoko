@@ -4,7 +4,6 @@ use crate::{
     constants::WORD_SIZE,
     gc::{
         common::{Limits, Roots},
-        generational::write_barrier::REMEMBERED_SET,
     },
     mem_utils::memcpy_words,
     memory::Memory,
@@ -50,11 +49,14 @@ impl<'a, M: Memory> YoungCollection<'a, M> {
         self.limits.last_free
     }
 
-    pub unsafe fn run(&mut self) -> Limits {
+    pub unsafe fn run(&mut self) {
         self.mark_phase();
         self.compact_phase();
         new_young_remembered_set(self.mem, self.limits.free);
-        self.limits.clone()
+    }
+
+    pub fn get_new_limits(&self) -> Limits {
+        self.limits
     }
 
     unsafe fn mark_phase(&mut self) {
@@ -122,7 +124,7 @@ impl<'a, M: Memory> YoungCollection<'a, M> {
     unsafe fn compact_phase(&mut self) {
         // Need to visit all objects in the generation, since mark bits may need to be
         // cleared and/or garbage object ids must be freed.
-        assert!(REMEMBERED_SET.is_none()); // No longer valid as it will be collected.
+        assert!(YOUNG_REMEMBERED_SET.is_none()); // No longer valid as it will be collected.
         let mut free = self.limits.last_free;
         let mut address = free;
         while address < self.limits.free {

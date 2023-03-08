@@ -26,7 +26,7 @@ use motoko_rts_macros::ic_mem_fn;
 use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
 
-use super::common::{Limits, Roots};
+use super::common::{Limits, Roots, Strategy};
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -36,23 +36,25 @@ unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
-    use crate::gc::common;
-    let limits = common::get_limits();
-    if decide_strategy(&limits).is_some() {
+    use crate::gc::common::{decide_strategy, get_limits};
+    let limits = get_limits();
+    if decide_strategy(limits).is_some() {
         generational_gc(mem);
     }
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
-    use crate::gc::common;
-    let old_limits = common::get_limits();
+    use crate::gc::common::{
+        decide_strategy, get_limits, get_roots, set_limits, update_statistics, update_strategy,
+    };
+    let old_limits = get_limits();
     let heap = Heap {
         mem,
-        limits: common::get_limits(),
-        roots: common::get_roots(),
+        limits: old_limits,
+        roots: get_roots(),
     };
-    let strategy = decide_strategy(&heap.limits);
+    let strategy = decide_strategy(old_limits);
 
     #[cfg(debug_assertions)]
     let forced_gc = strategy.is_none();
@@ -65,9 +67,9 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
     gc.run();
 
-    let new_limits = &gc.heap.limits;
-    common::set_limits(&gc.heap.limits);
-    update_statistics(&old_limits, new_limits);
+    let new_limits = gc.heap.limits;
+    set_limits(new_limits);
+    update_statistics(old_limits, new_limits);
     update_strategy(strategy, new_limits);
 
     #[cfg(debug_assertions)]
@@ -77,61 +79,6 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     }
 
     write_barrier::init_generational_write_barrier(gc.heap.mem);
-}
-
-#[cfg(feature = "ic")]
-unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
-    use crate::memory::ic;
-    let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
-    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
-    ic::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
-}
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum Strategy {
-    Young,
-    Full,
-}
-
-#[cfg(feature = "ic")]
-static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
-
-#[cfg(feature = "ic")]
-static mut PASSED_CRITICAL_LIMIT: bool = false;
-
-#[cfg(feature = "ic")]
-const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
-
-#[cfg(feature = "ic")]
-unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
-    const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
-
-    assert!(limits.base <= limits.last_free);
-    let old_generation_size = limits.last_free - limits.base;
-    assert!(limits.last_free <= limits.free);
-    let young_generation_size = limits.free - limits.last_free;
-
-    if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
-        PASSED_CRITICAL_LIMIT = true;
-        Some(Strategy::Full)
-    } else if old_generation_size > OLD_GENERATION_THRESHOLD {
-        Some(Strategy::Full)
-    } else if young_generation_size > YOUNG_GENERATION_THRESHOLD {
-        Some(Strategy::Young)
-    } else {
-        None
-    }
-}
-
-#[cfg(feature = "ic")]
-unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
-    const GROWTH_RATE: f64 = 2.0;
-    if strategy == Strategy::Full {
-        OLD_GENERATION_THRESHOLD = ((limits.free - limits.base) as f64 * GROWTH_RATE) as usize;
-        if limits.free < CRITICAL_MEMORY_LIMIT {
-            PASSED_CRITICAL_LIMIT = false
-        }
-    }
 }
 
 pub struct Heap<'a, M: Memory> {
@@ -448,6 +395,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
 
         self.heap.limits.free = free;
+        self.heap.limits.last_free = free;
     }
 
     /// Thread forward pointers in object
