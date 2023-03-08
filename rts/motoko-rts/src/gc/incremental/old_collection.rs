@@ -66,3 +66,8 @@ impl<'a, M: Memory> OldCollection<'a, M> {
 
     pub fn mark_object(_value: Value) {}
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn stop_gc_on_upgrade() {
+    PHASE = Phase::Stop;
+}

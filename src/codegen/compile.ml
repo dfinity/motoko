@@ -997,6 +997,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "generational_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "write_with_barrier" [I32Type] [];
+    E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
 end (* RTS *)
@@ -1511,11 +1512,12 @@ module Tagged = struct
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
     | Null (* For opt. Static singleton! *)
-    | StableSeen (* Marker that we have seen this thing before *)
-    | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
-
+    | ArraySliceMinimum
+    | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
+    | StableSeen (* Marker that we have seen this thing before *)
+    
   (* Tags needs to have the lowest bit set, to allow distinguishing object
      headers from heap locations (object or field addresses).
 
@@ -1538,6 +1540,7 @@ module Tagged = struct
     | Null -> 27l
     | OneWordFiller -> 29l
     | FreeSpace -> 31l
+    | ArraySliceMinimum -> 32l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
@@ -5461,10 +5464,31 @@ module MakeSerialization (Strm : Stream) = struct
         set_inc ^^ inc_data_size get_inc
       in
 
+      (* The incremental GC leaves array slice information in tag,
+         the slice information can be removed and the tag reset to array
+         as the GC can resume marking from the array beginning *)
+      let clear_array_slicing =
+        let (set_temp, get_temp) = new_local env "temp" in
+        set_temp ^^ 
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag StableSeen) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag CoercionFailure) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+        G.if1 I32Type begin
+          (compile_unboxed_const Tagged.(int_of_tag Array))
+        end begin
+          get_temp
+        end
+      in
+
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env ^^ clear_array_slicing ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -6909,6 +6933,12 @@ module Stabilization = struct
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
+
+    (if !Flags.gc_strategy == Flags.Incremental then
+      E.call_import env "rts" "stop_gc_on_upgrade"
+    else
+      G.nop) ^^
+
     Externalization.serialize env [t] ^^
     set_len ^^
     set_dst ^^
