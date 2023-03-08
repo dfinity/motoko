@@ -4,28 +4,39 @@ use crate::rts_trap_with;
 
 use motoko_rts_macros::ic_mem_fn;
 
+pub struct BlockId(pub u16);
+pub struct RegionId(pub u16);
+
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
+    pub const NIL_REGION_ID : u16 = 32767;
+    pub mod max {
+	pub const BLOCKS : u16 = 32768;
+	pub const REGIONS : u16 = 32767;
+    }
+    pub mod size {
+	pub const REGION_TABLE_ENTRY : u16 = 8;
+	pub const BLOCK_REGION_TABLE_ENTRY : u16 = 4;
+    }
     /// Offsets into stable memory for statically-sized fields and tables.
     pub mod offset {
 	pub const TOTAL_ALLOCATED_BLOCKS : u64 = 0;
 	pub const TOTAL_ALLOCATED_REGIONS : u64 = 2;
-	// const BLOCK_REGION_TABLE
-	// const REGION_TABLE
+	pub const BLOCK_REGION_TABLE : u64 = 4;
+	pub const REGION_TABLE : u64 = BLOCK_REGION_TABLE + super::max::BLOCKS as u64 * super::size::BLOCK_REGION_TABLE_ENTRY as u64;
     }
+
     pub mod total_allocated_blocks {
 	use crate::ic0_stable::nicer::{read, write};
-	use crate::rts_trap_with;
 	use super::offset;
-	use core::convert::TryInto;
 
-	pub unsafe fn get() -> u64 {
+	pub fn get() -> u64 {
 	    let mut res : [u8; 2] = [0, 0];
 	    read(offset::TOTAL_ALLOCATED_BLOCKS, &mut res);
 	    let res : u64 = (res[0] as u64) << 8 | res[1] as u64; // big endian Nat16
 	    res
 	}
-	pub unsafe fn set(n: u64) {
+	pub fn set(n: u64) {
 	    let n_ = n as u16;
 	    let bytes : [u8; 2] = [(n_ & 0xFF00) as u8, (n & 0xFF) as u8];
 	    write(offset::TOTAL_ALLOCATED_BLOCKS, &bytes);
@@ -34,17 +45,15 @@ mod meta_data {
 
     pub mod total_allocated_regions {
 	use crate::ic0_stable::nicer::{read, write};
-	use crate::rts_trap_with;
 	use super::offset;
-	use core::convert::TryInto;
 
-	pub unsafe fn get() -> u64 {
+	pub fn get() -> u64 {
 	    let mut res : [u8; 2] = [0, 0];
 	    read(offset::TOTAL_ALLOCATED_REGIONS, &mut res);
 	    let res : u64 = (res[0] as u64) << 8 | res[1] as u64; // big endian Nat16
 	    res
 	}
-	pub unsafe fn set(n: u64) {
+	pub fn set(n: u64) {
 	    let n_ = n as u16;
 	    let bytes : [u8; 2] = [(n_ & 0xFF00) as u8, (n & 0xFF) as u8];
 	    write(offset::TOTAL_ALLOCATED_REGIONS, &bytes);
@@ -52,12 +61,32 @@ mod meta_data {
     }
 
     pub mod block_region_table {
-	// invariant:
-	//  all blocks whose IDs are below the total_allocated_blocks are valid.
+	// invariant: all blocks whose IDs are below the total_allocated_blocks are valid.
 
-	// to do:
-	// - set_block_region,
-	// - get_block_region
+	use crate::ic0_stable::nicer::{read, write};
+	use super::{offset, size};
+	use crate::region::{BlockId, RegionId};
+
+	pub fn get(b:BlockId) -> Option<RegionId> {
+	    let mut res : [u8; 2] = [0, 0];
+	    read(offset::BLOCK_REGION_TABLE + b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64, &mut res);
+	    let res : u16 = (res[0] as u16) << 8 | res[1] as u16; // big endian Nat16
+	    if res == crate::region::meta_data::NIL_REGION_ID {
+		None
+	    } else {
+		Some(RegionId(res))
+	    }
+	}
+	pub fn set(b:BlockId, r:Option<RegionId>) {
+	    if let Some(r) = r {
+		let bytes : [u8; 2] = [(r.0 & 0xFF00) as u8, (r.0 & 0xFF) as u8];
+		write(offset::BLOCK_REGION_TABLE + b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64, &bytes);
+	    } else {
+		let nil = crate::region::meta_data::NIL_REGION_ID;
+		let bytes : [u8; 2] = [(nil & 0xFF00) as u8, (nil & 0xFF) as u8];
+		write(offset::BLOCK_REGION_TABLE + b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64, &bytes);
+	    }
+	}
     }
 
     pub mod region_table {
