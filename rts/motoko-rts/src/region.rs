@@ -88,15 +88,21 @@ mod meta_data {
 	use super::{offset, size};
 	use crate::region::{BlockId, RegionId};
 
+	// Compute an offset in stable memory for a particular region ID.
 	fn index(id : u16) -> u64 {
 	    offset::BLOCK_REGION_TABLE + id as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64
 	}
 
-	pub fn get(b:BlockId) -> Option<RegionId> {
-	    let mut res : [u8; 2] = [0, 0];
-	    read(index(b.0), &mut res);
-	    let res : u16 = (res[0] as u16) << 8 | res[1] as u16; // big endian Nat16
-	    RegionId::from_id(res)
+	pub fn get(b:BlockId) -> Option<(RegionId, u16)> {
+	    let mut reg : [u8; 2] = [0, 0];
+	    read(index(b.0), &mut reg);
+	    let reg : u16 = (reg[0] as u16) << 8 | reg[1] as u16; // big endian Nat16
+	    RegionId::from_id(reg).map(|rid|{
+		let mut idx : [u8; 2] = [0, 0];
+		read(index(b.0) + 2, &mut idx);
+		let idx : u16 = (idx[0] as u16) << 8 | idx[1] as u16; // big endian Nat16
+		(rid, idx)
+	    })
 	}
 	pub fn set(b:BlockId, r:Option<RegionId>) {
 	    if let Some(r) = r {
