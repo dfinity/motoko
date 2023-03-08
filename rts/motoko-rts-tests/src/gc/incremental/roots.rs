@@ -34,23 +34,18 @@ unsafe fn check_regular_roots() {
         GC::Incremental,
     );
     let mut mem = TestMemory::new(Words(WORD_SIZE as u32 * INITIAL_TABLE_LENGTH));
-    let remembered_set = RememberedSet::new(&mut mem);
-    check_visit_static_roots(&heap, &remembered_set, &root_indices);
-    check_visit_continuation_table(&heap, &remembered_set, &continuation_indices);
+    check_visit_static_roots(&heap, &root_indices);
+    check_visit_continuation_table(&heap, &continuation_indices);
     OBJECT_TABLE = None;
 }
 
-unsafe fn check_visit_static_roots(
-    heap: &MotokoHeap,
-    remembered_set: &RememberedSet,
-    root_indices: &[ObjectIdx],
-) {
+unsafe fn check_visit_static_roots(heap: &MotokoHeap, root_indices: &[ObjectIdx]) {
     let roots = get_roots(heap);
     let mut visited_static_roots = vec![];
     visit_roots(
         roots,
         heap.heap_base_address(),
-        remembered_set,
+        None,
         &mut visited_static_roots,
         |context, value| {
             let array = value.as_array();
@@ -63,17 +58,13 @@ unsafe fn check_visit_static_roots(
     assert_eq!(visited_static_roots, root_indices);
 }
 
-unsafe fn check_visit_continuation_table(
-    heap: &MotokoHeap,
-    remembered_set: &RememberedSet,
-    continuation_indices: &[ObjectIdx],
-) {
+unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_indices: &[ObjectIdx]) {
     let roots = get_roots(heap);
     let mut visited_continuations = vec![];
     visit_roots(
         roots,
         heap.heap_base_address(),
-        remembered_set,
+        None,
         &mut visited_continuations,
         |context, value| {
             let array = value.as_array();
@@ -117,7 +108,7 @@ unsafe fn check_visit_remembered_set() {
     visit_roots(
         roots,
         heap.heap_base_address(),
-        &remembered_set,
+        Some(&remembered_set),
         &mut visited_remembered_values,
         |context, value| {
             let array = value.as_array();

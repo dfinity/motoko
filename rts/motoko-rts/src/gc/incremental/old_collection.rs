@@ -18,20 +18,28 @@
 //!   object table. Concurrent allocations to the old generation during this phase (promotions from the young
 //!   generations) are marked because they have to be retained and compacted during this incremental GC run.
 //!  
-//! Since the call stack cannot be scanned for object ids (root set), the following restrictions apply:
+//! Since the call stack cannot be accessed to collect roots on it, the following restrictions apply:
 //! * During mark phase, new allocations to the old generations (promotions from young generation) need to be marked.
 //! * The mark phase must only start on an empty call stack.
 //! Anyway, GC increments are currently only scheduled on empty call stack.
-//! 
-//! The GC uses a mark bit in the object header instead of mark bitmaps since there is no performance advantage 
-//! by using the mark bitmap for skipping garbage objects. This is because the object ids of garbage objects need 
+//!
+//! The GC uses a mark bit in the object header instead of mark bitmaps since there is no performance advantage
+//! by using the mark bitmap for skipping garbage objects. This is because the object ids of garbage objects need
 //! to be freed in the object table and therefore, the compaction phase must visit all objects (marked and unmarked).
 
+use core::cell::RefCell;
+
 use crate::{
-    gc::common::{Limits, Roots},
+    constants::WORD_SIZE,
+    gc::{
+        common::{Limits, Roots},
+        incremental::mark_stack::MarkStack,
+    },
     memory::Memory,
-    types::Value,
+    types::{Obj, Value},
 };
+
+use super::{roots::visit_roots, time::BoundedTime};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Phase {
@@ -41,37 +49,142 @@ pub enum Phase {
     Stop,
 }
 
-static mut PHASE: Phase = Phase::Pause;
-
-pub unsafe fn is_incremental_gc_running() -> bool {
-    PHASE != Phase::Pause && PHASE != Phase::Stop
+impl Phase {
+    pub fn is_running(self) -> bool {
+        self != Self::Pause && self != Self::Stop
+    }
 }
 
-pub unsafe fn get_phase() -> Phase {
-    PHASE
+pub struct State {
+    phase: Phase,
+    mark_stack: MarkStack,
+    mark_complete: bool,
 }
+
+/// GC state retained over multiple GC increments.
+static mut STATE: RefCell<State> = RefCell::new(State {
+    phase: Phase::Pause,
+    mark_stack: MarkStack::new(),
+    mark_complete: false,
+});
 
 pub struct OldCollection<'a, M: Memory> {
     mem: &'a mut M,
     limits: Limits,
-    roots: Roots,
+    state: &'a mut State,
+    time: BoundedTime,
 }
 
 impl<'a, M: Memory> OldCollection<'a, M> {
-    pub fn new(mem: &'a mut M, limits: Limits, roots: Roots) -> OldCollection<'a, M> {
-        OldCollection { mem, limits, roots }
+    /// Each GC schedule point can get a new GC instance that shares the common GC state.
+    /// This is because the memory implementation cannot be stored as a global variable.
+    /// The young generation collection must have run before the an incremental GC increment.
+    pub unsafe fn instance(
+        mem: &'a mut M,
+        limits: Limits,
+        state: &'a mut State,
+        time: BoundedTime,
+    ) -> OldCollection<'a, M> {
+        assert_eq!(limits.young_generation_size(), 0);
+        OldCollection {
+            mem,
+            limits,
+            state,
+            time,
+        }
     }
 
-    pub fn run(&mut self) {}
+    /// Special GC increment invoked when the call stack is guaranteed to be empty.
+    /// As the GC cannot scan or use write barriers on the call stack, we need to ensure:
+    /// * The mark phase can only be started on an empty call stack.
+    /// * New allocations being promoted to the old generation are marked when the GC is running.
+    pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
+        if self.pausing() {
+            self.start_marking(roots);
+        }
+        self.increment();
+        // if self.marking_completed() {
+        //     self.start_compacting(roots);
+        //     self.increment();
+        // }
+        // if self.compacting_completed() {
+        //     self.complete_run(roots);
+        // }
+    }
+
+    unsafe fn pausing(&mut self) -> bool {
+        self.state.phase == Phase::Pause
+    }
+
+    unsafe fn increment(&mut self) {
+        match self.state.phase {
+            Phase::Pause | Phase::Stop => {}
+            Phase::Mark => self.mark_increment(),
+            Phase::Compact => self.compact_increment(),
+        }
+    }
+
+    /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
+    unsafe fn start_marking(&mut self, roots: Roots) {
+        debug_assert!(self.pausing());
+
+        self.state.phase = Phase::Mark;
+        self.state.mark_stack.allocate(self.mem);
+        self.state.mark_complete = false;
+        self.mark_roots(roots);
+    }
+
+    fn generation_base(&self) -> usize {
+        self.limits.base
+    }
+
+    unsafe fn mark_roots(&mut self, roots: Roots) {
+        visit_roots(roots, self.generation_base(), None, self, |gc, value| {
+            gc.mark_object(value);
+        });
+    }
+
+    pub unsafe fn mark_object(&mut self, value: Value) {
+        let object = value.get_object_address() as *mut Obj;
+        assert!(object as usize >= self.generation_base());
+        assert_eq!(object as u32 % WORD_SIZE, 0);
+        if object.is_marked() {
+            return;
+        }
+        object.mark();
+        self.state.mark_stack.push(self.mem, object);
+    }
+
+    fn mark_increment(&mut self) {}
+
+    fn compact_increment(&mut self) {}
 
     pub fn get_new_limits(&self) -> Limits {
         self.limits
     }
+}
 
-    pub fn mark_object(_value: Value) {}
+pub unsafe fn incremental_gc_state() -> &'static mut State {
+    STATE.get_mut()
+}
+
+pub unsafe fn incremental_gc_phase() -> Phase {
+    incremental_gc_state().phase
+}
+
+pub unsafe fn is_incremental_gc_running() -> bool {
+    incremental_gc_phase().is_running()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
-    PHASE = Phase::Stop;
+    incremental_gc_state().phase = Phase::Stop;
+}
+
+/// Only called during RTS testing.
+pub unsafe fn reset() {
+    let state = incremental_gc_state();
+    state.phase = Phase::Pause;
+    state.mark_stack = MarkStack::new();
+    state.mark_complete = false;
 }

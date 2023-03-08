@@ -6,7 +6,7 @@ use crate::{
 pub unsafe fn visit_roots<C, V: Fn(&mut C, Value)>(
     roots: Roots,
     generation_base: usize,
-    remembered_set: &RememberedSet,
+    remembered_set: Option<&RememberedSet>,
     context: &mut C,
     visit_value: V,
 ) {
@@ -17,7 +17,14 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, Value)>(
         context,
         &visit_value,
     );
-    visit_young_remembered_set(remembered_set, generation_base, context, &visit_value);
+    if remembered_set.is_some() {
+        visit_young_remembered_set(
+            remembered_set.unwrap(),
+            generation_base,
+            context,
+            &visit_value,
+        );
+    }
 }
 
 unsafe fn visit_static_roots<C, V: Fn(&mut C, Value)>(

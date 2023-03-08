@@ -20,8 +20,8 @@
 //! * New objects are allocated in the young generation and not marked (to allow fast reclamation).
 //! * When young objects are promoted to the old generation, they are marked if and only if the
 //!   incremental GC of the old generation is active (i.e. is in mark or compact phase).
-//! 
-//! See the note in `old_collection.rs` for the rationale why a mark bit in the object header is used 
+//!
+//! See the note in `old_collection.rs` for the rationale why a mark bit in the object header is used
 //! instead of a mark bitmap.
 
 use core::ptr::null_mut;
@@ -73,6 +73,10 @@ impl<'a, M: Memory> YoungCollection<'a, M> {
         self.limits.last_free
     }
 
+    fn generation_end(&self) -> usize {
+        self.limits.free
+    }
+
     pub unsafe fn run(&mut self) {
         self.mark_phase();
         self.compact_phase();
@@ -85,18 +89,17 @@ impl<'a, M: Memory> YoungCollection<'a, M> {
 
     unsafe fn mark_phase(&mut self) {
         self.mark_stack.allocate(self.mem);
-        self.mark_root_set();
+        self.mark_roots();
         self.mark_all_reachable();
         self.mark_stack.free();
     }
 
-    unsafe fn mark_root_set(&mut self) {
-        let roots = self.roots.clone();
+    unsafe fn mark_roots(&mut self) {
         let remembered_set = YOUNG_REMEMBERED_SET.take().unwrap();
         visit_roots(
-            roots,
+            self.roots,
             self.generation_base(),
-            &remembered_set,
+            Some(&remembered_set),
             self,
             |gc, value| {
                 gc.mark_object(value);
@@ -149,9 +152,9 @@ impl<'a, M: Memory> YoungCollection<'a, M> {
         // Need to visit all objects in the generation, since mark bits may need to be
         // cleared and/or garbage object ids must be freed.
         assert!(YOUNG_REMEMBERED_SET.is_none()); // No longer valid as it will be collected.
-        let mut free = self.limits.last_free;
+        let mut free = self.generation_base();
         let mut address = free;
-        while address < self.limits.free {
+        while address < self.generation_end() {
             let block = address as *mut Tag;
             let size = block_size(block as usize);
             if has_object_header(*block) {

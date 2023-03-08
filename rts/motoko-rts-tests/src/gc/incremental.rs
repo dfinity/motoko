@@ -3,6 +3,7 @@ mod mark_bit;
 mod mark_stack;
 mod object_table;
 mod roots;
+mod time;
 
 pub fn test() {
     println!("Testing incremental GC components ...");

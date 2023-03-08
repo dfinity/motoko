@@ -54,7 +54,7 @@ impl MarkStack {
     /// Create an empty mark stack that still needs to be allocated before use.
     /// To avoid slow `Option<MarkStack>`, the stack is allocated and freed by
     /// separate functions.
-    pub fn new() -> MarkStack {
+    pub const fn new() -> MarkStack {
         MarkStack {
             last: null_mut(),
             top: 0,

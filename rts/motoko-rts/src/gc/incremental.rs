@@ -39,6 +39,7 @@ pub mod mark_stack;
 pub mod object_table;
 mod old_collection;
 pub mod roots;
+pub mod time;
 pub mod write_barrier;
 mod young_collection;
 
@@ -49,7 +50,11 @@ use crate::{
     memory::Memory,
 };
 
-use self::{old_collection::is_incremental_gc_running, young_collection::YoungCollection};
+use self::{
+    old_collection::{incremental_gc_state, is_incremental_gc_running},
+    time::BoundedTime,
+    young_collection::YoungCollection,
+};
 
 use super::common::{Limits, Roots};
 
@@ -101,6 +106,8 @@ unsafe fn decide_incremental_strategy(limits: Limits) -> Option<Strategy> {
     }
 }
 
+const INCREMENT_LIMIT: usize = 3_000_000;
+
 pub unsafe fn run_incremental_gc<M: Memory>(
     mem: &mut M,
     strategy: Strategy,
@@ -115,8 +122,10 @@ pub unsafe fn run_incremental_gc<M: Memory>(
         young_gc.run();
         limits = young_gc.get_new_limits();
         if strategy == Strategy::Full {
-            let mut old_gc = OldCollection::new(mem, limits, roots);
-            old_gc.run();
+            let mut state = incremental_gc_state();
+            let time = BoundedTime::new(INCREMENT_LIMIT);
+            let mut old_gc = OldCollection::instance(mem, limits, state, time);
+            old_gc.empty_call_stack_increment(roots);
             limits = old_gc.get_new_limits()
         }
     }

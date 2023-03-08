@@ -1,16 +1,18 @@
 //! Write barrier, used by the incremental GC
 
+use crate::gc::common::Limits;
 use crate::memory::Memory;
 use crate::remembered_set::RememberedSet;
 use crate::types::{is_skewed, Value};
 use motoko_rts_macros::ic_mem_fn;
 
-use super::old_collection::{get_phase, OldCollection, Phase};
+use super::old_collection::{incremental_gc_phase, incremental_gc_state, OldCollection, Phase};
+use super::time::BoundedTime;
 
 pub static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
 
 // TODO: Adjust also this `HEAP_BASE` when object table grows/shrinks! Better incorporate into mem.
-// TODO: Remove these redundancies
+// TODO: Remove these redundancies by offering this information via `mem`
 pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
@@ -50,9 +52,17 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, n
 
 /// Ensure snapshot-at-the-beginning consistency during the incremental mark phase.
 /// Catch overwritten object ids and mark the corresponding objects when the GC is in the mark phase.
-unsafe fn pre_update_barrier<M: Memory>(_mem: &mut M, value: Value) {
-    if get_phase() == Phase::Mark && value.points_to_or_beyond(HEAP_BASE as usize) {
-        OldCollection::<M>::mark_object(value);
+unsafe fn pre_update_barrier<M: Memory>(mem: &mut M, value: Value) {
+    if incremental_gc_phase() == Phase::Mark && value.points_to_or_beyond(HEAP_BASE as usize) {
+        let limits = Limits {
+            base: HEAP_BASE as usize,
+            last_free: LAST_HP as usize,
+            free: LAST_HP as usize, // TODO: Remove this provisional solution by offering this information via `mem`.
+        };
+        let state = incremental_gc_state();
+        let time = BoundedTime::new(0);
+        let mut increment = OldCollection::instance(mem, limits, state, time);
+        increment.mark_object(value);
     }
 }
 
