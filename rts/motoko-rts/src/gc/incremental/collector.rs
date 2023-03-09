@@ -63,17 +63,16 @@
 //! -----------
 //!
 //! The mark stack is allocated in the generation where it is used, i.e. young generation collection allocates
-//! the mark stack pages inside the young generation, while mark stack pages of the old generation are added to the
-//! old generation. Mark stack pages remain unmarked, such that will be collected as garbage during compaction of
-//! the corresponding phase.
+//! the mark stack tables inside the young generation, while mark stack tables of the old generation are added to
+//! the old generation. Therefore, a generation may grow during the mark phase. As for the old generation, the
+//! allocated mark stack tables need to be retained for subsequent mark increments. Mark stack tables remain
+//! unmarked, such that they will be collected as garbage during the compaction of the corresponding generation.
+
 use core::ptr::null_mut;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::{
-        common::{Limits, Roots},
-        incremental::state::Phase,
-    },
+    gc::{common::Roots, incremental::state::Phase},
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -85,7 +84,6 @@ use super::{array_slicing::slice_array, roots::visit_roots, state::State, time::
 
 pub struct Generation {
     start: usize,
-    end: usize,
     remembered_set: Option<RememberedSet>,
     mark_surviving: bool,
 }
@@ -93,32 +91,34 @@ pub struct Generation {
 impl Generation {
     pub fn new(
         start: usize,
-        end: usize,
         remembered_set: Option<RememberedSet>,
         mark_surviving: bool,
     ) -> Generation {
         Generation {
             start,
-            end,
             remembered_set,
             mark_surviving,
         }
     }
 
-    pub fn young(limits: Limits, remembered_set: RememberedSet, mark_promoted: bool) -> Generation {
-        debug_assert!(limits.last_free <= limits.free);
+    pub fn young<M: Memory>(
+        mem: &mut M,
+        remembered_set: RememberedSet,
+        mark_promoted: bool,
+    ) -> Generation {
+        debug_assert!(mem.get_heap_base() <= mem.get_last_heap_pointer());
+        debug_assert!(mem.get_last_heap_pointer() <= mem.get_heap_pointer());
         Self::new(
-            limits.last_free,
-            limits.free,
+            mem.get_last_heap_pointer(),
             Some(remembered_set),
             mark_promoted,
         )
     }
 
-    pub fn old(limits: Limits) -> Generation {
-        debug_assert_eq!(limits.last_free, limits.free);
-        debug_assert!(limits.base <= limits.free);
-        Self::new(limits.base, limits.free, None, false)
+    pub fn old<M: Memory>(mem: &mut M) -> Generation {
+        debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
+        debug_assert!(mem.get_heap_base() <= mem.get_heap_pointer());
+        Self::new(mem.get_heap_base(), None, false)
     }
 }
 
@@ -209,16 +209,14 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         let object = value.get_object_address() as *mut Obj;
         self.time.tick();
         debug_assert!(object as usize >= self.generation.start);
-        debug_assert!((object as usize) < self.generation.end);
+        debug_assert!((object as usize) < self.mem.get_heap_pointer());
         debug_assert_eq!(object as u32 % WORD_SIZE, 0);
         if object.is_marked() {
             return;
         }
         object.mark();
-        assert_eq!(self.generation.end, self.mem.get_heap_pointer());
         self.state.mark_stack.push(self.mem, object);
-        // Generation may be extended because of additional mark stack pages
-        self.generation.end = self.mem.get_heap_pointer();
+        // The generation may have been extended because of additional mark stack tables.
     }
 
     unsafe fn mark_increment(&mut self) {
@@ -251,10 +249,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             |gc, slice_start, array| {
                 let length = slice_array(array);
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
-                    assert_eq!(gc.generation.end, gc.mem.get_heap_pointer());
                     gc.state.mark_stack.push(gc.mem, array as *mut Obj);
-                    // TODO: Generation may be extended because of additional mark stack pages
-                    gc.generation.end = gc.mem.get_heap_pointer();
+                    // The generation may have been extended because of additional mark stack tables.
                 }
                 gc.time.advance((length - slice_start) as usize);
                 length
@@ -288,7 +284,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(self.generation.remembered_set.is_none()); // No longer valid as it will be collected.
                                                                  // Need to visit all objects in the generation, since mark bits may need to be
                                                                  // cleared and/or garbage object ids must be freed.
-        while self.state.compact_from < self.generation.end && !self.time.is_over() {
+        while self.state.compact_from < self.mem.get_heap_pointer() && !self.time.is_over() {
             let block = self.state.compact_from as *mut Tag;
             let size = block_size(block as usize);
             if has_object_header(*block) {
@@ -296,7 +292,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             }
             self.state.compact_from += size.to_bytes().as_usize();
             debug_assert_eq!(self.state.compact_from % WORD_SIZE as usize, 0);
-            debug_assert!(self.state.compact_from <= self.generation.end);
+            debug_assert!(self.state.compact_from <= self.mem.get_heap_pointer());
             self.time.tick();
         }
         self.complete_compacting();
@@ -331,16 +327,11 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         }
     }
 
-    fn complete_compacting(&mut self) {
-        debug_assert_eq!(self.state.compact_from, self.generation.end);
+    unsafe fn complete_compacting(&mut self) {
+        debug_assert_eq!(self.state.compact_from, self.mem.get_heap_pointer());
         debug_assert!(self.state.compact_from <= self.state.compact_to);
         debug_assert!(self.generation.start <= self.state.compact_to);
-        self.generation.end = self.state.compact_to;
+        self.mem.shrink_heap(self.state.compact_to);
         self.state.phase = Phase::Pause;
-    }
-
-    /// Get the new heap end (free pointer) after a GC increment or a full GC run.
-    pub fn get_heap_end(&self) -> usize {
-        self.generation.end
     }
 }

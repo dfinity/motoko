@@ -46,7 +46,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     gc::{
-        common::Strategy,
+        common::{Roots, Strategy},
         incremental::{
             collector::{GarbageCollector, Generation},
             state::incremental_gc_state,
@@ -61,8 +61,6 @@ use self::{
     time::Time,
 };
 
-use super::common::{Limits, Roots};
-
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M, heap_base: u32) {
     crate::memory::ic::initialize_memory(mem, heap_base, true);
@@ -71,84 +69,63 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M, heap_base: u32) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    use crate::gc::common::get_limits;
-
-    let limits = get_limits();
-    if decide_incremental_strategy(limits).is_some() {
+    if decide_incremental_strategy().is_some() {
         incremental_gc(mem);
     }
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
-    use crate::gc::common::{
-        get_limits, get_roots, set_limits, update_statistics, update_strategy,
-    };
-    use crate::memory::ic;
+    use crate::gc::common::{get_roots, update_statistics, update_strategy};
 
-    debug_assert_eq!(write_barrier::HEAP_BASE, ic::HEAP_BASE);
-    debug_assert_eq!(write_barrier::LAST_HP, ic::LAST_HP);
-
-    let old_limits = get_limits();
-    let strategy = decide_incremental_strategy(old_limits);
+    let old_heap_size = mem.get_heap_pointer();
+    let strategy = decide_incremental_strategy();
     let strategy = strategy.unwrap_or(Strategy::Young); // Use `Strategy::Young` in `--force-gc` mode.
 
-    let new_limits = run_incremental_gc(mem, strategy, old_limits, get_roots());
+    run_incremental_gc(mem, strategy, get_roots());
 
-    set_limits(new_limits);
-    update_statistics(old_limits, new_limits);
-    update_strategy(strategy, new_limits);
+    update_statistics(old_heap_size);
+    update_strategy(strategy);
 }
 
 #[cfg(feature = "ic")]
-unsafe fn decide_incremental_strategy(limits: Limits) -> Option<Strategy> {
+unsafe fn decide_incremental_strategy() -> Option<Strategy> {
     use crate::gc::common;
 
     if is_incremental_gc_running() {
         Some(Strategy::Full)
     } else {
-        common::decide_strategy(limits)
+        common::decide_strategy()
     }
 }
 
-pub unsafe fn run_incremental_gc<M: Memory>(
-    mem: &mut M,
-    strategy: Strategy,
-    limits: Limits,
-    roots: Roots,
-) -> Limits {
+pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy, roots: Roots) {
     // Always collect the young generation before the incremental collection of the old generation.
-    let mut limits = limits;
-    if strategy == Strategy::Young || strategy == Strategy::Full {
-        collect_young_generation(mem, &mut limits, roots);
-        if strategy == Strategy::Full {
-            run_old_generation_increment(mem, &mut limits, roots);
-        }
-        // New remembered set needs to be allocated in the new young generation.
-        create_young_remembered_set(mem, limits.last_free);
+    collect_young_generation(mem, roots);
+    if strategy == Strategy::Full {
+        run_old_generation_increment(mem, roots);
     }
-    limits
+    // New remembered set needs to be allocated in the new young generation.
+    create_young_remembered_set(mem);
 }
 
-unsafe fn collect_young_generation<M: Memory>(mem: &mut M, limits: &mut Limits, roots: Roots) {
+unsafe fn collect_young_generation<M: Memory>(mem: &mut M, roots: Roots) {
     let remembered_set = take_young_remembered_set();
     let mark_promoted = is_incremental_gc_running();
-    let generation = Generation::young(*limits, remembered_set, mark_promoted);
+    let generation = Generation::young(mem, remembered_set, mark_promoted);
     let mut state = State::new();
     let time = Time::unlimited();
     let mut gc = GarbageCollector::instance(mem, generation, &mut state, time);
     gc.run(roots);
-    limits.set_heap_end(gc.get_heap_end());
 }
 
 const INCREMENT_LIMIT: usize = 3_000_000;
 
-unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M, limits: &mut Limits, roots: Roots) {
-    debug_assert_eq!(limits.young_generation_size(), 0);
-    let generation = Generation::old(*limits);
+unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M, roots: Roots) {
+    debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
+    let generation = Generation::old(mem);
     let state = incremental_gc_state();
     let time = Time::limited(INCREMENT_LIMIT);
     let mut gc = GarbageCollector::instance(mem, generation, state, time);
     gc.run(roots);
-    limits.set_heap_end(gc.get_heap_end());
 }

@@ -26,7 +26,7 @@ use motoko_rts_macros::ic_mem_fn;
 use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
 
-use super::common::{Limits, Roots, Strategy};
+use super::common::{Roots, Strategy};
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -36,25 +36,23 @@ unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
-    use crate::gc::common::{decide_strategy, get_limits};
-    let limits = get_limits();
-    if decide_strategy(limits).is_some() {
+    use crate::gc::common::decide_strategy;
+
+    if decide_strategy().is_some() {
         generational_gc(mem);
     }
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
-    use crate::gc::common::{
-        decide_strategy, get_limits, get_roots, set_limits, update_statistics, update_strategy,
-    };
-    let old_limits = get_limits();
+    use crate::gc::common::{decide_strategy, get_roots, update_statistics, update_strategy};
+    let old_heap_size = mem.get_heap_pointer();
     let heap = Heap {
         mem,
-        limits: old_limits,
+        limits: get_limits(),
         roots: get_roots(),
     };
-    let strategy = decide_strategy(old_limits);
+    let strategy = decide_strategy();
 
     #[cfg(debug_assertions)]
     let forced_gc = strategy.is_none();
@@ -67,10 +65,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
     gc.run();
 
-    let new_limits = gc.heap.limits;
+    let new_limits = &gc.heap.limits;
     set_limits(new_limits);
-    update_statistics(old_limits, new_limits);
-    update_strategy(strategy, new_limits);
+    update_statistics(old_heap_size);
+    update_strategy(strategy);
 
     #[cfg(debug_assertions)]
     if !forced_gc {
@@ -79,6 +77,34 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     }
 
     write_barrier::init_generational_write_barrier(gc.heap.mem);
+}
+
+#[cfg(feature = "ic")]
+unsafe fn get_limits() -> Limits {
+    use crate::memory::ic;
+    assert!(ic::LAST_HP <= ic::HP);
+    assert!(ic::HEAP_BASE <= ic::LAST_HP);
+    Limits {
+        base: ic::HEAP_BASE as usize,
+        last_free: ic::LAST_HP as usize,
+        free: ic::HP as usize,
+    }
+}
+
+#[cfg(feature = "ic")]
+pub unsafe fn set_limits(limits: &Limits) {
+    use crate::memory::ic;
+    assert!(limits.base == ic::HEAP_BASE as usize);
+    assert!(limits.base <= limits.free);
+    assert!(limits.last_free == limits.free);
+    ic::HP = limits.free as u32;
+    ic::LAST_HP = ic::HP;
+}
+
+pub struct Limits {
+    pub base: usize,
+    pub last_free: usize, // This separates the old generation from the young generation.
+    pub free: usize,
 }
 
 pub struct Heap<'a, M: Memory> {

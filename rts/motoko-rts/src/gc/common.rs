@@ -1,4 +1,4 @@
-use crate::{constants::WORD_SIZE, types::Value};
+use crate::types::Value;
 
 #[derive(Clone, Copy)]
 pub struct Roots {
@@ -8,51 +8,6 @@ pub struct Roots {
     // * `generational::GenerationalGC::mark_root_set`
     // * `generational::GenerationalGC::thread_initial_phase`
     // * `incremental::roots::visit_roots`
-}
-
-#[derive(Clone, Copy)]
-pub struct Limits {
-    pub base: usize,
-    pub last_free: usize, // This separates the old generation from the young generation.
-    pub free: usize,
-}
-
-impl Limits {
-    pub fn set_heap_end(&mut self, free: usize) {
-        assert_eq!(free % WORD_SIZE as usize, 0);
-        assert!(self.base <= free);
-        self.free = free;
-        self.last_free = free;
-    }
-}
-
-impl Limits {
-    pub fn heap_size(&self) -> usize {
-        assert!(self.base <= self.free);
-        self.free - self.base
-    }
-
-    pub fn old_generation_size(&self) -> usize {
-        assert!(self.base <= self.last_free);
-        self.last_free - self.base
-    }
-
-    pub fn young_generation_size(&self) -> usize {
-        assert!(self.last_free <= self.free);
-        self.free - self.last_free
-    }
-}
-
-#[cfg(feature = "ic")]
-pub unsafe fn get_limits() -> Limits {
-    use crate::memory::ic;
-    assert!(ic::LAST_HP <= ic::HP);
-    assert!(ic::HEAP_BASE <= ic::LAST_HP);
-    Limits {
-        base: ic::HEAP_BASE as usize,
-        last_free: ic::LAST_HP as usize,
-        free: ic::HP as usize,
-    }
 }
 
 #[cfg(feature = "ic")]
@@ -65,23 +20,14 @@ pub unsafe fn get_roots() -> Roots {
 }
 
 #[cfg(feature = "ic")]
-pub unsafe fn set_limits(limits: Limits) {
-    use crate::memory::ic;
-    assert!(limits.base == ic::HEAP_BASE as usize);
-    assert!(limits.base <= limits.free);
-    assert!(limits.last_free == limits.free);
-    ic::HP = limits.free as u32;
-    ic::LAST_HP = ic::HP;
-}
-
-#[cfg(feature = "ic")]
-pub unsafe fn update_statistics(old_limits: Limits, new_limits: Limits) {
+pub unsafe fn update_statistics(old_heap_size: usize) {
     use crate::{memory::ic, types::Bytes};
 
-    let live_size = Bytes(new_limits.heap_size() as u32);
+    let new_heap_size = ic::HP as usize;
+    let live_size = Bytes(new_heap_size as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
-    assert!(old_limits.heap_size() >= new_limits.heap_size());
-    let reclaimed = old_limits.heap_size() - new_limits.heap_size();
+    debug_assert!(old_heap_size >= new_heap_size);
+    let reclaimed = old_heap_size - new_heap_size;
     ic::RECLAIMED += Bytes(reclaimed as u64);
 }
 
@@ -104,15 +50,16 @@ static mut PASSED_CRITICAL_LIMIT: bool = false;
 const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * MB;
 
 #[cfg(feature = "ic")]
-pub unsafe fn decide_strategy(limits: Limits) -> Option<Strategy> {
-    const YOUNG_GENERATION_THRESHOLD: usize = 8 * MB;
+pub unsafe fn decide_strategy() -> Option<Strategy> {
+    use crate::memory::ic;
 
-    if limits.free >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
+    const YOUNG_GENERATION_THRESHOLD: usize = 8 * MB;
+    if (ic::HP as usize) >= CRITICAL_MEMORY_LIMIT && !PASSED_CRITICAL_LIMIT {
         PASSED_CRITICAL_LIMIT = true;
         Some(Strategy::Full)
-    } else if limits.old_generation_size() > OLD_GENERATION_THRESHOLD {
+    } else if ic::LAST_HP - ic::HEAP_BASE > OLD_GENERATION_THRESHOLD as u32 {
         Some(Strategy::Full)
-    } else if limits.young_generation_size() > YOUNG_GENERATION_THRESHOLD {
+    } else if ic::HP - ic::LAST_HP > YOUNG_GENERATION_THRESHOLD as u32 {
         Some(Strategy::Young)
     } else {
         None
@@ -120,13 +67,15 @@ pub unsafe fn decide_strategy(limits: Limits) -> Option<Strategy> {
 }
 
 #[cfg(feature = "ic")]
-pub unsafe fn update_strategy(strategy: Strategy, limits: Limits) {
-    const GROWTH_RATE: f64 = 2.0;
+pub unsafe fn update_strategy(strategy: Strategy) {
+    use crate::memory::ic;
 
+    const GROWTH_RATE: f64 = 2.0;
     if strategy == Strategy::Full {
-        assert!(limits.heap_size() == limits.old_generation_size());
-        OLD_GENERATION_THRESHOLD = (limits.heap_size() as f64 * GROWTH_RATE) as usize;
-        if limits.free < CRITICAL_MEMORY_LIMIT {
+        debug_assert_eq!(ic::HP, ic::LAST_HP);
+        let heap_size = ic::HP - ic::HEAP_BASE;
+        OLD_GENERATION_THRESHOLD = (heap_size as f64 * GROWTH_RATE) as usize;
+        if (ic::HP as usize) < CRITICAL_MEMORY_LIMIT {
             PASSED_CRITICAL_LIMIT = false
         }
     }

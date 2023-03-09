@@ -2,6 +2,7 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
+use crate::constants::WORD_SIZE;
 use crate::gc::incremental::object_table::ObjectTable;
 use crate::rts_trap_with;
 use crate::types::*;
@@ -97,6 +98,8 @@ impl Memory for IcMemory {
     }
 
     unsafe fn shrink_heap(&mut self, new_free_pointer: usize) {
+        debug_assert!(HEAP_BASE <= new_free_pointer as u32);
+        debug_assert_eq!(new_free_pointer % WORD_SIZE as usize, 0);
         HP = new_free_pointer as u32;
         LAST_HP = new_free_pointer as u32;
     }
