@@ -996,7 +996,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "generational_write_barrier" [I32Type] [];
-    E.add_func_import env "rts" "write_with_barrier" [I32Type] [];
+    E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     ()
 
