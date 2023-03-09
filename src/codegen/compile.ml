@@ -7917,10 +7917,11 @@ module PatCode = struct
   let orElses : patternCode list -> patternCode -> patternCode =
     List.fold_right orElse
 
-  let orPatternFailure env pcode = with_fail (E.trap_with env "pattern failed") pcode
+  let orPatternFailure env pcode =
+    with_fail (E.trap_with env "pattern failed") pcode
 
   let orsPatternFailure env pcodes =
-    with_fail (E.trap_with env "pattern failed") (orElses pcodes definiteFail)
+    orPatternFailure env (orElses pcodes definiteFail)
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -9825,7 +9826,8 @@ and compile_exp (env : E.t) ae exp =
     FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
        orsPatternFailure env (List.map (fun (sr, c) ->
           c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
-       ) codes)
+       ) codes) ^^
+       G.i Unreachable (* We should always exit using the branch_code *)
     )
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
