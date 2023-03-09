@@ -9823,11 +9823,15 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     (* compile subexpressions and collect the provides stack rep *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
       let (ae1, pat_code) = compile_pat_local env ae pat in
-      let (sr, rhs_code) = compile_exp env ae1 e in
+      let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
       (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
       ) cs in
 
-    let final_sr = StackRep.joins (List.map fst codes) in
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let final_sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.joins (List.map fst codes)
+    in
 
     final_sr,
     (* Run scrut *)
