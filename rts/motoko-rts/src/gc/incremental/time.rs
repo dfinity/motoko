@@ -1,22 +1,36 @@
-//! Bounded time of the GC increment.
+//! Time of the GC increment, bounded or unbounded.
 //! Deterministically measured in synthetic steps.
+//! Bounded time is used for incremental old generation collection.
+//! Unbounded time is used for blocking young generation collection.
 
-pub struct BoundedTime {
+pub struct Time {
     steps: usize,
-    limit: usize,
+    limit: usize, // Sentinel `usize::MAX` denotes unlimited.
 }
 
-impl BoundedTime {
-    pub fn new(limit: usize) -> BoundedTime {
-        BoundedTime { steps: 0, limit }
+impl Time {
+    pub fn limited(limit: usize) -> Time {
+        assert!(limit < usize::MAX);
+        Time { steps: 0, limit }
+    }
+
+    pub fn unlimited() -> Time {
+        Time {
+            steps: 0,
+            limit: usize::MAX,
+        }
     }
 
     pub fn tick(&mut self) {
-        self.steps += 1;
+        self.advance(1);
     }
 
     pub fn advance(&mut self, amount: usize) {
-        self.steps += amount;
+        if amount <= usize::MAX - self.steps {
+            self.steps += amount;
+        } else {
+            self.steps = usize::MAX;
+        }
     }
 
     pub fn is_over(&self) -> bool {

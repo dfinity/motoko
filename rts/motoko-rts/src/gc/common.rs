@@ -1,4 +1,4 @@
-use crate::types::Value;
+use crate::{constants::WORD_SIZE, types::Value};
 
 #[derive(Clone, Copy)]
 pub struct Roots {
@@ -15,6 +15,15 @@ pub struct Limits {
     pub base: usize,
     pub last_free: usize, // This separates the old generation from the young generation.
     pub free: usize,
+}
+
+impl Limits {
+    pub fn set_heap_end(&mut self, free: usize) {
+        assert_eq!(free % WORD_SIZE as usize, 0);
+        assert!(self.base <= free);
+        self.free = free;
+        self.last_free = free;
+    }
 }
 
 impl Limits {

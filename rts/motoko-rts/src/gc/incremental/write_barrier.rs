@@ -1,13 +1,13 @@
 //! Write barrier, used by the incremental GC
 
-use crate::gc::common::Limits;
 use crate::memory::Memory;
 use crate::remembered_set::RememberedSet;
 use crate::types::{is_skewed, Value};
 use motoko_rts_macros::ic_mem_fn;
 
-use super::old_collection::{incremental_gc_phase, incremental_gc_state, OldCollection, Phase};
-use super::time::BoundedTime;
+use super::collector::{GarbageCollector, Generation};
+use super::state::{incremental_gc_phase, incremental_gc_state, Phase};
+use super::time::Time;
 
 pub static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
 
@@ -22,6 +22,12 @@ pub(super) unsafe fn init_incremental_write_barrier<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
     HEAP_BASE = ic::HEAP_BASE;
     create_young_remembered_set(mem, ic::LAST_HP as usize);
+}
+
+/// Take the young remembered set for young generation collection.
+/// A new young remembered set needs to be created after completed GC work.
+pub(super) unsafe fn take_young_remembered_set() -> RememberedSet {
+    YOUNG_REMEMBERED_SET.take().unwrap()
 }
 
 /// Create a new young remembered set after a young generation collection.
@@ -51,18 +57,19 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, n
 }
 
 /// Ensure snapshot-at-the-beginning consistency during the incremental mark phase.
-/// Catch overwritten object ids and mark the corresponding objects when the GC is in the mark phase.
+/// Catch overwritten object ids and mark the corresponding objects if the two conditions are met:
+/// * The GC is in the mark phase.
+/// * The corresponding object resides in the old generation.
 unsafe fn pre_update_barrier<M: Memory>(mem: &mut M, value: Value) {
-    if incremental_gc_phase() == Phase::Mark && value.points_to_or_beyond(HEAP_BASE as usize) {
-        let limits = Limits {
-            base: HEAP_BASE as usize,
-            last_free: LAST_HP as usize,
-            free: LAST_HP as usize, // TODO: Remove this provisional solution by offering this information via `mem`.
-        };
+    if incremental_gc_phase() == Phase::Mark
+        && value.points_to_or_beyond(HEAP_BASE as usize)
+        && value.get_object_address() < LAST_HP as usize
+    {
         let state = incremental_gc_state();
-        let time = BoundedTime::new(0);
-        let mut increment = OldCollection::instance(mem, limits, state, time);
-        increment.mark_object(value);
+        let time = Time::limited(0);
+        let generation = Generation::new(HEAP_BASE as usize, LAST_HP as usize, None, false);
+        let mut gc = GarbageCollector::instance(mem, generation, state, time);
+        gc.mark_object(value);
     }
 }
 
