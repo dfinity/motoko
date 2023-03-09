@@ -7880,6 +7880,8 @@ module PatCode = struct
     | CannotFail of G.t
     | CanFail of (G.t -> G.t)
 
+  let definiteFail = CanFail (fun fail -> fail)
+
   let (^^^) : patternCode -> patternCode -> patternCode = function
     | CannotFail is1 ->
       begin function
@@ -7912,7 +7914,13 @@ module PatCode = struct
           G.if0 G.nop is2
         )
 
-  let orPatternFailure env = with_fail (E.trap_with env "pattern failed")
+  let orElses : patternCode list -> patternCode -> patternCode =
+    List.fold_right orElse
+
+  let orPatternFailure env pcode = with_fail (E.trap_with env "pattern failed") pcode
+
+  let orsPatternFailure env pcodes =
+    with_fail (E.trap_with env "pattern failed") (orElses pcodes definiteFail)
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -9815,14 +9823,10 @@ and compile_exp (env : E.t) ae exp =
     code1 ^^ set_i ^^
     (* Run rest in block to exit from *)
     FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
-       let rec go cs = match cs with
-         | [] -> CanFail (fun k -> k)
-         | (sr, c)::cs -> orElse
-            (c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code))
-            (go cs) in
-       orPatternFailure env (go codes)
+       orsPatternFailure env (List.map (fun (sr, c) ->
+          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
+       ) codes)
     )
-
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
