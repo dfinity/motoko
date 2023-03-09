@@ -49,7 +49,6 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     let old_heap_size = mem.get_heap_pointer();
     let heap = Heap {
         mem,
-        limits: get_limits(),
         roots: get_roots(),
     };
     let strategy = decide_strategy();
@@ -65,51 +64,20 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
     gc.run();
 
-    let new_limits = &gc.heap.limits;
-    set_limits(new_limits);
     update_statistics(old_heap_size);
     update_strategy(strategy);
 
     #[cfg(debug_assertions)]
     if !forced_gc {
-        sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
+        sanity_checks::check_memory(&mut gc.heap);
         sanity_checks::take_snapshot(&mut gc.heap);
     }
 
     write_barrier::init_generational_write_barrier(gc.heap.mem);
 }
 
-#[cfg(feature = "ic")]
-unsafe fn get_limits() -> Limits {
-    use crate::memory::ic;
-    assert!(ic::LAST_HP <= ic::HP);
-    assert!(ic::HEAP_BASE <= ic::LAST_HP);
-    Limits {
-        base: ic::HEAP_BASE as usize,
-        last_free: ic::LAST_HP as usize,
-        free: ic::HP as usize,
-    }
-}
-
-#[cfg(feature = "ic")]
-pub unsafe fn set_limits(limits: &Limits) {
-    use crate::memory::ic;
-    assert!(limits.base == ic::HEAP_BASE as usize);
-    assert!(limits.base <= limits.free);
-    assert!(limits.last_free == limits.free);
-    ic::HP = limits.free as u32;
-    ic::LAST_HP = ic::HP;
-}
-
-pub struct Limits {
-    pub base: usize,
-    pub last_free: usize, // This separates the old generation from the young generation.
-    pub free: usize,
-}
-
 pub struct Heap<'a, M: Memory> {
     pub mem: &'a mut M,
-    pub limits: Limits,
     pub roots: Roots,
 }
 
@@ -138,10 +106,12 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn alloc_mark_structures(&mut self) {
         const BITMAP_ALIGNMENT: usize = 8 * WORD_SIZE as usize;
         let heap_prefix = match self.strategy {
-            Strategy::Young => self.heap.limits.last_free / BITMAP_ALIGNMENT * BITMAP_ALIGNMENT,
-            Strategy::Full => self.heap.limits.base,
+            Strategy::Young => {
+                self.heap.mem.get_last_heap_pointer() / BITMAP_ALIGNMENT * BITMAP_ALIGNMENT
+            }
+            Strategy::Full => self.heap.mem.get_heap_base(),
         };
-        let heap_size = Bytes((self.heap.limits.free - heap_prefix) as u32);
+        let heap_size = Bytes((self.heap.mem.get_heap_pointer() - heap_prefix) as u32);
         alloc_bitmap(self.heap.mem, heap_size, heap_prefix as u32 / WORD_SIZE);
         alloc_mark_stack(self.heap.mem);
     }
@@ -177,7 +147,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         for i in 0..root_array.len() {
             let object = root_array.get(i).as_obj();
             assert_eq!(object.tag(), TAG_MUTBOX);
-            assert!((object as usize) < self.heap.limits.base);
+            assert!((object as usize) < self.heap.mem.get_heap_base());
             self.mark_root_mutbox_fields(object as *mut MutBox);
         }
     }
@@ -189,7 +159,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let value = *location;
             // Check whether the location still refers to young object as this may have changed
             // due to subsequent writes to that location after the write barrier recording.
-            if value.points_to_or_beyond(self.heap.limits.last_free) {
+            if value.points_to_or_beyond(self.heap.mem.get_last_heap_pointer()) {
                 self.mark_object(value);
             }
             iterator.next();
@@ -250,9 +220,9 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn barrier_coverage_check(&self, field_address: *mut Value) {
         if self.strategy == Strategy::Full
-            && (field_address as usize) >= self.heap.limits.base
-            && (field_address as usize) < self.heap.limits.last_free
-            && (*field_address).points_to_or_beyond(self.heap.limits.last_free)
+            && (field_address as usize) >= self.heap.mem.get_heap_base()
+            && (field_address as usize) < self.heap.mem.get_last_heap_pointer()
+            && (*field_address).points_to_or_beyond(self.heap.mem.get_last_heap_pointer())
         {
             assert!(REMEMBERED_SET
                 .as_ref()
@@ -283,13 +253,13 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     fn generation_base(&self) -> usize {
         match self.strategy {
-            Strategy::Young => self.heap.limits.last_free,
-            Strategy::Full => self.heap.limits.base,
+            Strategy::Young => self.heap.mem.get_last_heap_pointer(),
+            Strategy::Full => self.heap.mem.get_heap_base(),
         }
     }
 
     fn generation_size(&self) -> usize {
-        self.heap.limits.free - self.generation_base()
+        self.heap.mem.get_heap_pointer() - self.generation_base()
     }
 
     fn survival_rate(&self) -> f64 {
@@ -322,7 +292,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         for i in 0..root_array.len() {
             let object = root_array.get(i).as_obj();
             assert_eq!(object.tag(), TAG_MUTBOX);
-            assert!((object as usize) < self.heap.limits.base);
+            assert!((object as usize) < self.heap.mem.get_heap_base());
             self.thread_root_mutbox_fields(object as *mut MutBox);
         }
     }
@@ -368,12 +338,12 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         while iterator.has_next() {
             let location = iterator.current().get_raw() as *mut Value;
             assert!(
-                (location as usize) >= self.heap.limits.base
-                    && (location as usize) < self.heap.limits.last_free
+                (location as usize) >= self.heap.mem.get_heap_base()
+                    && (location as usize) < self.heap.mem.get_last_heap_pointer()
             );
             let value = *location;
             // value in the location may have changed since recording by the write barrer
-            if value.points_to_or_beyond(self.heap.limits.last_free) {
+            if value.points_to_or_beyond(self.heap.mem.get_last_heap_pointer()) {
                 self.thread(location);
             }
             iterator.next();
@@ -382,11 +352,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn move_phase(&mut self) {
         REMEMBERED_SET = None; // no longer valid when the moving phase starts
-        let mut free = self.heap.limits.base;
+        let mut free = self.heap.mem.get_heap_base();
 
         let mut bitmap_iter = iter_bits();
         if self.strategy == Strategy::Young {
-            free = self.heap.limits.last_free;
+            free = self.heap.mem.get_last_heap_pointer();
         }
         let mut bit = bitmap_iter.next();
         while bit != BITMAP_ITER_END {
@@ -420,8 +390,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             bit = bitmap_iter.next();
         }
 
-        self.heap.limits.free = free;
-        self.heap.limits.last_free = free;
+        self.heap.mem.shrink_heap(free);
     }
 
     /// Thread forward pointers in object

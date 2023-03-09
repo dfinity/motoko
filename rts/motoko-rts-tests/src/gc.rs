@@ -13,10 +13,7 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
-use motoko_rts::gc::generational::{
-    write_barrier::{LAST_HP, REMEMBERED_SET},
-    Limits,
-};
+use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use motoko_rts::remembered_set::RememberedSet;
 use utils::{get_object_address, get_scalar_value, read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
@@ -434,25 +431,13 @@ impl GC {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
                     LAST_HP = heap_1.last_ptr_address() as u32;
 
-                    let limits = Limits {
-                        base: heap_base as usize,
-                        last_free: heap_1.last_ptr_address(),
-                        free: heap_1.heap_ptr_address(),
-                    };
                     let roots = Roots {
                         static_roots,
                         continuation_table_location: continuation_table_ptr_address,
                     };
-                    let gc_heap = motoko_rts::gc::generational::Heap {
-                        mem: heap,
-                        limits,
-                        roots,
-                    };
+                    let gc_heap = motoko_rts::gc::generational::Heap { mem: heap, roots };
                     let mut gc = GenerationalGC::new(gc_heap, strategy);
                     gc.run();
-                    let free = gc.heap.limits.free;
-                    heap.set_last_ptr_address(free);
-                    heap.set_heap_ptr_address(free);
                 }
                 round >= 2
             }

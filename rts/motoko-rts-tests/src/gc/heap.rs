@@ -94,11 +94,6 @@ impl MotokoHeap {
         self.inner.borrow().last_ptr_address()
     }
 
-    /// Update the last heap pointer given as an address in the current process.
-    pub fn set_last_ptr_address(&self, address: usize) {
-        self.inner.borrow_mut().set_last_ptr_address(address)
-    }
-
     /// Get the beginning of dynamic heap, as an address in the current process
     pub fn heap_base_address(&self) -> usize {
         self.inner.borrow().heap_base_address()
