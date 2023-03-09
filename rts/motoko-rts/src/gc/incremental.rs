@@ -87,8 +87,8 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     };
     use crate::memory::ic;
 
-    assert_eq!(write_barrier::HEAP_BASE, ic::HEAP_BASE);
-    assert_eq!(write_barrier::LAST_HP, ic::LAST_HP);
+    debug_assert_eq!(write_barrier::HEAP_BASE, ic::HEAP_BASE);
+    debug_assert_eq!(write_barrier::LAST_HP, ic::LAST_HP);
 
     let old_limits = get_limits();
     let strategy = decide_incremental_strategy(old_limits);
@@ -145,7 +145,7 @@ unsafe fn collect_young_generation<M: Memory>(mem: &mut M, limits: &mut Limits, 
 const INCREMENT_LIMIT: usize = 3_000_000;
 
 unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M, limits: &mut Limits, roots: Roots) {
-    assert_eq!(limits.young_generation_size(), 0);
+    debug_assert_eq!(limits.young_generation_size(), 0);
     let generation = Generation::old(*limits);
     let state = incremental_gc_state();
     let time = Time::limited(INCREMENT_LIMIT);

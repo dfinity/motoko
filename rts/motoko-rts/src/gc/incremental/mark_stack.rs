@@ -63,9 +63,9 @@ impl MarkStack {
 
     /// Allocate the mark stack before use.
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M) {
-        assert!(!self.is_allocated());
+        debug_assert!(!self.is_allocated());
         self.last = Self::new_table(mem, null_mut());
-        assert_eq!(self.top, 0);
+        debug_assert_eq!(self.top, 0);
     }
 
     /// Release the mark stack after use.
@@ -73,9 +73,9 @@ impl MarkStack {
         #[cfg(debug_assertions)]
         self.assert_is_garbage();
 
-        assert!(self.is_allocated());
-        assert!(self.is_empty());
-        assert_eq!(self.top, 0);
+        debug_assert!(self.is_allocated());
+        debug_assert!(self.is_empty());
+        debug_assert_eq!(self.top, 0);
         self.last = null_mut();
         // Stack and their object ids are freed by the GC.
     }
@@ -116,7 +116,7 @@ impl MarkStack {
         self.top -= 1;
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
         let object = (*self.last).entries[self.top];
-        assert_ne!(object, null_mut());
+        debug_assert_ne!(object, null_mut());
         object
     }
 

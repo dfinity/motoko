@@ -123,8 +123,8 @@ impl ObjectTable {
     /// Initialize the new object table at address base with `length` entries.
     /// The memory between `base` and `base + length * WORD` must already be reserved.
     pub fn new(base: *mut usize, length: usize) -> ObjectTable {
-        assert!(length > 0);
-        assert_eq!(base as u32 % WORD_SIZE, 0);
+        debug_assert!(length > 0);
+        debug_assert_eq!(base as u32 % WORD_SIZE, 0);
         let mut table = ObjectTable {
             base,
             length,
@@ -171,9 +171,9 @@ impl ObjectTable {
 
     /// Record that an object obtained a new address.
     pub fn move_object(&self, object_id: Value, new_address: usize) {
-        assert!(self.read_element(object_id) >= self.end());
-        assert_eq!(new_address % WORD_SIZE as usize, 0);
-        assert!(new_address >= self.end());
+        debug_assert!(self.read_element(object_id) >= self.end());
+        debug_assert_eq!(new_address % WORD_SIZE as usize, 0);
+        debug_assert!(new_address >= self.end());
         self.write_element(object_id, new_address);
     }
 
@@ -182,7 +182,7 @@ impl ObjectTable {
     }
 
     fn push_free_id(&mut self, object_id: Value) {
-        assert!(object_id != FREE_STACK_END);
+        debug_assert!(object_id != FREE_STACK_END);
         self.write_element(object_id, self.free.get_raw() as usize);
         self.free = object_id;
     }
@@ -211,11 +211,11 @@ impl ObjectTable {
     }
 
     fn get_element(&self, object_id: Value) -> *mut usize {
-        assert!(object_id.is_object_id());
+        debug_assert!(object_id.is_object_id());
         let element_address = unskew(object_id.get_raw() as usize);
-        assert_eq!(element_address % WORD_SIZE as usize, 0);
-        assert!(element_address >= self.base as usize);
-        assert!(element_address < self.end());
+        debug_assert_eq!(element_address % WORD_SIZE as usize, 0);
+        debug_assert!(element_address >= self.base as usize);
+        debug_assert!(element_address < self.end());
         element_address as *mut usize
     }
 }

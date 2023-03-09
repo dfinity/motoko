@@ -38,7 +38,7 @@ impl Generation {
     }
 
     pub fn young(limits: Limits, remembered_set: RememberedSet, mark_promoted: bool) -> Generation {
-        assert!(limits.last_free <= limits.free);
+        debug_assert!(limits.last_free <= limits.free);
         Self::new(
             limits.last_free,
             limits.free,
@@ -48,8 +48,8 @@ impl Generation {
     }
 
     pub fn old(limits: Limits) -> Generation {
-        assert_eq!(limits.last_free, limits.free);
-        assert!(limits.base <= limits.free);
+        debug_assert_eq!(limits.last_free, limits.free);
+        debug_assert!(limits.base <= limits.free);
         Self::new(limits.base, limits.free, None, false)
     }
 }
@@ -109,7 +109,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
 
     /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
     unsafe fn start_marking(&mut self, roots: Roots) {
-        assert!(self.pausing());
+        debug_assert!(self.pausing());
 
         self.state.phase = Phase::Mark;
         self.state.mark_stack.allocate(self.mem);
@@ -136,13 +136,13 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     /// The reachable object traversal is performed separatedly by `run` during
     /// the mark phase.
     pub unsafe fn mark_object(&mut self, value: Value) {
-        assert!(self.state.phase == Phase::Mark);
-        assert!(!self.state.mark_complete);
+        debug_assert!(self.state.phase == Phase::Mark);
+        debug_assert!(!self.state.mark_complete);
         let object = value.get_object_address() as *mut Obj;
         self.time.tick();
-        assert!(object as usize >= self.generation.start);
-        assert!((object as usize) < self.generation.end);
-        assert_eq!(object as u32 % WORD_SIZE, 0);
+        debug_assert!(object as usize >= self.generation.start);
+        debug_assert!((object as usize) < self.generation.end);
+        debug_assert_eq!(object as u32 % WORD_SIZE, 0);
         if object.is_marked() {
             return;
         }
@@ -151,7 +151,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn mark_increment(&mut self) {
-        assert!(!self.state.mark_complete);
+        debug_assert!(!self.state.mark_complete);
         loop {
             let object = self.state.mark_stack.pop();
             if object == null_mut() {
@@ -189,31 +189,31 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn complete_marking(&mut self) {
-        assert!(self.state.phase == Phase::Mark);
-        assert!(!self.state.mark_complete);
+        debug_assert!(self.state.phase == Phase::Mark);
+        debug_assert!(!self.state.mark_complete);
         self.state.mark_complete = true;
         self.state.mark_stack.free();
     }
 
     unsafe fn marking_completed(&self) -> bool {
-        assert!(!self.state.mark_complete || self.state.mark_stack.is_empty());
+        debug_assert!(!self.state.mark_complete || self.state.mark_stack.is_empty());
         self.state.mark_complete
     }
 
     unsafe fn start_compacting(&mut self) {
         // TODO: Sanity check to test mark completeness against classical blocking marking.
-        assert!(self.state.phase == Phase::Mark);
-        assert!(self.marking_completed());
+        debug_assert!(self.state.phase == Phase::Mark);
+        debug_assert!(self.marking_completed());
         self.state.phase = Phase::Compact;
         self.state.compact_from = self.generation.start;
         self.state.compact_to = self.state.compact_from;
     }
 
     unsafe fn compact_increment(&mut self) {
-        assert!(self.state.phase == Phase::Compact);
-        assert!(self.generation.remembered_set.is_none()); // No longer valid as it will be collected.
-                                                           // Need to visit all objects in the generation, since mark bits may need to be
-                                                           // cleared and/or garbage object ids must be freed.
+        debug_assert!(self.state.phase == Phase::Compact);
+        debug_assert!(self.generation.remembered_set.is_none()); // No longer valid as it will be collected.
+                                                                 // Need to visit all objects in the generation, since mark bits may need to be
+                                                                 // cleared and/or garbage object ids must be freed.
         while self.state.compact_from < self.generation.end && !self.time.is_over() {
             let block = self.state.compact_from as *mut Tag;
             let size = block_size(block as usize);
@@ -221,8 +221,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                 self.compact_object(block as *mut Obj, size);
             }
             self.state.compact_from += size.to_bytes().as_usize();
-            assert_eq!(self.state.compact_from % WORD_SIZE as usize, 0);
-            assert!(self.state.compact_from <= self.generation.end);
+            debug_assert_eq!(self.state.compact_from % WORD_SIZE as usize, 0);
+            debug_assert!(self.state.compact_from <= self.generation.end);
             self.time.tick();
         }
         self.complete_compacting();
@@ -249,8 +249,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                     .advance((size.as_usize() as f64 / TIME_FRACTION_PER_WORD) as usize);
             }
             self.state.compact_to += size.to_bytes().as_usize();
-            assert!(self.state.compact_to <= self.state.compact_from);
-            assert_eq!(self.state.compact_to % WORD_SIZE as usize, 0);
+            debug_assert!(self.state.compact_to <= self.state.compact_from);
+            debug_assert_eq!(self.state.compact_to % WORD_SIZE as usize, 0);
         } else {
             // Free the id of a garbage object in the object table.
             object_id.free_object_id();
@@ -258,9 +258,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     fn complete_compacting(&mut self) {
-        assert_eq!(self.state.compact_from, self.generation.end);
-        assert!(self.state.compact_from <= self.state.compact_to);
-        assert!(self.generation.start <= self.state.compact_to);
+        debug_assert_eq!(self.state.compact_from, self.generation.end);
+        debug_assert!(self.state.compact_from <= self.state.compact_to);
+        debug_assert!(self.generation.start <= self.state.compact_to);
         self.generation.end = self.state.compact_to;
         self.state.phase = Phase::Pause;
     }

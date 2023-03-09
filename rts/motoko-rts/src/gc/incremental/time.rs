@@ -10,7 +10,7 @@ pub struct Time {
 
 impl Time {
     pub fn limited(limit: usize) -> Time {
-        assert!(limit < usize::MAX);
+        debug_assert!(limit < usize::MAX);
         Time { steps: 0, limit }
     }
 
