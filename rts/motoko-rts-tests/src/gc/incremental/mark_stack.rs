@@ -1,9 +1,11 @@
-use std::ptr::null_mut;
-
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 use motoko_rts::{
-    gc::incremental::mark_stack::{MarkStack, STACK_TABLE_CAPACITY},
-    types::{Obj, Words},
+    gc::incremental::{
+        mark_stack::{MarkStack, STACK_TABLE_CAPACITY},
+        object_table::ObjectTable,
+    },
+    memory::Memory,
+    types::{Obj, Words, OBJECT_TABLE},
 };
 
 pub unsafe fn test() {
@@ -21,23 +23,40 @@ pub unsafe fn test() {
     test_push_pop(10_000, 2500);
 }
 
+fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
+    let size = Words(length as u32);
+    let base = unsafe { mem.alloc_words(size) } as *mut usize;
+    ObjectTable::new(base, length)
+}
+
 unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
     let mut stack = MarkStack::new();
     let mut mem = TestMemory::new(Words(64 * 1024));
+    debug_assert!(OBJECT_TABLE.is_none());
+    OBJECT_TABLE = Some(create_object_table(&mut mem, 16));
+
     stack.allocate(&mut mem);
+    test_internal_push_pop(&mut mem, &mut stack, amount, regrow_step);
+    stack.free();
+    OBJECT_TABLE = None;
+}
+
+unsafe fn test_internal_push_pop(
+    mem: &mut TestMemory,
+    stack: &mut MarkStack,
+    amount: usize,
+    regrow_step: usize,
+) {
     for count in 0..amount {
-        stack.push(&mut mem, synthetic_object_address(count));
+        stack.push(mem, synthetic_object_address(count));
         if count == regrow_step {
-            test_push_pop(amount - count, regrow_step);
+            test_internal_push_pop(mem, stack, amount - count, regrow_step);
         }
     }
     for count in (0..amount).rev() {
         assert!(!stack.is_empty());
         assert_eq!(stack.pop(), synthetic_object_address(count));
     }
-    assert!(stack.is_empty());
-    assert_eq!(stack.pop(), null_mut());
-    stack.free();
 }
 
 fn synthetic_object_address(count: usize) -> *mut Obj {

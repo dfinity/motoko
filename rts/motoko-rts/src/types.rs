@@ -449,24 +449,31 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub fn initialize_id(&mut self, object_id: Value) {
-        debug_assert_eq!(object_id.get_raw() as usize & MARK_BIT_MASK, 0);
+    pub unsafe fn initialize_id(&mut self, object_id: Value) {
+        debug_assert!(OBJECT_TABLE.is_none() || object_id.get_raw() as usize & MARK_BIT_MASK == 0);
         self.mark_and_id = object_id.get_raw() as usize;
     }
 
     pub unsafe fn object_id(self: *const Self) -> Value {
-        Value::from_raw(((*self).mark_and_id & !MARK_BIT_MASK) as u32)
+        if OBJECT_TABLE.is_some() {
+            Value::from_raw(((*self).mark_and_id & !MARK_BIT_MASK) as u32)
+        } else {
+            Value::from_raw(skew(self as usize) as u32)
+        }
     }
 
     pub unsafe fn is_marked(self: *const Self) -> bool {
+        debug_assert!(OBJECT_TABLE.is_some());
         (*self).mark_and_id & MARK_BIT_MASK != 0
     }
 
     pub unsafe fn mark(self: *mut Self) {
+        debug_assert!(OBJECT_TABLE.is_some());
         (*self).mark_and_id |= MARK_BIT_MASK;
     }
 
     pub unsafe fn unmark(self: *mut Self) {
+        debug_assert!(OBJECT_TABLE.is_some());
         (*self).mark_and_id &= !MARK_BIT_MASK;
     }
 
