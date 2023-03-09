@@ -21,7 +21,7 @@ func multi_value_switch(n : Nat) : (Nat, Nat) {
   switch (n){
     case (0) { returns_tuple() };
     case (1) { returns_tuple() };
-    case (n) { (5,6) };
+    case (_) { (5,6) };
   };
 };
 
