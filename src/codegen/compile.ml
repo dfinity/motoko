@@ -9729,7 +9729,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
   end
 
+(* Compile, infer and return stack representation *)
 and compile_exp (env : E.t) ae exp =
+  compile_exp_with_hint env ae None exp
+
+(* Compile to given stack representation *)
+and compile_exp_as env ae sr_out e =
+  let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
+  code ^^ StackRep.adjust env sr_in sr_out
+
+(* Compile, infer and return stack representation, taking the hint into account *)
+and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   if exp.note.Note.const
   then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
@@ -9767,7 +9777,7 @@ and compile_exp (env : E.t) ae exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-    let (sr, code2) = compile_exp env ae' exp in
+    let (sr, code2) = compile_exp_with_hint env ae' sr_hint exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -9864,27 +9874,12 @@ and compile_exp (env : E.t) ae exp =
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
 
-and compile_exp_as env ae sr_out e =
-  G.with_region e.at (
-    match sr_out, e.it with
-    (* Some optimizations for certain sr_out and expressions *)
-    | _ , BlockE (decs, exp) ->
-      let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let ae', codeW1 = compile_decs env ae decs captured in
-      let code2 = compile_exp_as env ae' sr_out exp in
-      codeW1 code2
-    (* Fallback to whatever stackrep compile_exp chooses *)
-    | _ ->
-      let sr_in, code = compile_exp env ae e in
-      code ^^ StackRep.adjust env sr_in sr_out
-  )
-
 and compile_exp_ignore env ae e =
   let sr, code = compile_exp env ae e in
   code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
-  let sr_in, code = compile_exp env ae e in
+  let sr_in, code = compile_exp_with_hint env ae sr_out_o e in
   G.with_region e.at (
     code ^^
     match sr_out_o with
