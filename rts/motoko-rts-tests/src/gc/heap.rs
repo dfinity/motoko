@@ -21,6 +21,24 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
+    fn get_heap_base(&self) -> usize {
+        self.inner.borrow().heap_base_address()
+    }
+
+    fn get_last_heap_pointer(&self) -> usize {
+        self.inner.borrow().last_ptr_address()
+    }
+
+    fn get_heap_pointer(&self) -> usize {
+        self.inner.borrow().heap_ptr_address()
+    }
+
+    unsafe fn shrink_heap(&mut self, new_heap_pointer: usize) {
+        let mut inner = self.inner.borrow_mut();
+        inner.set_heap_ptr_address(new_heap_pointer);
+        inner.set_last_ptr_address(new_heap_pointer);
+    }
+
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         self.inner.borrow_mut().alloc_words(n)
     }

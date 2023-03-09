@@ -28,6 +28,11 @@ use motoko_rts_macros::ic_mem_fn;
 /// Returns an object address that still needs to be assiged to a new object id to  
 /// obtain a `Value`.
 pub trait Memory {
+    fn get_heap_base(&self) -> usize;
+    fn get_last_heap_pointer(&self) -> usize;
+    fn get_heap_pointer(&self) -> usize;
+    unsafe fn shrink_heap(&mut self, new_free_pointer: usize); // After GC run, also sets the last heap pointer.
+
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize;
 }
 

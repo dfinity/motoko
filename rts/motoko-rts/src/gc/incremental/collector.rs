@@ -1,20 +1,20 @@
 //! Garbage collector for young and old generation used by the incremental GC.
-//! 
+//!
 //! Young generation collection (blocking):
 //! --------------------------------------
-//! 
+//!
 //! The young generation collection runs non-incrementally, blocking the mutator, by using `Time::unlimited()`.
-//! 
+//!
 //! It is scheduled:
 //! * Before each GC increment of the old generation, for simplifying incremental collection.
 //! * After a certain amount of new allocations, i.e. when young generation has exceeded a threshold.
 //!
-//! Young generation collection aims at fast reclamation of short-lived objects, to reduce GC latency, 
-//! which is particularly relevant in an incremental GC. Young generation collection blocks the mutator, 
+//! Young generation collection aims at fast reclamation of short-lived objects, to reduce GC latency,
+//! which is particularly relevant in an incremental GC. Young generation collection blocks the mutator,
 //! i.e. does not run incrementally.
 //!
 //! The young generation collection requires an extra root set of old-to-young pointers. Those pointers
-//! are caught by a write barrier and recorded in a remembered set. The remembered set lives in the young 
+//! are caught by a write barrier and recorded in a remembered set. The remembered set lives in the young
 //! generation and is freed during the young generation collection.
 //!
 //! The compaction phase can use the simple object movement enabled by the central object table provided
@@ -22,11 +22,11 @@
 //!
 //! Old generation collection (incremental):
 //! ---------------------------------------
-//! 
+//!
 //! Old generation collection runs incrementally in multiple GC increments, using `Time::limited()`.
 //! It is scheduled to run after young generation collection, such that it can ignore generational aspects.
 //!
-//! New objects are always first allocated in the young generation and become only visible to the incremental 
+//! New objects are always first allocated in the young generation and become only visible to the incremental
 //! GC after they have been promoted to the old generation (i.e. survived the preceding young generation collection).
 //!
 //! The incremental collection of the old generation is based on two phases:
@@ -45,25 +45,25 @@
 //! * During mark phase, new allocations to the old generations (promotions from young generation) need to be marked.
 //! * The mark phase must only start on an empty call stack.
 //! Anyway, GC increments are currently only scheduled on empty call stack.
-//! 
+//!
 //! New allocation marking policy:
 //! ------------------------------
 //! * New objects are allocated in the young generation and not marked (to allow fast reclamation).
 //! * When young objects are promoted to the old generation, they are marked if and only if the
 //!   incremental GC of the old generation is active (i.e. is in mark or compact phase).
-//! 
+//!
 //! Mark bit:
 //! ---------
 //!
 //! The GC uses a mark bit in the object header instead of mark bitmaps since there is no performance advantage
 //! by using the mark bitmap for skipping garbage objects. This is because the object ids of garbage objects need
 //! to be freed in the object table and therefore, the compaction phase must visit all objects (marked and unmarked).
-//! 
+//!
 //! Mark stack:
 //! -----------
-//! 
-//! The mark stack is allocated in the generation where it is used, i.e. young generation collection allocates 
-//! the mark stack pages inside the young generation, while mark stack pages of the old generation are added to the 
+//!
+//! The mark stack is allocated in the generation where it is used, i.e. young generation collection allocates
+//! the mark stack pages inside the young generation, while mark stack pages of the old generation are added to the
 //! old generation. Mark stack pages remain unmarked, such that will be collected as garbage during compaction of
 //! the corresponding phase.
 use core::ptr::null_mut;
@@ -215,9 +215,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             return;
         }
         object.mark();
+        assert_eq!(self.generation.end, self.mem.get_heap_pointer());
         self.state.mark_stack.push(self.mem, object);
-        // TODO: Generation may be extended because of additional mark stack pages
-        unimplemented!();
+        // Generation may be extended because of additional mark stack pages
+        self.generation.end = self.mem.get_heap_pointer();
     }
 
     unsafe fn mark_increment(&mut self) {
@@ -250,9 +251,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             |gc, slice_start, array| {
                 let length = slice_array(array);
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
+                    assert_eq!(gc.generation.end, gc.mem.get_heap_pointer());
                     gc.state.mark_stack.push(gc.mem, array as *mut Obj);
                     // TODO: Generation may be extended because of additional mark stack pages
-                    unimplemented!();
+                    gc.generation.end = gc.mem.get_heap_pointer();
                 }
                 gc.time.advance((length - slice_start) as usize);
                 length

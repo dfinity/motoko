@@ -84,6 +84,23 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 pub struct IcMemory;
 
 impl Memory for IcMemory {
+    fn get_heap_base(&self) -> usize {
+        unsafe { HEAP_BASE as usize }
+    }
+
+    fn get_last_heap_pointer(&self) -> usize {
+        unsafe { LAST_HP as usize }
+    }
+
+    fn get_heap_pointer(&self) -> usize {
+        unsafe { HP as usize }
+    }
+
+    unsafe fn shrink_heap(&mut self, new_free_pointer: usize) {
+        HP = new_free_pointer as u32;
+        LAST_HP = new_free_pointer as u32;
+    }
+
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         let bytes = n.to_bytes();

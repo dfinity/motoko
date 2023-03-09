@@ -27,6 +27,22 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
+    fn get_heap_base(&self) -> usize {
+        self.heap.as_ptr() as usize
+    }
+
+    fn get_last_heap_pointer(&self) -> usize {
+        self.hp
+    }
+
+    fn get_heap_pointer(&self) -> usize {
+        self.hp
+    }
+
+    unsafe fn shrink_heap(&mut self, _new_heap_pointer: usize) {
+        unreachable!()
+    }
+
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         let bytes = n.to_bytes();
 
