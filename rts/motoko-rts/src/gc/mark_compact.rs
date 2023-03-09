@@ -18,7 +18,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_compacting_gc<M: Memory>(mem: &mut M, heap_base: u32) {
-    crate::memory::ic::initialize_memory(mem, heap_base, true);
+    crate::memory::ic::initialize_memory(mem, heap_base, false);
 }
 
 #[ic_mem_fn(ic_only)]

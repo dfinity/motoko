@@ -30,7 +30,7 @@ use super::common::{Limits, Roots, Strategy};
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
-    crate::memory::ic::initialize_memory(mem, heap_base, true);
+    crate::memory::ic::initialize_memory(mem, heap_base, false);
     write_barrier::init_generational_write_barrier(mem);
 }
 
