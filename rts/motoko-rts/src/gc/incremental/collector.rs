@@ -72,7 +72,6 @@ use core::ptr::null_mut;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::state::Phase,
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -80,7 +79,12 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
-use super::{array_slicing::slice_array, roots::visit_roots, state::State, time::Time};
+use super::{
+    array_slicing::slice_array, roots::visit_roots, state::Phase, state::State, time::Time,
+};
+
+#[cfg(debug_assertions)]
+use super::sanity_checks::{check_memory, CheckerMode};
 
 pub struct Generation {
     start: usize,
@@ -272,7 +276,12 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn start_compacting(&mut self) {
-        // TODO: Sanity check to test mark completeness against classical blocking marking.
+        #[cfg(debug_assertions)]
+        if self.generation.start != self.mem.get_last_heap_pointer() {
+            // Sanity check for incremental marking of the old generation.
+            check_memory(self.mem, CheckerMode::MarkCompletion);
+        }
+
         debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(self.marking_completed());
         self.state.phase = Phase::Compact;
@@ -334,5 +343,13 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(self.generation.start <= self.state.compact_to);
         self.mem.shrink_heap(self.state.compact_to);
         self.state.phase = Phase::Pause;
+
+        #[cfg(debug_assertions)]
+        check_memory(self.mem, CheckerMode::CompactCompletion);
+
+        debug_assert_eq!(
+            self.mem.get_last_heap_pointer(),
+            self.mem.get_heap_pointer()
+        );
     }
 }

@@ -42,6 +42,9 @@ mod state;
 pub mod time;
 pub mod write_barrier;
 
+#[cfg(debug_assertions)]
+mod sanity_checks;
+
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
