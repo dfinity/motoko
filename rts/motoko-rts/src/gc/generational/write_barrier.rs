@@ -13,7 +13,7 @@ pub(super) unsafe fn init_generational_write_barrier<M: Memory>(mem: &mut M) {
     REMEMBERED_SET = Some(RememberedSet::new(mem));
 }
 
-pub unsafe fn using_generational_gc() -> bool {
+pub unsafe fn using_generational_barrier() -> bool {
     REMEMBERED_SET.is_some()
 }
 

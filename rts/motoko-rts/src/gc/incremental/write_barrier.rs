@@ -33,6 +33,11 @@ pub(super) unsafe fn create_young_remembered_set<M: Memory>(mem: &mut M) {
     debug_assert!(mem.get_last_heap_pointer() < mem.get_heap_pointer());
 }
 
+pub(crate) unsafe fn using_incremental_barrier() -> bool {
+    debug_assert!(YOUNG_REMEMBERED_SET.is_some() || incremental_gc_phase() == Phase::Pause);
+    YOUNG_REMEMBERED_SET.is_some()
+}
+
 /// Write a potential pointer value with with a pre- and post-update barrier used by the incremental GC.
 /// `location` (unskewed) denotes the field or array element where the value is to be written to.
 /// `value` (skewed if an object id) denotes the value that is to be written to the location.

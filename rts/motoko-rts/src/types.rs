@@ -52,9 +52,11 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::{generational_write_barrier, using_generational_gc};
+use crate::gc::generational::write_barrier::{
+    generational_write_barrier, using_generational_barrier,
+};
 use crate::gc::incremental::object_table::ObjectTable;
-use crate::gc::incremental::write_barrier::write_with_barrier;
+use crate::gc::incremental::write_barrier::{using_incremental_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -508,9 +510,13 @@ impl Array {
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         debug_assert!(value.is_object_id());
         let slot_addr = self.element_address(idx);
-        write_with_barrier(mem, slot_addr as *mut Value, value);
-        if using_generational_gc() {
-            generational_write_barrier(mem, slot_addr as usize);
+        if using_incremental_barrier() {
+            write_with_barrier(mem, slot_addr as *mut Value, value);
+        } else {
+            *(slot_addr as *mut Value) = value;
+            if using_generational_barrier() {
+                generational_write_barrier(mem, slot_addr as usize);
+            }
         }
     }
 
