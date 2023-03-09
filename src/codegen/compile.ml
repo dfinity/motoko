@@ -9810,7 +9810,7 @@ and compile_exp (env : E.t) ae exp =
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
 
-    (* compile subexpressions and collect the provides stack rep *)
+    (* compile subexpressions and collect the provided stack reps *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
       let (ae1, pat_code) = compile_pat_local env ae pat in
       let (sr, rhs_code) = compile_exp env ae1 e in
