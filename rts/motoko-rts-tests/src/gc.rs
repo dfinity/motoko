@@ -386,17 +386,8 @@ impl GC {
                 unsafe {
                     copying_gc_internal(
                         heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
-                        // note_live_size
-                        |_live_size| {},
-                        // note_reclaimed
-                        |_reclaimed| {},
                     );
                 }
                 true

@@ -24,47 +24,28 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
+    use crate::gc::common::update_statistics;
     use crate::memory::ic;
 
+    let old_heap_size = mem.get_heap_pointer();
     copying_gc_internal(
         mem,
-        ic::HEAP_BASE,
-        // get_hp
-        || ic::HP as usize,
-        // set_hp
-        |hp| ic::HP = hp,
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
-        // note_live_size
-        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
-        // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
-
-    ic::LAST_HP = ic::HP;
+    update_statistics(old_heap_size);
 }
 
-pub unsafe fn copying_gc_internal<
-    M: Memory,
-    GetHp: Fn() -> usize,
-    SetHp: FnMut(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
->(
+pub unsafe fn copying_gc_internal<M: Memory>(
     mem: &mut M,
-    heap_base: u32,
-    get_hp: GetHp,
-    mut set_hp: SetHp,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
-    note_live_size: NoteLiveSize,
-    note_reclaimed: NoteReclaimed,
 ) {
     // Does not work with object table.
     assert!(OBJECT_TABLE.is_none());
 
-    let begin_from_space = heap_base as usize;
-    let end_from_space = get_hp();
+    let begin_from_space = mem.get_heap_base();
+    let end_from_space = mem.get_heap_pointer();
     let begin_to_space = end_from_space;
 
     let static_roots = static_roots.as_array();
@@ -83,20 +64,13 @@ pub unsafe fn copying_gc_internal<
 
     // Scavenge to-space
     let mut p = begin_to_space;
-    while p < get_hp() {
+    while p < mem.get_heap_pointer() {
         let size = block_size(p);
         scav(mem, begin_from_space, begin_to_space, p);
         p += size.to_bytes().as_usize();
     }
 
-    let end_to_space = get_hp();
-
-    // Note the stats
-    let new_live_size = end_to_space - begin_to_space;
-    note_live_size(Bytes(new_live_size as u32));
-
-    let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
-    note_reclaimed(Bytes(reclaimed as u32));
+    let end_to_space = mem.get_heap_pointer();
 
     // Copy to-space to the beginning of from-space
     memcpy_bytes(
@@ -105,9 +79,9 @@ pub unsafe fn copying_gc_internal<
         Bytes((end_to_space - begin_to_space) as u32),
     );
 
-    // Reset the heap pointer
+    // Reset the heap pointer and last heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    set_hp(new_hp as u32);
+    mem.shrink_heap(new_hp);
 }
 
 /// Evacuate (copy) an object in from-space to to-space.

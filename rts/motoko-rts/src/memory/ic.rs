@@ -86,15 +86,24 @@ pub struct IcMemory;
 
 impl Memory for IcMemory {
     fn get_heap_base(&self) -> usize {
-        unsafe { HEAP_BASE as usize }
+        unsafe {
+            debug_assert_ne!(HEAP_BASE, 0);
+            HEAP_BASE as usize
+        }
     }
 
     fn get_last_heap_pointer(&self) -> usize {
-        unsafe { LAST_HP as usize }
+        unsafe {
+            debug_assert_ne!(LAST_HP, 0);
+            LAST_HP as usize
+        }
     }
 
     fn get_heap_pointer(&self) -> usize {
-        unsafe { HP as usize }
+        unsafe {
+            debug_assert_ne!(HP, 0);
+            HP as usize
+        }
     }
 
     unsafe fn shrink_heap(&mut self, new_free_pointer: usize) {
