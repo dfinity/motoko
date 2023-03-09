@@ -1,4 +1,4 @@
-use motoko_rts::memory::Memory;
+use motoko_rts::memory::{Memory, Roots};
 use motoko_rts::types::Words;
 
 pub struct TestMemory {
@@ -27,6 +27,10 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
+    fn get_roots(&self) -> Roots {
+        unimplemented!()
+    }
+
     fn get_heap_base(&self) -> usize {
         self.heap.as_ptr() as usize
     }
@@ -40,7 +44,7 @@ impl Memory for TestMemory {
     }
 
     unsafe fn shrink_heap(&mut self, _new_heap_pointer: usize) {
-        unreachable!()
+        unimplemented!()
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {

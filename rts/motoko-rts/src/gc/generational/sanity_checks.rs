@@ -6,7 +6,6 @@
 use core::ptr::null_mut;
 
 use super::write_barrier::REMEMBERED_SET;
-use super::{Heap, Roots};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
@@ -15,27 +14,27 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 static mut SNAPSHOT: *mut Blob = null_mut();
 
 /// Take a memory snapshot. To be initiated after GC run.
-pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
-    let length = Bytes(heap.mem.get_heap_pointer() as u32);
-    let blob = alloc_blob(heap.mem, length).get_object_address() as *mut Blob;
+pub unsafe fn take_snapshot<M: Memory>(mem: &mut M) {
+    let length = Bytes(mem.get_heap_pointer() as u32);
+    let blob = alloc_blob(mem, length).get_object_address() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }
 
 /// Verify write barrier coverage by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
-pub unsafe fn verify_snapshot<M: Memory>(heap: &Heap<M>, verify_roots: bool) {
+pub unsafe fn verify_snapshot<M: Memory>(mem: &mut M, verify_roots: bool) {
     if SNAPSHOT.is_null() {
         return;
     }
-    assert!(heap.mem.get_heap_base() <= heap.mem.get_heap_pointer());
+    assert!(mem.get_heap_base() <= mem.get_heap_pointer());
     if verify_roots {
         verify_static_roots(
-            heap.roots.static_roots.as_array(),
-            heap.mem.get_heap_pointer(),
+            mem.get_roots().static_roots.as_array(),
+            mem.get_heap_pointer(),
         );
     }
-    verify_heap(heap);
+    verify_heap(mem);
     (SNAPSHOT as *const Obj).object_id().free_object_id();
     SNAPSHOT = null_mut();
 }
@@ -52,9 +51,9 @@ unsafe fn verify_static_roots(static_roots: *mut Array, last_free: usize) {
     }
 }
 
-unsafe fn verify_heap<M: Memory>(heap: &Heap<M>) {
-    assert!(SNAPSHOT.len().as_usize() <= heap.mem.get_heap_pointer());
-    let mut pointer = heap.mem.get_heap_base();
+unsafe fn verify_heap<M: Memory>(mem: &mut M) {
+    assert!(SNAPSHOT.len().as_usize() <= mem.get_heap_pointer());
+    let mut pointer = mem.get_heap_base();
     while pointer < SNAPSHOT.len().as_usize() {
         let tag = *(pointer as *const Tag);
         if has_object_header(tag) {
@@ -67,7 +66,7 @@ unsafe fn verify_heap<M: Memory>(heap: &Heap<M>) {
                 current.tag(),
                 0,
                 |_, current_field| {
-                    if relevant_field(current_field, heap.mem.get_last_heap_pointer()) {
+                    if relevant_field(current_field, mem.get_last_heap_pointer()) {
                         verify_field(current_field);
                     }
                 },
@@ -107,28 +106,25 @@ unsafe fn recorded(value: u32) -> bool {
 
 pub struct MemoryChecker<'a, M: Memory> {
     mem: &'a mut M,
-    roots: &'a Roots,
 }
 
-pub unsafe fn check_memory<M: Memory>(heap: &mut Heap<M>) {
-    let checker = MemoryChecker {
-        mem: heap.mem,
-        roots: &heap.roots,
-    };
+pub unsafe fn check_memory<M: Memory>(mem: &mut M) {
+    let checker = MemoryChecker { mem };
     checker.check_memory();
 }
 
 impl<'a, M: Memory> MemoryChecker<'a, M> {
     unsafe fn check_memory(&self) {
-        self.check_static_roots();
-        if (*self.roots.continuation_table_location).is_object_id() {
-            self.check_object(*self.roots.continuation_table_location);
+        let roots = self.mem.get_roots();
+        self.check_static_roots(roots.static_roots);
+        if (*roots.continuation_table_location).is_object_id() {
+            self.check_object(*roots.continuation_table_location);
         }
         self.check_heap();
     }
 
-    unsafe fn check_static_roots(&self) {
-        let root_array = self.roots.static_roots.as_array();
+    unsafe fn check_static_roots(&self, static_roots: Value) {
+        let root_array = static_roots.as_array();
         for i in 0..root_array.len() {
             let obj = root_array.get(i).as_obj();
             assert_eq!(obj.tag(), TAG_MUTBOX);

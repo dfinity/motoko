@@ -72,7 +72,7 @@ use core::ptr::null_mut;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::{common::Roots, incremental::state::Phase},
+    gc::incremental::state::Phase,
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -152,9 +152,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * New allocations being promoted to the old generation are marked when the
     ///   incremental collection of the old generation is active.
-    pub unsafe fn run(&mut self, roots: Roots) {
+    pub unsafe fn run(&mut self) {
         if self.pausing() {
-            self.start_marking(roots);
+            self.start_marking();
         }
         self.increment();
         if self.marking_completed() {
@@ -176,21 +176,22 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
-    unsafe fn start_marking(&mut self, roots: Roots) {
+    unsafe fn start_marking(&mut self) {
         debug_assert!(self.pausing());
 
         self.state.phase = Phase::Mark;
         self.state.mark_stack.allocate(self.mem);
         self.state.mark_complete = false;
-        self.mark_roots(roots);
+        self.mark_roots();
     }
 
-    unsafe fn mark_roots(&mut self, roots: Roots) {
+    unsafe fn mark_roots(&mut self) {
         // For the young generation, the remembered set is only used for marking.
         // It will also be collected during the compacting phase.
+        let general_roots = self.mem.get_roots();
         let remembered_set = self.generation.remembered_set.take();
         visit_roots(
-            roots,
+            general_roots,
             self.generation.start,
             remembered_set.as_ref(),
             self,

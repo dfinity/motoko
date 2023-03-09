@@ -13,11 +13,11 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
-use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
+use motoko_rts::gc::generational::write_barrier::REMEMBERED_SET;
 use motoko_rts::remembered_set::RememberedSet;
 use utils::{get_object_address, get_scalar_value, read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
-use motoko_rts::gc::common::{Roots, Strategy};
+use motoko_rts::gc::common::Strategy;
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::generational::GenerationalGC;
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
@@ -377,8 +377,6 @@ impl GC {
         let static_roots = heap.static_root_array_id();
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
-        let heap_1 = heap.clone();
-
         match self {
             GC::Copying => {
                 unsafe {
@@ -401,14 +399,7 @@ impl GC {
                 };
                 unsafe {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
-                    LAST_HP = heap_1.last_ptr_address() as u32;
-
-                    let roots = Roots {
-                        static_roots,
-                        continuation_table_location: continuation_table_ptr_address,
-                    };
-                    let gc_heap = motoko_rts::gc::generational::Heap { mem: heap, roots };
-                    let mut gc = GenerationalGC::new(gc_heap, strategy);
+                    let mut gc = GenerationalGC::new(heap, strategy);
                     gc.run();
                 }
                 round >= 2

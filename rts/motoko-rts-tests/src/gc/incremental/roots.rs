@@ -1,8 +1,8 @@
 use std::{array::from_fn, mem::size_of, ptr::null_mut};
 
 use motoko_rts::{
-    gc::common::Roots,
     gc::incremental::roots::visit_roots,
+    memory::Roots,
     remembered_set::{RememberedSet, INITIAL_TABLE_LENGTH},
     types::{Array, Obj, Value, Words, OBJECT_TABLE},
 };

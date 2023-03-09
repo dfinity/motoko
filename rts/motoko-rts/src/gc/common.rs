@@ -1,24 +1,3 @@
-use crate::types::Value;
-
-#[derive(Clone, Copy)]
-pub struct Roots {
-    pub static_roots: Value,
-    pub continuation_table_location: *mut Value,
-    // For possible future additional roots, please extend the functionality in:
-    // * `generational::GenerationalGC::mark_root_set`
-    // * `generational::GenerationalGC::thread_initial_phase`
-    // * `incremental::roots::visit_roots`
-}
-
-#[cfg(feature = "ic")]
-pub unsafe fn get_roots() -> Roots {
-    use crate::memory::ic;
-    Roots {
-        static_roots: ic::get_static_roots(),
-        continuation_table_location: crate::continuation_table::continuation_table_loc(),
-    }
-}
-
 #[cfg(feature = "ic")]
 pub unsafe fn update_statistics(old_heap_size: usize) {
     use crate::{memory::ic, types::Bytes};

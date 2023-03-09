@@ -1,6 +1,7 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
+use super::Roots;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::constants::WORD_SIZE;
 use crate::gc::incremental::object_table::ObjectTable;
@@ -85,6 +86,15 @@ unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 pub struct IcMemory;
 
 impl Memory for IcMemory {
+    fn get_roots(&self) -> Roots {
+        unsafe {
+            Roots {
+                static_roots: get_static_roots(),
+                continuation_table_location: crate::continuation_table::continuation_table_loc(),
+            }
+        }
+    }
+
     fn get_heap_base(&self) -> usize {
         unsafe {
             debug_assert_ne!(HEAP_BASE, 0);

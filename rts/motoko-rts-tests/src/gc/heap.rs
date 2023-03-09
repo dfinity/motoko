@@ -4,7 +4,7 @@ use super::utils::{
 
 use motoko_rts::gc::incremental::object_table::ObjectTable;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
-use motoko_rts::memory::Memory;
+use motoko_rts::memory::{Memory, Roots};
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
@@ -21,6 +21,14 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
+    fn get_roots(&self) -> Roots {
+        Roots {
+            static_roots: self.inner.borrow().static_root_array_id,
+            continuation_table_location: self.inner.borrow().continuation_table_ptr_address()
+                as *mut Value,
+        }
+    }
+
     fn get_heap_base(&self) -> usize {
         self.inner.borrow().heap_base_address()
     }
@@ -81,12 +89,6 @@ impl MotokoHeap {
     /// the heap.
     pub fn heap_ptr_address(&self) -> usize {
         self.inner.borrow().heap_ptr_address()
-    }
-
-    /// Get the last heap pointer, as address in the current process. The address can be used to mutate
-    /// the heap.
-    pub fn last_ptr_address(&self) -> usize {
-        self.inner.borrow().last_ptr_address()
     }
 
     /// Get the beginning of dynamic heap, as an address in the current process

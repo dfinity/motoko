@@ -1,6 +1,5 @@
 use crate::{
-    gc::common::Roots, remembered_set::RememberedSet, types::Value,
-    visitor::pointer_to_dynamic_heap,
+    memory::Roots, remembered_set::RememberedSet, types::Value, visitor::pointer_to_dynamic_heap,
 };
 
 pub unsafe fn visit_roots<C, V: Fn(&mut C, Value)>(

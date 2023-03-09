@@ -7,7 +7,25 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
-/// A trait for heap allocation. RTS functions allocate in heap via this trait.
+/// Root set for the garbage collectors.
+#[derive(Clone, Copy)]
+pub struct Roots {
+    pub static_roots: Value,
+    pub continuation_table_location: *mut Value,
+    // For possible future additional roots, please extend the functionality in:
+    // * `gc::copying::copying_gc_internal()`
+    // * `gc::mark_compact::mark_compact()`
+    // * `gc::generational::GenerationalGC::mark_root_set()`
+    // * `gc::generational::GenerationalGC::thread_initial_phase()`
+    // * `gc::incremental::roots::visit_roots()`
+
+    // Please note that generational GC requires an additional root set, namely
+    // the remembered set to the young generation.
+}
+
+/// A trait representing the memory, in particular the heap.
+///
+/// Offers heap allocation as well as access to the heap limits and the GC root set.
 ///
 /// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
 /// functions that pass `ic::IcMemory` for the `Memory` arguments, and export these functions with
@@ -25,14 +43,16 @@ use motoko_rts_macros::ic_mem_fn;
 /// ```
 ///
 /// This function does not take any `Memory` arguments can be used by the generated code.
-/// Returns an object address that still needs to be assiged to a new object id to  
-/// obtain a `Value`.
 pub trait Memory {
+    fn get_roots(&self) -> Roots;
+
     fn get_heap_base(&self) -> usize;
     fn get_last_heap_pointer(&self) -> usize;
     fn get_heap_pointer(&self) -> usize;
     unsafe fn shrink_heap(&mut self, new_free_pointer: usize); // After GC run, also sets the last heap pointer.
 
+    /// Returns an object address that still needs to be assiged to a new object id to  
+    /// obtain a `Value`.
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize;
 }
 

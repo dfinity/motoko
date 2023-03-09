@@ -509,7 +509,7 @@ impl Array {
         debug_assert!(value.is_object_id());
         let slot_addr = self.element_address(idx);
         write_with_barrier(mem, slot_addr as *mut Value, value);
-        generational_write_barrier(mem, slot_addr as u32);
+        generational_write_barrier(mem, slot_addr as usize);
     }
 
     /// Write a scalar value to an array element. No need for a write barrier.
