@@ -374,41 +374,22 @@ fn check_continuation_table(
 
 impl GC {
     fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
-        let heap_base = heap.heap_base_address() as u32;
         let static_roots = heap.static_root_array_id();
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.clone();
-        let heap_2 = heap.clone();
 
         match self {
             GC::Copying => {
                 unsafe {
-                    copying_gc_internal(
-                        heap,
-                        static_roots,
-                        continuation_table_ptr_address,
-                    );
+                    copying_gc_internal(heap, static_roots, continuation_table_ptr_address);
                 }
                 true
             }
 
             GC::MarkCompact => {
                 unsafe {
-                    compacting_gc_internal(
-                        heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
-                        static_roots,
-                        continuation_table_ptr_address,
-                        // note_live_size
-                        |_live_size| {},
-                        // note_reclaimed
-                        |_reclaimed| {},
-                    );
+                    compacting_gc_internal(heap, static_roots, continuation_table_ptr_address);
                 }
                 true
             }

@@ -39,76 +39,38 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
+    use crate::gc::common::update_statistics;
     use crate::memory::ic;
 
+    let old_heap_size = mem.get_heap_pointer();
     compacting_gc_internal(
         mem,
-        ic::HEAP_BASE,
-        // get_hp
-        || ic::HP as usize,
-        // set_hp
-        |hp| ic::HP = hp,
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
-        // note_live_size
-        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
-        // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
-
-    ic::LAST_HP = ic::HP;
+    update_statistics(old_heap_size);
 }
 
-pub unsafe fn compacting_gc_internal<
-    M: Memory,
-    GetHp: Fn() -> usize,
-    SetHp: Fn(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
->(
+pub unsafe fn compacting_gc_internal<M: Memory>(
     mem: &mut M,
-    heap_base: u32,
-    get_hp: GetHp,
-    set_hp: SetHp,
-    static_roots: Value,
-    continuation_table_ptr_loc: *mut Value,
-    note_live_size: NoteLiveSize,
-    note_reclaimed: NoteReclaimed,
-) {
-    let old_hp = get_hp() as u32;
-
-    assert_eq!(heap_base % 32, 0);
-
-    mark_compact(
-        mem,
-        set_hp,
-        heap_base,
-        old_hp,
-        static_roots,
-        continuation_table_ptr_loc,
-    );
-
-    let reclaimed = old_hp - (get_hp() as u32);
-    note_reclaimed(Bytes(reclaimed));
-
-    let live = get_hp() as u32 - heap_base;
-    note_live_size(Bytes(live));
-}
-
-unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
-    mem: &mut M,
-    set_hp: SetHp,
-    heap_base: u32,
-    heap_end: u32,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
 ) {
-    let mem_size = Bytes(heap_end - heap_base);
+    assert_eq!(mem.get_heap_base() % 32, 0);
+    mark_compact(mem, static_roots, continuation_table_ptr_loc);
+}
 
-    alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
+unsafe fn mark_compact<M: Memory>(
+    mem: &mut M,
+    static_roots: Value,
+    continuation_table_ptr_loc: *mut Value,
+) {
+    let mem_size = Bytes((mem.get_heap_pointer() - mem.get_heap_base()) as u32);
+
+    alloc_bitmap(mem, mem_size, mem.get_heap_base() as u32 / WORD_SIZE);
     alloc_mark_stack(mem);
 
-    mark_static_roots(mem, static_roots, heap_base);
+    mark_static_roots(mem, static_roots);
 
     if (*continuation_table_ptr_loc).is_object_id() {
         mark_object(mem, *continuation_table_ptr_loc);
@@ -117,15 +79,15 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         thread(continuation_table_ptr_loc);
     }
 
-    mark_stack(mem, heap_base);
+    mark_stack(mem);
 
-    update_refs(set_hp, heap_base);
+    update_refs(mem);
 
     free_mark_stack();
     free_bitmap();
 }
 
-unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_base: u32) {
+unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value) {
     let root_array = static_roots.as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
@@ -133,8 +95,8 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
         let obj = root_array.get(i).as_obj();
         // Root array should only have pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
-        debug_assert!((obj as u32) < heap_base); // check that MutBox is static
-        mark_root_mutbox_fields(mem, obj as *mut MutBox, heap_base);
+        debug_assert!((obj as usize) < mem.get_heap_base()); // check that MutBox is static
+        mark_root_mutbox_fields(mem, obj as *mut MutBox);
     }
 }
 
@@ -156,18 +118,18 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     push_mark_stack(mem, obj as usize, obj_tag);
 }
 
-unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
+unsafe fn mark_stack<M: Memory>(mem: &mut M) {
     while let Some((obj, tag)) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, tag, heap_base)
+        mark_fields(mem, obj as *mut Obj, tag)
     }
 }
 
-unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
+unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag) {
     visit_pointer_fields(
         mem,
         obj,
         obj_tag,
-        heap_base as usize,
+        mem.get_heap_base(),
         |mem, field_addr| {
             let field_value = *field_addr;
             mark_object(mem, field_value);
@@ -193,9 +155,9 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
 }
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
-unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
+unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox) {
     let field_addr = &mut (*mutbox).field;
-    if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
+    if pointer_to_dynamic_heap(field_addr, mem.get_heap_base()) {
         mark_object(mem, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
@@ -212,8 +174,8 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
-    let mut free = heap_base;
+unsafe fn update_refs<M: Memory>(mem: &mut M) {
+    let mut free = mem.get_heap_base();
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
@@ -240,24 +202,24 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         new_obj.object_id().free_object_id();
         (*new_obj).initialize_id(new_id);
 
-        free += p_size_words.to_bytes().as_u32();
+        free += p_size_words.to_bytes().as_usize();
 
         // Thread forward pointers of the object
-        thread_fwd_pointers(p_new as *mut Obj, heap_base);
+        thread_fwd_pointers(p_new as *mut Obj, mem.get_heap_base());
 
         bit = bitmap_iter.next();
     }
 
-    set_hp(free);
+    mem.shrink_heap(free);
 }
 
 /// Thread forward pointers in object
-unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
+unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: usize) {
     visit_pointer_fields(
         &mut (),
         obj,
         obj.tag(),
-        heap_base as usize,
+        heap_base,
         |_, field_addr| {
             if (*field_addr).get_object_address() > obj as usize {
                 thread(field_addr)
