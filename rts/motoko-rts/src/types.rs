@@ -52,7 +52,7 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::generational_write_barrier;
+use crate::gc::generational::write_barrier::{generational_write_barrier, using_generational_gc};
 use crate::gc::incremental::object_table::ObjectTable;
 use crate::gc::incremental::write_barrier::write_with_barrier;
 use crate::memory::Memory;
@@ -509,7 +509,9 @@ impl Array {
         debug_assert!(value.is_object_id());
         let slot_addr = self.element_address(idx);
         write_with_barrier(mem, slot_addr as *mut Value, value);
-        generational_write_barrier(mem, slot_addr as usize);
+        if using_generational_gc() {
+            generational_write_barrier(mem, slot_addr as usize);
+        }
     }
 
     /// Write a scalar value to an array element. No need for a write barrier.

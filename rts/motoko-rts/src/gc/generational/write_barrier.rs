@@ -13,6 +13,10 @@ pub(super) unsafe fn init_generational_write_barrier<M: Memory>(mem: &mut M) {
     REMEMBERED_SET = Some(RememberedSet::new(mem));
 }
 
+pub unsafe fn using_generational_gc() -> bool {
+    REMEMBERED_SET.is_some()
+}
+
 /// Write barrier to be called AFTER the pointer store, used for generational GC.
 /// `location`: location of modified pointer (address of object field or array element).
 ///
