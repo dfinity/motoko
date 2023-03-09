@@ -1,3 +1,71 @@
+//! Garbage collector for young and old generation used by the incremental GC.
+//! 
+//! Young generation collection (blocking):
+//! --------------------------------------
+//! 
+//! The young generation collection runs non-incrementally, blocking the mutator, by using `Time::unlimited()`.
+//! 
+//! It is scheduled:
+//! * Before each GC increment of the old generation, for simplifying incremental collection.
+//! * After a certain amount of new allocations, i.e. when young generation has exceeded a threshold.
+//!
+//! Young generation collection aims at fast reclamation of short-lived objects, to reduce GC latency, 
+//! which is particularly relevant in an incremental GC. Young generation collection blocks the mutator, 
+//! i.e. does not run incrementally.
+//!
+//! The young generation collection requires an extra root set of old-to-young pointers. Those pointers
+//! are caught by a write barrier and recorded in a remembered set. The remembered set lives in the young 
+//! generation and is freed during the young generation collection.
+//!
+//! The compaction phase can use the simple object movement enabled by the central object table provided
+//! for the incremental GC.
+//!
+//! Old generation collection (incremental):
+//! ---------------------------------------
+//! 
+//! Old generation collection runs incrementally in multiple GC increments, using `Time::limited()`.
+//! It is scheduled to run after young generation collection, such that it can ignore generational aspects.
+//!
+//! New objects are always first allocated in the young generation and become only visible to the incremental 
+//! GC after they have been promoted to the old generation (i.e. survived the preceding young generation collection).
+//!
+//! The incremental collection of the old generation is based on two phases:
+//! 1. Mark: Incremental snapshot-at-the-beginning marking. The GC marks at least all objects that have been
+//!   reachable at the start time of the incremental GC run. A pre-update write-barrier detects relevant
+//!   concurrent pointer overwrites by the mutator between GC increments and marks the corresponding objects
+//!   to guarantee snapshot-at-the-beginning consistency. Concurrent allocations to the old generation (being
+//!   promotions from the young generation) are conservatively marked.
+//! 2. Compact: Incremental compaction supported by a central object table. After the mark phase, the marked
+//!   objects of the old generation are compacted towards the bottom of the generation. Objects can be easily moved
+//!   one-by-one since all incoming references to a moved object can be atomically updated in the central
+//!   object table. Concurrent allocations to the old generation during this phase (promotions from the young
+//!   generations) are marked because they have to be retained and compacted during this incremental GC run.
+//!  
+//! Since the call stack cannot be accessed to collect roots on it, the following restrictions apply:
+//! * During mark phase, new allocations to the old generations (promotions from young generation) need to be marked.
+//! * The mark phase must only start on an empty call stack.
+//! Anyway, GC increments are currently only scheduled on empty call stack.
+//! 
+//! New allocation marking policy:
+//! ------------------------------
+//! * New objects are allocated in the young generation and not marked (to allow fast reclamation).
+//! * When young objects are promoted to the old generation, they are marked if and only if the
+//!   incremental GC of the old generation is active (i.e. is in mark or compact phase).
+//! 
+//! Mark bit:
+//! ---------
+//!
+//! The GC uses a mark bit in the object header instead of mark bitmaps since there is no performance advantage
+//! by using the mark bitmap for skipping garbage objects. This is because the object ids of garbage objects need
+//! to be freed in the object table and therefore, the compaction phase must visit all objects (marked and unmarked).
+//! 
+//! Mark stack:
+//! -----------
+//! 
+//! The mark stack is allocated in the generation where it is used, i.e. young generation collection allocates 
+//! the mark stack pages inside the young generation, while mark stack pages of the old generation are added to the 
+//! old generation. Mark stack pages remain unmarked, such that will be collected as garbage during compaction of
+//! the corresponding phase.
 use core::ptr::null_mut;
 
 use crate::{
@@ -148,6 +216,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         }
         object.mark();
         self.state.mark_stack.push(self.mem, object);
+        // TODO: Generation may be extended because of additional mark stack pages
+        unimplemented!();
     }
 
     unsafe fn mark_increment(&mut self) {
@@ -181,6 +251,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                 let length = slice_array(array);
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
                     gc.state.mark_stack.push(gc.mem, array as *mut Obj);
+                    // TODO: Generation may be extended because of additional mark stack pages
+                    unimplemented!();
                 }
                 gc.time.advance((length - slice_start) as usize);
                 length

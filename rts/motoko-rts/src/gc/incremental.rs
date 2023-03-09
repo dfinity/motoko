@@ -31,8 +31,7 @@
 //! Therefore, old generation collection perceives its generation as the full heap and the
 //! incremental collector can ignore the generational aspects.
 //!
-//! Specific aspects of young and old generation collection are explained in `young_collection.rs`
-//! and `old_collection.rs`, respectively.
+//! Specific aspects of young and old generation collection are explained in `collector.rs`.
 
 pub mod array_slicing;
 mod collector;
