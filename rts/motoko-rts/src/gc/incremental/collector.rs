@@ -15,9 +15,6 @@ use crate::{
 
 use super::{array_slicing::slice_array, roots::visit_roots, state::State, time::Time};
 
-mod compact_phase;
-mod mark_phase;
-
 pub struct Generation {
     start: usize,
     end: usize,
