@@ -47,6 +47,10 @@ impl Memory for MotokoHeap {
         inner.set_last_ptr_address(new_heap_pointer);
     }
 
+    unsafe fn set_heap_base(&mut self, _new_heap_base: usize) {
+        unimplemented!()
+    }
+
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         self.inner.borrow_mut().alloc_words(n)
     }

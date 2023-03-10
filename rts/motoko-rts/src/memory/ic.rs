@@ -123,6 +123,15 @@ impl Memory for IcMemory {
         LAST_HP = new_free_pointer as u32;
     }
 
+    unsafe fn set_heap_base(&mut self, new_heap_base: usize) {
+        debug_assert!(new_heap_base as u32 >= HEAP_BASE);
+        debug_assert!(new_heap_base as u32 <= HP);
+        debug_assert!(LAST_HP <= HP);
+        debug_assert_eq!(new_heap_base % WORD_SIZE as usize, 0);
+        HEAP_BASE = new_heap_base as u32;
+        LAST_HP = core::cmp::max(LAST_HP, HEAP_BASE);
+    }
+
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         let bytes = n.to_bytes();

@@ -232,9 +232,11 @@ impl ObjectTable {
         // resides at least one object in the dynamic heap above the table.
         // Static objects are not indirected via the object table.
         debug_assert!(self.end() < mem.get_heap_pointer());
+        debug_assert_eq!(self.end(), mem.get_heap_base());
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
         if has_object_header(*block) {
+            let old_address = block as usize;
             // Relocate the object to the end of dynamic heap and make space
             // for table extension.
             // Note: The object could even be a table of the mark stack or the
@@ -242,15 +244,18 @@ impl ObjectTable {
             // their tables via object ids through the object table.
             let object_id = (block as *mut Obj).object_id();
             let new_address = mem.alloc_words(size);
-            memcpy_words(new_address, block as usize, size);
+            debug_assert!(old_address < new_address);
+            memcpy_words(new_address, old_address, size);
             self.move_object(object_id, new_address);
-            // The object is possibly moved from the old generation to the young
-            // generation, such that it may be reachable from other objects from
-            // the old generation. Therefore, conservatively add it to the remembered
-            // set for the young generation such that it is promoted back to the
-            // old generation.
             debug_assert!(new_address >= mem.get_last_heap_pointer());
-            move_to_young_generation(mem, object_id);
+            if old_address < mem.get_last_heap_pointer() {
+                // The object is moved from the old generation to the young generation, 
+                // such that it may be reachable from other objects from the old 
+                // generation. Therefore, conservatively add it to the remembered
+                // set for the young generation such that it is promoted back to the
+                // old generation.
+                move_to_young_generation(mem, object_id);
+            }
         } else {
             // Heap-internal free blocks may result from `Blob::shrink()`.
             debug_assert!(*block == TAG_FREE_SPACE || *block == TAG_ONE_WORD_FILLER);
@@ -259,5 +264,7 @@ impl ObjectTable {
         let new_length = old_length + size.as_usize();
         self.length = new_length;
         self.add_free_range(old_length..new_length);
+        debug_assert!(self.end() > mem.get_heap_base());
+        mem.set_heap_base(self.end());
     }
 }

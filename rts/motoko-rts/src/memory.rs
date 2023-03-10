@@ -49,7 +49,13 @@ pub trait Memory {
     fn get_heap_base(&self) -> usize;
     fn get_last_heap_pointer(&self) -> usize;
     fn get_heap_pointer(&self) -> usize;
-    unsafe fn shrink_heap(&mut self, new_free_pointer: usize); // After GC run, also sets the last heap pointer.
+    
+    // Used by the GC after a collection run, also sets the last heap pointer.
+    unsafe fn shrink_heap(&mut self, new_free_pointer: usize); 
+
+    // Only used by object table extension with the incremental GC. 
+    // Also sets the last heap pointer if it is below the new heap base.
+    unsafe fn set_heap_base(&mut self, new_heap_base: usize); 
 
     /// Returns an object address that still needs to be assiged to a new object id to  
     /// obtain a `Value`.
