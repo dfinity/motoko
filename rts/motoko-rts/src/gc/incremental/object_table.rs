@@ -161,6 +161,7 @@ impl ObjectTable {
     pub fn new_object_id<M: Memory>(&mut self, mem: &mut M, address: usize) -> Value {
         debug_assert!(address >= self.end());
         let object_id = self.pop_free_id(mem);
+        debug_assert!(address >= self.end()); // Table did not grow to this address.
         self.write_element(object_id, address);
         object_id
     }
