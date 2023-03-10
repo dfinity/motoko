@@ -9783,8 +9783,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_lit env l
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as_test env ae scrut in
-    let sr1, code1 = compile_exp env ae e1 in
-    let sr2, code2 = compile_exp env ae e2 in
+    let sr1, code1 = compile_exp_with_hint env ae sr_hint e1 in
+    let sr2, code2 = compile_exp_with_hint env ae sr_hint e2 in
     (* Use the expected stackrep, if given, else infer from the branches *)
     let sr = match sr_hint with
       | Some sr -> sr
