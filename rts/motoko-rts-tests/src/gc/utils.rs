@@ -1,5 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use motoko_rts::types::{skew, Value, OBJECT_TABLE, Words};
+use motoko_rts::types::{skew, Value, Words, OBJECT_TABLE};
 
 use crate::memory::TestMemory;
 

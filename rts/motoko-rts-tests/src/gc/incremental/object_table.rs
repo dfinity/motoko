@@ -1,7 +1,12 @@
+use std::mem::size_of;
+
+use motoko_rts::gc::incremental::write_barrier::{
+    create_young_remembered_set, take_young_remembered_set, using_incremental_barrier,
+};
 use motoko_rts::{
     gc::incremental::object_table::ObjectTable,
-    memory::Memory,
-    types::{Value, Words, NULL_OBJECT_ID, OBJECT_TABLE},
+    memory::{alloc_blob, Memory},
+    types::{Blob, Bytes, Value, Words, NULL_OBJECT_ID, OBJECT_TABLE},
 };
 use oorandom::Rand32;
 
@@ -13,15 +18,16 @@ pub unsafe fn test() {
     test_allocate();
     test_remove_realloc();
     test_move();
+    test_table_growth();
 }
 
 const TEST_SIZE: usize = 10_000;
 
 fn test_allocate() {
-    let mut test_memory = TestMemory::new(Words(TEST_SIZE as u32));
-    let mut object_table = create_object_table(&mut test_memory, TEST_SIZE);
+    let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut object_table = create_object_table(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut test_memory,&mut object_table, &mut expected_table);
+    allocate_entries(&mut mem, &mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     free_all_entries(&mut object_table, &expected_table);
 }
@@ -32,7 +38,11 @@ fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
     ObjectTable::new(base, length)
 }
 
-fn allocate_entries(mem: &mut TestMemory, object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
+fn allocate_entries(
+    mem: &mut TestMemory,
+    object_table: &mut ObjectTable,
+    expected_table: &mut [(Value, usize)],
+) {
     for count in 0..expected_table.len() {
         let address = object_table.end() + count * WORD_SIZE;
         let object_id = object_table.new_object_id(mem, address);
@@ -72,7 +82,11 @@ fn delete_random_half(
     deleted
 }
 
-fn reallocate(mem: &mut TestMemory, object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
+fn reallocate(
+    mem: &mut TestMemory,
+    object_table: &mut ObjectTable,
+    expected_table: &mut [(Value, usize)],
+) {
     let mut free_index = 0;
     while free_index < expected_table.len() && expected_table[free_index].0 != NULL_OBJECT_ID {
         free_index += 1;
@@ -83,14 +97,14 @@ fn reallocate(mem: &mut TestMemory, object_table: &mut ObjectTable, expected_tab
 }
 
 fn test_remove_realloc() {
-    let mut test_memory = TestMemory::new(Words(TEST_SIZE as u32));
-    let mut object_table = create_object_table(&mut test_memory, TEST_SIZE);
+    let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut object_table = create_object_table(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut test_memory, &mut object_table, &mut expected_table);
+    allocate_entries(&mut mem, &mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     let deleted = delete_random_half(&mut object_table, &mut expected_table);
     for _ in 0..deleted {
-        reallocate(&mut test_memory, &mut object_table, &mut expected_table);
+        reallocate(&mut mem, &mut object_table, &mut expected_table);
     }
     check_all_entries(&object_table, &expected_table);
     free_all_entries(&mut object_table, &expected_table);
@@ -106,11 +120,29 @@ fn move_all_objects(object_table: &mut ObjectTable, expected_table: &mut [(Value
 }
 
 fn test_move() {
-    let mut test_memory = TestMemory::new(Words(TEST_SIZE as u32));
-    let mut object_table = create_object_table(&mut test_memory, TEST_SIZE);
+    let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut object_table = create_object_table(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut test_memory, &mut object_table, &mut expected_table);
+    allocate_entries(&mut mem, &mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     move_all_objects(&mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
+}
+
+unsafe fn test_table_growth() {
+    const TEST_ALLOCATIONS: usize = 100;
+    let size = TEST_SIZE * WORD_SIZE + TEST_ALLOCATIONS * size_of::<Blob>();
+    let mut mem = TestMemory::new(Bytes(size as u32).to_words());
+    let object_table = create_object_table(&mut mem, 1);
+    assert!(!using_incremental_barrier());
+    OBJECT_TABLE = Some(object_table);
+    mem.set_last_heap_pointer(mem.get_heap_pointer());
+    create_young_remembered_set(&mut mem);
+    for _ in 0..1000 {
+        let blob = alloc_blob(&mut mem, Bytes(0u32));
+        assert!(blob.is_object_id());
+    }
+    take_young_remembered_set();
+    assert!(!using_incremental_barrier());
+    OBJECT_TABLE = None;
 }

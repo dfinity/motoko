@@ -3,6 +3,7 @@ use motoko_rts::types::Words;
 
 pub struct TestMemory {
     heap: Box<[u8]>,
+    last_hp: usize,
     hp: usize,
 }
 
@@ -11,7 +12,11 @@ impl TestMemory {
         let bytes = size.to_bytes().as_usize();
         let heap = vec![0u8; bytes].into_boxed_slice();
         let hp = heap.as_ptr() as usize;
-        TestMemory { heap, hp }
+        TestMemory {
+            heap,
+            last_hp: hp,
+            hp,
+        }
     }
 
     unsafe fn grow_memory(&mut self, ptr: usize) {
@@ -23,6 +28,10 @@ impl TestMemory {
                 heap_end, ptr
             );
         }
+    }
+
+    pub fn set_last_heap_pointer(&mut self, address: usize) {
+        self.last_hp = address;
     }
 }
 
@@ -36,7 +45,7 @@ impl Memory for TestMemory {
     }
 
     fn get_last_heap_pointer(&self) -> usize {
-        self.hp
+        self.last_hp
     }
 
     fn get_heap_pointer(&self) -> usize {

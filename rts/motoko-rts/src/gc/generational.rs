@@ -368,12 +368,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
             }
 
-            // Update object id, TODO: Remove later
-            let new_obj = new_pointer as *mut Obj;
-            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-            new_obj.object_id().free_object_id();
-            (*new_obj).initialize_id(new_id);
-
             free += object_size.to_bytes().as_usize();
 
             // Thread forward pointers of the object, even if not moved

@@ -237,15 +237,18 @@ impl ObjectTable {
         if has_object_header(*block) {
             // Relocate the object to the end of dynamic heap and make space
             // for table extension.
+            // Note: The object could even be a table of the mark stack or the
+            // remembered set. These data structures therefore also reference
+            // their tables via object ids through the object table.
             let object_id = (block as *mut Obj).object_id();
             let new_address = mem.alloc_words(size);
             memcpy_words(new_address, block as usize, size);
             self.move_object(object_id, new_address);
-            // The object is most probably moved from the old generation to
-            // the young generation and may be reachable from other objects
-            // from the old generation. Therefore, conservatively add it to
-            // the remembered set for the young generation such that it is
-            // promoted back to the old generation.
+            // The object is possibly moved from the old generation to the young
+            // generation, such that it may be reachable from other objects from
+            // the old generation. Therefore, conservatively add it to the remembered
+            // set for the young generation such that it is promoted back to the
+            // old generation.
             debug_assert!(new_address >= mem.get_last_heap_pointer());
             move_to_young_generation(mem, object_id);
         } else {
