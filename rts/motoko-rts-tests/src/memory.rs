@@ -32,10 +32,6 @@ impl TestMemory {
             );
         }
     }
-
-    pub fn set_last_heap_pointer(&mut self, address: usize) {
-        self.last_hp = address;
-    }
 }
 
 impl Memory for TestMemory {
@@ -61,6 +57,7 @@ impl Memory for TestMemory {
 
     unsafe fn set_heap_base(&mut self, new_heap_base: usize) {
         self.heap_base = new_heap_base;
+        self.last_hp = core::cmp::max(self.last_hp, self.heap_base);
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {

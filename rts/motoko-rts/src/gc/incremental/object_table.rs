@@ -234,8 +234,8 @@ impl ObjectTable {
         // Static objects are not indirected via the object table.
         debug_assert!(self.end() < mem.get_heap_pointer());
         // The table end is equal to the heap base except for the initial 32-byte alignment.
-        debug_assert_eq!(self.end() / 32, mem.get_heap_base()); 
-        debug_assert!(self.end() < mem.get_heap_base()); // Due to alignment.
+        debug_assert_eq!(self.end() / 32, mem.get_heap_base() / 32); 
+        debug_assert!(self.end() <= mem.get_heap_base()); // Due to alignment.
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
         if has_object_header(*block) {

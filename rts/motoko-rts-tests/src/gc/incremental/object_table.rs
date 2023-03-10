@@ -134,9 +134,11 @@ unsafe fn test_table_growth() {
     let size = TEST_SIZE * WORD_SIZE + TEST_ALLOCATIONS * size_of::<Blob>();
     let mut mem = TestMemory::new(Bytes(size as u32).to_words());
     let object_table = create_object_table(&mut mem, 1);
+    let new_heap_base = object_table.end();
     assert!(!using_incremental_barrier());
     OBJECT_TABLE = Some(object_table);
-    mem.set_last_heap_pointer(mem.get_heap_pointer());
+    mem.set_heap_base(new_heap_base);
+    debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
     create_young_remembered_set(&mut mem);
     for _ in 0..1000 {
         let blob = alloc_blob(&mut mem, Bytes(0u32));
