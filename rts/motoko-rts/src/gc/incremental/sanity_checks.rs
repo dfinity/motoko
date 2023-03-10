@@ -1,4 +1,8 @@
-//! Incremental GC sanity checker.
+//! Incremental GC sanity checker. 
+//! Serves for verifying both the young and old generation collection.
+//! Two checks:
+//! * Mark completion: No unmarked reachable objects.
+//! * Full-heap scan: Plausible objects and object ids (references).
 use core::ptr::null_mut;
 
 use crate::{
@@ -11,49 +15,31 @@ use crate::{
 
 use super::{mark_stack::MarkStack, roots::visit_roots};
 
-pub unsafe fn check_memory<M: Memory>(mem: &mut M, mode: CheckerMode) {
+/// Sanity check at the end of the marking phase for the old or young generation collection.
+/// Check that the set of marked objects by the incremental GC of the old generation is the 
+/// same set or a superset of the objects being marked by a conventional stop-the-world mark 
+/// algorithm. The incremental GC may mark more objects due to concurrent promotions from young
+/// generation and concurrent object id writes (changing object references while marking).
+pub unsafe fn check_mark_completion<M: Memory>(mem: &mut M, generation_start: usize) {
     let mark_stack = MarkStack::new();
     let visited = RememberedSet::new(mem);
-    let mut checker = MemoryChecker {
-        mode,
+    let mut checker = MarkCompletionChecker {
         mem,
+        generation_start,
         mark_stack,
         visited,
     };
-    checker.run();
+    checker.check_mark_completeness();
 }
 
-/// Sanity check modes.
-#[derive(PartialEq)]
-pub enum CheckerMode {
-    MarkCompletion,    // Check mark phase completion.
-    CompactCompletion, // Check update phase completion.
-}
-
-struct MemoryChecker<'a, M: Memory> {
-    mode: CheckerMode,
+struct MarkCompletionChecker<'a, M: Memory> {
     mem: &'a mut M,
+    generation_start: usize,
     mark_stack: MarkStack,
     visited: RememberedSet,
 }
 
-impl<'a, M: Memory> MemoryChecker<'a, M> {
-    // Check whether all reachable objects and object ids in the memory have a plausible state.
-    // Various check modes:
-    // * MarkCompletion:
-    ///  Check that the set of marked objects by the incremental GC is the same set or a superset
-    ///  of the objects being marked by a conventional stop-the-world mark phase. The incremental
-    ///  GC may mark more objects due to concurrent allocations and concurrent object id writes.
-    // * CompactCompletion:
-    //   Check that the compact phase left the heap in a consistent state, with valid object id
-    ///  entries in the object table, valid references, and all mark bits been cleared.
-    unsafe fn run(&mut self) {
-        if self.mode == CheckerMode::MarkCompletion {
-            self.check_mark_completeness();
-        }
-        self.check_heap();
-    }
-
+impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
     unsafe fn check_mark_completeness(&mut self) {
         // This may extend the heap, no using this at the end of the compaction phase.
         self.mark_stack.allocate(self.mem);
@@ -75,11 +61,11 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
     }
 
     unsafe fn check_reachable_object(&mut self, value: Value) {
-        self.check_object_header(value);
+        check_object_header(self.mem, value);
         let object = value.get_object_address() as *mut Obj;
-        if let CheckerMode::MarkCompletion = self.mode {
-            // The incremental GC must have marked this reachable object.
-            // Mark object returns false if it has been previously marked.
+        if object as usize >= self.generation_start {
+            // The GC must have marked this reachable object in the generation
+            // that is subject to garbage collection.
             assert!(object.is_marked());
         }
         if !self.visited.contains(value) {
@@ -111,55 +97,62 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
                     if value.get_object_address() >= gc.mem.get_heap_base() {
                         gc.check_reachable_object(value);
                     } else {
-                        gc.check_object_header(value);
+                        check_object_header(gc.mem, value);
                     }
                 }
             },
             |_, _, array| array.len(),
         );
     }
+}
 
-    unsafe fn check_object_header(&self, value: Value) {
-        let tag = value.tag();
-        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
-        let object = value.get_object_address() as *mut Obj;
-        assert!(object.object_id() == value);
-        assert!((object as usize) < self.mem.get_heap_pointer());
-        assert_eq!(object as u32 % WORD_SIZE, 0);
-    }
-
-    unsafe fn check_valid_references(&mut self, object: *mut Obj) {
-        visit_pointer_fields(
-            self,
-            object,
-            object.tag(),
-            0,
-            |gc, field_address| {
-                let value = *field_address;
-                // Ignore null pointers used in `text_iter`.
-                if value != NULL_OBJECT_ID {
-                    gc.check_object_header(value);
-                }
-            },
-            |_, _, array| array.len(),
-        );
-    }
-
-    unsafe fn check_heap(&mut self) {
-        let mut pointer = self.mem.get_heap_base();
-        while pointer < self.mem.get_heap_pointer() {
-            let tag = *(pointer as *const Tag);
-            if has_object_header(tag) {
-                let object = pointer as *mut Obj;
-                if self.mode == CheckerMode::CompactCompletion {
-                    assert!(!object.is_marked());
-                }
-                let value = object.object_id();
-                assert_eq!(value.get_object_address(), object as usize);
-                self.check_object_header(value);
-                self.check_valid_references(object);
+/// Full-heap sanity check that can be used for both young and old generation collection. 
+/// Scans the entire heap and checks that all objects have valid object ids, self-referencing via
+/// the object table and that all object ids in references point to valid objects. 
+/// Optionally, checks that all mark bits been cleared, which must be the case after the compact 
+/// phase.
+/// Note: Not to be called during an unfinished compact phase, since garbage object have then
+/// have dangling/invalid references (if referring to other garbage that has already been recycled).
+pub unsafe fn check_heap<M: Memory>(mem: &mut M, allow_marked_objects: bool) {
+    let mut pointer = mem.get_heap_base();
+    while pointer < mem.get_heap_pointer() {
+        let tag = *(pointer as *const Tag);
+        if has_object_header(tag) {
+            let object = pointer as *mut Obj;
+            if !allow_marked_objects {
+                assert!(!object.is_marked());
             }
-            pointer += block_size(pointer as usize).to_bytes().as_usize();
+            let value = object.object_id();
+            assert_eq!(value.get_object_address(), object as usize);
+            check_object_header(mem, value);
+            check_valid_references(mem, object);
         }
+        pointer += block_size(pointer as usize).to_bytes().as_usize();
     }
+}
+
+unsafe fn check_object_header<M: Memory>(mem: &mut M, value: Value) {
+    let tag = value.tag();
+    assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+    let object = value.get_object_address() as *mut Obj;
+    assert!(object.object_id() == value);
+    assert!((object as usize) < mem.get_heap_pointer());
+    assert_eq!(object as u32 % WORD_SIZE, 0);
+}
+
+unsafe fn check_valid_references<M: Memory>(mem: &mut M, object: *mut Obj) {
+    visit_pointer_fields(
+        mem,
+        object,
+        object.tag(),
+        0,
+        |mem, field_address| {
+            let value = *field_address;
+            // Ignore null pointers used in `text_iter`.
+            if value != NULL_OBJECT_ID {
+                check_object_header(mem, value);
+            }
+        },
+        |_, _, array| array.len(),
+    );
 }

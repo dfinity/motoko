@@ -84,7 +84,7 @@ use super::{
 };
 
 #[cfg(debug_assertions)]
-use super::sanity_checks::{check_memory, CheckerMode};
+use super::sanity_checks::{check_mark_completion, check_heap};
 
 pub struct Generation {
     start: usize,
@@ -264,10 +264,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         self.state.mark_stack.free();
 
         #[cfg(debug_assertions)]
-        if self.generation.start != self.mem.get_last_heap_pointer() {
-            // Sanity check for incremental marking of the old generation.
-            check_memory(self.mem, CheckerMode::MarkCompletion);
-        }
+        check_mark_completion(self.mem, self.generation.start);
+
+        #[cfg(debug_assertions)]
+        check_heap(self.mem, true);
     }
 
     unsafe fn marking_completed(&self) -> bool {
@@ -341,7 +341,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         self.state.phase = Phase::Pause;
 
         #[cfg(debug_assertions)]
-        check_memory(self.mem, CheckerMode::CompactCompletion);
+        check_heap(self.mem, false);
 
         // Make sure that the sanity check did not allocate on the heap, since a new empty
         // young generation will be initiated right after this GC increment/run.
