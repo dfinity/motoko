@@ -502,14 +502,10 @@ func @prune(n : ?@Node) : ?@Node = switch n {
 func @nextExpiration(n : ?@Node) : Nat64 = switch n {
   case null 0;
   case (?n) {
-    var exp = @nextExpiration(n.pre); // TODO: use the corollary for expire == 0
-    if (exp == 0) {
-      exp := n.expire[0];
-      if (exp == 0) {
-        exp := @nextExpiration(n.post)
-      }
-    };
-    exp
+    let pivot = n.expire[0];
+    if (pivot == 0) { return @nextExpiration(n.post) };
+    let exp = @nextExpiration(n.pre);
+    if (exp == 0) pivot else exp
   }
 };
 
