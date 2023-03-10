@@ -131,6 +131,7 @@ fn test_move() {
 
 unsafe fn test_table_growth() {
     const TEST_ALLOCATIONS: usize = 100;
+    let mut expected_ids = [0; TEST_ALLOCATIONS];
     let size = TEST_SIZE * WORD_SIZE + TEST_ALLOCATIONS * size_of::<Blob>();
     let mut mem = TestMemory::new(Bytes(size as u32).to_words());
     let object_table = create_object_table(&mut mem, 1);
@@ -140,11 +141,22 @@ unsafe fn test_table_growth() {
     mem.set_heap_base(new_heap_base);
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
     create_young_remembered_set(&mut mem);
-    for _ in 0..1000 {
+    for index in 0..TEST_ALLOCATIONS {
         let blob = alloc_blob(&mut mem, Bytes(0u32));
         assert!(blob.is_object_id());
+        expected_ids[index] = blob.get_raw();
     }
-    take_young_remembered_set();
+    let remembered_set = take_young_remembered_set();
+    let mut actual_ids = [0; TEST_ALLOCATIONS];
+    let mut iterator = remembered_set.iterate();
+    for index in 0..TEST_ALLOCATIONS {
+        assert!(iterator.has_next());
+        actual_ids[index] = iterator.current().get_raw();
+        iterator.next();
+    }
+    expected_ids.sort();
+    actual_ids.sort();
+    assert_eq!(actual_ids, expected_ids);
     assert!(!using_incremental_barrier());
     OBJECT_TABLE = None;
 }

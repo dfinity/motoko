@@ -144,7 +144,7 @@ impl ObjectTable {
         self.base as usize
     }
 
-    /// End address of the object table, equals `HEAP_BASE` (except when heap base 
+    /// End address of the object table, equals `HEAP_BASE` (except when heap base
     /// is initially aligned to 32 bytes).
     pub fn end(&self) -> usize {
         unsafe { self.base.add(self.length) as usize }
@@ -235,7 +235,7 @@ impl ObjectTable {
         // Static objects are not indirected via the object table.
         debug_assert!(self.end() < mem.get_heap_pointer());
         // The table end is equal to the heap base except for the initial 32-byte alignment.
-        debug_assert_eq!(self.end() / 32, mem.get_heap_base() / 32); 
+        debug_assert_eq!(self.end() / 32, mem.get_heap_base() / 32);
         debug_assert!(self.end() <= mem.get_heap_base()); // Due to alignment.
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
@@ -253,8 +253,8 @@ impl ObjectTable {
             self.move_object(object_id, new_address);
             debug_assert!(new_address >= mem.get_last_heap_pointer());
             if old_address < mem.get_last_heap_pointer() {
-                // The object is moved from the old generation to the young generation, 
-                // such that it may be reachable from other objects from the old 
+                // The object is moved from the old generation to the young generation,
+                // such that it may be reachable from other objects from the old
                 // generation. Therefore, conservatively add it to the remembered
                 // set for the young generation such that it is promoted back to the
                 // old generation.
