@@ -539,9 +539,10 @@ func @timer_helper() : async () {
       if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
         thunks[gathered] := ?(n.job);
         switch (n.delay) {
-          case (?delay) if (delay != 0) {
-            // re-add the node
-            let expire = n.expire[0] + delay;
+          case (null or ?0) ();
+          case (?delay) {
+            // re-add the node, skipping past expirations
+            let expire = n.expire[0] + delay * (1 + (now - n.expire[0]) / delay);
             n.expire[0] := 0;
             // N.B. reinsert only works on pruned nodes
             func reinsert(m : ?@Node) : @Node = switch m {
@@ -554,7 +555,6 @@ func @timer_helper() : async () {
             };
             @timers := ?reinsert(@prune(@timers));
           };
-          case _ ()
         };
         n.expire[0] := 0;
         gathered += 1;
