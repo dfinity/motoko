@@ -385,7 +385,7 @@ fn check_continuation_table(
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    if gc != GC::Copying {
+    if gc == GC::Incremental {
         assert_eq!(
             get_object_address(read_word(heap, offset) as usize),
             table_addr
