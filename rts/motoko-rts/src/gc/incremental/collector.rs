@@ -259,6 +259,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     unsafe fn complete_marking(&mut self) {
         debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(!self.state.mark_complete);
+        debug_assert!(self.state.mark_stack.is_empty());
         self.state.mark_complete = true;
         self.state.mark_stack.free();
 
@@ -270,7 +271,6 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn marking_completed(&self) -> bool {
-        debug_assert!(!self.state.mark_complete || self.state.mark_stack.is_empty());
         self.state.phase == Phase::Mark && self.state.mark_complete
     }
 
