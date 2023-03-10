@@ -238,7 +238,7 @@ and objblock s dec_fields =
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
-%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE (* LET_NO_ELSE *)
+%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 
 %left COLON
@@ -835,14 +835,9 @@ dec_var :
     { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
-  | LET p=pat EQ e=exp(ob) (* %prec LET_NO_ELSE *)
+  | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
-(*
-  | LET p=pat EQ e=exp(ob) ELSE fail=exp_nest
-    { let p', e' = normalize_let p e in
-      LetD (p', e', Some fail) @? at $sloc }
-*)
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
