@@ -14,12 +14,18 @@ mod utils;
 
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::write_barrier::REMEMBERED_SET;
+use motoko_rts::gc::incremental::run_incremental_gc;
+use motoko_rts::gc::incremental::state::{incremental_gc_state, is_incremental_gc_running, State};
+use motoko_rts::memory::Memory;
 use motoko_rts::remembered_set::RememberedSet;
 use utils::{get_object_address, get_scalar_value, read_word, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::common::Strategy;
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::generational::GenerationalGC;
+use motoko_rts::gc::incremental::write_barrier::{
+    create_young_remembered_set, take_young_remembered_set, using_incremental_barrier,
+};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
@@ -118,6 +124,9 @@ fn test_gc(
 ) {
     let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
 
+    unsafe {
+        initialize_gc_state(&mut heap, gc);
+    }
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         gc,
@@ -150,12 +159,29 @@ fn test_gc(
         );
     }
 
-    reset_test_heap();
+    unsafe {
+        reset_gc_state(gc);
+    }
 }
 
-fn reset_test_heap() {
-    unsafe {
+unsafe fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
+    if gc == GC::Incremental {
+        assert!(OBJECT_TABLE.is_some());
+        heap.set_last_heap_pointer(heap.get_heap_pointer());
+        create_young_remembered_set(heap);
+        assert!(using_incremental_barrier());
+        assert!(!is_incremental_gc_running());
+    }
+}
+unsafe fn reset_gc_state(gc: GC) {
+    if gc == GC::Incremental {
+        assert!(using_incremental_barrier());
         OBJECT_TABLE = None;
+        take_young_remembered_set();
+        assert!(!using_incremental_barrier());
+        let state = incremental_gc_state();
+        *state = State::new();
+        assert!(!is_incremental_gc_running());
     }
 }
 
@@ -211,54 +237,64 @@ fn check_dynamic_heap(
         let tag = read_word(heap, offset);
         offset += WORD_SIZE;
 
-        assert_eq!(tag, TAG_ARRAY);
-
         let object_id = read_word(heap, offset);
         offset += WORD_SIZE;
 
-        if gc != GC::Copying {
+        if gc == GC::Incremental {
             assert_eq!(get_object_address(object_id as usize), address);
         }
 
-        let n_fields = read_word(heap, offset);
-        offset += WORD_SIZE;
+        if gc == GC::Incremental && tag == TAG_BLOB {
+            // In-heap blobs for mark stack and remembered set.
+            let length = read_word(heap, offset);
+            offset += WORD_SIZE + length as usize;
+        } else {
+            if gc == GC::Incremental {
+                assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
+            } else {
+                assert_eq!(tag, TAG_ARRAY);
+            }
 
-        // There should be at least one field for the index
-        assert!(n_fields >= 1);
-
-        let object_idx = get_scalar_value(read_word(heap, offset));
-        offset += WORD_SIZE;
-        let old = seen.insert(object_idx, address);
-        if let Some(old) = old {
-            panic!(
-                "Object with index {} seen multiple times: {:#x}, {:#x}",
-                object_idx, old, address
-            );
-        }
-
-        let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
-            panic!("Object with index {} is not in the objects map", object_idx)
-        });
-
-        for field_idx in 1..n_fields {
-            let raw_field_value = read_word(heap, offset);
+            let n_fields = read_word(heap, offset);
             offset += WORD_SIZE;
-            // Get index of the object pointed by the field
-            let pointee_address = get_object_address(raw_field_value as usize);
-            let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
-            let pointee_idx_offset =
-                pointee_offset as usize + size_of::<Array>().to_bytes().as_usize(); // skip array header (incl. length)
-            let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
-            let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
-            assert_eq!(
-                pointee_idx,
-                expected_pointee_idx,
-                "Object with index {} points to {} in field {}, but expected to point to {}",
-                object_idx,
-                pointee_idx,
-                field_idx - 1,
-                expected_pointee_idx,
-            );
+
+            // There should be at least one field for the index
+            assert!(n_fields >= 1);
+
+            let object_idx = get_scalar_value(read_word(heap, offset));
+            offset += WORD_SIZE;
+            let old = seen.insert(object_idx, address);
+            if let Some(old) = old {
+                panic!(
+                    "Object with index {} seen multiple times: {:#x}, {:#x}",
+                    object_idx, old, address
+                );
+            }
+
+            let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
+                panic!("Object with index {} is not in the objects map", object_idx)
+            });
+
+            for field_idx in 1..n_fields {
+                let raw_field_value = read_word(heap, offset);
+                offset += WORD_SIZE;
+                // Get index of the object pointed by the field
+                let pointee_address = get_object_address(raw_field_value as usize);
+                let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
+                let pointee_idx_offset =
+                    pointee_offset as usize + size_of::<Array>().to_bytes().as_usize(); // skip array header (incl. length)
+                let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
+                let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
+                assert_eq!(
+                    pointee_idx,
+                    expected_pointee_idx,
+                    "Object with index {} points to {} in field {}, but expected to point to {}",
+                    object_idx,
+                    pointee_idx,
+                    field_idx - 1,
+                    expected_pointee_idx,
+                );
+            }
         }
     }
 
@@ -405,7 +441,21 @@ impl GC {
                 round >= 2
             }
 
-            GC::Incremental => unimplemented!(),
+            GC::Incremental => {
+                let (strategy, increments) = match round {
+                    0 => (Strategy::Young, 1),
+                    _ => (Strategy::Full, 4),
+                };
+                for _ in 0..increments {
+                    unsafe {
+                        run_incremental_gc(heap, strategy);
+                    }
+                }
+                unsafe {
+                    assert!(!is_incremental_gc_running());
+                }
+                round >= 2
+            }
         }
     }
 }

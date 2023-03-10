@@ -9,7 +9,7 @@ use super::collector::{GarbageCollector, Generation};
 use super::state::{incremental_gc_phase, incremental_gc_state, Phase};
 use super::time::Time;
 
-pub static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
+static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
 
 /// Activate the write barrier for the incremental GC.
 #[cfg(feature = "ic")]
@@ -19,21 +19,21 @@ pub(super) unsafe fn init_incremental_write_barrier<M: Memory>(mem: &mut M) {
 
 /// Take the young remembered set for young generation collection.
 /// A new young remembered set needs to be created after completed GC work.
-pub(super) unsafe fn take_young_remembered_set() -> RememberedSet {
+pub unsafe fn take_young_remembered_set() -> RememberedSet {
     YOUNG_REMEMBERED_SET.take().unwrap()
 }
 
 /// Create a new young remembered set after any of these events:
 /// * A young-only generation collection (without a subsequent old generation collection).
 /// * An old generation GC increment (that was run after a young generation collection).
-pub(super) unsafe fn create_young_remembered_set<M: Memory>(mem: &mut M) {
+pub unsafe fn create_young_remembered_set<M: Memory>(mem: &mut M) {
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
     debug_assert!(YOUNG_REMEMBERED_SET.is_none());
     YOUNG_REMEMBERED_SET = Some(RememberedSet::new(mem));
     debug_assert!(mem.get_last_heap_pointer() < mem.get_heap_pointer());
 }
 
-pub(crate) unsafe fn using_incremental_barrier() -> bool {
+pub unsafe fn using_incremental_barrier() -> bool {
     debug_assert!(YOUNG_REMEMBERED_SET.is_some() || incremental_gc_phase() == Phase::Pause);
     YOUNG_REMEMBERED_SET.is_some()
 }

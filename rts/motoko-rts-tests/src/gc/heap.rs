@@ -91,6 +91,12 @@ impl MotokoHeap {
         self.inner.borrow().heap_ptr_address()
     }
 
+    /// Set the last heap pointer, as address in the current process.
+    /// Used to initialize the incremental GC test, starting a new young generation.
+    pub fn set_last_heap_pointer(&mut self, address: usize) {
+        self.inner.borrow_mut().set_last_ptr_address(address);
+    }
+
     /// Get the beginning of dynamic heap, as an address in the current process
     pub fn heap_base_address(&self) -> usize {
         self.inner.borrow().heap_base_address()
@@ -223,10 +229,7 @@ impl MotokoHeapInner {
             + 1)
             * WORD_SIZE;
 
-        let use_object_table = match gc {
-            GC::Copying => false,
-            GC::MarkCompact | GC::Generational | GC::Incremental => true,
-        };
+        let use_object_table = gc == GC::Incremental;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
             let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
