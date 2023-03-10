@@ -3,6 +3,7 @@ mod mark_bit;
 mod mark_stack;
 mod object_table;
 mod roots;
+mod state;
 mod time;
 
 pub fn test() {
@@ -13,6 +14,7 @@ pub fn test() {
         mark_stack::test();
         object_table::test();
         roots::test();
+        state::test();
         time::test();
     }
 }

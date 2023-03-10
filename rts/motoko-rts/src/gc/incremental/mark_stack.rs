@@ -80,7 +80,7 @@ impl MarkStack {
         // Stack and their object ids are freed by the GC.
     }
 
-    fn is_allocated(&self) -> bool {
+    pub fn is_allocated(&self) -> bool {
         self.last != null_mut()
     }
 

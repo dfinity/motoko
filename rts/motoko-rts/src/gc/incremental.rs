@@ -38,7 +38,7 @@ mod collector;
 pub mod mark_stack;
 pub mod object_table;
 pub mod roots;
-mod state;
+pub mod state;
 pub mod time;
 pub mod write_barrier;
 

@@ -277,6 +277,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     unsafe fn start_compacting(&mut self) {
         debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(self.marking_completed());
+        debug_assert!(!self.state.mark_stack.is_allocated());
 
         self.state.phase = Phase::Compact;
         self.state.compact_from = self.generation.start;
