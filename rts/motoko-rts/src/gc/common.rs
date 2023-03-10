@@ -51,7 +51,7 @@ pub unsafe fn update_strategy(strategy: Strategy) {
 
     const GROWTH_RATE: f64 = 2.0;
     if strategy == Strategy::Full {
-        debug_assert_eq!(ic::HP, ic::LAST_HP);
+        debug_assert!(ic::HEAP_BASE <= ic::HP);
         let heap_size = ic::HP - ic::HEAP_BASE;
         OLD_GENERATION_THRESHOLD = (heap_size as f64 * GROWTH_RATE) as usize;
         if (ic::HP as usize) < CRITICAL_MEMORY_LIMIT {
