@@ -768,6 +768,13 @@ module FakeMultiVal = struct
     E.if_ env (ty bt) (thn ^^ store env bt) (els ^^ store env bt) ^^
     load env bt
 
+  (* A block that can be exited from *)
+  let block_ env bt body =
+    E.block_ env (ty bt) (G.with_current_depth (fun depth ->
+      body (store env bt ^^ G.branch_to_ depth)
+    )) ^^
+    load env bt
+
 end (* FakeMultiVal *)
 
 module Func = struct
@@ -7088,6 +7095,8 @@ module StackRep = struct
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
 
+  let joins = List.fold_left join Unreachable
+
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
@@ -7871,6 +7880,8 @@ module PatCode = struct
     | CannotFail of G.t
     | CanFail of (G.t -> G.t)
 
+  let definiteFail = CanFail (fun fail -> fail)
+
   let (^^^) : patternCode -> patternCode -> patternCode = function
     | CannotFail is1 ->
       begin function
@@ -7903,7 +7914,14 @@ module PatCode = struct
           G.if0 G.nop is2
         )
 
-  let orTrap env = with_fail (E.trap_with env "pattern failed")
+  let orElses : patternCode list -> patternCode -> patternCode =
+    List.fold_right orElse
+
+  let orPatternFailure env pcode =
+    with_fail (E.trap_with env "pattern failed") pcode
+
+  let orsPatternFailure env pcodes =
+    orPatternFailure env (orElses pcodes definiteFail)
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -9789,21 +9807,28 @@ and compile_exp (env : E.t) ae exp =
     ^^
    G.i Unreachable
   | SwitchE (e, cs) ->
-    SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
-    let (set_j, get_j) = new_local env "switch_out" in
 
-    let rec go env cs = match cs with
-      | [] -> CanFail (fun k -> k)
-      | {it={pat; exp=e}; _}::cs ->
-          let (ae1, code) = compile_pat_local env ae pat in
-          orElse ( CannotFail get_i ^^^ code ^^^
-                   CannotFail (compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
-                 (go env cs)
-          in
-      let code2 = go env cs in
-      code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
+    (* compile subexpressions and collect the provided stack reps *)
+    let codes = List.map (fun {it={pat; exp=e}; _} ->
+      let (ae1, pat_code) = compile_pat_local env ae pat in
+      let (sr, rhs_code) = compile_exp env ae1 e in
+      (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
+      ) cs in
+
+    let final_sr = StackRep.joins (List.map fst codes) in
+
+    final_sr,
+    (* Run scrut *)
+    code1 ^^ set_i ^^
+    (* Run rest in block to exit from *)
+    FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
+       orsPatternFailure env (List.map (fun (sr, c) ->
+          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
+       ) codes) ^^
+       G.i Unreachable (* We should always exit using the branch_code *)
+    )
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
@@ -10118,7 +10143,7 @@ and compile_unboxed_pat env ae how pat =
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
-      G.concat_mapi (fun i p -> orTrap env (fill_pat env ae1 p)) (List.rev ps)
+      G.concat_mapi (fun i p -> orPatternFailure env (fill_pat env ae1 p)) (List.rev ps)
     (* Variable patterns *)
     | VarP name ->
       let pre_code, sr, code = Var.set_val env ae1 name in
@@ -10127,7 +10152,7 @@ and compile_unboxed_pat env ae how pat =
     | _ ->
       G.nop,
       Some SR.Vanilla,
-      orTrap env (fill_pat env ae1 pat) in
+      orPatternFailure env (fill_pat env ae1 pat) in
   let pre_code = G.with_region pat.at pre_code in
   let fill_code = G.with_region pat.at fill_code in
   (ae1, alloc_code, pre_code, sr, fill_code)
