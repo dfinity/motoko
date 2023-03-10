@@ -193,6 +193,17 @@ and exp' at note = function
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
+  (* Optimizing array.size() *)
+  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+      when T.is_array e1.note.S.note_typ && proj.it = "size" ->
+    I.PrimE (I.OtherPrim "array_len", [exp e1])
+  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+      when T.(is_prim Text) e1.note.S.note_typ && proj.it = "size" ->
+    I.PrimE (I.OtherPrim "text_len", [exp e1])
+  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+      when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
+    I.PrimE (I.OtherPrim "blob_size", [exp e1])
+  (* Normal call *)
   | S.CallE (e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.BlockE [] -> (unitE ()).it
