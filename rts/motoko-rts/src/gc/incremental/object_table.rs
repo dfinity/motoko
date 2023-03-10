@@ -76,8 +76,8 @@
 //! Objects blocking the extension of the table can be easily moved to another place, because
 //! of the `O(1)` object movement costs by changing their addresses in the table.
 //! Notes:
-//! * The new `HEAP_BASE` may be aligned to 32 bytes (for symmetry to other GCs, but not required
-//!   for the incremental GC).
+//! * The new `HEAP_BASE` is not necessarily aligned to 32 bytes - this condition is only used
+//!   for the other compacting and generational GCs with the mark bitmap.
 //! * `LAST_HP` may fall behind the new `HEAP_BASE`, in which case it needs to be increased to the
 //!   new `HEAP_BASE`.
 //! * If objects are moved to the young generation due to table extension, their object id
@@ -144,7 +144,8 @@ impl ObjectTable {
         self.base as usize
     }
 
-    /// End address of the object table, equals `HEAP_BASE` (when aligned to 32 bytes).
+    /// End address of the object table, equals `HEAP_BASE` (except when heap base 
+    /// is initially aligned to 32 bytes).
     pub fn end(&self) -> usize {
         unsafe { self.base.add(self.length) as usize }
     }
@@ -232,7 +233,9 @@ impl ObjectTable {
         // resides at least one object in the dynamic heap above the table.
         // Static objects are not indirected via the object table.
         debug_assert!(self.end() < mem.get_heap_pointer());
-        debug_assert_eq!(self.end(), mem.get_heap_base());
+        // The table end is equal to the heap base except for the initial 32-byte alignment.
+        debug_assert_eq!(self.end() / 32, mem.get_heap_base()); 
+        debug_assert!(self.end() < mem.get_heap_base()); // Due to alignment.
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
         if has_object_header(*block) {
