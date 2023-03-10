@@ -272,7 +272,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
 
     unsafe fn marking_completed(&self) -> bool {
         debug_assert!(!self.state.mark_complete || self.state.mark_stack.is_empty());
-        self.state.mark_complete
+        self.state.phase == Phase::Mark && self.state.mark_complete
     }
 
     unsafe fn start_compacting(&mut self) {
