@@ -153,7 +153,7 @@ impl ObjectTable {
 
     /// Allocate a new object id and associate the object's address.
     pub fn new_object_id(&mut self, address: usize) -> Value {
-        assert!(address >= self.end());
+        debug_assert!(address >= self.end());
         let object_id = self.pop_free_id();
         self.write_element(object_id, address);
         object_id
