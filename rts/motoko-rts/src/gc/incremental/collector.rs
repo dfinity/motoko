@@ -157,31 +157,23 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     /// * New allocations being promoted to the old generation are marked when the
     ///   incremental collection of the old generation is active.
     pub unsafe fn run(&mut self) {
-        if self.pausing() {
+        if self.state.phase == Phase::Pause {
             self.start_marking();
         }
-        self.increment();
+        if self.state.phase == Phase::Mark {
+            self.mark_increment();
+        }
         if self.marking_completed() {
             self.start_compacting();
-            self.increment();
         }
-    }
-
-    unsafe fn pausing(&mut self) -> bool {
-        self.state.phase == Phase::Pause
-    }
-
-    unsafe fn increment(&mut self) {
-        match self.state.phase {
-            Phase::Pause | Phase::Stop => {}
-            Phase::Mark => self.mark_increment(),
-            Phase::Compact => self.compact_increment(),
+        if self.state.phase == Phase::Compact {
+            self.compact_increment();
         }
     }
 
     /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
     unsafe fn start_marking(&mut self) {
-        debug_assert!(self.pausing());
+        debug_assert!(self.state.phase == Phase::Pause);
 
         self.state.phase = Phase::Mark;
         self.state.mark_stack.allocate(self.mem);
@@ -225,6 +217,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn mark_increment(&mut self) {
+        debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(!self.state.mark_complete);
         loop {
             let object = self.state.mark_stack.pop();
@@ -268,6 +261,12 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(!self.state.mark_complete);
         self.state.mark_complete = true;
         self.state.mark_stack.free();
+
+        #[cfg(debug_assertions)]
+        if self.generation.start != self.mem.get_last_heap_pointer() {
+            // Sanity check for incremental marking of the old generation.
+            check_memory(self.mem, CheckerMode::MarkCompletion);
+        }
     }
 
     unsafe fn marking_completed(&self) -> bool {
@@ -276,14 +275,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn start_compacting(&mut self) {
-        #[cfg(debug_assertions)]
-        if self.generation.start != self.mem.get_last_heap_pointer() {
-            // Sanity check for incremental marking of the old generation.
-            check_memory(self.mem, CheckerMode::MarkCompletion);
-        }
-
         debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(self.marking_completed());
+
         self.state.phase = Phase::Compact;
         self.state.compact_from = self.generation.start;
         self.state.compact_to = self.state.compact_from;
@@ -291,9 +285,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
 
     unsafe fn compact_increment(&mut self) {
         debug_assert!(self.state.phase == Phase::Compact);
-        debug_assert!(self.generation.remembered_set.is_none()); // No longer valid as it will be collected.
-                                                                 // Need to visit all objects in the generation, since mark bits may need to be
-                                                                 // cleared and/or garbage object ids must be freed.
+        // The remembered set is no longer valid as it will be freed during compaction.
+        debug_assert!(self.generation.remembered_set.is_none());
+        // Need to visit all objects in the generation, since mark bits may need to be
+        // cleared and/or garbage object ids must be freed.
         while self.state.compact_from < self.mem.get_heap_pointer() && !self.time.is_over() {
             let block = self.state.compact_from as *mut Tag;
             let size = block_size(block as usize);
@@ -347,6 +342,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         #[cfg(debug_assertions)]
         check_memory(self.mem, CheckerMode::CompactCompletion);
 
+        // Make sure that the sanity check did not allocate on the heap, since a new empty
+        // young generation will be initiated right after this GC increment/run.
         debug_assert_eq!(
             self.mem.get_last_heap_pointer(),
             self.mem.get_heap_pointer()
