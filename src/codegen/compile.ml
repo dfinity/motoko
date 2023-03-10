@@ -10112,28 +10112,32 @@ and alloc_pat env ae how pat : VarEnv.t * G.t  =
 and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (* It returns:
      - the extended environment
-     - the code to do the pattern matching.
+     - the patternCode to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
-       consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       consumes it, and fills the heap.
+       If the pattern matches, execution continues (with nothing on the stack).
+       If the pattern does not match, it fails (in the sense of PatCode.CanFail)
   *)
   let ae1 = alloc_pat_local env ae pat in
   let fill_code = fill_pat env ae1 pat in
   (ae1, fill_code)
 
-(* Used for let patterns: If the pattern can consume its scrutinee in a better form
-   than vanilla (e.g. unboxed tuple, unboxed 32/64), lets do that.
+(* Used for let patterns:
+   If the pattern can consume its scrutinee in a better form than vanilla (e.g.
+   unboxed tuple, unboxed 32/64), lets do that.
 *)
-and compile_unboxed_pat env ae how pat =
+and compile_unboxed_pat env ae how pat
+  : VarEnv.t * G.t * G.t * SR.t option * G.t =
   (* It returns:
      - the extended environment
      - the code to allocate memory
      - the code to prepare the stack (e.g. push destination addresses)
-     - the desired stack rep
+       before the scrutinee is pushed
+     - the desired stack rep. None means: Do not even push the scrutinee.
      - the code to do the pattern matching.
        This expects the undestructed value is on top of the stack,
        consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       If the pattern does not match, it traps with pattern failure
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let pre_code, sr, fill_code = match pat.it with
