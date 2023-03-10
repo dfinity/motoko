@@ -315,6 +315,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             }
             let old_address = object as usize;
             let new_address = self.state.compact_to;
+            debug_assert!(new_address <= old_address);
             if new_address != old_address {
                 memcpy_words(new_address, old_address, size);
                 object_id.set_new_address(new_address);
@@ -325,7 +326,6 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                     .advance((size.as_usize() as f64 / TIME_FRACTION_PER_WORD) as usize);
             }
             self.state.compact_to += size.to_bytes().as_usize();
-            debug_assert!(self.state.compact_to <= self.state.compact_from);
             debug_assert_eq!(self.state.compact_to % WORD_SIZE as usize, 0);
         } else {
             // Free the id of a garbage object in the object table.
