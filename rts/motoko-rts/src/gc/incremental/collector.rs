@@ -84,7 +84,7 @@ use super::{
 };
 
 #[cfg(debug_assertions)]
-use super::sanity_checks::{check_mark_completion, check_heap};
+use super::sanity_checks::{check_heap, check_mark_completion};
 
 pub struct Generation {
     start: usize,

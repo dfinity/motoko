@@ -1,4 +1,4 @@
-//! Incremental GC sanity checker. 
+//! Incremental GC sanity checker.
 //! Serves for verifying both the young and old generation collection.
 //! Two checks:
 //! * Mark completion: No unmarked reachable objects.
@@ -16,8 +16,8 @@ use crate::{
 use super::{mark_stack::MarkStack, roots::visit_roots};
 
 /// Sanity check at the end of the marking phase for the old or young generation collection.
-/// Check that the set of marked objects by the incremental GC of the old generation is the 
-/// same set or a superset of the objects being marked by a conventional stop-the-world mark 
+/// Check that the set of marked objects by the incremental GC of the old generation is the
+/// same set or a superset of the objects being marked by a conventional stop-the-world mark
 /// algorithm. The incremental GC may mark more objects due to concurrent promotions from young
 /// generation and concurrent object id writes (changing object references while marking).
 pub unsafe fn check_mark_completion<M: Memory>(mem: &mut M, generation_start: usize) {
@@ -106,10 +106,10 @@ impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
     }
 }
 
-/// Full-heap sanity check that can be used for both young and old generation collection. 
+/// Full-heap sanity check that can be used for both young and old generation collection.
 /// Scans the entire heap and checks that all objects have valid object ids, self-referencing via
-/// the object table and that all object ids in references point to valid objects. 
-/// Optionally, checks that all mark bits been cleared, which must be the case after the compact 
+/// the object table and that all object ids in references point to valid objects.
+/// Optionally, checks that all mark bits been cleared, which must be the case after the compact
 /// phase.
 /// Note: Not to be called during an unfinished compact phase, since garbage object have then
 /// have dangling/invalid references (if referring to other garbage that has already been recycled).
