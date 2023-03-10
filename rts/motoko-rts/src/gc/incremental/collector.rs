@@ -335,7 +335,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
 
     unsafe fn complete_compacting(&mut self) {
         debug_assert_eq!(self.state.compact_from, self.mem.get_heap_pointer());
-        debug_assert!(self.state.compact_from <= self.state.compact_to);
+        debug_assert!(self.state.compact_to <= self.state.compact_from);
         debug_assert!(self.generation.start <= self.state.compact_to);
         self.mem.shrink_heap(self.state.compact_to);
         self.state.phase = Phase::Pause;
