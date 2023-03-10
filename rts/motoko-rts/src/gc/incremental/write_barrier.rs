@@ -9,6 +9,13 @@ use super::collector::{GarbageCollector, Generation};
 use super::state::{incremental_gc_phase, incremental_gc_state, Phase};
 use super::time::Time;
 
+/// Records the ids of objects that serve as additional root set for the young
+/// generation collection. It contains ids of objects living in the young generation
+/// with the following properties:
+/// * The object is or has been referenced from the old generation as detected by
+///   the post-update write barrier.
+/// * The object has been moved from the old generation to the young generation due
+///   to object table growth.
 static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
 
 /// Activate the write barrier for the incremental GC.
@@ -36,6 +43,12 @@ pub unsafe fn create_young_remembered_set<M: Memory>(mem: &mut M) {
 pub unsafe fn using_incremental_barrier() -> bool {
     debug_assert!(YOUNG_REMEMBERED_SET.is_some() || incremental_gc_phase() == Phase::Pause);
     YOUNG_REMEMBERED_SET.is_some()
+}
+
+/// Called by the object table when it moves an old object to the young generation.
+pub(super) unsafe fn move_to_young_generation<M: Memory>(mem: &mut M, value: Value) {
+    debug_assert!(value.is_object_id());
+    YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
 }
 
 /// Write a potential pointer value with with a pre- and post-update barrier used by the incremental GC.
@@ -84,14 +97,7 @@ unsafe fn post_update_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
         if value.points_to_or_beyond(mem.get_last_heap_pointer()) {
             if location as usize >= mem.get_heap_base() {
                 // Catch object ids that point from old generation (or static roots) to young generation.
-                // Note: We could also only record the target value, as no threading is performed.
-                // However, the location can be overwritten, such that the target object may still become garbage.
-                // Therefore, this is an optimization that allows objects to be collected even if they have only
-                // been temporarily referenced from the old generation.
-                YOUNG_REMEMBERED_SET
-                    .as_mut()
-                    .unwrap()
-                    .insert(mem, Value::from_raw(location as u32));
+                YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
             }
         }
     }

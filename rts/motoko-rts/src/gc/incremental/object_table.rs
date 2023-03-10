@@ -103,8 +103,13 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    rts_trap_with,
-    types::{skew, unskew, Value, NULL_OBJECT_ID},
+    gc::incremental::write_barrier::move_to_young_generation,
+    mem_utils::memcpy_words,
+    memory::Memory,
+    types::{
+        block_size, has_object_header, skew, unskew, Obj, Tag, Value, NULL_OBJECT_ID,
+        TAG_FREE_SPACE, TAG_ONE_WORD_FILLER,
+    },
 };
 
 /// Central object table.
@@ -152,9 +157,9 @@ impl ObjectTable {
     }
 
     /// Allocate a new object id and associate the object's address.
-    pub fn new_object_id(&mut self, address: usize) -> Value {
+    pub fn new_object_id<M: Memory>(&mut self, mem: &mut M, address: usize) -> Value {
         debug_assert!(address >= self.end());
-        let object_id = self.pop_free_id();
+        let object_id = self.pop_free_id(mem);
         self.write_element(object_id, address);
         object_id
     }
@@ -187,10 +192,13 @@ impl ObjectTable {
         self.free = object_id;
     }
 
-    fn pop_free_id(&mut self) -> Value {
+    fn pop_free_id<M: Memory>(&mut self, mem: &mut M) -> Value {
         if self.free == FREE_STACK_END {
-            unsafe { rts_trap_with("Full object table") }
+            unsafe {
+                self.grow_table(mem);
+            }
         }
+        debug_assert!(self.free != FREE_STACK_END);
         let object_id = self.free;
         self.free = Value::from_raw(self.read_element(object_id) as u32);
         object_id
@@ -217,5 +225,36 @@ impl ObjectTable {
         debug_assert!(element_address >= self.base as usize);
         debug_assert!(element_address < self.end());
         element_address as *mut usize
+    }
+
+    unsafe fn grow_table<M: Memory>(&mut self, mem: &mut M) {
+        // Since the table is full with a length of at least one entry, there
+        // resides at least one object in the dynamic heap above the table.
+        // Static objects are not indirected via the object table.
+        debug_assert!(self.end() < mem.get_heap_pointer());
+        let block = self.end() as *mut Tag;
+        let size = block_size(block as usize);
+        if has_object_header(*block) {
+            // Relocate the object to the end of dynamic heap and make space
+            // for table extension.
+            let object_id = (block as *mut Obj).object_id();
+            let new_address = mem.alloc_words(size);
+            memcpy_words(new_address, block as usize, size);
+            self.move_object(object_id, new_address);
+            // The object is most probably moved from the old generation to
+            // the young generation and may be reachable from other objects
+            // from the old generation. Therefore, conservatively add it to
+            // the remembered set for the young generation such that it is
+            // promoted back to the old generation.
+            debug_assert!(new_address >= mem.get_last_heap_pointer());
+            move_to_young_generation(mem, object_id);
+        } else {
+            // Heap-internal free blocks may result from `Blob::shrink()`.
+            debug_assert!(*block == TAG_FREE_SPACE || *block == TAG_ONE_WORD_FILLER);
+        }
+        let old_length = self.length;
+        let new_length = old_length + size.as_usize();
+        self.length = new_length;
+        self.add_free_range(old_length..new_length);
     }
 }

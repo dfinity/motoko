@@ -18,24 +18,24 @@ pub unsafe fn test() {
 const TEST_SIZE: usize = 10_000;
 
 fn test_allocate() {
-    let mut object_table = create_object_table(TEST_SIZE);
+    let mut test_memory = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut object_table = create_object_table(&mut test_memory, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut object_table, &mut expected_table);
+    allocate_entries(&mut test_memory,&mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     free_all_entries(&mut object_table, &expected_table);
 }
 
-fn create_object_table(length: usize) -> ObjectTable {
+fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
     let size = Words(length as u32);
-    let mut test_memory = TestMemory::new(size);
-    let base = unsafe { test_memory.alloc_words(size) } as *mut usize;
+    let base = unsafe { mem.alloc_words(size) } as *mut usize;
     ObjectTable::new(base, length)
 }
 
-fn allocate_entries(object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
+fn allocate_entries(mem: &mut TestMemory, object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
     for count in 0..expected_table.len() {
         let address = object_table.end() + count * WORD_SIZE;
-        let object_id = object_table.new_object_id(address);
+        let object_id = object_table.new_object_id(mem, address);
         assert_eq!(object_table.get_object_address(object_id), address);
         expected_table[count] = (object_id, address);
         assert_eq!(object_table.get_object_address(object_id), address);
@@ -72,24 +72,25 @@ fn delete_random_half(
     deleted
 }
 
-fn reallocate(object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
+fn reallocate(mem: &mut TestMemory, object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
     let mut free_index = 0;
     while free_index < expected_table.len() && expected_table[free_index].0 != NULL_OBJECT_ID {
         free_index += 1;
     }
     assert!(free_index < expected_table.len());
     let address = expected_table[free_index].1;
-    expected_table[free_index].0 = object_table.new_object_id(address);
+    expected_table[free_index].0 = object_table.new_object_id(mem, address);
 }
 
 fn test_remove_realloc() {
-    let mut object_table = create_object_table(TEST_SIZE);
+    let mut test_memory = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut object_table = create_object_table(&mut test_memory, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut object_table, &mut expected_table);
+    allocate_entries(&mut test_memory, &mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     let deleted = delete_random_half(&mut object_table, &mut expected_table);
     for _ in 0..deleted {
-        reallocate(&mut object_table, &mut expected_table);
+        reallocate(&mut test_memory, &mut object_table, &mut expected_table);
     }
     check_all_entries(&object_table, &expected_table);
     free_all_entries(&mut object_table, &expected_table);
@@ -105,9 +106,10 @@ fn move_all_objects(object_table: &mut ObjectTable, expected_table: &mut [(Value
 }
 
 fn test_move() {
-    let mut object_table = create_object_table(TEST_SIZE);
+    let mut test_memory = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut object_table = create_object_table(&mut test_memory, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut object_table, &mut expected_table);
+    allocate_entries(&mut test_memory, &mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     move_all_objects(&mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);

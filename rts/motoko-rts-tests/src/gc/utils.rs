@@ -1,5 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use motoko_rts::types::{skew, Value, OBJECT_TABLE};
+use motoko_rts::types::{skew, Value, OBJECT_TABLE, Words};
+
+use crate::memory::TestMemory;
 
 /// A unique object index, used in heap descriptions.
 ///
@@ -59,7 +61,9 @@ pub fn make_object_id(address: u32) -> Value {
         if OBJECT_TABLE.is_some() && (address as usize) < OBJECT_TABLE.as_mut().unwrap().base() {
             Value::from_raw(skew(address as usize) as u32)
         } else {
-            Value::new_object_id(address as usize)
+            // Object table size should be sufficient, provide no memory for object table growth.
+            let mut no_memory = TestMemory::new(Words(0u32));
+            Value::new_object_id(&mut no_memory, address as usize)
         }
     }
 }

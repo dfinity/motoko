@@ -92,14 +92,13 @@ unsafe fn check_visit_remembered_set() {
         &continuation_indices,
         GC::Incremental,
     );
-    let mut remembered_set_values =
+    let remembered_set_values =
         remembered_set_indices.map(|index| index_to_object_id(&heap, index as usize));
     let mut mem = TestMemory::new(Words(WORD_SIZE as u32 * INITIAL_TABLE_LENGTH));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
-    for index in 0..remembered_set_values.len() {
-        let location = &mut remembered_set_values[index] as *mut Value;
-        remembered_set.insert(&mut mem, Value::from_raw(location as u32));
+    for value in remembered_set_values {
+        remembered_set.insert(&mut mem, value);
     }
 
     let roots = get_roots(&heap);

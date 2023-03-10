@@ -355,7 +355,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             let old_pointer = (bit * WORD_SIZE) as *mut Obj;
             let new_pointer = free;
 
-            let new_id = Value::new_object_id(new_pointer);
+            let new_id = Value::new_object_id(self.mem, new_pointer);
 
             // Unthread backwards pointers as well as forward pointers of static objects.
             // In the case of a young collection, also unthread forward pointers of old objects.

@@ -183,7 +183,7 @@ unsafe fn update_refs<M: Memory>(mem: &mut M) {
         let p = (bit * WORD_SIZE) as *mut Obj;
         let p_new = free;
 
-        let new_id = Value::new_object_id(p_new as usize);
+        let new_id = Value::new_object_id(mem, p_new as usize);
 
         // Update backwards references to the object's new location and restore object header
         unthread(p, new_id);
@@ -195,12 +195,6 @@ unsafe fn update_refs<M: Memory>(mem: &mut M) {
 
             debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
         }
-
-        // Update object id, TODO: Remove later
-        let new_obj = p_new as *mut Obj;
-        debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-        new_obj.object_id().free_object_id();
-        (*new_obj).initialize_id(new_id);
 
         free += p_size_words.to_bytes().as_usize();
 

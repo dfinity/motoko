@@ -207,10 +207,10 @@ pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
 
 impl Value {
     /// Reserve a new object id in the object table for a newly allocated object at the defined address.
-    pub unsafe fn new_object_id(address: usize) -> Value {
+    pub unsafe fn new_object_id<M: Memory>(mem: &mut M, address: usize) -> Value {
         debug_assert!(!is_skewed(address as u32));
         if OBJECT_TABLE.is_some() {
-            OBJECT_TABLE.as_mut().unwrap().new_object_id(address)
+            OBJECT_TABLE.as_mut().unwrap().new_object_id(mem, address)
         } else {
             Value(skew(address) as u32)
         }

@@ -62,12 +62,9 @@ unsafe fn visit_young_remembered_set<C, V: Fn(&mut C, Value)>(
 ) {
     let mut iterator = remembered_set.iterate();
     while iterator.has_next() {
-        let location = iterator.current().get_raw() as *mut Value;
-        let value = *location;
-        // Check whether the location still refers to the generation as it may be overwritten.
-        if value.points_to_or_beyond(generation_base) {
-            visit_value(context, value);
-        }
+        let value = iterator.current();
+        debug_assert!(value.points_to_or_beyond(generation_base));
+        visit_value(context, value);
         iterator.next();
     }
 }
