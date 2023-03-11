@@ -18,7 +18,7 @@
 
 * motoko-base
 
-  * Adds `Array.subArray` function (dfinity/motoko-base#445).
+  * Add `Array.subArray` function (dfinity/motoko-base#445).
 
   * BREAKING CHANGE (Minor)
 
