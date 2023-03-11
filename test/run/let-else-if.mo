@@ -6,3 +6,10 @@ func foo() {
 };
 
 foo();
+
+func bar() {
+    if false let _ = 4 else return;
+    assert false;
+};
+
+bar();

@@ -88,6 +88,9 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({ i with it = Compare (F64 F64Op.Ne)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Ne); _} :: l', r' ->
       go l' ({ i with it = Compare (F64 F64Op.Eq)} :: r')
+    (* LSBit masking before `If` is `Ctz` and switched `If` legs *)
+    | ({ it = Binary (I32 I32Op.And); _} as a) :: { it = Const {it = I32 1l; _}; _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
+      go ({a with it = Unary (I32 I32Op.Ctz)} :: l') ({i with it = If (res,else_,then_)} :: r')
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
