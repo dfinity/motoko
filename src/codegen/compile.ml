@@ -10321,8 +10321,8 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
     Const.(t_of_v (Array cs)),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
   | PrimE (TagPrim i, [e]) ->
-    let (object_ct, fill) = compile_const_exp env pre_ae e in
-    Const.(t_of_v (Tag (i, object_ct))),
+    let (arg_ct, fill) = compile_const_exp env pre_ae e in
+    Const.(t_of_v (Tag (i, arg_ct))),
     fill
 
   | _ -> assert false
