@@ -125,7 +125,8 @@ let rec exp lvl (env : env) e : Lbool.t =
     | PrimE (ArrayPrim (Const, _), es) ->
       all (List.map (fun e -> exp lvl env e) es)
     | PrimE (DotPrim _, [e1])
-    | PrimE (ProjPrim _, [e1]) ->
+    | PrimE (ProjPrim _, [e1])
+    | PrimE (TagPrim _, [e1]) ->
       exp lvl env e1
     | LitE _ ->
       surely_true
