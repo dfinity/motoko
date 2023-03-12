@@ -138,6 +138,7 @@ module Const = struct
     | Obj of (string * t) list
     | Unit
     | Array of t list (* also tuples, but not nullary *)
+    | Tag of (string * t)
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -1749,6 +1750,13 @@ module Variant = struct
   let test_is env l =
     get_variant_tag ^^
     compile_eq_const (hash_variant_label env l)
+
+  let vanilla_lit env i ptr =
+    E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Variant);
+        I32 (hash_variant_label env i);
+        I32 ptr
+      ]
 
 end (* Variant *)
 
@@ -7129,6 +7137,9 @@ module StackRep = struct
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
+    | Const.Tag (i, c) ->
+      let ptr = materialize_const_t env c in
+      Variant.vanilla_lit env i ptr
     | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
@@ -10307,8 +10318,12 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
-    Const.t_of_v (Const.Array cs),
+    Const.(t_of_v (Array cs)),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+  | PrimE (TagPrim i, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    Const.(t_of_v (Tag (i, object_ct))),
+    fill
 
   | _ -> assert false
 
