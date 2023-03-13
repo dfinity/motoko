@@ -175,13 +175,8 @@ unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
         assert!(blob.is_object_id());
     }
     let remembered_set = take_young_remembered_set();
-    let mut iterator = remembered_set.iterate();
-    let mut count_remembered = 0;
-    while iterator.has_next() {
-        count_remembered += 1;
-        iterator.next();
-    }
-    assert_eq!(count_remembered, number_of_old_objects);
+    let iterator = remembered_set.iterate();
+    assert!(!iterator.has_next());
     assert!(!using_incremental_barrier());
     OBJECT_TABLE = None;
 }
