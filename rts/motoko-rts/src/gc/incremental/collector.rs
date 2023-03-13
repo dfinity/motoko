@@ -271,7 +271,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         check_mark_completion(self.mem, self.generation.start);
 
         #[cfg(debug_assertions)]
-        check_heap(self.mem, true);
+        check_heap(self.mem, true, self.generation.start);
     }
 
     unsafe fn marking_completed(&self) -> bool {
@@ -352,6 +352,6 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         self.state.phase = Phase::Pause;
 
         #[cfg(debug_assertions)]
-        check_heap(self.mem, false);
+        check_heap(self.mem, false, self.generation.start);
     }
 }

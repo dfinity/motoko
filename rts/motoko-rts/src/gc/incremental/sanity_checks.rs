@@ -109,17 +109,21 @@ impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
 /// Full-heap sanity check that can be used for both young and old generation collection.
 /// Scans the entire heap and checks that all objects have valid object ids, self-referencing via
 /// the object table and that all object ids in references point to valid objects.
-/// Optionally, checks that all mark bits been cleared, which must be the case after the compact
-/// phase.
+/// Optionally, checks that all mark bits been cleared for objects above or equal the generation
+/// start address, which must be the case after the compact phase.
 /// Note: Not to be called during an unfinished compact phase, since garbage object have then
 /// have dangling/invalid references (if referring to other garbage that has already been recycled).
-pub unsafe fn check_heap<M: Memory>(mem: &mut M, allow_marked_objects: bool) {
+pub unsafe fn check_heap<M: Memory>(
+    mem: &mut M,
+    allow_marked_objects: bool,
+    generation_start: usize,
+) {
     let mut pointer = mem.get_heap_base();
     while pointer < mem.get_heap_pointer() {
         let tag = *(pointer as *const Tag);
         if has_object_header(tag) {
             let object = pointer as *mut Obj;
-            if !allow_marked_objects {
+            if !allow_marked_objects && pointer >= generation_start {
                 assert!(!object.is_marked());
             }
             let value = object.object_id();
