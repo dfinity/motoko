@@ -4,14 +4,25 @@ use crate::rts_trap_with;
 
 use motoko_rts_macros::ic_mem_fn;
 
+#[derive(Clone)]
 pub struct BlockId(pub u16);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegionId(pub u16);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct RegionSizeInPages(pub u64);
 
 pub const NIL_REGION_ID : u16 = 0;
 
+// This impl encapsulates encoding of optional region IDs within a u16.
+// Used by block-region table to encode the (optional) region ID of a block.
 impl RegionId {
     pub fn id_is_nil(id : u16) -> bool {
 	id == NIL_REGION_ID
+    }
+    pub fn from_id(id: u16) -> Self {
+	RegionId(id)
     }
     pub fn from_u16(id: u16) -> Option<Self> {
 	if Self::id_is_nil(id) { None } else { Some(RegionId(id - 1)) }
@@ -20,6 +31,27 @@ impl RegionId {
 	match opreg {
 	    None => 0,
 	    Some(id) => id.0 + 1
+	}
+    }
+}
+
+// This impl encapsulates encoding of optional region (sizes) within a u64.
+// Used by region table to encode sizes of allocated regions (the size of which are Some(s)),
+// and which regions are available to allocate (the size of which are None).
+impl RegionSizeInPages {
+    pub fn u64_is_nil(u : u64) -> bool {
+	u == 0
+    }
+    pub fn from_u64(u: u64) -> Option<Self> {
+	if Self::u64_is_nil(u) { None } else { Some(RegionSizeInPages(u - 1)) }
+    }
+    pub fn from_size_in_pages(s: u64) -> Self {
+	RegionSizeInPages(s)
+    }
+    pub fn into_u64(opreg: Option<RegionSizeInPages>) -> u64 {
+	match opreg {
+	    None => 0,
+	    Some(s) => s.0 + 1
 	}
     }
 }
@@ -88,21 +120,33 @@ mod meta_data {
 	use super::{offset, size};
 	use crate::region::{BlockId, RegionId};
 
-	// Compute an offset in stable memory for a particular region ID.
-	fn index(id : u16) -> u64 {
-	    offset::BLOCK_REGION_TABLE + (id as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64)
+	// Compute an offset in stable memory for a particular block ID (based zero).
+	fn index(b : &BlockId) -> u64 {
+	    offset::BLOCK_REGION_TABLE + (b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64)
 	}
 
+	/// Some means that the block is in use.
+	/// None means that the block is available for (re-)allocation.
 	pub fn get(b:BlockId) -> Option<(RegionId, u16)> {
-	    let raw = read_u16(index(b.0));
+	    let raw = read_u16(index(&b));
 	    let rid = RegionId::from_u16(raw);
 	    rid.map(|r| {
-		let r_offset = r.0;
-		(r, read_u16(index(r_offset) + 2))
+		(r, read_u16(index(&b) + 2))
 	    })
 	}
-	pub fn set(b:BlockId, r:Option<RegionId>) {
-	    write_u16(index(b.0), RegionId::into_u16(r))
+
+	/// Some means that the block is in use.
+	/// None means that the block is available for (re-)allocation.
+	pub fn set(b:BlockId, r:Option<(RegionId, u16)>) {
+	    match r {
+		None => {
+		    write_u16(index(&b), RegionId::into_u16(None))
+		},
+		Some((r, j)) => {
+		    write_u16(index(&b) + 0, RegionId::into_u16(Some(r)));
+		    write_u16(index(&b) + 2, j)
+		}
+	    }
 	}
     }
 
@@ -176,26 +220,58 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let old_block_count = (old_page_count + 127) / 128;
     let new_block_count = (old_page_count + new_pages_ + 127) / 128;
     let inc_block_count = new_block_count - old_block_count;
-    if true { // Update the total allocated blocks:
+    let (old_total_blocks, _new_total_blocks) = {
 	let c = meta_data::total_allocated_blocks::get();
-	meta_data::total_allocated_blocks::set(c + inc_block_count as u64);
-    }
+	let c_ = c + inc_block_count as u64;
+	// to do -- assert c_ is less than meta_data::max::BLOCKS
+	meta_data::total_allocated_blocks::set(c_);
+	(c, c_)
+    };
     (*r).page_count += new_pages_;
     let new_vec_pages = alloc_blob(mem, Bytes(new_block_count * 2));
     let old_vec_byte_count = old_block_count * 2;
-    let new_vec_byte_count = new_block_count * 2;
+    let _new_vec_byte_count = new_block_count * 2;
+
+    let new_pages = new_vec_pages.get_ptr() as *mut Blob;
+    let old_pages = (*r).vec_pages.get_ptr() as *mut Blob;
+
+    // Copy old region-block associations into new heap object.
     for i in 0..old_vec_byte_count {
-	let new_pages = new_vec_pages.get_ptr() as *mut Blob;
-	let old_pages = (*r).vec_pages.get_ptr() as *mut Blob;
 	new_pages.set(i, old_pages.get(i));
     }
-    //  ## choose and record new block IDs:
-    //    - call meta_data::block_region_table::set_block_region(r.id, block_id)
-    //             for each block_id in old_total_blocks..new_total_blocks-1
-    //  ## save new block IDs into new_vec_pages
-    //    - call new_vec_pages.set(byte_offset)
-    //            for byte_offset in old_vec_byte_count..new_vec_byte_count
-    //              if the byte_offset is even, vs odd, ...
+
+    println!(80, "region_grow id={} (old_block_count, new_block_count) = ({}, {})", (*r).id, old_block_count, new_block_count);
+
+    // Record new associations, between the region and each new block:
+    // - in block_region_table (stable memory, for persistence).
+    // - in region representation (heap memory, for fast access operations).
+    for i in old_block_count..new_block_count {
+	// rel_i starts at zero.
+	let rel_i : u16 = (i - old_block_count as u32) as u16;
+
+	// (to do -- handle case where allocating this way has run out.)
+	let block_id : u16 = (old_total_blocks + rel_i as u64) as u16;
+
+	println!(50, "  region_grow id={} (slot index) i={} block_id={}", (*r).id, i, block_id);
+
+	// Update stable memory with new association.
+	let assoc =  Some((RegionId::from_id((*r).id), i as u16));
+	meta_data::block_region_table::set(BlockId(block_id), assoc.clone());
+
+	if true { // temp sanity testing: read back the data we just wrote.
+	    let assoc_ = meta_data::block_region_table::get(BlockId(block_id));
+	    assert_eq!(assoc, assoc_)
+	}
+
+	let block_id_upper : u8 = ((block_id & 0xff00) >> 8) as u8;
+	let block_id_lower : u8 = ((block_id & 0x00ff) >> 0) as u8;
+
+	// Update heap memory with new association.
+	// (write big-endian u16 to slot i in new_pages.)
+	new_pages.set(i * 2 + 0, block_id_upper);
+	new_pages.set(i * 2 + 1, block_id_lower);
+
+    }
 
     (*r).vec_pages = new_vec_pages;
     old_page_count.into()
