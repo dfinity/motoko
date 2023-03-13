@@ -18,7 +18,7 @@ impl RegionId {
 
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
-    pub const NIL_REGION_ID : u16 = 32767;
+    pub const NIL_REGION_ID : u16 = 0;
 
     /// Maximum number of entities.
     pub mod max {
@@ -48,19 +48,14 @@ mod meta_data {
     }
 
     pub mod total_allocated_blocks {
-	use crate::ic0_stable::nicer::{read, write};
+	use crate::ic0_stable::nicer::{read_u16, write_u16};
 	use super::offset;
 
 	pub fn get() -> u64 {
-	    let mut res : [u8; 2] = [0, 0];
-	    read(offset::TOTAL_ALLOCATED_BLOCKS, &mut res);
-	    let res : u64 = (res[0] as u64) << 8 | res[1] as u64; // big endian Nat16
-	    res
+	    read_u16(offset::TOTAL_ALLOCATED_BLOCKS) as u64
 	}
 	pub fn set(n: u64) {
-	    let n_ = n as u16;
-	    let bytes : [u8; 2] = [(n_ & 0xFF00) as u8, (n & 0xFF) as u8];
-	    write(offset::TOTAL_ALLOCATED_BLOCKS, &bytes);
+	    write_u16(offset::TOTAL_ALLOCATED_BLOCKS, n as u16)
 	}
     }
 
