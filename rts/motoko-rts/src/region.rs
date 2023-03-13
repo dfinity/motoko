@@ -7,18 +7,25 @@ use motoko_rts_macros::ic_mem_fn;
 pub struct BlockId(pub u16);
 pub struct RegionId(pub u16);
 
+pub const NIL_REGION_ID : u16 = 0;
+
 impl RegionId {
     pub fn id_is_nil(id : u16) -> bool {
-	id == crate::region::meta_data::NIL_REGION_ID
+	id == NIL_REGION_ID
     }
-    pub fn from_id(id: u16) -> Option<Self> {
-	if Self::id_is_nil(id) { None } else { Some(RegionId(id)) }
+    pub fn from_u16(id: u16) -> Option<Self> {
+	if Self::id_is_nil(id) { None } else { Some(RegionId(id - 1)) }
+    }
+    pub fn into_u16(opreg: Option<RegionId>) -> u16 {
+	match opreg {
+	    None => 0,
+	    Some(id) => id.0 + 1
+	}
     }
 }
 
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
-    pub const NIL_REGION_ID : u16 = 0;
 
     /// Maximum number of entities.
     pub mod max {
@@ -60,26 +67,21 @@ mod meta_data {
     }
 
     pub mod total_allocated_regions {
-	use crate::ic0_stable::nicer::{read, write};
+	use crate::ic0_stable::nicer::{read_u16, write_u16};
 	use super::offset;
 
 	pub fn get() -> u64 {
-	    let mut res : [u8; 2] = [0, 0];
-	    read(offset::TOTAL_ALLOCATED_REGIONS, &mut res);
-	    let res : u64 = (res[0] as u64) << 8 | res[1] as u64; // big endian Nat16
-	    res
+	    read_u16(offset::TOTAL_ALLOCATED_REGIONS) as u64
 	}
 	pub fn set(n: u64) {
-	    let n_ = n as u16;
-	    let bytes : [u8; 2] = [(n_ & 0xFF00) as u8, (n & 0xFF) as u8];
-	    write(offset::TOTAL_ALLOCATED_REGIONS, &bytes);
+	    write_u16(offset::TOTAL_ALLOCATED_REGIONS, n as u16)
 	}
     }
 
     pub mod block_region_table {
 	// invariant: all blocks whose IDs are below the total_allocated_blocks are valid.
 
-	use crate::ic0_stable::nicer::{read, write};
+	use crate::ic0_stable::nicer::{read_u16, write_u16};
 	use super::{offset, size};
 	use crate::region::{BlockId, RegionId};
 
@@ -89,25 +91,15 @@ mod meta_data {
 	}
 
 	pub fn get(b:BlockId) -> Option<(RegionId, u16)> {
-	    let mut reg : [u8; 2] = [0, 0];
-	    read(index(b.0), &mut reg);
-	    let reg : u16 = (reg[0] as u16) << 8 | reg[1] as u16; // big endian Nat16
-	    RegionId::from_id(reg).map(|rid|{
-		let mut idx : [u8; 2] = [0, 0];
-		read(index(b.0) + 2, &mut idx);
-		let idx : u16 = (idx[0] as u16) << 8 | idx[1] as u16; // big endian Nat16
-		(rid, idx)
+	    let raw = read_u16(index(b.0));
+	    let rid = RegionId::from_u16(raw);
+	    rid.map(|r| {
+		let r_offset = r.0;
+		(r, read_u16(index(r_offset) + 2))
 	    })
 	}
 	pub fn set(b:BlockId, r:Option<RegionId>) {
-	    if let Some(r) = r {
-		let bytes : [u8; 2] = [(r.0 & 0xFF00) as u8, (r.0 & 0xFF) as u8];
-		write(index(b.0), &bytes);
-	    } else {
-		let nil = crate::region::meta_data::NIL_REGION_ID;
-		let bytes : [u8; 2] = [(nil & 0xFF00) as u8, (nil & 0xFF) as u8];
-		write(index(b.0), &bytes);
-	    }
+	    write_u16(index(b.0), RegionId::into_u16(r))
 	}
     }
 
