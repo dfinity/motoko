@@ -39,6 +39,9 @@ mod meta_data {
 	pub const REGION_TABLE_ENTRY : u16 = 8;
 
 	pub const BLOCK_REGION_TABLE_ENTRY : u16 = 4;
+
+	pub const BLOCK_REGION_TABLE : u64 =
+	    super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
     }
 
     /// Offsets into stable memory for statically-sized fields and tables.
@@ -51,7 +54,7 @@ mod meta_data {
 
 	pub const REGION_TABLE : u64 =
 	    BLOCK_REGION_TABLE +
-	    super::max::BLOCKS as u64 * super::size::BLOCK_REGION_TABLE_ENTRY as u64;
+	    super::size::BLOCK_REGION_TABLE;
     }
 
     pub mod total_allocated_blocks {
@@ -87,7 +90,7 @@ mod meta_data {
 
 	// Compute an offset in stable memory for a particular region ID.
 	fn index(id : u16) -> u64 {
-	    offset::BLOCK_REGION_TABLE + id as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64
+	    offset::BLOCK_REGION_TABLE + (id as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64)
 	}
 
 	pub fn get(b:BlockId) -> Option<(RegionId, u16)> {
@@ -142,7 +145,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 // For sanity-checking during testing and for future trouble-shooting.
 // (Perhaps we can keep this here, and just not commit to it when exposing final API?)
 #[ic_mem_fn]
-pub unsafe fn region_meta_loglines<M: Memory>(mem: &mut M) {
+pub unsafe fn region_meta_loglines<M: Memory>(_mem: &mut M) {
     let log_id = NEXT_REGION_LOG_ID;
     NEXT_REGION_LOG_ID += 1;
     println!(50, "# regionMetaLogLines {{");

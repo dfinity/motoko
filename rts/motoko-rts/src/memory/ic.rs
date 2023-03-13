@@ -4,7 +4,7 @@ use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
-use crate::print::*;
+//use crate::print::*;
 
 use core::arch::wasm32;
 
