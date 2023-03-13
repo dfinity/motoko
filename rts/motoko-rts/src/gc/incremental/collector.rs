@@ -292,7 +292,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(self.generation.remembered_set.is_none());
         // Need to visit all objects in the generation, since mark bits may need to be
         // cleared and/or garbage object ids must be freed.
-        while self.state.compact_from < self.mem.get_heap_pointer() && !self.time.is_over() {
+        while self.state.compact_from < self.mem.get_heap_pointer() {
             let block = self.state.compact_from as *mut Tag;
             let size = block_size(block as usize);
             if has_object_header(*block) {
@@ -302,6 +302,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert_eq!(self.state.compact_from % WORD_SIZE as usize, 0);
             debug_assert!(self.state.compact_from <= self.mem.get_heap_pointer());
             self.time.tick();
+            if self.time.is_over() {
+                return;
+            }
         }
         self.complete_compacting();
     }
