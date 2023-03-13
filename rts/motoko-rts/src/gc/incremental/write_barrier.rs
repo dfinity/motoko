@@ -46,7 +46,7 @@ pub unsafe fn using_incremental_barrier() -> bool {
 }
 
 /// Called by the object table when it moves an old object to the young generation.
-pub(super) unsafe fn move_to_young_generation<M: Memory>(mem: &mut M, value: Value) {
+pub(super) unsafe fn record_in_young_remembered_set<M: Memory>(mem: &mut M, value: Value) {
     debug_assert!(value.is_object_id());
     YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
 }

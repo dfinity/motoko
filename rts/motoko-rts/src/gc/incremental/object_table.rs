@@ -103,7 +103,7 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::write_barrier::move_to_young_generation,
+    gc::incremental::write_barrier::record_in_young_remembered_set,
     mem_utils::memcpy_words,
     memory::Memory,
     types::{
@@ -239,6 +239,7 @@ impl ObjectTable {
         debug_assert!(self.end() <= mem.get_heap_base()); // Due to alignment.
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
+        let mut remember_object_id = NULL_OBJECT_ID;
         if has_object_header(*block) {
             let old_address = block as usize;
             // Relocate the object to the end of dynamic heap and make space
@@ -257,8 +258,10 @@ impl ObjectTable {
                 // such that it may be reachable from other objects from the old
                 // generation. Therefore, conservatively add it to the remembered
                 // set for the young generation such that it is promoted back to the
-                // old generation.
-                move_to_young_generation(mem, object_id);
+                // old generation. The insertion must happen after the table growth has
+                // completed since it may again allocate object ids for the internal tables
+                // or collision nodes of the remembered set ifself.
+                remember_object_id = object_id;
             }
         } else {
             // Heap-internal free blocks may result from `Blob::shrink()`.
@@ -270,5 +273,8 @@ impl ObjectTable {
         self.add_free_range(old_length..new_length);
         debug_assert!(self.end() > mem.get_heap_base());
         mem.set_heap_base(self.end());
+        if remember_object_id != NULL_OBJECT_ID {
+            record_in_young_remembered_set(mem, remember_object_id);
+        }
     }
 }
