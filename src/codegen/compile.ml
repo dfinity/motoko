@@ -5692,13 +5692,16 @@ module MakeSerialization (Strm : Stream) = struct
     let can_recover = 2l
   end
 
-
   module type RawReaders = sig
+    val read_byte : E.t -> G.t -> G.t
     val read_leb128 : E.t -> G.t -> G.t
+    val read_blob : E.t -> G.t -> G.t -> G.t
   end
 
   module (*Blob-*)Deserializers (*val env : E.t*) : RawReaders = struct
+    let read_byte env get_data_buf = ReadBuf.read_byte env get_data_buf
     let read_leb128 env get_data_buf = ReadBuf.read_leb128 env get_data_buf
+    let read_blob env get_data_buf get_len = ReadBuf.read_blob env get_data_buf get_len
   end
 
   let rec deserialize_go env t =
@@ -5797,9 +5800,11 @@ module MakeSerialization (Strm : Stream) = struct
           )
       in
 
+      let open Deserializers in
+
       let read_byte_tagged = function
         | [code0; code1] ->
-          ReadBuf.read_byte env get_data_buf ^^
+          read_byte env get_data_buf ^^
           let (set_b, get_b) = new_local env "b" in
           set_b ^^
           get_b ^^
@@ -5814,23 +5819,10 @@ module MakeSerialization (Strm : Stream) = struct
         | _ -> assert false; (* can be generalized later as needed *)
       in
 
-      let open Deserializers in
-
-      let read_blob () =
-        let (set_len, get_len) = new_local env "len" in
-        let (set_x, get_x) = new_local env "x" in
-        (*ReadBuf.read_leb128 env get_data_buf*) read_leb128 env get_data_buf ^^ set_len ^^
-
-        get_len ^^ Blob.alloc env ^^ set_x ^^
-        get_x ^^ Blob.payload_ptr_unskewed ^^
-        ReadBuf.read_blob env get_data_buf get_len ^^
-        get_x
-      in
-
       let read_principal () =
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        read_leb128 env get_data_buf ^^ set_len ^^
 
         (* at most 29 bytes, according to
            https://sdk.dfinity.org/docs/interface-spec/index.html#principal
@@ -5840,13 +5832,24 @@ module MakeSerialization (Strm : Stream) = struct
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
         get_x ^^ Blob.payload_ptr_unskewed ^^
-        ReadBuf.read_blob env get_data_buf get_len ^^
+        read_blob env get_data_buf get_len ^^
+        get_x
+      in
+
+      let read_blob () =
+        let (set_len, get_len) = new_local env "len" in
+        let (set_x, get_x) = new_local env "x" in
+        read_leb128 env get_data_buf ^^ set_len ^^
+
+        get_len ^^ Blob.alloc env ^^ set_x ^^
+        get_x ^^ Blob.payload_ptr_unskewed ^^
+        read_blob env get_data_buf get_len ^^
         get_x
       in
 
       let read_text () =
         let (set_len, get_len) = new_local env "len" in
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        read_leb128 env get_data_buf ^^ set_len ^^
         let (set_ptr, get_ptr) = new_local env "x" in
         ReadBuf.get_ptr get_data_buf ^^ set_ptr ^^
         ReadBuf.advance get_data_buf get_len ^^
