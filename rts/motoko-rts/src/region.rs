@@ -74,6 +74,9 @@ mod meta_data {
 
 	pub const BLOCK_REGION_TABLE : u64 =
 	    super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
+
+	pub const REGION_TABLE : u64 =
+	    super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
     }
 
     /// Offsets into stable memory for statically-sized fields and tables.
@@ -87,6 +90,10 @@ mod meta_data {
 	pub const REGION_TABLE : u64 =
 	    BLOCK_REGION_TABLE +
 	    super::size::BLOCK_REGION_TABLE;
+
+	pub const BLOCK_ZERO : u64 =
+	    REGION_TABLE +
+	    super::size::REGION_TABLE;
     }
 
     pub mod total_allocated_blocks {
@@ -303,6 +310,18 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     (*r).vec_pages = new_vec_pages;
     old_page_count.into()
+}
+
+#[ic_mem_fn]
+pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, _r: Value, _byte: u8) -> Value {
+    let _ = meta_data::offset::BLOCK_ZERO;
+    rts_trap_with("TODO region_load_blob");
+}
+
+#[ic_mem_fn]
+pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, _r: Value, _byte: u8) {
+    let _ = meta_data::offset::BLOCK_ZERO;
+    rts_trap_with("TODO region_store_blob");
 }
 
 #[ic_mem_fn]
