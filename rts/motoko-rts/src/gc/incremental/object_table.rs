@@ -243,7 +243,7 @@ impl ObjectTable {
             let old_address = block as usize;
             // Relocate the object to the end of dynamic heap and make space
             // for table extension.
-            // Note: The object could even be a table of the mark stack or the
+            // Note: The object could even be a blob of the mark stack or the
             // remembered set. These data structures therefore also reference
             // their tables via object ids through the object table.
             let object_id = (block as *mut Obj).object_id();

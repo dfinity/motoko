@@ -68,14 +68,14 @@
 //! allocated mark stack tables need to be retained for subsequent mark increments. Mark stack tables remain
 //! unmarked, such that they will be collected as garbage during the compaction of the corresponding generation.
 
-use core::ptr::null_mut;
-
 use crate::{
     constants::WORD_SIZE,
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
-    types::{block_size, has_object_header, Obj, Tag, Value, Words, TAG_ARRAY_SLICE_MIN},
+    types::{
+        block_size, has_object_header, Obj, Tag, Value, Words, NULL_OBJECT_ID, TAG_ARRAY_SLICE_MIN,
+    },
     visitor::visit_pointer_fields,
 };
 
@@ -212,7 +212,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             return;
         }
         object.mark();
-        self.state.mark_stack.push(self.mem, object);
+        self.state.mark_stack.push(self.mem, value);
         // The generation may have been extended because of additional mark stack tables.
     }
 
@@ -220,10 +220,11 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(!self.state.mark_complete);
         loop {
-            let object = self.state.mark_stack.pop();
-            if object == null_mut() {
+            let value = self.state.mark_stack.pop();
+            if value == NULL_OBJECT_ID {
                 break;
             }
+            let object = value.get_object_address() as *mut Obj;
             self.mark_fields(object);
 
             self.time.tick();
@@ -247,7 +248,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             |gc, slice_start, array| {
                 let length = slice_array(array);
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
-                    gc.state.mark_stack.push(gc.mem, array as *mut Obj);
+                    let value = (array as *mut Obj).object_id();
+                    gc.state.mark_stack.push(gc.mem, value);
                     // The generation may have been extended because of additional mark stack tables.
                 }
                 gc.time.advance((length - slice_start) as usize);

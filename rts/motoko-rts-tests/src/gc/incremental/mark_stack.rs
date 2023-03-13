@@ -5,7 +5,7 @@ use motoko_rts::{
         object_table::ObjectTable,
     },
     memory::Memory,
-    types::{Obj, Words, OBJECT_TABLE},
+    types::{skew, Value, Words, OBJECT_TABLE},
 };
 
 pub unsafe fn test() {
@@ -48,17 +48,17 @@ unsafe fn test_internal_push_pop(
     regrow_step: usize,
 ) {
     for count in 0..amount {
-        stack.push(mem, synthetic_object_address(count));
+        stack.push(mem, synthetic_object_id(count));
         if count == regrow_step {
             test_internal_push_pop(mem, stack, amount - count, regrow_step);
         }
     }
     for count in (0..amount).rev() {
         assert!(!stack.is_empty());
-        assert_eq!(stack.pop(), synthetic_object_address(count));
+        assert!(stack.pop() == synthetic_object_id(count));
     }
 }
 
-fn synthetic_object_address(count: usize) -> *mut Obj {
-    ((count + 1) * WORD_SIZE) as *mut Obj
+unsafe fn synthetic_object_id(count: usize) -> Value {
+    Value::from_raw(skew(OBJECT_TABLE.as_mut().unwrap().end() + count * WORD_SIZE) as u32)
 }

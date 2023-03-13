@@ -3,7 +3,6 @@
 //! Two checks:
 //! * Mark completion: No unmarked reachable objects.
 //! * Full-heap scan: Plausible objects and object ids (references).
-use core::ptr::null_mut;
 
 use crate::{
     constants::WORD_SIZE,
@@ -70,16 +69,17 @@ impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
         }
         if !self.visited.contains(value) {
             self.visited.insert(self.mem, value);
-            self.mark_stack.push(self.mem, object);
+            self.mark_stack.push(self.mem, value);
         }
     }
 
     unsafe fn check_all_reachable(&mut self) {
         loop {
-            let object = self.mark_stack.pop();
-            if object == null_mut() {
+            let value = self.mark_stack.pop();
+            if value == NULL_OBJECT_ID {
                 break;
             }
+            let object = value.get_object_address() as *mut Obj;
             self.check_reachable_fields(object);
         }
     }

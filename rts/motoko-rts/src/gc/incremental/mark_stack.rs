@@ -20,11 +20,13 @@
 //! a new stack table is allocated and linked, unless there already exists
 //! a next table. Only the last table can have free entry space.
 //!
-//! The entries represent pointers to objects to be visited by the GC.
+//! The entries represent ids (references) ßto objects to be visited by the GC.
 //! (being conceptually gray in the incremental tri-color mark scheme).
 //!
 //! NOTES:
-//! * The tables are blobs, as their entries must not be analyzed by the GC.
+//! * The tables are blobs, as their entries must not be visited by the GC.
+//! * The entries on the stack must be object ids (Value) as their objects may
+//!   move even during mark phase due to object table extension.
 //! * The mark stack does must use object ids for referencing the previous/next
 //!   tables, because the tables could be moved due to object table extension.
 //!   If the table of the old generation are moved to the young generation, they
@@ -32,13 +34,11 @@
 //!   to the old generation.
 //! * The stack tables become garbage after a GC run and can be reclaimed.
 
-use core::ptr::null_mut;
-
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{size_of, Blob, Obj};
+use crate::types::{size_of, Blob, Obj, Value, NULL_OBJECT_ID};
 
 pub struct MarkStack {
-    last: *mut StackTable,
+    last: Value,
     top: usize, // Index of next free entry in the last stack table.
 }
 
@@ -47,9 +47,9 @@ pub const STACK_TABLE_CAPACITY: usize = 1018;
 #[repr(C)]
 struct StackTable {
     pub header: Blob,
-    pub previous: *mut StackTable,
-    pub next: *mut StackTable,
-    pub entries: [*mut Obj; STACK_TABLE_CAPACITY],
+    pub previous: Value,
+    pub next: Value,
+    pub entries: [Value; STACK_TABLE_CAPACITY],
 }
 
 impl MarkStack {
@@ -58,7 +58,7 @@ impl MarkStack {
     /// separate functions.
     pub const fn new() -> MarkStack {
         MarkStack {
-            last: null_mut(),
+            last: NULL_OBJECT_ID,
             top: 0,
         }
     }
@@ -66,7 +66,7 @@ impl MarkStack {
     /// Allocate the mark stack before use.
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M) {
         debug_assert!(!self.is_allocated());
-        self.last = Self::new_table(mem, null_mut());
+        self.last = Self::new_table(mem, NULL_OBJECT_ID);
         debug_assert_eq!(self.top, 0);
     }
 
@@ -78,78 +78,88 @@ impl MarkStack {
         debug_assert!(self.is_allocated());
         debug_assert!(self.is_empty());
         debug_assert_eq!(self.top, 0);
-        self.last = null_mut();
+        self.last = NULL_OBJECT_ID
         // Stack and their object ids are freed by the GC.
     }
 
     pub fn is_allocated(&self) -> bool {
-        self.last != null_mut()
+        self.last != NULL_OBJECT_ID
     }
 
     /// Push an object address on the stack.
-    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, object: *mut Obj) {
-        debug_assert_ne!(object, null_mut());
+    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, object: Value) {
+        debug_assert!(object != NULL_OBJECT_ID);
         debug_assert!(self.is_allocated());
+        let mut table = self.last.as_blob_mut() as *mut StackTable;
         if self.top == STACK_TABLE_CAPACITY {
-            if (*self.last).next == null_mut() {
+            if (*table).next == NULL_OBJECT_ID {
                 self.last = Self::new_table(mem, self.last);
             } else {
-                self.last = (*self.last).next;
+                self.last = (*table).next;
             }
+            table = self.last.as_blob_mut() as *mut StackTable;
             self.top = 0;
         }
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
-        (*self.last).entries[self.top] = object;
+        (*table).entries[self.top] = object;
         self.top += 1;
     }
 
     /// Pop an object address off the stack, if it is not empty.
-    /// Otherwise, if empty, returns `null_mut()`.
-    pub unsafe fn pop(&mut self) -> *mut Obj {
+    /// Otherwise, if empty, returns `NULL_OBJECT_ID`.
+    pub unsafe fn pop(&mut self) -> Value {
         debug_assert!(self.is_allocated());
+        let mut table = self.last.as_blob_mut() as *mut StackTable;
         if self.top == 0 {
-            if (*self.last).previous == null_mut() {
-                return null_mut();
+            if (*table).previous == NULL_OBJECT_ID {
+                return NULL_OBJECT_ID;
             }
-            self.last = (*self.last).previous;
+            self.last = (*table).previous;
+            table = self.last.as_blob_mut() as *mut StackTable;
             self.top = STACK_TABLE_CAPACITY;
         }
         debug_assert!(self.top > 0);
         self.top -= 1;
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
-        let object = (*self.last).entries[self.top];
-        debug_assert_ne!(object, null_mut());
+        let object = (*table).entries[self.top];
+        debug_assert!(object != NULL_OBJECT_ID);
         object
     }
 
     /// Determine whether the stack is empty.
     pub unsafe fn is_empty(&self) -> bool {
         debug_assert!(self.is_allocated());
-        self.top == 0 && (*self.last).previous == null_mut()
+        let table = self.last.as_blob_mut() as *mut StackTable;
+        self.top == 0 && (*table).previous == NULL_OBJECT_ID
     }
 
-    unsafe fn new_table<M: Memory>(mem: &mut M, previous: *mut StackTable) -> *mut StackTable {
-        let table =
-            alloc_blob(mem, size_of::<StackTable>().to_bytes()).as_blob_mut() as *mut StackTable;
+    unsafe fn new_table<M: Memory>(mem: &mut M, previous: Value) -> Value {
+        let table_id = alloc_blob(mem, size_of::<StackTable>().to_bytes());
+        let table = table_id.as_blob_mut() as *mut StackTable;
         // No mark bit is set as the blob is to be reclaimeed by the current GC run.
         debug_assert!(!(table as *mut Obj).is_marked());
         (*table).previous = previous;
-        (*table).next = null_mut();
-        if previous != null_mut() {
-            (*previous).next = table;
+        (*table).next = NULL_OBJECT_ID;
+        if previous != NULL_OBJECT_ID {
+            let previous_table = previous.as_blob_mut() as *mut StackTable;
+            (*previous_table).next = table_id;
         }
-        table
+        table_id
     }
 
     #[cfg(debug_assertions)]
     unsafe fn assert_is_garbage(&self) {
+        assert!(self.is_allocated());
         let mut current = self.last;
-        while (*current).previous != null_mut() {
-            current = (*current).previous;
+        let mut table = current.as_blob_mut() as *mut StackTable;
+        while (*table).previous != NULL_OBJECT_ID {
+            current = (*table).previous;
+            table = current.as_blob_mut() as *mut StackTable;
         }
-        while current != null_mut() {
-            assert!(!(current as *mut Obj).is_marked());
-            current = (*current).next;
+        while current != NULL_OBJECT_ID {
+            table = current.as_blob_mut() as *mut StackTable;
+            assert!(!(table as *mut Obj).is_marked());
+            current = (*table).next;
         }
     }
 }
