@@ -24,6 +24,11 @@ pub(super) unsafe fn init_incremental_write_barrier<M: Memory>(mem: &mut M) {
     create_young_remembered_set(mem);
 }
 
+/// Test whether young remembered set is exists.
+pub unsafe fn has_young_remembered_set() -> bool {
+    YOUNG_REMEMBERED_SET.is_some()
+}
+
 /// Take the young remembered set for young generation collection.
 /// A new young remembered set needs to be created after completed GC work.
 pub unsafe fn take_young_remembered_set() -> RememberedSet {
@@ -43,16 +48,6 @@ pub unsafe fn create_young_remembered_set<M: Memory>(mem: &mut M) {
 pub unsafe fn using_incremental_barrier() -> bool {
     debug_assert!(YOUNG_REMEMBERED_SET.is_some() || incremental_gc_phase() == Phase::Pause);
     YOUNG_REMEMBERED_SET.is_some()
-}
-
-/// Called by the object table when it moves an old object to the young generation.
-pub(super) unsafe fn record_in_young_remembered_set<M: Memory>(mem: &mut M, value: Value) {
-    debug_assert!(value.is_object_id());
-    // Object table may also grow during garbage collection where the remembered set is invalidated.
-    // This can happen for allocation of mark stack pages during garbage collection.
-    if YOUNG_REMEMBERED_SET.is_some() {
-        YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
-    }
 }
 
 /// Write a potential pointer value with with a pre- and post-update barrier used by the incremental GC.

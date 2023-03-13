@@ -80,9 +80,12 @@
 //!   for the other compacting and generational GCs with the mark bitmap.
 //! * `LAST_HP` may fall behind the new `HEAP_BASE`, in which case it needs to be increased to the
 //!   new `HEAP_BASE`.
-//! * If objects are moved to the young generation due to table extension, their object id
-//!   must be added to the remembered set of the young generation in order to retain the moved
-//!   object.
+//! * If objects are moved to the young generation due to table extension, the young generation is
+//!   conservatively reset (promoted to the old generation). This is necessary because the moved
+//!   object may be reachable from other old objects. Alternatively, one could also only selectively
+//!   register the moved object to the remembered set which is however complicated since it may
+//!   trigger recursive object table extension (if the remembered set needs more space, when the hash
+//!   table grows or new collision nodes are allocated).
 //!
 //! Table shrinking is generally not supported due to the fragmentation of the free slots in table,
 //! i.e. free object ids can be spread across the entire table and do not necessarily manifest
@@ -103,7 +106,9 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::write_barrier::record_in_young_remembered_set,
+    gc::incremental::write_barrier::{
+        create_young_remembered_set, has_young_remembered_set, take_young_remembered_set,
+    },
     mem_utils::memcpy_words,
     memory::Memory,
     types::{
@@ -239,7 +244,7 @@ impl ObjectTable {
         debug_assert!(self.end() <= mem.get_heap_base()); // Due to alignment.
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
-        let mut remember_object_id = NULL_OBJECT_ID;
+        let mut reset_young_generation = false;
         if has_object_header(*block) {
             let old_address = block as usize;
             // Relocate the object to the end of dynamic heap and make space
@@ -256,12 +261,13 @@ impl ObjectTable {
             if old_address < mem.get_last_heap_pointer() {
                 // The object is moved from the old generation to the young generation,
                 // such that it may be reachable from other objects from the old
-                // generation. Therefore, conservatively add it to the remembered
-                // set for the young generation such that it is promoted back to the
-                // old generation. The insertion must happen after the table growth has
-                // completed since it may again allocate object ids for the internal tables
-                // or collision nodes of the remembered set ifself.
-                remember_object_id = object_id;
+                // generation. Therefore, conservatively extend the old generation
+                // and reset the young generation to empty.
+                // Alternatively, one could only add the moved object to the remembered set
+                // but this may imply allocation of collision nodes in the remembered set
+                // or even growth of the remembered set hash table which would again allocate
+                // object ids and cause recursive object table regrow.
+                reset_young_generation = true;
             }
         } else {
             // Heap-internal free blocks may result from `Blob::shrink()`.
@@ -273,8 +279,11 @@ impl ObjectTable {
         self.add_free_range(old_length..new_length);
         debug_assert!(self.end() > mem.get_heap_base());
         mem.set_heap_base(self.end());
-        if remember_object_id != NULL_OBJECT_ID {
-            record_in_young_remembered_set(mem, remember_object_id);
+        // The object table may also grow during mark phase on allocation of mark stack tables.
+        if reset_young_generation && has_young_remembered_set() {
+            take_young_remembered_set();
+            mem.shrink_heap(mem.get_heap_pointer());
+            create_young_remembered_set(mem);
         }
     }
 }
