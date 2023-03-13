@@ -48,7 +48,11 @@ pub unsafe fn using_incremental_barrier() -> bool {
 /// Called by the object table when it moves an old object to the young generation.
 pub(super) unsafe fn record_in_young_remembered_set<M: Memory>(mem: &mut M, value: Value) {
     debug_assert!(value.is_object_id());
-    YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
+    // Object table may also grow during garbage collection where the remembered set is invalidated.
+    // This can happen for allocation of mark stack pages during garbage collection.
+    if YOUNG_REMEMBERED_SET.is_some() {
+        YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
+    }
 }
 
 /// Write a potential pointer value with with a pre- and post-update barrier used by the incremental GC.

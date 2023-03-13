@@ -171,7 +171,10 @@ impl RememberedSet {
             self.insert(mem, value);
             iterator.next();
         }
-        assert_eq!(self.count, old_count);
+        // During table resize, new object ids may be needed for new collision nodes
+        // As a consequence, object table may need to grow too and may additionally
+        // register moved objects in the remembered set.
+        assert!(self.count >= old_count);
     }
 }
 
