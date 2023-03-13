@@ -89,19 +89,19 @@ use super::{
 use super::sanity_checks::{check_heap, check_mark_completion};
 
 pub struct Generation {
-    start: usize,
+    is_young: bool,
     remembered_set: Option<RememberedSet>,
     mark_surviving: bool,
 }
 
 impl Generation {
     pub fn new(
-        start: usize,
+        is_young: bool,
         remembered_set: Option<RememberedSet>,
         mark_surviving: bool,
     ) -> Generation {
         Generation {
-            start,
+            is_young,
             remembered_set,
             mark_surviving,
         }
@@ -114,17 +114,13 @@ impl Generation {
     ) -> Generation {
         debug_assert!(mem.get_heap_base() <= mem.get_last_heap_pointer());
         debug_assert!(mem.get_last_heap_pointer() <= mem.get_heap_pointer());
-        Self::new(
-            mem.get_last_heap_pointer(),
-            Some(remembered_set),
-            mark_promoted,
-        )
+        Self::new(true, Some(remembered_set), mark_promoted)
     }
 
     pub fn old<M: Memory>(mem: &mut M) -> Generation {
         debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
         debug_assert!(mem.get_heap_base() <= mem.get_heap_pointer());
-        Self::new(mem.get_heap_base(), None, false)
+        Self::new(false, None, false)
     }
 }
 
@@ -150,6 +146,19 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             generation,
             state,
             time,
+        }
+    }
+
+    /// The start address of the currently collected generation may increase if the
+    /// object table is extended during garbage collection. This can happen because 
+    /// of concurrent mutator allocations during an incremental collection 
+    /// or during the mark phase when the object table is full on the allocation of 
+    /// mark stack tables.
+    fn generation_start(&self) -> usize {
+        if self.generation.is_young {
+            self.mem.get_last_heap_pointer()
+        } else {
+            self.mem.get_heap_base()
         }
     }
 
@@ -190,7 +199,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         let remembered_set = self.generation.remembered_set.take();
         visit_roots(
             general_roots,
-            self.generation.start,
+            self.generation_start(),
             remembered_set.as_ref(),
             self,
             |gc, value| {
@@ -207,7 +216,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(!self.state.mark_complete);
         let object = value.get_object_address() as *mut Obj;
         self.time.tick();
-        debug_assert!(object as usize >= self.generation.start);
+        debug_assert!(object as usize >= self.generation_start());
         debug_assert!((object as usize) < self.mem.get_heap_pointer());
         debug_assert_eq!(object as u32 % WORD_SIZE, 0);
         if object.is_marked() {
@@ -242,7 +251,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             self,
             object,
             object.tag(),
-            self.generation.start,
+            self.generation_start(),
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
@@ -268,10 +277,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         self.state.mark_stack.free();
 
         #[cfg(debug_assertions)]
-        check_mark_completion(self.mem, self.generation.start);
+        check_mark_completion(self.mem, self.generation_start());
 
         #[cfg(debug_assertions)]
-        check_heap(self.mem, true, self.generation.start);
+        check_heap(self.mem, true, self.generation_start());
     }
 
     unsafe fn marking_completed(&self) -> bool {
@@ -284,7 +293,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(!self.state.mark_stack.is_allocated());
 
         self.state.phase = Phase::Compact;
-        self.state.compact_from = self.generation.start;
+        self.state.compact_from = self.generation_start();
         self.state.compact_to = self.state.compact_from;
     }
 
@@ -294,8 +303,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(self.generation.remembered_set.is_none());
         // Object table extension during incremental compaction may have shifted
         // the heap base and thus the generation start.
-        self.state.compact_from = max(self.state.compact_from, self.generation.start);
-        self.state.compact_to = max(self.state.compact_from, self.generation.start);
+        self.state.compact_from = max(self.state.compact_from, self.generation_start());
+        self.state.compact_to = max(self.state.compact_from, self.generation_start());
         // Need to visit all objects in the generation, since mark bits may need to be
         // cleared and/or garbage object ids must be freed.
         while self.state.compact_from < self.mem.get_heap_pointer() {
@@ -347,11 +356,11 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     unsafe fn complete_compacting(&mut self) {
         debug_assert_eq!(self.state.compact_from, self.mem.get_heap_pointer());
         debug_assert!(self.state.compact_to <= self.state.compact_from);
-        debug_assert!(self.generation.start <= self.state.compact_to);
+        debug_assert!(self.generation_start() <= self.state.compact_to);
         self.mem.shrink_heap(self.state.compact_to);
         self.state.phase = Phase::Pause;
 
         #[cfg(debug_assertions)]
-        check_heap(self.mem, false, self.generation.start);
+        check_heap(self.mem, false, self.generation_start());
     }
 }
