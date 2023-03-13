@@ -68,6 +68,8 @@
 //! allocated mark stack tables need to be retained for subsequent mark increments. Mark stack tables remain
 //! unmarked, such that they will be collected as garbage during the compaction of the corresponding generation.
 
+use core::cmp::max;
+
 use crate::{
     constants::WORD_SIZE,
     mem_utils::memcpy_words,
@@ -290,6 +292,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         debug_assert!(self.state.phase == Phase::Compact);
         // The remembered set is no longer valid as it will be freed during compaction.
         debug_assert!(self.generation.remembered_set.is_none());
+        // Object table extension during incremental compaction may have shifted
+        // the heap base and thus the generation start.
+        self.state.compact_from = max(self.state.compact_from, self.generation.start);
+        self.state.compact_to = max(self.state.compact_from, self.generation.start);
         // Need to visit all objects in the generation, since mark bits may need to be
         // cleared and/or garbage object ids must be freed.
         while self.state.compact_from < self.mem.get_heap_pointer() {
