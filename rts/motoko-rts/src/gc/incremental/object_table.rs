@@ -235,7 +235,7 @@ impl ObjectTable {
     }
 
     unsafe fn grow_table<M: Memory>(&mut self, mem: &mut M) {
-        debug_assert!(!ACTIVE_GC_INCREMENT);
+        assert!(!ACTIVE_GC_INCREMENT);
         // Since the table is full with a length of at least one entry, there
         // resides at least one object in the dynamic heap above the table.
         // Static objects are not indirected via the object table.

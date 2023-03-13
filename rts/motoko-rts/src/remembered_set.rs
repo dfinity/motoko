@@ -57,7 +57,8 @@ use crate::types::{block_size, Blob, Bytes, Value, NULL_OBJECT_ID};
 pub struct RememberedSet {
     hash_table: Value,
     count: u32, // contained entries
-    extending_table: bool,
+    growing: bool,
+    inserting: bool,
 }
 
 #[repr(C)]
@@ -89,11 +90,14 @@ impl RememberedSet {
         RememberedSet {
             hash_table,
             count: 0,
-            extending_table: false,
+            growing: false,
+            inserting: false,
         }
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+        assert!(!self.inserting);
+        self.inserting = true;
         debug_assert!(!is_null_value(value));
         let hash_table = self.hash_table.as_blob_mut();
         let index = Self::hash_index(hash_table, value);
@@ -118,6 +122,7 @@ impl RememberedSet {
             (*current).next_collision = new_collision_node(mem, value);
         }
         self.count += 1;
+        self.inserting = false;
         if self.count > table_length(hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
             self.grow(mem);
         }
@@ -164,8 +169,8 @@ impl RememberedSet {
     unsafe fn grow<M: Memory>(&mut self, mem: &mut M) {
         // Prevent recursive calls, e.g. because the object table grows during the remembered set
         // extension which in turn promotes objects by inserting them to the remembered set.
-        assert!(!self.extending_table);
-        self.extending_table = true;
+        assert!(!self.growing);
+        self.growing = true;
         let old_count = self.count;
         let mut iterator = self.iterate();
         let new_length = table_length(self.hash_table.as_blob_mut()) * GROWTH_FACTOR;
@@ -181,7 +186,7 @@ impl RememberedSet {
         // As a consequence, object table may need to grow too and may additionally
         // register moved objects in the remembered set.
         assert!(self.count >= old_count);
-        self.extending_table = false;
+        self.growing = false;
     }
 }
 
