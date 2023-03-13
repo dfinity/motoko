@@ -1,8 +1,10 @@
 use std::mem::size_of;
 
+use motoko_rts::gc::incremental::mark_stack::MarkStack;
 use motoko_rts::gc::incremental::write_barrier::{
     create_young_remembered_set, take_young_remembered_set, using_incremental_barrier,
 };
+use motoko_rts::remembered_set::RememberedSet;
 use motoko_rts::{
     gc::incremental::object_table::ObjectTable,
     memory::{alloc_blob, Memory},
@@ -18,7 +20,7 @@ pub unsafe fn test() {
     test_allocate();
     test_remove_realloc();
     test_move();
-    test_table_growth();
+    test_table_extension();
 }
 
 const TEST_SIZE: usize = 10_000;
@@ -129,15 +131,43 @@ fn test_move() {
     check_all_entries(&object_table, &expected_table);
 }
 
-unsafe fn test_table_growth() {
+unsafe fn test_table_extension() {
+    test_table_growth(|_| {}, 0);
+    test_table_growth(
+        |mem| {
+            alloc_blob(mem, Bytes(0u32));
+        },
+        1,
+    );
+    test_table_growth(
+        |mem| {
+            MarkStack::new().allocate(mem);
+        },
+        1,
+    );
+    test_table_growth(
+        |mem| {
+            RememberedSet::new(mem);
+        },
+        1,
+    );
+}
+
+unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
+    old_object_allocation: F,
+    number_of_old_objects: usize,
+) {
     const TEST_ALLOCATIONS: usize = 100;
     let size = TEST_SIZE * WORD_SIZE + TEST_ALLOCATIONS * size_of::<Blob>();
     let mut mem = TestMemory::new(Bytes(size as u32).to_words());
-    let object_table = create_object_table(&mut mem, 1);
+    let object_table = create_object_table(&mut mem, number_of_old_objects + 1);
     let new_heap_base = object_table.end();
     assert!(!using_incremental_barrier());
     OBJECT_TABLE = Some(object_table);
     mem.set_heap_base(new_heap_base);
+    old_object_allocation(&mut mem);
+    // Set last heap pointer to start young generation.
+    mem.shrink_heap(mem.get_heap_pointer());
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
     create_young_remembered_set(&mut mem);
     for _ in 0..TEST_ALLOCATIONS {
@@ -146,12 +176,12 @@ unsafe fn test_table_growth() {
     }
     let remembered_set = take_young_remembered_set();
     let mut iterator = remembered_set.iterate();
-    let mut count_remembred = 0;
+    let mut count_remembered = 0;
     while iterator.has_next() {
-        count_remembred += 1;
+        count_remembered += 1;
         iterator.next();
     }
-    assert_eq!(count_remembred, 0);
+    assert_eq!(count_remembered, number_of_old_objects);
     assert!(!using_incremental_barrier());
     OBJECT_TABLE = None;
 }

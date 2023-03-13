@@ -52,7 +52,8 @@ impl Memory for TestMemory {
     }
 
     unsafe fn shrink_heap(&mut self, _new_heap_pointer: usize) {
-        unimplemented!()
+        self.hp = _new_heap_pointer;
+        self.last_hp = _new_heap_pointer;
     }
 
     unsafe fn set_heap_base(&mut self, new_heap_base: usize) {
