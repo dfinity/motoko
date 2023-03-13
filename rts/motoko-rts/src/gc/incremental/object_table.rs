@@ -80,12 +80,14 @@
 //!   for the other compacting and generational GCs with the mark bitmap.
 //! * `LAST_HP` may fall behind the new `HEAP_BASE`, in which case it needs to be increased to the
 //!   new `HEAP_BASE`.
-//! * If objects are moved to the young generation due to table extension, the young generation is
-//!   conservatively reset (promoted to the old generation). This is necessary because the moved
-//!   object may be reachable from other old objects. Alternatively, one could also only selectively
-//!   register the moved object to the remembered set which is however complicated since it may
-//!   trigger recursive object table extension (if the remembered set needs more space, when the hash
-//!   table grows or new collision nodes are allocated).
+//! * If objects are moved to the young generation due to table extension, the object is conservatively
+//!   added to the remembered set such that it is promoted back to the old generation on the next GC run.
+//!   This is necessary because the moved object may be reachable from other old objects.
+//! * The moved object may be marked in the old generation if incremental marking is active. Since it is
+//!   added to the remembered set, it will be promoted back to the old generation and marked again
+//!   (since the incremental GC is active).
+//! * The moved object is always moved to the heap end, such that that incremental compaction will
+//!   not miss it.
 //!
 //! Table shrinking is generally not supported due to the fragmentation of the free slots in table,
 //! i.e. free object ids can be spread across the entire table and do not necessarily manifest
@@ -106,9 +108,7 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::write_barrier::{
-        create_young_remembered_set, has_young_remembered_set, take_young_remembered_set,
-    },
+    gc::incremental::{write_barrier::add_to_young_remembered_set, ACTIVE_GC_INCREMENT},
     mem_utils::memcpy_words,
     memory::Memory,
     types::{
@@ -235,6 +235,7 @@ impl ObjectTable {
     }
 
     unsafe fn grow_table<M: Memory>(&mut self, mem: &mut M) {
+        debug_assert!(!ACTIVE_GC_INCREMENT);
         // Since the table is full with a length of at least one entry, there
         // resides at least one object in the dynamic heap above the table.
         // Static objects are not indirected via the object table.
@@ -244,7 +245,7 @@ impl ObjectTable {
         debug_assert!(self.end() <= mem.get_heap_base()); // Due to alignment.
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
-        let mut reset_young_generation = false;
+        let mut promote_object = NULL_OBJECT_ID;
         if has_object_header(*block) {
             let old_address = block as usize;
             // Relocate the object to the end of dynamic heap and make space
@@ -261,13 +262,11 @@ impl ObjectTable {
             if old_address < mem.get_last_heap_pointer() {
                 // The object is moved from the old generation to the young generation,
                 // such that it may be reachable from other objects from the old
-                // generation. Therefore, conservatively extend the old generation
-                // and reset the young generation to empty.
-                // Alternatively, one could only add the moved object to the remembered set
-                // but this may imply allocation of collision nodes in the remembered set
-                // or even growth of the remembered set hash table which would again allocate
-                // object ids and cause recursive object table regrow.
-                reset_young_generation = true;
+                // generation. Therefore, conservatively add it to the remembered set.
+                // Delay adding to the end of this function, since the remembered set
+                // insertion may also allocate new object ids and thus trigger
+                // recursive object table growth.
+                promote_object = object_id;
             }
         } else {
             // Heap-internal free blocks may result from `Blob::shrink()`.
@@ -279,10 +278,10 @@ impl ObjectTable {
         self.add_free_range(old_length..new_length);
         debug_assert!(self.end() > mem.get_heap_base());
         mem.set_heap_base(self.end());
-        // The object table may also grow during mark phase on allocation of mark stack tables.
-        if reset_young_generation && has_young_remembered_set() {
-            take_young_remembered_set();
-            create_young_remembered_set(mem);
+        if promote_object != NULL_OBJECT_ID {
+            // This may again trigger object table growth if the the remembered set
+            // needs more space (e.g. hash table is extended with new collision nodes).
+            add_to_young_remembered_set(mem, promote_object);
         }
     }
 }

@@ -72,6 +72,7 @@ use core::cmp::max;
 
 use crate::{
     constants::WORD_SIZE,
+    gc::incremental::state::incremental_gc_phase,
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -82,7 +83,8 @@ use crate::{
 };
 
 use super::{
-    array_slicing::slice_array, roots::visit_roots, state::Phase, state::State, time::Time,
+    array_slicing::slice_array, mark_old_object, roots::visit_roots, state::Phase, state::State,
+    time::Time,
 };
 
 #[cfg(debug_assertions)]
@@ -91,19 +93,19 @@ use super::sanity_checks::{check_heap, check_mark_completion};
 pub struct Generation {
     is_young: bool,
     remembered_set: Option<RememberedSet>,
-    mark_surviving: bool,
+    promote_surviving: bool,
 }
 
 impl Generation {
     pub fn new(
         is_young: bool,
         remembered_set: Option<RememberedSet>,
-        mark_surviving: bool,
+        promote_surviving: bool,
     ) -> Generation {
         Generation {
             is_young,
             remembered_set,
-            mark_surviving,
+            promote_surviving,
         }
     }
 
@@ -150,9 +152,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     /// The start address of the currently collected generation may increase if the
-    /// object table is extended during garbage collection. This can happen because 
-    /// of concurrent mutator allocations during an incremental collection 
-    /// or during the mark phase when the object table is full on the allocation of 
+    /// object table is extended during garbage collection. This can happen because
+    /// of concurrent mutator allocations during an incremental collection
+    /// or during the mark phase when the object table is full on the allocation of
     /// mark stack tables.
     fn generation_start(&self) -> usize {
         if self.generation.is_young {
@@ -327,11 +329,13 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     unsafe fn compact_object(&mut self, object: *mut Obj, size: Words<u32>) {
         let object_id = object.object_id();
         if object.is_marked() {
-            // If objects are promoted from the young generation to the old generation
-            // and the incremental old generation collection is active (not pausing),
-            // the object remains marked. Otherwise, the mark bit must be cleared.
-            if !self.generation.mark_surviving {
-                object.unmark();
+            // Clear the mark bit.
+            object.unmark();
+            if self.generation.promote_surviving {
+                // If the object needs to be promoted, it may be marked again but possibly
+                // also added to the mark stack depending on the incremental GC phase.
+                // Therefore, the mark bit has been first cleared before promotion.
+                self.promote_object(object_id);
             }
             let old_address = object as usize;
             let new_address = self.state.compact_to;
@@ -350,6 +354,14 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         } else {
             // Free the id of a garbage object in the object table.
             object_id.free_object_id();
+        }
+    }
+
+    unsafe fn promote_object(&mut self, object_id: Value) {
+        if incremental_gc_phase() == Phase::Mark {
+            mark_old_object(self.mem, object_id);
+        } else {
+            object_id.as_obj().mark();
         }
     }
 

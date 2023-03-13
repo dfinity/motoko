@@ -5,9 +5,8 @@ use crate::remembered_set::RememberedSet;
 use crate::types::{is_skewed, Value};
 use motoko_rts_macros::ic_mem_fn;
 
-use super::collector::{GarbageCollector, Generation};
-use super::state::{incremental_gc_phase, incremental_gc_state, Phase};
-use super::time::Time;
+use super::mark_old_object;
+use super::state::{incremental_gc_phase, Phase};
 
 /// Records the ids of objects that serve as additional root set for the young
 /// generation collection. It contains ids of objects living in the young generation
@@ -24,15 +23,17 @@ pub(super) unsafe fn init_incremental_write_barrier<M: Memory>(mem: &mut M) {
     create_young_remembered_set(mem);
 }
 
-/// Test whether young remembered set is exists.
-pub unsafe fn has_young_remembered_set() -> bool {
-    YOUNG_REMEMBERED_SET.is_some()
-}
-
 /// Take the young remembered set for young generation collection.
 /// A new young remembered set needs to be created after completed GC work.
 pub unsafe fn take_young_remembered_set() -> RememberedSet {
     YOUNG_REMEMBERED_SET.take().unwrap()
+}
+
+/// Object table extension may insert additional objects if they are moved from the old
+/// generation to the young generation. No GC increment is running at that time, such that
+/// the remembered set is present.
+pub(super) unsafe fn add_to_young_remembered_set<M: Memory>(mem: &mut M, value: Value) {
+    YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
 }
 
 /// Create a new young remembered set after any of these events:
@@ -79,11 +80,7 @@ unsafe fn pre_update_barrier<M: Memory>(mem: &mut M, value: Value) {
         && value.points_to_or_beyond(mem.get_heap_base())
         && value.get_object_address() < mem.get_last_heap_pointer()
     {
-        let state = incremental_gc_state();
-        let time = Time::limited(0);
-        let generation = Generation::old(mem);
-        let mut gc = GarbageCollector::instance(mem, generation, state, time);
-        gc.mark_object(value);
+        mark_old_object(mem, value);
     }
 }
 

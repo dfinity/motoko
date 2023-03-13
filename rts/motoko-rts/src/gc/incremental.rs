@@ -52,11 +52,12 @@ use crate::{
         common::Strategy,
         incremental::{
             collector::{GarbageCollector, Generation},
-            state::incremental_gc_state,
+            state::{incremental_gc_phase, incremental_gc_state, Phase},
             write_barrier::{create_young_remembered_set, take_young_remembered_set},
         },
     },
     memory::Memory,
+    types::Value,
 };
 
 use self::{
@@ -102,7 +103,11 @@ unsafe fn decide_incremental_strategy() -> Option<Strategy> {
     }
 }
 
+static mut ACTIVE_GC_INCREMENT: bool = false;
+
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
+    debug_assert!(!ACTIVE_GC_INCREMENT);
+    ACTIVE_GC_INCREMENT = true;
     // Always collect the young generation before the incremental collection of the old generation.
     collect_young_generation(mem);
     if strategy == Strategy::Full {
@@ -110,6 +115,7 @@ pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
     }
     // New remembered set needs to be allocated in the new young generation.
     create_young_remembered_set(mem);
+    ACTIVE_GC_INCREMENT = false;
 }
 
 unsafe fn collect_young_generation<M: Memory>(mem: &mut M) {
@@ -131,4 +137,17 @@ unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M) {
     let time = Time::limited(INCREMENT_LIMIT);
     let mut gc = GarbageCollector::instance(mem, generation, state, time);
     gc.run();
+}
+
+/// Mark an object by the pre-update write barrier or by promotion from the young generation
+/// during an active incremental mark phase.
+unsafe fn mark_old_object<M: Memory>(mem: &mut M, object_id: Value) {
+    debug_assert!(incremental_gc_phase() == Phase::Mark);
+    debug_assert!(object_id.get_object_address() >= mem.get_heap_base());
+    debug_assert!(object_id.get_object_address() < mem.get_last_heap_pointer());
+    let state = incremental_gc_state();
+    let time = Time::limited(0);
+    let generation = Generation::old(mem);
+    let mut gc = GarbageCollector::instance(mem, generation, state, time);
+    gc.mark_object(object_id);
 }
