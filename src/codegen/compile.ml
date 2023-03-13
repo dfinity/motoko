@@ -5692,6 +5692,15 @@ module MakeSerialization (Strm : Stream) = struct
     let can_recover = 2l
   end
 
+
+  module type RawReaders = sig
+    val read_leb128 : E.t -> G.t -> G.t
+  end
+
+  module (*Blob-*)Deserializers (*val env : E.t*) : RawReaders = struct
+    let read_leb128 env get_data_buf = ReadBuf.read_leb128 env get_data_buf
+  end
+
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -5805,10 +5814,12 @@ module MakeSerialization (Strm : Stream) = struct
         | _ -> assert false; (* can be generalized later as needed *)
       in
 
+      let open Deserializers in
+
       let read_blob () =
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        (*ReadBuf.read_leb128 env get_data_buf*) read_leb128 env get_data_buf ^^ set_len ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
         get_x ^^ Blob.payload_ptr_unskewed ^^
