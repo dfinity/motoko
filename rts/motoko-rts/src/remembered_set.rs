@@ -57,6 +57,7 @@ use crate::types::{block_size, Blob, Bytes, Value, NULL_OBJECT_ID};
 pub struct RememberedSet {
     hash_table: Value,
     count: u32, // contained entries
+    extending_table: bool,
 }
 
 #[repr(C)]
@@ -88,6 +89,7 @@ impl RememberedSet {
         RememberedSet {
             hash_table,
             count: 0,
+            extending_table: false,
         }
     }
 
@@ -160,6 +162,10 @@ impl RememberedSet {
     }
 
     unsafe fn grow<M: Memory>(&mut self, mem: &mut M) {
+        // Prevent recursive calls, e.g. because the object table grows during the remembered set
+        // extension which in turn promotes objects by inserting them to the remembered set.
+        assert!(!self.extending_table);
+        self.extending_table = true;
         let old_count = self.count;
         let mut iterator = self.iterate();
         let new_length = table_length(self.hash_table.as_blob_mut()) * GROWTH_FACTOR;
@@ -175,6 +181,7 @@ impl RememberedSet {
         // As a consequence, object table may need to grow too and may additionally
         // register moved objects in the remembered set.
         assert!(self.count >= old_count);
+        self.extending_table = false;
     }
 }
 
