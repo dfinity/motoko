@@ -34,7 +34,7 @@ mod meta_data {
 	pub const REGIONS : u16 = 32767;
     }
 
-    /// Sizes of table entries.
+    /// Sizes of table entries, and tables.
     pub mod size {
 	pub const REGION_TABLE_ENTRY : u16 = 8;
 
