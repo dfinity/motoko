@@ -39,7 +39,8 @@ pub unsafe fn take_young_remembered_set() -> RememberedSet {
 /// * A young-only generation collection (without a subsequent old generation collection).
 /// * An old generation GC increment (that was run after a young generation collection).
 pub unsafe fn create_young_remembered_set<M: Memory>(mem: &mut M) {
-    debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
+    // Set the last heap pointer to current heap pointer when reinitializing the remembererd set.
+    mem.shrink_heap(mem.get_heap_pointer());
     debug_assert!(YOUNG_REMEMBERED_SET.is_none());
     YOUNG_REMEMBERED_SET = Some(RememberedSet::new(mem));
     debug_assert!(mem.get_last_heap_pointer() < mem.get_heap_pointer());

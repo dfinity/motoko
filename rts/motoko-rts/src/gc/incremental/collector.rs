@@ -347,12 +347,5 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
 
         #[cfg(debug_assertions)]
         check_heap(self.mem, false);
-
-        // Make sure that the sanity check did not allocate on the heap, since a new empty
-        // young generation will be initiated right after this GC increment/run.
-        debug_assert_eq!(
-            self.mem.get_last_heap_pointer(),
-            self.mem.get_heap_pointer()
-        );
     }
 }

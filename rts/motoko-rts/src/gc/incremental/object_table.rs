@@ -282,7 +282,6 @@ impl ObjectTable {
         // The object table may also grow during mark phase on allocation of mark stack tables.
         if reset_young_generation && has_young_remembered_set() {
             take_young_remembered_set();
-            mem.shrink_heap(mem.get_heap_pointer());
             create_young_remembered_set(mem);
         }
     }
