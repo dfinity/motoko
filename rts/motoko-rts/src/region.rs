@@ -151,19 +151,26 @@ mod meta_data {
     }
 
     pub mod region_table {
+	use crate::region::{RegionId, RegionSizeInPages};
+
 	// invariant (for now, pre-GC integration):
 	//  all regions whose IDs are below the total_allocated_regions are valid.
 	use super::{offset, size};
+	use crate::ic0_stable::nicer::{read_u64, write_u64};
 
-	fn index(id : u16) -> u64 {
-	    offset::REGION_TABLE + id as u64 * size::REGION_TABLE_ENTRY as u64
+	fn index(r : &RegionId) -> u64 {
+	    offset::REGION_TABLE + r.0 as u64 * size::REGION_TABLE_ENTRY as u64
 	}
 
-	// to do:
-	// - get_region_size
-	// - set_region_size
+	/// Some(_) gives the size in pages.
+	/// None means that the region is not in use.
+	pub fn get(r: &RegionId) -> Option<RegionSizeInPages> {
+	    RegionSizeInPages::from_u64(read_u64(index(r)))
+	}
 
-
+	pub fn set(r: &RegionId, s: Option<RegionSizeInPages>) {
+	    write_u64(index(r), RegionSizeInPages::into_u64(s))
+	}
     }
 }
 
@@ -180,6 +187,14 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     if true { // to do -- use this to eventually replace NEXT_REGION_ID
 	let c = meta_data::total_allocated_regions::get();
 	meta_data::total_allocated_regions::set(c + 1);
+    }
+    // Update Region table.
+    {
+	let r_id = RegionId::from_id((*region).id);
+	let c = meta_data::region_table::get(&r_id);
+	// sanity check: Region table says that this region is available.
+	assert_eq!(c, None);
+	meta_data::region_table::set(&r_id, Some(RegionSizeInPages(0)));
     }
     Value::from_ptr(region as usize)
 }
@@ -220,17 +235,31 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let old_block_count = (old_page_count + 127) / 128;
     let new_block_count = (old_page_count + new_pages_ + 127) / 128;
     let inc_block_count = new_block_count - old_block_count;
-    let (old_total_blocks, _new_total_blocks) = {
+
+    // Update the total number of allocated blocks.
+    let old_total_blocks = {
 	let c = meta_data::total_allocated_blocks::get();
 	let c_ = c + inc_block_count as u64;
 	// to do -- assert c_ is less than meta_data::max::BLOCKS
 	meta_data::total_allocated_blocks::set(c_);
-	(c, c_)
+	c
     };
-    (*r).page_count += new_pages_;
+
+    // Update this region's page count, in both places where we record it (heap object, region table).
+    {
+	let r_id = RegionId::from_id((*r).id);
+	let c = meta_data::region_table::get(&r_id);
+
+	// Region table agrees with heap object's field.
+	assert_eq!(c, Some(RegionSizeInPages(old_page_count.into())));
+
+	// Increase both:
+	(*r).page_count += new_pages_;
+	meta_data::region_table::set(&r_id, Some(RegionSizeInPages((*r).page_count.into())));
+    }
+
     let new_vec_pages = alloc_blob(mem, Bytes(new_block_count * 2));
     let old_vec_byte_count = old_block_count * 2;
-    let _new_vec_byte_count = new_block_count * 2;
 
     let new_pages = new_vec_pages.get_ptr() as *mut Blob;
     let old_pages = (*r).vec_pages.get_ptr() as *mut Blob;
@@ -270,7 +299,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 	// (write big-endian u16 to slot i in new_pages.)
 	new_pages.set(i * 2 + 0, block_id_upper);
 	new_pages.set(i * 2 + 1, block_id_lower);
-
     }
 
     (*r).vec_pages = new_vec_pages;
