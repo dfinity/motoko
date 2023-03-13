@@ -116,6 +116,7 @@ impl RememberedSet {
             }
             if (*current).value.get_raw() == value.get_raw() {
                 // duplicate
+                self.inserting = false;
                 return;
             }
             debug_assert!(!is_null_value((*current).value));
@@ -176,12 +177,15 @@ impl RememberedSet {
         let new_length = table_length(self.hash_table.as_blob_mut()) * GROWTH_FACTOR;
         self.hash_table = new_table(mem, new_length);
         self.count = 0;
+        let mut inserted = 0;
         while iterator.has_next() {
             let value = iterator.current();
             debug_assert!(!is_null_value(value));
             self.insert(mem, value);
+            inserted += 1;
             iterator.next();
         }
+        assert_eq!(inserted, old_count);
         // During table resize, new object ids may be needed for new collision nodes
         // As a consequence, object table may need to grow too and may additionally
         // register moved objects in the remembered set.
