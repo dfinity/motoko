@@ -5702,6 +5702,7 @@ module MakeSerialization (Strm : Stream) = struct
     val read_blob : E.t -> G.t -> G.t -> G.t
 
     val get_ptr : G.t -> G.t
+    val set_ptr : G.t -> G.t -> G.t
   end
 
   module (*Blob-*)Deserializers (*val env : E.t*) : RawReaders = struct
@@ -5713,7 +5714,8 @@ module MakeSerialization (Strm : Stream) = struct
     let read_sleb128 env get_data_buf = ReadBuf.read_sleb128 env get_data_buf
     let read_blob env get_data_buf get_len = ReadBuf.read_blob env get_data_buf get_len
 
-    let get_ptr get_data_buf = ReadBuf.get_ptr get_data_buf
+    let get_ptr buf = ReadBuf.get_ptr buf
+    let set_ptr buf start = ReadBuf.set_ptr buf start
   end
 
   let rec deserialize_go env t =
@@ -5886,7 +5888,7 @@ module MakeSerialization (Strm : Stream) = struct
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
-            ReadBuf.set_ptr get_typ_buf (
+            set_ptr get_typ_buf (
               get_typtbl ^^
               get_arg_typ ^^ compile_mul_const Heap.word_size ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
@@ -5915,7 +5917,7 @@ module MakeSerialization (Strm : Stream) = struct
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
-            ReadBuf.set_ptr get_typ_buf (
+            set_ptr get_typ_buf (
               get_typtbl ^^
               get_arg_typ ^^ compile_mul_const Heap.word_size ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
@@ -6024,7 +6026,7 @@ module MakeSerialization (Strm : Stream) = struct
 
         (* If this was a reference, reset read buffer *)
         get_is_ref ^^
-        G.if0 (ReadBuf.set_ptr get_data_buf get_cur) G.nop ^^
+        G.if0 (set_ptr get_data_buf get_cur) G.nop ^^
 
         get_result
       in
@@ -6428,9 +6430,9 @@ module MakeSerialization (Strm : Stream) = struct
       (* Set up read buffers *)
       ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
 
-      ReadBuf.set_ptr get_data_buf get_data_start ^^
+      set_ptr get_data_buf get_data_start ^^
       ReadBuf.set_size get_data_buf get_data_size ^^
-      ReadBuf.set_ptr get_ref_buf get_refs_start ^^
+      set_ptr get_ref_buf get_refs_start ^^
       ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
@@ -6442,7 +6444,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
-        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+        set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
         read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
