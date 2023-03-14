@@ -41,7 +41,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let address = mem.alloc_words(size_of::<BigInt>() + size.to_words());
-    let object_id = Value::new_object_id(mem, address);
+    let object_id = Value::new_object_id(address);
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = address as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;

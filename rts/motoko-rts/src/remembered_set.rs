@@ -46,6 +46,13 @@
 //!   because recorded objects can be relocated, in particular also
 //!   young objects in the case of object table growth inside the young
 //!   generation.
+//! * The object ids required by remembered set insertion and hash table
+//!   growth will be reserved in advance to prevent reentrant calls to
+//!   remembered set operations. This is because object id allocation
+//!   may trigger an object table extension that again registers
+//!   moved old objects in the remembered set. Also the remembered set
+//!   hash table extension could trigger object table extension which
+//!   would call back to the remembered set.
 
 use core::mem::size_of;
 use core::ptr::null_mut;
@@ -57,8 +64,6 @@ use crate::types::{block_size, Blob, Bytes, Value, NULL_OBJECT_ID};
 pub struct RememberedSet {
     hash_table: Value,
     count: u32, // contained entries
-    growing: bool,
-    inserting: bool,
 }
 
 #[repr(C)]
@@ -90,14 +95,10 @@ impl RememberedSet {
         RememberedSet {
             hash_table,
             count: 0,
-            growing: false,
-            inserting: false,
         }
     }
 
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        assert!(!self.inserting);
-        self.inserting = true;
         debug_assert!(!is_null_value(value));
         let hash_table = self.hash_table.as_blob_mut();
         let index = Self::hash_index(hash_table, value);
@@ -116,20 +117,18 @@ impl RememberedSet {
             }
             if (*current).value.get_raw() == value.get_raw() {
                 // duplicate
-                self.inserting = false;
                 return;
             }
             debug_assert!(!is_null_value((*current).value));
             (*current).next_collision = new_collision_node(mem, value);
         }
         self.count += 1;
-        self.inserting = false;
         if self.count > table_length(hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
             self.grow(mem);
         }
     }
 
-    // Only used for debug assertions (barrier coverage check).
+    // Only used for assertions (barrier coverage check).
     pub unsafe fn contains(&self, value: Value) -> bool {
         debug_assert!(!is_null_value(value));
         let hash_table = self.hash_table.as_blob_mut();
@@ -168,29 +167,18 @@ impl RememberedSet {
     }
 
     unsafe fn grow<M: Memory>(&mut self, mem: &mut M) {
-        // Prevent recursive calls, e.g. because the object table grows during the remembered set
-        // extension which in turn promotes objects by inserting them to the remembered set.
-        assert!(!self.growing);
-        self.growing = true;
         let old_count = self.count;
         let mut iterator = self.iterate();
         let new_length = table_length(self.hash_table.as_blob_mut()) * GROWTH_FACTOR;
         self.hash_table = new_table(mem, new_length);
         self.count = 0;
-        let mut inserted = 0;
         while iterator.has_next() {
             let value = iterator.current();
             debug_assert!(!is_null_value(value));
             self.insert(mem, value);
-            inserted += 1;
             iterator.next();
         }
-        assert_eq!(inserted, old_count);
-        // During table resize, new object ids may be needed for new collision nodes
-        // As a consequence, object table may need to grow too and may additionally
-        // register moved objects in the remembered set.
-        assert!(self.count >= old_count);
-        self.growing = false;
+        assert_eq!(self.count, old_count);
     }
 }
 

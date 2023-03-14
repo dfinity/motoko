@@ -115,8 +115,8 @@ impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
 /// have dangling/invalid references (if referring to other garbage that has already been recycled).
 pub unsafe fn check_heap<M: Memory>(
     mem: &mut M,
-    allow_marked_objects: bool,
     generation_start: usize,
+    allow_marked_objects: bool,
 ) {
     let mut pointer = mem.get_heap_base();
     while pointer < mem.get_heap_pointer() {

@@ -29,7 +29,7 @@ fn test_allocate() {
     let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
     let mut object_table = create_object_table(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut mem, &mut object_table, &mut expected_table);
+    allocate_entries(&mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     free_all_entries(&mut object_table, &expected_table);
 }
@@ -40,14 +40,10 @@ fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
     ObjectTable::new(base, length)
 }
 
-fn allocate_entries(
-    mem: &mut TestMemory,
-    object_table: &mut ObjectTable,
-    expected_table: &mut [(Value, usize)],
-) {
+fn allocate_entries(object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
     for count in 0..expected_table.len() {
         let address = object_table.end() + count * WORD_SIZE;
-        let object_id = object_table.new_object_id(mem, address);
+        let object_id = object_table.new_object_id(address);
         assert_eq!(object_table.get_object_address(object_id), address);
         expected_table[count] = (object_id, address);
         assert_eq!(object_table.get_object_address(object_id), address);
@@ -84,29 +80,25 @@ fn delete_random_half(
     deleted
 }
 
-fn reallocate(
-    mem: &mut TestMemory,
-    object_table: &mut ObjectTable,
-    expected_table: &mut [(Value, usize)],
-) {
+fn reallocate(object_table: &mut ObjectTable, expected_table: &mut [(Value, usize)]) {
     let mut free_index = 0;
     while free_index < expected_table.len() && expected_table[free_index].0 != NULL_OBJECT_ID {
         free_index += 1;
     }
     assert!(free_index < expected_table.len());
     let address = expected_table[free_index].1;
-    expected_table[free_index].0 = object_table.new_object_id(mem, address);
+    expected_table[free_index].0 = object_table.new_object_id(address);
 }
 
 fn test_remove_realloc() {
     let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
     let mut object_table = create_object_table(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut mem, &mut object_table, &mut expected_table);
+    allocate_entries(&mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     let deleted = delete_random_half(&mut object_table, &mut expected_table);
     for _ in 0..deleted {
-        reallocate(&mut mem, &mut object_table, &mut expected_table);
+        reallocate(&mut object_table, &mut expected_table);
     }
     check_all_entries(&object_table, &expected_table);
     free_all_entries(&mut object_table, &expected_table);
@@ -125,7 +117,7 @@ fn test_move() {
     let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
     let mut object_table = create_object_table(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
-    allocate_entries(&mut mem, &mut object_table, &mut expected_table);
+    allocate_entries(&mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
     move_all_objects(&mut object_table, &mut expected_table);
     check_all_entries(&object_table, &expected_table);
@@ -157,8 +149,8 @@ unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
     old_object_allocation: F,
     number_of_old_objects: usize,
 ) {
-    const TEST_ALLOCATIONS: usize = 100;
-    let size = TEST_SIZE * WORD_SIZE + TEST_ALLOCATIONS * size_of::<Blob>();
+    const REQUESTED_OBJECT_IDS: usize = 100;
+    let size = TEST_SIZE * WORD_SIZE + REQUESTED_OBJECT_IDS * size_of::<Blob>();
     let mut mem = TestMemory::new(Bytes(size as u32).to_words());
     let object_table = create_object_table(&mut mem, number_of_old_objects + 1);
     let new_heap_base = object_table.end();
@@ -170,10 +162,10 @@ unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
     mem.shrink_heap(mem.get_heap_pointer());
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
     create_young_remembered_set(&mut mem);
-    for _ in 0..TEST_ALLOCATIONS {
-        let blob = alloc_blob(&mut mem, Bytes(0u32));
-        assert!(blob.is_object_id());
-    }
+    OBJECT_TABLE
+        .as_mut()
+        .unwrap()
+        .reserve(&mut mem, REQUESTED_OBJECT_IDS);
     let remembered_set = take_young_remembered_set();
     let mut iterator = remembered_set.iterate();
     let mut count_remembered = 0;

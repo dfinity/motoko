@@ -70,7 +70,16 @@
 //! compaction, by moving alive objects, one after the other.
 //!
 //! Table growth:
-//! When the table is full, i.e. the allocator encounters an empty free stack, the table is
+//! The runtime system reserves potentially needed free object ids in advance before executing
+//! the following function:
+//! * On mutator allocation: For the corresponding object.
+//! * Starting a GC increment: For the mark stack.
+//! * On insertion to the remembered set: For a potential collision node of the inserted entry
+//!   and potential table growth.
+//! The reservation technique is preferred over lazy table growth on allocation, to avoid
+//! object table growth in critical moments, such as during rememebered set insertion,
+//! remembered set table growth, and in the middle of a GC increment.
+//! When the number of free entries is smaller than the requested reserve, the table is
 //! extended at its end, which also shifts the beginning of the dynamic heap space. This involves
 //! increasing `HEAP_BASE` and possibly also `LAST_HP` if this is below the new `HEAP_BASE`.
 //! Objects blocking the extension of the table can be easily moved to another place, because
@@ -108,7 +117,7 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::{write_barrier::add_to_young_remembered_set, ACTIVE_GC_INCREMENT},
+    gc::incremental::write_barrier::add_to_young_remembered_set,
     mem_utils::memcpy_words,
     memory::Memory,
     types::{
@@ -124,7 +133,9 @@ pub struct ObjectTable {
     /// Number of table entries (words).
     length: usize,
     /// Top of stack for free object ids.
-    free: Value,
+    free_stack: Value,
+    /// Number of free object ids.
+    free_count: usize,
 }
 
 const FREE_STACK_END: Value = NULL_OBJECT_ID;
@@ -138,7 +149,8 @@ impl ObjectTable {
         let mut table = ObjectTable {
             base,
             length,
-            free: FREE_STACK_END,
+            free_stack: FREE_STACK_END,
+            free_count: 0,
         };
         table.add_free_range(0..length);
         table
@@ -156,6 +168,8 @@ impl ObjectTable {
     }
 
     fn add_free_range(&mut self, range: Range<usize>) {
+        debug_assert!(range.start <= range.end);
+        self.free_count += range.end - range.start;
         for index in range.rev() {
             let object_id = self.index_to_object_id(index);
             self.push_free_id(object_id);
@@ -163,9 +177,12 @@ impl ObjectTable {
     }
 
     /// Allocate a new object id and associate the object's address.
-    pub fn new_object_id<M: Memory>(&mut self, mem: &mut M, address: usize) -> Value {
+    /// Free object ids must be reserved in advance.
+    pub fn new_object_id(&mut self, address: usize) -> Value {
         debug_assert!(address >= self.end());
-        let object_id = self.pop_free_id(mem);
+        assert!(self.free_count > 0);
+        self.free_count -= 1;
+        let object_id = self.pop_free_id();
         debug_assert!(address >= self.end()); // Table did not grow to this address.
         self.write_element(object_id, address);
         object_id
@@ -174,6 +191,7 @@ impl ObjectTable {
     /// The garbage collector frees object ids of discarded objects.
     pub fn free_object_id(&mut self, object_id: Value) {
         self.push_free_id(object_id);
+        self.free_count += 1;
     }
 
     /// Retrieve the object address for a given object id.
@@ -195,19 +213,14 @@ impl ObjectTable {
 
     fn push_free_id(&mut self, object_id: Value) {
         debug_assert!(object_id != FREE_STACK_END);
-        self.write_element(object_id, self.free.get_raw() as usize);
-        self.free = object_id;
+        self.write_element(object_id, self.free_stack.get_raw() as usize);
+        self.free_stack = object_id;
     }
 
-    fn pop_free_id<M: Memory>(&mut self, mem: &mut M) -> Value {
-        if self.free == FREE_STACK_END {
-            unsafe {
-                self.grow_table(mem);
-            }
-        }
-        debug_assert!(self.free != FREE_STACK_END);
-        let object_id = self.free;
-        self.free = Value::from_raw(self.read_element(object_id) as u32);
+    fn pop_free_id(&mut self) -> Value {
+        assert!(self.free_stack != FREE_STACK_END);
+        let object_id = self.free_stack;
+        self.free_stack = Value::from_raw(self.read_element(object_id) as u32);
         object_id
     }
 
@@ -234,8 +247,17 @@ impl ObjectTable {
         element_address as *mut usize
     }
 
+    /// Reserve a minimum number of free object ids, potentially trigger
+    /// a table extension (adjusting the heap base, possibly also the last heap pointer,
+    /// moving objects, and registering entries to the remembered set)
+    pub unsafe fn reserve<M: Memory>(&mut self, mem: &mut M, required: usize) {
+        while self.free_count < required {
+            self.grow_table(mem);
+        }
+    }
+
+    /// Grow the object table by relocating one object at the table end.
     unsafe fn grow_table<M: Memory>(&mut self, mem: &mut M) {
-        assert!(!ACTIVE_GC_INCREMENT);
         // Since the table is full with a length of at least one entry, there
         // resides at least one object in the dynamic heap above the table.
         // Static objects are not indirected via the object table.
@@ -263,9 +285,9 @@ impl ObjectTable {
                 // The object is moved from the old generation to the young generation,
                 // such that it may be reachable from other objects from the old
                 // generation. Therefore, conservatively add it to the remembered set.
-                // Delay adding to the end of this function, since the remembered set
+                // Delay registering to the end of this function, since the remembered set
                 // insertion may also allocate new object ids and thus trigger
-                // recursive object table growth.
+                // tail-recursive object table growth.
                 promote_object = object_id;
             }
         } else {

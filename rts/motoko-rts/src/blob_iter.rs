@@ -10,7 +10,7 @@ const ITER_POS_IDX: u32 = 1;
 #[ic_mem_fn]
 unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value {
     let address = mem.alloc_words(size_of::<Array>() + Words(2));
-    let object_id = Value::new_object_id(mem, address);
+    let object_id = Value::new_object_id(address);
 
     // NB. cannot use as_array() here as we didn't write the header yet
     let iter_array = address as *mut Array;

@@ -27,12 +27,15 @@
 //! * The tables are blobs, as their entries must not be visited by the GC.
 //! * The entries on the stack must be object ids (Value) as their objects may
 //!   move even during mark phase due to object table extension.
-//! * The mark stack does must use object ids for referencing the previous/next
+//! * The mark stack must use object ids for referencing the previous/next
 //!   tables, because the tables could be moved due to object table extension.
 //!   If the table of the old generation are moved to the young generation, they
 //!   will be recorded in the remembered set such that they will be promoted back
 //!   to the old generation.
 //! * The stack tables become garbage after a GC run and can be reclaimed.
+//! * The GC reserves object ids before GC increment start such that the mark
+//!   stack allocation does not trigger an object table growth during a GC
+//!   increment.
 
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{size_of, Blob, Obj, Value, NULL_OBJECT_ID};

@@ -103,11 +103,7 @@ unsafe fn decide_incremental_strategy() -> Option<Strategy> {
     }
 }
 
-static mut ACTIVE_GC_INCREMENT: bool = false;
-
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
-    debug_assert!(!ACTIVE_GC_INCREMENT);
-    ACTIVE_GC_INCREMENT = true;
     // Always collect the young generation before the incremental collection of the old generation.
     collect_young_generation(mem);
     if strategy == Strategy::Full {
@@ -115,7 +111,6 @@ pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
     }
     // New remembered set needs to be allocated in the new young generation.
     create_young_remembered_set(mem);
-    ACTIVE_GC_INCREMENT = false;
 }
 
 unsafe fn collect_young_generation<M: Memory>(mem: &mut M) {

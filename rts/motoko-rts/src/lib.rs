@@ -51,8 +51,8 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> u
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn new_object_id<M: memory::Memory>(mem: &mut M, address: usize) -> Value {
-    Value::new_object_id(mem, address)
+unsafe fn new_object_id<M: memory::Memory>(_mem: &mut M, address: usize) -> Value {
+    Value::new_object_id(address)
 }
 
 #[no_mangle]

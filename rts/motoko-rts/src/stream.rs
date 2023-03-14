@@ -185,14 +185,14 @@ impl Stream {
     /// Split the stream object into two `Blob`s, a front-runner (small) one
     /// and a latter one that comprises the current amount of the cached bytes.
     /// Lengths are adjusted correspondingly.
-    pub unsafe fn split<M: Memory>(self: *mut Self, mem: &mut M) -> Value {
+    pub unsafe fn split(self: *mut Self) -> Value {
         if (*self).header.len > (*self).filled {
             self.as_blob_mut().shrink((*self).filled);
         }
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        let object_id = Value::new_object_id(mem, blob as usize);
+        let object_id = Value::new_object_id(blob as usize);
         (*blob).header.tag = TAG_BLOB;
         (*blob).header.initialize_id(object_id);
         debug_assert_eq!(blob.len(), (*self).filled);
@@ -207,10 +207,8 @@ impl Stream {
     }
 }
 
-/// Split the stream object into two `Blob`s, a front-runner (small) one
-/// and a latter one that comprises the current amount of the cached bytes.
-/// Lengths are adjusted correspondingly.
+/// Split stream into two Blobs. Called by the compiler.
 #[ic_mem_fn(ic_only)]
-unsafe fn stream_split<M: Memory>(mem: &mut M, stream: *mut Stream) -> Value {
-    stream.split(mem)
+unsafe fn stream_split<M: Memory>(_mem: &mut M, stream: *mut Stream) -> Value {
+    stream.split()
 }

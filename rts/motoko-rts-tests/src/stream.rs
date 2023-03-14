@@ -14,7 +14,7 @@ pub unsafe fn test() {
 
     println!("  Testing stream creation");
     let address = alloc_stream(&mut mem, Bytes(STREAM_SMALL_SIZE)) as usize;
-    let stream = Value::new_object_id(&mut mem, address);
+    let stream = Value::new_object_id(address);
 
     let initial_stream_filled = (size_of::<Stream>() - size_of::<Blob>())
         .to_bytes()
@@ -32,14 +32,14 @@ pub unsafe fn test() {
     assert_eq!(stream.as_blob().get(last) as u32, last);
 
     println!("  Testing stream decay");
-    let blob = stream.as_stream().split(&mut mem);
+    let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(STREAM_SMALL_SIZE));
     assert_eq!(stream.as_blob().len(), Bytes(24));
 
     println!("  Testing stream filling (blocks)");
     const STREAM_LARGE_SIZE: u32 = 6000;
     let address = alloc_stream(&mut mem, Bytes(STREAM_LARGE_SIZE)) as usize;
-    let stream = Value::new_object_id(&mut mem, address);
+    let stream = Value::new_object_id(address);
     let chunk: [u8; 10] = [10, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     for _ in 0..STREAM_LARGE_SIZE / chunk.len() as u32 {
         stream
@@ -56,7 +56,7 @@ pub unsafe fn test() {
             .get(initial_stream_filled + STREAM_LARGE_SIZE - 1),
         9
     );
-    let blob = stream.as_stream().split(&mut mem);
+    let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(STREAM_LARGE_SIZE));
 
     // TODO: cache_bytes more than STREAM_CHUNK_SIZE

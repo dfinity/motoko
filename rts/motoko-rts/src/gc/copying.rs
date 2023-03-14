@@ -133,7 +133,7 @@ unsafe fn evac<M: Memory>(
 
     // Final location of the object after copying to-space back to from-space
     let obj_loc = (obj_addr - begin_to_space) + begin_from_space;
-    let new_id = Value::new_object_id(mem, obj_loc);
+    let new_id = Value::new_object_id(obj_loc);
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
