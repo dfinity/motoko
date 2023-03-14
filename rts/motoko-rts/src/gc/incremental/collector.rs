@@ -122,8 +122,8 @@ impl Generation {
     }
 
     pub fn old<M: Memory>(mem: &mut M) -> Generation {
-        debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
-        debug_assert!(mem.get_heap_base() <= mem.get_heap_pointer());
+        debug_assert!(mem.get_heap_base() <= mem.get_last_heap_pointer());
+        debug_assert!(mem.get_last_heap_pointer() <= mem.get_heap_pointer());
         Self::new(mem.get_heap_base(), None, false)
     }
 }
