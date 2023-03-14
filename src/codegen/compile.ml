@@ -939,6 +939,8 @@ module RTS = struct
     E.add_func_import env "rts" "region_grow" [I32Type; I64Type] [I64Type];
     E.add_func_import env "rts" "region_load_blob" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region_store_blob" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "region_load_byte" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region_store_byte" [I32Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "region_next_id" [] [I32Type];
     E.add_func_import env "rts" "region_meta_loglines" [] [];
     E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
@@ -3517,6 +3519,9 @@ module Region = struct
     E.call_import env "rts" "region_grow"
   let load_blob env = E.call_import env "rts" "region_load_blob"
   let store_blob env = E.call_import env "rts" "region_store_blob"
+
+  let load_byte env = E.call_import env "rts" "region_load_byte"
+  let store_byte env = E.call_import env "rts" "region_store_byte"
 end
 
 module Text = struct
@@ -9451,6 +9456,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
     Region.store_blob env
+
+  | OtherPrim ("regionLoadNat8"), [e0; e1; e2] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    Blob.lit env "Blob size out of bounds" ^^
+    BigNum.to_word32_with env ^^
+    Region.load_byte env
+
+  | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    Region.store_byte env
 
   (* Other prims, unary *)
 

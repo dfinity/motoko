@@ -39,6 +39,10 @@ actor {
   P.debugPrint("Grew all regions, again.");
   Region.metaLogLines();
 
+  P.debugPrint("Storing data to region 2.");
+  let addr : Nat64 = 137 << 16 + 137;
+  Region.storeNat8(r2, addr, 137);
+  assert Region.loadNat8(r2, addr) == 137;
 
 /*
   assert (n == Region.size(r));
