@@ -4,7 +4,7 @@ use crate::rts_trap_with;
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BlockId(pub u16);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -73,6 +73,12 @@ impl AccessVector {
 	// (write big-endian u16 to slot i in new_pages.)
 	self.0.set(i * 2 + 0, block_id_upper);
 	self.0.set(i * 2 + 1, block_id_lower);
+    }
+
+    pub unsafe fn get_ith_block_id(&self, i: u32, block_id: &BlockId) -> BlockId {
+	let upper : u16 = self.0.get(i * 2 + 0) as u16;
+	let lower : u16 = self.0.get(i * 2 + 1) as u16;
+	BlockId(upper << 8 | lower)
     }
 }
 
@@ -323,6 +329,11 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 	}
 
 	new_pages.set_ith_block_id(i, &BlockId(block_id));
+
+	if true { // temp sanity testing: read back the data we just wrote.
+	    let block_id_ = new_pages.get_ith_block_id(i, &BlockId(block_id));
+	    assert_eq!(BlockId(block_id), block_id_);
+	}
     }
 
     (*r).vec_pages = new_vec_pages;
