@@ -16,6 +16,9 @@ pub struct RegionSizeInPages(pub u64);
 #[derive(Clone)]
 pub struct AccessVector(pub *mut Blob);
 
+#[derive(Clone)]
+pub struct RegionObject(pub *mut Region);
+
 pub const NIL_REGION_ID : u16 = 0;
 
 // This impl encapsulates encoding of optional region IDs within a u16.
@@ -75,11 +78,42 @@ impl AccessVector {
 	self.0.set(i * 2 + 1, block_id_lower);
     }
 
-    pub unsafe fn get_ith_block_id(&self, i: u32, block_id: &BlockId) -> BlockId {
+    pub unsafe fn get_ith_block_id(&self, i: u32) -> BlockId {
 	let upper : u16 = self.0.get(i * 2 + 0) as u16;
 	let lower : u16 = self.0.get(i * 2 + 1) as u16;
 	BlockId(upper << 8 | lower)
     }
+}
+
+impl RegionObject {
+
+    pub unsafe fn from_value(v: &Value) -> Self {
+	RegionObject(v.as_region())
+    }
+
+    pub unsafe fn local_offset_into_global_offset(&self, offset: u64) -> u64 {
+	let av = AccessVector::from_value(&(*self.0).vec_pages);
+
+	// assert that offset is currently allocated
+	// (to do -- this should be a certain kind of trap when it fails.)
+	assert!(offset / meta_data::size::PAGE_IN_BYTES < (*self.0).page_count.into());
+
+	// Which block (rank relative to this region)?
+	let block_rank  = offset / meta_data::size::BLOCK_IN_BYTES;
+
+	// Where in that block?
+	let intra_block_index = offset % meta_data::size::BLOCK_IN_BYTES;
+
+	// Where is that block located in stable memory (global rank)?
+	let block_id = av.get_ith_block_id(block_rank as u32);
+
+	// address of the byte to load from stable memory:
+	let offset =
+	    meta_data::offset::BLOCK_ZERO + block_id.0 as u64 * meta_data::size::BLOCK_IN_BYTES
+	    + intra_block_index;
+	offset
+    }
+
 }
 
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
@@ -331,7 +365,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 	new_pages.set_ith_block_id(i, &BlockId(block_id));
 
 	if true { // temp sanity testing: read back the data we just wrote.
-	    let block_id_ = new_pages.get_ith_block_id(i, &BlockId(block_id));
+	    let block_id_ = new_pages.get_ith_block_id(i);
 	    assert_eq!(BlockId(block_id), block_id_);
 	}
     }
@@ -342,27 +376,19 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
 #[ic_mem_fn]
 pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -> u8 {
-    let r = r.as_region();
-
-    // assert that offset is currently allocated
-    assert!(offset / meta_data::size::PAGE_IN_BYTES < (*r).page_count.into());
-
-    // Which block?
-    let block_rank  = offset / meta_data::size::BLOCK_IN_BYTES;
-
-    // Where in that block?
-    let block_index = offset % meta_data::size::BLOCK_IN_BYTES;
-
-    let _ = meta_data::offset::BLOCK_ZERO;
-
-    rts_trap_with("TODO region_load_blob");
+    let r = RegionObject::from_value(&r);
+    let offset = r.local_offset_into_global_offset(offset);
+    let mut dst : [u8; 1] = [0];
+    crate::ic0_stable::nicer::read(offset, &mut dst);
+    dst[0]
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64, byte: u8) {
-    let r = r.as_region();
-    let _ = meta_data::offset::BLOCK_ZERO;
-    rts_trap_with("TODO region_store_blob");
+    let r = RegionObject::from_value(&r);
+    let offset = r.local_offset_into_global_offset(offset);
+    let src : [u8; 1] = [byte];
+    crate::ic0_stable::nicer::write(offset, &src);
 }
 
 #[ic_mem_fn]
