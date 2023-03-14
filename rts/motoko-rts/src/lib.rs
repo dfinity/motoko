@@ -53,6 +53,8 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> u
 #[ic_mem_fn(ic_only)]
 unsafe fn new_object_id<M: memory::Memory>(mem: &mut M, address: usize) -> Value {
     types::reserve_object_ids(mem, 1);
+    // Check that the object table has not been expanded beyond the address of the current allocation.
+    debug_assert!(address > mem.get_heap_base()); 
     Value::new_object_id(address)
 }
 
