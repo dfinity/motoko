@@ -5700,6 +5700,8 @@ module MakeSerialization (Strm : Stream) = struct
     val read_leb128 : E.t -> G.t -> G.t
     val read_sleb128 : E.t -> G.t -> G.t
     val read_blob : E.t -> G.t -> G.t -> G.t
+
+    val get_ptr : G.t -> G.t
   end
 
   module (*Blob-*)Deserializers (*val env : E.t*) : RawReaders = struct
@@ -5710,6 +5712,8 @@ module MakeSerialization (Strm : Stream) = struct
     let read_leb128 env get_data_buf = ReadBuf.read_leb128 env get_data_buf
     let read_sleb128 env get_data_buf = ReadBuf.read_sleb128 env get_data_buf
     let read_blob env get_data_buf get_len = ReadBuf.read_blob env get_data_buf get_len
+
+    let get_ptr get_data_buf = ReadBuf.get_ptr get_data_buf
   end
 
   let rec deserialize_go env t =
@@ -5738,9 +5742,11 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
       E.else_trap_with env ("IDL error: circular record read") ^^
 
+      let open Deserializers in
+
       (* Remember data buffer position, to detect progress *)
       let (set_old_pos, get_old_pos) = new_local env "old_pos" in
-      ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
+      get_ptr get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
         (* assumes idltyp on stack *)
@@ -5748,7 +5754,7 @@ module MakeSerialization (Strm : Stream) = struct
           Stack.set_local env StackArgs.idltyp ^^
           (* set up frame arguments *)
           ( (* Reset depth counter if we made progress *)
-            ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+            get_ptr get_data_buf ^^ get_old_pos ^^
             G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
             G.if1 I32Type
               (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
@@ -5808,8 +5814,6 @@ module MakeSerialization (Strm : Stream) = struct
           )
       in
 
-      let open Deserializers in
-
       let read_byte_tagged = function
         | [code0; code1] ->
           read_byte env get_data_buf ^^
@@ -5858,13 +5862,13 @@ module MakeSerialization (Strm : Stream) = struct
       let read_text () =
         let (set_len, get_len) = new_local env "len" in
         read_leb128 env get_data_buf ^^ set_len ^^
-        let (set_ptr, get_ptr) = new_local env "x" in
-        ReadBuf.get_ptr get_data_buf ^^ set_ptr ^^
+        let (set_ptr0, get_ptr0) = new_local env "x" in
+        get_ptr get_data_buf ^^ set_ptr0 ^^
         ReadBuf.advance get_data_buf get_len ^^
         (* validate *)
-        get_ptr ^^ get_len ^^ E.call_import env "rts" "utf8_validate" ^^
+        get_ptr0 ^^ get_len ^^ E.call_import env "rts" "utf8_validate" ^^
         (* copy *)
-        get_ptr ^^ get_len ^^ Text.of_ptr_size env
+        get_ptr0 ^^ get_len ^^ Text.of_ptr_size env
       in
 
       let read_actor_data () =
@@ -5987,12 +5991,12 @@ module MakeSerialization (Strm : Stream) = struct
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
 
-          ReadBuf.get_ptr get_data_buf ^^ set_cur ^^
+          get_ptr get_data_buf ^^ set_cur ^^
           ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l))
         end G.nop ^^
 
         (* Remember location of ptr *)
-        ReadBuf.get_ptr get_data_buf ^^ set_memo ^^
+        get_ptr get_data_buf ^^ set_memo ^^
         (* Did we decode this already? *)
         read_word32 env get_data_buf ^^ set_result ^^
         get_result ^^ compile_eq_const 0l ^^
@@ -6173,7 +6177,7 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_x, get_x) = new_local env "x" in
           let (set_val, get_val) = new_local env "val" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-          with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+          with_composite_arg_typ get_array_typ idl_vec (read_sleb128 env) ^^ set_arg_typ ^^
           read_leb128 env get_data_buf ^^ set_len ^^
           get_len ^^ Arr.alloc env ^^ set_x ^^
           on_alloc get_x ^^
