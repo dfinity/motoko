@@ -6,10 +6,12 @@
 
 use crate::{
     constants::WORD_SIZE,
+    gc::incremental::state::{incremental_gc_phase, Phase},
     mem_utils::memzero,
     memory::{alloc_blob_internal, Memory},
     types::{
-        block_size, has_object_header, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_NULL, TAG_OBJECT,
+        block_size, has_object_header, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_ARRAY_SLICE_MIN,
+        TAG_NULL, TAG_OBJECT,
     },
     visitor::visit_pointer_fields,
 };
@@ -191,7 +193,14 @@ pub unsafe fn check_heap<M: Memory>(mem: &mut M, forbid_marked_objects: Option<u
 
 unsafe fn check_object_header<M: Memory>(mem: &mut M, value: Value) {
     let tag = value.tag();
-    assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+    if tag > TAG_ARRAY_SLICE_MIN {
+        let address = value.get_object_address();
+        assert!(address >= mem.get_heap_base());
+        assert!(address < mem.get_last_heap_pointer());
+        assert!(incremental_gc_phase() == Phase::Mark);
+    } else {
+        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+    }
     let object = value.get_object_address() as *mut Obj;
     assert!(object.object_id() == value);
     assert!((object as usize) < mem.get_heap_pointer());
