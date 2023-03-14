@@ -22,7 +22,8 @@
 *** motoko/test/run-drun/stable-region-blob/Region.mo
 *** motoko/test/run-drun/stable-region-blob.mo
 
-* Experiments
+
+* Finished experiments
 
 ** Q: Can Matthew add a new RTS function, exposed as a Prim.XYZ function by the compiler to a test?
 *** A: Yes, it was simple and only touched a few files (three listed above).
@@ -48,11 +49,17 @@
 **** test now says `trapped: stable memory out of bounds`
 
 
+* Ongoing work
+
+
 ** Q: Can Matthew implement "region_grow" RTS function?
-WIP
+*** Initially implemented as of 20230313.
+*** More testing is needed.
 
 ** Q: Can Matthew implement load/store byte RTS functions?
-TO DO
+*** Initially implemented as of 20230314.
+*** More testing is needed.
+
 
 ** Q: Can Matthew compile a stub stable memory API for WASI mode (generate stubs that trap)?
 TO DO
@@ -67,8 +74,5 @@ TO DO
 
 * Conceptual Questions
 
-** Q: when we call stable64_grow(1) (or (10)) from region_init without getting this?
-
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: empty input. Expected Candid-encoded argument, but received a zero-length argument
 
 ** Q: Do we have a preference toward big or little endian for stable variable storage?
