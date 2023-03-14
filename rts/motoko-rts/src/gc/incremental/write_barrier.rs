@@ -1,11 +1,13 @@
 //! Write barrier, used by the incremental GC
 
+use crate::gc::incremental::collector::{GarbageCollector, Generation};
+use crate::gc::incremental::state::incremental_gc_state;
+use crate::gc::incremental::time::Time;
 use crate::memory::Memory;
 use crate::remembered_set::RememberedSet;
 use crate::types::{is_skewed, Value, OBJECT_TABLE};
 use motoko_rts_macros::ic_mem_fn;
 
-use super::mark_old_object;
 use super::state::{incremental_gc_phase, Phase};
 
 /// Records the ids of objects that serve as additional root set for the young
@@ -82,7 +84,13 @@ unsafe fn pre_update_barrier<M: Memory>(mem: &mut M, value: Value) {
         && value.points_to_or_beyond(mem.get_heap_base())
         && value.get_object_address() < mem.get_last_heap_pointer()
     {
-        mark_old_object(mem, value);
+        debug_assert!(value.get_object_address() >= mem.get_heap_base());
+        debug_assert!(value.get_object_address() < mem.get_last_heap_pointer());
+        let state = incremental_gc_state();
+        let time = Time::limited(0);
+        let generation = Generation::old(mem);
+        let mut gc = GarbageCollector::instance(mem, generation, state, time);
+        gc.mark_object(value);
     }
 }
 

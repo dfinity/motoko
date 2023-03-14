@@ -72,7 +72,6 @@ use core::cmp::max;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::state::incremental_gc_phase,
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -83,8 +82,7 @@ use crate::{
 };
 
 use super::{
-    array_slicing::slice_array, mark_old_object, roots::visit_roots, state::Phase, state::State,
-    time::Time,
+    array_slicing::slice_array, roots::visit_roots, state::Phase, state::State, time::Time,
 };
 
 #[cfg(debug_assertions)]
@@ -320,13 +318,11 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     unsafe fn compact_object(&mut self, object: *mut Obj, size: Words<u32>) {
         let object_id = object.object_id();
         if object.is_marked() {
-            // Clear the mark bit.
-            object.unmark();
-            if self.generation.promote_surviving {
-                // If the object needs to be promoted, it may be marked again but possibly
-                // also added to the mark stack depending on the incremental GC phase.
-                // Therefore, the mark bit has been first cleared before promotion.
-                self.promote_object(object_id);
+            // If a young object is promoted to the old generation, it has to be marked if and only
+            // if the incremental GC is active, i.e. in the mark or compact phase. Otherwise, the
+            // object mark bit is cleared such that it is prepared for a new future mark phase.
+            if !self.generation.promote_surviving {
+                object.unmark();
             }
             let old_address = object as usize;
             let new_address = self.state.compact_to;
@@ -345,14 +341,6 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         } else {
             // Free the id of a garbage object in the object table.
             object_id.free_object_id();
-        }
-    }
-
-    unsafe fn promote_object(&mut self, object_id: Value) {
-        if incremental_gc_phase() == Phase::Mark {
-            mark_old_object(self.mem, object_id);
-        } else {
-            object_id.as_obj().mark();
         }
     }
 
