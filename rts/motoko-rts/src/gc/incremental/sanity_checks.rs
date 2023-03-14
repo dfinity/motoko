@@ -10,8 +10,8 @@ use crate::{
     mem_utils::memzero,
     memory::{alloc_blob_internal, Memory},
     types::{
-        block_size, has_object_header, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_ARRAY_SLICE_MIN,
-        TAG_NULL, TAG_OBJECT,
+        block_size, has_object_header, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_ARRAY,
+        TAG_ARRAY_SLICE_MIN, TAG_NULL, TAG_OBJECT,
     },
     visitor::visit_pointer_fields,
 };
@@ -187,13 +187,22 @@ pub unsafe fn check_heap<M: Memory>(mem: &mut M, forbid_marked_objects: Option<u
             check_object_header(mem, value);
             check_valid_references(mem, object);
         }
+        if tag >= TAG_ARRAY_SLICE_MIN {
+            assert!(pointer >= mem.get_heap_base());
+            assert!(pointer < mem.get_last_heap_pointer());
+            assert!(incremental_gc_phase() == Phase::Mark);
+            (*(pointer as *mut Obj)).tag = TAG_ARRAY;
+        }
         pointer += block_size(pointer as usize).to_bytes().as_usize();
+        if tag >= TAG_ARRAY_SLICE_MIN {
+            (*(pointer as *mut Obj)).tag = tag;
+        }
     }
 }
 
 unsafe fn check_object_header<M: Memory>(mem: &mut M, value: Value) {
     let tag = value.tag();
-    if tag > TAG_ARRAY_SLICE_MIN {
+    if tag >= TAG_ARRAY_SLICE_MIN {
         let address = value.get_object_address();
         assert!(address >= mem.get_heap_base());
         assert!(address < mem.get_last_heap_pointer());

@@ -328,7 +328,7 @@ impl Value {
 
     /// Get the pointer as `Array`. In debug mode panics if the value is not an object id pointing to an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
-        debug_assert_eq!(self.tag(), TAG_ARRAY);
+        debug_assert!(self.tag() == TAG_ARRAY || self.tag() >= TAG_ARRAY_SLICE_MIN);
         self.get_object_address() as *mut Array
     }
 
