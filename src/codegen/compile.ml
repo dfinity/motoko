@@ -9758,7 +9758,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
   end
 
+(* Compile, infer and return stack representation *)
 and compile_exp (env : E.t) ae exp =
+  compile_exp_with_hint env ae None exp
+
+(* Compile to given stack representation *)
+and compile_exp_as env ae sr_out e =
+  let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
+  code ^^ StackRep.adjust env sr_in sr_out
+
+(* Compile, infer and return stack representation, taking the hint into account *)
+and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   if exp.note.Note.const
   then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
@@ -9784,9 +9794,13 @@ and compile_exp (env : E.t) ae exp =
     compile_lit env l
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as_test env ae scrut in
-    let sr1, code1 = compile_exp env ae e1 in
-    let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.join sr1 sr2 in
+    let sr1, code1 = compile_exp_with_hint env ae sr_hint e1 in
+    let sr2, code2 = compile_exp_with_hint env ae sr_hint e2 in
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.join sr1 sr2
+    in
     sr,
     code_scrut ^^
     FakeMultiVal.if_ env
@@ -9796,7 +9810,7 @@ and compile_exp (env : E.t) ae exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-    let (sr, code2) = compile_exp env ae' exp in
+    let (sr, code2) = compile_exp_with_hint env ae' sr_hint exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -9824,11 +9838,15 @@ and compile_exp (env : E.t) ae exp =
     (* compile subexpressions and collect the provided stack reps *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
       let (ae1, pat_code) = compile_pat_local env ae pat in
-      let (sr, rhs_code) = compile_exp env ae1 e in
+      let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
       (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
       ) cs in
 
-    let final_sr = StackRep.joins (List.map fst codes) in
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let final_sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.joins (List.map fst codes)
+    in
 
     final_sr,
     (* Run scrut *)
@@ -9900,27 +9918,12 @@ and compile_exp (env : E.t) ae exp =
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
 
-and compile_exp_as env ae sr_out e =
-  G.with_region e.at (
-    match sr_out, e.it with
-    (* Some optimizations for certain sr_out and expressions *)
-    | _ , BlockE (decs, exp) ->
-      let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let ae', codeW1 = compile_decs env ae decs captured in
-      let code2 = compile_exp_as env ae' sr_out exp in
-      codeW1 code2
-    (* Fallback to whatever stackrep compile_exp chooses *)
-    | _ ->
-      let sr_in, code = compile_exp env ae e in
-      code ^^ StackRep.adjust env sr_in sr_out
-  )
-
 and compile_exp_ignore env ae e =
   let sr, code = compile_exp env ae e in
   code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
-  let sr_in, code = compile_exp env ae e in
+  let sr_in, code = compile_exp_with_hint env ae sr_out_o e in
   G.with_region e.at (
     code ^^
     match sr_out_o with
@@ -10120,28 +10123,32 @@ and alloc_pat env ae how pat : VarEnv.t * G.t  =
 and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (* It returns:
      - the extended environment
-     - the code to do the pattern matching.
+     - the patternCode to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
-       consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       consumes it, and fills the heap.
+       If the pattern matches, execution continues (with nothing on the stack).
+       If the pattern does not match, it fails (in the sense of PatCode.CanFail)
   *)
   let ae1 = alloc_pat_local env ae pat in
   let fill_code = fill_pat env ae1 pat in
   (ae1, fill_code)
 
-(* Used for let patterns: If the pattern can consume its scrutinee in a better form
-   than vanilla (e.g. unboxed tuple, unboxed 32/64), lets do that.
+(* Used for let patterns:
+   If the pattern can consume its scrutinee in a better form than vanilla (e.g.
+   unboxed tuple, unboxed 32/64), lets do that.
 *)
-and compile_unboxed_pat env ae how pat =
+and compile_unboxed_pat env ae how pat
+  : VarEnv.t * G.t * G.t * SR.t option * G.t =
   (* It returns:
      - the extended environment
      - the code to allocate memory
      - the code to prepare the stack (e.g. push destination addresses)
-     - the desired stack rep
+       before the scrutinee is pushed
+     - the desired stack rep. None means: Do not even push the scrutinee.
      - the code to do the pattern matching.
        This expects the undestructed value is on top of the stack,
        consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       If the pattern does not match, it traps with pattern failure
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let pre_code, sr, fill_code = match pat.it with
