@@ -36,7 +36,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{reserve_object_ids, size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
+use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -211,6 +211,6 @@ impl Stream {
 /// Split stream into two Blobs. Called by the compiler.
 #[ic_mem_fn(ic_only)]
 unsafe fn stream_split<M: Memory>(mem: &mut M, stream: *mut Stream) -> Value {
-    reserve_object_ids(mem, 1);
+    crate::types::reserve_object_ids(mem, 1);
     stream.split()
 }
