@@ -4,7 +4,7 @@ use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
 use crate::memory::{alloc_blob_internal, Memory};
-use crate::types::{Words, reserve_object_ids};
+use crate::types::Words;
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
@@ -98,11 +98,6 @@ unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
     alloc_blob_internal(mem, size.to_bytes())
         .as_blob_mut()
         .payload_addr()
-}
-
-#[ic_mem_fn]
-unsafe fn prepare_parse_idl<M: Memory>(mem: &mut M) {
-    reserve_object_ids(mem, 1);
 }
 
 /// This function parses the IDL magic header and type description. It

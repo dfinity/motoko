@@ -36,7 +36,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB, reserve_object_ids};
+use crate::types::{reserve_object_ids, size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -185,6 +185,7 @@ impl Stream {
     /// Split the stream object into two `Blob`s, a front-runner (small) one
     /// and a latter one that comprises the current amount of the cached bytes.
     /// Lengths are adjusted correspondingly.
+    /// Need to reserve a free object id in advance.
     pub unsafe fn split(self: *mut Self) -> Value {
         if (*self).header.len > (*self).filled {
             self.as_blob_mut().shrink((*self).filled);
