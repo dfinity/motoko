@@ -35,11 +35,12 @@ use crate::buf::{read_byte, Buf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
-use crate::types::{size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
+use crate::types::{reserve_object_ids, size_of, BigInt, Bytes, Obj, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
+    reserve_object_ids(mem, 1);
     let address = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     let object_id = Value::new_object_id(address);
     // NB. Cannot use as_bigint() here as header is not written yet

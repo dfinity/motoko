@@ -247,7 +247,7 @@ impl ObjectTable {
         element_address as *mut usize
     }
 
-    /// Reserve a minimum number of free object ids, potentially trigger
+    /// Reserve a minimum number of free object ids, potentially triggering
     /// a table extension (adjusting the heap base, possibly also the last heap pointer,
     /// moving objects, and registering entries to the remembered set)
     pub unsafe fn reserve<M: Memory>(&mut self, mem: &mut M, required: usize) {
@@ -267,7 +267,6 @@ impl ObjectTable {
         debug_assert!(self.end() <= mem.get_heap_base()); // Due to alignment.
         let block = self.end() as *mut Tag;
         let size = block_size(block as usize);
-        let mut promote_object = NULL_OBJECT_ID;
         if has_object_header(*block) {
             let old_address = block as usize;
             // Relocate the object to the end of dynamic heap and make space
@@ -285,10 +284,8 @@ impl ObjectTable {
                 // The object is moved from the old generation to the young generation,
                 // such that it may be reachable from other objects from the old
                 // generation. Therefore, conservatively add it to the remembered set.
-                // Delay registering to the end of this function, since the remembered set
-                // insertion may also allocate new object ids and thus trigger
-                // tail-recursive object table growth.
-                promote_object = object_id;
+                // Adding to the remembered set will not imply object table growth.
+                add_to_young_remembered_set(mem, object_id);
             }
         } else {
             // Heap-internal free blocks may result from `Blob::shrink()`.
@@ -300,10 +297,5 @@ impl ObjectTable {
         self.add_free_range(old_length..new_length);
         debug_assert!(self.end() > mem.get_heap_base());
         mem.set_heap_base(self.end());
-        if promote_object != NULL_OBJECT_ID {
-            // This may again trigger object table growth if the the remembered set
-            // needs more space (e.g. hash table is extended with new collision nodes).
-            add_to_young_remembered_set(mem, promote_object);
-        }
     }
 }

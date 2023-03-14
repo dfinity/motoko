@@ -52,16 +52,19 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
 }
 
 unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
-    let old_array = TABLE.as_array();
-    let old_size = old_array.len();
+    let old_table = TABLE;
+    let old_size = old_table.as_array().len();
 
     assert_eq!(FREE_SLOT, old_size);
 
     let new_size = old_size * 2;
 
+    // Objects may move during allocation because object table growth.
+    // Therefore, re-obtain the old table address after the allocation.
     TABLE = alloc_array(mem, new_size);
-    let new_array = TABLE.as_array();
 
+    let old_array = old_table.as_array();
+    let new_array = TABLE.as_array();
     for i in 0..old_size {
         let old_value = old_array.get(i);
         if old_value.is_object_id() {

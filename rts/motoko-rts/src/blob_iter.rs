@@ -1,4 +1,4 @@
-use crate::types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY};
+use crate::types::{reserve_object_ids, size_of, Array, Bytes, Value, Words, TAG_ARRAY};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -9,6 +9,7 @@ const ITER_POS_IDX: u32 = 1;
 /// Returns iterator for the given blob
 #[ic_mem_fn]
 unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value {
+    reserve_object_ids(mem, 1);
     let address = mem.alloc_words(size_of::<Array>() + Words(2));
     let object_id = Value::new_object_id(address);
 

@@ -1,10 +1,10 @@
 //! Principal ID encoding and decoding, with integrity checking
 
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob, alloc_blob_internal, Memory};
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
-use crate::types::{Bytes, Value, TAG_BLOB};
+use crate::types::{reserve_object_ids, Bytes, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -93,11 +93,12 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 
 /// Encode a blob into an checksum-prepended base32 representation
 pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
+    reserve_object_ids(mem, 1);
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
-    let r = alloc_blob(mem, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
+    let r = alloc_blob_internal(mem, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -180,11 +181,12 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
 }
 
 pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
+    reserve_object_ids(mem, 1);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
+    let r = alloc_blob_internal(mem, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -217,13 +219,14 @@ pub unsafe fn principal_of_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
 /// Convert a checksum-prepended base32 representation blob into the public principal name format
 /// by hyphenating and lowercasing
 unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
+    reserve_object_ids(mem, 1);
     let blob = b.as_blob();
 
     let n = blob.len();
     let mut data = blob.payload_const();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 4) / 5) * 6));
+    let r = alloc_blob_internal(mem, Bytes(((n.as_u32() + 4) / 5) * 6));
     let blob = r.as_blob_mut();
     let mut dest = blob.payload_addr();
 

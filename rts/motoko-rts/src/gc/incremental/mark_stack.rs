@@ -37,7 +37,7 @@
 //!   stack allocation does not trigger an object table growth during a GC
 //!   increment.
 
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob_internal, Memory};
 use crate::types::{size_of, Blob, Obj, Value, NULL_OBJECT_ID};
 
 pub struct MarkStack {
@@ -137,7 +137,7 @@ impl MarkStack {
     }
 
     unsafe fn new_table<M: Memory>(mem: &mut M, previous: Value) -> Value {
-        let table_id = alloc_blob(mem, size_of::<StackTable>().to_bytes());
+        let table_id = alloc_blob_internal(mem, size_of::<StackTable>().to_bytes());
         let table = table_id.as_blob_mut() as *mut StackTable;
         // No mark bit is set as the blob is to be reclaimeed by the current GC run.
         debug_assert!(!(table as *mut Obj).is_marked());

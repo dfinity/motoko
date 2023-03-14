@@ -57,7 +57,7 @@ use crate::{
         },
     },
     memory::Memory,
-    types::Value,
+    types::{Value, OBJECT_TABLE},
 };
 
 use self::{
@@ -103,7 +103,12 @@ unsafe fn decide_incremental_strategy() -> Option<Strategy> {
     }
 }
 
+/// Reserve of free id for mark stack table allocations during the GC collection.
+const FREE_ID_RESERVE: usize = 128;
+
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
+    OBJECT_TABLE.as_mut().unwrap().reserve(mem, FREE_ID_RESERVE);
+
     // Always collect the young generation before the incremental collection of the old generation.
     collect_young_generation(mem);
     if strategy == Strategy::Full {

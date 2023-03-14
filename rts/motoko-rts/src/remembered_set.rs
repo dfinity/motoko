@@ -58,7 +58,7 @@ use core::mem::size_of;
 use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob_internal, Memory};
 use crate::types::{block_size, Blob, Bytes, Value, NULL_OBJECT_ID};
 
 pub struct RememberedSet {
@@ -254,7 +254,7 @@ impl RememberedSetIterator {
 }
 
 unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> Value {
-    let object = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32));
+    let object = alloc_blob_internal(mem, Bytes(size * size_of::<HashEntry>() as u32));
     let table = object.as_blob_mut();
     for index in 0..size {
         table_set(table, index, NULL_OBJECT_ID);
@@ -264,7 +264,7 @@ unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> Value {
 
 unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> Value {
     debug_assert!(!is_null_value(value));
-    let object = alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32));
+    let object = alloc_blob_internal(mem, Bytes(size_of::<HashEntry>() as u32));
     let node = as_collision(object);
     (*node).entry = HashEntry {
         value,

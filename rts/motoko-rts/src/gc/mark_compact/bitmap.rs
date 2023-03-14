@@ -1,5 +1,5 @@
 use crate::mem_utils::memzero;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob_internal, Memory};
 use crate::types::{size_of, Blob, Bytes, Obj, Value, NULL_OBJECT_ID};
 
 /* How the Wasm-heap maps to the bitmap
@@ -80,7 +80,7 @@ pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_p
     let bitmap_bytes = Bytes(((BITMAP_SIZE + 7) / 8) * 8);
     // Allocating an actual object here as otherwise dump_heap gets confused
     debug_assert!(BITMAP_ID == NULL_OBJECT_ID);
-    BITMAP_ID = alloc_blob(mem, bitmap_bytes);
+    BITMAP_ID = alloc_blob_internal(mem, bitmap_bytes);
     let blob = BITMAP_ID.get_object_address() as *mut Blob;
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 

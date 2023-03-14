@@ -26,10 +26,12 @@ const TODO_LINK_IDX: u32 = 1;
 /// invariant about TEXT_ITER_BLOB to be a blob.
 unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -> Value {
     while text.tag() == TAG_CONCAT {
-        let concat = text.as_concat();
-
         // Add right node to TODOs
+        // The text object may move during allocation if the object table is extended.
+        // Therefore, obtain the `concat` pointer after the `new_todo` allocation.
         let new_todo = alloc_array(mem, 2);
+
+        let concat = text.as_concat();
         let new_todo_array = new_todo.as_array();
         new_todo_array.set_pointer(TODO_TEXT_IDX, (*concat).text2, mem);
         new_todo_array.set_pointer(TODO_LINK_IDX, *todo, mem);
