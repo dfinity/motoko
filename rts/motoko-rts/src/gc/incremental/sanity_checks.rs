@@ -6,9 +6,11 @@
 
 use crate::{
     constants::WORD_SIZE,
-    memory::Memory,
-    remembered_set::RememberedSet,
-    types::{block_size, has_object_header, Obj, Tag, Value, NULL_OBJECT_ID, TAG_NULL, TAG_OBJECT},
+    mem_utils::memzero,
+    memory::{alloc_blob_internal, Memory},
+    types::{
+        block_size, has_object_header, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_NULL, TAG_OBJECT,
+    },
     visitor::visit_pointer_fields,
 };
 
@@ -21,7 +23,7 @@ use super::{mark_stack::MarkStack, roots::visit_roots};
 /// generation and concurrent object id writes (changing object references while marking).
 pub unsafe fn check_mark_completion<M: Memory>(mem: &mut M, generation_start: usize) {
     let mark_stack = MarkStack::new();
-    let visited = RememberedSet::new(mem);
+    let visited = SimpleMarkBitmap::new(mem);
     let mut checker = MarkCompletionChecker {
         mem,
         generation_start,
@@ -31,20 +33,75 @@ pub unsafe fn check_mark_completion<M: Memory>(mem: &mut M, generation_start: us
     checker.check_mark_completeness();
 }
 
+struct SimpleMarkBitmap {
+    heap_base: usize,
+    blob: Value,
+}
+
+const BITMAP_FRACTION: usize = (WORD_SIZE * u8::BITS) as usize;
+
+impl SimpleMarkBitmap {
+    /// Allocate new zero-sized bitmap.
+    pub unsafe fn new<M: Memory>(mem: &mut M) -> SimpleMarkBitmap {
+        assert!(mem.get_heap_base() <= mem.get_heap_pointer());
+        let heap_size = mem.get_heap_pointer() - mem.get_heap_base();
+        let bitmap_size = Bytes(((heap_size + BITMAP_FRACTION) / BITMAP_FRACTION) as u32);
+        let blob = alloc_blob_internal(mem, bitmap_size);
+        memzero(
+            blob.as_blob_mut().payload_addr() as usize,
+            bitmap_size.to_words(),
+        );
+        SimpleMarkBitmap {
+            heap_base: mem.get_heap_base(),
+            blob,
+        }
+    }
+
+    unsafe fn word_index(&self, address: usize) -> usize {
+        debug_assert!(address >= self.heap_base);
+        let offset = address - self.heap_base;
+        debug_assert_eq!(offset % WORD_SIZE as usize, 0);
+        offset / (WORD_SIZE as usize)
+    }
+
+    unsafe fn get_byte(&self, index: usize) -> *mut u8 {
+        debug_assert!(index < self.blob.as_blob().len().as_usize());
+        let bitmap_base = self.blob.as_blob_mut().payload_addr();
+        bitmap_base.add(index) as *mut u8
+    }
+
+    pub unsafe fn is_marked(&self, address: usize) -> bool {
+        let word_index = self.word_index(address);
+        let byte_index = word_index / u8::BITS as usize;
+        let bit_index = word_index % u8::BITS as usize;
+        let byte = self.get_byte(byte_index);
+        (*byte >> bit_index) & 0b1 != 0
+    }
+
+    pub unsafe fn mark(&mut self, address: usize) {
+        let word_index = self.word_index(address);
+        let byte_index = word_index / u8::BITS as usize;
+        let bit_index = word_index % u8::BITS as usize;
+        let byte = self.get_byte(byte_index);
+        *byte |= 0b1 << bit_index;
+    }
+}
+
 struct MarkCompletionChecker<'a, M: Memory> {
     mem: &'a mut M,
     generation_start: usize,
     mark_stack: MarkStack,
-    visited: RememberedSet,
+    visited: SimpleMarkBitmap,
 }
 
 impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
     unsafe fn check_mark_completeness(&mut self) {
-        // This may extend the heap, no using this at the end of the compaction phase.
+        assert_eq!(self.mem.get_heap_base(), self.visited.heap_base);
         self.mark_stack.allocate(self.mem);
         self.check_roots();
         self.check_all_reachable();
         self.mark_stack.free();
+        assert_eq!(self.mem.get_heap_base(), self.visited.heap_base);
     }
 
     unsafe fn check_roots(&mut self) {
@@ -67,8 +124,8 @@ impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
             // that is subject to garbage collection.
             assert!(object.is_marked());
         }
-        if !self.visited.contains(value) {
-            self.visited.insert(self.mem, value);
+        if !self.visited.is_marked(value.get_object_address()) {
+            self.visited.mark(value.get_object_address());
             self.mark_stack.push(self.mem, value);
         }
     }
