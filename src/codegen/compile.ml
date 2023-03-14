@@ -5694,13 +5694,21 @@ module MakeSerialization (Strm : Stream) = struct
 
   module type RawReaders = sig
     val read_byte : E.t -> G.t -> G.t
+    val read_word16 : E.t -> G.t -> G.t
+    val read_word32 : E.t -> G.t -> G.t
+    val read_word64 : E.t -> G.t -> G.t
     val read_leb128 : E.t -> G.t -> G.t
+    val read_sleb128 : E.t -> G.t -> G.t
     val read_blob : E.t -> G.t -> G.t -> G.t
   end
 
   module (*Blob-*)Deserializers (*val env : E.t*) : RawReaders = struct
     let read_byte env get_data_buf = ReadBuf.read_byte env get_data_buf
+    let read_word16 env get_data_buf = ReadBuf.read_word16 env get_data_buf
+    let read_word32 env get_data_buf = ReadBuf.read_word32 env get_data_buf
+    let read_word64 env get_data_buf = ReadBuf.read_word64 env get_data_buf
     let read_leb128 env get_data_buf = ReadBuf.read_leb128 env get_data_buf
+    let read_sleb128 env get_data_buf = ReadBuf.read_sleb128 env get_data_buf
     let read_blob env get_data_buf get_len = ReadBuf.read_blob env get_data_buf get_len
   end
 
@@ -5882,7 +5890,7 @@ module MakeSerialization (Strm : Stream) = struct
             ) ^^
             ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
             (* read sleb128 *)
-            ReadBuf.read_sleb128 env get_typ_buf ^^
+            read_sleb128 env get_typ_buf ^^
             (* Check it is the expected value *)
             compile_eq_const idl_tycon_id
           )
@@ -5911,7 +5919,7 @@ module MakeSerialization (Strm : Stream) = struct
             ) ^^
             ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
             (* read sleb128 *)
-            ReadBuf.read_sleb128 env get_typ_buf ^^
+            read_sleb128 env get_typ_buf ^^
             (* Check it is the expected type constructor *)
             compile_eq_const idl_tycon_id ^^
             G.if1 I32Type
@@ -5937,7 +5945,7 @@ module MakeSerialization (Strm : Stream) = struct
       let with_record_typ f = with_composite_typ idl_record (fun get_typ_buf ->
         Stack.with_words env "get_n_ptr" 1l (fun get_n_ptr ->
           get_n_ptr ^^
-          ReadBuf.read_leb128 env get_typ_buf ^^
+          read_leb128 env get_typ_buf ^^
           store_unskewed_ptr ^^
           f get_typ_buf get_n_ptr
         )
@@ -5945,7 +5953,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       let with_blob_typ env f =
         with_composite_typ idl_vec (fun get_typ_buf ->
-          ReadBuf.read_sleb128 env get_typ_buf ^^
+          read_sleb128 env get_typ_buf ^^
           compile_eq_const (-5l) (* Nat8 *) ^^
           G.if1 I32Type
             f
@@ -5964,16 +5972,16 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_memo, get_memo) = new_local env "memo" in
 
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-        with_composite_typ idl_alias (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+        with_composite_typ idl_alias (read_sleb128 env) ^^ set_arg_typ ^^
 
         (* Find out if it is a reference or not *)
-        ReadBuf.read_byte env get_data_buf ^^ set_is_ref ^^
+        read_byte env get_data_buf ^^ set_is_ref ^^
 
         (* If it is a reference, temporarily set the read buffer to that place *)
         get_is_ref ^^
         G.if0 begin
           let (set_offset, get_offset) = new_local env "offset" in
-          ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
+          read_word32 env get_data_buf ^^ set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0l ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
@@ -5986,12 +5994,12 @@ module MakeSerialization (Strm : Stream) = struct
         (* Remember location of ptr *)
         ReadBuf.get_ptr get_data_buf ^^ set_memo ^^
         (* Did we decode this already? *)
-        ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
+        read_word32 env get_data_buf ^^ set_result ^^
         get_result ^^ compile_eq_const 0l ^^
         G.if0 begin
           (* No, not yet decoded *)
           (* Skip over type hash field *)
-          ReadBuf.read_word32 env get_data_buf ^^ compile_eq_const 0l ^^
+          read_word32 env get_data_buf ^^ compile_eq_const 0l ^^
           E.else_trap_with env "Odd: Type hash scratch space not empty" ^^
 
           (* Read the content *)
@@ -6005,7 +6013,7 @@ module MakeSerialization (Strm : Stream) = struct
           )
         end begin
           (* Decoded before. Check type hash *)
-          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
+          read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
@@ -6048,31 +6056,31 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim (Int64|Nat64) ->
         with_prim_typ t
         begin
-          ReadBuf.read_word64 env get_data_buf ^^
+          read_word64 env get_data_buf ^^
           BoxedWord64.box env
         end
       | Prim (Int32|Nat32) ->
         with_prim_typ t
         begin
-          ReadBuf.read_word32 env get_data_buf ^^
+          read_word32 env get_data_buf ^^
           BoxedSmallWord.box env
         end
       | Prim Char ->
         with_prim_typ t
         begin
-          ReadBuf.read_word32 env get_data_buf ^^
+          read_word32 env get_data_buf ^^
           TaggedSmallWord.check_and_tag_codepoint env
         end
       | Prim (Int16|Nat16) ->
         with_prim_typ t
         begin
-          ReadBuf.read_word16 env get_data_buf ^^
+          read_word16 env get_data_buf ^^
           TaggedSmallWord.msb_adjust Nat16
         end
       | Prim (Int8|Nat8) ->
         with_prim_typ t
         begin
-          ReadBuf.read_byte env get_data_buf ^^
+          read_byte env get_data_buf ^^
           TaggedSmallWord.msb_adjust Nat8
         end
       | Prim Bool ->
@@ -6114,7 +6122,7 @@ module MakeSerialization (Strm : Stream) = struct
             E.call_import env "rts" "find_field" ^^
             G.if1 I32Type
               begin
-                ReadBuf.read_sleb128 env get_typ_buf ^^
+                read_sleb128 env get_typ_buf ^^
                 go env t ^^ set_val ^^
                 remember_failure get_val ^^
                 get_val
@@ -6143,7 +6151,7 @@ module MakeSerialization (Strm : Stream) = struct
               E.call_import env "rts" "find_field" ^^
               G.if1 I32Type
                 begin
-                  ReadBuf.read_sleb128 env get_typ_buf ^^
+                  read_sleb128 env get_typ_buf ^^
                   go env f.typ ^^ set_val ^^
                   remember_failure get_val ^^
                   get_val
@@ -6166,7 +6174,7 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_val, get_val) = new_local env "val" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
           with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
-          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          read_leb128 env get_data_buf ^^ set_len ^^
           get_len ^^ Arr.alloc env ^^ set_x ^^
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
@@ -6181,8 +6189,8 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_x, get_x) = new_local env "x" in
         let (set_val, get_val) = new_local env "val" in
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-        with_composite_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        with_composite_typ idl_vec (read_sleb128 env) ^^ set_arg_typ ^^
+        read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
@@ -6202,7 +6210,7 @@ module MakeSerialization (Strm : Stream) = struct
             G.if1 I32Type
             begin
               let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-              with_composite_typ idl_opt (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+              with_composite_typ idl_opt (read_sleb128 env) ^^ set_arg_typ ^^
               read_byte_tagged
                 [ Opt.null_lit env
                 ; let (set_val, get_val) = new_local env "val" in
@@ -6240,10 +6248,10 @@ module MakeSerialization (Strm : Stream) = struct
         with_composite_typ idl_variant (fun get_typ_buf ->
           (* Find the tag *)
           let (set_n, get_n) = new_local env "len" in
-          ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
+          read_leb128 env get_typ_buf ^^ set_n ^^
 
           let (set_tagidx, get_tagidx) = new_local env "tagidx" in
-          ReadBuf.read_leb128 env get_data_buf ^^ set_tagidx ^^
+          read_leb128 env get_data_buf ^^ set_tagidx ^^
 
           get_tagidx ^^ get_n ^^
           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
@@ -6257,9 +6265,9 @@ module MakeSerialization (Strm : Stream) = struct
 
           (* Now read the tag *)
           let (set_tag, get_tag) = new_local env "tag" in
-          ReadBuf.read_leb128 env get_typ_buf ^^ set_tag ^^
+          read_leb128 env get_typ_buf ^^ set_tag ^^
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-          ReadBuf.read_sleb128 env get_typ_buf ^^ set_arg_typ ^^
+          read_sleb128 env get_typ_buf ^^ set_arg_typ ^^
 
           List.fold_right (fun (h, {lab = l; typ = t; _}) continue ->
               get_tag ^^ compile_eq_const (Lib.Uint32.to_int32 h) ^^
@@ -6385,6 +6393,7 @@ module MakeSerialization (Strm : Stream) = struct
 
 
   let deserialize_from_blob extended env ts =
+    let open Deserializers in
     let ts_name = typ_seq_hash ts in
     let name =
       (* TODO(#3185): this specialization on `extended` seems redundant,
@@ -6431,7 +6440,7 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.alloc env (fun get_main_typs_buf ->
         ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
-        ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
+        read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
           let can_recover, default_or_trap = Type.(
@@ -6462,7 +6471,7 @@ module MakeSerialization (Strm : Stream) = struct
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
                 (* idltyp *)
-                ReadBuf.read_sleb128 env get_main_typs_buf ^^
+                read_sleb128 env get_main_typs_buf ^^
                 Stack.set_local env StackArgs.idltyp ^^
                 (* depth *)
                 compile_unboxed_const 0l ^^
@@ -6487,7 +6496,7 @@ module MakeSerialization (Strm : Stream) = struct
          begin
            get_data_buf ^^
            get_typtbl_ptr ^^ load_unskewed_ptr ^^
-           ReadBuf.read_sleb128 env get_main_typs_buf ^^
+           read_sleb128 env get_main_typs_buf ^^
            compile_unboxed_const 0l ^^
            E.call_import env "rts" "skip_any" ^^
            get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count
