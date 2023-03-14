@@ -13,6 +13,9 @@ pub struct RegionId(pub u16);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegionSizeInPages(pub u64);
 
+#[derive(Clone)]
+pub struct AccessVector(pub *mut Blob);
+
 pub const NIL_REGION_ID : u16 = 0;
 
 // This impl encapsulates encoding of optional region IDs within a u16.
@@ -39,20 +42,37 @@ impl RegionId {
 // Used by region table to encode sizes of allocated regions (the size of which are Some(s)),
 // and which regions are available to allocate (the size of which are None).
 impl RegionSizeInPages {
+    pub fn from_size_in_pages(s: u64) -> Self {
+	RegionSizeInPages(s)
+    }
     pub fn u64_is_nil(u : u64) -> bool {
 	u == 0
     }
     pub fn from_u64(u: u64) -> Option<Self> {
 	if Self::u64_is_nil(u) { None } else { Some(RegionSizeInPages(u - 1)) }
     }
-    pub fn from_size_in_pages(s: u64) -> Self {
-	RegionSizeInPages(s)
-    }
     pub fn into_u64(opreg: Option<RegionSizeInPages>) -> u64 {
 	match opreg {
 	    None => 0,
 	    Some(s) => s.0 + 1
 	}
+    }
+}
+
+impl AccessVector {
+
+    pub fn from_value(v: &Value) -> Self {
+	AccessVector(v.get_ptr() as *mut Blob)
+    }
+
+    pub unsafe fn set_ith_block_id(&self, i: u32, block_id: &BlockId) {
+	let block_id_upper : u8 = ((block_id.0 & 0xff00) >> 8) as u8;
+	let block_id_lower : u8 = ((block_id.0 & 0x00ff) >> 0) as u8;
+
+	// Update heap memory with new association.
+	// (write big-endian u16 to slot i in new_pages.)
+	self.0.set(i * 2 + 0, block_id_upper);
+	self.0.set(i * 2 + 1, block_id_lower);
     }
 }
 
@@ -77,6 +97,9 @@ mod meta_data {
 
 	pub const REGION_TABLE : u64 =
 	    super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
+
+	pub const PAGE_IN_BYTES : u64 = 1 << 16;
+	pub const BLOCK_IN_BYTES : u64 = PAGE_IN_BYTES * 128;
     }
 
     /// Offsets into stable memory for statically-sized fields and tables.
@@ -268,12 +291,12 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let new_vec_pages = alloc_blob(mem, Bytes(new_block_count * 2));
     let old_vec_byte_count = old_block_count * 2;
 
-    let new_pages = new_vec_pages.get_ptr() as *mut Blob;
-    let old_pages = (*r).vec_pages.get_ptr() as *mut Blob;
+    let new_pages = AccessVector::from_value(&new_vec_pages);
+    let old_pages = AccessVector::from_value(&(*r).vec_pages);
 
     // Copy old region-block associations into new heap object.
     for i in 0..old_vec_byte_count {
-	new_pages.set(i, old_pages.get(i));
+	new_pages.0.set(i, old_pages.0.get(i));
     }
 
     println!(80, "region_grow id={} (old_block_count, new_block_count) = ({}, {})", (*r).id, old_block_count, new_block_count);
@@ -299,13 +322,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 	    assert_eq!(assoc, assoc_)
 	}
 
-	let block_id_upper : u8 = ((block_id & 0xff00) >> 8) as u8;
-	let block_id_lower : u8 = ((block_id & 0x00ff) >> 0) as u8;
-
-	// Update heap memory with new association.
-	// (write big-endian u16 to slot i in new_pages.)
-	new_pages.set(i * 2 + 0, block_id_upper);
-	new_pages.set(i * 2 + 1, block_id_lower);
+	new_pages.set_ith_block_id(i, &BlockId(block_id));
     }
 
     (*r).vec_pages = new_vec_pages;
@@ -313,13 +330,26 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, _r: Value, _byte: u8) -> Value {
+pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -> u8 {
+    let r = r.as_region();
+
+    // assert that offset is currently allocated
+    assert!(offset / meta_data::size::PAGE_IN_BYTES < (*r).page_count.into());
+
+    // Which block?
+    let block_rank  = offset / meta_data::size::BLOCK_IN_BYTES;
+
+    // Where in that block?
+    let block_index = offset % meta_data::size::BLOCK_IN_BYTES;
+
     let _ = meta_data::offset::BLOCK_ZERO;
+
     rts_trap_with("TODO region_load_blob");
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, _r: Value, _byte: u8) {
+pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64, byte: u8) {
+    let r = r.as_region();
     let _ = meta_data::offset::BLOCK_ZERO;
     rts_trap_with("TODO region_store_blob");
 }
