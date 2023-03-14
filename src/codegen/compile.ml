@@ -879,6 +879,7 @@ module RTS = struct
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
+    E.add_func_import env "rts" "prepare_parse_idl" [] [];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I32Type; I32Type; I32Type] [];
@@ -6540,6 +6541,8 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
+
+      E.call_import env "rts" "prepare_parse_idl" ^^
 
       get_blob ^^ Blob.len env ^^ set_data_size ^^
       get_blob ^^ Blob.payload_ptr env ^^ set_data_start ^^
