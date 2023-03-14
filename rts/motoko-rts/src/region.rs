@@ -158,7 +158,7 @@ mod meta_data {
 	    REGION_TABLE +
 	    super::size::REGION_TABLE;
     }
-
+    
     pub mod total_allocated_blocks {
 	use crate::ic0_stable::nicer::{read_u16, write_u16};
 	use super::offset;
@@ -269,6 +269,13 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     Value::from_ptr(region as usize)
 }
 
+pub(crate) mod init {
+    use super::meta_data::{size, offset};
+    pub unsafe fn init() {
+	let min_pages = (offset::BLOCK_ZERO + size::PAGE_IN_BYTES - 1) / size::PAGE_IN_BYTES;
+	let _ = crate::ic0_stable::nicer::grow(min_pages);
+    }
+}
 
 // Utility for logging global region manager state (in stable memory).
 // For sanity-checking during testing and for future trouble-shooting.

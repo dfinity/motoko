@@ -52,9 +52,7 @@ unsafe extern "C" fn init(align: bool) {
 #[no_mangle]
 unsafe extern "C" fn region_init() {
     println!(66, "region_init: begin.");
-    if true {
-	let _ = crate::ic0_stable::nicer::grow(10);
-    }
+    crate::region::init::init();
     println!(66, "region_init: done.");
 }
 
