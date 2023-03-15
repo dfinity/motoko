@@ -18,10 +18,14 @@ pub enum Strategy {
     Full,
 }
 
+#[cfg(feature = "ic")]
 const MB: usize = 1024 * 1024;
 
-pub const MINIMUM_HEAP_THRESHOLD: usize = 32 * MB;
-pub const HEAP_GROWTH_RATE: f64 = 2.0;
+#[cfg(feature = "ic")]
+const MINIMUM_HEAP_THRESHOLD: usize = 32 * MB;
+
+#[cfg(feature = "ic")]
+const HEAP_GROWTH_RATE: f64 = 2.0;
 
 #[cfg(feature = "ic")]
 static mut OLD_GENERATION_THRESHOLD: usize = MINIMUM_HEAP_THRESHOLD;

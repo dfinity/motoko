@@ -1,12 +1,10 @@
-use std::mem::size_of;
-
 use motoko_rts::gc::incremental::mark_stack::MarkStack;
 use motoko_rts::gc::incremental::write_barrier::has_young_remembered_set;
 use motoko_rts::remembered_set::RememberedSet;
 use motoko_rts::{
     gc::incremental::object_table::ObjectTable,
     memory::{alloc_blob, Memory},
-    types::{Blob, Bytes, Value, Words, NULL_OBJECT_ID, OBJECT_TABLE},
+    types::{Bytes, Value, Words, NULL_OBJECT_ID, OBJECT_TABLE},
 };
 use oorandom::Rand32;
 
@@ -147,9 +145,8 @@ unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
     old_object_allocation: F,
     number_of_old_objects: usize,
 ) {
-    const REQUESTED_OBJECT_IDS: usize = 256 * 1024;
-    let size = TEST_SIZE * WORD_SIZE + REQUESTED_OBJECT_IDS * size_of::<Blob>();
-    let mut mem = TestMemory::new(Bytes(size as u32).to_words());
+    const MEMORY_SIZE: usize = 32 * 1024 * 1024;
+    let mut mem = TestMemory::new(Bytes(MEMORY_SIZE as u32).to_words());
     let object_table = create_object_table(&mut mem, number_of_old_objects + 1);
     let new_heap_base = object_table.end();
     assert!(!has_young_remembered_set());
@@ -159,10 +156,7 @@ unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
     // Align the last heap pointer to the current heap pointer.
     mem.shrink_heap(mem.get_heap_pointer());
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
-    OBJECT_TABLE
-        .as_mut()
-        .unwrap()
-        .grow(&mut mem, REQUESTED_OBJECT_IDS);
+    OBJECT_TABLE.as_mut().unwrap().reserve(&mut mem);
     assert!(!has_young_remembered_set());
     OBJECT_TABLE = None;
 }

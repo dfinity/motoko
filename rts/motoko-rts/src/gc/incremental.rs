@@ -58,10 +58,8 @@ use crate::{
         },
     },
     memory::Memory,
-    types::{size_of, Obj, OBJECT_TABLE},
+    types::OBJECT_TABLE,
 };
-
-use super::common::HEAP_GROWTH_RATE;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -107,8 +105,8 @@ pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
     if strategy == Strategy::Full {
         run_old_generation_increment(mem);
     }
-    // Resize the object table when there exists no young generation.
-    resize_object_table(mem);
+    // Reserve free space in the object table before the young generation is re-initiated.
+    OBJECT_TABLE.as_mut().unwrap().reserve(mem);
     // New remembered set needs to be allocated in the new young generation.
     create_young_remembered_set(mem);
 }
@@ -132,17 +130,4 @@ unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M) {
     let time = Time::limited(INCREMENT_LIMIT);
     let mut gc = GarbageCollector::instance(mem, generation, state, time);
     gc.run();
-}
-
-unsafe fn resize_object_table<M: Memory>(mem: &mut M) {
-    let length = suggested_object_table_length(mem);
-    OBJECT_TABLE.as_mut().unwrap().grow(mem, length);
-}
-
-/// Heuristics for maximum object table length until the next scheduled GC run.
-unsafe fn suggested_object_table_length<M: Memory>(mem: &mut M) -> usize {
-    let heap_size = mem.get_heap_pointer() - mem.get_heap_base();
-    let heap_threshold = (heap_size as f64 * HEAP_GROWTH_RATE * 1.1) as usize;
-    let min_object_size = size_of::<Obj>().to_bytes().as_usize();
-    heap_threshold / min_object_size
 }
