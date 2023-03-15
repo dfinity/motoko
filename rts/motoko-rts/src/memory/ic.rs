@@ -20,10 +20,6 @@ pub(crate) static mut HP: u32 = 0;
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
 
-/// Next region to bump-allocate.
-/// (Regions 0 and 1 are reserved.)
-pub(crate) static mut NEXT_REGION_ID: u16 = 2;
-
 /// TEMP -- for logging during testing.
 pub(crate) static mut NEXT_REGION_LOG_ID: u16 = 0;
 

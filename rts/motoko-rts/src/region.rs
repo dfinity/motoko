@@ -1,5 +1,5 @@
-use crate::memory::{ic::NEXT_REGION_ID, ic::NEXT_REGION_LOG_ID, Memory, alloc_blob};
-use crate::types::{size_of, Region, Value, Words, Blob, Bytes, TAG_REGION};
+use crate::memory::{ic::NEXT_REGION_LOG_ID, Memory, alloc_blob};
+use crate::types::{size_of, Region, Value, Blob, Bytes, TAG_REGION};
 use crate::rts_trap_with;
 
 use motoko_rts_macros::ic_mem_fn;
@@ -73,7 +73,7 @@ impl AccessVector {
 	let block_id_lower : u8 = ((block_id.0 & 0x00ff) >> 0) as u8;
 
 	// Update heap memory with new association.
-	// (write big-endian u16 to slot i in new_pages.)
+	// (write u16 to slot i in new_pages.)
 	self.0.set(i * 2 + 0, block_id_upper);
 	self.0.set(i * 2 + 1, block_id_lower);
     }
@@ -257,15 +257,15 @@ mod meta_data {
 
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
-    let r_ptr = mem.alloc_words(size_of::<Region>() + Words(1));
+    let r_ptr = mem.alloc_words(size_of::<Region>());
     // NB. cannot use as_region() here as we didn't write the header yet
     let region = r_ptr.get_ptr() as *mut Region;
     (*region).header.tag = TAG_REGION;
-    (*region).id = NEXT_REGION_ID;
-    NEXT_REGION_ID += 1;
+    let next_id = meta_data::total_allocated_regions::get() as u16;
+    (*region).id = next_id;
     (*region).page_count = 0;
     (*region).vec_pages = alloc_blob(mem, Bytes(0));
-    if true { // to do -- use this to eventually replace NEXT_REGION_ID
+    if true {
 	let c = meta_data::total_allocated_regions::get();
 	meta_data::total_allocated_regions::set(c + 1);
     }
@@ -436,5 +436,5 @@ pub unsafe fn region_store_blob<M: Memory>(_mem: &mut M, _r: Value, _start: Valu
 
 #[ic_mem_fn]
 pub unsafe fn region_next_id<M: Memory>(_mem: &mut M) -> Value {
-    Value::from_scalar(NEXT_REGION_ID as u32)
+    Value::from_scalar(meta_data::total_allocated_regions::get() as u32)
 }
