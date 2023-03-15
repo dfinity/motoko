@@ -27,11 +27,9 @@
 // size of the text.
 
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob_internal, Memory};
+use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{
-    reserve_object_ids, size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT,
-};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
@@ -44,12 +42,11 @@ const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 // Make this MAX_STR_SIZE to disable the use of ropes completely, e.g. for debugging
 const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
 
-/// Does not grow object table. Needs a free object id reserved in advance.
 unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_blob: Text too large");
     }
-    alloc_blob_internal(mem, size)
+    alloc_blob(mem, size)
 }
 
 /// Need a reserved object ids before call.
@@ -67,7 +64,6 @@ pub unsafe fn text_of_str<M: Memory>(mem: &mut M, s: &str) -> Value {
 
 #[ic_mem_fn]
 pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value {
-    reserve_object_ids(mem, 2);
     let blob1_len = text_size(s1);
     let blob2_len = text_size(s2);
 
@@ -193,7 +189,6 @@ unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
 // Straighten into contiguous memory, if needed (e.g. for system calls)
 #[ic_mem_fn]
 pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
-    reserve_object_ids(mem, 1);
     let obj = s.as_obj();
     if obj.tag() == TAG_BLOB {
         s
@@ -412,7 +407,6 @@ pub unsafe fn decode_code_point(s: *const u8, size: *mut u32) -> u32 {
 /// Allocate a text from a character
 #[ic_mem_fn]
 pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
-    reserve_object_ids(mem, 1);
     let mut buf = [0u8; 4];
     let str_len = char::from_u32_unchecked(char).encode_utf8(&mut buf).len() as u32;
 

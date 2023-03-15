@@ -52,19 +52,16 @@ use crate::{
         common::Strategy,
         incremental::{
             collector::{GarbageCollector, Generation},
-            mark_stack::STACK_TABLE_CAPACITY,
-            state::incremental_gc_state,
+            state::{incremental_gc_state, is_incremental_gc_running, State},
+            time::Time,
             write_barrier::{create_young_remembered_set, take_young_remembered_set},
         },
     },
     memory::Memory,
-    types::{size_of, Bytes, Obj, OBJECT_TABLE},
+    types::{size_of, Obj, OBJECT_TABLE},
 };
 
-use self::{
-    state::{is_incremental_gc_running, State},
-    time::Time,
-};
+use super::common::HEAP_GROWTH_RATE;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M, heap_base: u32) {
@@ -105,27 +102,15 @@ unsafe fn decide_incremental_strategy() -> Option<Strategy> {
 }
 
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
-    reserve_object_ids(mem);
-
     // Always collect the young generation before the incremental collection of the old generation.
     collect_young_generation(mem);
     if strategy == Strategy::Full {
         run_old_generation_increment(mem);
     }
+    // Resize the object table when there exists no young generation.
+    resize_object_table(mem);
     // New remembered set needs to be allocated in the new young generation.
     create_young_remembered_set(mem);
-}
-
-/// Reserve free object ids for mark stack table allocations during garbage collection.
-unsafe fn reserve_object_ids<M: Memory>(mem: &mut M) {
-    let heap_size = Bytes((mem.get_heap_pointer() - mem.get_heap_base()) as u32).to_words();
-    let max_objects = heap_size.as_usize() / size_of::<Obj>().as_usize();
-    let max_mark_stack_tables = (max_objects + STACK_TABLE_CAPACITY - 1) / STACK_TABLE_CAPACITY;
-    let reserve_object_ids = max_mark_stack_tables + 1; // Additional remembered set hash table.
-    OBJECT_TABLE
-        .as_mut()
-        .unwrap()
-        .reserve(mem, reserve_object_ids);
 }
 
 unsafe fn collect_young_generation<M: Memory>(mem: &mut M) {
@@ -147,4 +132,17 @@ unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M) {
     let time = Time::limited(INCREMENT_LIMIT);
     let mut gc = GarbageCollector::instance(mem, generation, state, time);
     gc.run();
+}
+
+unsafe fn resize_object_table<M: Memory>(mem: &mut M) {
+    let length = suggested_object_table_length(mem);
+    OBJECT_TABLE.as_mut().unwrap().grow(mem, length);
+}
+
+/// Heuristics for maximum object table length until the next scheduled GC run.
+unsafe fn suggested_object_table_length<M: Memory>(mem: &mut M) -> usize {
+    let heap_size = mem.get_heap_pointer() - mem.get_heap_base();
+    let heap_threshold = (heap_size as f64 * HEAP_GROWTH_RATE * 1.1) as usize;
+    let min_object_size = size_of::<Obj>().to_bytes().as_usize();
+    heap_threshold / min_object_size
 }

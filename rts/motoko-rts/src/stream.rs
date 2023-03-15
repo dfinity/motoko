@@ -185,7 +185,7 @@ impl Stream {
     /// Split the stream object into two `Blob`s, a front-runner (small) one
     /// and a latter one that comprises the current amount of the cached bytes.
     /// Lengths are adjusted correspondingly.
-    /// Need to reserve a free object id in advance.
+    #[export_name = "stream_split"]
     pub unsafe fn split(self: *mut Self) -> Value {
         if (*self).header.len > (*self).filled {
             self.as_blob_mut().shrink((*self).filled);
@@ -206,11 +206,4 @@ impl Stream {
     pub unsafe fn shutdown(self: *mut Self) {
         self.flush()
     }
-}
-
-/// Split stream into two Blobs. Called by the compiler.
-#[ic_mem_fn(ic_only)]
-unsafe fn stream_split<M: Memory>(mem: &mut M, stream: *mut Stream) -> Value {
-    crate::types::reserve_object_ids(mem, 1);
-    stream.split()
 }

@@ -5,18 +5,14 @@ use crate::gc::incremental::state::incremental_gc_state;
 use crate::gc::incremental::time::Time;
 use crate::memory::Memory;
 use crate::remembered_set::RememberedSet;
-use crate::types::{is_skewed, Value, OBJECT_TABLE};
+use crate::types::{is_skewed, Value};
 use motoko_rts_macros::ic_mem_fn;
 
 use super::state::{incremental_gc_phase, Phase};
 
 /// Records the ids of objects that serve as additional root set for the young
-/// generation collection. It contains ids of objects living in the young generation
-/// with the following properties:
-/// * The object is or has been referenced from the old generation as detected by
-///   the post-update write barrier.
-/// * The object has been moved from the old generation to the young generation due
-///   to object table growth.
+/// generation collection. It contains ids of objects that are referenced from the
+/// old generation as detected by the post-update write barrier.
 static mut YOUNG_REMEMBERED_SET: Option<RememberedSet> = None;
 
 /// Activate the write barrier for the incremental GC.
@@ -31,16 +27,8 @@ pub unsafe fn take_young_remembered_set() -> RememberedSet {
     YOUNG_REMEMBERED_SET.take().unwrap()
 }
 
-/// Object table extension may insert additional objects if they are moved from the old
-/// generation to the young generation. No GC increment is running at that time, such that
-/// the remembered set is present.
-/// The insertion requires that the object table has sufficient free object ids, as the
-/// table is not allowed to grow during this call.
-pub(super) unsafe fn remember_old_object<M: Memory>(mem: &mut M, value: Value) {
-    YOUNG_REMEMBERED_SET
-        .as_mut()
-        .unwrap()
-        .simple_insert(mem, value);
+pub unsafe fn has_young_remembered_set() -> bool {
+    YOUNG_REMEMBERED_SET.is_some()
 }
 
 /// Create a new young remembered set after any of these events:
@@ -106,15 +94,8 @@ unsafe fn post_update_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
         let value = *location;
         if value.points_to_or_beyond(mem.get_last_heap_pointer()) {
             if location as usize >= mem.get_heap_base() {
-                let remembered_set = YOUNG_REMEMBERED_SET.as_mut().unwrap();
-                // Conservatively reserve sufficient free ids in the object table for a potential hash table growth
-                // of the remembered set.
-                OBJECT_TABLE
-                    .as_mut()
-                    .unwrap()
-                    .reserve(mem, remembered_set.count() as usize + 1);
                 // Catch object ids that point from old generation (or static roots) to young generation.
-                remembered_set.insert(mem, value);
+                YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
             }
         }
     }

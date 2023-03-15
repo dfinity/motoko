@@ -70,17 +70,13 @@
 //! compaction, by moving alive objects, one after the other.
 //!
 //! Table growth:
-//! The runtime system reserves potentially needed free object ids in advance before executing
-//! the following function:
-//! * On mutator allocation: For the corresponding object.
-//! * Starting a GC increment: For the mark stack.
-//! * On insertion to the remembered set: For a potential collision node of the inserted entry
-//!   and potential table growth.
-//! The reservation technique is preferred over lazy table growth on allocation, to avoid
+//! At the end of a GC run, the object table is extended to a conservative size derived
+//! from the future heap size for the next scheduled GC run (based on heuristics).
+//! This reservation in advance is preferred over lazy table growth on allocation, to avoid
 //! object table growth in critical moments, such as during rememebered set insertion,
-//! remembered set table growth, and in the middle of a GC increment.
-//! When the number of free entries is smaller than the requested reserve, the table is
-//! extended at its end, which also shifts the beginning of the dynamic heap space. This involves
+//! on remembered set table growth, during GC increments, and during assignments when low-level
+//! addresses/pointers have been pushed on the call stack, etc..
+//! The table is extended at its end, which also shifts the beginning of the dynamic heap space. This involves
 //! increasing `HEAP_BASE` and possibly also `LAST_HP` if this is below the new `HEAP_BASE`.
 //! Objects blocking the extension of the table can be easily moved to another place, because
 //! of the `O(1)` object movement costs by changing their addresses in the table.
@@ -89,12 +85,12 @@
 //!   for the other compacting and generational GCs with the mark bitmap.
 //! * `LAST_HP` may fall behind the new `HEAP_BASE`, in which case it needs to be increased to the
 //!   new `HEAP_BASE`.
-//! * If objects are moved to the young generation due to table extension, the object is conservatively
-//!   added to the remembered set such that it is promoted back to the old generation on the next GC run.
-//!   This is necessary because the moved object may be reachable from other old objects.
-//! * The moved object may be marked in the old generation if incremental marking is active. Since it is
-//!   added to the remembered set, it will be promoted back to the old generation and marked again
-//!   (since the incremental GC is active).
+//! * The table is only extended if the young generation is empty, in order not to move old objects
+//!   to the young generation. This is for simplicity. Otherwise, the moved old object would need to
+//!   be added to the remembered set such that it would be promoted back to the old generation
+//!   on the next GC run.
+//! * The moved object may be marked in the old generation if incremental marking is active. The mark
+//!   flag will remain valid with the movement, since it is encoded in a bit of the object header.
 //! * The moved object is always moved to the heap end, such that that incremental compaction will
 //!   not miss it.
 //!
@@ -117,11 +113,12 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::write_barrier::remember_old_object,
+    gc::incremental::write_barrier::has_young_remembered_set,
     mem_utils::memcpy_words,
     memory::Memory,
+    rts_trap_with,
     types::{
-        block_size, has_object_header, skew, unskew, Obj, Tag, Value, NULL_OBJECT_ID,
+        block_size, has_object_header, skew, unskew, Obj, Tag, Value, Words, NULL_OBJECT_ID,
         TAG_FREE_SPACE, TAG_ONE_WORD_FILLER,
     },
 };
@@ -134,8 +131,6 @@ pub struct ObjectTable {
     length: usize,
     /// Top of stack for free object ids.
     free_stack: Value,
-    /// Number of free object ids.
-    free_count: usize,
 }
 
 const FREE_STACK_END: Value = NULL_OBJECT_ID;
@@ -150,7 +145,6 @@ impl ObjectTable {
             base,
             length,
             free_stack: FREE_STACK_END,
-            free_count: 0,
         };
         table.add_free_range(0..length);
         table
@@ -169,7 +163,6 @@ impl ObjectTable {
 
     fn add_free_range(&mut self, range: Range<usize>) {
         debug_assert!(range.start <= range.end);
-        self.free_count += range.end - range.start;
         for index in range.rev() {
             let object_id = self.index_to_object_id(index);
             self.push_free_id(object_id);
@@ -177,11 +170,9 @@ impl ObjectTable {
     }
 
     /// Allocate a new object id and associate the object's address.
-    /// Free object ids must be reserved in advance.
+    /// The object table must be large enough to have free object ids.
     pub fn new_object_id(&mut self, address: usize) -> Value {
         debug_assert!(address >= self.end());
-        assert!(self.free_count > 0);
-        self.free_count -= 1;
         let object_id = self.pop_free_id();
         debug_assert!(address >= self.end()); // Table did not grow to this address.
         self.write_element(object_id, address);
@@ -191,7 +182,6 @@ impl ObjectTable {
     /// The garbage collector frees object ids of discarded objects.
     pub fn free_object_id(&mut self, object_id: Value) {
         self.push_free_id(object_id);
-        self.free_count += 1;
     }
 
     /// Retrieve the object address for a given object id.
@@ -218,7 +208,13 @@ impl ObjectTable {
     }
 
     fn pop_free_id(&mut self) -> Value {
-        assert!(self.free_stack != FREE_STACK_END);
+        if self.free_stack == FREE_STACK_END {
+            // This should not happen as the GC conservatively grows the object table
+            // depending on the heap size and the next scheduled GC.
+            unsafe {
+                rts_trap_with("Full object table");
+            }
+        }
         let object_id = self.free_stack;
         self.free_stack = Value::from_raw(self.read_element(object_id) as u32);
         object_id
@@ -247,54 +243,52 @@ impl ObjectTable {
         element_address as *mut usize
     }
 
-    /// Reserve a minimum number of free object ids, potentially triggering
-    /// a table extension (adjusting the heap base, possibly also the last heap pointer,
-    /// moving objects, and registering entries to the remembered set)
-    pub unsafe fn reserve<M: Memory>(&mut self, mem: &mut M, required: usize) {
-        // Reserve for inserting an element to the remembered set while extending the object table.
-        const MINIMUM_RESERVE: usize = 1;
-        while self.free_count < required + MINIMUM_RESERVE {
-            self.grow_table(mem);
+    /// Grow the object table to a specific size by relocating objects at the table end.
+    /// No shrinking.
+    pub unsafe fn grow<M: Memory>(&mut self, mem: &mut M, required_length: usize) {
+        if required_length <= self.length {
+            return;
         }
-    }
-
-    /// Grow the object table by relocating one object at the table end.
-    unsafe fn grow_table<M: Memory>(&mut self, mem: &mut M) {
-        // Since the table is full with a length of at least one entry, there
-        // resides at least one object in the dynamic heap above the table.
-        // Static objects are not indirected via the object table.
-        debug_assert!(self.end() < mem.get_heap_pointer());
+        println!(100, "GROW TABLE {required_length}");
+        // Only the old generation exists. This allows moving objects inside the same generation.
+        debug_assert!(!has_young_remembered_set());
+        debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
         // The table end is equal to the heap base except for the initial 32-byte alignment.
         debug_assert_eq!(self.end() / 32, mem.get_heap_base() / 32);
         debug_assert!(self.end() <= mem.get_heap_base()); // Due to alignment.
-        let block = self.end() as *mut Tag;
-        let size = block_size(block as usize);
-        if has_object_header(*block) {
-            let old_address = block as usize;
-            // Relocate the object to the end of dynamic heap and make space
-            // for table extension.
-            // Note: The object could even be a blob of the mark stack or the
-            // remembered set. These data structures therefore also reference
-            // their tables via object ids through the object table.
-            let object_id = (block as *mut Obj).object_id();
-            let new_address = mem.alloc_words(size);
-            debug_assert!(old_address < new_address);
-            memcpy_words(new_address, old_address, size);
-            self.move_object(object_id, new_address);
-            debug_assert!(new_address >= mem.get_last_heap_pointer());
-            if old_address < mem.get_last_heap_pointer() {
-                // The object is moved from the old generation to the young generation,
-                // such that it may be reachable from other objects from the old
-                // generation. Therefore, conservatively add it to the remembered set.
-                // Adding to the remembered set will not imply object table growth.
-                remember_old_object(mem, object_id);
-            }
-        } else {
-            // Heap-internal free blocks may result from `Blob::shrink()`.
-            debug_assert!(*block == TAG_FREE_SPACE || *block == TAG_ONE_WORD_FILLER);
-        }
         let old_length = self.length;
-        let new_length = old_length + size.as_usize();
+        let mut new_length = self.length;
+        let mut address = self.end();
+        while new_length < required_length {
+            let size;
+            if address < mem.get_heap_pointer() {
+                let block = address as *mut Tag;
+                size = block_size(block as usize);
+                if has_object_header(*block) {
+                    // Relocate the object to the end of dynamic heap and make space
+                    // for table extension.
+                    // Note: The object could even be a blob of the mark stack or the
+                    // remembered set. These data structures therefore also reference
+                    // their tables via object ids through the object table.
+                    let object_id = (block as *mut Obj).object_id();
+                    let new_address = mem.alloc_words(size);
+                    debug_assert!(address < new_address);
+                    memcpy_words(new_address, address, size);
+                    self.move_object(object_id, new_address);
+                    debug_assert!(new_address >= mem.get_last_heap_pointer());
+                } else {
+                    // Heap-internal free blocks may result from `Blob::shrink()`.
+                    debug_assert!(*block == TAG_FREE_SPACE || *block == TAG_ONE_WORD_FILLER);
+                }
+                new_length += size.as_usize();
+            } else {
+                debug_assert_eq!(address, mem.get_heap_pointer());
+                size = Words((required_length - new_length) as u32);
+                mem.alloc_words(size);
+                new_length = required_length;
+            }
+            address += size.to_bytes().as_usize();
+        }
         self.length = new_length;
         self.add_free_range(old_length..new_length);
         debug_assert!(self.end() > mem.get_heap_base());

@@ -46,19 +46,12 @@
 //!   because recorded objects can be relocated, in particular also
 //!   young objects in the case of object table growth inside the young
 //!   generation.
-//! * The object ids required by remembered set insertion and hash table
-//!   growth will be reserved in advance to prevent reentrant calls to
-//!   remembered set operations. This is because object id allocation
-//!   may trigger an object table extension that again registers
-//!   moved old objects in the remembered set. Also the remembered set
-//!   hash table extension could trigger object table extension which
-//!   would call back to the remembered set.
 
 use core::mem::size_of;
 use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
-use crate::memory::{alloc_blob_internal, Memory};
+use crate::memory::{alloc_blob, Memory};
 use crate::types::{block_size, Blob, Bytes, Value, NULL_OBJECT_ID};
 
 pub struct RememberedSet {
@@ -98,11 +91,7 @@ impl RememberedSet {
         }
     }
 
-    /// Insert entry to the remembered set without triggering a hash table extension if the
-    /// hash table occupation is high. This is used during object table extension where free
-    /// object ids are limited and a reconstruction of the hash table cannot be performed as
-    /// it requires too many new object ids.
-    pub unsafe fn simple_insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
         debug_assert!(!is_null_value(value));
         let hash_table = self.hash_table.as_blob_mut();
         let index = Self::hash_index(hash_table, value);
@@ -127,13 +116,6 @@ impl RememberedSet {
             (*current).next_collision = new_collision_node(mem, value);
         }
         self.count += 1;
-    }
-
-    /// Insert an entry to the remembered set by potentially growing the hash table if the
-    /// occupation exceeeded a defined threshold. To be used by the write barrier.
-    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        self.simple_insert(mem, value);
-        let hash_table = self.hash_table.as_blob_mut();
         if self.count > table_length(hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
             self.grow(mem);
         }
@@ -265,7 +247,7 @@ impl RememberedSetIterator {
 }
 
 unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> Value {
-    let object = alloc_blob_internal(mem, Bytes(size * size_of::<HashEntry>() as u32));
+    let object = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32));
     let table = object.as_blob_mut();
     for index in 0..size {
         table_set(table, index, NULL_OBJECT_ID);
@@ -275,7 +257,7 @@ unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> Value {
 
 unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> Value {
     debug_assert!(!is_null_value(value));
-    let object = alloc_blob_internal(mem, Bytes(size_of::<HashEntry>() as u32));
+    let object = alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32));
     let node = as_collision(object);
     (*node).entry = HashEntry {
         value,
