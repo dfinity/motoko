@@ -7630,11 +7630,19 @@ module Var = struct
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
     | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
-      G.i (LocalGet (nr i)) ^^
+      let (set_mutbox, get_mutbox) = new_local env "mutbox" in
+      let (set_value, get_value) = new_local env "value" in
+      (* Compute the mutbox field address later, because the right-hand-side of an assignment may 
+         trigger an allocation GC increment that moves and forwards the mutbox, such that the 
+         mutbox field address would become invalid, pointing to the old mutbox state. *)
+      G.i (LocalGet (nr i)) ^^ set_mutbox,
+      SR.Vanilla,
+      set_value ^^
+      get_mutbox ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size),
-      SR.Vanilla,
+      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
+      get_value ^^
       Tagged.write_with_barrier env
     | (Some ((HeapInd i), typ), _) ->
       G.i (LocalGet (nr i)),
@@ -7650,6 +7658,7 @@ module Var = struct
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
     | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
+      (* Static objects are never moved *)
       compile_unboxed_const ptr ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
@@ -7657,7 +7666,8 @@ module Var = struct
       SR.Vanilla,
       Tagged.write_with_barrier env
     | (Some ((HeapStatic ptr), typ), _) ->
-      compile_unboxed_const ptr,
+      compile_unboxed_const ptr ^^
+      Tagged.check_forwarding env false,
       SR.Vanilla,
       MutBox.store_field env
     | (Some ((Const _), _), _) -> fatal "set_val: %s is const" var
