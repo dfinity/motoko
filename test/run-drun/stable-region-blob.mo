@@ -49,6 +49,48 @@ actor {
   assert data == 137;
   P.debugPrint("Done.");
 
+  do {
+  P.debugPrint("Storing data into region 3.");
+  let addr : Nat64 = 137 << 16 - 1;
+  Region.storeNat8(r2, addr, 138); 
+
+  P.debugPrint("Loading data from region 3.");
+  let data = Region.loadNat8(r2, addr);
+  P.debugPrint(debug_show data);
+  assert data == 138;
+  P.debugPrint("Done.");
+  };
+
+  do {
+  P.debugPrint("Storing data into region 4.");
+  let addr : Nat64 = 16 << 16 + 137;
+  Region.storeNat8(r2, addr, 139);
+
+  P.debugPrint("Loading data from region 4.");
+  let data = Region.loadNat8(r2, addr);
+  P.debugPrint(debug_show data);
+  assert data == 139;
+  P.debugPrint("Done.");
+  };
+
+  do {
+  P.debugPrint("re-Loading data from region 2.");
+  let addr : Nat64 = 137 << 16 + 137;
+  let data = Region.loadNat8(r2, addr);
+  P.debugPrint(debug_show data);
+  assert data == 137;
+  P.debugPrint("Done.");
+  };
+
+  do {
+  P.debugPrint("re-Loading data from region 3.");
+  let addr : Nat64 = 137 << 16 - 1;
+  let data = Region.loadNat8(r2, addr);
+  P.debugPrint(debug_show data);
+  assert data == 138;
+  P.debugPrint("Done.");
+  };
+
 /*
   assert (n == Region.size(r));
 
