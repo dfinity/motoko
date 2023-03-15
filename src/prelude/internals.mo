@@ -559,7 +559,7 @@ func @timer_helper() : async () {
   gatherExpired(@timers);
 
   let exp = @nextExpiration @timers;
-  let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
+  ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
   if (exp == 0) @timers := null;
 
   for (k in thunks.keys()) {
