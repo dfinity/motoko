@@ -271,7 +271,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         check_mark_completion(self.mem, self.generation.start);
 
         #[cfg(debug_assertions)]
-        check_heap(self.mem, None);
+        check_heap(self.mem, self.generation.start, true);
     }
 
     unsafe fn marking_completed(&self) -> bool {
@@ -354,11 +354,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         #[cfg(debug_assertions)]
         check_heap(
             self.mem,
-            Some(if self.generation.promote_surviving {
-                self.state.compact_to
-            } else {
-                self.generation.start
-            }),
+            self.generation.start,
+            self.generation.promote_surviving,
         );
     }
 }

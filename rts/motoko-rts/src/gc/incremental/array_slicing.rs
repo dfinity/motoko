@@ -9,7 +9,9 @@ pub unsafe fn slice_array(array: *mut Array) -> u32 {
     const SLICE_INCREMENT: u32 = 128;
     debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
     let tag = (*array).header.tag;
+    debug_assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
     let slice_start = if tag >= TAG_ARRAY_SLICE_MIN { tag } else { 0 };
+    debug_assert!(slice_start <= array.len());
     if array.len() - slice_start > SLICE_INCREMENT {
         let new_start = slice_start + SLICE_INCREMENT;
         (*array).header.tag = new_start;

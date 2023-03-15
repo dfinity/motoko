@@ -4,13 +4,15 @@
 //! * Mark completion: No unmarked reachable objects.
 //! * Full-heap scan: Plausible objects and object ids (references).
 
+use core::ptr::null_mut;
+
 use crate::{
     constants::WORD_SIZE,
     gc::incremental::state::{incremental_gc_phase, Phase},
     mem_utils::memzero,
     memory::{alloc_blob_internal, Memory},
     types::{
-        block_size, has_object_header, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_ARRAY,
+        block_size, has_object_header, Array, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_ARRAY,
         TAG_ARRAY_SLICE_MIN, TAG_NULL, TAG_OBJECT,
     },
     visitor::visit_pointer_fields,
@@ -171,38 +173,45 @@ impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
 /// Optionally, checks that all mark bits been cleared for objects above or equal a defined address,
 /// which must be the case after the compact phase for the old generation and the non-promoted
 /// remainder of the collected young generation.
-/// Note: Not to be called during an unfinished compact phase, since garbage object have then
-/// have dangling/invalid references (if referring to other garbage that has already been recycled).
-pub unsafe fn check_heap<M: Memory>(mem: &mut M, forbid_marked_objects: Option<usize>) {
-    let mut pointer = mem.get_heap_base();
+/// Note: Not to be called during an unfinished compact phase, since there is gap of invalid memory
+/// between the compaction's from- and to-pointer. Moreover, there can exist dangling object ids/
+/// references in garbage object beyond the compaction's to-pointer.
+pub unsafe fn check_heap<M: Memory>(mem: &mut M, start: usize, allow_marked_objects: bool) {
+    let mut pointer = start;
     while pointer < mem.get_heap_pointer() {
         let tag = *(pointer as *const Tag);
+        let mut object = null_mut();
         if has_object_header(tag) {
-            let object = pointer as *mut Obj;
-            if forbid_marked_objects.is_some() && pointer >= forbid_marked_objects.unwrap() {
+            object = pointer as *mut Obj;
+            if !allow_marked_objects {
                 assert!(!object.is_marked());
             }
             let value = object.object_id();
             assert_eq!(value.get_object_address(), object as usize);
             check_object_header(mem, value);
             check_valid_references(mem, object);
+            if tag >= TAG_ARRAY_SLICE_MIN {
+                assert!(tag <= (pointer as *mut Array).len());
+                assert!(pointer >= mem.get_heap_base());
+                assert!(pointer < mem.get_last_heap_pointer());
+                assert!(incremental_gc_phase() == Phase::Mark);
+                (*object).tag = TAG_ARRAY;
+            }
         }
+        pointer += block_size(pointer).to_bytes().as_usize();
         if tag >= TAG_ARRAY_SLICE_MIN {
-            assert!(pointer >= mem.get_heap_base());
-            assert!(pointer < mem.get_last_heap_pointer());
-            assert!(incremental_gc_phase() == Phase::Mark);
-            (*(pointer as *mut Obj)).tag = TAG_ARRAY;
-        }
-        pointer += block_size(pointer as usize).to_bytes().as_usize();
-        if tag >= TAG_ARRAY_SLICE_MIN {
-            (*(pointer as *mut Obj)).tag = tag;
+            assert_ne!(object, null_mut());
+            assert_eq!((*object).tag, TAG_ARRAY);
+            (*object).tag = tag;
         }
     }
+    assert_eq!(pointer, mem.get_heap_pointer());
 }
 
 unsafe fn check_object_header<M: Memory>(mem: &mut M, value: Value) {
     let tag = value.tag();
     if tag >= TAG_ARRAY_SLICE_MIN {
+        assert!(tag <= value.as_array().len());
         let address = value.get_object_address();
         assert!(address >= mem.get_heap_base());
         assert!(address < mem.get_last_heap_pointer());
