@@ -281,10 +281,13 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 }
 
 pub(crate) mod init {
-    use super::meta_data::{size, offset};
+    use super::meta_data::{size, offset, total_allocated_regions};
     pub unsafe fn init() {
 	let min_pages = (offset::BLOCK_ZERO + size::PAGE_IN_BYTES - 1) / size::PAGE_IN_BYTES;
 	let _ = crate::ic0_stable::nicer::grow(min_pages);
+	// Region 0 -- classic API for stable memory, as a dedicated region.
+	// Region 1 -- reserved for reclaimed regions' blocks (to do).
+	total_allocated_regions::set(2)
     }
 }
 
