@@ -91,6 +91,10 @@ impl RegionObject {
 	RegionObject(v.as_region())
     }
 
+    pub unsafe fn id(&self) -> RegionId {
+	RegionId((*self.0).id)
+    }
+
     pub unsafe fn relative_into_absolute_offset(&self, offset: u64) -> u64 {
 	let av = AccessVector::from_value(&(*self.0).vec_pages);
 
@@ -403,18 +407,20 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 #[ic_mem_fn]
 pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -> u8 {
     let r = RegionObject::from_value(&r);
-    let offset = r.relative_into_absolute_offset(offset);
+    let abs_off = r.relative_into_absolute_offset(offset);
     let mut dst : [u8; 1] = [0];
-    crate::ic0_stable::nicer::read(offset, &mut dst);
+    crate::ic0_stable::nicer::read(abs_off, &mut dst);
+    println!(80, "region_load_byte({:?}, {} ~> {}) ==> {}", r.id(), offset, abs_off, dst[0]);
     dst[0]
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64, byte: u8) {
     let r = RegionObject::from_value(&r);
-    let offset = r.relative_into_absolute_offset(offset);
+    let abs_off = r.relative_into_absolute_offset(offset);
     let src : [u8; 1] = [byte];
-    crate::ic0_stable::nicer::write(offset, &src);
+    println!(80, "region_store_byte({:?}, {} ~> {}, {})", r.id(), offset, abs_off, byte);
+    crate::ic0_stable::nicer::write(abs_off, &src);
 }
 
 #[ic_mem_fn]

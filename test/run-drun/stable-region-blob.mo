@@ -44,7 +44,9 @@ actor {
   Region.storeNat8(r2, addr, 137);
 
   P.debugPrint("Loading data from region 2.");
-  assert Region.loadNat8(r2, addr) == 137;
+  let data = Region.loadNat8(r2, addr);
+  P.debugPrint(debug_show data);
+  assert data == 137;
   P.debugPrint("Done.");
 
 /*
