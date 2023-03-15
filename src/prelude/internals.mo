@@ -562,8 +562,11 @@ func @timer_helper() : async () {
   ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
   if (exp == 0) @timers := null;
 
-  for (k in thunks.keys()) {
-    ignore switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
+  for (o in thunks.vals()) {
+     switch o { 
+       case (?thunk) { ignore thunk() };
+       case _ { } 
+    };
   }
 };
 
