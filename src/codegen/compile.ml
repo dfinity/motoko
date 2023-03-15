@@ -9461,13 +9461,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    Region.load_byte env
+    Region.load_byte env ^^
+    TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat8 ^^
     Region.store_byte env
 
   (* Other prims, unary *)
