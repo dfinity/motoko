@@ -12,7 +12,8 @@ pub unsafe fn test() {
 
     let mut mem = TestMemory::new(Words(256));
 
-    OBJECT_TABLE = Some(create_object_table(&mut mem, 3));
+    OBJECT_TABLE = Some(create_object_table(&mut mem, 4));
+    mem.set_heap_base(OBJECT_TABLE.as_mut().unwrap().end());
 
     let array = alloc_array(&mut mem, 64).as_array();
     test_mark_bit(array as *mut Obj);
