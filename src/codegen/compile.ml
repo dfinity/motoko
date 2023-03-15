@@ -9457,13 +9457,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e2 ^^
     Region.store_blob env
 
-  | OtherPrim ("regionLoadNat8"), [e0; e1; e2] ->
+  | OtherPrim ("regionLoadNat8"), [e0; e1] ->
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^
-    Blob.lit env "Blob size out of bounds" ^^
-    BigNum.to_word32_with env ^^
     Region.load_byte env
 
   | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
