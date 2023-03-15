@@ -19,7 +19,7 @@ pub struct AccessVector(pub *mut Blob);
 #[derive(Clone)]
 pub struct RegionObject(pub *mut Region);
 
-pub const NIL_REGION_ID : u16 = 0;
+const NIL_REGION_ID : u16 = 0;
 
 // This impl encapsulates encoding of optional region IDs within a u16.
 // Used by block-region table to encode the (optional) region ID of a block.
@@ -91,7 +91,7 @@ impl RegionObject {
 	RegionObject(v.as_region())
     }
 
-    pub unsafe fn local_offset_into_global_offset(&self, offset: u64) -> u64 {
+    pub unsafe fn relative_into_absolute_offset(&self, offset: u64) -> u64 {
 	let av = AccessVector::from_value(&(*self.0).vec_pages);
 
 	// assert that offset is currently allocated
@@ -138,8 +138,15 @@ mod meta_data {
 	pub const REGION_TABLE : u64 =
 	    super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
 
+	pub const PAGES_IN_BLOCK : u32 = 128;
 	pub const PAGE_IN_BYTES : u64 = 1 << 16;
-	pub const BLOCK_IN_BYTES : u64 = PAGE_IN_BYTES * 128;
+	pub const BLOCK_IN_BYTES : u64 = PAGE_IN_BYTES * (PAGES_IN_BLOCK as u64);
+
+	pub unsafe fn required_pages() -> u64 {
+	    use super::offset::BLOCK_ZERO;
+	    let meta_data_pages = (BLOCK_ZERO + PAGE_IN_BYTES - 1) / PAGE_IN_BYTES;
+	    meta_data_pages + (super::total_allocated_blocks::get() * (PAGES_IN_BLOCK as u64))
+	}
     }
 
     /// Offsets into stable memory for statically-sized fields and tables.
@@ -158,7 +165,7 @@ mod meta_data {
 	    REGION_TABLE +
 	    super::size::REGION_TABLE;
     }
-    
+
     pub mod total_allocated_blocks {
 	use crate::ic0_stable::nicer::{read_u16, write_u16};
 	use super::offset;
@@ -306,11 +313,12 @@ pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
 
 #[ic_mem_fn]
 pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
+    use meta_data::size::{PAGES_IN_BLOCK, required_pages};
     let r = r.as_region();
     let new_pages_ = new_pages as u32;
     let old_page_count = (*r).page_count;
-    let old_block_count = (old_page_count + 127) / 128;
-    let new_block_count = (old_page_count + new_pages_ + 127) / 128;
+    let old_block_count = (old_page_count + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
+    let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
 
     // Update the total number of allocated blocks.
@@ -321,6 +329,17 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 	meta_data::total_allocated_blocks::set(c_);
 	c
     };
+    
+    // Actually grow stable memory with more pages
+    // (but only if needed, by first checking if someone else did it already).
+    {
+	let have = crate::ic0_stable::nicer::size();
+	let need = required_pages();
+	if have < need {
+	    let diff = need - have;
+	    crate::ic0_stable::nicer::grow(diff);
+	}
+    }
 
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
@@ -384,7 +403,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 #[ic_mem_fn]
 pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -> u8 {
     let r = RegionObject::from_value(&r);
-    let offset = r.local_offset_into_global_offset(offset);
+    let offset = r.relative_into_absolute_offset(offset);
     let mut dst : [u8; 1] = [0];
     crate::ic0_stable::nicer::read(offset, &mut dst);
     dst[0]
@@ -393,7 +412,7 @@ pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -
 #[ic_mem_fn]
 pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64, byte: u8) {
     let r = RegionObject::from_value(&r);
-    let offset = r.local_offset_into_global_offset(offset);
+    let offset = r.relative_into_absolute_offset(offset);
     let src : [u8; 1] = [byte];
     crate::ic0_stable::nicer::write(offset, &src);
 }
