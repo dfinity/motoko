@@ -563,9 +563,9 @@ func @timer_helper() : async () {
   if (exp == 0) @timers := null;
 
   for (o in thunks.vals()) {
-     switch o { 
+     switch o {
        case (?thunk) { ignore thunk() };
-       case _ { } 
+       case _ { }
     };
   }
 };
