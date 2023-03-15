@@ -117,7 +117,7 @@ use core::ops::Range;
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::write_barrier::add_to_young_remembered_set,
+    gc::incremental::write_barrier::remember_old_object,
     mem_utils::memcpy_words,
     memory::Memory,
     types::{
@@ -251,7 +251,9 @@ impl ObjectTable {
     /// a table extension (adjusting the heap base, possibly also the last heap pointer,
     /// moving objects, and registering entries to the remembered set)
     pub unsafe fn reserve<M: Memory>(&mut self, mem: &mut M, required: usize) {
-        while self.free_count < required {
+        // Reserve for inserting an element to the remembered set while extending the object table.
+        const MINIMUM_RESERVE: usize = 1;
+        while self.free_count < required + MINIMUM_RESERVE {
             self.grow_table(mem);
         }
     }
@@ -285,7 +287,7 @@ impl ObjectTable {
                 // such that it may be reachable from other objects from the old
                 // generation. Therefore, conservatively add it to the remembered set.
                 // Adding to the remembered set will not imply object table growth.
-                add_to_young_remembered_set(mem, object_id);
+                remember_old_object(mem, object_id);
             }
         } else {
             // Heap-internal free blocks may result from `Blob::shrink()`.

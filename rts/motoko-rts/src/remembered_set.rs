@@ -98,7 +98,11 @@ impl RememberedSet {
         }
     }
 
-    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+    /// Insert entry to the remembered set without triggering a hash table extension if the
+    /// hash table occupation is high. This is used during object table extension where free
+    /// object ids are limited and a reconstruction of the hash table cannot be performed as
+    /// it requires too many new object ids.
+    pub unsafe fn simple_insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
         debug_assert!(!is_null_value(value));
         let hash_table = self.hash_table.as_blob_mut();
         let index = Self::hash_index(hash_table, value);
@@ -123,6 +127,13 @@ impl RememberedSet {
             (*current).next_collision = new_collision_node(mem, value);
         }
         self.count += 1;
+    }
+
+    /// Insert an entry to the remembered set by potentially growing the hash table if the
+    /// occupation exceeeded a defined threshold. To be used by the write barrier.
+    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+        self.simple_insert(mem, value);
+        let hash_table = self.hash_table.as_blob_mut();
         if self.count > table_length(hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
             self.grow(mem);
         }

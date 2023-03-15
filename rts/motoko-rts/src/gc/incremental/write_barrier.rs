@@ -36,8 +36,11 @@ pub unsafe fn take_young_remembered_set() -> RememberedSet {
 /// the remembered set is present.
 /// The insertion requires that the object table has sufficient free object ids, as the
 /// table is not allowed to grow during this call.
-pub(super) unsafe fn add_to_young_remembered_set<M: Memory>(mem: &mut M, value: Value) {
-    YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
+pub(super) unsafe fn remember_old_object<M: Memory>(mem: &mut M, value: Value) {
+    YOUNG_REMEMBERED_SET
+        .as_mut()
+        .unwrap()
+        .simple_insert(mem, value);
 }
 
 /// Create a new young remembered set after any of these events:
