@@ -5,9 +5,11 @@ pub unsafe fn update_statistics(old_heap_size: usize) {
     let new_heap_size = ic::HP as usize;
     let live_size = Bytes(new_heap_size as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
-    debug_assert!(old_heap_size >= new_heap_size);
-    let reclaimed = old_heap_size - new_heap_size;
-    ic::RECLAIMED += Bytes(reclaimed as u64);
+    // The heap may be temporarily extended due to the mark stack that is retained between GC increments.
+    if old_heap_size > new_heap_size {
+        let reclaimed = old_heap_size - new_heap_size;
+        ic::RECLAIMED += Bytes(reclaimed as u64);
+    }
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
