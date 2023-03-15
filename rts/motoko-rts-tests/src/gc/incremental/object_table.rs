@@ -149,7 +149,7 @@ unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
     old_object_allocation: F,
     number_of_old_objects: usize,
 ) {
-    const REQUESTED_OBJECT_IDS: usize = 100;
+    const REQUESTED_OBJECT_IDS: usize = 256 * 1024;
     let size = TEST_SIZE * WORD_SIZE + REQUESTED_OBJECT_IDS * size_of::<Blob>();
     let mut mem = TestMemory::new(Bytes(size as u32).to_words());
     let object_table = create_object_table(&mut mem, number_of_old_objects + 1);

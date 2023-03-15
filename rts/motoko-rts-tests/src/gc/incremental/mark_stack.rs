@@ -31,7 +31,7 @@ fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
 
 unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
     let mut stack = MarkStack::new();
-    let mut mem = TestMemory::new(Words(64 * 1024));
+    let mut mem = TestMemory::new(Words(64 * 1024 * 1024));
     debug_assert!(OBJECT_TABLE.is_none());
     OBJECT_TABLE = Some(create_object_table(&mut mem, 16));
 

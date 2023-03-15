@@ -68,14 +68,14 @@ pub struct RememberedSet {
 
 #[repr(C)]
 struct HashEntry {
-    pub value: Value,
-    pub next_collision: Value,
+    value: Value,
+    next_collision: Value,
 }
 
 #[repr(C)]
 struct CollisionNode {
-    pub header: Blob,
-    pub entry: HashEntry,
+    header: Blob,
+    entry: HashEntry,
 }
 
 pub struct RememberedSetIterator {

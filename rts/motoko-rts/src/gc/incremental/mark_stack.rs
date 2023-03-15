@@ -45,14 +45,14 @@ pub struct MarkStack {
     top: usize, // Index of next free entry in the last stack table.
 }
 
-pub const STACK_TABLE_CAPACITY: usize = 1018;
+pub const STACK_TABLE_CAPACITY: usize = 256 * 1024;
 
 #[repr(C)]
 struct StackTable {
-    pub header: Blob,
-    pub previous: Value,
-    pub next: Value,
-    pub entries: [Value; STACK_TABLE_CAPACITY],
+    header: Blob,
+    previous: Value,
+    next: Value,
+    entries: [Value; STACK_TABLE_CAPACITY],
 }
 
 impl MarkStack {
