@@ -3,6 +3,17 @@
 
 import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
 
+/*
+The schedule is
+| seconds | reaction |
+|----|-----|
+| 1.0 | YEP! |
+| 2.0 | DIM! |
+| 3.0 | ROOK! |
+| 4.0 | BAT! |
+| 5.0 | BAT! |
+*/
+
 actor {
 
   system func timer(setGlobalTimer : Nat64 -> ()) : async () {
