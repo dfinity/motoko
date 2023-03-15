@@ -72,15 +72,15 @@ impl AccessVector {
 	let block_id_upper : u8 = ((block_id.0 & 0xff00) >> 8) as u8;
 	let block_id_lower : u8 = ((block_id.0 & 0x00ff) >> 0) as u8;
 
-	// Update heap memory with new association.
+	// Update heap memory with new association. Little endian.
 	// (write u16 to slot i in new_pages.)
-	self.0.set(i * 2 + 0, block_id_upper);
-	self.0.set(i * 2 + 1, block_id_lower);
+	self.0.set(i * 2 + 0, block_id_lower);
+	self.0.set(i * 2 + 1, block_id_upper);
     }
 
     pub unsafe fn get_ith_block_id(&self, i: u32) -> BlockId {
-	let upper : u16 = self.0.get(i * 2 + 0) as u16;
-	let lower : u16 = self.0.get(i * 2 + 1) as u16;
+	let lower : u16 = self.0.get(i * 2 + 0) as u16;
+	let upper : u16 = self.0.get(i * 2 + 1) as u16;
 	BlockId(upper << 8 | lower)
     }
 }
