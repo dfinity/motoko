@@ -5,7 +5,7 @@ use crate::gc::incremental::state::incremental_gc_state;
 use crate::gc::incremental::time::Time;
 use crate::memory::Memory;
 use crate::remembered_set::RememberedSet;
-use crate::types::{is_skewed, Value, OBJECT_TABLE};
+use crate::types::{is_skewed, Value};
 use motoko_rts_macros::ic_mem_fn;
 
 use super::state::{incremental_gc_phase, Phase};
@@ -107,12 +107,6 @@ unsafe fn post_update_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
         if value.points_to_or_beyond(mem.get_last_heap_pointer()) {
             if location as usize >= mem.get_heap_base() {
                 let remembered_set = YOUNG_REMEMBERED_SET.as_mut().unwrap();
-                // Conservatively reserve sufficient free ids in the object table for a potential hash table growth
-                // of the remembered set.
-                OBJECT_TABLE
-                    .as_mut()
-                    .unwrap()
-                    .reserve(mem, remembered_set.count() as usize + 1);
                 // Catch object ids that point from old generation (or static roots) to young generation.
                 remembered_set.insert(mem, value);
             }
