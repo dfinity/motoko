@@ -7,7 +7,7 @@ use core::ptr::null_mut;
 
 use super::write_barrier::REMEMBERED_SET;
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob_internal, Memory};
 use crate::types::*;
 use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
@@ -16,7 +16,7 @@ static mut SNAPSHOT: *mut Blob = null_mut();
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(mem: &mut M) {
     let length = Bytes(mem.get_heap_pointer() as u32);
-    let blob = alloc_blob(mem, length).get_object_address() as *mut Blob;
+    let blob = alloc_blob_internal(mem, length).get_object_address() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }

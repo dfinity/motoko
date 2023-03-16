@@ -1,10 +1,14 @@
+use std::mem::size_of;
+
 use motoko_rts::gc::incremental::mark_stack::MarkStack;
-use motoko_rts::gc::incremental::write_barrier::has_young_remembered_set;
+use motoko_rts::gc::incremental::write_barrier::{
+    create_young_remembered_set, take_young_remembered_set, using_incremental_barrier,
+};
 use motoko_rts::remembered_set::RememberedSet;
 use motoko_rts::{
     gc::incremental::object_table::ObjectTable,
     memory::{alloc_blob, Memory},
-    types::{Bytes, Value, Words, NULL_OBJECT_ID, OBJECT_TABLE},
+    types::{Blob, Bytes, Value, Words, NULL_OBJECT_ID, OBJECT_TABLE},
 };
 use oorandom::Rand32;
 
@@ -145,18 +149,31 @@ unsafe fn test_table_growth<F: Fn(&mut TestMemory)>(
     old_object_allocation: F,
     number_of_old_objects: usize,
 ) {
-    const MEMORY_SIZE: usize = 32 * 1024 * 1024;
-    let mut mem = TestMemory::new(Bytes(MEMORY_SIZE as u32).to_words());
+    const REQUESTED_OBJECT_IDS: usize = 256 * 1024;
+    let size = TEST_SIZE * WORD_SIZE + REQUESTED_OBJECT_IDS * size_of::<Blob>();
+    let mut mem = TestMemory::new(Bytes(size as u32).to_words());
     let object_table = create_object_table(&mut mem, number_of_old_objects + 1);
     let new_heap_base = object_table.end();
-    assert!(!has_young_remembered_set());
+    assert!(!using_incremental_barrier());
     OBJECT_TABLE = Some(object_table);
     mem.set_heap_base(new_heap_base);
     old_object_allocation(&mut mem);
-    // Align the last heap pointer to the current heap pointer.
+    // Set last heap pointer to start young generation.
     mem.shrink_heap(mem.get_heap_pointer());
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
-    OBJECT_TABLE.as_mut().unwrap().reserve(&mut mem);
-    assert!(!has_young_remembered_set());
+    create_young_remembered_set(&mut mem);
+    OBJECT_TABLE
+        .as_mut()
+        .unwrap()
+        .reserve(&mut mem, REQUESTED_OBJECT_IDS);
+    let remembered_set = take_young_remembered_set();
+    let mut iterator = remembered_set.iterate();
+    let mut count_remembered = 0;
+    while iterator.has_next() {
+        count_remembered += 1;
+        iterator.next();
+    }
+    assert_eq!(count_remembered, number_of_old_objects);
+    assert!(!using_incremental_barrier());
     OBJECT_TABLE = None;
 }

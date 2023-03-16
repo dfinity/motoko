@@ -984,6 +984,7 @@ module RTS = struct
     E.add_func_import env "rts" "schedule_generational_gc" [] [];
     E.add_func_import env "rts" "schedule_incremental_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "reserve_object_id" [] [];
     E.add_func_import env "rts" "new_object_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_object_address" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
@@ -5988,6 +5989,7 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let read_text () =
+        E.call_import env "rts" "reserve_object_id" ^^
         let (set_len, get_len) = new_local env "len" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         let (set_ptr, get_ptr) = new_local env "x" in
@@ -6540,6 +6542,8 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
+
+      E.call_import env "rts" "reserve_object_id" ^^
 
       get_blob ^^ Blob.len env ^^ set_data_size ^^
       get_blob ^^ Blob.payload_ptr env ^^ set_data_start ^^

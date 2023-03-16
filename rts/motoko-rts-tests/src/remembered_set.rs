@@ -39,6 +39,11 @@ unsafe fn test_series(object_table_length: Option<usize>) {
     test_remembered_set(&mut mem, 2 * GROW_LIMIT);
     test_remembered_set(&mut mem, 2 * GROW_LIMIT + 1);
     test_remembered_set(&mut mem, 128 * GROW_LIMIT);
+
+    if object_table_length.is_some() {
+        test_relocate_remembered_set(&mut mem, GROW_LIMIT + 1);
+        OBJECT_TABLE = None;
+    }
 }
 
 unsafe fn initialize_object_table(mem: &mut TestMemory, length: usize) {
@@ -110,6 +115,29 @@ unsafe fn test_collisions(mem: &mut TestMemory, amount: u32) {
         let value = iterator.current().get_raw();
         assert!(test_set.contains(&value));
         iterator.next();
+    }
+    assert!(!iterator.has_next());
+}
+
+unsafe fn test_relocate_remembered_set(mem: &mut TestMemory, amount: u32) {
+    let mut remembered_set = RememberedSet::new(mem);
+    let mut test_set: HashSet<u32> = HashSet::new();
+    let mut reserve = 0;
+    for value in 1..amount + 1 {
+        remembered_set.insert(mem, Value::from_raw(value));
+        test_set.insert(value);
+        OBJECT_TABLE.as_mut().unwrap().reserve(mem, reserve);
+        reserve += 2;
+    }
+    OBJECT_TABLE.as_mut().unwrap().reserve(mem, reserve);
+    let mut iterator = remembered_set.iterate();
+    for _ in 1..amount + 1 {
+        assert!(iterator.has_next());
+        let value = iterator.current().get_raw();
+        assert!(test_set.contains(&value));
+        iterator.next();
+        OBJECT_TABLE.as_mut().unwrap().reserve(mem, reserve);
+        reserve += 2;
     }
     assert!(!iterator.has_next());
 }

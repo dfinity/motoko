@@ -52,13 +52,18 @@ use crate::{
         common::Strategy,
         incremental::{
             collector::{GarbageCollector, Generation},
-            state::{incremental_gc_state, is_incremental_gc_running, State},
-            time::Time,
+            mark_stack::STACK_TABLE_CAPACITY,
+            state::incremental_gc_state,
             write_barrier::{create_young_remembered_set, take_young_remembered_set},
         },
     },
     memory::Memory,
-    types::OBJECT_TABLE,
+    types::{size_of, Bytes, Obj, OBJECT_TABLE},
+};
+
+use self::{
+    state::{is_incremental_gc_running, State},
+    time::Time,
 };
 
 #[ic_mem_fn(ic_only)]
@@ -100,15 +105,27 @@ unsafe fn decide_incremental_strategy() -> Option<Strategy> {
 }
 
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
+    reserve_object_ids(mem);
+
     // Always collect the young generation before the incremental collection of the old generation.
     collect_young_generation(mem);
     if strategy == Strategy::Full {
         run_old_generation_increment(mem);
     }
-    // Reserve free space in the object table before the young generation is re-initiated.
-    OBJECT_TABLE.as_mut().unwrap().reserve(mem);
     // New remembered set needs to be allocated in the new young generation.
     create_young_remembered_set(mem);
+}
+
+/// Reserve free object ids for mark stack table allocations during garbage collection.
+unsafe fn reserve_object_ids<M: Memory>(mem: &mut M) {
+    let heap_size = Bytes((mem.get_heap_pointer() - mem.get_heap_base()) as u32).to_words();
+    let max_objects = heap_size.as_usize() / size_of::<Obj>().as_usize();
+    let max_mark_stack_tables = (max_objects + STACK_TABLE_CAPACITY - 1) / STACK_TABLE_CAPACITY;
+    let reserve_object_ids = max_mark_stack_tables + 1; // Additional remembered set hash table.
+    OBJECT_TABLE
+        .as_mut()
+        .unwrap()
+        .reserve(mem, reserve_object_ids);
 }
 
 unsafe fn collect_young_generation<M: Memory>(mem: &mut M) {

@@ -5,7 +5,6 @@ use super::Roots;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::constants::WORD_SIZE;
 use crate::gc::incremental::object_table::ObjectTable;
-use crate::gc::incremental::object_table::OBJECT_TABLE_RESERVE;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -49,7 +48,7 @@ pub(crate) unsafe fn initialize_memory<M: Memory>(
 }
 
 unsafe fn initalize_object_table<M: Memory>(mem: &mut M) {
-    const INITIAL_TABLE_LENGTH: usize = OBJECT_TABLE_RESERVE;
+    const INITIAL_TABLE_LENGTH: usize = 10_000;
     let size = Words(INITIAL_TABLE_LENGTH as u32);
     assert_eq!(HEAP_BASE, HP);
     let base = mem.alloc_words(size) as *mut usize;

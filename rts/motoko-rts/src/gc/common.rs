@@ -22,13 +22,7 @@ pub enum Strategy {
 const MB: usize = 1024 * 1024;
 
 #[cfg(feature = "ic")]
-const MINIMUM_HEAP_THRESHOLD: usize = 32 * MB;
-
-#[cfg(feature = "ic")]
-const HEAP_GROWTH_RATE: f64 = 2.0;
-
-#[cfg(feature = "ic")]
-static mut OLD_GENERATION_THRESHOLD: usize = MINIMUM_HEAP_THRESHOLD;
+static mut OLD_GENERATION_THRESHOLD: usize = 32 * MB;
 
 #[cfg(feature = "ic")]
 static mut PASSED_CRITICAL_LIMIT: bool = false;
@@ -57,10 +51,11 @@ pub unsafe fn decide_strategy() -> Option<Strategy> {
 pub unsafe fn update_strategy(strategy: Strategy) {
     use crate::memory::ic;
 
+    const GROWTH_RATE: f64 = 2.0;
     if strategy == Strategy::Full {
         debug_assert!(ic::HEAP_BASE <= ic::HP);
         let heap_size = ic::HP - ic::HEAP_BASE;
-        OLD_GENERATION_THRESHOLD = (heap_size as f64 * HEAP_GROWTH_RATE) as usize;
+        OLD_GENERATION_THRESHOLD = (heap_size as f64 * GROWTH_RATE) as usize;
         if (ic::HP as usize) < CRITICAL_MEMORY_LIMIT {
             PASSED_CRITICAL_LIMIT = false
         }

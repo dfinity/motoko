@@ -205,9 +205,20 @@ pub static mut OBJECT_TABLE: Option<ObjectTable> = None;
 /// Sentinel `null` reference, reserved object id trapping when resolving its object address.
 pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
 
+/// Allocate a new object id in the object table for a newly allocated object at the defined address.
+/// Grows the object table if no free object ids are available.
+pub unsafe fn reserve_object_ids<M: Memory>(mem: &mut M, amount: usize) {
+    if OBJECT_TABLE.is_some() {
+        OBJECT_TABLE.as_mut().unwrap().reserve(mem, amount);
+    }
+}
+
 impl Value {
     /// Obtain a new object id in the object table for a new object
     /// that resides at the defined address.
+    /// Requires that the object table has a free id available.
+    /// Does not grow the object table but requires that free ids have been
+    /// reserved in the object table in advance.
     pub unsafe fn new_object_id(address: usize) -> Value {
         debug_assert!(!is_skewed(address as u32));
         if OBJECT_TABLE.is_some() {

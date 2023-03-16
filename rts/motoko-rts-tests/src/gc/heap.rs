@@ -47,12 +47,8 @@ impl Memory for MotokoHeap {
         inner.set_last_ptr_address(new_heap_pointer);
     }
 
-    unsafe fn set_heap_base(&mut self, new_heap_base: usize) {
-        let mut inner = self.inner.borrow_mut();
-        inner.set_heap_base_address(new_heap_base);
-        if new_heap_base > inner.last_ptr_address() {
-            inner.set_last_ptr_address(new_heap_base);
-        }
+    unsafe fn set_heap_base(&mut self, _new_heap_base: usize) {
+        unimplemented!()
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
@@ -182,11 +178,6 @@ impl MotokoHeapInner {
     /// Get heap base in the process's address space
     fn heap_base_address(&self) -> usize {
         self.offset_to_address(self.heap_base_offset)
-    }
-
-    // Set the heap base pointer
-    fn set_heap_base_address(&mut self, address: usize) {
-        self.heap_base_offset = self.address_to_offset(address);
     }
 
     /// Get heap pointer (i.e. where the dynamic heap ends) in the process's address space
