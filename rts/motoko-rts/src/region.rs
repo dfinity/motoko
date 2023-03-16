@@ -256,6 +256,21 @@ mod meta_data {
 }
 
 #[ic_mem_fn]
+pub unsafe fn region0_load<M: Memory>(mem: &mut M, dst: &mut [u8]) -> Value {
+    todo!()
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store<M: Memory>(mem: &mut M, src: &[u8]) -> Value {
+    todo!()
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
+    todo!()
+}
+
+#[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
     // NB. cannot use as_region() here as we didn't write the header yet
@@ -280,15 +295,15 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     Value::from_ptr(region as usize)
 }
 
-pub(crate) mod init {
-    use super::meta_data::{size, offset, total_allocated_regions};
-    pub unsafe fn init() {
-	let min_pages = (offset::BLOCK_ZERO + size::PAGE_IN_BYTES - 1) / size::PAGE_IN_BYTES;
-	let _ = crate::ic0_stable::nicer::grow(min_pages);
-	// Region 0 -- classic API for stable memory, as a dedicated region.
-	// Region 1 -- reserved for reclaimed regions' blocks (to do).
-	total_allocated_regions::set(2)
-    }
+#[ic_mem_fn]
+pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
+    use meta_data::{size, offset};
+    let min_pages = (offset::BLOCK_ZERO + size::PAGE_IN_BYTES - 1) / size::PAGE_IN_BYTES;
+    let _ = crate::ic0_stable::nicer::grow(min_pages);
+    // Region 0 -- classic API for stable memory, as a dedicated region.
+    crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
+    // Region 1 -- reserved for reclaimed regions' blocks (to do).
+    crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
 }
 
 // Utility for logging global region manager state (in stable memory).
@@ -336,7 +351,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 	meta_data::total_allocated_blocks::set(c_);
 	c
     };
-    
+
     // Actually grow stable memory with more pages
     // (but only if needed, by first checking if someone else did it already).
     {

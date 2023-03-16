@@ -1,5 +1,7 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
+use motoko_rts_macros::ic_mem_fn;
+
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
@@ -19,6 +21,12 @@ pub(crate) static mut HP: u32 = 0;
 
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
+
+// Region 0 -- classic API for stable memory, as a dedicated region.
+pub(crate) static mut REGION_0: *mut Region = 0 as *mut Region;
+
+// Region 1 -- reserved for reclaimed regions' blocks (to do).
+pub(crate) static mut REGION_1: *mut Region = 0 as *mut Region;
 
 /// TEMP -- for logging during testing.
 pub(crate) static mut NEXT_REGION_LOG_ID: u16 = 0;
@@ -44,12 +52,9 @@ unsafe extern "C" fn init(align: bool) {
     LAST_HP = HP;
 }
 
-
-#[no_mangle]
-unsafe extern "C" fn region_init() {
-    println!(66, "region_init: begin.");
-    crate::region::init::init();
-    println!(66, "region_init: done.");
+#[ic_mem_fn]
+pub unsafe fn region_init<M: Memory>(mem: &mut M) {
+    crate::region::region_init_(mem);
 }
 
 #[no_mangle]
