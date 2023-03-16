@@ -186,7 +186,7 @@ impl RememberedSet {
         while iterator.has_next() {
             let value = iterator.current();
             debug_assert!(!is_null_value(value));
-            self.insert(mem, value);
+            self.simple_insert(mem, value); // Prevents recursive growth.
             iterator.next();
         }
         assert_eq!(self.count, old_count);
