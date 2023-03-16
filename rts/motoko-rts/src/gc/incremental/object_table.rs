@@ -2,7 +2,8 @@
 //! Maps object ids to the correponding object addresses in the dynamic heap.
 //! All references to objects in the dynamic heap are routed through this table.
 //! This enables fast moving of objects in the incremental GC by only updating the
-//! address of the corresponding object in the table.
+//! address of the corresponding object in the table. Objects also carry their id
+//! in the header to allow fast lookup of the object id by a given object address.
 //!
 //! The table is allocated at the end of the static heap and before the dynamic heap.
 //!

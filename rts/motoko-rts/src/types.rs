@@ -15,18 +15,24 @@
 //!     recorded in the object table.
 //! * Scalar: A scalar value, shifted by 1 bit.
 //!
+//! Object contain the object id in an extra header word, to allow fast reverse lookup of the
+//! object id by a given object address.
+//!
 //! For an object in the dynamic heap:
 //!
 //!                       Object table
 //! Value (skewed)       ┌─────────────┐   
 //!    |                 |     ...     |
 //!    |   object id     |─────────────|                     Object
-//!    └───────────────> |   address   |───────────────> ┌─────────────┐
-//!                      |─────────────|                 |     ...     |
-//!                      |     ...     |                 └─────────────┘
-//!                      └─────────────┘
+//!    └────────────┌──> |   address   |───────────────> ┌─────────────┐
+//!                 |    |─────────────|                 |     tag     |
+//!                 |    |     ...     |                 |─────────────|
+//!                 |    └─────────────┘       ┌─────────|  object id  |
+//!                 |                          |         |─────────────|
+//!                 └──────────────────────────┘         |     ...     |
+//!                                                      └─────────────┘
 //!
-//! Object id have bit 0 set (skewed), while scalr values have bit 0 clear (left-shifted by 1).
+//! Object id have bit 0 set (skewed), while scalar values have bit 0 clear (left-shifted by 1).
 //!
 //! Exceptions for (1) static objects and/or (2) non-incremental GC mode:
 //!  * Object id = skewed object adddress. No indirection via the object table is used.
