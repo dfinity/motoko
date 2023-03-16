@@ -270,7 +270,6 @@ impl ObjectTable {
     /// Grow the object table by relocating one object at the table end.
     unsafe fn grow_table<M: Memory>(&mut self, mem: &mut M, required_length: usize) {
         debug_assert_eq!(self.end(), mem.get_heap_base());
-        let old_length = self.length;
         let mut new_length = self.length;
         let mut address = self.end();
         while new_length < required_length {
@@ -311,9 +310,10 @@ impl ObjectTable {
                 new_length = required_length;
             }
             address += size.to_bytes().as_usize();
+            let old_length = self.length;
+            self.length = new_length;
+            self.add_free_range(old_length..new_length);
         }
-        self.length = new_length;
-        self.add_free_range(old_length..new_length);
         debug_assert!(self.end() > mem.get_heap_base());
         mem.set_heap_base(self.end());
         debug_assert_eq!(mem.get_heap_base(), address);
