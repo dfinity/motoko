@@ -256,33 +256,6 @@ mod meta_data {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_load<M: Memory>(_mem: &mut M, offset:u64, dst: &mut [u8]) {
-    let r = RegionObject(crate::memory::ic::REGION_0);
-    let abs_off = r.relative_into_absolute_offset(offset);
-    // second bounds check on region:
-    if dst.len() > 1 {
-	let _ = r.relative_into_absolute_offset(offset + dst.len() as u64 - 1);
-    };
-    crate::ic0_stable::nicer::read(abs_off, dst);
-}
-
-#[ic_mem_fn]
-pub unsafe fn region0_store<M: Memory>(_mem: &mut M, offset:u64, src: &[u8]) {
-    let r = RegionObject(crate::memory::ic::REGION_0);
-    let abs_off = r.relative_into_absolute_offset(offset);
-    // second bounds check on region:
-    if src.len() > 1 {
-	let _ = r.relative_into_absolute_offset(offset + src.len() as u64 - 1);
-    };
-    crate::ic0_stable::nicer::write(abs_off, src);
-}
-
-#[ic_mem_fn]
-pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
-    region_grow(mem, Value::from_ptr(crate::memory::ic::REGION_0 as usize), new_pages)
-}
-
-#[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
 
@@ -467,4 +440,32 @@ pub unsafe fn region_store_blob<M: Memory>(_mem: &mut M, _r: Value, _start: Valu
 #[ic_mem_fn]
 pub unsafe fn region_next_id<M: Memory>(_mem: &mut M) -> Value {
     Value::from_scalar(meta_data::total_allocated_regions::get() as u32)
+}
+
+
+#[ic_mem_fn]
+pub unsafe fn region0_load<M: Memory>(_mem: &mut M, offset:u64, dst: &mut [u8]) {
+    let r = RegionObject(crate::memory::ic::REGION_0);
+    let abs_off = r.relative_into_absolute_offset(offset);
+    // second bounds check on region:
+    if dst.len() > 1 {
+	let _ = r.relative_into_absolute_offset(offset + dst.len() as u64 - 1);
+    };
+    crate::ic0_stable::nicer::read(abs_off, dst);
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store<M: Memory>(_mem: &mut M, offset:u64, src: &[u8]) {
+    let r = RegionObject(crate::memory::ic::REGION_0);
+    let abs_off = r.relative_into_absolute_offset(offset);
+    // second bounds check on region:
+    if src.len() > 1 {
+	let _ = r.relative_into_absolute_offset(offset + src.len() as u64 - 1);
+    };
+    crate::ic0_stable::nicer::write(abs_off, src);
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
+    region_grow(mem, Value::from_ptr(crate::memory::ic::REGION_0 as usize), new_pages)
 }

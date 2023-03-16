@@ -83,15 +83,15 @@ debug.print: region_load_byte(RegionId(2), 8978569 ~> 9371781) ==> 137
 debug.print: 137
 debug.print: Done.
 debug.print: Storing data into region 3.
-debug.print: region_store_byte(RegionId(2), 8978431 ~> 9371643, 138)
+debug.print: region_store_byte(RegionId(3), 8978431 ~> 168755195, 138)
 debug.print: Loading data from region 3.
-debug.print: region_load_byte(RegionId(2), 8978431 ~> 9371643) ==> 138
+debug.print: region_load_byte(RegionId(3), 8978431 ~> 168755195) ==> 138
 debug.print: 138
 debug.print: Done.
 debug.print: Storing data into region 4.
-debug.print: region_store_byte(RegionId(2), 1048713 ~> 1441925, 139)
+debug.print: region_store_byte(RegionId(4), 1048713 ~> 177602693, 139)
 debug.print: Loading data from region 4.
-debug.print: region_load_byte(RegionId(2), 1048713 ~> 1441925) ==> 139
+debug.print: region_load_byte(RegionId(4), 1048713 ~> 177602693) ==> 139
 debug.print: 139
 debug.print: Done.
 debug.print: re-Loading data from region 2.
@@ -99,7 +99,7 @@ debug.print: region_load_byte(RegionId(2), 8978569 ~> 9371781) ==> 137
 debug.print: 137
 debug.print: Done.
 debug.print: re-Loading data from region 3.
-debug.print: region_load_byte(RegionId(2), 8978431 ~> 9371643) ==> 138
+debug.print: region_load_byte(RegionId(3), 8978431 ~> 168755195) ==> 138
 debug.print: 138
 debug.print: Done.
 ingress Completed: Reply: 0x4449444c0000
