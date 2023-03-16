@@ -59,7 +59,7 @@ use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
 use crate::memory::{alloc_blob_internal, Memory};
-use crate::types::{block_size, Blob, Bytes, Value, NULL_OBJECT_ID, OBJECT_TABLE};
+use crate::types::{block_size, reserve_object_ids, Blob, Bytes, Value, NULL_OBJECT_ID};
 
 pub struct RememberedSet {
     hash_table: Value,
@@ -132,6 +132,7 @@ impl RememberedSet {
     /// Insert an entry to the remembered set by potentially growing the hash table if the
     /// occupation exceeeded a defined threshold. To be used by the write barrier.
     pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+        reserve_object_ids(mem, 1);
         self.simple_insert(mem, value);
         let hash_table = self.hash_table.as_blob_mut();
         if self.count > table_length(hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
@@ -177,8 +178,9 @@ impl RememberedSet {
         self.count
     }
 
+    // Sufficient free object ids for remembered set growth should already be reserved
+    // in the object table.
     unsafe fn grow<M: Memory>(&mut self, mem: &mut M) {
-        self.reserve_ids_for_growth(mem);
         let old_count = self.count;
         let mut iterator = self.iterate();
         let new_length = table_length(self.hash_table.as_blob_mut()) * GROWTH_FACTOR;
@@ -191,23 +193,6 @@ impl RememberedSet {
             iterator.next();
         }
         assert_eq!(self.count, old_count);
-    }
-
-    unsafe fn reserve_ids_for_growth<M: Memory>(&mut self, mem: &mut M) {
-        // Conservatively reserve sufficient free ids in the object table for the construction
-        // of the new remembered set. The reservation itself may again increase the remembered set
-        // size, such that a fixpoint iteration is used.
-        loop {
-            let last_count = self.count;
-            OBJECT_TABLE
-                .as_mut()
-                .unwrap()
-                .reserve(mem, last_count as usize + 1); // Plus a new hash table.
-            debug_assert!(self.count >= last_count);
-            if self.count == last_count {
-                break;
-            }
-        }
     }
 }
 

@@ -187,6 +187,10 @@ pub unsafe fn check_heap<M: Memory>(mem: &mut M, start: usize, allow_marked_obje
                 assert!(!object.is_marked());
             }
             let value = object.object_id();
+            if !value.is_object_id() {
+                println!(100, "ERROR {:#x} {:#x}", value.get_raw(), pointer);
+            }
+            assert!(value.is_object_id());
             assert_eq!(value.get_object_address(), object as usize);
             check_object_header(mem, value);
             check_valid_references(mem, object);
@@ -209,6 +213,7 @@ pub unsafe fn check_heap<M: Memory>(mem: &mut M, start: usize, allow_marked_obje
 }
 
 unsafe fn check_object_header<M: Memory>(mem: &mut M, value: Value) {
+    assert!(value.is_object_id());
     let tag = value.tag();
     if tag >= TAG_ARRAY_SLICE_MIN {
         assert!(tag <= value.as_array().len());

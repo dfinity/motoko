@@ -2,9 +2,9 @@ use std::{array::from_fn, mem::size_of, ptr::null_mut};
 
 use motoko_rts::{
     gc::incremental::roots::visit_roots,
-    memory::Roots,
+    memory::{alloc_array, Memory, Roots},
     remembered_set::{RememberedSet, INITIAL_TABLE_LENGTH},
-    types::{Array, Obj, Value, Words, OBJECT_TABLE},
+    types::{Array, Value, Words, OBJECT_TABLE},
 };
 
 use crate::{
@@ -81,44 +81,32 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_indices
 }
 
 unsafe fn check_visit_remembered_set() {
-    let object_map: [(ObjectIdx, Vec<ObjectIdx>); 16] = from_fn(|id| (id as u32, vec![]));
-    let root_indices = [];
-    let continuation_indices = [3, 5, 11, 13];
-    let remembered_set_indices = [2, 7, 9, 14];
-
-    let heap = MotokoHeap::new(
-        &object_map,
-        &root_indices,
-        &continuation_indices,
-        GC::Incremental,
-    );
-    let remembered_set_values =
-        remembered_set_indices.map(|index| index_to_object_id(&heap, index as usize));
+    assert!(OBJECT_TABLE.is_none());
     let mut mem = TestMemory::new(Words(WORD_SIZE as u32 * INITIAL_TABLE_LENGTH));
+    let static_roots = alloc_array(&mut mem, 0);
+
+    let remembered_set_values: [Value; 4] = from_fn(|_| alloc_array(&mut mem, 0));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
     for value in remembered_set_values {
         remembered_set.insert(&mut mem, value);
     }
 
-    let roots = get_roots(&heap);
+    let roots = Roots {
+        static_roots,
+        continuation_table_location: null_mut(),
+    };
     let mut visited_remembered_values = vec![];
     visit_roots(
         roots,
-        heap.heap_base_address(),
+        mem.get_heap_base(),
         Some(&remembered_set),
         &mut visited_remembered_values,
         |context, value| {
-            let array = value.as_array();
-            if array.len() == 1 {
-                let id = address_to_index(&heap, value.get_object_address());
-                context.push(id);
-            }
+            context.push(value);
         },
     );
-    assert_eq!(visited_remembered_values, remembered_set_indices);
-
-    OBJECT_TABLE = None;
+    assert!(visited_remembered_values == remembered_set_values);
 }
 
 unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
@@ -137,11 +125,4 @@ fn address_to_index(heap: &MotokoHeap, address: usize) -> u32 {
     assert_eq!(OBJECT_SIZE, 16);
     assert_eq!(offset % OBJECT_SIZE, 0);
     (offset / OBJECT_SIZE) as u32
-}
-
-fn index_to_object_id(heap: &MotokoHeap, index: usize) -> Value {
-    const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
-    assert_eq!(OBJECT_SIZE, 16);
-    let address = heap.heap_base_address() + index * OBJECT_SIZE;
-    unsafe { (address as *mut Obj).object_id() }
 }

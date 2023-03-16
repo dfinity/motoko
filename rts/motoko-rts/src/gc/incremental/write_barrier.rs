@@ -31,6 +31,16 @@ pub unsafe fn take_young_remembered_set() -> RememberedSet {
     YOUNG_REMEMBERED_SET.take().unwrap()
 }
 
+/// Size of the remembered set, used to compute the reserve for object table id
+/// to allow remembered set growth.
+pub unsafe fn young_remembered_set_size() -> usize {
+    if YOUNG_REMEMBERED_SET.is_none() {
+        0
+    } else {
+        YOUNG_REMEMBERED_SET.as_ref().unwrap().count() as usize
+    }
+}
+
 /// Object table extension may insert additional objects if they are moved from the old
 /// generation to the young generation. No GC increment is running at that time, such that
 /// the remembered set is present.

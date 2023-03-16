@@ -53,7 +53,8 @@ unsafe fn initalize_object_table<M: Memory>(mem: &mut M) {
     assert_eq!(HEAP_BASE, HP);
     let base = mem.alloc_words(size) as *mut usize;
     let table = ObjectTable::new(base, INITIAL_TABLE_LENGTH);
-    HEAP_BASE = align_to_32_bytes(HP);
+    // No alignment needed for incremental GC heap base.
+    HEAP_BASE = HP;
     HP = HEAP_BASE;
     if LAST_HP < HEAP_BASE {
         LAST_HP = HEAP_BASE;

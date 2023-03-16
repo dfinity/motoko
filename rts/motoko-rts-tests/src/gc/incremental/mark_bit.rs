@@ -1,5 +1,10 @@
 use motoko_rts::{
-    gc::incremental::object_table::ObjectTable,
+    gc::incremental::{
+        object_table::ObjectTable,
+        write_barrier::{
+            create_young_remembered_set, take_young_remembered_set, using_incremental_barrier,
+        },
+    },
     memory::{alloc_array, alloc_blob, Memory},
     stream::alloc_stream,
     types::{skew, Bytes, Obj, Value, Words, OBJECT_TABLE},
@@ -10,10 +15,13 @@ use crate::memory::TestMemory;
 pub unsafe fn test() {
     println!("  Testing mark bit...");
 
-    let mut mem = TestMemory::new(Words(256));
+    let mut mem = TestMemory::new(Words(512 * 1024));
 
+    assert!(OBJECT_TABLE.is_none());
+    assert!(!using_incremental_barrier());
     OBJECT_TABLE = Some(create_object_table(&mut mem, 4));
     mem.set_heap_base(OBJECT_TABLE.as_mut().unwrap().end());
+    create_young_remembered_set(&mut mem);
 
     let array = alloc_array(&mut mem, 64).as_array();
     test_mark_bit(array as *mut Obj);
@@ -24,7 +32,9 @@ pub unsafe fn test() {
     let stream = alloc_stream(&mut mem, Bytes(64));
     test_mark_bit(stream as *mut Obj);
 
+    take_young_remembered_set();
     OBJECT_TABLE = None;
+    assert!(!using_incremental_barrier());
 }
 
 fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
