@@ -256,34 +256,46 @@ mod meta_data {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_load<M: Memory>(mem: &mut M, dst: &mut [u8]) -> Value {
-    todo!()
+pub unsafe fn region0_load<M: Memory>(_mem: &mut M, offset:u64, dst: &mut [u8]) {
+    let r = RegionObject(crate::memory::ic::REGION_0);
+    let abs_off = r.relative_into_absolute_offset(offset);
+    // second bounds check on region:
+    if dst.len() > 1 {
+	let _ = r.relative_into_absolute_offset(offset + dst.len() as u64 - 1);
+    };
+    crate::ic0_stable::nicer::read(abs_off, dst);
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_store<M: Memory>(mem: &mut M, src: &[u8]) -> Value {
-    todo!()
+pub unsafe fn region0_store<M: Memory>(_mem: &mut M, offset:u64, src: &[u8]) {
+    let r = RegionObject(crate::memory::ic::REGION_0);
+    let abs_off = r.relative_into_absolute_offset(offset);
+    // second bounds check on region:
+    if src.len() > 1 {
+	let _ = r.relative_into_absolute_offset(offset + src.len() as u64 - 1);
+    };
+    crate::ic0_stable::nicer::write(abs_off, src);
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
-    todo!()
+pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
+    region_grow(mem, Value::from_ptr(crate::memory::ic::REGION_0 as usize), new_pages)
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
+
+    let next_id = meta_data::total_allocated_regions::get() as u16;
+    meta_data::total_allocated_regions::set(next_id as u64 + 1);
+
     // NB. cannot use as_region() here as we didn't write the header yet
     let region = r_ptr.get_ptr() as *mut Region;
     (*region).header.tag = TAG_REGION;
-    let next_id = meta_data::total_allocated_regions::get() as u16;
     (*region).id = next_id;
     (*region).page_count = 0;
     (*region).vec_pages = alloc_blob(mem, Bytes(0));
-    if true {
-	let c = meta_data::total_allocated_regions::get();
-	meta_data::total_allocated_regions::set(c + 1);
-    }
+
     // Update Region table.
     {
 	let r_id = RegionId::from_id((*region).id);
