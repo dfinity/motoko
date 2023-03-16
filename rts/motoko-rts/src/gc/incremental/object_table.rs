@@ -256,14 +256,18 @@ impl ObjectTable {
         // Conservative reserve for mark stack tables, aroung 1_400 for a 32-bit address space.
         const MARK_STACK_RESERVE: usize = usize::MAX / STACK_TABLE_CAPACITY / size_of::<Obj>();
         // Reserve for inserting an element to the remembered set while extending the object table.
-        let required = amount + young_remembered_set_size() + MARK_STACK_RESERVE;
-        if self.free_count < required {
+        let mut required = amount + young_remembered_set_size() + MARK_STACK_RESERVE;
+        // Fixpoint iteration since the object table extension may allocate object ids for remembered set entries.
+        while self.free_count < required {
             let request = required - self.free_count;
             const REQUEST_GRANULARITY: usize = 1_000;
             let new_length = self.length + request;
             let rounded_length =
                 (new_length + REQUEST_GRANULARITY - 1) / REQUEST_GRANULARITY * REQUEST_GRANULARITY;
+            let free_before = self.free_count;
             self.grow_table(mem, rounded_length);
+            debug_assert!(self.free_count > free_before); // Ensure progress.
+            required = amount + young_remembered_set_size() + MARK_STACK_RESERVE;
         }
     }
 
