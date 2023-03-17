@@ -35,7 +35,7 @@ unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
     debug_assert!(OBJECT_TABLE.is_none());
     OBJECT_TABLE = Some(create_object_table(&mut mem, 16));
 
-    stack.allocate(&mut mem);
+    stack.allocate(&mut mem, false);
     test_internal_push_pop(&mut mem, &mut stack, amount, regrow_step);
     stack.free();
     OBJECT_TABLE = None;
@@ -48,7 +48,7 @@ unsafe fn test_internal_push_pop(
     regrow_step: usize,
 ) {
     for count in 0..amount {
-        stack.push(mem, synthetic_object_id(count));
+        stack.push(mem, synthetic_object_id(count), false);
         if count == regrow_step {
             test_internal_push_pop(mem, stack, amount - count, regrow_step);
         }

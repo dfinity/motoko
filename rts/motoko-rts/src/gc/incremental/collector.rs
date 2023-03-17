@@ -92,6 +92,7 @@ pub struct Generation {
     start: usize,
     remembered_set: Option<RememberedSet>,
     promote_surviving: bool,
+    remember_mark_stack: bool,
 }
 
 impl Generation {
@@ -99,11 +100,13 @@ impl Generation {
         start: usize,
         remembered_set: Option<RememberedSet>,
         promote_surviving: bool,
+        remember_mark_stack: bool,
     ) -> Generation {
         Generation {
             start,
             remembered_set,
             promote_surviving,
+            remember_mark_stack,
         }
     }
 
@@ -118,13 +121,14 @@ impl Generation {
             mem.get_last_heap_pointer(),
             Some(remembered_set),
             mark_promoted,
+            false,
         )
     }
 
-    pub fn old<M: Memory>(mem: &mut M) -> Generation {
+    pub fn old<M: Memory>(mem: &mut M, remember_mark_stack: bool) -> Generation {
         debug_assert!(mem.get_heap_base() <= mem.get_last_heap_pointer());
         debug_assert!(mem.get_last_heap_pointer() <= mem.get_heap_pointer());
-        Self::new(mem.get_heap_base(), None, false)
+        Self::new(mem.get_heap_base(), None, false, remember_mark_stack)
     }
 }
 
@@ -177,8 +181,12 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     unsafe fn start_marking(&mut self) {
         debug_assert!(self.state.phase == Phase::Pause);
 
+        // The mark stack is allocated in the same generation. The recording to the remembered set
+        // is only needed when the mutator marks objects for the old generation while the young
+        // generation is still present. This is not the case during a GC increment.
+        debug_assert!(!self.generation.remember_mark_stack);
         self.state.phase = Phase::Mark;
-        self.state.mark_stack.allocate(self.mem);
+        self.state.mark_stack.allocate(self.mem, false);
         self.state.mark_complete = false;
         self.mark_roots();
     }
@@ -200,8 +208,11 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     /// Mark the corresponding object if not yet marked before.
-    /// The reachable object traversal is performed separatedly by `run` during
-    /// the mark phase.
+    /// The reachable object traversal is performed separatedly by `run` during the mark phase.
+    /// The incremental pre-update write barrier may call this function during
+    /// incremental mark phase to guarantee snapshot-at-the-beginning consistency.
+    /// In such a case, the mark stack for old objects may be extended in the young generation,
+    /// such that the mark stack table needs to be registered in the young generation remembered set.
     pub unsafe fn mark_object(&mut self, value: Value) {
         debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(!self.state.mark_complete);
@@ -214,7 +225,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             return;
         }
         object.mark();
-        self.state.mark_stack.push(self.mem, value);
+        self.state
+            .mark_stack
+            .push(self.mem, value, self.generation.remember_mark_stack);
         // The generation may have been extended because of additional mark stack tables.
     }
 
@@ -251,7 +264,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                 let length = slice_array(array);
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
                     let value = (array as *mut Obj).object_id();
-                    gc.state.mark_stack.push(gc.mem, value);
+                    // No remembered set in use: The mark stack is allocated in the same generation.
+                    debug_assert!(!gc.generation.remember_mark_stack);
+                    gc.state.mark_stack.push(gc.mem, value, false);
                     // The generation may have been extended because of additional mark stack tables.
                 }
                 gc.time.advance((length - slice_start) as usize);

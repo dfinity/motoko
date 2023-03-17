@@ -101,7 +101,7 @@ struct MarkCompletionChecker<'a, M: Memory> {
 impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
     unsafe fn check_mark_completeness(&mut self) {
         assert_eq!(self.mem.get_heap_base(), self.visited.heap_base);
-        self.mark_stack.allocate(self.mem);
+        self.mark_stack.allocate(self.mem, false);
         self.check_roots();
         self.check_all_reachable();
         self.mark_stack.free();
@@ -130,7 +130,7 @@ impl<'a, M: Memory> MarkCompletionChecker<'a, M> {
         }
         if !self.visited.is_marked(value.get_object_address()) {
             self.visited.mark(value.get_object_address());
-            self.mark_stack.push(self.mem, value);
+            self.mark_stack.push(self.mem, value, false);
         }
     }
 

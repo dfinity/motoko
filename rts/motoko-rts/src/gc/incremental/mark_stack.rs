@@ -20,23 +20,33 @@
 //! a new stack table is allocated and linked, unless there already exists
 //! a next table. Only the last table can have free entry space.
 //!
-//! The entries represent ids (references) ßto objects to be visited by the GC.
+//! The entries represent ids (references) to objects to be visited by the GC.
 //! (being conceptually gray in the incremental tri-color mark scheme).
 //!
 //! NOTES:
 //! * The tables are blobs, as their entries must not be visited by the GC.
 //! * The entries on the stack must be object ids (Value) as their objects may
 //!   move even during mark phase due to object table extension.
+//! * The incremental mark write barrier may require new mark stack tables for
+//!   recording old objects in the young generation. If this is the case, the
+//!   corresponding mark stack tables are recorded in the young remembered set
+//!   such that they are promoted to the old generation such that it remains
+//!   available for the mark increment of the old generation.
 //! * The mark stack must use object ids for referencing the previous/next
 //!   tables, because the tables could be moved due to object table extension.
 //!   If the table of the old generation are moved to the young generation, they
 //!   will be recorded in the remembered set such that they will be promoted back
 //!   to the old generation.
-//! * The stack tables become garbage after a GC run and can be reclaimed.
-//! * The GC reserves object ids before GC increment start such that the mark
-//!   stack allocation does not trigger an object table growth during a GC
-//!   increment.
+//! * The stack tables become garbage and can be reclaimed. If they have been
+//!   promoted back to the old generation (due to object table extension or
+//!   additional old generation mark stack table creation during incremental
+//!   write barrier), they will be reclaimed in the subsequent GC run, and
+//!   otherwise, in the same GC run.
+//! * The object table leaves a reserve for object ids before GC increment start
+//!   such that the mark stack allocation does not trigger an object table growth
+//!   during a GC increment.
 
+use crate::gc::incremental::write_barrier::remember_old_object;
 use crate::memory::{alloc_blob_internal, Memory};
 use crate::types::{size_of, Blob, Obj, Value, NULL_OBJECT_ID};
 
@@ -67,9 +77,9 @@ impl MarkStack {
     }
 
     /// Allocate the mark stack before use.
-    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M) {
+    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, remember_table: bool) {
         debug_assert!(!self.is_allocated());
-        self.last = Self::new_table(mem, NULL_OBJECT_ID);
+        self.last = Self::new_table(mem, NULL_OBJECT_ID, remember_table);
         debug_assert_eq!(self.top, 0);
     }
 
@@ -90,13 +100,16 @@ impl MarkStack {
     }
 
     /// Push an object address on the stack.
-    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, object: Value) {
+    /// Denote whether a created stack table should be also recorded in the young generation's
+    /// remembered set. This is the case when the mark stack is extended for the old generation,
+    /// while the mutator is running and the young generation exists.
+    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, object: Value, remember_table: bool) {
         debug_assert!(object != NULL_OBJECT_ID);
         debug_assert!(self.is_allocated());
         let mut table = self.last.as_blob_mut() as *mut StackTable;
         if self.top == STACK_TABLE_CAPACITY {
             if (*table).next == NULL_OBJECT_ID {
-                self.last = Self::new_table(mem, self.last);
+                self.last = Self::new_table(mem, self.last, remember_table);
             } else {
                 self.last = (*table).next;
             }
@@ -136,7 +149,9 @@ impl MarkStack {
         self.top == 0 && (*table).previous == NULL_OBJECT_ID
     }
 
-    unsafe fn new_table<M: Memory>(mem: &mut M, previous: Value) -> Value {
+    /// `remember` denotes whether the created table should be also registered in
+    /// young generation's remembered set.
+    unsafe fn new_table<M: Memory>(mem: &mut M, previous: Value, remember: bool) -> Value {
         let table_id = alloc_blob_internal(mem, size_of::<StackTable>().to_bytes());
         let table = table_id.as_blob_mut() as *mut StackTable;
         // No mark bit is set as the blob is to be reclaimeed by the current GC run.
@@ -146,6 +161,11 @@ impl MarkStack {
         if previous != NULL_OBJECT_ID {
             let previous_table = previous.as_blob_mut() as *mut StackTable;
             (*previous_table).next = table_id;
+        }
+        if remember {
+            // Retain an old generation stack table that is allocated in the young generation
+            // by the mutator during the incremental mark phase
+            remember_old_object(mem, table_id);
         }
         table_id
     }

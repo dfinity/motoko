@@ -101,7 +101,10 @@ unsafe fn pre_update_barrier<M: Memory>(mem: &mut M, value: Value) {
         debug_assert!(value.get_object_address() < mem.get_last_heap_pointer());
         let state = incremental_gc_state();
         let time = Time::limited(0);
-        let generation = Generation::old(mem);
+        debug_assert!(YOUNG_REMEMBERED_SET.is_some());
+        // The mark stack for old objects may be extended to the young generation,
+        // such that the new mark stack table will be registered in the remembered set.
+        let generation = Generation::old(mem, true);
         let mut gc = GarbageCollector::instance(mem, generation, state, time);
         gc.mark_object(value);
     }

@@ -127,7 +127,7 @@ const INCREMENT_LIMIT: usize = 3_000_000;
 
 unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M) {
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
-    let generation = Generation::old(mem);
+    let generation = Generation::old(mem, false);
     let state = incremental_gc_state();
     let time = Time::limited(INCREMENT_LIMIT);
     let mut gc = GarbageCollector::instance(mem, generation, state, time);

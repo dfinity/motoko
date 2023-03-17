@@ -133,7 +133,7 @@ unsafe fn test_table_extension() {
     );
     test_table_growth(
         |mem| {
-            MarkStack::new().allocate(mem);
+            MarkStack::new().allocate(mem, false);
         },
         1,
     );
