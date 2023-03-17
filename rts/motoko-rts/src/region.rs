@@ -408,20 +408,20 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -> u8 {
+pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -> u32 {
     let r = RegionObject::from_value(&r);
     let abs_off = r.relative_into_absolute_offset(offset);
     let mut dst : [u8; 1] = [0];
     crate::ic0_stable::nicer::read(abs_off, &mut dst);
     println!(80, "region_load_byte({:?}, {} ~> {}) ==> {}", r.id(), offset, abs_off, dst[0]);
-    dst[0]
+    dst[0] as u32
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64, byte: u8) {
+pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64, byte: u32) {
     let r = RegionObject::from_value(&r);
     let abs_off = r.relative_into_absolute_offset(offset);
-    let src : [u8; 1] = [byte];
+    let src : [u8; 1] = [byte as u8];
     println!(80, "region_store_byte({:?}, {} ~> {}, {})", r.id(), offset, abs_off, byte);
     crate::ic0_stable::nicer::write(abs_off, &src);
 }
@@ -432,7 +432,14 @@ pub unsafe fn region_load_blob<M: Memory>(_mem: &mut M, _r: Value, _start: Value
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_store_blob<M: Memory>(_mem: &mut M, _r: Value, _start: Value, _blob: Value) {
+pub unsafe fn region_store_blob<M: Memory>(_mem: &mut M, _r: Value, _start: Value, _v: Value) {
+    /*
+    let b : *const Blob = v.as_blob();
+    let l = b.len();
+    let p = b.payload_addr();
+    let r : RegionObject = RegionObject(r.as_region());
+    r.relative_into_absolute(
+    */
     rts_trap_with("TODO region_store_blob");
 }
 
@@ -442,9 +449,17 @@ pub unsafe fn region_next_id<M: Memory>(_mem: &mut M) -> Value {
     Value::from_scalar(meta_data::total_allocated_regions::get() as u32)
 }
 
+#[ic_mem_fn]
+pub unsafe fn region0_size<M: Memory>(mem: &mut M) -> u64 {
+    region_size(mem, Value::from_ptr(crate::memory::ic::REGION_0 as usize))
+}
 
 #[ic_mem_fn]
-pub unsafe fn region0_load<M: Memory>(_mem: &mut M, offset:u64, dst: &mut [u8]) {
+pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
+    region_grow(mem, Value::from_ptr(crate::memory::ic::REGION_0 as usize), new_pages)
+}
+
+unsafe fn region0_load<M: Memory>(_mem: &mut M, offset:u64, dst: &mut [u8]) {
     let r = RegionObject(crate::memory::ic::REGION_0);
     let abs_off = r.relative_into_absolute_offset(offset);
     // second bounds check on region:
@@ -455,7 +470,68 @@ pub unsafe fn region0_load<M: Memory>(_mem: &mut M, offset:u64, dst: &mut [u8]) 
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_store<M: Memory>(_mem: &mut M, offset:u64, src: &[u8]) {
+pub unsafe fn region0_load_nat8<M: Memory>(mem: &mut M, offset:u64) -> u32 {
+    let mut byte : [u8; 1] = [0];
+    region0_load(mem, offset, &mut byte);
+    byte[0] as u32
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_int8<M: Memory>(mem: &mut M, offset:u64) -> i32 {
+    let mut byte : [u8; 1] = [0];
+    region0_load(mem, offset, &mut byte);
+    byte[0] as i32
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_nat16<M: Memory>(mem: &mut M, offset:u64) -> u32 {
+    let mut bytes : [u8; 2] = [0; 2];
+    region0_load(mem, offset, &mut bytes);
+    core::primitive::u16::from_le_bytes(bytes).into()
+
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_int16<M: Memory>(mem: &mut M, offset:u64) -> i32 {
+    let mut bytes : [u8; 2] = [0; 2];
+    region0_load(mem, offset, &mut bytes);
+    core::primitive::i16::from_le_bytes(bytes).into()
+
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_nat32<M: Memory>(mem: &mut M, offset:u64) -> u32 {
+    let mut bytes : [u8; 4] = [0; 4];
+    region0_load(mem, offset, &mut bytes);
+    core::primitive::u32::from_le_bytes(bytes).into()
+
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_int32<M: Memory>(mem: &mut M, offset:u64) -> i32 {
+    let mut bytes : [u8; 4] = [0; 4];
+    region0_load(mem, offset, &mut bytes);
+    core::primitive::i32::from_le_bytes(bytes).into()
+
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_nat64<M: Memory>(mem: &mut M, offset:u64) -> u64 {
+    let mut bytes : [u8; 8] = [0; 8];
+    region0_load(mem, offset, &mut bytes);
+    core::primitive::u64::from_le_bytes(bytes).into()
+
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_int64<M: Memory>(mem: &mut M, offset:u64) -> i64 {
+    let mut bytes : [u8; 8] = [0; 8];
+    region0_load(mem, offset, &mut bytes);
+    core::primitive::i64::from_le_bytes(bytes).into()
+
+}
+
+unsafe fn region0_store<M: Memory>(_mem: &mut M, offset:u64, src: &[u8]) {
     let r = RegionObject(crate::memory::ic::REGION_0);
     let abs_off = r.relative_into_absolute_offset(offset);
     // second bounds check on region:
@@ -466,6 +542,37 @@ pub unsafe fn region0_store<M: Memory>(_mem: &mut M, offset:u64, src: &[u8]) {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
-    region_grow(mem, Value::from_ptr(crate::memory::ic::REGION_0 as usize), new_pages)
+pub unsafe fn region0_store_byte<M: Memory>(mem: &mut M, offset:u64, byte: u32) {
+    let mut byte : [u8; 1] = [byte as u8];
+    region0_store(mem, offset, &mut byte);
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store_nat16<M: Memory>(mem: &mut M, offset:u64, val:u32) {
+    region0_store(mem, offset, &core::primitive::u16::to_le_bytes(val as u16))
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store_int16<M: Memory>(mem: &mut M, offset:u64, val:i32) {
+    region0_store(mem, offset, &core::primitive::i16::to_le_bytes(val as i16))
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store_nat32<M: Memory>(mem: &mut M, offset:u64, val:u32) {
+    region0_store(mem, offset, &core::primitive::u32::to_le_bytes(val as u32))
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store_int32<M: Memory>(mem: &mut M, offset:u64, val:i32) {
+    region0_store(mem, offset, &core::primitive::i32::to_le_bytes(val))
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store_nat64<M: Memory>(mem: &mut M, offset:u64, val:u64) {
+    region0_store(mem, offset, &core::primitive::u64::to_le_bytes(val))
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store_int64<M: Memory>(mem: &mut M, offset:u64, val:i64) {
+    region0_store(mem, offset, &core::primitive::i64::to_le_bytes(val))
 }

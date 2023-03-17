@@ -943,6 +943,24 @@ module RTS = struct
     E.add_func_import env "rts" "region_store_byte" [I32Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "region_next_id" [] [I32Type];
     E.add_func_import env "rts" "region_meta_loglines" [] [];
+    E.add_func_import env "rts" "region0_size" [I32Type] [I64Type];
+    E.add_func_import env "rts" "region0_grow" [I32Type; I64Type] [I64Type];
+    E.add_func_import env "rts" "region0_load_blob" [I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "region0_store_blob" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "region0_load_byte" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region0_store_byte" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region0_load_nat16" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region0_store_nat16" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region0_load_nat32" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region0_store_nat32" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region0_load_nat64" [I32Type; I64Type] [I64Type];
+    E.add_func_import env "rts" "region0_store_nat64" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "region0_load_int16" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region0_store_int16" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region0_load_int32" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region0_store_int32" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region0_load_int64" [I32Type; I64Type] [I64Type];
+    E.add_func_import env "rts" "region0_store_int64" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
     E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
@@ -2179,7 +2197,7 @@ module Float = struct
   let payload_field = Tagged.header_size
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
-  
+
   let vanilla_lit env f =
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Bits64);
@@ -3500,6 +3518,18 @@ module Blob = struct
         set_ptr))
 
 end (* Blob *)
+
+module Region0 = struct
+  (*
+    See rts/motoko-rts/src/region.rs
+   *)
+  let size env = E.call_import env "rts" "region0_size"
+  let grow env = E.call_import env "rts" "region0_grow"
+  let load_blob env = E.call_import env "rts" "region0_load_blob"
+  let store_blob env = E.call_import env "rts" "region0_store_blob"
+  let load_byte env = E.call_import env "rts" "region0_load_byte"
+  let store_byte env = E.call_import env "rts" "region0_store_byte"
+end
 
 module Region = struct
   (*
@@ -5033,7 +5063,7 @@ module MakeSerialization (Strm : Stream) = struct
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
    *)
-              
+
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
