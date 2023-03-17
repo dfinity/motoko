@@ -25,29 +25,21 @@
 //!
 //! NOTES:
 //! * The tables are blobs, as their entries must not be visited by the GC.
-//! * The entries on the stack must be object ids (Value) as their objects may
-//!   move even during mark phase due to object table extension.
 //! * The incremental mark write barrier may require new mark stack tables for
 //!   recording old objects in the young generation. If this is the case, the
 //!   corresponding mark stack tables are recorded in the young remembered set
 //!   such that they are promoted to the old generation such that it remains
 //!   available for the mark increment of the old generation.
 //! * The mark stack must use object ids for referencing the previous/next
-//!   tables, because the tables could be moved due to object table extension.
-//!   If the table of the old generation are moved to the young generation, they
-//!   will be recorded in the remembered set such that they will be promoted back
-//!   to the old generation.
+//!   tables, because the tables could be moved from the young generation to
+//!   the old generation (as explained before).
 //! * The stack tables become garbage and can be reclaimed. If they have been
-//!   promoted back to the old generation (due to object table extension or
-//!   additional old generation mark stack table creation during incremental
-//!   write barrier), they will be reclaimed in the subsequent GC run, and
-//!   otherwise, in the same GC run.
-//! * The object table leaves a reserve for object ids before GC increment start
-//!   such that the mark stack allocation does not trigger an object table growth
-//!   during a GC increment.
+//!   promoted back to the old generation (if the write barrier had to extend
+//!   the old mark stack inside the young generation), they will be reclaimed
+//!   in the subsequent GC run, and otherwise, in the same GC run.
 
 use crate::gc::incremental::write_barrier::remember_old_object;
-use crate::memory::{alloc_blob_internal, Memory};
+use crate::memory::{alloc_blob, Memory};
 use crate::types::{size_of, Blob, Obj, Value, NULL_OBJECT_ID};
 
 pub struct MarkStack {
@@ -152,7 +144,7 @@ impl MarkStack {
     /// `remember` denotes whether the created table should be also registered in
     /// young generation's remembered set.
     unsafe fn new_table<M: Memory>(mem: &mut M, previous: Value, remember: bool) -> Value {
-        let table_id = alloc_blob_internal(mem, size_of::<StackTable>().to_bytes());
+        let table_id = alloc_blob(mem, size_of::<StackTable>().to_bytes());
         let table = table_id.as_blob_mut() as *mut StackTable;
         // No mark bit is set as the blob is to be reclaimeed by the current GC run.
         debug_assert!(!(table as *mut Obj).is_marked());

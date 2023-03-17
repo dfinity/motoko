@@ -1,4 +1,7 @@
+use core::ptr::null_mut;
+
 use crate::constants::WORD_SIZE;
+use crate::gc::incremental::object_table::OBJECT_TABLE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
 use crate::types::*;
@@ -42,7 +45,7 @@ pub unsafe fn copying_gc_internal<M: Memory>(
     continuation_table_ptr_loc: *mut Value,
 ) {
     // Does not work with object table.
-    assert!(OBJECT_TABLE.is_none());
+    assert_eq!(OBJECT_TABLE, null_mut());
 
     let begin_from_space = mem.get_heap_base();
     let end_from_space = mem.get_heap_pointer();

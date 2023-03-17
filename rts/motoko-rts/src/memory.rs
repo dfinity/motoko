@@ -53,20 +53,14 @@ pub trait Memory {
     // Used by the GC after a collection run, also sets the last heap pointer.
     unsafe fn shrink_heap(&mut self, new_free_pointer: usize);
 
-    // Only used by object table extension with the incremental GC.
-    // Also sets the last heap pointer if it is below the new heap base.
-    unsafe fn set_heap_base(&mut self, new_heap_base: usize);
-
     /// Returns an object address that still needs to be assiged to a new object id to  
     /// obtain a `Value`.
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize;
 }
 
-/// RTS-internal blob allocation for GC structures. Does never grow the object table
-/// but requires that a sufficient amount of free object ids has been reserved in advance.
-/// To be used when low-level pointer, object addresses are temporarily stored in functions
-/// and used across the blob allocation.
-pub(crate) unsafe fn alloc_blob_internal<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+/// Helper for allocating blobs
+#[ic_mem_fn]
+pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let address = mem.alloc_words(size_of::<Blob>() + size.to_words());
     let object_id = Value::new_object_id(address);
 
@@ -79,13 +73,6 @@ pub(crate) unsafe fn alloc_blob_internal<M: Memory>(mem: &mut M, size: Bytes<u32
     object_id
 }
 
-/// Helper for allocating blobs
-#[ic_mem_fn]
-pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    reserve_object_ids(mem, 1);
-    alloc_blob_internal(mem, size)
-}
-
 /// Helper for allocating arrays
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
@@ -94,7 +81,6 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
         rts_trap_with("Array allocation too large");
     }
 
-    reserve_object_ids(mem, 1);
     let address = mem.alloc_words(size_of::<Array>() + Words(len));
     let object_id = Value::new_object_id(address);
 

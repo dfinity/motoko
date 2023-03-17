@@ -4,7 +4,7 @@ use super::Memory;
 use super::Roots;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::constants::WORD_SIZE;
-use crate::gc::incremental::object_table::ObjectTable;
+use crate::gc::incremental::object_table::initialize_object_table;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -43,23 +43,8 @@ pub(crate) unsafe fn initialize_memory<M: Memory>(
     HP = HEAP_BASE;
     LAST_HP = HP;
     if use_object_table {
-        initalize_object_table(mem);
+        initialize_object_table(mem);
     }
-}
-
-unsafe fn initalize_object_table<M: Memory>(mem: &mut M) {
-    const INITIAL_TABLE_LENGTH: usize = 10_000;
-    let size = Words(INITIAL_TABLE_LENGTH as u32);
-    assert_eq!(HEAP_BASE, HP);
-    let base = mem.alloc_words(size) as *mut usize;
-    let table = ObjectTable::new(base, INITIAL_TABLE_LENGTH);
-    // No alignment needed for incremental GC heap base.
-    HEAP_BASE = HP;
-    HP = HEAP_BASE;
-    if LAST_HP < HEAP_BASE {
-        LAST_HP = HEAP_BASE;
-    }
-    OBJECT_TABLE = Some(table);
 }
 
 #[no_mangle]
@@ -122,15 +107,6 @@ impl Memory for IcMemory {
         debug_assert_eq!(new_free_pointer % WORD_SIZE as usize, 0);
         HP = new_free_pointer as u32;
         LAST_HP = new_free_pointer as u32;
-    }
-
-    unsafe fn set_heap_base(&mut self, new_heap_base: usize) {
-        debug_assert!(new_heap_base as u32 >= HEAP_BASE);
-        debug_assert!(new_heap_base as u32 <= HP);
-        debug_assert!(LAST_HP <= HP);
-        debug_assert_eq!(new_heap_base % WORD_SIZE as usize, 0);
-        HEAP_BASE = new_heap_base as u32;
-        LAST_HP = core::cmp::max(LAST_HP, HEAP_BASE);
     }
 
     #[inline]

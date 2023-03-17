@@ -72,6 +72,7 @@ use core::cmp::max;
 
 use crate::{
     constants::WORD_SIZE,
+    gc::incremental::object_table::ObjectTable,
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -82,7 +83,8 @@ use crate::{
 };
 
 use super::{
-    array_slicing::slice_array, roots::visit_roots, state::Phase, state::State, time::Time,
+    array_slicing::slice_array, object_table::OBJECT_TABLE, roots::visit_roots, state::Phase,
+    state::State, time::Time,
 };
 
 #[cfg(debug_assertions)]
@@ -205,6 +207,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                 gc.mark_object(value);
             },
         );
+        if OBJECT_TABLE as usize >= self.generation.start {
+            (OBJECT_TABLE as *mut Obj).mark();
+        }
     }
 
     /// Mark the corresponding object if not yet marked before.
@@ -344,7 +349,12 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert!(new_address <= old_address);
             if new_address != old_address {
                 memcpy_words(new_address, old_address, size);
-                object_id.set_new_address(new_address);
+
+                if old_address == OBJECT_TABLE as usize {
+                    OBJECT_TABLE = new_address as *mut ObjectTable;
+                } else {
+                    object_id.set_new_address(new_address);
+                }
 
                 // Determined by measurements in comparison to the mark and compact phases.
                 const TIME_FRACTION_PER_WORD: f64 = 2.7;
@@ -354,6 +364,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             self.state.compact_to += size.to_bytes().as_usize();
             debug_assert_eq!(self.state.compact_to % WORD_SIZE as usize, 0);
         } else {
+            debug_assert_ne!(object as usize, OBJECT_TABLE as usize);
             // Free the id of a garbage object in the object table.
             object_id.free_object_id();
         }

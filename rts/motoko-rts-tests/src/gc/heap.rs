@@ -2,13 +2,14 @@ use super::utils::{
     make_object_id, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
-use motoko_rts::gc::incremental::object_table::ObjectTable;
+use motoko_rts::gc::incremental::object_table::{ObjectTable, OBJECT_TABLE};
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::{Memory, Roots};
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};
 use std::convert::TryFrom;
+use std::ptr::null_mut;
 use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
@@ -45,10 +46,6 @@ impl Memory for MotokoHeap {
         let mut inner = self.inner.borrow_mut();
         inner.set_heap_ptr_address(new_heap_pointer);
         inner.set_last_ptr_address(new_heap_pointer);
-    }
-
-    unsafe fn set_heap_base(&mut self, _new_heap_base: usize) {
-        unimplemented!()
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
@@ -95,12 +92,6 @@ impl MotokoHeap {
         self.inner.borrow().heap_ptr_address()
     }
 
-    /// Set the last heap pointer, as address in the current process.
-    /// Used to initialize the incremental GC test, starting a new young generation.
-    pub fn set_last_heap_pointer(&mut self, address: usize) {
-        self.inner.borrow_mut().set_last_ptr_address(address);
-    }
-
     /// Get the beginning of dynamic heap, as an address in the current process
     pub fn heap_base_address(&self) -> usize {
         self.inner.borrow().heap_base_address()
@@ -140,7 +131,7 @@ impl MotokoHeap {
     }
 }
 
-const OBJECT_TABLE_LENGTH: usize = 1000;
+const OBJECT_TABLE_SIZE: usize = 1000;
 
 struct MotokoHeapInner {
     /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
@@ -220,7 +211,7 @@ impl MotokoHeapInner {
                 "Invalid test heap: some objects appear multiple times"
             );
             unsafe {
-                assert!(OBJECT_TABLE.is_none());
+                assert_eq!(OBJECT_TABLE, null_mut());
             }
         }
 
@@ -235,32 +226,31 @@ impl MotokoHeapInner {
 
         let use_object_table = gc == GC::Incremental;
 
+        let object_table_raw_size = if use_object_table {
+            (size_of::<ObjectTable>() + Words(OBJECT_TABLE_SIZE as u32))
+                .to_bytes()
+                .as_usize()
+        } else {
+            0
+        };
+
         let dynamic_heap_size_without_continuation_table_bytes = {
             let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
             let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
             (object_headers_words + references_words) * WORD_SIZE
-        };
+        } + object_table_raw_size;
 
         let dynamic_heap_size_bytes = dynamic_heap_size_without_continuation_table_bytes
             + (size_of::<Array>() + Words(continuation_table.len() as u32))
                 .to_bytes()
                 .as_usize();
 
-        let object_table_size = if use_object_table {
-            OBJECT_TABLE_LENGTH * WORD_SIZE
-        } else {
-            0
-        };
-
-        assert_eq!(object_table_size % 32, 0);
-
-        let total_heap_size_bytes =
-            static_heap_size_bytes + object_table_size + dynamic_heap_size_bytes;
+        let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
 
         let heap_size = heap_size_for_gc(
             gc,
             static_heap_size_bytes,
-            object_table_size + dynamic_heap_size_bytes,
+            dynamic_heap_size_bytes,
             map.len(),
         );
 
@@ -273,7 +263,7 @@ impl MotokoHeapInner {
         assert_eq!(realign % 4, 0);
 
         let structure = create_dynamic_heap(
-            object_table_size,
+            OBJECT_TABLE_SIZE,
             map,
             continuation_table,
             &mut heap[static_heap_size_bytes + realign..heap_size + realign],
@@ -290,8 +280,8 @@ impl MotokoHeapInner {
 
         MotokoHeapInner {
             heap: heap.into_boxed_slice(),
-            heap_base_offset: static_heap_size_bytes + realign + object_table_size,
-            heap_ptr_last: static_heap_size_bytes + realign + object_table_size,
+            heap_base_offset: static_heap_size_bytes + realign,
+            heap_ptr_last: static_heap_size_bytes + realign,
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_id,
             continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
@@ -389,14 +379,31 @@ fn create_dynamic_heap(
     assert_eq!(object_table_size % WORD_SIZE, 0);
 
     let heap_start = dynamic_heap.as_ptr() as usize;
-
+    let mut heap_offset = 0;
     if object_table_size > 0 {
-        assert_eq!(object_table_size, OBJECT_TABLE_LENGTH * WORD_SIZE);
-        let table = ObjectTable::new(heap_start as *mut usize, OBJECT_TABLE_LENGTH);
-        assert_eq!(table.end() % 32, 0);
+        write_word(dynamic_heap, heap_offset, TAG_BLOB);
+        write_word(
+            dynamic_heap,
+            heap_offset + WORD_SIZE,
+            NULL_OBJECT_ID.get_raw(),
+        );
+        heap_offset += 2 * WORD_SIZE;
+        write_word(
+            dynamic_heap,
+            heap_offset,
+            ((object_table_size + 1) * WORD_SIZE) as u32,
+        );
+        heap_offset += WORD_SIZE;
+        for index in 0..object_table_size {
+            let next_free = skew(index * WORD_SIZE as usize) as u32;
+            write_word(dynamic_heap, heap_offset, next_free);
+            heap_offset += WORD_SIZE;
+        }
+        write_word(dynamic_heap, heap_offset, NULL_OBJECT_ID.get_raw());
+        heap_offset += WORD_SIZE;
         unsafe {
-            assert!(OBJECT_TABLE.is_none());
-            OBJECT_TABLE = Some(table);
+            assert_eq!(OBJECT_TABLE, null_mut());
+            OBJECT_TABLE = heap_start as *mut ObjectTable;
         }
     }
 
@@ -405,7 +412,6 @@ fn create_dynamic_heap(
 
     // First pass allocates objects without fields
     {
-        let mut heap_offset = object_table_size;
         for (obj, refs) in refs {
             let address = u32::try_from(heap_start + heap_offset).unwrap();
             let object_id = make_object_id(address);

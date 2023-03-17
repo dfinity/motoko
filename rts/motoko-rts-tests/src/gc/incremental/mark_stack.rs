@@ -1,11 +1,12 @@
+use std::ptr::null_mut;
+
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 use motoko_rts::{
     gc::incremental::{
         mark_stack::{MarkStack, STACK_TABLE_CAPACITY},
-        object_table::ObjectTable,
+        object_table::{ObjectTable, OBJECT_TABLE},
     },
-    memory::Memory,
-    types::{skew, Value, Words, OBJECT_TABLE},
+    types::{skew, Value, Words},
 };
 
 pub unsafe fn test() {
@@ -23,22 +24,16 @@ pub unsafe fn test() {
     test_push_pop(10_000, 2500);
 }
 
-fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
-    let size = Words(length as u32);
-    let base = unsafe { mem.alloc_words(size) } as *mut usize;
-    ObjectTable::new(base, length)
-}
-
 unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
     let mut stack = MarkStack::new();
     let mut mem = TestMemory::new(Words(64 * 1024 * 1024));
-    debug_assert!(OBJECT_TABLE.is_none());
-    OBJECT_TABLE = Some(create_object_table(&mut mem, 16));
+    debug_assert_eq!(OBJECT_TABLE, null_mut());
+    OBJECT_TABLE = ObjectTable::new(&mut mem, 16);
 
     stack.allocate(&mut mem, false);
     test_internal_push_pop(&mut mem, &mut stack, amount, regrow_step);
     stack.free();
-    OBJECT_TABLE = None;
+    OBJECT_TABLE = null_mut();
 }
 
 unsafe fn test_internal_push_pop(
@@ -60,5 +55,5 @@ unsafe fn test_internal_push_pop(
 }
 
 unsafe fn synthetic_object_id(count: usize) -> Value {
-    Value::from_raw(skew(OBJECT_TABLE.as_mut().unwrap().end() + count * WORD_SIZE) as u32)
+    Value::from_raw(skew(count * WORD_SIZE) as u32)
 }

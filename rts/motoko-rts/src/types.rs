@@ -8,8 +8,8 @@
 //!
 //! Value representation:
 //! * Object id:
-//!     If object in dynamic heap space, skewed address of the entry in the object table that i
-//!     dentifies the object. (Table entry addresses are aligned to 4 bytes, so the skewed
+//!     If object in dynamic heap space, skewed offset of the entry in the object table that
+//!     identifies the object. (Table entry addresses are aligned to 4 bytes, so the skewed
 //!     representation has bit 0 set.)
 //!     If the object resides in the static space, skewed address of the object. The id is not
 //!     recorded in the object table.
@@ -17,20 +17,6 @@
 //!
 //! Object contain the object id in an extra header word, to allow fast reverse lookup of the
 //! object id by a given object address.
-//!
-//! For an object in the dynamic heap:
-//!
-//!                       Object table
-//! Value (skewed)       ┌─────────────┐   
-//!    |                 |     ...     |
-//!    |   object id     |─────────────|                     Object
-//!    └────────────┌──> |   address   |───────────────> ┌─────────────┐
-//!                 |    |─────────────|                 |     tag     |
-//!                 |    |     ...     |                 |─────────────|
-//!                 |    └─────────────┘       ┌─────────|  object id  |
-//!                 |                          |         |─────────────|
-//!                 └──────────────────────────┘         |     ...     |
-//!                                                      └─────────────┘
 //!
 //! Object id have bit 0 set (skewed), while scalar values have bit 0 clear (left-shifted by 1).
 //!
@@ -61,11 +47,12 @@
 use crate::gc::generational::write_barrier::{
     generational_write_barrier, using_generational_barrier,
 };
-use crate::gc::incremental::object_table::ObjectTable;
+use crate::gc::incremental::object_table::{HEAP_BASE, OBJECT_TABLE};
 use crate::gc::incremental::write_barrier::{using_incremental_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -206,29 +193,18 @@ pub const TRUE_VALUE: u32 = 0x1;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Value(u32);
 
-pub static mut OBJECT_TABLE: Option<ObjectTable> = None;
-
-/// Sentinel `null` reference, reserved object id trapping when resolving its object address.
-pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
-
-/// Allocate a new object id in the object table for a newly allocated object at the defined address.
-/// Grows the object table if no free object ids are available.
-pub unsafe fn reserve_object_ids<M: Memory>(mem: &mut M, amount: usize) {
-    if OBJECT_TABLE.is_some() {
-        OBJECT_TABLE.as_mut().unwrap().reserve(mem, amount);
-    }
-}
+/// Sentinel `null` reference, reserved object id trapping when resolving its
+/// object address in debug mode.
+/// Bit 31 is already used for the mark bit, so using the largest table offset.
+pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(1 << 31) as u32);
 
 impl Value {
     /// Obtain a new object id in the object table for a new object
     /// that resides at the defined address.
-    /// Requires that the object table has a free id available.
-    /// Does not grow the object table but requires that free ids have been
-    /// reserved in the object table in advance.
     pub unsafe fn new_object_id(address: usize) -> Value {
         debug_assert!(!is_skewed(address as u32));
-        if OBJECT_TABLE.is_some() {
-            OBJECT_TABLE.as_mut().unwrap().new_object_id(address)
+        if OBJECT_TABLE != null_mut() {
+            OBJECT_TABLE.new_object_id(address)
         } else {
             Value(skew(address) as u32)
         }
@@ -237,18 +213,17 @@ impl Value {
     /// Free the object if for a deleted object.
     /// Called by the incremental GC for garbage objects.
     pub unsafe fn free_object_id(self) {
-        if OBJECT_TABLE.is_some() {
-            OBJECT_TABLE.as_mut().unwrap().free_object_id(self);
+        if OBJECT_TABLE != null_mut() && self != NULL_OBJECT_ID {
+            OBJECT_TABLE.free_object_id(self);
         }
     }
 
     /// Record a new address for an object after it has been moved.
     /// Used by the incremental GC.
     pub unsafe fn set_new_address(self, new_address: usize) {
-        OBJECT_TABLE
-            .as_mut()
-            .unwrap()
-            .move_object(self, new_address);
+        debug_assert_ne!(OBJECT_TABLE, null_mut());
+        debug_assert!(self != NULL_OBJECT_ID);
+        OBJECT_TABLE.move_object(self, new_address);
     }
 
     /// Create a value from a scalar
@@ -305,10 +280,9 @@ impl Value {
     pub unsafe fn get_object_address(self) -> usize {
         assert!(self.is_object_id());
         let pointer = unskew(self.0 as usize);
-        if OBJECT_TABLE.is_some() {
-            let table = OBJECT_TABLE.as_mut().unwrap();
-            if pointer >= table.base() {
-                return table.get_object_address(self);
+        if OBJECT_TABLE != null_mut() {
+            if pointer >= HEAP_BASE {
+                return OBJECT_TABLE.get_object_address(self);
             }
         }
         // static object or non-incremental mode
@@ -468,12 +442,14 @@ pub struct Obj {
 
 impl Obj {
     pub unsafe fn initialize_id(&mut self, object_id: Value) {
-        debug_assert!(OBJECT_TABLE.is_none() || object_id.get_raw() as usize & MARK_BIT_MASK == 0);
+        debug_assert!(
+            OBJECT_TABLE == null_mut() || object_id.get_raw() as usize & MARK_BIT_MASK == 0
+        );
         self.mark_and_id = object_id.get_raw() as usize;
     }
 
     pub unsafe fn object_id(self: *const Self) -> Value {
-        if OBJECT_TABLE.is_some() {
+        if OBJECT_TABLE != null_mut() {
             Value::from_raw(((*self).mark_and_id & !MARK_BIT_MASK) as u32)
         } else {
             Value::from_raw(skew(self as usize) as u32)
@@ -481,17 +457,17 @@ impl Obj {
     }
 
     pub unsafe fn is_marked(self: *const Self) -> bool {
-        debug_assert!(OBJECT_TABLE.is_some());
+        debug_assert_ne!(OBJECT_TABLE, null_mut());
         (*self).mark_and_id & MARK_BIT_MASK != 0
     }
 
     pub unsafe fn mark(self: *mut Self) {
-        debug_assert!(OBJECT_TABLE.is_some());
+        debug_assert_ne!(OBJECT_TABLE, null_mut());
         (*self).mark_and_id |= MARK_BIT_MASK;
     }
 
     pub unsafe fn unmark(self: *mut Self) {
-        debug_assert!(OBJECT_TABLE.is_some());
+        debug_assert_ne!(OBJECT_TABLE, null_mut());
         (*self).mark_and_id &= !MARK_BIT_MASK;
     }
 

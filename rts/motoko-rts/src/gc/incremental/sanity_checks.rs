@@ -10,7 +10,7 @@ use crate::{
     constants::WORD_SIZE,
     gc::incremental::state::{incremental_gc_phase, Phase},
     mem_utils::memzero,
-    memory::{alloc_blob_internal, Memory},
+    memory::{alloc_blob, Memory},
     types::{
         block_size, has_object_header, Array, Bytes, Obj, Tag, Value, NULL_OBJECT_ID, TAG_ARRAY,
         TAG_ARRAY_SLICE_MIN, TAG_NULL, TAG_OBJECT,
@@ -50,7 +50,7 @@ impl SimpleMarkBitmap {
         assert!(mem.get_heap_base() <= mem.get_heap_pointer());
         let heap_size = mem.get_heap_pointer() - mem.get_heap_base();
         let bitmap_size = Bytes(((heap_size + BITMAP_FRACTION) / BITMAP_FRACTION) as u32);
-        let blob = alloc_blob_internal(mem, bitmap_size);
+        let blob = alloc_blob(mem, bitmap_size);
         memzero(
             blob.as_blob_mut().payload_addr() as usize,
             bitmap_size.to_words(),

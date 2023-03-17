@@ -1,13 +1,15 @@
+use std::ptr::null_mut;
+
 use motoko_rts::{
     gc::incremental::{
-        object_table::ObjectTable,
+        object_table::{ObjectTable, OBJECT_TABLE},
         write_barrier::{
             create_young_remembered_set, take_young_remembered_set, using_incremental_barrier,
         },
     },
-    memory::{alloc_array, alloc_blob, Memory},
+    memory::{alloc_array, alloc_blob},
     stream::alloc_stream,
-    types::{skew, Bytes, Obj, Value, Words, OBJECT_TABLE},
+    types::{skew, Bytes, Obj, Value, Words},
 };
 
 use crate::memory::TestMemory;
@@ -17,10 +19,9 @@ pub unsafe fn test() {
 
     let mut mem = TestMemory::new(Words(512 * 1024));
 
-    assert!(OBJECT_TABLE.is_none());
+    assert_eq!(OBJECT_TABLE, null_mut());
     assert!(!using_incremental_barrier());
-    OBJECT_TABLE = Some(create_object_table(&mut mem, 4));
-    mem.set_heap_base(OBJECT_TABLE.as_mut().unwrap().end());
+    OBJECT_TABLE = ObjectTable::new(&mut mem, 4);
     create_young_remembered_set(&mut mem);
 
     let array = alloc_array(&mut mem, 64).as_array();
@@ -33,19 +34,13 @@ pub unsafe fn test() {
     test_mark_bit(stream as *mut Obj);
 
     take_young_remembered_set();
-    OBJECT_TABLE = None;
+    OBJECT_TABLE = null_mut();
     assert!(!using_incremental_barrier());
 }
 
-fn create_object_table(mem: &mut TestMemory, length: usize) -> ObjectTable {
-    let size = Words(length as u32);
-    let base = unsafe { mem.alloc_words(size) } as *mut usize;
-    ObjectTable::new(base, length)
-}
-
 unsafe fn test_mark_bit(object: *mut Obj) {
-    const ARBITRARY_ID: usize = 0x1234560;
-    let object_id = Value::from_raw(skew(ARBITRARY_ID) as u32);
+    const TEST_OBJECT_ID: usize = 0;
+    let object_id = Value::from_raw(skew(TEST_OBJECT_ID) as u32);
     (*object).initialize_id(object_id);
     assert!(object.object_id() == object_id);
     object.mark();

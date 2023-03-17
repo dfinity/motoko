@@ -56,11 +56,6 @@ impl Memory for TestMemory {
         self.last_hp = _new_heap_pointer;
     }
 
-    unsafe fn set_heap_base(&mut self, new_heap_base: usize) {
-        self.heap_base = new_heap_base;
-        self.last_hp = core::cmp::max(self.last_hp, self.heap_base);
-    }
-
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> usize {
         let bytes = n.to_bytes();
 
