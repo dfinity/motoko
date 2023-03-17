@@ -127,7 +127,10 @@ use crate::{
     },
 };
 
-use super::write_barrier::young_remembered_set_size;
+use super::{
+    state::{incremental_gc_phase, incremental_gc_state, Phase},
+    write_barrier::young_remembered_set_size,
+};
 
 /// Central object table.
 pub struct ObjectTable {
@@ -283,26 +286,7 @@ impl ObjectTable {
                 let block = address as *mut Tag;
                 size = block_size(block as usize);
                 if has_object_header(*block) {
-                    // Relocate the object to the end of dynamic heap and make space
-                    // for table extension.
-                    // Note: The object could even be a blob of the mark stack or the
-                    // remembered set. These data structures therefore also reference
-                    // their tables via object ids through the object table.
-                    let object_id = (block as *mut Obj).object_id();
-                    debug_assert_eq!(object_id.get_object_address(), address);
-                    let new_address = mem.alloc_words(size);
-                    debug_assert!(address < new_address);
-                    memcpy_words(new_address, address, size);
-                    self.move_object(object_id, new_address);
-                    debug_assert_eq!(object_id.get_object_address(), new_address);
-                    debug_assert!(new_address >= mem.get_last_heap_pointer());
-                    if address < mem.get_last_heap_pointer() {
-                        // The object is moved from the old generation to the young generation,
-                        // such that it may be reachable from other objects from the old
-                        // generation. Therefore, conservatively add it to the remembered set.
-                        // Adding to the remembered set will not imply object table growth.
-                        remember_old_object(mem, object_id);
-                    }
+                    self.relocate_object(mem, block as *mut Obj, size);
                 } else {
                     // Heap-internal free blocks may result from `Blob::shrink()`.
                     debug_assert!(*block == TAG_FREE_SPACE || *block == TAG_ONE_WORD_FILLER);
@@ -322,5 +306,49 @@ impl ObjectTable {
         debug_assert!(self.end() > mem.get_heap_base());
         mem.set_heap_base(self.end());
         debug_assert_eq!(mem.get_heap_base(), address);
+    }
+
+    unsafe fn relocate_object<M: Memory>(&self, mem: &mut M, object: *mut Obj, size: Words<u32>) {
+        if !Self::is_garbage(mem, object) {
+            // Relocate the object to the end of dynamic heap and make space
+            // for table extension.
+            // Note: The object could even be a blob of the mark stack or the
+            // remembered set. These data structures therefore also reference
+            // their tables via object ids through the object table.
+            let old_address = object as usize;
+            let object_id = object.object_id();
+            debug_assert_eq!(object_id.get_object_address(), old_address);
+            // Future optimization: Skip moving an old unmarked object during incremental compact phase if at or beyond the `compact_from` line.
+            let new_address = mem.alloc_words(size);
+            debug_assert!(old_address < new_address);
+            memcpy_words(new_address, old_address, size);
+            self.move_object(object_id, new_address);
+            debug_assert_eq!(object_id.get_object_address(), new_address);
+            debug_assert!(new_address >= mem.get_last_heap_pointer());
+            if old_address < mem.get_last_heap_pointer() {
+                self.register_old_to_young_movement(mem, object_id);
+                object.unmark(); // Will be remarked in the next young generation collection.
+            }
+        }
+    }
+
+    unsafe fn register_old_to_young_movement<M: Memory>(&self, mem: &mut M, object_id: Value) {
+        // The object may be reachable from other objects from the old generation.
+        // Therefore, conservatively add it to the remembered set such that it is promoted
+        // back to the old generation.
+        remember_old_object(mem, object_id);
+        if incremental_gc_phase() == Phase::Mark && !object_id.as_obj().is_marked() {
+            // The object will be marked when promoted back to the old generation.
+            // Therefore, it is changed from unmarked to marked and needs to be
+            // visited for during the next incremental GC mark phase.
+            incremental_gc_state().mark_stack.push(mem, object_id, true);
+        }
+    }
+
+    unsafe fn is_garbage<M: Memory>(mem: &mut M, object: *mut Obj) -> bool {
+        (object as usize) < mem.get_last_heap_pointer()
+            && incremental_gc_phase() == Phase::Compact
+            && !object.is_marked()
+            && (object as usize) >= incremental_gc_state().compact_from
     }
 }
