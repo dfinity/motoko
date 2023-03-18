@@ -1,6 +1,6 @@
 //use crate::region::Region;
 use crate::memory::{Memory};
-use crate::types::{Value};
+use crate::types::{Value, Blob};
 use crate::region::{RegionObject, region_grow, region_size};
 
 use motoko_rts_macros::ic_mem_fn;
@@ -146,4 +146,22 @@ pub unsafe fn region0_store_int64<M: Memory>(mem: &mut M, offset:u64, val:i64) {
 #[ic_mem_fn]
 pub unsafe fn region0_store_float64<M: Memory>(mem: &mut M, offset:u64, val:f64) {
     region0_store(mem, offset, &core::primitive::f64::to_le_bytes(val))
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset:u64, val:u32) {
+    let blob : *const Blob = Value::from_ptr(val as usize).as_blob();
+    let len = blob.len();
+    let bytes = blob.payload_const();
+    let bytes : &[u8] = core::slice::from_raw_parts(bytes, len.0 as usize);
+    region0_store(mem, offset, bytes)
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_load_blob<M: Memory>(mem: &mut M, offset:u64, val:u32) {
+    let blob : *mut Blob = Value::from_ptr(val as usize).as_blob_mut();
+    let len = blob.len();
+    let bytes = blob.payload_addr();
+    let bytes : &mut [u8] = core::slice::from_raw_parts_mut(bytes, len.0 as usize);
+    region0_load(mem, offset, bytes)
 }
