@@ -36,6 +36,7 @@ pub mod utf8;
 mod visitor;
 mod ic0_stable;
 pub mod region;
+pub mod region0;
 
 
 use types::Bytes;
