@@ -55,5 +55,5 @@ unsafe fn test_internal_push_pop(
 }
 
 unsafe fn synthetic_object_id(count: usize) -> Value {
-    Value::from_raw(skew(count * WORD_SIZE) as u32)
+    Value::from_raw(skew((2 + count) * WORD_SIZE) as u32)
 }

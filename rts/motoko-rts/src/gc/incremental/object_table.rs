@@ -71,9 +71,9 @@
 //! compaction, by moving alive objects, one after the other.
 //!
 //! Special GC root:
-//! The object table constitutes an additional special GC root. It is also moved by the GC, which
-//! additionally requires updating the table pointer. The table has no object id (`NULL_OBJECT_ID`
-//! in its header).
+//! The object table constitutes an additional special GC root in the incremental GC.
+//! It is also moved by the GC, which additionally requires updating the table pointer.
+//! The table has no object id (`OBJECT_TABLE_ID` in its header). 
 //!
 //! Table growth:
 //! The table is extended to exponentially large table at a different location in the heap, and
@@ -101,7 +101,7 @@ use crate::{
     constants::WORD_SIZE,
     memory::Memory,
     rts_trap_with,
-    types::{size_of, skew, unskew, Blob, Value, Words, NULL_OBJECT_ID, TAG_BLOB},
+    types::{size_of, skew, unskew, Blob, Obj, Value, Words, NULL_OBJECT_ID, TAG_BLOB},
 };
 
 /// Current pointer to the object table. Constitutes a special GC root.
@@ -124,24 +124,29 @@ pub struct ObjectTable {
     free_stack: Value,
 }
 
-const FREE_STACK_END: Value = NULL_OBJECT_ID;
+/// Sentinel object id for the object table itself.
+pub const OBJECT_TABLE_ID: Value = Value::from_raw(skew(WORD_SIZE as usize) as u32);
+
+/// Sentinel for end of free id stack.
+pub const FREE_STACK_END: Value = NULL_OBJECT_ID;
 
 impl ObjectTable {
-    /// Allocate a new object table with `size` entries.
+    /// Allocate a new object table with `size` free entries.
     pub unsafe fn new<M: Memory>(mem: &mut M, size: usize) -> *mut ObjectTable {
-        if size >= usize::MAX / 2 {
-            // Bit 31 of the object id is used to encode mark bit in the object header.
-            rts_trap_with("Too large object table");
-        }
+        let size = size + 2; // Reserve additional space for `NULL_OBJECT_ID` and `OBJECT_TABLE_ID`.
         debug_assert!(size > 0);
         let raw_size = size_of::<ObjectTable>() + Words(size as u32);
         let address = mem.alloc_words(raw_size);
         let table = address as *mut ObjectTable;
         (*table).header.header.tag = TAG_BLOB;
-        (*table).header.header.initialize_id(NULL_OBJECT_ID);
+        (*table).header.header.initialize_id(OBJECT_TABLE_ID);
         (*table).header.len = (raw_size - size_of::<Blob>()).to_bytes();
         (*table).free_stack = FREE_STACK_END;
-        table.add_free_range(0..size);
+        debug_assert!(table.index_to_object_id(0) == NULL_OBJECT_ID);
+        table.write_element(NULL_OBJECT_ID, null_mut::<Obj>() as usize);
+        debug_assert!(table.index_to_object_id(1) == OBJECT_TABLE_ID);
+        table.write_element(OBJECT_TABLE_ID, null_mut::<Obj>() as usize);
+        table.add_free_range(2..size);
         table
     }
 
@@ -172,6 +177,8 @@ impl ObjectTable {
     pub unsafe fn new_object_id(self: *mut ObjectTable, address: usize) -> Value {
         let object_id = self.pop_free_id();
         self.write_element(object_id, address);
+        debug_assert!(object_id != NULL_OBJECT_ID);
+        debug_assert!(object_id != OBJECT_TABLE_ID);
         object_id
     }
 
@@ -224,7 +231,6 @@ impl ObjectTable {
 
     unsafe fn get_element(self: *mut ObjectTable, object_id: Value) -> *mut usize {
         debug_assert!(object_id.is_object_id());
-        debug_assert!(object_id != NULL_OBJECT_ID);
         let offset = unskew(object_id.get_raw() as usize);
         debug_assert_eq!(offset % WORD_SIZE as usize, 0);
         debug_assert!(offset < self.size() * WORD_SIZE as usize);

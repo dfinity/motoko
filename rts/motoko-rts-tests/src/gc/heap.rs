@@ -2,7 +2,7 @@ use super::utils::{
     make_object_id, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
-use motoko_rts::gc::incremental::object_table::{ObjectTable, OBJECT_TABLE};
+use motoko_rts::gc::incremental::object_table::{ObjectTable, OBJECT_TABLE, FREE_STACK_END, OBJECT_TABLE_ID};
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::{Memory, Roots};
 use motoko_rts::types::*;
@@ -385,7 +385,7 @@ fn create_dynamic_heap(
         write_word(
             dynamic_heap,
             heap_offset + WORD_SIZE,
-            NULL_OBJECT_ID.get_raw(),
+            OBJECT_TABLE_ID.get_raw(),
         );
         heap_offset += 2 * WORD_SIZE;
         write_word(
@@ -394,12 +394,30 @@ fn create_dynamic_heap(
             ((object_table_size + 1) * WORD_SIZE) as u32,
         );
         heap_offset += WORD_SIZE;
-        for index in 0..object_table_size {
+        write_word(
+            dynamic_heap,
+            heap_offset,
+            2 * WORD_SIZE as u32, // Top free stack
+        );
+        heap_offset += WORD_SIZE;
+        write_word(
+            dynamic_heap,
+            heap_offset,
+            0,
+        );
+        heap_offset += WORD_SIZE;
+        write_word(
+            dynamic_heap,
+            heap_offset,
+            0,
+        );
+        heap_offset += WORD_SIZE;
+        for index in 1..object_table_size {
             let next_free = skew(index * WORD_SIZE as usize) as u32;
             write_word(dynamic_heap, heap_offset, next_free);
             heap_offset += WORD_SIZE;
         }
-        write_word(dynamic_heap, heap_offset, NULL_OBJECT_ID.get_raw());
+        write_word(dynamic_heap, heap_offset, FREE_STACK_END.get_raw());
         heap_offset += WORD_SIZE;
         unsafe {
             assert_eq!(OBJECT_TABLE, null_mut());

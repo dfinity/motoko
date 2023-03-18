@@ -17,9 +17,11 @@ pub unsafe fn test() {
 }
 
 const TEST_SIZE: usize = 10_000;
+const ALLOC_SIZE: Words<u32> = Words(TEST_SIZE as u32 + 6);
+
 
 unsafe fn test_allocate() {
-    let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut mem = TestMemory::new(ALLOC_SIZE);
     let object_table = ObjectTable::new(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
     allocate_entries(object_table, &mut expected_table);
@@ -78,7 +80,7 @@ unsafe fn reallocate(object_table: *mut ObjectTable, expected_table: &mut [(Valu
 }
 
 unsafe fn test_remove_realloc() {
-    let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut mem = TestMemory::new(ALLOC_SIZE);
     let object_table = ObjectTable::new(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
     allocate_entries(object_table, &mut expected_table);
@@ -101,7 +103,7 @@ unsafe fn move_all_objects(object_table: *mut ObjectTable, expected_table: &mut 
 }
 
 unsafe fn test_move() {
-    let mut mem = TestMemory::new(Words(TEST_SIZE as u32));
+    let mut mem = TestMemory::new(ALLOC_SIZE);
     let object_table = ObjectTable::new(&mut mem, TEST_SIZE);
     let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
     allocate_entries(object_table, &mut expected_table);

@@ -47,7 +47,7 @@
 use crate::gc::generational::write_barrier::{
     generational_write_barrier, using_generational_barrier,
 };
-use crate::gc::incremental::object_table::{HEAP_BASE, OBJECT_TABLE};
+use crate::gc::incremental::object_table::{HEAP_BASE, OBJECT_TABLE, OBJECT_TABLE_ID};
 use crate::gc::incremental::write_barrier::{using_incremental_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
@@ -193,10 +193,8 @@ pub const TRUE_VALUE: u32 = 0x1;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Value(u32);
 
-/// Sentinel `null` reference, reserved object id trapping when resolving its
-/// object address in debug mode.
-/// Bit 31 is already used for the mark bit, so using the largest table offset.
-pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(1 << 31) as u32);
+/// Sentinel `null` reference, reserved object id trapping when resolving its address.
+pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
 
 impl Value {
     /// Obtain a new object id in the object table for a new object
@@ -213,7 +211,7 @@ impl Value {
     /// Free the object if for a deleted object.
     /// Called by the incremental GC for garbage objects.
     pub unsafe fn free_object_id(self) {
-        if OBJECT_TABLE != null_mut() && self != NULL_OBJECT_ID {
+        if OBJECT_TABLE != null_mut() && self != OBJECT_TABLE_ID {
             OBJECT_TABLE.free_object_id(self);
         }
     }
@@ -223,6 +221,7 @@ impl Value {
     pub unsafe fn set_new_address(self, new_address: usize) {
         debug_assert_ne!(OBJECT_TABLE, null_mut());
         debug_assert!(self != NULL_OBJECT_ID);
+        debug_assert!(self != OBJECT_TABLE_ID);
         OBJECT_TABLE.move_object(self, new_address);
     }
 
@@ -442,6 +441,7 @@ pub struct Obj {
 
 impl Obj {
     pub unsafe fn initialize_id(&mut self, object_id: Value) {
+        println!(100, "TEST {:#x}", object_id.get_raw());
         debug_assert!(
             OBJECT_TABLE == null_mut() || object_id.get_raw() as usize & MARK_BIT_MASK == 0
         );
