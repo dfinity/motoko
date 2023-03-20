@@ -87,13 +87,14 @@
 //! needed which is not supported as it would require updating fields/array elements storing that id,
 //! with entails a full heap/memory scan.
 //!
-//! Exceptions:
-//! * Static objects are not indirected via this table, but their object id directly
-//!   store the skewed address in the static heap. This is done because static objects
-//!   do not move and the compiler already generates the object ids in the static object
-//!   header before this table has been allocated.
-//! * Non-incremental GCs. The table is not used and all object ids are represented as
-//!   skewed addresses of the corresponding objects.
+//! Static objects:
+//! Objects in the static heap space are registered specifically by the compiler before the RTS
+//! start to assign object ids and patch all references in static objects to indirect via the
+//! object table.
+//!
+//! Exception:
+//! * Non-incremental GCs. The table is not used and all object ids are represented as  skewed
+//!   addresses of the corresponding objects.
 
 use core::{ops::Range, ptr::null_mut};
 
@@ -107,11 +108,7 @@ use crate::{
 /// Current pointer to the object table. Constitutes a special GC root.
 pub static mut OBJECT_TABLE: *mut ObjectTable = null_mut();
 
-/// TODO: Remove once also the static objects are indirected via the object table.
-pub static mut HEAP_BASE: usize = 0;
-
 pub unsafe fn initialize_object_table<M: Memory>(mem: &mut M) {
-    HEAP_BASE = mem.get_heap_base();
     const INITIAL_TABLE_SIZE: usize = 10_000;
     OBJECT_TABLE = ObjectTable::new(mem, INITIAL_TABLE_SIZE);
 }

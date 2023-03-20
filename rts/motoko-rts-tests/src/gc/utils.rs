@@ -1,7 +1,7 @@
 use std::ptr::null_mut;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use motoko_rts::gc::incremental::object_table::{HEAP_BASE, OBJECT_TABLE};
+use motoko_rts::gc::incremental::object_table::OBJECT_TABLE;
 use motoko_rts::types::{skew, Value};
 
 /// A unique object index, used in heap descriptions.
@@ -59,7 +59,7 @@ pub fn get_scalar_value(scalar: u32) -> u32 {
 /// Make a pointer value to be used in heap object payload
 pub fn make_object_id(address: u32) -> Value {
     unsafe {
-        if OBJECT_TABLE != null_mut() && (address as usize) < HEAP_BASE {
+        if OBJECT_TABLE == null_mut() {
             Value::from_raw(skew(address as usize) as u32)
         } else {
             Value::new_object_id(address as usize)

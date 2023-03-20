@@ -1,26 +1,23 @@
 //! Heap layout.
 //!
 //! Each object has its object id.
-//! Objects in dynamic heap are indirectly referred to via a central object table, that maps an
+//! Objects in the heap are indirectly referred to via a central object table, that maps an
 //! object id to the corresponding object address. Fields and array elements store values that
-//! encode an object id if it refers to an object. Objects in static space are handled
-//! specifically, see below.
+//! encode an object id if it refers to an object. Objects are handled uniformly, regardless
+//! of whether allocated in the static or the dynamic heap.
 //!
 //! Value representation:
 //! * Object id:
-//!     If object in dynamic heap space, skewed offset of the entry in the object table that
-//!     identifies the object. (Table entry addresses are aligned to 4 bytes, so the skewed
-//!     representation has bit 0 set.)
-//!     If the object resides in the static space, skewed address of the object. The id is not
-//!     recorded in the object table.
+//!     Skewed offset of the offset in the object table that identifies the object.
+//!     (Table entry offsets are aligned to 4 bytes, so the skewed representation has bit 0 set.)
 //! * Scalar: A scalar value, shifted by 1 bit.
 //!
-//! Object contain the object id in an extra header word, to allow fast reverse lookup of the
-//! object id by a given object address.
+//! Each object contains the object id in an extra header word, to allow fast reverse lookup of
+//! the object id by a given object address.
 //!
-//! Object id have bit 0 set (skewed), while scalar values have bit 0 clear (left-shifted by 1).
+//! Object ids have bit 0 set (skewed), while scalar values have bit 0 clear (left-shifted by 1).
 //!
-//! Exceptions for (1) static objects and/or (2) non-incremental GC mode:
+//! Exceptions for non-incremental GC mode:
 //!  * Object id = skewed object adddress. No indirection via the object table is used.
 
 // Note [struct representation]
@@ -47,7 +44,7 @@
 use crate::gc::generational::write_barrier::{
     generational_write_barrier, using_generational_barrier,
 };
-use crate::gc::incremental::object_table::{HEAP_BASE, OBJECT_TABLE, OBJECT_TABLE_ID};
+use crate::gc::incremental::object_table::{OBJECT_TABLE, OBJECT_TABLE_ID};
 use crate::gc::incremental::write_barrier::{using_incremental_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
@@ -278,14 +275,12 @@ impl Value {
     /// Get the address of an object by lookup through the object table.
     pub unsafe fn get_object_address(self) -> usize {
         assert!(self.is_object_id());
-        let pointer = unskew(self.0 as usize);
         if OBJECT_TABLE != null_mut() {
-            if pointer >= HEAP_BASE {
-                return OBJECT_TABLE.get_object_address(self);
-            }
+            OBJECT_TABLE.get_object_address(self)
+        } else {
+            // Non-incremental GC mode.
+            unskew(self.0 as usize)
         }
-        // static object or non-incremental mode
-        pointer
     }
 
     /// Get the object tag. In debug mode panics if the value is not an object id.
