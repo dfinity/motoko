@@ -187,9 +187,6 @@ pub unsafe fn check_heap<M: Memory>(mem: &mut M, start: usize, allow_marked_obje
                 assert!(!object.is_marked());
             }
             let value = object.object_id();
-            if !value.is_object_id() {
-                println!(100, "ERROR {:#x} {:#x}", value.get_raw(), pointer);
-            }
             assert!(value.is_object_id());
             assert_eq!(value.get_object_address(), object as usize);
             check_object_header(mem, value);

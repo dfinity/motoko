@@ -1,11 +1,11 @@
-use std::{array::from_fn, mem::size_of, ptr::null_mut};
+use std::{array::from_fn, ptr::null_mut};
 
 use motoko_rts::{
     gc::incremental::object_table::OBJECT_TABLE,
     gc::incremental::roots::visit_roots,
     memory::{alloc_array, Memory, Roots},
     remembered_set::{RememberedSet, INITIAL_TABLE_LENGTH},
-    types::{Array, Value, Words},
+    types::{Array, Tag, Value, Words, TAG_ARRAY},
 };
 
 use crate::{
@@ -50,7 +50,7 @@ unsafe fn check_visit_static_roots(heap: &MotokoHeap, root_indices: &[ObjectIdx]
         |context, value| {
             let array = value.as_array();
             if array.len() == 1 {
-                let id = address_to_index(&heap, value.get_object_address());
+                let id = address_to_index(value.get_object_address());
                 context.push(id);
             }
         },
@@ -72,7 +72,7 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_indices
                 assert_eq!(context.len(), 0);
                 for index in 0..array.len() {
                     let element = array.get(index);
-                    let id = address_to_index(&heap, element.get_object_address());
+                    let id = address_to_index(element.get_object_address());
                     context.push(id);
                 }
             }
@@ -120,10 +120,11 @@ unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
     }
 }
 
-fn address_to_index(heap: &MotokoHeap, address: usize) -> u32 {
-    let offset = address - heap.heap_base_address();
-    const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
-    assert_eq!(OBJECT_SIZE, 16);
-    assert_eq!(offset % OBJECT_SIZE, 0);
-    (offset / OBJECT_SIZE) as u32
+unsafe fn address_to_index(address: usize) -> u32 {
+    let tag = address as *mut Tag;
+    debug_assert_eq!(*tag, TAG_ARRAY);
+    let array = tag as *mut Array;
+    debug_assert_eq!(array.len(), 1);
+    let index = array.get(0);
+    index.get_scalar()
 }

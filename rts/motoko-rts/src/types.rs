@@ -211,7 +211,7 @@ impl Value {
     /// Free the object if for a deleted object.
     /// Called by the incremental GC for garbage objects.
     pub unsafe fn free_object_id(self) {
-        if OBJECT_TABLE != null_mut() && self != OBJECT_TABLE_ID {
+        if OBJECT_TABLE != null_mut() {
             OBJECT_TABLE.free_object_id(self);
         }
     }
@@ -441,7 +441,6 @@ pub struct Obj {
 
 impl Obj {
     pub unsafe fn initialize_id(&mut self, object_id: Value) {
-        println!(100, "TEST {:#x}", object_id.get_raw());
         debug_assert!(
             OBJECT_TABLE == null_mut() || object_id.get_raw() as usize & MARK_BIT_MASK == 0
         );

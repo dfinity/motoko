@@ -349,13 +349,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert!(new_address <= old_address);
             if new_address != old_address {
                 memcpy_words(new_address, old_address, size);
-
+                object_id.set_new_address(new_address);
                 if old_address == OBJECT_TABLE as usize {
                     OBJECT_TABLE = new_address as *mut ObjectTable;
-                } else {
-                    object_id.set_new_address(new_address);
                 }
-
                 // Determined by measurements in comparison to the mark and compact phases.
                 const TIME_FRACTION_PER_WORD: f64 = 2.7;
                 self.time

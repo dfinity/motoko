@@ -19,7 +19,6 @@ pub unsafe fn test() {
 const TEST_SIZE: usize = 10_000;
 const ALLOC_SIZE: Words<u32> = Words(TEST_SIZE as u32 + 6);
 
-
 unsafe fn test_allocate() {
     let mut mem = TestMemory::new(ALLOC_SIZE);
     let object_table = ObjectTable::new(&mut mem, TEST_SIZE);

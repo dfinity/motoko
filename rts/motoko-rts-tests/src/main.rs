@@ -23,7 +23,7 @@ fn main() {
     unsafe {
         bigint::test();
         bitmap::test();
-        // bitrel::test();
+        bitrel::test();
         continuation_table::test();
         crc32::test();
         gc::test();

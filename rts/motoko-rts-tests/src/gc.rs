@@ -14,7 +14,7 @@ mod utils;
 
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::write_barrier::REMEMBERED_SET;
-use motoko_rts::gc::incremental::object_table::OBJECT_TABLE;
+use motoko_rts::gc::incremental::object_table::{OBJECT_TABLE, OBJECT_TABLE_ID};
 use motoko_rts::gc::incremental::run_incremental_gc;
 use motoko_rts::gc::incremental::state::{incremental_gc_state, is_incremental_gc_running, State};
 use motoko_rts::remembered_set::RememberedSet;
@@ -37,19 +37,19 @@ use fxhash::{FxHashMap, FxHashSet};
 pub fn test() {
     println!("Testing garbage collection ...");
 
-    // println!("  Testing pre-defined heaps...");
-    // for test_heap in test_heaps() {
-    //     test_gcs(&test_heap);
-    // }
+    println!("  Testing pre-defined heaps...");
+    for test_heap in test_heaps() {
+        test_gcs(&test_heap);
+    }
 
-    // println!("  Testing random heaps...");
-    // let max_seed = 100;
-    // for seed in 0..max_seed {
-    //     print!("\r{}/{}", seed + 1, max_seed);
-    //     std::io::Write::flush(&mut std::io::stdout()).unwrap();
-    //     test_random_heap(seed, 180);
-    // }
-    // print!("\r");
+    println!("  Testing random heaps...");
+    let max_seed = 100;
+    for seed in 0..max_seed {
+        print!("\r{}/{}", seed + 1, max_seed);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        test_random_heap(seed, 180);
+    }
+    print!("\r");
 
     compacting::test();
     generational::test();
@@ -241,6 +241,11 @@ fn check_dynamic_heap(
         offset += WORD_SIZE;
 
         if gc == GC::Incremental {
+            if object_id == OBJECT_TABLE_ID.get_raw() {
+                unsafe {
+                    assert_eq!(address, OBJECT_TABLE as usize);
+                }
+            }
             assert_eq!(get_object_address(object_id as usize), address);
         }
 

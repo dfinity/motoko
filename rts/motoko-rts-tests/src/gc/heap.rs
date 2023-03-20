@@ -2,7 +2,9 @@ use super::utils::{
     make_object_id, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
-use motoko_rts::gc::incremental::object_table::{ObjectTable, OBJECT_TABLE, FREE_STACK_END, OBJECT_TABLE_ID};
+use motoko_rts::gc::incremental::object_table::{
+    ObjectTable, FREE_STACK_END, OBJECT_TABLE, OBJECT_TABLE_ID,
+};
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::{Memory, Roots};
 use motoko_rts::types::*;
@@ -226,10 +228,14 @@ impl MotokoHeapInner {
 
         let use_object_table = gc == GC::Incremental;
 
+        let object_table_size = if use_object_table {
+            OBJECT_TABLE_SIZE
+        } else {
+            0
+        };
+
         let object_table_raw_size = if use_object_table {
-            (size_of::<ObjectTable>() + Words(OBJECT_TABLE_SIZE as u32))
-                .to_bytes()
-                .as_usize()
+            calculate_object_table_raw_size(object_table_size)
         } else {
             0
         };
@@ -263,7 +269,7 @@ impl MotokoHeapInner {
         assert_eq!(realign % 4, 0);
 
         let structure = create_dynamic_heap(
-            OBJECT_TABLE_SIZE,
+            object_table_size,
             map,
             continuation_table,
             &mut heap[static_heap_size_bytes + realign..heap_size + realign],
@@ -312,6 +318,14 @@ impl MotokoHeapInner {
             );
         }
     }
+}
+
+fn calculate_object_table_raw_size(object_table_size: usize) -> usize {
+    assert!(object_table_size > 0);
+    // Two sentinel entries `NULL_OBJECT_ID` and `OBJECT_TABLE_ID`.
+    (size_of::<ObjectTable>() + Words(OBJECT_TABLE_SIZE as u32 + 2))
+        .to_bytes()
+        .as_usize()
 }
 
 /// Compute the size of the heap to be allocated for the GC test.
@@ -376,11 +390,12 @@ fn create_dynamic_heap(
     continuation_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
 ) -> DynamicHeapStructure {
-    assert_eq!(object_table_size % WORD_SIZE, 0);
-
     let heap_start = dynamic_heap.as_ptr() as usize;
     let mut heap_offset = 0;
+    let mut object_table_raw_size = 0;
     if object_table_size > 0 {
+        let object_table_address = heap_start + heap_offset;
+        object_table_raw_size = calculate_object_table_raw_size(object_table_size);
         write_word(dynamic_heap, heap_offset, TAG_BLOB);
         write_word(
             dynamic_heap,
@@ -388,32 +403,25 @@ fn create_dynamic_heap(
             OBJECT_TABLE_ID.get_raw(),
         );
         heap_offset += 2 * WORD_SIZE;
+        // Additional `free_stack` field and two sentinel entries `NULL_OBJECT_ID` and `OBJECT_TABLE_ID`.
         write_word(
             dynamic_heap,
             heap_offset,
-            ((object_table_size + 1) * WORD_SIZE) as u32,
+            ((object_table_size + 3) * WORD_SIZE) as u32,
         );
         heap_offset += WORD_SIZE;
-        write_word(
-            dynamic_heap,
-            heap_offset,
-            2 * WORD_SIZE as u32, // Top free stack
-        );
+        // Top of free stack
+        write_word(dynamic_heap, heap_offset, skew(2 * WORD_SIZE) as u32);
         heap_offset += WORD_SIZE;
-        write_word(
-            dynamic_heap,
-            heap_offset,
-            0,
-        );
+        // Sentinel NULL_OBJECT_ID
+        write_word(dynamic_heap, heap_offset, 0);
         heap_offset += WORD_SIZE;
-        write_word(
-            dynamic_heap,
-            heap_offset,
-            0,
-        );
+        // Sentinel OBJECT_TABLE_ID
+        write_word(dynamic_heap, heap_offset, object_table_address as u32);
         heap_offset += WORD_SIZE;
-        for index in 1..object_table_size {
-            let next_free = skew(index * WORD_SIZE as usize) as u32;
+        // All free entries, except last.
+        for index in 2..object_table_size + 1 {
+            let next_free = skew((index + 1) * WORD_SIZE) as u32;
             write_word(dynamic_heap, heap_offset, next_free);
             heap_offset += WORD_SIZE;
         }
@@ -423,6 +431,7 @@ fn create_dynamic_heap(
             assert_eq!(OBJECT_TABLE, null_mut());
             OBJECT_TABLE = heap_start as *mut ObjectTable;
         }
+        assert_eq!(heap_offset, object_table_raw_size);
     }
 
     // Maps objects to their addresses
@@ -476,7 +485,7 @@ fn create_dynamic_heap(
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let continuation_table_offset = object_table_size
+    let continuation_table_offset = object_table_raw_size
         + (size_of::<Array>() * n_objects as u32)
             .to_bytes()
             .as_usize()

@@ -73,7 +73,7 @@
 //! Special GC root:
 //! The object table constitutes an additional special GC root in the incremental GC.
 //! It is also moved by the GC, which additionally requires updating the table pointer.
-//! The table has no object id (`OBJECT_TABLE_ID` in its header). 
+//! The table has no object id (`OBJECT_TABLE_ID` in its header).
 //!
 //! Table growth:
 //! The table is extended to exponentially large table at a different location in the heap, and
@@ -145,7 +145,7 @@ impl ObjectTable {
         debug_assert!(table.index_to_object_id(0) == NULL_OBJECT_ID);
         table.write_element(NULL_OBJECT_ID, null_mut::<Obj>() as usize);
         debug_assert!(table.index_to_object_id(1) == OBJECT_TABLE_ID);
-        table.write_element(OBJECT_TABLE_ID, null_mut::<Obj>() as usize);
+        table.write_element(OBJECT_TABLE_ID, address);
         table.add_free_range(2..size);
         table
     }
