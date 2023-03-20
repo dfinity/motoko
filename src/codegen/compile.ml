@@ -7511,18 +7511,10 @@ module Var = struct
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "generational_write_barrier"
     | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
-      let (set_mutbox, get_mutbox) = new_local env "mutbox" in
-      let (set_value, get_value) = new_local env "value" in
-      (* Compute the mutbox field address later, because the right-hand-side of an assignment may 
-         trigger an object table extension that moves the mutbox, such that the mutbox field address 
-         would become invalid. *)
-      G.i (LocalGet (nr i)) ^^ set_mutbox,
-      SR.Vanilla,
-      set_value ^^
-      get_mutbox ^^
+      G.i (LocalGet (nr i)) ^^
       Heap.get_object_address env ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      get_value ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size),
+      SR.Vanilla,
       E.call_import env "rts" "write_with_barrier"
     | (Some ((HeapInd i), _), _) ->
       let (set_address, get_address) = new_local env "mutbox_address" in
@@ -7544,15 +7536,10 @@ module Var = struct
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "generational_write_barrier"
     | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
-      let (set_mutbox, get_mutbox) = new_local env "mutbox" in
-      let (set_value, get_value) = new_local env "value" in
-      compile_unboxed_const ptr ^^ set_mutbox,
-      SR.Vanilla,
-      set_value ^^
-      get_mutbox ^^
+      compile_unboxed_const ptr ^^
       Heap.get_object_address env ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      get_value ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size),
+      SR.Vanilla,
       E.call_import env "rts" "write_with_barrier"
     | (Some ((HeapStatic ptr), _), _) ->
       let (set_address, get_address) = new_local env "mutbox_address" in
@@ -9013,19 +9000,10 @@ let rec compile_lexp (env : E.t) ae lexp =
     get_field ^^
     E.call_import env "rts" "generational_write_barrier"
   | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
-    let (set_array, get_array) = new_local env "array" in
-    let (set_index, get_index) = new_local env "index" in
-    let (set_value, get_value) = new_local env "value" in
-    compile_exp_vanilla env ae e1 ^^ set_array ^^
-    compile_exp_vanilla env ae e2 ^^ set_index,
-    (* Compute the array element address later, because the right-hand-side of an assignment may 
-       trigger an object table extension that moves the array, such that the element address would 
-       become invalid. *)
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env,
     SR.Vanilla,
-    set_value ^^
-    get_array ^^ get_index ^^
-    Arr.idx_bigint env ^^
-    get_value ^^
     E.call_import env "rts" "write_with_barrier"
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
@@ -9044,17 +9022,9 @@ let rec compile_lexp (env : E.t) ae lexp =
     get_field ^^
     E.call_import env "rts" "generational_write_barrier"
   | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) ->
-    let (set_field, get_field) = new_local env "field" in
-    let (set_value, get_value) = new_local env "value" in
-    compile_exp_vanilla env ae e ^^ set_field,
-    (* Compute the object field address later, because the right-hand-side of an assignment may 
-       trigger an object table extension that moves the object, such that the field address would 
-       become invalid. *)
+    compile_exp_vanilla env ae e ^^
+    Object.idx env e.note.Note.typ n,
     SR.Vanilla,
-    set_value ^^
-    get_field ^^
-    Object.idx env e.note.Note.typ n ^^
-    get_value ^^
     E.call_import env "rts" "write_with_barrier"
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
