@@ -4,7 +4,6 @@ use super::Memory;
 use super::Roots;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::constants::WORD_SIZE;
-use crate::gc::incremental::object_table::initialize_object_table;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -34,17 +33,10 @@ fn align_to_32_bytes(address: u32) -> u32 {
     ((address + 31) / 32) * 32
 }
 
-pub(crate) unsafe fn initialize_memory<M: Memory>(
-    mem: &mut M,
-    heap_base: u32,
-    use_object_table: bool,
-) {
+pub(crate) unsafe fn initialize_memory(heap_base: u32) {
     HEAP_BASE = align_to_32_bytes(heap_base);
     HP = HEAP_BASE;
     LAST_HP = HP;
-    if use_object_table {
-        initialize_object_table(mem);
-    }
 }
 
 #[no_mangle]

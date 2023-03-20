@@ -278,6 +278,8 @@ module E = struct
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     object_pool : int32 StringEnv.t ref;
+      (* Addresses of all static objects. These objects will be patched on RTS start to use object ids. *)
+    static_objects: int32 list ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -325,7 +327,10 @@ module E = struct
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
+    (* Used for sharing static objects *)
     object_pool = ref StringEnv.empty;
+    (* Addresses of all shared objects. These objects are patched with object ids on RTS start *)
+    static_objects = ref [];
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -578,6 +583,15 @@ module E = struct
 
   let get_static_roots (env : t) =
     !(env.static_roots)
+
+  let null_object_id = 
+    Int32.(add 0l ptr_skew)
+
+  let add_static_object env ptr =
+    env.static_objects := ptr :: !(env.static_objects)
+
+  let get_static_objects env =
+    !(env.static_objects)
 
   let get_static_memory env =
     !(env.static_memory)
@@ -991,7 +1005,7 @@ module RTS = struct
     E.add_func_import env "rts" "initialize_copying_gc" [I32Type] [];
     E.add_func_import env "rts" "initialize_compacting_gc" [I32Type] [];
     E.add_func_import env "rts" "initialize_generational_gc" [I32Type] [];
-    E.add_func_import env "rts" "initialize_incremental_gc" [I32Type] [];
+    E.add_func_import env "rts" "initialize_incremental_gc" [I32Type; I32Type] [];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
@@ -1668,12 +1682,14 @@ module Tagged = struct
     let header_size = Int32.(mul Heap.word_size header_size) in
     let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
     let unskewed_ptr = E.reserve_static_memory env size in
-    let static_object_id = Int32.(add unskewed_ptr ptr_skew) in
+    let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
     let tag = bytes_of_int32 (int_of_tag tag) in
-    let object_id = bytes_of_int32 static_object_id in
-    let data = tag ^ object_id ^ payload in
+    (* Null object id will be patched later on RTS initialization. *)
+    let null_object_id = bytes_of_int32 E.null_object_id in
+    let data = tag ^ null_object_id ^ payload in
     E.write_static_memory env unskewed_ptr data;
-    static_object_id
+    E.add_static_object env skewed_ptr;
+    skewed_ptr
 
   let shared_static_obj env tag payload =
     let tag_word = bytes_of_int32 (int_of_tag tag) in
@@ -10724,6 +10740,12 @@ and conclude_module env set_serialization_globals start_fi_o =
   Serialization.set_delayed_globals env set_serialization_globals;
 
   let static_roots = GCRoots.store_static_roots env in
+  let static_objects = 
+    (if !Flags.gc_strategy == Flags.Incremental then
+      (Arr.vanilla_lit env (E.get_static_objects env))
+    else
+      E.null_object_id
+    ) in
 
   (* declare before building GC *)
 
@@ -10740,6 +10762,10 @@ and conclude_module env set_serialization_globals start_fi_o =
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     Heap.get_heap_base env ^^
+    (if !Flags.gc_strategy == Flags.Incremental then
+      compile_unboxed_const static_objects
+    else 
+      G.nop) ^^
     E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
     match start_fi_o with
     | Some fi ->

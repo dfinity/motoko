@@ -65,8 +65,13 @@ use self::{
 };
 
 #[ic_mem_fn(ic_only)]
-unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M, heap_base: u32) {
-    crate::memory::ic::initialize_memory(mem, heap_base, true);
+unsafe fn initialize_incremental_gc<M: Memory>(
+    mem: &mut M,
+    heap_base: u32,
+    static_objects: crate::types::Value,
+) {
+    crate::memory::ic::initialize_memory(heap_base);
+    self::object_table::initialize_object_table(mem, static_objects);
     write_barrier::init_incremental_write_barrier(mem);
 }
 

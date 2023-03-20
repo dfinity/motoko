@@ -12,13 +12,14 @@ use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+use crate::visitor::{points_to_or_beyond, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[ic_mem_fn(ic_only)]
-unsafe fn initialize_compacting_gc<M: Memory>(mem: &mut M, heap_base: u32) {
-    crate::memory::ic::initialize_memory(mem, heap_base, false);
+#[no_mangle]
+#[cfg(feature = "ic")]
+unsafe extern "C" fn initialize_compacting_gc(heap_base: u32) {
+    crate::memory::ic::initialize_memory(heap_base);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -157,7 +158,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag) {
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox) {
     let field_addr = &mut (*mutbox).field;
-    if pointer_to_dynamic_heap(field_addr, mem.get_heap_base()) {
+    if points_to_or_beyond(field_addr, mem.get_heap_base()) {
         mark_object(mem, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.

@@ -8,9 +8,10 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[ic_mem_fn(ic_only)]
-unsafe fn initialize_copying_gc<M: Memory>(mem: &mut M, heap_base: u32) {
-    crate::memory::ic::initialize_memory(mem, heap_base, false);
+#[no_mangle]
+#[cfg(feature = "ic")]
+unsafe extern "C" fn initialize_copying_gc(heap_base: u32) {
+    crate::memory::ic::initialize_memory(heap_base);
 }
 
 #[ic_mem_fn(ic_only)]

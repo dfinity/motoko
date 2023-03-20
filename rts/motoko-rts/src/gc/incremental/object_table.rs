@@ -103,14 +103,19 @@ use crate::{
     memory::Memory,
     rts_trap_with,
     types::{size_of, skew, unskew, Blob, Obj, Value, Words, NULL_OBJECT_ID, TAG_BLOB},
+    visitor::visit_pointer_fields,
 };
 
 /// Current pointer to the object table. Constitutes a special GC root.
 pub static mut OBJECT_TABLE: *mut ObjectTable = null_mut();
 
-pub unsafe fn initialize_object_table<M: Memory>(mem: &mut M) {
+/// Initialize object table and register the static (compiler-generated) objects.
+pub unsafe fn initialize_object_table<M: Memory>(mem: &mut M, static_objects: Value) {
     const INITIAL_TABLE_SIZE: usize = 10_000;
-    OBJECT_TABLE = ObjectTable::new(mem, INITIAL_TABLE_SIZE);
+    debug_assert_eq!(OBJECT_TABLE, null_mut());
+    let table = ObjectTable::new(mem, INITIAL_TABLE_SIZE);
+    table.patch_static_objects(static_objects);
+    OBJECT_TABLE = table;
 }
 
 /// Central object table.
@@ -230,8 +235,55 @@ impl ObjectTable {
         debug_assert!(object_id.is_object_id());
         let offset = unskew(object_id.get_raw() as usize);
         debug_assert_eq!(offset % WORD_SIZE as usize, 0);
+
+        if offset >= self.size() * WORD_SIZE as usize {
+            println!(100, "ERROR {:#x}", object_id.get_raw());
+            let tag = offset as *mut crate::types::Tag;
+            println!(100, "TAG {}", *tag);
+        }
+
         debug_assert!(offset < self.size() * WORD_SIZE as usize);
         let address = self.entries() as usize + offset;
         address as *mut usize
+    }
+
+    pub unsafe fn patch_static_objects(self: *mut ObjectTable, static_objects: Value) {
+        // Setup the static objects in legacy (non-indirected) mode where object ids = skewed object addresses.
+        debug_assert_eq!(OBJECT_TABLE, null_mut());
+        let array = static_objects.as_array();
+        for index in 0..array.len() {
+            let value = array.get(index);
+            self.patch_static_object(value);
+        }
+    }
+
+    unsafe fn patch_static_object(self: *mut ObjectTable, value: Value) {
+        self.register_static_object(value);
+        let object = value.as_obj();
+        visit_pointer_fields(
+            &mut (),
+            object,
+            object.tag(),
+            0,
+            |_, field_address| {
+                let field_value = *field_address;
+                debug_assert!(field_value != NULL_OBJECT_ID);
+                debug_assert!(field_value != OBJECT_TABLE_ID);
+                if field_value.is_object_id() {
+                    *field_address = self.register_static_object(field_value);
+                }
+            },
+            |_, _, array| array.len(),
+        );
+    }
+
+    unsafe fn register_static_object(self: *mut ObjectTable, value: Value) -> Value {
+        let object = value.as_obj();
+        let mut object_id = object.raw_object_id();
+        if object_id == NULL_OBJECT_ID {
+            object_id = self.new_object_id(object as usize);
+            (&mut *object).initialize_id(object_id);
+        }
+        object_id
     }
 }

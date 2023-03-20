@@ -19,7 +19,7 @@ use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+use crate::visitor::{points_to_or_beyond, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -30,7 +30,7 @@ use super::common::Strategy;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M, heap_base: u32) {
-    crate::memory::ic::initialize_memory(mem, heap_base, false);
+    crate::memory::ic::initialize_memory(heap_base);
     write_barrier::init_generational_write_barrier(mem);
 }
 
@@ -224,7 +224,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn mark_root_mutbox_fields(&mut self, mutbox: *mut MutBox) {
         let field_address = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field_address, self.generation_base()) {
+        if points_to_or_beyond(field_address, self.generation_base()) {
             self.mark_object(*field_address);
         }
     }
@@ -291,7 +291,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
     unsafe fn thread_root_mutbox_fields(&self, mutbox: *mut MutBox) {
         let field_addr = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field_addr, self.generation_base()) {
+        if points_to_or_beyond(field_addr, self.generation_base()) {
             self.thread(field_addr);
         }
     }
