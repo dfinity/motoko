@@ -3844,7 +3844,7 @@ module Arr = struct
   let tabulate env =
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
-    let (set_value, get_value) = new_local env "value" in
+    let (set_i, get_i) = new_local env "i" in
     set_f ^^
 
     (* Allocate *)
@@ -3852,11 +3852,13 @@ module Arr = struct
     alloc env ^^
     set_r ^^
 
-    (* Length *)
-    get_r ^^ 
-    len env ^^
+    (* Initial index *)
+    compile_unboxed_const 0l ^^
+    set_i ^^
 
-    from_0_to_n env (fun get_i ->
+    (* Write elements *)
+    iterate env get_r (fun get_pointer ->
+      get_pointer ^^
       (* The closure *)
       get_f ^^
       (* The arg *)
@@ -3866,16 +3868,12 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
-      set_value ^^
+      store_ptr ^^
 
-      (* Recompute the array element address because the array may be moved
-         by an object table extension triggered by the tabulate function. *)
-      (* Write array element *)
-      get_r ^^
+      (* Increment index *)
       get_i ^^
-      idx env ^^
-      get_value ^^
-      store_ptr
+      compile_add_const 1l ^^
+      set_i
     ) ^^
     get_r
 
