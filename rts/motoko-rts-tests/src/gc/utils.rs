@@ -2,7 +2,9 @@ use std::ptr::null_mut;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 use motoko_rts::gc::incremental::object_table::OBJECT_TABLE;
-use motoko_rts::types::{skew, Value};
+use motoko_rts::types::{skew, Value, Words};
+
+use crate::memory::TestMemory;
 
 /// A unique object index, used in heap descriptions.
 ///
@@ -62,7 +64,9 @@ pub fn make_object_id(address: u32) -> Value {
         if OBJECT_TABLE == null_mut() {
             Value::from_raw(skew(address as usize) as u32)
         } else {
-            Value::new_object_id(address as usize)
+            // Disallow object table growth in these tests.
+            let mut mem = TestMemory::new(Words(0u32));
+            Value::new_object_id(&mut mem, address as usize)
         }
     }
 }

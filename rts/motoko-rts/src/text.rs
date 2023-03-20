@@ -108,7 +108,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
 
     // Create concat node
     let address = mem.alloc_words(size_of::<Concat>());
-    let object_id = Value::new_object_id(address);
+    let object_id = Value::new_object_id(mem, address);
 
     let r_concat = address as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;

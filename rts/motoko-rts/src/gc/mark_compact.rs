@@ -184,7 +184,7 @@ unsafe fn update_refs<M: Memory>(mem: &mut M) {
         let p = (bit * WORD_SIZE) as *mut Obj;
         let p_new = free;
 
-        let new_id = Value::new_object_id(p_new as usize);
+        let new_id = Value::new_object_id(mem, p_new as usize);
 
         // Update backwards references to the object's new location and restore object header
         unthread(p, new_id);

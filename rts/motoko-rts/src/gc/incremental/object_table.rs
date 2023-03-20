@@ -101,7 +101,6 @@ use core::{ops::Range, ptr::null_mut};
 use crate::{
     constants::WORD_SIZE,
     memory::Memory,
-    rts_trap_with,
     types::{size_of, skew, unskew, Array, Blob, Obj, Value, Words, NULL_OBJECT_ID, TAG_BLOB},
 };
 
@@ -112,7 +111,7 @@ pub static mut OBJECT_TABLE: *mut ObjectTable = null_mut();
 pub unsafe fn initialize_object_table<M: Memory>(mem: &mut M, static_objects: *mut Array) {
     const INITIAL_TABLE_SIZE: usize = 10_000;
     OBJECT_TABLE = ObjectTable::new(mem, INITIAL_TABLE_SIZE);
-    OBJECT_TABLE.register_static_objects(static_objects);
+    ObjectTable::register_static_objects(mem, static_objects);
 }
 
 /// Central object table.
@@ -131,9 +130,20 @@ pub const FREE_STACK_END: Value = NULL_OBJECT_ID;
 
 impl ObjectTable {
     /// Allocate a new object table with `size` free entries.
-    pub unsafe fn new<M: Memory>(mem: &mut M, size: usize) -> *mut ObjectTable {
-        let size = size + 2; // Reserve additional space for `NULL_OBJECT_ID` and `OBJECT_TABLE_ID`.
+    pub unsafe fn new<M: Memory>(mem: &mut M, size: usize) -> *mut Self {
         debug_assert!(size > 0);
+        let size = size + 2; // Reserve additional space for `NULL_OBJECT_ID` and `OBJECT_TABLE_ID`.
+        let table = Self::allocate_table(mem, size);
+        debug_assert!(table.index_to_object_id(0) == NULL_OBJECT_ID);
+        table.write_element(NULL_OBJECT_ID, null_mut::<Obj>() as usize);
+        debug_assert!(table.index_to_object_id(1) == OBJECT_TABLE_ID);
+        table.write_element(OBJECT_TABLE_ID, table as usize);
+        table.add_free_range(2..size);
+        table
+    }
+
+    /// Allocate table, with uninitialzied entries
+    unsafe fn allocate_table<M: Memory>(mem: &mut M, size: usize) -> *mut Self {
         let raw_size = size_of::<ObjectTable>() + Words(size as u32);
         let address = mem.alloc_words(raw_size);
         let table = address as *mut ObjectTable;
@@ -141,28 +151,23 @@ impl ObjectTable {
         (*table).header.header.initialize_id(OBJECT_TABLE_ID);
         (*table).header.len = (raw_size - size_of::<Blob>()).to_bytes();
         (*table).free_stack = FREE_STACK_END;
-        debug_assert!(table.index_to_object_id(0) == NULL_OBJECT_ID);
-        table.write_element(NULL_OBJECT_ID, null_mut::<Obj>() as usize);
-        debug_assert!(table.index_to_object_id(1) == OBJECT_TABLE_ID);
-        table.write_element(OBJECT_TABLE_ID, address);
-        table.add_free_range(2..size);
         table
     }
 
     /// Number of entries.
-    pub unsafe fn size(self: *const ObjectTable) -> usize {
+    pub unsafe fn size(self: *const Self) -> usize {
         debug_assert_eq!((*self).header.len.as_u32() % WORD_SIZE, 0);
         // Subtract the `free_stack` word.
         (*self).header.len.as_usize() / WORD_SIZE as usize - 1
     }
 
     /// Address to the first table entry.
-    pub unsafe fn entries(self: *mut ObjectTable) -> *mut Value {
+    pub unsafe fn entries(self: *mut Self) -> *mut Value {
         // Skip the declared `ObjectTable` header (Blob header with `free_stack` word).
         self.offset(1) as *mut Value
     }
 
-    unsafe fn add_free_range(self: *mut ObjectTable, range: Range<usize>) {
+    unsafe fn add_free_range(self: *mut Self, range: Range<usize>) {
         debug_assert!(range.start <= range.end);
         let mut index = range.end;
         while index > range.start {
@@ -173,7 +178,15 @@ impl ObjectTable {
     }
 
     /// Allocate a new object id and associate the object's address.
-    pub unsafe fn new_object_id(self: *mut ObjectTable, address: usize) -> Value {
+    /// Grow the object table if necessary.
+    pub unsafe fn new_object_id<M: Memory>(mem: &mut M, address: usize) -> Value {
+        if (*OBJECT_TABLE).free_stack == FREE_STACK_END {
+            OBJECT_TABLE = OBJECT_TABLE.grow(mem);
+        }
+        OBJECT_TABLE.assign_object_id(address)
+    }
+
+    unsafe fn assign_object_id(self: *mut Self, address: usize) -> Value {
         let object_id = self.pop_free_id();
         self.write_element(object_id, address);
         debug_assert!(object_id != NULL_OBJECT_ID);
@@ -182,53 +195,53 @@ impl ObjectTable {
     }
 
     /// The garbage collector frees object ids of discarded objects.
-    pub unsafe fn free_object_id(self: *mut ObjectTable, object_id: Value) {
+    pub unsafe fn free_object_id(self: *mut Self, object_id: Value) {
         self.push_free_id(object_id);
     }
 
     /// Retrieve the object address for a given object id.
-    pub unsafe fn get_object_address(self: *mut ObjectTable, object_id: Value) -> usize {
+    pub unsafe fn get_object_address(self: *mut Self, object_id: Value) -> usize {
         self.read_element(object_id)
     }
 
     /// Record that an object obtained a new address.
-    pub unsafe fn move_object(self: *mut ObjectTable, object_id: Value, new_address: usize) {
+    pub unsafe fn move_object(self: *mut Self, object_id: Value, new_address: usize) {
         debug_assert_eq!(new_address % WORD_SIZE as usize, 0);
         self.write_element(object_id, new_address);
     }
 
-    unsafe fn index_to_object_id(self: *const ObjectTable, index: usize) -> Value {
+    unsafe fn index_to_object_id(self: *const Self, index: usize) -> Value {
         Value::from_raw(skew(index * WORD_SIZE as usize) as u32)
     }
 
-    unsafe fn push_free_id(self: *mut ObjectTable, object_id: Value) {
+    unsafe fn push_free_id(self: *mut Self, object_id: Value) {
         debug_assert!(object_id != FREE_STACK_END);
         debug_assert!(object_id != NULL_OBJECT_ID);
         self.write_element(object_id, (*self).free_stack.get_raw() as usize);
         (*self).free_stack = object_id;
     }
 
-    unsafe fn pop_free_id(self: *mut ObjectTable) -> Value {
-        if (*self).free_stack == FREE_STACK_END {
-            rts_trap_with("Full object table"); // TODO: Grow
-        }
+    unsafe fn pop_free_id(self: *mut Self) -> Value {
         debug_assert!((*self).free_stack != FREE_STACK_END);
         let object_id = (*self).free_stack;
         (*self).free_stack = Value::from_raw(self.read_element(object_id) as u32);
         object_id
     }
 
-    unsafe fn write_element(self: *mut ObjectTable, object_id: Value, value: usize) {
+    unsafe fn write_element(self: *mut Self, object_id: Value, value: usize) {
         let element = self.get_element(object_id);
         *element = value;
     }
 
-    unsafe fn read_element(self: *mut ObjectTable, object_id: Value) -> usize {
+    unsafe fn read_element(self: *mut Self, object_id: Value) -> usize {
         let entry = self.get_element(object_id);
         *entry
     }
 
-    unsafe fn get_element(self: *mut ObjectTable, object_id: Value) -> *mut usize {
+    unsafe fn get_element(self: *mut Self, object_id: Value) -> *mut usize {
+        if !object_id.is_object_id() {
+            println!(100, "ERROR {}", object_id.get_raw());
+        }
         debug_assert!(object_id.is_object_id());
         let offset = unskew(object_id.get_raw() as usize);
         debug_assert_eq!(offset % WORD_SIZE as usize, 0);
@@ -237,18 +250,33 @@ impl ObjectTable {
         address as *mut usize
     }
 
-    pub unsafe fn register_static_objects(self: *mut ObjectTable, static_objects: *mut Array) {
-        assert_ne!(OBJECT_TABLE, null_mut());
-        for index in 0..static_objects.len() {
-            let object = static_objects.get(index).get_raw() as *mut Obj;
-            self.register_static_object(object);
+    unsafe fn grow<M: Memory>(self: *mut Self, mem: &mut M) -> *mut Self {
+        println!(100, "GROW TABLE");
+        debug_assert!((*self).free_stack == FREE_STACK_END);
+        const GROW_FACTOR: usize = 2;
+        let new_size = self.size() * GROW_FACTOR;
+        let new_table = Self::allocate_table(mem, new_size);
+        for index in 0..self.size() {
+            let object_id = self.index_to_object_id(index);
+            let address = self.read_element(object_id);
+            new_table.write_element(object_id, address);
         }
-        self.register_static_object(static_objects as *mut Obj);
+        new_table.add_free_range(self.size()..new_table.size());
+        new_table
     }
 
-    unsafe fn register_static_object(self: *mut ObjectTable, object: *mut Obj) {
+    pub unsafe fn register_static_objects<M: Memory>(mem: &mut M, static_objects: *mut Array) {
+        // Table may grow during registration loop
+        for index in 0..static_objects.len() {
+            let object = static_objects.get(index).get_raw() as *mut Obj;
+            Self::register_static_object(mem, object);
+        }
+        Self::register_static_object(mem, static_objects as *mut Obj);
+    }
+
+    unsafe fn register_static_object<M: Memory>(mem: &mut M, object: *mut Obj) {
         let object_id = object.object_id();
-        let acquired_id = self.new_object_id(object as usize);
+        let acquired_id = Self::new_object_id(mem, object as usize);
         assert!(acquired_id == object_id);
     }
 }

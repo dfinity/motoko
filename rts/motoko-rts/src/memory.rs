@@ -62,7 +62,7 @@ pub trait Memory {
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let address = mem.alloc_words(size_of::<Blob>() + size.to_words());
-    let object_id = Value::new_object_id(address);
+    let object_id = Value::new_object_id(mem, address);
 
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = address as *mut Blob;
@@ -82,7 +82,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     }
 
     let address = mem.alloc_words(size_of::<Array>() + Words(len));
-    let object_id = Value::new_object_id(address);
+    let object_id = Value::new_object_id(mem, address);
 
     // Cannot use `as_array()` here since the object header is not yet written.
     let ptr: *mut Array = address as *mut Array;

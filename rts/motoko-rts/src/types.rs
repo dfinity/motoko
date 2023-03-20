@@ -44,7 +44,7 @@
 use crate::gc::generational::write_barrier::{
     generational_write_barrier, using_generational_barrier,
 };
-use crate::gc::incremental::object_table::{OBJECT_TABLE, OBJECT_TABLE_ID};
+use crate::gc::incremental::object_table::{ObjectTable, OBJECT_TABLE, OBJECT_TABLE_ID};
 use crate::gc::incremental::write_barrier::{using_incremental_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
@@ -196,10 +196,10 @@ pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
 impl Value {
     /// Obtain a new object id in the object table for a new object
     /// that resides at the defined address.
-    pub unsafe fn new_object_id(address: usize) -> Value {
+    pub unsafe fn new_object_id<M: Memory>(mem: &mut M, address: usize) -> Value {
         debug_assert!(!is_skewed(address as u32));
         if OBJECT_TABLE != null_mut() {
-            OBJECT_TABLE.new_object_id(address)
+            ObjectTable::new_object_id(mem, address)
         } else {
             Value(skew(address) as u32)
         }
