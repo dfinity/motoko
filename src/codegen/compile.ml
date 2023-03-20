@@ -138,6 +138,7 @@ module Const = struct
     | Obj of (string * t) list
     | Unit
     | Array of t list (* also tuples, but not nullary *)
+    | Tag of (string * t)
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -766,6 +767,13 @@ module FakeMultiVal = struct
   (* A drop-in replacement for E.if_ *)
   let if_ env bt thn els =
     E.if_ env (ty bt) (thn ^^ store env bt) (els ^^ store env bt) ^^
+    load env bt
+
+  (* A block that can be exited from *)
+  let block_ env bt body =
+    E.block_ env (ty bt) (G.with_current_depth (fun depth ->
+      body (store env bt ^^ G.branch_to_ depth)
+    )) ^^
     load env bt
 
 end (* FakeMultiVal *)
@@ -1742,6 +1750,13 @@ module Variant = struct
   let test_is env l =
     get_variant_tag ^^
     compile_eq_const (hash_variant_label env l)
+
+  let vanilla_lit env i ptr =
+    E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Variant);
+        I32 (hash_variant_label env i);
+        I32 ptr
+      ]
 
 end (* Variant *)
 
@@ -7088,6 +7103,8 @@ module StackRep = struct
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
 
+  let joins = List.fold_left join Unreachable
+
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
@@ -7120,6 +7137,9 @@ module StackRep = struct
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
+    | Const.Tag (i, c) ->
+      let ptr = materialize_const_t env c in
+      Variant.vanilla_lit env i ptr
     | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
@@ -7871,6 +7891,8 @@ module PatCode = struct
     | CannotFail of G.t
     | CanFail of (G.t -> G.t)
 
+  let definiteFail = CanFail (fun fail -> fail)
+
   let (^^^) : patternCode -> patternCode -> patternCode = function
     | CannotFail is1 ->
       begin function
@@ -7903,7 +7925,14 @@ module PatCode = struct
           G.if0 G.nop is2
         )
 
-  let orTrap env = with_fail (E.trap_with env "pattern failed")
+  let orElses : patternCode list -> patternCode -> patternCode =
+    List.fold_right orElse
+
+  let orPatternFailure env pcode =
+    with_fail (E.trap_with env "pattern failed") pcode
+
+  let orsPatternFailure env pcodes =
+    orPatternFailure env (orElses pcodes definiteFail)
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -9475,7 +9504,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.performance_counter env
 
   | OtherPrim "trap", [e] ->
-    SR.unit,
+    SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
@@ -9729,7 +9758,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
   end
 
+(* Compile, infer and return stack representation *)
 and compile_exp (env : E.t) ae exp =
+  compile_exp_with_hint env ae None exp
+
+(* Compile to given stack representation *)
+and compile_exp_as env ae sr_out e =
+  let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
+  code ^^ StackRep.adjust env sr_in sr_out
+
+(* Compile, infer and return stack representation, taking the hint into account *)
+and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   if exp.note.Note.const
   then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
@@ -9755,9 +9794,13 @@ and compile_exp (env : E.t) ae exp =
     compile_lit env l
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as_test env ae scrut in
-    let sr1, code1 = compile_exp env ae e1 in
-    let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.join sr1 sr2 in
+    let sr1, code1 = compile_exp_with_hint env ae sr_hint e1 in
+    let sr2, code2 = compile_exp_with_hint env ae sr_hint e2 in
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.join sr1 sr2
+    in
     sr,
     code_scrut ^^
     FakeMultiVal.if_ env
@@ -9767,7 +9810,7 @@ and compile_exp (env : E.t) ae exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-    let (sr, code2) = compile_exp env ae' exp in
+    let (sr, code2) = compile_exp_with_hint env ae' sr_hint exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -9789,21 +9832,32 @@ and compile_exp (env : E.t) ae exp =
     ^^
    G.i Unreachable
   | SwitchE (e, cs) ->
-    SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
-    let (set_j, get_j) = new_local env "switch_out" in
 
-    let rec go env cs = match cs with
-      | [] -> CanFail (fun k -> k)
-      | {it={pat; exp=e}; _}::cs ->
-          let (ae1, code) = compile_pat_local env ae pat in
-          orElse ( CannotFail get_i ^^^ code ^^^
-                   CannotFail (compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
-                 (go env cs)
-          in
-      let code2 = go env cs in
-      code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
+    (* compile subexpressions and collect the provided stack reps *)
+    let codes = List.map (fun {it={pat; exp=e}; _} ->
+      let (ae1, pat_code) = compile_pat_local env ae pat in
+      let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
+      (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
+      ) cs in
+
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let final_sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.joins (List.map fst codes)
+    in
+
+    final_sr,
+    (* Run scrut *)
+    code1 ^^ set_i ^^
+    (* Run rest in block to exit from *)
+    FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
+       orsPatternFailure env (List.map (fun (sr, c) ->
+          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
+       ) codes) ^^
+       G.i Unreachable (* We should always exit using the branch_code *)
+    )
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
@@ -9864,27 +9918,12 @@ and compile_exp (env : E.t) ae exp =
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
 
-and compile_exp_as env ae sr_out e =
-  G.with_region e.at (
-    match sr_out, e.it with
-    (* Some optimizations for certain sr_out and expressions *)
-    | _ , BlockE (decs, exp) ->
-      let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let ae', codeW1 = compile_decs env ae decs captured in
-      let code2 = compile_exp_as env ae' sr_out exp in
-      codeW1 code2
-    (* Fallback to whatever stackrep compile_exp chooses *)
-    | _ ->
-      let sr_in, code = compile_exp env ae e in
-      code ^^ StackRep.adjust env sr_in sr_out
-  )
-
 and compile_exp_ignore env ae e =
   let sr, code = compile_exp env ae e in
   code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
-  let sr_in, code = compile_exp env ae e in
+  let sr_in, code = compile_exp_with_hint env ae sr_out_o e in
   G.with_region e.at (
     code ^^
     match sr_out_o with
@@ -10084,28 +10123,32 @@ and alloc_pat env ae how pat : VarEnv.t * G.t  =
 and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (* It returns:
      - the extended environment
-     - the code to do the pattern matching.
+     - the patternCode to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
-       consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       consumes it, and fills the heap.
+       If the pattern matches, execution continues (with nothing on the stack).
+       If the pattern does not match, it fails (in the sense of PatCode.CanFail)
   *)
   let ae1 = alloc_pat_local env ae pat in
   let fill_code = fill_pat env ae1 pat in
   (ae1, fill_code)
 
-(* Used for let patterns: If the pattern can consume its scrutinee in a better form
-   than vanilla (e.g. unboxed tuple, unboxed 32/64), lets do that.
+(* Used for let patterns:
+   If the pattern can consume its scrutinee in a better form than vanilla (e.g.
+   unboxed tuple, unboxed 32/64), lets do that.
 *)
-and compile_unboxed_pat env ae how pat =
+and compile_unboxed_pat env ae how pat
+  : VarEnv.t * G.t * G.t * SR.t option * G.t =
   (* It returns:
      - the extended environment
      - the code to allocate memory
      - the code to prepare the stack (e.g. push destination addresses)
-     - the desired stack rep
+       before the scrutinee is pushed
+     - the desired stack rep. None means: Do not even push the scrutinee.
      - the code to do the pattern matching.
        This expects the undestructed value is on top of the stack,
        consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       If the pattern does not match, it traps with pattern failure
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let pre_code, sr, fill_code = match pat.it with
@@ -10118,7 +10161,7 @@ and compile_unboxed_pat env ae how pat =
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
-      G.concat_mapi (fun i p -> orTrap env (fill_pat env ae1 p)) (List.rev ps)
+      G.concat_mapi (fun i p -> orPatternFailure env (fill_pat env ae1 p)) (List.rev ps)
     (* Variable patterns *)
     | VarP name ->
       let pre_code, sr, code = Var.set_val env ae1 name in
@@ -10127,7 +10170,7 @@ and compile_unboxed_pat env ae how pat =
     | _ ->
       G.nop,
       Some SR.Vanilla,
-      orTrap env (fill_pat env ae1 pat) in
+      orPatternFailure env (fill_pat env ae1 pat) in
   let pre_code = G.with_region pat.at pre_code in
   let fill_code = G.with_region pat.at fill_code in
   (ae1, alloc_code, pre_code, sr, fill_code)
@@ -10282,8 +10325,12 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
-    Const.t_of_v (Const.Array cs),
+    Const.(t_of_v (Array cs)),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+  | PrimE (TagPrim i, [e]) ->
+    let (arg_ct, fill) = compile_const_exp env pre_ae e in
+    Const.(t_of_v (Tag (i, arg_ct))),
+    fill
 
   | _ -> assert false
 

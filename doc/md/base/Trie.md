@@ -253,7 +253,21 @@ Purely-functional representation permits _O(1)_ copy, via persistent sharing.
 func replace<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v : ?V) : (Trie<K, V>, ?V)
 ```
 
-Replace the given key's value option with the given one, returning the previous one
+Replace the given key's value option with the given value, returning the modified trie.
+Also returns the replaced value if the key existed and `null` otherwise.
+Compares keys using the provided function `k_eq`.
+
+Note: Replacing a key's value by `null` removes the key and also shrinks the trie.
+
+For a more detailed overview of how to use a `Trie`,
+see the [User's Overview](#overview).
+
+Example:
+```motoko include=initialize
+trie := Trie.put(trie, key "test", Text.equal, 1).0;
+trie := Trie.replace(trie, key "test", Text.equal, 42).0;
+assert (Trie.get(trie, key "hello", Text.equal) == ?42);
+```
 
 ## Function `put`
 ``` motoko no-repl
@@ -799,7 +813,11 @@ Put the given key's value in the trie; return the new trie;
 func remove<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool) : (Trie<K, V>, ?V)
 ```
 
-Remove the given key's value in the trie; return the new trie
+Remove the entry for the given key from the trie, by returning the reduced trie.
+Also returns the removed value if the key existed and `null` otherwise.
+Compares keys using the provided function `k_eq`.
+
+Note: The removal of an existing key shrinks the trie.
 
 For a more detailed overview of how to use a `Trie`,
 see the [User's Overview](#overview).
@@ -808,7 +826,7 @@ Example:
 ```motoko include=initialize
 trie := Trie.put(trie, key "hello", Text.equal, 42).0;
 trie := Trie.put(trie, key "bye", Text.equal, 32).0;
-// remove the value associated with "hello"
+// remove the entry associated with "hello"
 trie := Trie.remove(trie, key "hello", Text.equal).0;
 assert (Trie.get(trie, key "hello", Text.equal) == null);
 ```
