@@ -12,7 +12,7 @@ use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
-use crate::visitor::{points_to_or_beyond, visit_pointer_fields};
+use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -158,7 +158,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag) {
 /// Specialized version of `mark_fields` for root `MutBox`es.
 unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox) {
     let field_addr = &mut (*mutbox).field;
-    if points_to_or_beyond(field_addr, mem.get_heap_base()) {
+    if pointer_to_dynamic_heap(field_addr, mem.get_heap_base()) {
         mark_object(mem, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.

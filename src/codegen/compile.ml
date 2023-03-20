@@ -278,8 +278,10 @@ module E = struct
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     object_pool : int32 StringEnv.t ref;
-      (* Addresses of all static objects. These objects will be patched on RTS start to use object ids. *)
+      (* Addresses of all static objects. These objects will be registered in the object table on RTS start. *)
     static_objects: int32 list ref;
+      (* Next free static object id. To be registered in the object table on RTS start. *)
+    static_object_id: int32 ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -309,6 +311,9 @@ module E = struct
     local_names : (int32 * string) list ref; (* Names of locals *)
   }
 
+  (* Reserved object ids. *)
+  let null_object_id = Int32.(add 0l ptr_skew)
+  let object_table_id = Int32.(add 4l ptr_skew)
 
   (* The initial global environment *)
   let mk_global mode rts trap_with dyn_mem : t = {
@@ -331,6 +336,9 @@ module E = struct
     object_pool = ref StringEnv.empty;
     (* Addresses of all shared objects. These objects are patched with object ids on RTS start *)
     static_objects = ref [];
+    (* The highest initially reserved entry in the object table is object_table_id. 
+       The first free object id is one word higher than object_table_id, as computed by new_static_object_id *)
+    static_object_id = ref object_table_id;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -583,12 +591,13 @@ module E = struct
 
   let get_static_roots (env : t) =
     !(env.static_roots)
+  
+  let word_size = 4l
 
-  let null_object_id = 
-    Int32.(add 0l ptr_skew)
-
-  let add_static_object env ptr =
-    env.static_objects := ptr :: !(env.static_objects)
+  let new_static_object_id env unskewed_ptr =
+    env.static_objects := List.append !(env.static_objects) [ unskewed_ptr ];
+    env.static_object_id := Int32.add !(env.static_object_id) word_size;
+    !(env.static_object_id)
 
   let get_static_objects env =
     !(env.static_objects)
@@ -1071,7 +1080,7 @@ module Heap = struct
   (* General heap object functionality (allocation, setting fields, reading fields) *)
 
   (* Memory addresses are 32 bit (I32Type). *)
-  let word_size = 4l
+  let word_size = E.word_size
 
   (* The heap base global can only be used late, see conclude_module
      and GHC.register *)
@@ -1682,25 +1691,23 @@ module Tagged = struct
     let header_size = Int32.(mul Heap.word_size header_size) in
     let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
     let unskewed_ptr = E.reserve_static_memory env size in
-    let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
+    let object_id = E.new_static_object_id env unskewed_ptr in 
+    let id_bytes = bytes_of_int32 object_id in 
     let tag = bytes_of_int32 (int_of_tag tag) in
-    (* Null object id will be patched later on RTS initialization. *)
-    let null_object_id = bytes_of_int32 E.null_object_id in
-    let data = tag ^ null_object_id ^ payload in
+    let data = tag ^ id_bytes ^ payload in
     E.write_static_memory env unskewed_ptr data;
-    E.add_static_object env skewed_ptr;
-    skewed_ptr
+    object_id
 
   let shared_static_obj env tag payload =
     let tag_word = bytes_of_int32 (int_of_tag tag) in
     let payload_bytes = StaticBytes.as_bytes payload in
     let key = tag_word ^ payload_bytes in
     match E.object_pool_find env key with
-    | Some ptr -> ptr (* no object table indirection needed for static objects *)
+    | Some object_id -> object_id
     | None ->
-      let ptr = new_static_obj env tag payload in
-      E.object_pool_add env key ptr;
-      ptr
+      let object_id = new_static_obj env tag payload in
+      E.object_pool_add env key object_id;
+      object_id
 
 end (* Tagged *)
 
@@ -10742,7 +10749,10 @@ and conclude_module env set_serialization_globals start_fi_o =
   let static_roots = GCRoots.store_static_roots env in
   let static_objects = 
     (if !Flags.gc_strategy == Flags.Incremental then
-      (Arr.vanilla_lit env (E.get_static_objects env))
+      let _ = (Arr.vanilla_lit env (E.get_static_objects env)) in
+      (* Get the skewed raw address to the array because array id is 
+         not yet registered in the object table. *)
+      Lib.List.last (E.get_static_objects env)
     else
       E.null_object_id
     ) in

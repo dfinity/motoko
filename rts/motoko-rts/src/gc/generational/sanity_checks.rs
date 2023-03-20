@@ -9,7 +9,7 @@ use super::write_barrier::REMEMBERED_SET;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
-use crate::visitor::{points_to_or_beyond, visit_pointer_fields};
+use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 
@@ -131,7 +131,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             assert!((obj as usize) < self.mem.get_heap_base());
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if points_to_or_beyond(field_addr, self.mem.get_heap_base()) {
+            if pointer_to_dynamic_heap(field_addr, self.mem.get_heap_base()) {
                 let object = *field_addr;
                 self.check_object(object);
             }

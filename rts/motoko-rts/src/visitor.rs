@@ -9,7 +9,7 @@ use crate::types::*;
 /// * `ctx`: any context passed to the `visit_*` callbacks
 /// * `obj`: the heap object to be visited (note: its heap tag may be invalid)
 /// * `tag`: the heap object's logical tag (or start of array object's suffix slice)
-/// * `skip_below`: skip objects whose address is below this address
+/// * `heap_base`: start address of the dynamic heap
 /// * `visit_ptr_field`: callback for individual fields
 /// * `visit_field_range`: callback for determining the suffix slice
 ///   Arguments:
@@ -24,7 +24,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     ctx: &mut C,
     obj: *mut Obj,
     tag: Tag,
-    skip_below: usize,
+    heap_base: usize,
     visit_ptr_field: F,
     visit_field_range: G,
 ) where
@@ -37,7 +37,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
-                if points_to_or_beyond(field_addr, skip_below) {
+                if pointer_to_dynamic_heap(field_addr, heap_base) {
                     visit_ptr_field(ctx, obj_payload.add(i as usize));
                 }
             }
@@ -51,7 +51,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             debug_assert!(stop <= array.len());
             for i in slice_start..stop {
                 let field_addr = array_payload.add(i as usize);
-                if points_to_or_beyond(field_addr, skip_below) {
+                if pointer_to_dynamic_heap(field_addr, heap_base) {
                     visit_ptr_field(ctx, field_addr);
                 }
             }
@@ -60,7 +60,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if points_to_or_beyond(field_addr, skip_below) {
+            if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -70,7 +70,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
-                if points_to_or_beyond(field_addr, skip_below) {
+                if pointer_to_dynamic_heap(field_addr, heap_base) {
                     visit_ptr_field(ctx, field_addr);
                 }
             }
@@ -79,7 +79,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            if points_to_or_beyond(field_addr, skip_below) {
+            if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -87,7 +87,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            if points_to_or_beyond(field_addr, skip_below) {
+            if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -95,11 +95,11 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            if points_to_or_beyond(field1_addr, skip_below) {
+            if pointer_to_dynamic_heap(field1_addr, heap_base) {
                 visit_ptr_field(ctx, field1_addr);
             }
             let field2_addr = &mut (*concat).text2;
-            if points_to_or_beyond(field2_addr, skip_below) {
+            if pointer_to_dynamic_heap(field2_addr, heap_base) {
                 visit_ptr_field(ctx, field2_addr);
             }
         }
@@ -107,13 +107,17 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            if points_to_or_beyond(field_addr, skip_below) {
+            if pointer_to_dynamic_heap(field_addr, heap_base) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT | TAG_NULL => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't have pointers, skip
+        }
+
+        TAG_NULL => {
+            rts_trap_with("encountered NULL object tag in visit_pointer_fields");
         }
 
         TAG_FWD_PTR | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE | _ => {
@@ -122,7 +126,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     }
 }
 
-pub unsafe fn points_to_or_beyond(field_addr: *mut Value, threshold_address: usize) -> bool {
+pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) -> bool {
     let field_value = *field_addr;
-    field_value.is_object_id() && field_value.get_object_address() >= threshold_address
+    field_value.is_object_id() && field_value.get_object_address() >= heap_base
 }

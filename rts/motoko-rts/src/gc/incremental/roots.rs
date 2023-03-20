@@ -1,5 +1,5 @@
 use crate::{
-    memory::Roots, remembered_set::RememberedSet, types::Value, visitor::points_to_or_beyond,
+    memory::Roots, remembered_set::RememberedSet, types::Value, visitor::pointer_to_dynamic_heap,
 };
 
 pub unsafe fn visit_roots<C, V: Fn(&mut C, Value)>(
@@ -37,7 +37,7 @@ unsafe fn visit_static_roots<C, V: Fn(&mut C, Value)>(
         let mutbox = root_array.get(index).as_mutbox();
         debug_assert!((mutbox as usize) < generation_base);
         let field = &mut (*mutbox).field;
-        if points_to_or_beyond(field, generation_base) {
+        if pointer_to_dynamic_heap(field, generation_base) {
             visit_value(context, *field);
         }
     }
@@ -49,7 +49,7 @@ unsafe fn visit_continuation_table<C, V: Fn(&mut C, Value)>(
     context: &mut C,
     visit_value: &V,
 ) {
-    if points_to_or_beyond(continuation_table_location, generation_base) {
+    if pointer_to_dynamic_heap(continuation_table_location, generation_base) {
         visit_value(context, *continuation_table_location);
     }
 }

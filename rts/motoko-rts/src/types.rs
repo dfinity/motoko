@@ -442,14 +442,8 @@ impl Obj {
         self.mark_and_id = object_id.get_raw() as usize;
     }
 
-    /// Only used during incremental GC for initializing static objects with a new object id.
-    pub unsafe fn raw_object_id(self: *const Self) -> Value {
-        Value::from_raw((*self).mark_and_id as u32)
-    }
-
     pub unsafe fn object_id(self: *const Self) -> Value {
         if OBJECT_TABLE != null_mut() {
-            debug_assert!(self.raw_object_id() != NULL_OBJECT_ID);
             Value::from_raw(((*self).mark_and_id & !MARK_BIT_MASK) as u32)
         } else {
             Value::from_raw(skew(self as usize) as u32)
@@ -458,19 +452,16 @@ impl Obj {
 
     pub unsafe fn is_marked(self: *const Self) -> bool {
         debug_assert_ne!(OBJECT_TABLE, null_mut());
-        debug_assert!(self.raw_object_id() != NULL_OBJECT_ID);
         (*self).mark_and_id & MARK_BIT_MASK != 0
     }
 
     pub unsafe fn mark(self: *mut Self) {
         debug_assert_ne!(OBJECT_TABLE, null_mut());
-        debug_assert!(self.raw_object_id() != NULL_OBJECT_ID);
         (*self).mark_and_id |= MARK_BIT_MASK;
     }
 
     pub unsafe fn unmark(self: *mut Self) {
         debug_assert_ne!(OBJECT_TABLE, null_mut());
-        debug_assert!(self.raw_object_id() != NULL_OBJECT_ID);
         (*self).mark_and_id &= !MARK_BIT_MASK;
     }
 
