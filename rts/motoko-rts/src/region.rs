@@ -287,9 +287,12 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
     let _ = crate::ic0_stable::nicer::grow(min_pages);
     // Region 0 -- classic API for stable memory, as a dedicated region.
     crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
+    meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(0)));
     // Region 1 -- reserved for reclaimed regions' blocks (to do).
     crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
+    meta_data::region_table::set(&RegionId(1), Some(RegionSizeInPages(0)));
 }
+
 
 // Utility for logging global region manager state (in stable memory).
 // For sanity-checking during testing and for future trouble-shooting.
