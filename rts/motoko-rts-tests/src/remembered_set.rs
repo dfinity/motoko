@@ -11,24 +11,24 @@ const GROW_LIMIT: u32 = INITIAL_TABLE_LENGTH * OCCUPATION_THRESHOLD_PERCENT / 10
 pub unsafe fn test() {
     println!("Testing remembered set ...");
 
-    let mut mem = TestMemory::new(Words(8 * 1024 * 1024));
-    test_remembered_set(&mut mem, 0);
-    test_remembered_set(&mut mem, 1);
-    test_remembered_set(&mut mem, INITIAL_TABLE_LENGTH / 2);
-    test_remembered_set(&mut mem, GROW_LIMIT - 1);
-    test_remembered_set(&mut mem, GROW_LIMIT);
-    test_remembered_set(&mut mem, GROW_LIMIT + 1);
-    test_remembered_set(&mut mem, INITIAL_TABLE_LENGTH);
-    test_remembered_set(&mut mem, 2 * GROW_LIMIT - 1);
-    test_remembered_set(&mut mem, 2 * GROW_LIMIT);
-    test_remembered_set(&mut mem, 2 * GROW_LIMIT + 1);
-    test_remembered_set(&mut mem, 128 * GROW_LIMIT);
+    test_remembered_set(0);
+    test_remembered_set(1);
+    test_remembered_set(INITIAL_TABLE_LENGTH / 2);
+    test_remembered_set(GROW_LIMIT - 1);
+    test_remembered_set(GROW_LIMIT);
+    test_remembered_set(GROW_LIMIT + 1);
+    test_remembered_set(INITIAL_TABLE_LENGTH);
+    test_remembered_set(2 * GROW_LIMIT - 1);
+    test_remembered_set(2 * GROW_LIMIT);
+    test_remembered_set(2 * GROW_LIMIT + 1);
+    test_remembered_set(4 * GROW_LIMIT);
 }
 
-unsafe fn test_remembered_set(mem: &mut TestMemory, amount: u32) {
-    test_insert_iterate(mem, amount);
-    test_duplicates(mem, amount);
-    test_collisions(mem, amount);
+unsafe fn test_remembered_set(amount: u32) {
+    let mut mem = TestMemory::new(Words(64 * 1024 * 1024));
+    test_insert_iterate(&mut mem, amount);
+    test_duplicates(&mut mem, amount);
+    test_collisions(&mut mem, amount);
 }
 
 unsafe fn test_insert_iterate(mem: &mut TestMemory, amount: u32) {

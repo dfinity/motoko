@@ -22,7 +22,7 @@ pub unsafe fn test() {
 }
 
 pub unsafe fn test_with_id(test_id: Value) {
-    let mut mem = TestMemory::new(Words(512 * 1024));
+    let mut mem = TestMemory::new(Words(2 * 1024 * 1024));
 
     assert_eq!(get_object_table(), null_mut());
     assert!(!using_incremental_barrier());
