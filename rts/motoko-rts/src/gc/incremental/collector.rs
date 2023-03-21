@@ -70,7 +70,7 @@
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::object_table::ObjectTable,
+    gc::incremental::object_table::{ObjectTable, OBJECT_TABLE_ID},
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -205,9 +205,6 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                 gc.mark_object(value);
             },
         );
-        if OBJECT_TABLE as usize >= self.generation.start {
-            (OBJECT_TABLE as *mut Obj).mark();
-        }
     }
 
     /// Mark the corresponding object if not yet marked before.
@@ -285,6 +282,12 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         self.state.mark_complete = true;
         self.state.mark_stack.free();
 
+        // Mark the object table as last object since it may have been extended
+        // to a new table copy during the GC mark phase (because of mark stack allocation).
+        if OBJECT_TABLE as usize >= self.generation.start {
+            (OBJECT_TABLE as *mut Obj).mark();
+        }
+
         #[cfg(debug_assertions)]
         check_mark_completion(self.mem, self.generation.start);
 
@@ -307,6 +310,10 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn compact_increment(&mut self) {
+        debug_assert!(
+            (OBJECT_TABLE as usize) < self.generation.start
+                || (OBJECT_TABLE as *mut Obj).is_marked()
+        );
         debug_assert!(self.state.phase == Phase::Compact);
         // The remembered set is no longer valid as it will be freed during compaction.
         debug_assert!(self.generation.remembered_set.is_none());
@@ -343,10 +350,13 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert!(new_address <= old_address);
             if new_address != old_address {
                 memcpy_words(new_address, old_address, size);
-                object_id.set_new_address(new_address);
                 if old_address == OBJECT_TABLE as usize {
+                    // Immediately update the object table pointer after movement.
                     OBJECT_TABLE = new_address as *mut ObjectTable;
+                } else {
+                    debug_assert!(object_id != OBJECT_TABLE_ID);
                 }
+                object_id.set_new_address(new_address);
                 // Determined by measurements in comparison to the mark and compact phases.
                 const TIME_FRACTION_PER_WORD: f64 = 2.7;
                 self.time
@@ -356,6 +366,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert_eq!(self.state.compact_to % WORD_SIZE as usize, 0);
         } else {
             debug_assert_ne!(object as usize, OBJECT_TABLE as usize);
+            debug_assert!(object_id != OBJECT_TABLE_ID);
             // Free the id of a garbage object in the object table.
             object_id.free_object_id();
         }

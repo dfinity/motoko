@@ -142,18 +142,6 @@ impl ObjectTable {
         table
     }
 
-    /// Allocate table, with uninitialzied entries
-    unsafe fn allocate_table<M: Memory>(mem: &mut M, size: usize) -> *mut Self {
-        let raw_size = size_of::<ObjectTable>() + Words(size as u32);
-        let address = mem.alloc_words(raw_size);
-        let table = address as *mut ObjectTable;
-        (*table).header.header.tag = TAG_BLOB;
-        (*table).header.header.initialize_id(OBJECT_TABLE_ID);
-        (*table).header.len = (raw_size - size_of::<Blob>()).to_bytes();
-        (*table).free_stack = FREE_STACK_END;
-        table
-    }
-
     /// Number of entries.
     pub unsafe fn size(self: *const Self) -> usize {
         debug_assert_eq!((*self).header.len.as_u32() % WORD_SIZE, 0);
@@ -181,7 +169,7 @@ impl ObjectTable {
     /// Grow the object table if necessary.
     pub unsafe fn new_object_id<M: Memory>(mem: &mut M, address: usize) -> Value {
         if (*OBJECT_TABLE).free_stack == FREE_STACK_END {
-            OBJECT_TABLE = OBJECT_TABLE.grow(mem);
+            Self::grow_table(mem);
         }
         OBJECT_TABLE.assign_object_id(address)
     }
@@ -239,9 +227,6 @@ impl ObjectTable {
     }
 
     unsafe fn get_element(self: *mut Self, object_id: Value) -> *mut usize {
-        if !object_id.is_object_id() {
-            println!(100, "ERROR {}", object_id.get_raw());
-        }
         debug_assert!(object_id.is_object_id());
         let offset = unskew(object_id.get_raw() as usize);
         debug_assert_eq!(offset % WORD_SIZE as usize, 0);
@@ -250,11 +235,29 @@ impl ObjectTable {
         address as *mut usize
     }
 
-    // Future optimization: Use pre-amortized table growth.
-    unsafe fn grow<M: Memory>(self: *mut Self, mem: &mut M) -> *mut Self {
-        debug_assert!((*self).free_stack == FREE_STACK_END);
+    /// Grow the system object table by copying all entries to a larger double-sized table.
+    /// The old table can be collected as garbage.
+    /// Future optimization: Use pre-amortized table growth.
+    unsafe fn grow_table<M: Memory>(mem: &mut M) {
+        let old_table = OBJECT_TABLE;
+        debug_assert!((*old_table).free_stack == FREE_STACK_END);
         const GROW_FACTOR: usize = 2;
-        let new_size = self.size() * GROW_FACTOR;
+        let new_size = old_table.size() * GROW_FACTOR;
+        OBJECT_TABLE = old_table.copy(mem, new_size);
+        debug_assert_ne!(old_table as usize, OBJECT_TABLE as usize);
+        debug_assert!((*OBJECT_TABLE).free_stack != FREE_STACK_END);
+        // Assign a new object id for the old table such that the GC can reclaim it.
+        let old_table_id = OBJECT_TABLE.assign_object_id(old_table as usize);
+        (*old_table).header.header.initialize_id(old_table_id);
+        // Record new table address
+        debug_assert!((OBJECT_TABLE as *const Obj).object_id() == OBJECT_TABLE_ID);
+        OBJECT_TABLE.move_object(OBJECT_TABLE_ID, OBJECT_TABLE as usize);
+    }
+
+    /// Create a table copy of equal or larger size.
+    unsafe fn copy<M: Memory>(self: *mut Self, mem: &mut M, new_size: usize) -> *mut Self {
+        debug_assert!(new_size >= self.size());
+        debug_assert!((*self).free_stack == FREE_STACK_END);
         let new_table = Self::allocate_table(mem, new_size);
         for index in 0..self.size() {
             let object_id = self.index_to_object_id(index);
@@ -263,6 +266,18 @@ impl ObjectTable {
         }
         new_table.add_free_range(self.size()..new_table.size());
         new_table
+    }
+
+    /// Allocate a new object table with uninitialzied entries by assigning `OBJECT_TABLE_ID`.
+    unsafe fn allocate_table<M: Memory>(mem: &mut M, size: usize) -> *mut Self {
+        let raw_size = size_of::<ObjectTable>() + Words(size as u32);
+        let address = mem.alloc_words(raw_size);
+        let table = address as *mut ObjectTable;
+        (*table).header.header.tag = TAG_BLOB;
+        (*table).header.header.initialize_id(OBJECT_TABLE_ID);
+        (*table).header.len = (raw_size - size_of::<Blob>()).to_bytes();
+        (*table).free_stack = FREE_STACK_END;
+        table
     }
 
     pub unsafe fn register_static_objects<M: Memory>(mem: &mut M, static_objects: *mut Array) {

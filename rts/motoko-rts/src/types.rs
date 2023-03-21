@@ -44,7 +44,7 @@
 use crate::gc::generational::write_barrier::{
     generational_write_barrier, using_generational_barrier,
 };
-use crate::gc::incremental::object_table::{ObjectTable, OBJECT_TABLE, OBJECT_TABLE_ID};
+use crate::gc::incremental::object_table::{ObjectTable, OBJECT_TABLE};
 use crate::gc::incremental::write_barrier::{using_incremental_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
@@ -218,7 +218,6 @@ impl Value {
     pub unsafe fn set_new_address(self, new_address: usize) {
         debug_assert_ne!(OBJECT_TABLE, null_mut());
         debug_assert!(self != NULL_OBJECT_ID);
-        debug_assert!(self != OBJECT_TABLE_ID);
         OBJECT_TABLE.move_object(self, new_address);
     }
 
