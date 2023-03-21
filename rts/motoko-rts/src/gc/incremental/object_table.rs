@@ -100,6 +100,7 @@ use core::{ops::Range, ptr::null_mut};
 
 use crate::{
     constants::WORD_SIZE,
+    mem_utils::memcpy_words,
     memory::Memory,
     types::{size_of, skew, unskew, Array, Blob, Obj, Value, Words, NULL_OBJECT_ID, TAG_BLOB},
 };
@@ -122,7 +123,7 @@ pub unsafe fn get_object_table() -> *mut ObjectTable {
 
 /// Initialize object table and register the static (compiler-generated) objects.
 pub unsafe fn initialize_object_table<M: Memory>(mem: &mut M, static_objects: *mut Array) {
-    const INITIAL_TABLE_SIZE: usize = 10_000;
+    const INITIAL_TABLE_SIZE: usize = 1_000;
     set_object_table(ObjectTable::new(mem, INITIAL_TABLE_SIZE));
     ObjectTable::register_static_objects(mem, static_objects);
 }
@@ -277,11 +278,11 @@ impl ObjectTable {
         debug_assert!(new_size >= self.size());
         debug_assert!((*self).free_stack == FREE_STACK_END);
         let new_table = Self::allocate_table(mem, new_size);
-        for index in 0..self.size() {
-            let object_id = self.index_to_object_id(index);
-            let address = self.read_element(object_id);
-            new_table.write_element(object_id, address);
-        }
+        memcpy_words(
+            new_table.entries() as usize,
+            self.entries() as usize,
+            Words(self.size() as u32),
+        );
         new_table.add_free_range(self.size()..new_table.size());
         new_table
     }
