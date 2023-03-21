@@ -310,10 +310,6 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     }
 
     unsafe fn compact_increment(&mut self) {
-        debug_assert!(
-            (OBJECT_TABLE as usize) < self.generation.start
-                || (OBJECT_TABLE as *mut Obj).is_marked()
-        );
         debug_assert!(self.state.phase == Phase::Compact);
         // The remembered set is no longer valid as it will be freed during compaction.
         debug_assert!(self.generation.remembered_set.is_none());
