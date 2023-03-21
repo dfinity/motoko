@@ -77,7 +77,7 @@ actor {
 
   system func postupgrade() {
     P.debugPrint("...size is " # debug_show StableMemory.size());
-    P.debugPrint("...upgraded" # debug_show n);
+    P.debugPrint("...upgraded " # debug_show n);
   };
 
 }

@@ -99,7 +99,7 @@ impl RegionObject {
 	let av = AccessVector::from_value(&(*self.0).vec_pages);
 
  	println!(80, "relative_into_absolute_offset offset={} page_count={}", offset, (*self.0).page_count);
-	
+
 	// assert that offset is currently allocated
 	if !( ( offset / meta_data::size::PAGE_IN_BYTES ) < (*self.0).page_count.into()) {
 	    rts_trap_with("region access out of bounds.");
@@ -286,7 +286,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 #[ic_mem_fn]
 pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     use meta_data::size::PAGES_IN_BLOCK;
-    let c = meta_data::region_table::get(&rid);    
+    let c = meta_data::region_table::get(&rid);
     let page_count = match c {
 	Some(RegionSizeInPages(pc)) => {
 	    println!(80, "region_recover {:?} => found region record {:?}", rid, c);
