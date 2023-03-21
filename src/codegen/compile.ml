@@ -955,12 +955,8 @@ module RTS = struct
     E.add_func_import env "rts" "region0_store_nat32" [I32Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "region0_load_nat64" [I32Type; I64Type] [I64Type];
     E.add_func_import env "rts" "region0_store_nat64" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "region0_load_int16" [I32Type; I64Type] [I32Type];
-    E.add_func_import env "rts" "region0_store_int16" [I32Type; I64Type; I32Type] [];
-    E.add_func_import env "rts" "region0_load_int32" [I32Type; I64Type] [I32Type];
-    E.add_func_import env "rts" "region0_store_int32" [I32Type; I64Type; I32Type] [];
-    E.add_func_import env "rts" "region0_load_int64" [I32Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "region0_store_int64" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "region0_load_float" [I32Type; I64Type] [F64Type];
+    E.add_func_import env "rts" "region0_store_float" [I32Type; I64Type; F64Type] [];
     E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
     E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
@@ -3523,12 +3519,26 @@ module Region0 = struct
   (*
     See rts/motoko-rts/src/region.rs
    *)
-  let size env = E.call_import env "rts" "region0_size"
-  let grow env = E.call_import env "rts" "region0_grow"
+  let get_mem_size env = E.call_import env "rts" "region0_size"
+  let logical_grow env = E.call_import env "rts" "region0_grow"
+
   let load_blob env = E.call_import env "rts" "region0_load_blob"
   let store_blob env = E.call_import env "rts" "region0_store_blob"
-  let load_byte env = E.call_import env "rts" "region0_load_byte"
-  let store_byte env = E.call_import env "rts" "region0_store_byte"
+
+  let load_word8 env = E.call_import env "rts" "region0_load_word8"
+  let store_word8 env = E.call_import env "rts" "region0_store_word8"
+
+  let load_word16 env = E.call_import env "rts" "region0_load_word16"
+  let store_word16 env = E.call_import env "rts" "region0_store_word16"
+
+  let load_word32 env = E.call_import env "rts" "region0_load_word32"
+  let store_word32 env = E.call_import env "rts" "region0_store_word32"
+
+  let load_word64 env = E.call_import env "rts" "region0_load_word64"
+  let store_word64 env = E.call_import env "rts" "region0_store_word64"
+
+  let load_float64 env = E.call_import env "rts" "region0_load_float64"
+  let store_float64 env = E.call_import env "rts" "region0_store_float64"
 end
 
 module Region = struct
@@ -9592,24 +9602,24 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.load_word32 env
+    Region0.load_word32 env
 
   | OtherPrim ("stableMemoryStoreNat32"|"stableMemoryStoreInt32"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
-    StableMem.store_word32 env
+    Region0.store_word32 env
 
   | OtherPrim ("stableMemoryLoadNat8"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.load_word8 env ^^
+    Region0.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim ("stableMemoryLoadInt8"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.load_word8 env ^^
+    Region0.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Int8
 
   (* Other prims, binary *)
@@ -9618,59 +9628,59 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
-    StableMem.store_word8 env
+    Region0.store_word8 env
 
   | OtherPrim ("stableMemoryStoreInt8"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
-    StableMem.store_word8 env
+    Region0.store_word8 env
 
   | OtherPrim ("stableMemoryLoadNat16"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.load_word16 env ^^
+    Region0.load_word16 env ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
   | OtherPrim ("stableMemoryLoadInt16"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.load_word16 env ^^
+    Region0.load_word16 env ^^
     TaggedSmallWord.msb_adjust Type.Int16
 
   | OtherPrim ("stableMemoryStoreNat16"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
-    StableMem.store_word16 env
+    Region0.store_word16 env
 
   | OtherPrim ("stableMemoryStoreInt16"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
-    StableMem.store_word16 env
+    Region0.store_word16 env
 
   | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.load_word64 env
+    Region0.load_word64 env
 
   | OtherPrim ("stableMemoryStoreNat64" | "stableMemoryStoreInt64"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord64 e2 ^^
-    StableMem.store_word64 env
+    Region0.store_word64 env
 
   | OtherPrim ("stableMemoryLoadFloat"), [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.load_float64 env
+    Region0.load_float64 env
 
   | OtherPrim ("stableMemoryStoreFloat"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
-    StableMem.store_float64 env
+    Region0.store_float64 env
 
   | OtherPrim ("stableMemoryLoadBlob"), [e1; e2] ->
     SR.Vanilla,
@@ -9678,21 +9688,21 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e2 ^^
     Blob.lit env "Blob size out of bounds" ^^
     BigNum.to_word32_with env ^^
-    StableMem.load_blob env
+    Region0.load_blob env
 
   | OtherPrim ("stableMemoryStoreBlob"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    StableMem.store_blob env
+    Region0.store_blob env
 
   | OtherPrim ("stableMemorySize"), [] ->
     SR.UnboxedWord64,
-    StableMem.get_mem_size env
+    Region0.get_mem_size env
   | OtherPrim ("stableMemoryGrow"), [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMem.logical_grow env
+    Region0.logical_grow env
 
   | OtherPrim ("stableVarQuery"), [] ->
     SR.UnboxedTuple 2,
