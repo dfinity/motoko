@@ -317,9 +317,10 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
         match meta_data::block_region_table::get(BlockId(block_id as u16)) {
             None => {}
             Some((rid_, rank)) => {
-                assert_eq!(rid, &rid_);
-                av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
-                recovered_blocks += 1;
+		if &rid_ == rid {
+                    av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
+                    recovered_blocks += 1;
+		}
             }
         }
     }
