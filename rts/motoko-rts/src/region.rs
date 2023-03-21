@@ -98,9 +98,12 @@ impl RegionObject {
     pub unsafe fn relative_into_absolute_offset(&self, offset: u64) -> u64 {
 	let av = AccessVector::from_value(&(*self.0).vec_pages);
 
+ 	println!(80, "relative_into_absolute_offset offset={} page_count={}", offset, (*self.0).page_count);
+	
 	// assert that offset is currently allocated
-	// (to do -- this should be a certain kind of trap when it fails.)
-	assert!(offset / meta_data::size::PAGE_IN_BYTES < (*self.0).page_count.into());
+	if !( ( offset / meta_data::size::PAGE_IN_BYTES ) < (*self.0).page_count.into()) {
+	    rts_trap_with("region access out of bounds.");
+	};
 
 	// Which block (rank relative to this region)?
 	let block_rank  = offset / meta_data::size::BLOCK_IN_BYTES;
@@ -283,9 +286,12 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 #[ic_mem_fn]
 pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     use meta_data::size::PAGES_IN_BLOCK;
-    let c = meta_data::region_table::get(&rid);
+    let c = meta_data::region_table::get(&rid);    
     let page_count = match c {
-	Some(RegionSizeInPages(pc)) => pc,
+	Some(RegionSizeInPages(pc)) => {
+	    println!(80, "region_recover {:?} => found region record {:?}", rid, c);
+	    pc
+	}
 	_ => {
 	    rts_trap_with("region_recover failed: Expected Some(RegionSizeInPages(_))");
 	}
@@ -326,6 +332,7 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
     // detect if we are being called in after upgrade --
     // in which case skip this and recreate REGION_0 (To do).
     if crate::ic0_stable::nicer::size() < min_pages {
+	println!(80, "region_init -- first time.");
 	let _ = crate::ic0_stable::nicer::grow(min_pages);
 	// Region 0 -- classic API for stable memory, as a dedicated region.
 	crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
@@ -334,6 +341,7 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
 	crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
 	//meta_data::region_table::set(&RegionId(1), Some(RegionSizeInPages(0)));
     } else {
+	println!(80, "region_init -- recover regions 0 and 1.");
 	crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0)).as_region();
 	crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1)).as_region();
     }

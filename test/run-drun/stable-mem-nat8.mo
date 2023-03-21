@@ -27,9 +27,14 @@ actor {
 
     n += 1;
 
-    P.debugPrint(debug_show {old = m; new = n; size = StableMemory.size()});
 
-    assert (n == StableMemory.size());
+    let size1 = StableMemory.size();
+    let size2 = StableMemory.size();
+    P.debugPrint(debug_show {size1; size2});
+    assert size1 == size2;
+    
+    P.debugPrint(debug_show {old = m; new = n; size = size1});
+    assert (n == size1);
 
     // check new page is clear
     var i : Nat64 = m * 65536;
@@ -71,6 +76,7 @@ actor {
   };
 
   system func postupgrade() {
+    P.debugPrint("...size is " # debug_show StableMemory.size());
     P.debugPrint("...upgraded" # debug_show n);
   };
 
@@ -89,4 +95,3 @@ actor {
 //CALL upgrade ""
 //CALL ingress testBounds "DIDL\x00\x00"
 //CALL upgrade ""
-
