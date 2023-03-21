@@ -773,6 +773,8 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
             free_space.size()
         }
 
+	TAG_REGION => size_of::<Region>(),
+	
         _ => {
             rts_trap_with("object_size: invalid object tag");
         }

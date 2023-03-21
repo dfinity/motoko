@@ -12,7 +12,9 @@ unsafe fn region0_load<M: Memory>(_mem: &mut M, offset: u64, dst: &mut [u8]) {
     if dst.len() > 1 {
         let _ = r.relative_into_absolute_offset(offset + dst.len() as u64 - 1);
     };
-    println!(50, "region0_load({}) {} bytes", offset, dst.len());
+    if false {
+	println!(50, "region0_load({}) {} bytes", offset, dst.len());
+    }
 
     crate::ic0_stable::nicer::read(abs_off, dst);
 }
@@ -25,6 +27,11 @@ unsafe fn region0_store<M: Memory>(_mem: &mut M, offset: u64, src: &[u8]) {
         let _ = r.relative_into_absolute_offset(offset + src.len() as u64 - 1);
     };
     crate::ic0_stable::nicer::write(abs_off, src);
+}
+
+#[ic_mem_fn]
+pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
+    Value::from_ptr(crate::memory::ic::REGION_0 as usize)
 }
 
 #[ic_mem_fn]

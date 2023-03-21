@@ -944,6 +944,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_next_id" [] [I32Type];
     E.add_func_import env "rts" "region_meta_loglines" [] [];
     E.add_func_import env "rts" "region0_size" [] [I64Type];
+    E.add_func_import env "rts" "region0_get" [] [I32Type];
     E.add_func_import env "rts" "region0_grow" [I64Type] [I64Type];
     E.add_func_import env "rts" "region0_load_blob" [I64Type; I32Type] [];
     E.add_func_import env "rts" "region0_store_blob" [I64Type; I32Type] [];
@@ -3518,7 +3519,9 @@ end (* Blob *)
 module Region0 = struct
   (*
     See rts/motoko-rts/src/region.rs
-   *)
+   *)  
+  let get env = E.call_import env "rts" "region0_get"
+
   let get_mem_size env = E.call_import env "rts" "region0_size"
   let logical_grow env = E.call_import env "rts" "region0_grow"
 
@@ -9598,6 +9601,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     const_sr SR.Vanilla (Arr.ofBlob env)
   | OtherPrim ("arrayToBlob"|"arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
+        
+  | OtherPrim "stableMemoryRegion", [] ->
+    SR.Vanilla,
+    Region0.get env
 
   | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,

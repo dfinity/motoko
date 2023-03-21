@@ -305,6 +305,9 @@ func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob) ();
 func stableMemorySize() : Nat64 =
   (prim "stableMemorySize" : () -> Nat64) ();
 
+func stableMemoryRegion() : Region =
+  (prim "stableMemoryRegion" : () -> Region) ();
+
 func stableMemoryGrow(pages : Nat64) : Nat64 =
   (prim "stableMemoryGrow" : Nat64 -> Nat64) pages;
 

@@ -104,12 +104,14 @@ impl RegionObject {
     pub unsafe fn relative_into_absolute_offset(&self, offset: u64) -> u64 {
         let av = AccessVector::from_value(&(*self.0).vec_pages);
 
-        println!(
-            80,
-            "relative_into_absolute_offset offset={} page_count={}",
-            offset,
-            (*self.0).page_count
-        );
+	if false {
+            println!(
+		80,
+		"relative_into_absolute_offset offset={} page_count={}",
+		offset,
+		(*self.0).page_count
+            )
+	};
 
         // assert that offset is currently allocated
         if !((offset / meta_data::size::PAGE_IN_BYTES) < (*self.0).page_count.into()) {
@@ -308,7 +310,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     (*region).id = rid.0;
     (*region).page_count = page_count as u32;
 
-    let block_count = page_count as u32 + PAGES_IN_BLOCK - 1 / PAGES_IN_BLOCK;
+    let block_count = (page_count as u32 + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
     (*region).vec_pages = alloc_blob(mem, Bytes(block_count));
     let tb = meta_data::total_allocated_blocks::get();
     let av = AccessVector((*region).vec_pages.as_blob_mut());

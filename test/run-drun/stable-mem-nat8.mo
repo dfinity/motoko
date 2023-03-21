@@ -1,7 +1,12 @@
 import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
+
+import Region "stable-region/Region";
+
 actor {
 
+  stable var region0 : Region = StableMemory.region(); // TEMP -- prevent GC from collecting our RTS-allocated region0.
+  
   stable var n : Nat64 = 0;
   assert (n == StableMemory.size());
 
@@ -20,18 +25,25 @@ actor {
   };
 
   system func preupgrade() {
-    P.debugPrint("upgrading..." # debug_show n);
+    P.debugPrint("upgrading... n=" # debug_show n);
+
+    let size1 = StableMemory.size();
+    let size2 = Region.size(region0);
+    P.debugPrint(debug_show {size1; size2});
+    assert size1 == size2;
+
     let m = StableMemory.grow(1);
 
     assert (n == m);
 
     n += 1;
 
-
-    let size1 = StableMemory.size();
-    let size2 = StableMemory.size();
-    P.debugPrint(debug_show {size1; size2});
-    assert size1 == size2;
+    do {
+      let size1 = StableMemory.size();
+      let size2 = Region.size(region0);
+      P.debugPrint(debug_show {size1; size2});
+      assert size1 == size2;
+    };
     
     P.debugPrint(debug_show {old = m; new = n; size = size1});
     assert (n == size1);
