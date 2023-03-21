@@ -14,6 +14,7 @@ pub unsafe fn test() {
     test_allocate();
     test_remove_realloc();
     test_move();
+    test_grow();
     assert_eq!(OBJECT_TABLE, null_mut());
 }
 
@@ -109,5 +110,15 @@ unsafe fn test_move() {
     check_all_entries(&expected_table);
     move_all_objects(&mut expected_table);
     check_all_entries(&expected_table);
+    OBJECT_TABLE = null_mut();
+}
+
+unsafe fn test_grow() {
+    let mut mem = TestMemory::new(Words(ALLOC_SIZE.as_u32() * 3));
+    OBJECT_TABLE = ObjectTable::new(&mut mem, 1);
+    let mut expected_table = [(NULL_OBJECT_ID, 0); TEST_SIZE];
+    allocate_entries(&mut mem, &mut expected_table);
+    check_all_entries(&expected_table);
+    free_all_entries(&expected_table);
     OBJECT_TABLE = null_mut();
 }
