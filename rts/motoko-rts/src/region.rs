@@ -393,6 +393,8 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
 
+    println!(80, "begin region_grow id={} page_count={} new_pages={}", (*r).id, old_page_count, new_pages);
+
     // Update the total number of allocated blocks.
     let old_total_blocks = {
         let c = meta_data::total_allocated_blocks::get();
@@ -439,7 +441,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     println!(
         80,
-        "region_grow id={} (old_block_count, new_block_count) = ({}, {})",
+        " region_grow id={} (old_block_count, new_block_count) = ({}, {})",
         (*r).id,
         old_block_count,
         new_block_count
@@ -481,6 +483,12 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
             assert_eq!(BlockId(block_id), block_id_);
         }
     }
+
+    println!(
+        80,
+        " region_grow id={} done.",
+        (*r).id,
+    );
 
     (*r).vec_pages = new_vec_pages;
     old_page_count.into()
