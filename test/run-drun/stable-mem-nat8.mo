@@ -5,7 +5,8 @@ import Region "stable-region/Region";
 
 actor {
 
-  stable var region0 : Region = StableMemory.region(); // TEMP -- prevent GC from collecting our RTS-allocated region0.
+  // TEMP -- prevent GC from collecting our RTS-allocated region0.
+  var region0 : Region = StableMemory.region();
   
   stable var n : Nat64 = 0;
   assert (n == StableMemory.size());
