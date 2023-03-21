@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+## 0.8.5 (2023-03-20)
+
+* motoko (`moc`)
+
+  * Performance improvement: Values of variant type that are compile-time known
+    are relegated to the static heap now and don't get allocated each time (#3878).
+
+  * bugfix: the global timer expiration callback was called unnecessarily in the
+    default mechanism (#3883).
+
 ## 0.8.4 (2023-03-11)
 
 * motoko (`moc`)
