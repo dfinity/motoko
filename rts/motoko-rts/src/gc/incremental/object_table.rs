@@ -163,6 +163,7 @@ impl ObjectTable {
     }
 
     /// Address to the first table entry.
+    #[inline]
     pub unsafe fn entries(self: *mut Self) -> *mut usize {
         // Skip the declared `ObjectTable` header (Blob header with `free_stack` word).
         self.offset(1) as *mut usize
@@ -180,6 +181,7 @@ impl ObjectTable {
 
     /// Allocate a new object id and associate the object's address.
     /// Grow the object table if necessary.
+    #[inline]
     pub unsafe fn new_object_id<M: Memory>(mem: &mut M, address: usize) -> Value {
         if (*get_object_table()).free_stack == FREE_STACK_END {
             Self::grow_table(mem);
@@ -187,6 +189,7 @@ impl ObjectTable {
         get_object_table().assign_object_id(address)
     }
 
+    #[inline]
     unsafe fn assign_object_id(self: *mut Self, address: usize) -> Value {
         let object_id = self.pop_free_id();
         self.write_element(object_id, address);
@@ -251,6 +254,7 @@ impl ObjectTable {
     /// Grow the system object table by copying all entries to a larger double-sized table.
     /// The old table can be collected as garbage.
     /// Future optimization: Use pre-amortized table growth.
+    #[inline(never)]
     unsafe fn grow_table<M: Memory>(mem: &mut M) {
         let old_table = get_object_table();
         debug_assert!((*old_table).free_stack == FREE_STACK_END);
