@@ -74,7 +74,7 @@ pub struct RememberedSetIterator {
     current_entry: *mut HashEntry,
 }
 
-pub const INITIAL_TABLE_LENGTH: u32 = 1024;
+pub const INITIAL_TABLE_LENGTH: u32 = 256 * 1024;
 const GROWTH_FACTOR: u32 = 2;
 pub const OCCUPATION_THRESHOLD_PERCENT: u32 = 65;
 
