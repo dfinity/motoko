@@ -595,9 +595,12 @@ module E = struct
   let word_size = 4l
 
   let new_static_object_id env unskewed_ptr =
-    env.static_objects := List.append !(env.static_objects) [ unskewed_ptr ];
-    env.static_object_id := Int32.add !(env.static_object_id) word_size;
-    !(env.static_object_id)
+    (if !Flags.gc_strategy == Flags.Incremental then
+      (env.static_objects := List.append !(env.static_objects) [ unskewed_ptr ];
+      env.static_object_id := Int32.add !(env.static_object_id) word_size;
+      !(env.static_object_id))
+    else
+      Int32.(add unskewed_ptr ptr_skew))
 
   let get_static_objects env =
     !(env.static_objects)
