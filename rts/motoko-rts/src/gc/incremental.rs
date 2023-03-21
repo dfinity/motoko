@@ -107,34 +107,34 @@ unsafe fn decide_incremental_strategy() -> Option<Strategy> {
     }
 }
 
+const INCREMENT_LIMIT: usize = 3_000_000;
+
 // Free object ids for mark stack pages has been conservatively reserved in the object table.
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
     // Always collect the young generation before the incremental collection of the old generation.
-    collect_young_generation(mem);
+    let mut time = Time::unlimited();
+    collect_young_generation(mem, &mut time);
     if strategy == Strategy::Full {
-        run_old_generation_increment(mem);
+        time.set_limit(INCREMENT_LIMIT);
+        run_old_generation_increment(mem, &mut time);
     }
     // New remembered set needs to be allocated in the new young generation.
     create_young_remembered_set(mem);
 }
 
-unsafe fn collect_young_generation<M: Memory>(mem: &mut M) {
+unsafe fn collect_young_generation<M: Memory>(mem: &mut M, time: &mut Time) {
     let remembered_set = take_young_remembered_set();
     let mark_promoted = is_incremental_gc_running();
     let generation = Generation::young(mem, remembered_set, mark_promoted);
     let mut state = State::new();
-    let time = Time::unlimited();
     let mut gc = GarbageCollector::instance(mem, generation, &mut state, time);
     gc.run();
 }
 
-const INCREMENT_LIMIT: usize = 3_000_000;
-
-unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M) {
+unsafe fn run_old_generation_increment<M: Memory>(mem: &mut M, time: &mut Time) {
     debug_assert_eq!(mem.get_last_heap_pointer(), mem.get_heap_pointer());
     let generation = Generation::old(mem, false);
     let state = incremental_gc_state();
-    let time = Time::limited(INCREMENT_LIMIT);
     let mut gc = GarbageCollector::instance(mem, generation, state, time);
     gc.run();
 }

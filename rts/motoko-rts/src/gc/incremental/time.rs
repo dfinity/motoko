@@ -21,6 +21,10 @@ impl Time {
         }
     }
 
+    pub fn set_limit(&mut self, limit: usize) {
+        self.limit = limit;
+    }
+
     pub fn tick(&mut self) {
         self.advance(1);
     }

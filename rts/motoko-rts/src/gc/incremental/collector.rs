@@ -138,7 +138,7 @@ pub struct GarbageCollector<'a, M: Memory> {
     mem: &'a mut M,
     generation: Generation,
     state: &'a mut State,
-    time: Time,
+    time: &'a mut Time,
 }
 
 impl<'a, M: Memory> GarbageCollector<'a, M> {
@@ -149,7 +149,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         mem: &'a mut M,
         generation: Generation,
         state: &'a mut State,
-        time: Time,
+        time: &'a mut Time,
     ) -> GarbageCollector<'a, M> {
         GarbageCollector {
             mem,
