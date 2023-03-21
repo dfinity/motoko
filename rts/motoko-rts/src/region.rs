@@ -324,7 +324,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
             }
         }
     }
-    assert_eq!(recovered_blocks, tb);
+    assert_eq!(recovered_blocks, block_count);
     Value::from_ptr(region as usize)
 }
 
