@@ -4441,22 +4441,24 @@ module Cycles = struct
     (fun env get_ptr ->
      let set_lower, get_lower = new_local env "lower" in
      get_ptr ^^
-      G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None }) ^^
-      BigNum.from_word64 env ^^
-      set_lower ^^
-      get_ptr ^^
-      G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
-      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-      G.if1 I32Type
-         get_lower
-         (get_lower ^^
-          get_ptr ^^
-          G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
-          BigNum.from_word64 env ^^
-          (* shift left 64 bits *)
-          compile_unboxed_const 64l ^^
-          BigNum.compile_lsh env ^^
-          BigNum.compile_add env))
+     G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None }) ^^
+     BigNum.from_word64 env ^^
+     set_lower ^^
+     get_ptr ^^
+     G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
+     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+     G.if1 I32Type
+       get_lower
+       begin
+         get_lower ^^
+         get_ptr ^^
+         G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
+         BigNum.from_word64 env ^^
+         (* shift left 64 bits *)
+         compile_unboxed_const 64l ^^
+         BigNum.compile_lsh env ^^
+         BigNum.compile_add env
+       end)
 
   (* takes a bignum from the stack, traps if ≥2^128, and leaves two 64bit words on the stack *)
   (* only used twice, so ok to not use share_code1; that would require I64Type support in FakeMultiVal *)
