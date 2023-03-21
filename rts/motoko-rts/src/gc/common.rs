@@ -22,7 +22,7 @@ pub enum Strategy {
 const MB: usize = 1024 * 1024;
 
 #[cfg(feature = "ic")]
-static mut OLD_GENERATION_THRESHOLD: usize = 32 * MB;
+static mut OLD_GENERATION_THRESHOLD: usize = 64 * MB;
 
 #[cfg(feature = "ic")]
 static mut PASSED_CRITICAL_LIMIT: bool = false;
@@ -51,7 +51,7 @@ pub unsafe fn decide_strategy() -> Option<Strategy> {
 pub unsafe fn update_strategy(strategy: Strategy) {
     use crate::memory::ic;
 
-    const GROWTH_RATE: f64 = 2.0;
+    const GROWTH_RATE: f64 = 2.5;
     if strategy == Strategy::Full {
         debug_assert!(ic::HEAP_BASE <= ic::HP);
         let heap_size = ic::HP - ic::HEAP_BASE;

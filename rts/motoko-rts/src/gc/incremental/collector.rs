@@ -342,6 +342,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             // object mark bit is cleared such that it is prepared for a new future mark phase.
             if !self.generation.promote_surviving {
                 object.unmark();
+                self.time.tick();
             }
             let old_address = object as usize;
             let new_address = self.state.compact_to;
@@ -356,9 +357,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                 }
                 object_id.set_new_address(new_address);
                 // Determined by measurements in comparison to the mark and compact phases.
-                const TIME_FRACTION_PER_WORD: f64 = 2.7;
+                const TIME_FRACTION_PER_WORD: usize = 10;
                 self.time
-                    .advance((size.as_usize() as f64 / TIME_FRACTION_PER_WORD) as usize);
+                    .advance(1 + size.as_usize() / TIME_FRACTION_PER_WORD);
             }
             self.state.compact_to += size.to_bytes().as_usize();
             debug_assert_eq!(self.state.compact_to % WORD_SIZE as usize, 0);
@@ -367,6 +368,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert!(object_id != OBJECT_TABLE_ID);
             // Free the id of a garbage object in the object table.
             object_id.free_object_id();
+            self.time.tick()
         }
     }
 
