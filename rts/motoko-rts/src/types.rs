@@ -273,7 +273,7 @@ impl Value {
 
     /// Get the address of an object by lookup through the object table.
     pub unsafe fn get_object_address(self) -> usize {
-        assert!(self.is_object_id());
+        debug_assert!(self.is_object_id());
         if OBJECT_TABLE != null_mut() {
             OBJECT_TABLE.get_object_address(self)
         } else {
