@@ -17,7 +17,10 @@ pub mod nicer {
 
     pub fn grow(pages: u64) -> i64 {
         // SAFETY: This is safe because of the ic0 api guarantees.
-        unsafe { stable64_grow(pages) }
+        unsafe {
+            println!(50, "grow({})", pages);
+            stable64_grow(pages)
+        }
     }
 
     pub fn read(offset: u64, dst: &mut [u8]) {

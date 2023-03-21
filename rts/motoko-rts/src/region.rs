@@ -332,16 +332,16 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
     use meta_data::{offset, size};
     let min_pages = (offset::BLOCK_ZERO + size::PAGE_IN_BYTES - 1) / size::PAGE_IN_BYTES;
     // detect if we are being called in after upgrade --
-    // in which case skip this and recreate REGION_0 (To do).
-    if crate::ic0_stable::nicer::size() < min_pages {
-        println!(80, "region_init -- first time.");
+    if crate::ic0_stable::nicer::size() == 0 {
+        println!(80, "region_init -- first time.  min_pages = {}", min_pages);
+
         let _ = crate::ic0_stable::nicer::grow(min_pages);
+
         // Region 0 -- classic API for stable memory, as a dedicated region.
         crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
-        //meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(0)));
+
         // Region 1 -- reserved for reclaimed regions' blocks (to do).
         crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
-    //meta_data::region_table::set(&RegionId(1), Some(RegionSizeInPages(0)));
     } else {
         println!(80, "region_init -- recover regions 0 and 1.");
         crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0)).as_region();
