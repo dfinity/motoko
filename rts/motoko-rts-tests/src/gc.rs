@@ -14,7 +14,9 @@ mod utils;
 
 use heap::MotokoHeap;
 use motoko_rts::gc::generational::write_barrier::REMEMBERED_SET;
-use motoko_rts::gc::incremental::object_table::{OBJECT_TABLE, OBJECT_TABLE_ID};
+use motoko_rts::gc::incremental::object_table::{
+    get_object_table, set_object_table, OBJECT_TABLE_ID,
+};
 use motoko_rts::gc::incremental::run_incremental_gc;
 use motoko_rts::gc::incremental::state::{incremental_gc_state, is_incremental_gc_running, State};
 use motoko_rts::remembered_set::RememberedSet;
@@ -167,7 +169,7 @@ fn test_gc(
 
 unsafe fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
     if gc == GC::Incremental {
-        assert_ne!(OBJECT_TABLE, null_mut());
+        assert_ne!(get_object_table(), null_mut());
         create_young_remembered_set(heap);
         assert!(using_incremental_barrier());
         assert!(!is_incremental_gc_running());
@@ -176,7 +178,7 @@ unsafe fn initialize_gc_state(heap: &mut MotokoHeap, gc: GC) {
 unsafe fn reset_gc_state(gc: GC) {
     if gc == GC::Incremental {
         assert!(using_incremental_barrier());
-        OBJECT_TABLE = null_mut();
+        set_object_table(null_mut());
         take_young_remembered_set();
         assert!(!using_incremental_barrier());
         let state = incremental_gc_state();
@@ -243,7 +245,7 @@ fn check_dynamic_heap(
         if gc == GC::Incremental {
             if object_id == OBJECT_TABLE_ID.get_raw() {
                 unsafe {
-                    assert_eq!(address, OBJECT_TABLE as usize);
+                    assert_eq!(address, get_object_table() as usize);
                 }
             }
             assert_eq!(get_object_address(object_id as usize), address);

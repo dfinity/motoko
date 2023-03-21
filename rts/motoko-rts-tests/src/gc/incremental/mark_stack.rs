@@ -4,7 +4,7 @@ use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 use motoko_rts::{
     gc::incremental::{
         mark_stack::{MarkStack, STACK_TABLE_CAPACITY},
-        object_table::{ObjectTable, OBJECT_TABLE},
+        object_table::{get_object_table, set_object_table, ObjectTable},
     },
     types::{skew, Value, Words},
 };
@@ -27,13 +27,13 @@ pub unsafe fn test() {
 unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
     let mut stack = MarkStack::new();
     let mut mem = TestMemory::new(Words(64 * 1024 * 1024));
-    debug_assert_eq!(OBJECT_TABLE, null_mut());
-    OBJECT_TABLE = ObjectTable::new(&mut mem, 16);
+    debug_assert_eq!(get_object_table(), null_mut());
+    set_object_table(ObjectTable::new(&mut mem, 16));
 
     stack.allocate(&mut mem, false);
     test_internal_push_pop(&mut mem, &mut stack, amount, regrow_step);
     stack.free();
-    OBJECT_TABLE = null_mut();
+    set_object_table(null_mut());
 }
 
 unsafe fn test_internal_push_pop(

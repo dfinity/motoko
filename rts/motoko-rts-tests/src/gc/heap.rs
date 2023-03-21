@@ -3,7 +3,7 @@ use super::utils::{
 };
 
 use motoko_rts::gc::incremental::object_table::{
-    ObjectTable, FREE_STACK_END, OBJECT_TABLE, OBJECT_TABLE_ID,
+    get_object_table, set_object_table, ObjectTable, FREE_STACK_END, OBJECT_TABLE_ID,
 };
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::{Memory, Roots};
@@ -213,7 +213,7 @@ impl MotokoHeapInner {
                 "Invalid test heap: some objects appear multiple times"
             );
             unsafe {
-                assert_eq!(OBJECT_TABLE, null_mut());
+                assert_eq!(get_object_table(), null_mut());
             }
         }
 
@@ -428,8 +428,8 @@ fn create_dynamic_heap(
         write_word(dynamic_heap, heap_offset, FREE_STACK_END.get_raw());
         heap_offset += WORD_SIZE;
         unsafe {
-            assert_eq!(OBJECT_TABLE, null_mut());
-            OBJECT_TABLE = heap_start as *mut ObjectTable;
+            assert_eq!(get_object_table(), null_mut());
+            set_object_table(heap_start as *mut ObjectTable);
         }
         assert_eq!(heap_offset, object_table_raw_size);
     }

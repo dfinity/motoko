@@ -1011,7 +1011,6 @@ module RTS = struct
     E.add_func_import env "rts" "schedule_incremental_gc" [] [];
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "new_object_id" [I32Type] [I32Type];
-    E.add_func_import env "rts" "get_object_address" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "initialize_copying_gc" [I32Type] [];
@@ -1110,8 +1109,35 @@ module Heap = struct
   let new_object_id env = 
     E.call_import env "rts" "new_object_id"
 
+  (* Incremental GC: Base = `OBJECT_TABLE.entries() + ptr_unskew`, optimized for get_object_address.
+     For non-incremental GC: Base = `ptr_unskew`. Directly unskew the object id which is a pointer. *)
+  let register_object_table_base env =
+     E.add_global32 env "__object_table_base" Mutable (ptr_unskew)  
+
+  (* Base = `OBJECT_TABLE.entries()` + ptr_skew, optimized for get_object_address *)
+  let get_object_table_base env =
+    G.i (GlobalGet (nr (E.get_global env "__object_table_base")))
+
+  let export_object_table_base env =
+    let set_object_table_entries = E.add_fun env "set_object_table_base" (Func.of_body env ["base", I32Type] [] (fun env ->
+      let get_base = G.i (LocalGet (nr 0l)) in
+      get_base ^^ 
+      compile_add_const ptr_unskew ^^
+      G.i (GlobalSet (nr (E.get_global env "__object_table_base")))
+    )) in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode "set_object_table_base";
+        edesc = nr (FuncExport (nr set_object_table_entries))
+      })
+
   let get_object_address env = 
-    E.call_import env "rts" "get_object_address"
+    (if !Flags.gc_strategy == Flags.Incremental then
+      get_object_table_base env ^^ 
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
+    else 
+      compile_add_const ptr_unskew
+    )
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
@@ -10743,7 +10769,6 @@ and metadata name value =
            value)
 
 and conclude_module env set_serialization_globals start_fi_o =
-
   FuncDec.export_async_method env;
 
   (* See Note [Candid subtype checks] *)
@@ -10769,6 +10794,8 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   GCRoots.register env static_roots;
   IC.register env;
+
+  Heap.export_object_table_base env;
 
   set_heap_base (E.get_end_of_static_memory env);
 
@@ -10853,6 +10880,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
 
+  Heap.register_object_table_base env;
   IC.register_globals env;
   Stack.register_globals env;
   GC.register_globals env;

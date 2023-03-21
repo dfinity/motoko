@@ -1,7 +1,7 @@
 use std::{array::from_fn, ptr::null_mut};
 
 use motoko_rts::{
-    gc::incremental::object_table::OBJECT_TABLE,
+    gc::incremental::object_table::{get_object_table, set_object_table},
     gc::incremental::roots::visit_roots,
     memory::{alloc_array, Memory, Roots},
     remembered_set::{RememberedSet, INITIAL_TABLE_LENGTH},
@@ -36,7 +36,7 @@ unsafe fn check_regular_roots() {
     );
     check_visit_static_roots(&heap, &root_indices);
     check_visit_continuation_table(&heap, &continuation_indices);
-    OBJECT_TABLE = null_mut();
+    set_object_table(null_mut());
 }
 
 unsafe fn check_visit_static_roots(heap: &MotokoHeap, root_indices: &[ObjectIdx]) {
@@ -82,7 +82,7 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_indices
 }
 
 unsafe fn check_visit_remembered_set() {
-    assert_eq!(OBJECT_TABLE, null_mut());
+    assert_eq!(get_object_table(), null_mut());
     let mut mem = TestMemory::new(Words(WORD_SIZE as u32 * INITIAL_TABLE_LENGTH));
     let static_roots = alloc_array(&mut mem, 0);
 

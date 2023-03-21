@@ -1,7 +1,7 @@
 use std::ptr::null_mut;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use motoko_rts::gc::incremental::object_table::OBJECT_TABLE;
+use motoko_rts::gc::incremental::object_table::get_object_table;
 use motoko_rts::types::{skew, Value, Words};
 
 use crate::memory::TestMemory;
@@ -61,7 +61,7 @@ pub fn get_scalar_value(scalar: u32) -> u32 {
 /// Make a pointer value to be used in heap object payload
 pub fn make_object_id(address: u32) -> Value {
     unsafe {
-        if OBJECT_TABLE == null_mut() {
+        if get_object_table() == null_mut() {
             Value::from_raw(skew(address as usize) as u32)
         } else {
             // Disallow object table growth in these tests.

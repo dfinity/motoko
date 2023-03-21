@@ -2,7 +2,7 @@ use std::ptr::null_mut;
 
 use motoko_rts::{
     gc::incremental::{
-        object_table::{ObjectTable, OBJECT_TABLE, OBJECT_TABLE_ID},
+        object_table::{get_object_table, set_object_table, ObjectTable, OBJECT_TABLE_ID},
         write_barrier::{
             create_young_remembered_set, take_young_remembered_set, using_incremental_barrier,
         },
@@ -24,9 +24,9 @@ pub unsafe fn test() {
 pub unsafe fn test_with_id(test_id: Value) {
     let mut mem = TestMemory::new(Words(512 * 1024));
 
-    assert_eq!(OBJECT_TABLE, null_mut());
+    assert_eq!(get_object_table(), null_mut());
     assert!(!using_incremental_barrier());
-    OBJECT_TABLE = ObjectTable::new(&mut mem, 4);
+    set_object_table(ObjectTable::new(&mut mem, 4));
     create_young_remembered_set(&mut mem);
 
     let array = alloc_array(&mut mem, 64).as_array();
@@ -39,7 +39,7 @@ pub unsafe fn test_with_id(test_id: Value) {
     test_mark_bit(stream as *mut Obj, test_id);
 
     take_young_remembered_set();
-    OBJECT_TABLE = null_mut();
+    set_object_table(null_mut());
     assert!(!using_incremental_barrier());
 }
 

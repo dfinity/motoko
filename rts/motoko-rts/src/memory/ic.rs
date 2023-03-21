@@ -27,6 +27,7 @@ pub(crate) static mut LAST_HP: u32 = 0;
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_static_roots() -> Value;
+    pub(crate) fn set_object_table_base(entries: *mut usize);
 }
 
 fn align_to_32_bytes(address: u32) -> u32 {

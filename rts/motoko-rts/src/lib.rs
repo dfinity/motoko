@@ -36,7 +36,7 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::{Bytes, Value};
+use types::Bytes;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -51,15 +51,10 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> u
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn new_object_id<M: memory::Memory>(mem: &mut M, address: usize) -> Value {
+unsafe fn new_object_id<M: memory::Memory>(mem: &mut M, address: usize) -> types::Value {
     // Check that the object table has not been expanded beyond the address of the current allocation.
     debug_assert!(address > mem.get_heap_base());
-    Value::new_object_id(mem, address)
-}
-
-#[no_mangle]
-unsafe extern "C" fn get_object_address(value: Value) -> usize {
-    value.get_object_address()
+    types::Value::new_object_id(mem, address)
 }
 
 extern "C" {

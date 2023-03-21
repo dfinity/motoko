@@ -105,12 +105,25 @@ use crate::{
 };
 
 /// Current pointer to the object table. Constitutes a special GC root.
-pub static mut OBJECT_TABLE: *mut ObjectTable = null_mut();
+static mut OBJECT_TABLE: *mut ObjectTable = null_mut();
+
+pub unsafe fn set_object_table(table: *mut ObjectTable) {
+    OBJECT_TABLE = table;
+
+    #[cfg(feature = "ic")]
+    if table != null_mut() {
+        crate::memory::ic::set_object_table_base(OBJECT_TABLE.entries());
+    }
+}
+
+pub unsafe fn get_object_table() -> *mut ObjectTable {
+    OBJECT_TABLE
+}
 
 /// Initialize object table and register the static (compiler-generated) objects.
 pub unsafe fn initialize_object_table<M: Memory>(mem: &mut M, static_objects: *mut Array) {
     const INITIAL_TABLE_SIZE: usize = 10_000;
-    OBJECT_TABLE = ObjectTable::new(mem, INITIAL_TABLE_SIZE);
+    set_object_table(ObjectTable::new(mem, INITIAL_TABLE_SIZE));
     ObjectTable::register_static_objects(mem, static_objects);
 }
 
@@ -150,9 +163,9 @@ impl ObjectTable {
     }
 
     /// Address to the first table entry.
-    pub unsafe fn entries(self: *mut Self) -> *mut Value {
+    pub unsafe fn entries(self: *mut Self) -> *mut usize {
         // Skip the declared `ObjectTable` header (Blob header with `free_stack` word).
-        self.offset(1) as *mut Value
+        self.offset(1) as *mut usize
     }
 
     unsafe fn add_free_range(self: *mut Self, range: Range<usize>) {
@@ -168,10 +181,10 @@ impl ObjectTable {
     /// Allocate a new object id and associate the object's address.
     /// Grow the object table if necessary.
     pub unsafe fn new_object_id<M: Memory>(mem: &mut M, address: usize) -> Value {
-        if (*OBJECT_TABLE).free_stack == FREE_STACK_END {
+        if (*get_object_table()).free_stack == FREE_STACK_END {
             Self::grow_table(mem);
         }
-        OBJECT_TABLE.assign_object_id(address)
+        get_object_table().assign_object_id(address)
     }
 
     unsafe fn assign_object_id(self: *mut Self, address: usize) -> Value {
@@ -239,19 +252,20 @@ impl ObjectTable {
     /// The old table can be collected as garbage.
     /// Future optimization: Use pre-amortized table growth.
     unsafe fn grow_table<M: Memory>(mem: &mut M) {
-        let old_table = OBJECT_TABLE;
+        let old_table = get_object_table();
         debug_assert!((*old_table).free_stack == FREE_STACK_END);
         const GROW_FACTOR: usize = 2;
         let new_size = old_table.size() * GROW_FACTOR;
-        OBJECT_TABLE = old_table.copy(mem, new_size);
-        debug_assert_ne!(old_table as usize, OBJECT_TABLE as usize);
-        debug_assert!((*OBJECT_TABLE).free_stack != FREE_STACK_END);
+        set_object_table(old_table.copy(mem, new_size));
+        debug_assert_ne!(old_table as usize, get_object_table() as usize);
+        debug_assert!((*get_object_table()).free_stack != FREE_STACK_END);
         // Assign a new object id for the old table such that the GC can reclaim it.
-        let old_table_id = OBJECT_TABLE.assign_object_id(old_table as usize);
+        let new_table = get_object_table();
+        let old_table_id = new_table.assign_object_id(old_table as usize);
         (*old_table).header.header.initialize_id(old_table_id);
         // Record new table address
-        debug_assert!((OBJECT_TABLE as *const Obj).object_id() == OBJECT_TABLE_ID);
-        OBJECT_TABLE.move_object(OBJECT_TABLE_ID, OBJECT_TABLE as usize);
+        debug_assert!((new_table as *const Obj).object_id() == OBJECT_TABLE_ID);
+        new_table.move_object(OBJECT_TABLE_ID, new_table as usize);
     }
 
     /// Create a table copy of equal or larger size.

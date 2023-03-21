@@ -70,7 +70,14 @@
 
 use crate::{
     constants::WORD_SIZE,
-    gc::incremental::object_table::{ObjectTable, OBJECT_TABLE_ID},
+    gc::incremental::{
+        array_slicing::slice_array,
+        object_table::{get_object_table, set_object_table, ObjectTable, OBJECT_TABLE_ID},
+        roots::visit_roots,
+        state::Phase,
+        state::State,
+        time::Time,
+    },
     mem_utils::memcpy_words,
     memory::Memory,
     remembered_set::RememberedSet,
@@ -78,11 +85,6 @@ use crate::{
         block_size, has_object_header, Obj, Tag, Value, Words, NULL_OBJECT_ID, TAG_ARRAY_SLICE_MIN,
     },
     visitor::visit_pointer_fields,
-};
-
-use super::{
-    array_slicing::slice_array, object_table::OBJECT_TABLE, roots::visit_roots, state::Phase,
-    state::State, time::Time,
 };
 
 #[cfg(debug_assertions)]
@@ -284,8 +286,8 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
 
         // Mark the object table as last object since it may have been extended
         // to a new table copy during the GC mark phase (because of mark stack allocation).
-        if OBJECT_TABLE as usize >= self.generation.start {
-            (OBJECT_TABLE as *mut Obj).mark();
+        if get_object_table() as usize >= self.generation.start {
+            (get_object_table() as *mut Obj).mark();
         }
 
         #[cfg(debug_assertions)]
@@ -346,9 +348,9 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert!(new_address <= old_address);
             if new_address != old_address {
                 memcpy_words(new_address, old_address, size);
-                if old_address == OBJECT_TABLE as usize {
+                if old_address == get_object_table() as usize {
                     // Immediately update the object table pointer after movement.
-                    OBJECT_TABLE = new_address as *mut ObjectTable;
+                    set_object_table(new_address as *mut ObjectTable);
                 } else {
                     debug_assert!(object_id != OBJECT_TABLE_ID);
                 }
@@ -361,7 +363,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             self.state.compact_to += size.to_bytes().as_usize();
             debug_assert_eq!(self.state.compact_to % WORD_SIZE as usize, 0);
         } else {
-            debug_assert_ne!(object as usize, OBJECT_TABLE as usize);
+            debug_assert_ne!(object as usize, get_object_table() as usize);
             debug_assert!(object_id != OBJECT_TABLE_ID);
             // Free the id of a garbage object in the object table.
             object_id.free_object_id();
