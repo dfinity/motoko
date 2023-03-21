@@ -43,10 +43,7 @@ pub unsafe fn young_remembered_set_size() -> usize {
 /// Insert an object to the young remembered set. This is used in the special case
 /// when the old generation's mark stack is extended inside the young generation.
 pub(super) unsafe fn remember_old_object<M: Memory>(mem: &mut M, value: Value) {
-    YOUNG_REMEMBERED_SET
-        .as_mut()
-        .unwrap()
-        .simple_insert(mem, value);
+    YOUNG_REMEMBERED_SET.as_mut().unwrap().insert(mem, value);
 }
 
 /// Create a new young remembered set after any of these events:

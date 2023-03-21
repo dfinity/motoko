@@ -40,8 +40,8 @@
 //! * The table must be blobs, as their entries must not be visited and
 //!   during GC marking.
 //! * The remembered set is never moved in the heap as it is always
-//!   discarded on young generation collection. Therefore, low-leve
-//!   addresses are used to link the collision nodes and to implement
+//!   discarded on young generation collection. Therefore, low-level
+//!   addresses can be used to link the collision nodes and to implement
 //!   the iterator.
 
 use core::mem::size_of;
@@ -49,30 +49,29 @@ use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{block_size, Blob, Bytes, Value, NULL_OBJECT_ID};
+use crate::types::{block_size, Blob, Bytes, Value};
 
 pub struct RememberedSet {
-    hash_table: Value,
+    hash_table: *mut Blob,
     count: u32, // contained entries
 }
 
 #[repr(C)]
 struct HashEntry {
-    value: Value,
-    next_collision: Value,
+    pub value: Value,
+    pub next_collision_ptr: *mut CollisionNode,
 }
 
 #[repr(C)]
 struct CollisionNode {
-    header: Blob,
-    entry: HashEntry,
+    pub header: Blob,
+    pub entry: HashEntry,
 }
 
 pub struct RememberedSetIterator {
-    hash_table: Value,
+    hash_table: *mut Blob,
     hash_index: u32,
-    use_current_entry: bool,
-    current_collision: Value,
+    current_entry: *mut HashEntry,
 }
 
 pub const INITIAL_TABLE_LENGTH: u32 = 1024;
@@ -88,61 +87,48 @@ impl RememberedSet {
         }
     }
 
-    /// Insert entry to the remembered set without triggering a hash table extension if the
-    /// hash table occupation is high. This is used during object table extension where free
-    /// object ids are limited and a reconstruction of the hash table cannot be performed as
-    /// it requires too many new object ids.
-    pub unsafe fn simple_insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        debug_assert!(!is_null_value(value));
-        let hash_table = self.hash_table.as_blob_mut();
-        let index = Self::hash_index(hash_table, value);
-        let entry = table_get(hash_table, index);
-        if is_null_value((*entry).value) {
-            debug_assert!(is_null_value((*entry).next_collision));
-            table_set(hash_table, index, value);
+    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+        debug_assert!(!is_null_ptr_value(value));
+        let index = self.hash_index(value);
+        let entry = table_get(self.hash_table, index);
+        if is_null_ptr_value((*entry).value) {
+            debug_assert_eq!((*entry).next_collision_ptr, null_mut());
+            table_set(self.hash_table, index, value);
         } else {
             let mut current = entry;
             while (*current).value.get_raw() != value.get_raw()
-                && !is_null_value((*current).next_collision)
+                && (*current).next_collision_ptr != null_mut()
             {
-                let next_node = as_collision((*current).next_collision);
+                let next_node = (*current).next_collision_ptr;
                 current = &mut (*next_node).entry;
-                debug_assert!(!is_null_value((*current).value));
+                debug_assert!(!is_null_ptr_value((*current).value));
             }
             if (*current).value.get_raw() == value.get_raw() {
                 // duplicate
                 return;
             }
-            debug_assert!(!is_null_value((*current).value));
-            (*current).next_collision = new_collision_node(mem, value);
+            debug_assert!(!is_null_ptr_value((*current).value));
+            (*current).next_collision_ptr = new_collision_node(mem, value);
         }
         self.count += 1;
-    }
-
-    /// Insert an entry to the remembered set by potentially growing the hash table if the
-    /// occupation exceeeded a defined threshold. To be used by the write barrier.
-    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
-        self.simple_insert(mem, value);
-        let hash_table = self.hash_table.as_blob_mut();
-        if self.count > table_length(hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
+        if self.count > table_length(self.hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
             self.grow(mem);
         }
     }
 
-    // Only used for assertions (barrier coverage check).
+    // Only used for debug assertions (barrier coverage check).
     pub unsafe fn contains(&self, value: Value) -> bool {
-        debug_assert!(!is_null_value(value));
-        let hash_table = self.hash_table.as_blob_mut();
-        let index = Self::hash_index(hash_table, value);
-        let entry = table_get(hash_table, index);
-        if !is_null_value((*entry).value) {
+        debug_assert!(!is_null_ptr_value(value));
+        let index = self.hash_index(value);
+        let entry = table_get(self.hash_table, index);
+        if !is_null_ptr_value((*entry).value) {
             let mut current = entry;
             while (*current).value.get_raw() != value.get_raw()
-                && !is_null_value((*current).next_collision)
+                && (*current).next_collision_ptr != null_mut()
             {
-                let next_node = as_collision((*current).next_collision);
+                let next_node = (*current).next_collision_ptr;
                 current = &mut (*next_node).entry;
-                debug_assert!(!is_null_value((*current).value));
+                debug_assert!(!is_null_ptr_value((*current).value));
             }
             if (*current).value.get_raw() == value.get_raw() {
                 return true;
@@ -151,10 +137,10 @@ impl RememberedSet {
         false
     }
 
-    pub unsafe fn hash_index(hash_table: *mut Blob, value: Value) -> u32 {
+    pub unsafe fn hash_index(&self, value: Value) -> u32 {
         // Future optimization: Use bitwise modulo, check for power of 2
         let raw = value.get_raw();
-        let length = table_length(hash_table);
+        let length = table_length(self.hash_table);
         debug_assert_eq!((raw / WORD_SIZE) % length, (raw / WORD_SIZE) & (length - 1));
         (raw / WORD_SIZE) & (length - 1)
     }
@@ -167,18 +153,16 @@ impl RememberedSet {
         self.count
     }
 
-    // Sufficient free object ids for remembered set growth should already be reserved
-    // in the object table.
     unsafe fn grow<M: Memory>(&mut self, mem: &mut M) {
         let old_count = self.count;
         let mut iterator = self.iterate();
-        let new_length = table_length(self.hash_table.as_blob_mut()) * GROWTH_FACTOR;
+        let new_length = table_length(self.hash_table) * GROWTH_FACTOR;
         self.hash_table = new_table(mem, new_length);
         self.count = 0;
         while iterator.has_next() {
             let value = iterator.current();
-            debug_assert!(!is_null_value(value));
-            self.simple_insert(mem, value); // Prevents recursive growth.
+            debug_assert!(!is_null_ptr_value(value));
+            self.insert(mem, value);
             iterator.next();
         }
         assert_eq!(self.count, old_count);
@@ -187,93 +171,85 @@ impl RememberedSet {
 
 impl RememberedSetIterator {
     pub unsafe fn init(remembered_set: &RememberedSet) -> RememberedSetIterator {
+        let mut first_entry = table_get(remembered_set.hash_table, 0);
+        if is_null_ptr_value((*first_entry).value) {
+            first_entry = null_mut()
+        }
         let mut iterator = RememberedSetIterator {
             hash_table: remembered_set.hash_table,
             hash_index: 0,
-            use_current_entry: true,
-            current_collision: NULL_OBJECT_ID,
+            current_entry: first_entry,
         };
         iterator.skip_free();
         iterator
     }
 
     unsafe fn skip_free(&mut self) {
-        let hash_table = self.hash_table.as_blob_mut();
-        let length = table_length(hash_table);
+        let length = table_length(self.hash_table);
         if self.hash_index == length {
             return;
         }
-        if self.use_current_entry {
-            let entry = table_get(hash_table, self.hash_index);
-            if !is_null_value((*entry).value) {
-                return;
-            }
-            debug_assert!(is_null_value((*entry).next_collision));
-        } else if !is_null_value(self.current_collision) {
+        if self.current_entry != null_mut() {
+            debug_assert!(!is_null_ptr_value((*self.current_entry).value));
             return;
         }
-        self.use_current_entry = true;
         self.hash_index += 1;
         while self.hash_index < length
-            && is_null_value((*table_get(hash_table, self.hash_index)).value)
+            && is_null_ptr_value((*table_get(self.hash_table, self.hash_index)).value)
         {
-            debug_assert!(is_null_value(
-                (*table_get(hash_table, self.hash_index)).next_collision
-            ));
+            debug_assert_eq!(
+                (*table_get(self.hash_table, self.hash_index)).next_collision_ptr,
+                null_mut()
+            );
             self.hash_index += 1
+        }
+        if self.hash_index < length {
+            self.current_entry = table_get(self.hash_table, self.hash_index);
+            debug_assert!(!is_null_ptr_value((*self.current_entry).value));
+        } else {
+            self.current_entry = null_mut();
         }
     }
 
     pub unsafe fn has_next(&self) -> bool {
-        let hash_table = self.hash_table.as_blob_mut();
-        self.hash_index < table_length(hash_table)
+        self.current_entry != null_mut()
     }
 
     pub unsafe fn current(&self) -> Value {
-        let entry = self.current_entry();
-        (*entry).value
-    }
-
-    unsafe fn current_entry(&self) -> *mut HashEntry {
         debug_assert!(self.has_next());
-        let hash_table = self.hash_table.as_blob_mut();
-        let entry = if self.use_current_entry {
-            table_get(hash_table, self.hash_index)
-        } else {
-            debug_assert!(!is_null_value(self.current_collision));
-            let node = as_collision(self.current_collision);
-            &mut (*node).entry
-        };
-        debug_assert!(!is_null_value((*entry).value));
-        entry
+        debug_assert!(!is_null_ptr_value((*self.current_entry).value));
+        (*self.current_entry).value
     }
 
     pub unsafe fn next(&mut self) {
-        let entry = self.current_entry();
-        self.use_current_entry = false;
-        self.current_collision = (*entry).next_collision;
+        debug_assert!(self.has_next());
+        let next_node = (*self.current_entry).next_collision_ptr;
+        if next_node == null_mut() {
+            self.current_entry = null_mut()
+        } else {
+            self.current_entry = &mut (*next_node).entry as *mut HashEntry;
+        }
         self.skip_free()
     }
 }
 
-unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> Value {
-    let object = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32));
-    let table = object.as_blob_mut();
+unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
+    let table = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32)).as_blob_mut();
     for index in 0..size {
-        table_set(table, index, NULL_OBJECT_ID);
+        table_set(table, index, null_ptr_value());
     }
-    object
+    table
 }
 
-unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> Value {
-    debug_assert!(!is_null_value(value));
-    let object = alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32));
-    let node = as_collision(object);
+unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut CollisionNode {
+    debug_assert!(!is_null_ptr_value(value));
+    let node =
+        alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
     (*node).entry = HashEntry {
         value,
-        next_collision: NULL_OBJECT_ID,
+        next_collision_ptr: null_mut(),
     };
-    object
+    node
 }
 
 unsafe fn table_get(table: *mut Blob, index: u32) -> *mut HashEntry {
@@ -290,7 +266,7 @@ unsafe fn table_get(table: *mut Blob, index: u32) -> *mut HashEntry {
 unsafe fn table_set(table: *mut Blob, index: u32, value: Value) {
     let entry = table_get(table, index);
     (*entry).value = value;
-    (*entry).next_collision = NULL_OBJECT_ID;
+    (*entry).next_collision_ptr = null_mut();
 }
 
 unsafe fn table_length(table: *mut Blob) -> u32 {
@@ -299,10 +275,10 @@ unsafe fn table_length(table: *mut Blob) -> u32 {
     table.len().as_u32() / size_of::<HashEntry>() as u32
 }
 
-unsafe fn as_collision(value: Value) -> *mut CollisionNode {
-    value.as_blob_mut() as *mut CollisionNode
+unsafe fn null_ptr_value() -> Value {
+    Value::from_raw((null_mut() as *mut usize) as u32)
 }
 
-unsafe fn is_null_value(value: Value) -> bool {
-    value == NULL_OBJECT_ID
+unsafe fn is_null_ptr_value(value: Value) -> bool {
+    value.get_raw() as *mut usize == null_mut()
 }
