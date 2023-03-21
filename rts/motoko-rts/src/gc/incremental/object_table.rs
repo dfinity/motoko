@@ -172,11 +172,12 @@ impl ObjectTable {
 
     unsafe fn add_free_range(self: *mut Self, range: Range<usize>) {
         debug_assert!(range.start <= range.end);
-        let mut index = range.end;
-        while index > range.start {
-            index -= 1;
-            let object_id = self.index_to_object_id(index);
-            self.push_free_id(object_id);
+        debug_assert!(range.end > 0);
+        let mut current = self.index_to_object_id(range.end - 1);
+        let lowest = self.index_to_object_id(range.start);
+        while current.get_raw() >= lowest.get_raw() {
+            self.push_free_id(current);
+            current = Value::from_raw(current.get_raw() - WORD_SIZE);
         }
     }
 
