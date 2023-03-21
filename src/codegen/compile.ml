@@ -4443,8 +4443,7 @@ module Cycles = struct
       (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
       BigNum.from_word64 env ^^
       get_ptr ^^
-      compile_add_const 8l ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
+      (G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None })) ^^
       BigNum.from_word64 env ^^
       (* shift left 64 bits *)
       compile_unboxed_const 64l ^^
