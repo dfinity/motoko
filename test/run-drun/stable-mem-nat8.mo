@@ -29,7 +29,7 @@ actor {
 
     P.debugPrint(debug_show {old = m; new = n; size = StableMemory.size()});
 
-    // assert (n == StableMemory.size());
+    assert (n == StableMemory.size());
 
     // check new page is clear
     var i : Nat64 = m * 65536;

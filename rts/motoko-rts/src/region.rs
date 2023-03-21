@@ -281,16 +281,62 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 }
 
 #[ic_mem_fn]
+pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
+    use meta_data::size::PAGES_IN_BLOCK;
+    let c = meta_data::region_table::get(&rid);
+    let page_count = match c {
+	Some(RegionSizeInPages(pc)) => pc,
+	_ => {
+	    rts_trap_with("region_recover failed: Expected Some(RegionSizeInPages(_))");
+	}
+    };
+    let r_ptr = mem.alloc_words(size_of::<Region>());
+
+    // NB. cannot use as_region() here as we didn't write the header yet
+    let region = r_ptr.get_ptr() as *mut Region;
+    (*region).header.tag = TAG_REGION;
+    (*region).id = rid.0;
+    (*region).page_count = page_count as u32;
+
+    let block_count = page_count as u32 + PAGES_IN_BLOCK - 1 / PAGES_IN_BLOCK;
+    (*region).vec_pages = alloc_blob(mem, Bytes(block_count));
+    let tb = meta_data::total_allocated_blocks::get();
+    let av = AccessVector((*region).vec_pages.as_blob_mut());
+    let mut recovered_blocks = 0;
+    for block_id in 0..tb {
+	match meta_data::block_region_table::get(BlockId(block_id as u16)) {
+	    None => { },
+	    Some((rid_, rank)) => {
+		assert_eq!(rid, &rid_);
+		av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
+		recovered_blocks += 1;
+	    }
+	}
+
+    };
+    assert_eq!(recovered_blocks, tb);
+    Value::from_ptr(region as usize)
+}
+
+
+#[ic_mem_fn]
 pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
     use meta_data::{size, offset};
     let min_pages = (offset::BLOCK_ZERO + size::PAGE_IN_BYTES - 1) / size::PAGE_IN_BYTES;
-    let _ = crate::ic0_stable::nicer::grow(min_pages);
-    // Region 0 -- classic API for stable memory, as a dedicated region.
-    crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
-    meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(0)));
-    // Region 1 -- reserved for reclaimed regions' blocks (to do).
-    crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
-    meta_data::region_table::set(&RegionId(1), Some(RegionSizeInPages(0)));
+    // detect if we are being called in after upgrade --
+    // in which case skip this and recreate REGION_0 (To do).
+    if crate::ic0_stable::nicer::size() < min_pages {
+	let _ = crate::ic0_stable::nicer::grow(min_pages);
+	// Region 0 -- classic API for stable memory, as a dedicated region.
+	crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
+	//meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(0)));
+	// Region 1 -- reserved for reclaimed regions' blocks (to do).
+	crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
+	//meta_data::region_table::set(&RegionId(1), Some(RegionSizeInPages(0)));
+    } else {
+	crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0)).as_region();
+	crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1)).as_region();
+    }
 }
 
 
