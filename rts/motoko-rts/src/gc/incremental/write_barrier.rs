@@ -75,6 +75,7 @@ pub unsafe fn using_incremental_barrier() -> bool {
 /// * Pre update: Used during the GC mark phase to guarantee incremental snapshot-at-the-beginning marking.
 /// * Post update: Used for the generational collection to record the old-to-young remembered set.
 #[ic_mem_fn]
+#[inline]
 pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, new_value: Value) {
     debug_assert!(!is_skewed(location as u32));
 
@@ -88,37 +89,49 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, n
 /// Catch overwritten object ids and mark the corresponding objects if the two conditions are met:
 /// * The GC is in the mark phase.
 /// * The corresponding object resides in the old generation.
+#[inline]
 unsafe fn pre_update_barrier<M: Memory>(mem: &mut M, value: Value) {
     if incremental_gc_phase() == Phase::Mark
         && value.points_to_or_beyond(mem.get_heap_base())
         && value.get_object_address() < mem.get_last_heap_pointer()
     {
-        debug_assert!(value.get_object_address() >= mem.get_heap_base());
-        debug_assert!(value.get_object_address() < mem.get_last_heap_pointer());
-        let state = incremental_gc_state();
-        let time = Time::limited(0);
-        debug_assert!(YOUNG_REMEMBERED_SET.is_some());
-        // The mark stack for old objects may be extended to the young generation,
-        // such that the new mark stack table will be registered in the remembered set.
-        let generation = Generation::old(mem, true);
-        let mut gc = GarbageCollector::instance(mem, generation, state, time);
-        gc.mark_object(value);
+        internal_pre_update_barrier(mem, value);
     }
+}
+
+#[inline(never)]
+unsafe fn internal_pre_update_barrier<M: Memory>(mem: &mut M, value: Value) {
+    debug_assert!(value.get_object_address() >= mem.get_heap_base());
+    debug_assert!(value.get_object_address() < mem.get_last_heap_pointer());
+    let state = incremental_gc_state();
+    let time = Time::limited(0);
+    debug_assert!(YOUNG_REMEMBERED_SET.is_some());
+    // The mark stack for old objects may be extended to the young generation,
+    // such that the new mark stack table will be registered in the remembered set.
+    let generation = Generation::old(mem, true);
+    let mut gc = GarbageCollector::instance(mem, generation, state, time);
+    gc.mark_object(value);
 }
 
 /// Catch object id writes that lead from the old generation to the young generation and store the corresponding
 /// write location in the remembered set as additional root set for the young generation collection.
+#[inline]
 unsafe fn post_update_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
     // Checks have been optimized according to the frequency of occurrence.
     // Only record locations inside old generation. Static roots are anyway marked by GC.
     if (location as usize) < mem.get_last_heap_pointer() {
-        let value = *location;
-        if value.points_to_or_beyond(mem.get_last_heap_pointer()) {
-            if location as usize >= mem.get_heap_base() {
-                let remembered_set = YOUNG_REMEMBERED_SET.as_mut().unwrap();
-                // Catch object ids that point from old generation (or static roots) to young generation.
-                remembered_set.insert(mem, value);
-            }
+        internal_post_update_barrier(mem, location);
+    }
+}
+
+#[inline(never)]
+unsafe fn internal_post_update_barrier<M: Memory>(mem: &mut M, location: *mut Value) {
+    let value = *location;
+    if value.points_to_or_beyond(mem.get_last_heap_pointer()) {
+        if location as usize >= mem.get_heap_base() {
+            let remembered_set = YOUNG_REMEMBERED_SET.as_mut().unwrap();
+            // Catch object ids that point from old generation (or static roots) to young generation.
+            remembered_set.insert(mem, value);
         }
     }
 }
