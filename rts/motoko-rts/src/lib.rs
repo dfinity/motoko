@@ -52,9 +52,11 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> u
 
 #[ic_mem_fn(ic_only)]
 unsafe fn new_object_id<M: memory::Memory>(mem: &mut M, address: usize) -> types::Value {
+    use crate::gc::incremental::object_table::ObjectTable;
+
     // Check that the object table has not been expanded beyond the address of the current allocation.
     debug_assert!(address > mem.get_heap_base());
-    types::Value::new_object_id(mem, address)
+    ObjectTable::new_object_id(mem, address)
 }
 
 extern "C" {

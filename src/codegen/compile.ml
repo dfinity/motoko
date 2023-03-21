@@ -1106,8 +1106,11 @@ module Heap = struct
   let dyn_alloc_words env =
     E.call_import env "rts" "alloc_words"
 
-  let new_object_id env = 
-    E.call_import env "rts" "new_object_id"
+  let new_object_id env =
+    (if !Flags.gc_strategy == Flags.Incremental then
+      E.call_import env "rts" "new_object_id"
+    else
+      compile_add_const ptr_skew)
 
   (* Incremental GC: Base = `OBJECT_TABLE.entries() + ptr_unskew`, optimized for get_object_address.
      For non-incremental GC: Base = `ptr_unskew`. Directly unskew the object id which is a pointer. *)
