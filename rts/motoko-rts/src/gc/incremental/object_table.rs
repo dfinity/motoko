@@ -250,8 +250,8 @@ impl ObjectTable {
         address as *mut usize
     }
 
+    // Future optimization: Use pre-amortized table growth.
     unsafe fn grow<M: Memory>(self: *mut Self, mem: &mut M) -> *mut Self {
-        println!(100, "GROW TABLE");
         debug_assert!((*self).free_stack == FREE_STACK_END);
         const GROW_FACTOR: usize = 2;
         let new_size = self.size() * GROW_FACTOR;

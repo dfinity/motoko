@@ -40,12 +40,8 @@ pub unsafe fn young_remembered_set_size() -> usize {
         YOUNG_REMEMBERED_SET.as_ref().unwrap().count() as usize
     }
 }
-
-/// Object table extension may insert additional objects if they are moved from the old
-/// generation to the young generation. No GC increment is running at that time, such that
-/// the remembered set is present.
-/// The insertion requires that the object table has sufficient free object ids, as the
-/// table is not allowed to grow during this call.
+/// Insert an object to the young remembered set. This is used in the special case
+/// when the old generation's mark stack is extended inside the young generation.
 pub(super) unsafe fn remember_old_object<M: Memory>(mem: &mut M, value: Value) {
     YOUNG_REMEMBERED_SET
         .as_mut()
