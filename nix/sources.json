@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "dc14f34abec1ab028dd932bac97e0a56a603cd01",
-        "sha256": "0nmv3l0jqgiyxyq4hpxg2j2s06whii9r8yczj9hj7awlak502yfk",
+        "rev": "94a909c870ba74cee979bc330efa93b72f54c479",
+        "sha256": "1imb2r2d7hvd0hkdaxdf0qqcfjy875h5xb4ahqzmwwv4rdwyv49i",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/dc14f34abec1ab028dd932bac97e0a56a603cd01.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/94a909c870ba74cee979bc330efa93b72f54c479.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
