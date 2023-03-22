@@ -1906,8 +1906,7 @@ module Variant = struct
     compile_eq_const (hash_variant_label env l)
 
   let vanilla_lit env i ptr =
-    E.add_static env StaticBytes.[
-        I32 Tagged.(int_of_tag Variant);
+    Tagged.shared_static_obj env Tagged.Variant StaticBytes.[
         I32 (hash_variant_label env i);
         I32 ptr
       ]
