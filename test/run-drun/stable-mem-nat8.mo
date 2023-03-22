@@ -14,6 +14,16 @@ actor {
   func valOfNat64(n : Nat64) : Nat8 { P.natToNat8(P.nat64ToNat(n % 256)); };
   let inc : Nat64 = 1;
 
+  do {
+    Region.metaLogLines();
+    P.debugPrint("printing region0's ID as " # debug_show (Region.id region0));
+
+    let size1 = StableMemory.size();
+    let size2 = Region.size(region0);
+    P.debugPrint(debug_show {size1; size2});
+    assert size1 == size2;
+  };
+
   var i : Nat64 = 0;
   let max = n * 65536;
   while (i < max) {
