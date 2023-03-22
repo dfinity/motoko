@@ -48,6 +48,7 @@ use core::mem::size_of;
 use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
+use crate::mem_utils::memzero;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{block_size, Blob, Bytes, Value};
 
@@ -234,10 +235,9 @@ impl RememberedSetIterator {
 }
 
 unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
-    let table = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32)).as_blob_mut();
-    for index in 0..size {
-        table_set(table, index, null_ptr_value());
-    }
+    let payload_size = Bytes(size * size_of::<HashEntry>() as u32);
+    let table = alloc_blob(mem, payload_size).as_blob_mut();
+    memzero(table.payload_addr() as usize, payload_size.to_words());
     table
 }
 
@@ -273,10 +273,6 @@ unsafe fn table_length(table: *mut Blob) -> u32 {
     debug_assert!(table != null_mut());
     debug_assert!(table.len().as_u32() % size_of::<HashEntry>() as u32 == 0);
     table.len().as_u32() / size_of::<HashEntry>() as u32
-}
-
-unsafe fn null_ptr_value() -> Value {
-    Value::from_raw((null_mut() as *mut usize) as u32)
 }
 
 unsafe fn is_null_ptr_value(value: Value) -> bool {
