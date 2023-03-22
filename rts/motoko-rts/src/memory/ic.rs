@@ -29,10 +29,10 @@ pub(crate) static mut REGION_MEM_SIZE_INIT: bool = false;
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u16 = 0;
 
 // Region 0 -- classic API for stable memory, as a dedicated region.
-pub(crate) static mut REGION_0: *mut Region = 0 as *mut Region;
+pub(crate) static mut REGION_0: Value = Value::from_ptr(0);
 
 // Region 1 -- reserved for reclaimed regions' blocks (to do).
-pub(crate) static mut REGION_1: *mut Region = 0 as *mut Region;
+pub(crate) static mut REGION_1: Value = Value::from_ptr(0);
 
 /// TEMP -- for logging during testing.
 pub(crate) static mut NEXT_REGION_LOG_ID: u16 = 0;

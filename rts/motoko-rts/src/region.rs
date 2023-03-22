@@ -364,10 +364,10 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         let _ = crate::ic0_stable::nicer::grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
 
         // Region 0 -- classic API for stable memory, as a dedicated region.
-        crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
+        crate::memory::ic::REGION_0 = crate::region::region_new(mem);
 
         // Region 1 -- reserved for reclaimed regions' blocks (to do).
-        crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
+        crate::memory::ic::REGION_1 = crate::region::region_new(mem);
 
         // Recall that we've done this later, without asking ic0_stable::size.
         assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
@@ -380,8 +380,8 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         crate::memory::ic::REGION_MEM_SIZE_INIT = true;
 
         println!(80, "region_init -- recover regions 0 and 1.");
-        crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0)).as_region();
-        crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1)).as_region();
+        crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0));
+        crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1));
     }
 }
 

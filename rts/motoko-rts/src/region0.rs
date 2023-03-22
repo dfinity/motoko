@@ -6,7 +6,7 @@ use crate::types::{Blob, Value};
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn region0_load<M: Memory>(_mem: &mut M, offset: u64, dst: &mut [u8]) {
-    let r = RegionObject(crate::memory::ic::REGION_0);
+    let r = RegionObject(crate::memory::ic::REGION_0.as_region());
     let abs_off = r.relative_into_absolute_offset(offset);
     // second bounds check on region:
     if dst.len() > 1 {
@@ -20,7 +20,7 @@ unsafe fn region0_load<M: Memory>(_mem: &mut M, offset: u64, dst: &mut [u8]) {
 }
 
 unsafe fn region0_store<M: Memory>(_mem: &mut M, offset: u64, src: &[u8]) {
-    let r = RegionObject(crate::memory::ic::REGION_0);
+    let r = RegionObject(crate::memory::ic::REGION_0.as_region());
     let abs_off = r.relative_into_absolute_offset(offset);
     // second bounds check on region:
     if src.len() > 1 {
@@ -31,21 +31,26 @@ unsafe fn region0_store<M: Memory>(_mem: &mut M, offset: u64, src: &[u8]) {
 
 #[ic_mem_fn]
 pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
-    let v = Value::from_ptr(crate::memory::ic::REGION_0 as usize);
+    let v = crate::memory::ic::REGION_0;
     println!(80, "region0_get() ~> {:?}", v);
     v
 }
 
+#[cfg(feature = "ic")]
+pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
+    &mut crate::memory::ic::REGION_0
+}
+
 #[ic_mem_fn]
 pub unsafe fn region0_size<M: Memory>(mem: &mut M) -> u64 {
-    region_size(mem, Value::from_ptr(crate::memory::ic::REGION_0 as usize))
+    region_size(mem, crate::memory::ic::REGION_0)
 }
 
 #[ic_mem_fn]
 pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
     region_grow(
         mem,
-        Value::from_ptr(crate::memory::ic::REGION_0 as usize),
+        crate::memory::ic::REGION_0,
         new_pages,
     )
 }
