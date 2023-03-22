@@ -284,17 +284,18 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
         self.state.mark_complete = true;
         self.state.mark_stack.free();
 
-        // Mark the object table as last object since it may have been extended
-        // to a new table copy during the GC mark phase (because of mark stack allocation).
-        if get_object_table() as usize >= self.generation.start {
-            (get_object_table() as *mut Obj).mark();
-        }
-
         #[cfg(debug_assertions)]
         check_mark_completion(self.mem, self.generation.start);
 
         #[cfg(debug_assertions)]
         check_heap(self.mem, self.generation.start, true);
+
+        // Mark the object table as last object since it may have been extended
+        // to a new table copy during the GC mark phase (because of mark stack allocation).
+        // Even the sanity check may grow the table, such that it is marked here.
+        if get_object_table() as usize >= self.generation.start {
+            (get_object_table() as *mut Obj).mark();
+        }
     }
 
     unsafe fn marking_completed(&self) -> bool {
