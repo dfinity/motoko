@@ -415,7 +415,9 @@ pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
 
 #[ic_mem_fn]
 pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
-    println!(80, "region_size({:?})", r);
+    if false {
+	println!(80, "region_size({:?})", r);
+    }
     let r = r.as_region();
     (*r).page_count.into()
 }

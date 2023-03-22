@@ -26,7 +26,7 @@ pub mod nicer {
     pub fn read(offset: u64, dst: &mut [u8]) {
         // SAFETY: This is safe because of the ic0 api guarantees.
         unsafe {
-            println!(50, "read({})", offset);
+            if false { println!(50, "read({})", offset); }
             stable64_read(dst.as_ptr() as u64, offset, dst.len() as u64)
         }
     }
@@ -34,7 +34,7 @@ pub mod nicer {
     pub fn write(offset: u64, src: &[u8]) {
         // SAFETY: This is safe because of the ic0 api guarantees.
         unsafe {
-            println!(50, "write({})", offset);
+            if false { println!(50, "write({})", offset); }
             stable64_write(offset, src.as_ptr() as u64, src.len() as u64)
         }
     }

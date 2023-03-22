@@ -4,8 +4,6 @@ import StableMemory "stable-mem/StableMemory";
 import Region "stable-region/Region";
 
 actor {
-
-  // TEMP -- prevent GC from collecting our RTS-allocated region0.
   var region0 : Region = StableMemory.region();
   
   stable var n : Nat64 = 0;
@@ -58,8 +56,8 @@ actor {
       assert size1 == size2;
     };
     
-    P.debugPrint(debug_show {old = m; new = n; size = size1});
-    assert (n == size1);
+    P.debugPrint(debug_show {old = m; new = n; size = StableMemory.size()});
+    assert (n == StableMemory.size());
 
     // check new page is clear
     var i : Nat64 = m * 65536;
