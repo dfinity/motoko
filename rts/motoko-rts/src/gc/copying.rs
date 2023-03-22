@@ -76,13 +76,13 @@ pub unsafe fn copying_gc_internal<
     }
 
     if (*region0_ptr_loc).is_ptr() {
-	// Region0 is not always a pointer during GC?
-	evac(
+        // Region0 is not always a pointer during GC?
+        evac(
             mem,
             begin_from_space,
             begin_to_space,
             region0_ptr_loc as usize,
-	);
+        );
     }
 
     // Scavenge to-space
