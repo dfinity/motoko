@@ -8816,11 +8816,19 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
 Traps or puts the pointer to the field on the stack
 *)
 and compile_array_index env ae e1 e2 =
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env
+  let code_arr = compile_exp_vanilla env ae e1 in (* offset to array *)
+  let sr, code_idx = compile_exp env ae e2 in (* index *)
+  match sr with
+  (* If we have a (small) constant index, do not convert to Vanilla and back *)
+  (* I am not bothering with numbers above 2^31-1, where Ocamls'
+     int32_of_big_int would do the wrong thing *)
+  | SR.Const (_, Const.Lit (Const.BigInt n))
+    when Big_int.le_big_int n (Big_int.big_int_of_int 0x7fffffff)->
+    code_arr ^^ compile_unboxed_const (Big_int.int32_of_big_int n) ^^ Arr.idx env
+  | _ ->
+    code_arr ^^ code_idx ^^ StackRep.adjust env sr SR.Vanilla ^^ Arr.idx_bigint env
 
-and compile_prim_invocation (env : E.t) ae p es at =
+and compile_prim_invocation (env : E.t) ae p es at : SR.t * G.t =
   (* for more concise code when all arguments and result use the same sr *)
   let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
@@ -9765,16 +9773,16 @@ and compile_prim_invocation (env : E.t) ae p es at =
   end
 
 (* Compile, infer and return stack representation *)
-and compile_exp (env : E.t) ae exp =
+and compile_exp (env : E.t) ae exp : SR.t * G.t =
   compile_exp_with_hint env ae None exp
 
 (* Compile to given stack representation *)
-and compile_exp_as env ae sr_out e =
+and compile_exp_as env ae sr_out e : G.t =
   let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
   code ^^ StackRep.adjust env sr_in sr_out
 
 (* Compile, infer and return stack representation, taking the hint into account *)
-and compile_exp_with_hint (env : E.t) ae sr_hint exp =
+and compile_exp_with_hint (env : E.t) ae sr_hint exp : SR.t * G.t =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   if exp.note.Note.const
   then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
