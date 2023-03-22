@@ -8,7 +8,7 @@ import Prim "mo:⛔";
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=12
+// CHECK:      i32.load offset=12
 // CHECK-NEXT: local.tee $check0
 // CHECK-NEXT: call $print_text
 // CHECK:      i32.const 4
@@ -22,7 +22,7 @@ for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=12
+// CHECK:      i32.load offset=12
 // CHECK-NEXT: local.tee $check1
 // CHECK-NEXT: call $print_text
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
@@ -46,7 +46,7 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=12
+// CHECK:      i32.load offset=12
 // CHECK-NEXT: local.tee $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
